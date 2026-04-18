@@ -15,6 +15,7 @@ import Checklist from "@/pages/Checklist";
 import VendorEmail from "@/pages/VendorEmail";
 import Vendors from "@/pages/Vendors";
 import DayOf from "@/pages/DayOf";
+import Admin from "@/pages/Admin";
 import NotFound from "@/pages/not-found";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -188,6 +189,7 @@ function Router() {
       <Route path="/vendors" component={() => <ProtectedRoute component={Vendors} />} />
       <Route path="/vendor-email" component={() => <ProtectedRoute component={VendorEmail} />} />
       <Route path="/day-of" component={() => <ProtectedRoute component={DayOf} />} />
+      <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
+import { trackEvent } from "../../lib/trackEvent";
 
 const router = Router();
 
@@ -50,6 +51,7 @@ Return ONLY valid JSON (no markdown) with this structure:
       result = { subject: "Email", body: content, vendorType, emailType };
     }
 
+    trackEvent(req.userId!, "vendor_email_generated", { vendorType, emailType });
     res.json(result);
   } catch (err) {
     req.log.error(err, "Failed to generate vendor email");

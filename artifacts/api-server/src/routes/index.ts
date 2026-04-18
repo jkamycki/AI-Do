@@ -10,6 +10,7 @@ import dayofRouter from "./wedding/dayof";
 import dashboardRouter from "./wedding/dashboard";
 import storageRouter from "./storage";
 import pdfRouter from "./pdf";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(dayofRouter);
 router.use(dashboardRouter);
 router.use(storageRouter);
 router.use(pdfRouter);
+router.use(adminRouter);
 
 export default router;

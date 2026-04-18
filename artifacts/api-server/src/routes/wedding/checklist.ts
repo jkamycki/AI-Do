@@ -4,6 +4,7 @@ import { checklistItems, weddingProfiles } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
+import { trackEvent } from "../../lib/trackEvent";
 
 const router = Router();
 
@@ -145,6 +146,9 @@ router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
       return;
     }
 
+    if (isCompleted) {
+      trackEvent(req.userId!, "checklist_item_completed", { taskId: item.id, task: item.task });
+    }
     res.json({
       id: item.id,
       month: item.month,

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/requireAuth";
+import { trackEvent } from "../lib/trackEvent";
 import type { Response } from "express";
 import PDFDocument from "pdfkit";
 
@@ -144,6 +145,7 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
     }
 
     drawFooter(doc);
+    trackEvent(req.userId!, "pdf_exported", { type: "timeline", eventCount: events.length });
     finishPdf(doc, res, "aido-timeline.pdf");
   } catch (err) {
     console.error("PDF generation error:", err);
@@ -226,6 +228,7 @@ router.post("/pdf/vendor-email", requireAuth, async (req, res) => {
     }
 
     drawFooter(doc);
+    trackEvent(req.userId!, "pdf_exported", { type: "vendor_email", vendorType });
     finishPdf(doc, res, "aido-vendor-email.pdf");
   } catch (err) {
     console.error("PDF generation error:", err);

@@ -4,6 +4,7 @@ import { budgets, budgetItems, weddingProfiles } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
+import { trackEvent } from "../../lib/trackEvent";
 
 const router = Router();
 
@@ -90,6 +91,7 @@ router.post("/budget", requireAuth, async (req, res) => {
         .set({ totalBudget: String(totalBudget), updatedAt: new Date() })
         .where(eq(budgets.id, existing[0].id));
       const result = await getBudgetWithItems(existing[0].id);
+      trackEvent(req.userId!, "budget_updated", { action: "update_total" });
       res.json(result);
     } else {
       const [created] = await db
@@ -97,6 +99,7 @@ router.post("/budget", requireAuth, async (req, res) => {
         .values({ profileId, totalBudget: String(totalBudget) })
         .returning();
       const result = await getBudgetWithItems(created.id);
+      trackEvent(req.userId!, "budget_updated", { action: "create" });
       res.json(result);
     }
   } catch (err) {

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
+import { trackEvent } from "../../lib/trackEvent";
 
 const router = Router();
 
@@ -37,6 +38,7 @@ The steps should be concrete, actionable, and prioritized. Include 3-6 steps.`;
       result = { advice: content, steps: [] };
     }
 
+    trackEvent(req.userId!, "day_of_mode_activated", { situation: typeof situation === "string" ? situation.slice(0, 100) : undefined });
     res.json(result);
   } catch (err) {
     req.log.error(err, "Failed to get emergency advice");

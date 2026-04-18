@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk, useUser } from "@clerk/react";
+import { useQuery } from "@tanstack/react-query";
 import { 
   Heart, 
   LayoutDashboard,
@@ -14,6 +15,7 @@ import {
   Menu,
   X,
   LogOut,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -34,8 +36,51 @@ export function Sidebar() {
   const { signOut } = useClerk();
   const { user } = useUser();
 
+  const { data: adminCheck } = useQuery({
+    queryKey: ["admin-check"],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/check", { credentials: "include" });
+      if (!r.ok) return { isAdmin: false };
+      return r.json() as Promise<{ isAdmin: boolean }>;
+    },
+    staleTime: 300000,
+    retry: false,
+  });
+
+  const isAdmin = adminCheck?.isAdmin === true;
+
   const handleSignOut = () => {
     signOut({ redirectUrl: "/" });
+  };
+
+  const NavLink = ({ href, label, icon: Icon, special = false }: {
+    href: string;
+    label: string;
+    icon: React.ElementType;
+    special?: boolean;
+  }) => {
+    const isActive = location === href || (href !== "/dashboard" && location.startsWith(href));
+    return (
+      <Link
+        href={href}
+        className={`
+          flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group
+          ${isActive
+            ? special
+              ? "bg-primary/15 text-primary font-medium"
+              : "bg-primary text-primary-foreground font-medium shadow-md"
+            : special
+              ? "hover:bg-primary/10 text-primary/70 hover:text-primary"
+              : "hover:bg-primary/10 text-card-foreground hover:text-primary"
+          }
+        `}
+        onClick={() => setIsOpen(false)}
+        data-testid={`nav-link-${label.toLowerCase().replace(/\s+/g, "-")}`}
+      >
+        <Icon className={`h-5 w-5 flex-shrink-0 ${isActive ? "" : "group-hover:scale-110 transition-transform duration-200"}`} />
+        <span className="text-sm">{label}</span>
+      </Link>
+    );
   };
 
   return (
@@ -53,7 +98,7 @@ export function Sidebar() {
       <div className={`
         fixed top-0 left-0 h-full w-64 bg-card border-r z-40 transform transition-transform duration-300 ease-in-out pt-16 md:pt-0
         flex flex-col
-        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}>
         <div className="hidden md:flex items-center gap-2 px-6 py-8 text-primary font-serif font-bold text-2xl border-b border-primary/10">
           <Heart className="h-8 w-8 fill-primary" />
@@ -61,28 +106,23 @@ export function Sidebar() {
         </div>
         
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
-            const Icon = item.icon;
-            
-            return (
-              <Link 
-                key={item.href} 
-                href={item.href}
-                className={`
-                  flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group
-                  ${isActive 
-                    ? 'bg-primary text-primary-foreground font-medium shadow-md' 
-                    : 'hover:bg-primary/10 text-card-foreground hover:text-primary'}
-                `}
-                onClick={() => setIsOpen(false)}
-                data-testid={`nav-link-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-              >
-                <Icon className={`h-5 w-5 flex-shrink-0 ${isActive ? '' : 'group-hover:scale-110 transition-transform duration-200'}`} />
-                <span className="text-sm">{item.label}</span>
-              </Link>
-            );
-          })}
+          {navItems.map((item) => (
+            <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
+          ))}
+
+          {isAdmin && (
+            <div className="pt-3 mt-3 border-t border-primary/10">
+              <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Admin
+              </p>
+              <NavLink
+                href="/admin"
+                label="Operations Center"
+                icon={Shield}
+                special
+              />
+            </div>
+          )}
         </nav>
 
         <div className="p-4 border-t border-primary/10">

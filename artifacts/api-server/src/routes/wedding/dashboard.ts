@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { weddingProfiles, timelines, budgets, budgetItems, checklistItems } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
+import { trackEvent } from "../../lib/trackEvent";
 
 const router = Router();
 
@@ -51,6 +52,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
     const checklistCompleted = allChecklistItems.filter(item => item.isCompleted).length;
     const checklistProgress = checklistTotal > 0 ? (checklistCompleted / checklistTotal) * 100 : 0;
 
+    trackEvent(req.userId!, "user_login");
     res.json({
       daysUntilWedding,
       checklistProgress,

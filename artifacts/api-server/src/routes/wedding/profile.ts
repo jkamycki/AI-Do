@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { weddingProfiles } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
+import { trackEvent } from "../../lib/trackEvent";
 
 const router = Router();
 
@@ -53,6 +54,7 @@ router.post("/profile", requireAuth, async (req, res) => {
         })
         .where(eq(weddingProfiles.id, existing[0].id))
         .returning();
+      trackEvent(req.userId!, "onboarding_completed", { updated: true });
       res.json({
         ...updated,
         totalBudget: parseFloat(updated.totalBudget as string),
@@ -67,6 +69,8 @@ router.post("/profile", requireAuth, async (req, res) => {
           venue, location, guestCount, totalBudget: String(totalBudget), weddingVibe,
         })
         .returning();
+      trackEvent(req.userId!, "user_signup");
+      trackEvent(req.userId!, "onboarding_completed", { firstTime: true });
       res.json({
         ...created,
         totalBudget: parseFloat(created.totalBudget as string),

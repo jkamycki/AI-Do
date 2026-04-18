@@ -4,6 +4,7 @@ import { timelines, weddingProfiles } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
+import { trackEvent } from "../../lib/trackEvent";
 
 const router = Router();
 
@@ -98,6 +99,7 @@ Return ONLY a valid JSON array (no markdown, no explanation) with this exact str
       .values({ profileId: profile.id, events })
       .returning();
 
+    trackEvent(req.userId!, "timeline_generated", { eventCount: events.length });
     res.json({
       id: created.id,
       events: created.events,

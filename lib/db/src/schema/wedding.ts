@@ -108,3 +108,21 @@ export const vendorPayments = pgTable("vendor_payments", {
 export const insertVendorPaymentSchema = createInsertSchema(vendorPayments).omit({ id: true, createdAt: true });
 export type InsertVendorPayment = z.infer<typeof insertVendorPaymentSchema>;
 export type VendorPayment = typeof vendorPayments.$inferSelect;
+
+export const analyticsEvents = pgTable("analytics_events", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  eventType: text("event_type").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+});
+
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+
+export const adminUsers = pgTable("admin_users", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type AdminUser = typeof adminUsers.$inferSelect;
