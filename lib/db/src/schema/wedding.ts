@@ -219,6 +219,7 @@ export const guests = pgTable("guests", {
   email: text("email"),
   rsvpStatus: text("rsvp_status").notNull().default("pending"),
   mealChoice: text("meal_choice"),
+  guestGroup: text("guest_group"),
   plusOne: boolean("plus_one").notNull().default(false),
   plusOneName: text("plus_one_name"),
   tableAssignment: text("table_assignment"),

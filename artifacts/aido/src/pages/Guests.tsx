@@ -24,7 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download } from "lucide-react";
+import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag } from "lucide-react";
 
 const RSVP_OPTIONS = [
   { value: "pending", label: "Pending", color: "bg-amber-100 text-amber-800 border-amber-200" },
@@ -41,11 +41,40 @@ const MEAL_OPTIONS = [
   { value: "kids", label: "Kids Meal" },
 ];
 
+const GROUP_OPTIONS = [
+  { value: "brides_family", label: "Bride's Family" },
+  { value: "grooms_family", label: "Groom's Family" },
+  { value: "brides_friends", label: "Bride's Friends" },
+  { value: "grooms_friends", label: "Groom's Friends" },
+  { value: "coworkers", label: "Coworkers" },
+  { value: "family_friends", label: "Family Friends" },
+  { value: "vip", label: "VIP" },
+  { value: "other", label: "Other" },
+];
+
+function getGroupLabel(value: string | null | undefined): string {
+  if (!value) return "";
+  const opt = GROUP_OPTIONS.find(o => o.value === value);
+  return opt ? opt.label : value;
+}
+
+const GROUP_COLORS: Record<string, string> = {
+  brides_family: "bg-rose-100 text-rose-800 border-rose-200",
+  grooms_family: "bg-violet-100 text-violet-800 border-violet-200",
+  brides_friends: "bg-pink-100 text-pink-800 border-pink-200",
+  grooms_friends: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  coworkers: "bg-sky-100 text-sky-800 border-sky-200",
+  family_friends: "bg-teal-100 text-teal-800 border-teal-200",
+  vip: "bg-amber-100 text-amber-800 border-amber-200",
+  other: "bg-gray-100 text-gray-700 border-gray-200",
+};
+
 const guestSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email").or(z.literal("")).optional(),
   rsvpStatus: z.enum(["pending", "attending", "declined"]).default("pending"),
   mealChoice: z.string().optional(),
+  guestGroup: z.string().optional(),
   plusOne: z.boolean().default(false),
   plusOneName: z.string().optional(),
   tableAssignment: z.string().optional(),
@@ -77,6 +106,7 @@ function GuestForm({
       email: "",
       rsvpStatus: "pending",
       mealChoice: "",
+      guestGroup: "",
       plusOne: false,
       plusOneName: "",
       tableAssignment: "",
@@ -122,6 +152,24 @@ function GuestForm({
               <FormMessage />
             </FormItem>
           )} />
+          <FormField control={form.control} name="guestGroup" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Group / Category</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger><SelectValue placeholder="Select group" /></SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">No group</SelectItem>
+                  {GROUP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField control={form.control} name="mealChoice" render={({ field }) => (
             <FormItem>
               <FormLabel>Meal Choice</FormLabel>
@@ -137,9 +185,6 @@ function GuestForm({
               <FormMessage />
             </FormItem>
           )} />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField control={form.control} name="tableAssignment" render={({ field }) => (
             <FormItem>
               <FormLabel>Table Assignment</FormLabel>
@@ -147,17 +192,18 @@ function GuestForm({
               <FormMessage />
             </FormItem>
           )} />
-          <FormField control={form.control} name="plusOne" render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-2">
-              <div className="space-y-0.5">
-                <FormLabel>Plus One</FormLabel>
-              </div>
-              <FormControl>
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              </FormControl>
-            </FormItem>
-          )} />
         </div>
+
+        <FormField control={form.control} name="plusOne" render={({ field }) => (
+          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+            <div className="space-y-0.5">
+              <FormLabel>Plus One</FormLabel>
+            </div>
+            <FormControl>
+              <Switch checked={field.value} onCheckedChange={field.onChange} />
+            </FormControl>
+          </FormItem>
+        )} />
 
         {plusOne && (
           <FormField control={form.control} name="plusOneName" render={({ field }) => (
@@ -188,10 +234,11 @@ function GuestForm({
 }
 
 function exportCSV(guestList: Guest[]) {
-  const headers = ["Name", "Email", "RSVP", "Meal", "Plus One", "Plus One Name", "Table", "Notes"];
+  const headers = ["Name", "Email", "Group", "RSVP", "Meal", "Plus One", "Plus One Name", "Table", "Notes"];
   const rows = guestList.map(g => [
     g.name,
     g.email ?? "",
+    getGroupLabel(g.guestGroup),
     g.rsvpStatus,
     g.mealChoice ?? "",
     g.plusOne ? "Yes" : "No",
@@ -214,6 +261,7 @@ export default function Guests() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [rsvpFilter, setRsvpFilter] = useState<string>("all");
+  const [groupFilter, setGroupFilter] = useState<string>("all");
   const [isAdding, setIsAdding] = useState(false);
   const [editGuest, setEditGuest] = useState<Guest | null>(null);
 
@@ -225,16 +273,26 @@ export default function Guests() {
   const allGuests = data?.guests ?? [];
   const summary = data?.summary ?? { total: 0, attending: 0, declined: 0, pending: 0, plusOnes: 0 };
 
+  const usedGroups = [...new Set(allGuests.map(g => g.guestGroup).filter(Boolean))] as string[];
+
   const filtered = allGuests.filter(g => {
     const matchesSearch = !search || g.name.toLowerCase().includes(search.toLowerCase()) || (g.email ?? "").toLowerCase().includes(search.toLowerCase());
     const matchesRsvp = rsvpFilter === "all" || g.rsvpStatus === rsvpFilter;
-    return matchesSearch && matchesRsvp;
+    const matchesGroup = groupFilter === "all" || g.guestGroup === groupFilter;
+    return matchesSearch && matchesRsvp && matchesGroup;
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
 
   function handleAdd(data: GuestFormValues) {
-    addGuest.mutate({ data: { ...data, email: data.email || undefined, mealChoice: data.mealChoice === "none" ? undefined : data.mealChoice || undefined } }, {
+    addGuest.mutate({
+      data: {
+        ...data,
+        email: data.email || undefined,
+        mealChoice: data.mealChoice === "none" ? undefined : data.mealChoice || undefined,
+        guestGroup: data.guestGroup === "none" ? undefined : data.guestGroup || undefined,
+      }
+    }, {
       onSuccess: () => {
         toast({ title: "Guest added" });
         setIsAdding(false);
@@ -246,7 +304,15 @@ export default function Guests() {
 
   function handleEdit(data: GuestFormValues) {
     if (!editGuest) return;
-    updateGuest.mutate({ id: editGuest.id, data: { ...data, email: data.email || undefined, mealChoice: data.mealChoice === "none" ? undefined : data.mealChoice || undefined } }, {
+    updateGuest.mutate({
+      id: editGuest.id,
+      data: {
+        ...data,
+        email: data.email || undefined,
+        mealChoice: data.mealChoice === "none" ? undefined : data.mealChoice || undefined,
+        guestGroup: data.guestGroup === "none" ? undefined : data.guestGroup || undefined,
+      }
+    }, {
       onSuccess: () => {
         toast({ title: "Guest updated" });
         setEditGuest(null);
@@ -338,6 +404,34 @@ export default function Guests() {
         ))}
       </div>
 
+      {/* Group breakdown pills (if groups are used) */}
+      {usedGroups.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {usedGroups.map(grp => {
+            const count = allGuests.filter(g => g.guestGroup === grp).length;
+            const colorClass = GROUP_COLORS[grp] ?? "bg-gray-100 text-gray-700 border-gray-200";
+            return (
+              <button
+                key={grp}
+                onClick={() => setGroupFilter(groupFilter === grp ? "all" : grp)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all ${colorClass} ${groupFilter === grp ? "ring-2 ring-offset-1 ring-primary/40" : "opacity-80 hover:opacity-100"}`}
+              >
+                <Tag className="h-3 w-3" />
+                {getGroupLabel(grp)} · {count}
+              </button>
+            );
+          })}
+          {groupFilter !== "all" && (
+            <button
+              onClick={() => setGroupFilter("all")}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border border-dashed border-muted-foreground/40 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Clear filter ×
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Search + filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -350,12 +444,21 @@ export default function Guests() {
           />
         </div>
         <Select value={rsvpFilter} onValueChange={setRsvpFilter}>
-          <SelectTrigger className="w-full sm:w-44">
+          <SelectTrigger className="w-full sm:w-40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All RSVPs</SelectItem>
             {RSVP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={groupFilter} onValueChange={setGroupFilter}>
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue placeholder="All Groups" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Groups</SelectItem>
+            {GROUP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -384,7 +487,7 @@ export default function Guests() {
         <Card className="border-border/60 shadow-sm">
           <CardHeader className="pb-0">
             <CardTitle className="text-base font-medium text-muted-foreground">
-              {filtered.length} {filtered.length === 1 ? "guest" : "guests"} {rsvpFilter !== "all" || search ? "(filtered)" : ""}
+              {filtered.length} {filtered.length === 1 ? "guest" : "guests"} {rsvpFilter !== "all" || groupFilter !== "all" || search ? "(filtered)" : ""}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -393,7 +496,7 @@ export default function Guests() {
                 <TableHeader className="bg-muted/10">
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead className="hidden sm:table-cell">Email</TableHead>
+                    <TableHead className="hidden sm:table-cell">Group</TableHead>
                     <TableHead>RSVP</TableHead>
                     <TableHead className="hidden md:table-cell">Meal</TableHead>
                     <TableHead className="hidden md:table-cell">Table</TableHead>
@@ -404,14 +507,29 @@ export default function Guests() {
                 <TableBody>
                   {filtered.map(g => {
                     const badge = getRsvpBadge(g.rsvpStatus);
+                    const grpLabel = getGroupLabel(g.guestGroup);
+                    const grpColor = g.guestGroup ? (GROUP_COLORS[g.guestGroup] ?? "bg-gray-100 text-gray-700 border-gray-200") : "";
                     return (
                       <TableRow key={g.id} className="group">
                         <TableCell>
                           <div className="font-medium">{g.name}</div>
                           {g.notes && <div className="text-xs text-muted-foreground italic truncate max-w-[160px]" title={g.notes}>{g.notes}</div>}
                           <div className="sm:hidden text-xs text-muted-foreground">{g.email}</div>
+                          {grpLabel && (
+                            <span className={`sm:hidden inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium border ${grpColor}`}>
+                              {grpLabel}
+                            </span>
+                          )}
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{g.email || "—"}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {grpLabel ? (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${grpColor}`}>
+                              {grpLabel}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${badge.color}`}>
                             {badge.label}
@@ -483,6 +601,7 @@ export default function Guests() {
                 email: editGuest.email ?? "",
                 rsvpStatus: (editGuest.rsvpStatus as "pending" | "attending" | "declined") ?? "pending",
                 mealChoice: editGuest.mealChoice ?? "",
+                guestGroup: editGuest.guestGroup ?? "",
                 plusOne: editGuest.plusOne,
                 plusOneName: editGuest.plusOneName ?? "",
                 tableAssignment: editGuest.tableAssignment ?? "",

@@ -281,6 +281,7 @@ export interface Guest {
   email?: string | null;
   rsvpStatus: string;
   mealChoice?: string | null;
+  guestGroup?: string | null;
   plusOne: boolean;
   plusOneName?: string | null;
   tableAssignment?: string | null;
@@ -306,6 +307,7 @@ export interface CreateGuest {
   email?: string;
   rsvpStatus?: string;
   mealChoice?: string;
+  guestGroup?: string;
   plusOne?: boolean;
   plusOneName?: string;
   tableAssignment?: string;
@@ -317,6 +319,7 @@ export interface UpdateGuest {
   email?: string;
   rsvpStatus?: string;
   mealChoice?: string;
+  guestGroup?: string;
   plusOne?: boolean;
   plusOneName?: string;
   tableAssignment?: string;

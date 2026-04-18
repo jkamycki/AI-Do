@@ -1292,6 +1292,9 @@ components:
         mealChoice:
           type: string
           nullable: true
+        guestGroup:
+          type: string
+          nullable: true
         plusOne:
           type: boolean
         plusOneName:
@@ -1354,6 +1357,8 @@ components:
           type: string
         mealChoice:
           type: string
+        guestGroup:
+          type: string
         plusOne:
           type: boolean
         plusOneName:
@@ -1375,6 +1380,8 @@ components:
         rsvpStatus:
           type: string
         mealChoice:
+          type: string
+        guestGroup:
           type: string
         plusOne:
           type: boolean
