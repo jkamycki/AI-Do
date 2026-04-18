@@ -13,7 +13,8 @@ import {
   AlertCircle, RefreshCw, CalendarClock, Mail, CheckSquare,
   Smartphone, FileDown, DollarSign as BudgetIcon, Activity,
   ChevronRight, Inbox, Star, MessageSquare, Bug, Lightbulb, Heart, ThumbsUp,
-  MailOpen, Circle, CheckCircle2,
+  MailOpen, Circle, CheckCircle2, Search, Calendar, Clock, ExternalLink,
+  ChevronDown as ChevronDownIcon, ChevronUp as ChevronUpIcon,
 } from "lucide-react";
 
 interface AdminMetrics {
@@ -144,6 +145,195 @@ function SectionHeader({ title, description }: { title: string; description: str
   );
 }
 
+interface AdminUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  imageUrl: string | null;
+  joinedAt: string;
+  lastActive: string | null;
+  eventCount: number;
+  onboarded: boolean;
+  hasProfile: boolean;
+  partner1Name: string | null;
+  partner2Name: string | null;
+  weddingDate: string | null;
+  venue: string | null;
+}
+
+function UserAvatar({ user }: { user: AdminUser }) {
+  const initials = `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() || "?";
+  if (user.imageUrl) {
+    return <img src={user.imageUrl} alt={initials} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />;
+  }
+  return (
+    <div className="w-8 h-8 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center flex-shrink-0">
+      {initials}
+    </div>
+  );
+}
+
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return "Never";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+
+function UserDirectory() {
+  const { getToken } = useAuth();
+  const [search, setSearch] = useState("");
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const authedFetch = async (url: string) => {
+    const token = await getToken();
+    return fetch(url, {
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  };
+
+  const { data, isLoading, error } = useQuery<{ users: AdminUser[]; total: number }>({
+    queryKey: ["admin-users", debouncedSearch],
+    queryFn: async () => {
+      const params = debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : "";
+      const r = await authedFetch(`/api/admin/users${params}`);
+      if (!r.ok) throw new Error("Failed to fetch users");
+      return r.json();
+    },
+  });
+
+  const users = data?.users ?? [];
+
+  return (
+    <Card className="border-none shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <CardTitle className="font-serif text-lg flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              User Directory
+            </CardTitle>
+            <CardDescription className="mt-0.5">
+              {data ? `${data.total} user${data.total !== 1 ? "s" : ""} registered` : "Loading…"}
+            </CardDescription>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by name or email…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 w-56"
+            />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        {isLoading ? (
+          <div className="p-4 space-y-3">
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
+          </div>
+        ) : error ? (
+          <div className="p-8 text-center text-muted-foreground text-sm">
+            Failed to load users.
+          </div>
+        ) : users.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground text-sm">
+            {search ? "No users match your search." : "No users have signed up yet."}
+          </div>
+        ) : (
+          <div className="divide-y divide-border/50">
+            {users.map(user => {
+              const isOpen = expanded === user.id;
+              const fullName = `${user.firstName} ${user.lastName}`.trim() || "Unknown";
+              return (
+                <div key={user.id} className="transition-colors hover:bg-muted/20">
+                  <button
+                    onClick={() => setExpanded(isOpen ? null : user.id)}
+                    className="w-full text-left px-5 py-3.5 flex items-center gap-3"
+                  >
+                    <UserAvatar user={user} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm">{fullName}</span>
+                        {user.onboarded && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold uppercase tracking-wide">
+                            Onboarded
+                          </span>
+                        )}
+                        {!user.hasProfile && !user.onboarded && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold uppercase tracking-wide">
+                            No profile
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{user.email ?? "—"}</p>
+                    </div>
+                    <div className="hidden sm:flex items-center gap-5 text-xs text-muted-foreground flex-shrink-0">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(user.joinedAt).toLocaleDateString()}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {timeAgo(user.lastActive)}
+                      </span>
+                      <span className="text-primary font-medium">{user.eventCount} events</span>
+                    </div>
+                    {isOpen
+                      ? <ChevronUpIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      : <ChevronDownIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    }
+                  </button>
+
+                  {isOpen && (
+                    <div className="px-5 pb-4 pt-0 border-t border-border/30 bg-muted/5">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+                        {[
+                          { label: "Email", value: user.email ?? "—" },
+                          { label: "Clerk ID", value: user.id.slice(0, 20) + "…" },
+                          { label: "Joined", value: new Date(user.joinedAt).toLocaleString() },
+                          { label: "Last Active", value: user.lastActive ? new Date(user.lastActive).toLocaleString() : "Never" },
+                          { label: "Events Fired", value: String(user.eventCount) },
+                          { label: "Onboarded", value: user.onboarded ? "Yes" : "No" },
+                          { label: "Has Profile", value: user.hasProfile ? "Yes" : "No" },
+                          ...(user.weddingDate ? [{ label: "Wedding Date", value: user.weddingDate }] : []),
+                          ...(user.venue ? [{ label: "Venue", value: user.venue }] : []),
+                          ...(user.partner1Name ? [{ label: "Couple", value: `${user.partner1Name} & ${user.partner2Name ?? ""}` }] : []),
+                        ].map(item => (
+                          <div key={item.label} className="bg-muted/30 rounded-lg p-2.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                            <p className="text-sm text-foreground mt-0.5 truncate" title={item.value}>{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function UserMetricsSection({ metrics }: { metrics: AdminMetrics }) {
   const { userMetrics, userGrowth } = metrics;
   const growthData = userGrowth.length > 0
@@ -207,6 +397,8 @@ function UserMetricsSection({ metrics }: { metrics: AdminMetrics }) {
           )}
         </CardContent>
       </Card>
+
+      <UserDirectory />
     </div>
   );
 }

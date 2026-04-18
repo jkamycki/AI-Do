@@ -1,8 +1,8 @@
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { clerkClient } from "@clerk/express";
-import { db, analyticsEvents, adminUsers } from "@workspace/db";
-import { eq, gte, desc, sql, and } from "drizzle-orm";
+import { db, analyticsEvents, adminUsers, weddingProfiles } from "@workspace/db";
+import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router = Router();
@@ -220,6 +220,105 @@ router.get("/admin/events", requireAuth, requireAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error("Admin events error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const search = String(req.query.search ?? "").trim().toLowerCase();
+
+    const [profileRows, eventRows] = await Promise.all([
+      db.select({
+        userId: weddingProfiles.userId,
+        partner1Name: weddingProfiles.partner1Name,
+        partner2Name: weddingProfiles.partner2Name,
+        weddingDate: weddingProfiles.weddingDate,
+        venue: weddingProfiles.venue,
+        createdAt: weddingProfiles.createdAt,
+      }).from(weddingProfiles),
+
+      db.execute(sql`
+        SELECT
+          user_id,
+          count(*)::int as event_count,
+          max(timestamp) as last_active,
+          bool_or(event_type = 'user_signup') as signed_up,
+          bool_or(event_type = 'onboarding_completed') as onboarded,
+          min(timestamp) as first_seen
+        FROM analytics_events
+        GROUP BY user_id
+      `),
+    ]);
+
+    type EventRow = {
+      user_id: string;
+      event_count: number;
+      last_active: string;
+      signed_up: boolean;
+      onboarded: boolean;
+      first_seen: string;
+    };
+
+    const eventMap = new Map<string, EventRow>();
+    for (const row of eventRows.rows as EventRow[]) {
+      eventMap.set(row.user_id, row);
+    }
+    const profileMap = new Map<string, typeof profileRows[number]>();
+    for (const p of profileRows) {
+      if (p.userId) profileMap.set(p.userId, p);
+    }
+
+    const allUserIds = Array.from(new Set([
+      ...Array.from(eventMap.keys()),
+      ...Array.from(profileMap.keys()),
+    ])).filter(Boolean).slice(0, 200);
+
+    if (allUserIds.length === 0) {
+      return res.json({ users: [], total: 0 });
+    }
+
+    const clerkUsers = await clerkClient.users.getUserList({
+      userId: allUserIds,
+      limit: 200,
+    });
+
+    const users = clerkUsers.data.map(cu => {
+      const primaryEmail = cu.emailAddresses.find(e => e.id === cu.primaryEmailAddressId)?.emailAddress
+        ?? cu.emailAddresses[0]?.emailAddress ?? null;
+      const profile = profileMap.get(cu.id);
+      const events = eventMap.get(cu.id);
+
+      return {
+        id: cu.id,
+        firstName: cu.firstName ?? "",
+        lastName: cu.lastName ?? "",
+        email: primaryEmail,
+        imageUrl: cu.imageUrl ?? null,
+        joinedAt: new Date(cu.createdAt).toISOString(),
+        lastActive: events?.last_active ?? null,
+        eventCount: events?.event_count ?? 0,
+        onboarded: events?.onboarded ?? false,
+        hasProfile: !!profile,
+        partner1Name: profile?.partner1Name ?? null,
+        partner2Name: profile?.partner2Name ?? null,
+        weddingDate: profile?.weddingDate ?? null,
+        venue: profile?.venue ?? null,
+      };
+    });
+
+    const filtered = search
+      ? users.filter(u =>
+          `${u.firstName} ${u.lastName} ${u.email} ${u.partner1Name} ${u.partner2Name}`
+            .toLowerCase().includes(search)
+        )
+      : users;
+
+    filtered.sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime());
+
+    res.json({ users: filtered, total: filtered.length });
+  } catch (err) {
+    console.error("Admin users error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
