@@ -4,13 +4,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useGenerateVendorEmail, useGetProfile } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail, Copy, CheckCircle2, Sparkles } from "lucide-react";
+import { Mail, Copy, CheckCircle2, Sparkles, FileDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const emailSchema = z.object({
@@ -28,7 +28,8 @@ export default function VendorEmailPage() {
   const generateEmail = useGenerateVendorEmail();
   
   const [copied, setCopied] = useState(false);
-  const [generatedResult, setGeneratedResult] = useState<{subject: string, body: string} | null>(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [generatedResult, setGeneratedResult] = useState<{subject: string, body: string, vendorType?: string, emailType?: string, vendorName?: string} | null>(null);
 
   const form = useForm<EmailFormValues>({
     resolver: zodResolver(emailSchema),
@@ -41,26 +42,21 @@ export default function VendorEmailPage() {
   });
 
   const onSubmit = (data: EmailFormValues) => {
-    if (!profile) {
-      toast({ variant: "destructive", title: "Profile Required", description: "Please complete your profile first." });
-      return;
-    }
-
     generateEmail.mutate(
       {
         data: {
           vendorType: data.vendorType,
           emailType: data.emailType,
           vendorName: data.vendorName,
-          weddingDate: profile.weddingDate,
-          venue: profile.venue,
-          guestCount: profile.guestCount,
+          weddingDate: profile?.weddingDate ?? "",
+          venue: profile?.venue ?? "",
+          guestCount: profile?.guestCount ?? 0,
           additionalNotes: data.additionalNotes,
         }
       },
       {
         onSuccess: (result) => {
-          setGeneratedResult(result);
+          setGeneratedResult({ ...result, vendorName: data.vendorName });
           setCopied(false);
           toast({ title: "Draft Ready", description: "Email generated successfully." });
         },
@@ -78,6 +74,40 @@ export default function VendorEmailPage() {
     setCopied(true);
     toast({ title: "Copied to clipboard" });
     setTimeout(() => setCopied(false), 3000);
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!generatedResult) return;
+    setIsDownloadingPdf(true);
+    try {
+      const response = await fetch("/api/pdf/vendor-email", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: generatedResult.subject,
+          body: generatedResult.body,
+          vendorType: generatedResult.vendorType,
+          emailType: generatedResult.emailType,
+          vendorName: generatedResult.vendorName,
+        }),
+      });
+      if (!response.ok) throw new Error("PDF generation failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "aido-vendor-email.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "PDF Downloaded", description: "Your email draft has been saved as a PDF." });
+    } catch {
+      toast({ variant: "destructive", title: "Download Failed", description: "Could not generate PDF. Please try again." });
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   if (isLoadingProfile && !isProfileError) {
@@ -224,16 +254,38 @@ export default function VendorEmailPage() {
             <CardHeader className="bg-muted/30 border-b pb-4 flex flex-row items-center justify-between">
               <CardTitle className="font-serif text-xl">Draft</CardTitle>
               {generatedResult && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={copyToClipboard}
-                  className="gap-2"
-                  data-testid="btn-copy-email"
-                >
-                  {copied ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                  {copied ? "Copied" : "Copy All"}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleDownloadPdf}
+                    disabled={isDownloadingPdf}
+                    className="gap-2"
+                    data-testid="btn-download-email-pdf"
+                  >
+                    {isDownloadingPdf ? (
+                      <>
+                        <div className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                        Exporting…
+                      </>
+                    ) : (
+                      <>
+                        <FileDown className="h-3.5 w-3.5" />
+                        PDF
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={copyToClipboard}
+                    className="gap-2"
+                    data-testid="btn-copy-email"
+                  >
+                    {copied ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    {copied ? "Copied" : "Copy All"}
+                  </Button>
+                </div>
               )}
             </CardHeader>
             <CardContent className="p-0 flex-1 relative min-h-[400px]">

@@ -1,0 +1,65 @@
+Add an “A.IDO Operations Center” for the owner of the platform. Only admin accounts should be able to access it.
+Enable full automatic tracking across the entire app.
+Every time a user performs an action, log it automatically in the database with timestamps and user IDs.
+Track the following events automatically:
+• 	User signup
+• 	User login
+• 	Onboarding completed
+• 	Timeline generated
+• 	Vendor email generated
+• 	Checklist item completed
+• 	Budget created or updated
+• 	Day‑Of Mode activated
+• 	PDF exported
+• 	Subscription started
+• 	Subscription renewed
+• 	Subscription canceled
+• 	Failed payment
+Store all events in an “analytics” or “events” collection/table with fields for:
+• 	userId
+• 	eventType
+• 	timestamp
+• 	metadata (optional details)
+The Operations Center must include four categories of metrics:
+1. Money Metrics:
+• 	Total revenue
+• 	Monthly recurring revenue (MRR)
+• 	Annual recurring revenue (ARR)
+• 	Average revenue per user (ARPU)
+• 	Lifetime value (LTV)
+• 	Churn rate
+• 	Failed payments
+• 	Upcoming renewals
+• 	Trial‑to‑paid conversion rate
+• 	Refunds issued
+2. User Metrics:
+• 	Total registered users
+• 	New users per day, week, and month
+• 	Active users (DAU, WAU, MAU)
+• 	Returning users
+• 	User retention rate
+• 	Onboarding completion rate
+• 	Feature adoption rates
+3. Product Usage Metrics:
+• 	Timeline generations
+• 	Vendor email generations
+• 	Checklist items completed
+• 	Budget tool usage
+• 	Day‑Of Mode activations
+• 	PDF exports
+• 	Average session time
+• 	Most used feature
+• 	Least used feature
+4. System Health Metrics:
+• 	API errors
+• 	AI generation failures
+• 	Uptime percentage
+• 	Average response time
+• 	Database size
+• 	Storage usage
+• 	Device breakdown (mobile vs desktop)
+Display all metrics using summary cards, charts, and tables.
+Add an “Operations Center” link in the navigation that only appears for admin accounts.
+Create a simple way for me (the owner) to mark an account as admin in the database.
+Make the entire Operations Center clean, modern, responsive, and consistent with A.IDO branding.
+All tracking must be automatic — no manual input required.

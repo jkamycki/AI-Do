@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { useGetTimeline, useGenerateTimeline, useGetProfile, getGetTimelineQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CalendarClock, Wand2, Clock, MapPin, Star } from "lucide-react";
+import { CalendarClock, Wand2, Clock, FileDown } from "lucide-react";
 
 export default function Timeline() {
   const { toast } = useToast();
@@ -12,6 +13,7 @@ export default function Timeline() {
   const { data: timeline, isLoading: isLoadingTimeline } = useGetTimeline();
   const { data: profile, isLoading: isLoadingProfile } = useGetProfile();
   const generateTimeline = useGenerateTimeline();
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const handleGenerate = () => {
     if (!profile?.id) {
@@ -44,6 +46,42 @@ export default function Timeline() {
     );
   };
 
+  const handleDownloadPdf = async () => {
+    if (!timeline?.events?.length) return;
+    setIsDownloadingPdf(true);
+    try {
+      const coupleName = profile
+        ? `${profile.partner1Name} & ${profile.partner2Name}`
+        : undefined;
+      const response = await fetch("/api/pdf/timeline", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          events: timeline.events,
+          coupleName,
+          weddingDate: profile?.weddingDate,
+          venue: profile?.venue,
+        }),
+      });
+      if (!response.ok) throw new Error("PDF generation failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "aido-timeline.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "PDF Downloaded", description: "Your timeline has been saved as a PDF." });
+    } catch {
+      toast({ variant: "destructive", title: "Download Failed", description: "Could not generate PDF. Please try again." });
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   if (isLoadingTimeline || isLoadingProfile) {
     return (
       <div className="space-y-8 max-w-4xl mx-auto">
@@ -67,25 +105,49 @@ export default function Timeline() {
           </h1>
           <p className="text-lg text-muted-foreground mt-2">A beautiful orchestration of your special day.</p>
         </div>
-        <Button 
-          onClick={handleGenerate} 
-          disabled={generateTimeline.isPending}
-          variant={hasTimeline ? "outline" : "default"}
-          size="lg"
-          data-testid="btn-generate-timeline"
-        >
-          {generateTimeline.isPending ? (
-            <span className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-              Crafting Magic...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <Wand2 className="h-4 w-4" />
-              {hasTimeline ? "Regenerate Timeline" : "Generate with AI"}
-            </span>
+        <div className="flex items-center gap-3">
+          {hasTimeline && (
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleDownloadPdf}
+              disabled={isDownloadingPdf}
+              data-testid="btn-download-timeline-pdf"
+              className="gap-2"
+            >
+              {isDownloadingPdf ? (
+                <>
+                  <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                  Exporting…
+                </>
+              ) : (
+                <>
+                  <FileDown className="h-4 w-4" />
+                  Download PDF
+                </>
+              )}
+            </Button>
           )}
-        </Button>
+          <Button 
+            onClick={handleGenerate} 
+            disabled={generateTimeline.isPending}
+            variant={hasTimeline ? "outline" : "default"}
+            size="lg"
+            data-testid="btn-generate-timeline"
+          >
+            {generateTimeline.isPending ? (
+              <span className="flex items-center gap-2">
+                <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                Crafting Magic...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Wand2 className="h-4 w-4" />
+                {hasTimeline ? "Regenerate Timeline" : "Generate with AI"}
+              </span>
+            )}
+          </Button>
+        </div>
       </div>
 
       {!hasTimeline ? (
@@ -105,7 +167,6 @@ export default function Timeline() {
         </Card>
       ) : (
         <div className="relative mt-12 pb-12">
-          {/* Vertical line */}
           <div className="absolute left-[27px] md:left-1/2 top-4 bottom-0 w-0.5 bg-primary/20 transform md:-translate-x-1/2" />
           
           <div className="space-y-8">
@@ -120,17 +181,14 @@ export default function Timeline() {
               return (
                 <div key={index} className="relative flex flex-col md:flex-row items-start md:items-center gap-6 group animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${index * 100}ms` }}>
                   
-                  {/* Timeline Dot */}
                   <div className="absolute left-[28px] md:left-1/2 w-4 h-4 rounded-full bg-background border-2 border-primary transform -translate-x-1/2 mt-6 md:mt-0 z-10 group-hover:scale-125 group-hover:bg-primary transition-transform duration-300" />
 
-                  {/* Left Side (Time on desktop) */}
                   <div className={`w-full md:w-1/2 ${isEven ? 'md:text-right md:pr-12' : 'md:order-last md:pl-12'} pl-16 md:pl-0`}>
                     <div className={`hidden md:block text-2xl font-serif text-primary font-medium tracking-tight ${!isEven && 'md:text-left'}`}>
                       {event.time}
                     </div>
                   </div>
 
-                  {/* Right Side (Content) */}
                   <div className={`w-full md:w-1/2 ${isEven ? 'md:order-last md:pl-12' : 'md:text-right md:pr-12'} pl-16 md:pl-0`}>
                     <Card className="hover-elevate transition-all border-none shadow-sm group-hover:shadow-md">
                       <CardContent className="p-5 space-y-2">

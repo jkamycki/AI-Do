@@ -9,6 +9,7 @@ import checklistRouter from "./wedding/checklist";
 import dayofRouter from "./wedding/dayof";
 import dashboardRouter from "./wedding/dashboard";
 import storageRouter from "./storage";
+import pdfRouter from "./pdf";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(checklistRouter);
 router.use(dayofRouter);
 router.use(dashboardRouter);
 router.use(storageRouter);
+router.use(pdfRouter);
 
 export default router;
