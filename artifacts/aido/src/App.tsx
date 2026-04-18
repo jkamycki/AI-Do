@@ -20,7 +20,6 @@ import DayOf from "@/pages/DayOf";
 import Admin from "@/pages/Admin";
 import Settings from "@/pages/Settings";
 import Help from "@/pages/Help";
-import ContractReader from "@/pages/ContractReader";
 import SeatingChart from "@/pages/SeatingChart";
 import InviteAccept from "@/pages/InviteAccept";
 import SharedWorkspace from "@/pages/SharedWorkspace";
@@ -206,7 +205,6 @@ function Router() {
       <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
       <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
-      <Route path="/contract-reader" component={() => <ProtectedRoute component={ContractReader} />} />
       <Route path="/seating-chart" component={() => <ProtectedRoute component={SeatingChart} />} />
       <Route path="/guests" component={() => <ProtectedRoute component={Guests} />} />
       <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} />} />

@@ -15,7 +15,6 @@ import collaboratorsRouter from "./collaborators";
 import workspaceRouter from "./workspace";
 import supportRouter from "./support";
 import helpRouter from "./help";
-import contractsRouter from "./contracts";
 import seatingRouter from "./seating";
 import guestsRouter from "./guests";
 
@@ -37,7 +36,6 @@ router.use(collaboratorsRouter);
 router.use(workspaceRouter);
 router.use(supportRouter);
 router.use(helpRouter);
-router.use(contractsRouter);
 router.use(seatingRouter);
 router.use(guestsRouter);
 
