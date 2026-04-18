@@ -52,6 +52,7 @@ export const budgetItems = pgTable("budget_items", {
   vendor: text("vendor").notNull(),
   estimatedCost: numeric("estimated_cost", { precision: 12, scale: 2 }).notNull().default("0"),
   actualCost: numeric("actual_cost", { precision: 12, scale: 2 }).notNull().default("0"),
+  amountPaid: numeric("amount_paid", { precision: 12, scale: 2 }).notNull().default("0"),
   isPaid: boolean("is_paid").notNull().default(false),
   notes: text("notes"),
 });

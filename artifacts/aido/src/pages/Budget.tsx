@@ -33,6 +33,7 @@ const itemSchema = z.object({
   vendor: z.string().min(1, "Vendor is required"),
   estimatedCost: z.coerce.number().min(0, "Must be >= 0"),
   actualCost: z.coerce.number().min(0, "Must be >= 0"),
+  amountPaid: z.coerce.number().min(0, "Must be >= 0").default(0),
   isPaid: z.boolean().default(false),
   notes: z.string().optional(),
 }).superRefine((data, ctx) => {
@@ -42,6 +43,63 @@ const itemSchema = z.object({
 });
 
 type ItemFormValues = z.infer<typeof itemSchema>;
+
+function PaymentProgressCell({
+  item,
+  onUpdate,
+}: {
+  item: { actualCost: number; amountPaid?: number };
+  onUpdate: (paid: number) => void;
+}) {
+  const total = item.actualCost;
+  const paid = item.amountPaid ?? 0;
+  const pct = total > 0 ? Math.min((paid / total) * 100, 100) : 0;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(paid));
+
+  const commit = () => {
+    const val = parseFloat(draft);
+    if (!isNaN(val) && val >= 0) onUpdate(val);
+    setEditing(false);
+  };
+
+  return (
+    <div className="space-y-1 py-0.5">
+      {editing ? (
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-muted-foreground">$</span>
+          <input
+            type="number"
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
+            className="w-20 text-sm border border-primary/40 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary/50 bg-background"
+            autoFocus
+          />
+          <span className="text-xs text-muted-foreground">of ${total.toLocaleString()}</span>
+        </div>
+      ) : (
+        <button
+          onClick={() => { setDraft(String(paid)); setEditing(true); }}
+          className="text-xs text-left hover:text-primary transition-colors group/pay"
+          title="Click to update payment"
+        >
+          <span className="font-medium">${paid.toLocaleString()}</span>
+          <span className="text-muted-foreground"> / ${total.toLocaleString()}</span>
+          <span className="ml-1 text-primary opacity-0 group-hover/pay:opacity-100 transition-opacity text-[10px]">edit</span>
+        </button>
+      )}
+      <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${pct >= 100 ? "bg-emerald-500" : pct > 50 ? "bg-primary" : "bg-amber-400"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-[10px] text-muted-foreground">{pct.toFixed(0)}% paid</p>
+    </div>
+  );
+}
 
 export default function Budget() {
   const { toast } = useToast();
@@ -57,7 +115,7 @@ export default function Budget() {
 
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [isPredicting, setIsPredicting] = useState(false);
-  const [editingItem, setEditingItem] = useState<{ id: number; category: string; vendor: string; estimatedCost: number; actualCost: number; isPaid: boolean; notes?: string | null } | null>(null);
+  const [editingItem, setEditingItem] = useState<{ id: number; category: string; vendor: string; estimatedCost: number; actualCost: number; amountPaid: number; isPaid: boolean; notes?: string | null } | null>(null);
 
   const CATEGORIES = ["Venue", "Catering", "Photography", "Florist", "Attire", "Music", "Decor", "Other"];
 
@@ -69,6 +127,7 @@ export default function Budget() {
       vendor: "",
       estimatedCost: 0,
       actualCost: 0,
+      amountPaid: 0,
       isPaid: false,
       notes: "",
     },
@@ -82,6 +141,7 @@ export default function Budget() {
       vendor: "",
       estimatedCost: 0,
       actualCost: 0,
+      amountPaid: 0,
       isPaid: false,
       notes: "",
     },
@@ -100,6 +160,7 @@ export default function Budget() {
       vendor: item.vendor,
       estimatedCost: item.estimatedCost,
       actualCost: item.actualCost,
+      amountPaid: item.amountPaid,
       isPaid: item.isPaid,
       notes: item.notes ?? "",
     });
@@ -294,6 +355,19 @@ export default function Budget() {
               </div>
               <FormField
                 control={editForm.control}
+                name="amountPaid"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount Paid So Far ($)</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
                 name="isPaid"
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
@@ -421,6 +495,19 @@ export default function Budget() {
                 </div>
                 <FormField
                   control={form.control}
+                  name="amountPaid"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Amount Paid So Far ($)</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} data-testid="input-amount-paid" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="isPaid"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
@@ -448,33 +535,46 @@ export default function Budget() {
       </div>
 
       {budget && (
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="bg-primary/5 border-none shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Budget</CardTitle>
+            <CardHeader className="pb-1 pt-4 px-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Budget</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-serif text-primary">${budget.totalBudget.toLocaleString()}</div>
+            <CardContent className="px-4 pb-4">
+              <div className="text-3xl font-serif text-primary">${budget.totalBudget.toLocaleString()}</div>
             </CardContent>
           </Card>
           <Card className="bg-card border-none shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Spent</CardTitle>
+            <CardHeader className="pb-1 pt-4 px-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Committed</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-serif">${budget.spent.toLocaleString()}</div>
+            <CardContent className="px-4 pb-4">
+              <div className="text-3xl font-serif">${budget.spent.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground mt-0.5">Total billed</p>
             </CardContent>
           </Card>
-          <Card className={`${isOverBudget ? 'bg-destructive/10' : 'bg-secondary/20'} border-none shadow-sm`}>
-            <CardHeader className="pb-2">
-              <CardTitle className={`text-sm font-medium uppercase tracking-wider ${isOverBudget ? 'text-destructive' : 'text-muted-foreground'}`}>
-                Remaining
+          <Card className="bg-emerald-50 border-none shadow-sm">
+            <CardHeader className="pb-1 pt-4 px-4">
+              <CardTitle className="text-xs font-medium text-emerald-700 uppercase tracking-wider">Paid Out</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <div className="text-3xl font-serif text-emerald-700">${(budget as any).totalPaid?.toLocaleString() ?? "0"}</div>
+              <p className="text-xs text-emerald-600 mt-0.5">
+                {budget.spent > 0 ? Math.round(((budget as any).totalPaid / budget.spent) * 100) : 0}% of committed
+              </p>
+            </CardContent>
+          </Card>
+          <Card className={`${(budget as any).stillOwed > 0 ? 'bg-amber-50' : 'bg-secondary/20'} border-none shadow-sm`}>
+            <CardHeader className="pb-1 pt-4 px-4">
+              <CardTitle className={`text-xs font-medium uppercase tracking-wider ${(budget as any).stillOwed > 0 ? 'text-amber-700' : 'text-muted-foreground'}`}>
+                Still Owed
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className={`text-4xl font-serif ${isOverBudget ? 'text-destructive' : 'text-foreground'}`}>
-                ${budget.remaining.toLocaleString()}
+            <CardContent className="px-4 pb-4">
+              <div className={`text-3xl font-serif ${(budget as any).stillOwed > 0 ? 'text-amber-700' : 'text-foreground'}`}>
+                ${(budget as any).stillOwed?.toLocaleString() ?? "0"}
               </div>
+              <p className="text-xs text-muted-foreground mt-0.5">Remaining payments</p>
             </CardContent>
           </Card>
         </div>
@@ -503,9 +603,10 @@ export default function Budget() {
                     <TableHeader className="bg-muted/10">
                       <TableRow>
                         <TableHead>Vendor / Category</TableHead>
-                        <TableHead className="text-right">Est. Cost</TableHead>
-                        <TableHead className="text-right">Actual Cost</TableHead>
-                        <TableHead className="text-center">Status</TableHead>
+                        <TableHead className="text-right">Est.</TableHead>
+                        <TableHead className="text-right">Actual</TableHead>
+                        <TableHead>Payment Progress</TableHead>
+                        <TableHead className="text-center">Paid</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -521,6 +622,13 @@ export default function Budget() {
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             ${item.actualCost.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="min-w-[160px]">
+                            <PaymentProgressCell item={item} onUpdate={(paid) => {
+                              updateItem.mutate({ id: item.id, data: { amountPaid: paid } }, {
+                                onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() }),
+                              });
+                            }} />
                           </TableCell>
                           <TableCell className="text-center">
                             <button 

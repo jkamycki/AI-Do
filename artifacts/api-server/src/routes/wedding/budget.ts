@@ -25,13 +25,17 @@ async function getBudgetWithItems(budgetId: number) {
   const items = await db.select().from(budgetItems).where(eq(budgetItems.budgetId, budgetId));
 
   const totalBudget = parseFloat(budget[0].totalBudget as string);
-  const spent = items.reduce((sum, item) => sum + parseFloat(item.actualCost as string), 0);
-  const remaining = totalBudget - spent;
+  const committed = items.reduce((sum, item) => sum + parseFloat(item.actualCost as string), 0);
+  const totalPaid = items.reduce((sum, item) => sum + parseFloat((item.amountPaid ?? "0") as string), 0);
+  const remaining = totalBudget - committed;
+  const stillOwed = committed - totalPaid;
 
   return {
     id: budget[0].id,
     totalBudget,
-    spent,
+    spent: committed,
+    totalPaid,
+    stillOwed,
     remaining,
     updatedAt: budget[0].updatedAt.toISOString(),
     items: items.map(item => ({
@@ -40,6 +44,7 @@ async function getBudgetWithItems(budgetId: number) {
       vendor: item.vendor,
       estimatedCost: parseFloat(item.estimatedCost as string),
       actualCost: parseFloat(item.actualCost as string),
+      amountPaid: parseFloat((item.amountPaid ?? "0") as string),
       isPaid: item.isPaid,
       notes: item.notes ?? undefined,
     })),
@@ -172,6 +177,8 @@ router.post("/budget/items", requireAuth, async (req, res) => {
       budgetRows = [newBudget];
     }
 
+    const { amountPaid } = req.body;
+
     const [item] = await db
       .insert(budgetItems)
       .values({
@@ -180,6 +187,7 @@ router.post("/budget/items", requireAuth, async (req, res) => {
         vendor,
         estimatedCost: String(estimatedCost),
         actualCost: String(actualCost),
+        amountPaid: String(amountPaid ?? 0),
         isPaid: isPaid ?? false,
         notes: notes ?? null,
       })
@@ -192,6 +200,7 @@ router.post("/budget/items", requireAuth, async (req, res) => {
       vendor: item.vendor,
       estimatedCost: parseFloat(item.estimatedCost as string),
       actualCost: parseFloat(item.actualCost as string),
+      amountPaid: parseFloat((item.amountPaid ?? "0") as string),
       isPaid: item.isPaid,
       notes: item.notes ?? undefined,
     });
@@ -204,13 +213,14 @@ router.post("/budget/items", requireAuth, async (req, res) => {
 router.put("/budget/items/:id", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { category, vendor, estimatedCost, actualCost, isPaid, notes } = req.body;
+    const { category, vendor, estimatedCost, actualCost, amountPaid, isPaid, notes } = req.body;
 
     const updates: Record<string, unknown> = {};
     if (category !== undefined) updates.category = category;
     if (vendor !== undefined) updates.vendor = vendor;
     if (estimatedCost !== undefined) updates.estimatedCost = String(estimatedCost);
     if (actualCost !== undefined) updates.actualCost = String(actualCost);
+    if (amountPaid !== undefined) updates.amountPaid = String(amountPaid);
     if (isPaid !== undefined) updates.isPaid = isPaid;
     if (notes !== undefined) updates.notes = notes;
 
@@ -227,6 +237,7 @@ router.put("/budget/items/:id", requireAuth, async (req, res) => {
       vendor: item.vendor,
       estimatedCost: parseFloat(item.estimatedCost as string),
       actualCost: parseFloat(item.actualCost as string),
+      amountPaid: parseFloat((item.amountPaid ?? "0") as string),
       isPaid: item.isPaid,
       notes: item.notes ?? undefined,
     });
