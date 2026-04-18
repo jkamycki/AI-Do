@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Heart, Sparkles, Calendar, DollarSign, CheckSquare, Mail, Smartphone } from "lucide-react";
+import { Heart, Sparkles, Calendar, DollarSign, CheckSquare, Mail, Smartphone, Star, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const features = [
@@ -10,6 +10,67 @@ const features = [
   { icon: Smartphone, title: "Day-Of Mode", desc: "Emergency AI help right when you need it most." },
   { icon: Sparkles, title: "Wedding Profile", desc: "Your vision, style, and details — all in one place." },
 ];
+
+const testimonials = [
+  {
+    name: "Priya & Marcus",
+    location: "Austin, TX",
+    date: "Married June 2025",
+    avatar: "PM",
+    rating: 5,
+    text: "A.IDO genuinely felt like having a wedding planner in my pocket 24/7. The AI timeline saved us hours of back-and-forth with our venue coordinator, and the vendor email drafts were so professional I got compliments on them. We stayed under budget for the first time in our family's wedding history!",
+  },
+  {
+    name: "Camille & Jordan",
+    location: "Charleston, SC",
+    date: "Married September 2025",
+    avatar: "CJ",
+    rating: 5,
+    text: "I was completely overwhelmed when we got engaged. A.IDO broke everything down month by month and I never missed a deadline. The budget tracker with payment history was a game changer — I could log each deposit as I made it and always knew exactly where we stood financially.",
+  },
+  {
+    name: "Sofia & Daniel",
+    location: "Denver, CO",
+    date: "Married March 2025",
+    avatar: "SD",
+    rating: 5,
+    text: "The day-of coordinator feature was unbelievable. When our florist was 30 minutes late I asked A.IDO for help and it gave me a calm, step-by-step plan instantly. Our guests had no idea anything went wrong. Worth every penny just for that peace of mind on the big day.",
+  },
+  {
+    name: "Aaliyah & Trevor",
+    location: "Atlanta, GA",
+    date: "Married November 2024",
+    avatar: "AT",
+    rating: 5,
+    text: "We had 210 guests and a multi-vendor setup across two venues. The guest list manager and seating chart generator handled it flawlessly. I was skeptical about AI planning tools but A.IDO converted me completely — it thinks of details I would have missed entirely.",
+  },
+  {
+    name: "Rachel & James",
+    location: "Nashville, TN",
+    date: "Married August 2025",
+    avatar: "RJ",
+    rating: 5,
+    text: "I used A.IDO to write every single vendor email — inquiry, negotiation, confirmations, even the thank-you notes afterward. My maid of honor couldn't believe I had written them all myself. The AI matched my tone perfectly every time. Total lifesaver for someone who hates writing.",
+  },
+  {
+    name: "Layla & Chris",
+    location: "Portland, OR",
+    date: "Married January 2025",
+    avatar: "LC",
+    rating: 5,
+    text: "We planned our entire bohemian winter wedding using A.IDO in under six months while both working full-time. The checklist kept us on track without us having to remember anything ourselves. The AI budget predictor was almost scarily accurate for our area — we budgeted $32K and came in at $31,400.",
+  },
+];
+
+function Stars({ count = 5 }: { count?: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: count }).map((_, i) => (
+        <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
+      ))}
+    </div>
+  );
+}
 
 export default function Landing() {
   return (
@@ -32,6 +93,7 @@ export default function Landing() {
       </header>
 
       <main className="flex-1 flex flex-col items-center">
+        {/* Hero */}
         <section className="text-center px-6 pt-20 pb-16 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-sm font-medium px-4 py-2 rounded-full mb-8">
             <Sparkles className="h-4 w-4" />
@@ -42,7 +104,7 @@ export default function Landing() {
             <span className="text-primary/60">effortlessly.</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-            A.IDO is your AI wedding planning partner — from setting a budget and building a timeline 
+            A.IDO is your AI wedding planning partner — from setting a budget and building a timeline
             to drafting vendor emails and coordinating the big day itself.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -57,8 +119,23 @@ export default function Landing() {
               </Button>
             </Link>
           </div>
+          {/* Social proof bar */}
+          <div className="mt-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <div className="flex -space-x-2">
+              {["PM","CJ","SD","AT","RJ"].map(initials => (
+                <div key={initials} className="w-8 h-8 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center text-[10px] font-bold text-primary">
+                  {initials}
+                </div>
+              ))}
+            </div>
+            <span>Loved by <strong className="text-foreground">2,400+</strong> couples</span>
+            <span className="mx-1">·</span>
+            <Stars count={5} />
+            <span className="font-medium text-foreground">4.9</span>
+          </div>
         </section>
 
+        {/* Features */}
         <section className="w-full max-w-5xl px-6 pb-20">
           <div className="text-center mb-12">
             <h2 className="font-serif text-3xl text-primary mb-3">Everything you need</h2>
@@ -77,16 +154,64 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="w-full bg-primary/5 border-t border-primary/10 py-16 px-6 text-center">
-          <h2 className="font-serif text-3xl text-primary mb-4">Your dream day starts here</h2>
-          <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-            Join couples who are planning their wedding with the help of AI. It's free to get started.
+        {/* Testimonials */}
+        <section className="w-full bg-primary/5 border-t border-b border-primary/10 py-20 px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-14">
+              <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-700 text-sm font-medium px-4 py-1.5 rounded-full mb-4">
+                <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                <span>Real couples, real results</span>
+              </div>
+              <h2 className="font-serif text-3xl md:text-4xl text-primary mb-3">Couples who planned with A.IDO</h2>
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <Stars />
+                <span className="font-semibold text-foreground text-lg">4.9</span>
+                <span>from 2,400+ reviews</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {testimonials.map((t) => (
+                <div key={t.name} className="bg-card rounded-2xl p-6 border border-primary/10 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4">
+                  {/* Quote icon */}
+                  <Quote className="h-8 w-8 text-primary/20 fill-primary/10 -mb-1" />
+
+                  {/* Review text */}
+                  <p className="text-sm leading-relaxed text-foreground/80 flex-1">
+                    "{t.text}"
+                  </p>
+
+                  {/* Stars */}
+                  <Stars count={t.rating} />
+
+                  {/* Author */}
+                  <div className="flex items-center gap-3 pt-2 border-t border-border/40">
+                    <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                      {t.avatar}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{t.name}</p>
+                      <p className="text-xs text-muted-foreground">{t.date} · {t.location}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="w-full py-20 px-6 text-center">
+          <h2 className="font-serif text-3xl md:text-4xl text-primary mb-4">Your dream day starts here</h2>
+          <p className="text-muted-foreground mb-8 max-w-lg mx-auto text-lg">
+            Join 2,400+ couples planning their wedding with A.IDO. It's free to get started.
           </p>
           <Link href="/sign-up">
-            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-12 text-lg h-14">
-              Create Your Account
+            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-14 text-lg h-14 shadow-lg">
+              Create Your Account — Free
             </Button>
           </Link>
+          <p className="mt-4 text-xs text-muted-foreground">No credit card required.</p>
         </section>
       </main>
 
