@@ -156,7 +156,7 @@ export default function VendorEmailPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {["Venue", "Photographer", "Videographer", "Florist", "Caterer", "DJ/Band", "Hair & Makeup", "Planner/Coordinator"].map(t => (
+                            {["Venue", "Hotel", "Photographer", "Videographer", "Florist", "Caterer", "DJ/Band", "Hair & Makeup", "Planner/Coordinator"].map(t => (
                               <SelectItem key={t} value={t}>{t}</SelectItem>
                             ))}
                           </SelectContent>
