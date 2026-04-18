@@ -85,6 +85,12 @@ export const GetTimelineResponse = zod.object({
  */
 export const GenerateTimelineBody = zod.object({
   profileId: zod.number(),
+  dayVision: zod
+    .string()
+    .optional()
+    .describe(
+      "Free-form description of what the couple wants the day to feel like",
+    ),
 });
 
 export const GenerateTimelineResponse = zod.object({

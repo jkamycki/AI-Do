@@ -2,10 +2,13 @@ import { useState } from "react";
 import { useGetTimeline, useGenerateTimeline, useGetProfile, getGetTimelineQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CalendarClock, Wand2, Clock, FileDown } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { CalendarClock, Wand2, Clock, FileDown, Sparkles } from "lucide-react";
+
+const VISION_STORAGE_KEY = "aido_timeline_day_vision";
 
 export default function Timeline() {
   const { toast } = useToast();
@@ -14,6 +17,14 @@ export default function Timeline() {
   const { data: profile, isLoading: isLoadingProfile } = useGetProfile();
   const generateTimeline = useGenerateTimeline();
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [dayVision, setDayVision] = useState<string>(
+    () => localStorage.getItem(VISION_STORAGE_KEY) ?? ""
+  );
+
+  const handleVisionChange = (val: string) => {
+    setDayVision(val);
+    localStorage.setItem(VISION_STORAGE_KEY, val);
+  };
 
   const handleGenerate = () => {
     if (!profile?.id) {
@@ -26,7 +37,7 @@ export default function Timeline() {
     }
 
     generateTimeline.mutate(
-      { data: { profileId: profile.id } },
+      { data: { profileId: profile.id, dayVision: dayVision.trim() || undefined } },
       {
         onSuccess: () => {
           toast({
@@ -150,6 +161,30 @@ export default function Timeline() {
         </div>
       </div>
 
+      <Card className="border-none shadow-md bg-card">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-serif text-primary flex items-center gap-2">
+            <Sparkles className="h-5 w-5" />
+            Your Vision for the Day
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Describe the feel, tone, and moments that matter most — the AI will use this to craft a timeline that truly reflects your day.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            placeholder="e.g. We want a relaxed, intimate morning with just close family before the ceremony. The afternoon should feel celebratory and high-energy with lots of dancing. We'd love a golden-hour portrait session and a sparkler exit. Our guests tend to party late so we want the bar open until midnight..."
+            value={dayVision}
+            onChange={e => handleVisionChange(e.target.value)}
+            className="min-h-[120px] resize-none text-sm leading-relaxed"
+            data-testid="input-day-vision"
+          />
+          <p className="text-[11px] text-muted-foreground text-right">
+            {dayVision.length > 0 ? `${dayVision.length} characters · saved automatically` : "Saved automatically as you type"}
+          </p>
+        </CardContent>
+      </Card>
+
       {!hasTimeline ? (
         <Card className="border-none shadow-md bg-card text-center py-16 px-6">
           <div className="max-w-md mx-auto space-y-6">
@@ -158,7 +193,7 @@ export default function Timeline() {
             </div>
             <h3 className="font-serif text-2xl text-primary">No Timeline Yet</h3>
             <p className="text-muted-foreground">
-              Let our AI analyze your profile, ceremony time, and venue to craft a seamless flow for your wedding day.
+              Fill in your vision above, then let our AI craft a seamless flow for your wedding day.
             </p>
             <Button onClick={handleGenerate} disabled={generateTimeline.isPending} size="lg" className="px-8 shadow-md">
               Generate Timeline Now

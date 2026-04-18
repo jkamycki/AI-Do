@@ -60,6 +60,8 @@ export interface Timeline {
 
 export interface GenerateTimelineBody {
   profileId: number;
+  /** Free-form description of what the couple wants the day to feel like */
+  dayVision?: string;
 }
 
 export interface VendorEmail {

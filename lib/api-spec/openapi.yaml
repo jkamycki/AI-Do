@@ -704,6 +704,9 @@ components:
       properties:
         profileId:
           type: integer
+        dayVision:
+          type: string
+          description: Free-form description of what the couple wants the day to feel like
       required:
         - profileId
 
