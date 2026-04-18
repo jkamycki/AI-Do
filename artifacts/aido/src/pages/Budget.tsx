@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
@@ -366,6 +367,24 @@ export default function Budget() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={editForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="e.g. contract signed, deposit due June 1…"
+                        className="resize-none"
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <Button type="submit" className="w-full mt-4" disabled={updateItem.isPending}>
                 {updateItem.isPending ? "Saving…" : "Save Changes"}
               </Button>
@@ -495,6 +514,24 @@ export default function Budget() {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="e.g. contract signed, deposit due June 1…"
+                          className="resize-none"
+                          rows={3}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <Button type="submit" className="w-full mt-4" disabled={addBudgetItem.isPending} data-testid="btn-submit-item">
                   {addBudgetItem.isPending ? "Saving..." : "Save Expense"}
                 </Button>
@@ -585,6 +622,11 @@ export default function Budget() {
                           <TableCell>
                             <div className="font-medium text-foreground">{item.vendor}</div>
                             <div className="text-xs text-muted-foreground">{item.category}</div>
+                            {item.notes && (
+                              <div className="text-xs text-muted-foreground/70 italic mt-0.5 max-w-[220px] truncate" title={item.notes}>
+                                {item.notes}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             ${item.actualCost.toLocaleString()}
