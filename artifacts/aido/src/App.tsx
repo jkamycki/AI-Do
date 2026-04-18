@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/reac
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { setFetchTokenGetter } from "@/lib/authFetch";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
@@ -151,7 +152,11 @@ function ClerkTokenSetup() {
   const { getToken } = useAuth();
   useEffect(() => {
     setAuthTokenGetter(() => getToken());
-    return () => setAuthTokenGetter(null);
+    setFetchTokenGetter(() => getToken());
+    return () => {
+      setAuthTokenGetter(null);
+      setFetchTokenGetter(null);
+    };
   }, [getToken]);
   return null;
 }

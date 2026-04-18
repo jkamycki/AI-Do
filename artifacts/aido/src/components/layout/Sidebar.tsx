@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useClerk, useUser } from "@clerk/react";
+import { useClerk, useUser, useAuth } from "@clerk/react";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Heart, 
@@ -35,15 +35,21 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const { signOut } = useClerk();
   const { user } = useUser();
+  const { getToken, isSignedIn } = useAuth();
 
   const { data: adminCheck } = useQuery({
     queryKey: ["admin-check"],
     queryFn: async () => {
-      const r = await fetch("/api/admin/check", { credentials: "include" });
+      const token = await getToken();
+      const r = await fetch("/api/admin/check", {
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!r.ok) return { isAdmin: false };
       return r.json() as Promise<{ isAdmin: boolean }>;
     },
-    staleTime: 300000,
+    enabled: !!isSignedIn,
+    staleTime: 0,
     retry: false,
   });
 

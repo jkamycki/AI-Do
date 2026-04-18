@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@clerk/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -428,20 +429,30 @@ function EventLogSection({ events, isLoading }: { events: AdminEvent[]; isLoadin
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("users");
+  const { getToken, isSignedIn } = useAuth();
+
+  const adminFetch = async (url: string) => {
+    const token = await getToken();
+    return fetch(url, {
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  };
 
   const { data: adminCheck, isLoading: checkLoading } = useQuery({
     queryKey: ["admin-check"],
     queryFn: async () => {
-      const r = await fetch("/api/admin/check", { credentials: "include" });
+      const r = await adminFetch("/api/admin/check");
       return r.json() as Promise<{ isAdmin: boolean }>;
     },
+    enabled: !!isSignedIn,
     staleTime: 60000,
   });
 
   const { data: metrics, isLoading: metricsLoading, refetch, isFetching } = useQuery({
     queryKey: ["admin-metrics"],
     queryFn: async () => {
-      const r = await fetch("/api/admin/metrics", { credentials: "include" });
+      const r = await adminFetch("/api/admin/metrics");
       if (!r.ok) throw new Error("Failed to fetch metrics");
       return r.json() as Promise<AdminMetrics>;
     },
@@ -452,7 +463,7 @@ export default function AdminPage() {
   const { data: eventsData, isLoading: eventsLoading } = useQuery({
     queryKey: ["admin-events"],
     queryFn: async () => {
-      const r = await fetch("/api/admin/events?page=1", { credentials: "include" });
+      const r = await adminFetch("/api/admin/events?page=1");
       if (!r.ok) throw new Error("Failed to fetch events");
       return r.json() as Promise<{ events: AdminEvent[]; total: number }>;
     },
