@@ -13,6 +13,7 @@ import Timeline from "@/pages/Timeline";
 import Budget from "@/pages/Budget";
 import Checklist from "@/pages/Checklist";
 import VendorEmail from "@/pages/VendorEmail";
+import Vendors from "@/pages/Vendors";
 import DayOf from "@/pages/DayOf";
 import NotFound from "@/pages/not-found";
 
@@ -184,6 +185,7 @@ function Router() {
       <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} />} />
       <Route path="/budget" component={() => <ProtectedRoute component={Budget} />} />
       <Route path="/checklist" component={() => <ProtectedRoute component={Checklist} />} />
+      <Route path="/vendors" component={() => <ProtectedRoute component={Vendors} />} />
       <Route path="/vendor-email" component={() => <ProtectedRoute component={VendorEmail} />} />
       <Route path="/day-of" component={() => <ProtectedRoute component={DayOf} />} />
       <Route component={NotFound} />

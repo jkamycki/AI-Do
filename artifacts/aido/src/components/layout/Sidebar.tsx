@@ -10,6 +10,7 @@ import {
   DollarSign, 
   CheckSquare, 
   Smartphone,
+  Store,
   Menu,
   X,
   LogOut,
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/timeline", label: "Timeline", icon: CalendarDays },
   { href: "/budget", label: "Budget Manager", icon: DollarSign },
   { href: "/checklist", label: "Checklist", icon: CheckSquare },
+  { href: "/vendors", label: "Vendors", icon: Store },
   { href: "/vendor-email", label: "Vendor Emails", icon: Mail },
   { href: "/day-of", label: "Day-Of Coordinator", icon: Smartphone },
 ];

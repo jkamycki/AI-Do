@@ -71,3 +71,40 @@ export const checklistItems = pgTable("checklist_items", {
 });
 
 export type ChecklistItem = typeof checklistItems.$inferSelect;
+
+export const vendors = pgTable("vendors", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().default(""),
+  name: text("name").notNull(),
+  category: text("category").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  website: text("website"),
+  portalLink: text("portal_link"),
+  notes: text("notes"),
+  totalCost: numeric("total_cost", { precision: 12, scale: 2 }).default("0").notNull(),
+  depositAmount: numeric("deposit_amount", { precision: 12, scale: 2 }).default("0").notNull(),
+  contractSigned: boolean("contract_signed").default(false).notNull(),
+  files: jsonb("files").$type<Array<{ name: string; url: string; type: string }>>().default([]).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertVendor = z.infer<typeof insertVendorSchema>;
+export type Vendor = typeof vendors.$inferSelect;
+
+export const vendorPayments = pgTable("vendor_payments", {
+  id: serial("id").primaryKey(),
+  vendorId: integer("vendor_id").notNull(),
+  label: text("label").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  dueDate: text("due_date").notNull(),
+  isPaid: boolean("is_paid").default(false).notNull(),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertVendorPaymentSchema = createInsertSchema(vendorPayments).omit({ id: true, createdAt: true });
+export type InsertVendorPayment = z.infer<typeof insertVendorPaymentSchema>;
+export type VendorPayment = typeof vendorPayments.$inferSelect;

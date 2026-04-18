@@ -171,6 +171,107 @@ export interface EmergencyAdvice {
   steps: string[];
 }
 
+export interface VendorFile {
+  name: string;
+  url: string;
+  type: string;
+}
+
+export interface Vendor {
+  id: number;
+  profileId: number;
+  name: string;
+  category: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  portalLink?: string;
+  notes?: string;
+  totalCost: number;
+  depositAmount: number;
+  contractSigned: boolean;
+  files: VendorFile[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VendorPayment {
+  id: number;
+  vendorId: number;
+  label: string;
+  amount: number;
+  dueDate: string;
+  isPaid: boolean;
+  paidAt?: string;
+  createdAt: string;
+}
+
+export type VendorWithPayments = Vendor & {
+  payments: VendorPayment[];
+};
+
+export interface CreateVendorBody {
+  name: string;
+  category: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  portalLink?: string;
+  notes?: string;
+  totalCost?: number;
+  depositAmount?: number;
+  contractSigned?: boolean;
+}
+
+export interface UpdateVendorBody {
+  name?: string;
+  category?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  portalLink?: string;
+  notes?: string;
+  totalCost?: number;
+  depositAmount?: number;
+  contractSigned?: boolean;
+  files?: VendorFile[];
+}
+
+export interface CreatePaymentBody {
+  label: string;
+  amount: number;
+  dueDate: string;
+  isPaid?: boolean;
+}
+
+export interface UpdatePaymentBody {
+  label?: string;
+  amount?: number;
+  dueDate?: string;
+  isPaid?: boolean;
+}
+
+export interface SummarizeEmailBody {
+  emailText: string;
+}
+
+export interface SummarizeEmailResponse {
+  summary: string;
+  keyPoints: string[];
+  actionItems: string[];
+}
+
+export interface UploadUrlRequest {
+  name: string;
+  size: number;
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+}
+
 export interface DashboardSummary {
   daysUntilWedding: number;
   checklistProgress: number;

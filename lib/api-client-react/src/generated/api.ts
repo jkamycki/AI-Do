@@ -23,6 +23,8 @@ import type {
   BudgetPrediction,
   Checklist,
   ChecklistItem,
+  CreatePaymentBody,
+  CreateVendorBody,
   DashboardSummary,
   EmergencyAdvice,
   EmergencyAdviceBody,
@@ -35,10 +37,19 @@ import type {
   SaveBudgetBody,
   SaveProfileBody,
   SuccessResponse,
+  SummarizeEmailBody,
+  SummarizeEmailResponse,
   Timeline,
   ToggleChecklistItemBody,
   UpdateBudgetItemBody,
+  UpdatePaymentBody,
+  UpdateVendorBody,
+  UploadUrlRequest,
+  UploadUrlResponse,
+  Vendor,
   VendorEmail,
+  VendorPayment,
+  VendorWithPayments,
   WeddingProfile,
 } from "./api.schemas";
 
@@ -1360,6 +1371,945 @@ export const useEmergencyAdvice = <
 > => {
   return useMutation(getEmergencyAdviceMutationOptions(options));
 };
+
+/**
+ * @summary List all vendors for the current user
+ */
+export const getListVendorsUrl = () => {
+  return `/api/vendors`;
+};
+
+export const listVendors = async (options?: RequestInit): Promise<Vendor[]> => {
+  return customFetch<Vendor[]>(getListVendorsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListVendorsQueryKey = () => {
+  return [`/api/vendors`] as const;
+};
+
+export const getListVendorsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listVendors>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listVendors>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListVendorsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listVendors>>> = ({
+    signal,
+  }) => listVendors({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listVendors>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListVendorsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listVendors>>
+>;
+export type ListVendorsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all vendors for the current user
+ */
+
+export function useListVendors<
+  TData = Awaited<ReturnType<typeof listVendors>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listVendors>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListVendorsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new vendor
+ */
+export const getCreateVendorUrl = () => {
+  return `/api/vendors`;
+};
+
+export const createVendor = async (
+  createVendorBody: CreateVendorBody,
+  options?: RequestInit,
+): Promise<Vendor> => {
+  return customFetch<Vendor>(getCreateVendorUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createVendorBody),
+  });
+};
+
+export const getCreateVendorMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVendor>>,
+    TError,
+    { data: BodyType<CreateVendorBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createVendor>>,
+  TError,
+  { data: BodyType<CreateVendorBody> },
+  TContext
+> => {
+  const mutationKey = ["createVendor"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createVendor>>,
+    { data: BodyType<CreateVendorBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createVendor(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateVendorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createVendor>>
+>;
+export type CreateVendorMutationBody = BodyType<CreateVendorBody>;
+export type CreateVendorMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new vendor
+ */
+export const useCreateVendor = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVendor>>,
+    TError,
+    { data: BodyType<CreateVendorBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createVendor>>,
+  TError,
+  { data: BodyType<CreateVendorBody> },
+  TContext
+> => {
+  return useMutation(getCreateVendorMutationOptions(options));
+};
+
+/**
+ * @summary Get a single vendor with its payments
+ */
+export const getGetVendorUrl = (id: number) => {
+  return `/api/vendors/${id}`;
+};
+
+export const getVendor = async (
+  id: number,
+  options?: RequestInit,
+): Promise<VendorWithPayments> => {
+  return customFetch<VendorWithPayments>(getGetVendorUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetVendorQueryKey = (id: number) => {
+  return [`/api/vendors/${id}`] as const;
+};
+
+export const getGetVendorQueryOptions = <
+  TData = Awaited<ReturnType<typeof getVendor>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getVendor>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetVendorQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getVendor>>> = ({
+    signal,
+  }) => getVendor(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getVendor>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetVendorQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getVendor>>
+>;
+export type GetVendorQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get a single vendor with its payments
+ */
+
+export function useGetVendor<
+  TData = Awaited<ReturnType<typeof getVendor>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getVendor>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetVendorQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a vendor
+ */
+export const getUpdateVendorUrl = (id: number) => {
+  return `/api/vendors/${id}`;
+};
+
+export const updateVendor = async (
+  id: number,
+  updateVendorBody: UpdateVendorBody,
+  options?: RequestInit,
+): Promise<Vendor> => {
+  return customFetch<Vendor>(getUpdateVendorUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateVendorBody),
+  });
+};
+
+export const getUpdateVendorMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVendor>>,
+    TError,
+    { id: number; data: BodyType<UpdateVendorBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateVendor>>,
+  TError,
+  { id: number; data: BodyType<UpdateVendorBody> },
+  TContext
+> => {
+  const mutationKey = ["updateVendor"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateVendor>>,
+    { id: number; data: BodyType<UpdateVendorBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateVendor(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateVendorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateVendor>>
+>;
+export type UpdateVendorMutationBody = BodyType<UpdateVendorBody>;
+export type UpdateVendorMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a vendor
+ */
+export const useUpdateVendor = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVendor>>,
+    TError,
+    { id: number; data: BodyType<UpdateVendorBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateVendor>>,
+  TError,
+  { id: number; data: BodyType<UpdateVendorBody> },
+  TContext
+> => {
+  return useMutation(getUpdateVendorMutationOptions(options));
+};
+
+/**
+ * @summary Delete a vendor and all its payments
+ */
+export const getDeleteVendorUrl = (id: number) => {
+  return `/api/vendors/${id}`;
+};
+
+export const deleteVendor = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getDeleteVendorUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteVendorMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVendor>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteVendor>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteVendor"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteVendor>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteVendor(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteVendorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteVendor>>
+>;
+
+export type DeleteVendorMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a vendor and all its payments
+ */
+export const useDeleteVendor = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVendor>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteVendor>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteVendorMutationOptions(options));
+};
+
+/**
+ * @summary Add a payment milestone to a vendor
+ */
+export const getCreateVendorPaymentUrl = (id: number) => {
+  return `/api/vendors/${id}/payments`;
+};
+
+export const createVendorPayment = async (
+  id: number,
+  createPaymentBody: CreatePaymentBody,
+  options?: RequestInit,
+): Promise<VendorPayment> => {
+  return customFetch<VendorPayment>(getCreateVendorPaymentUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPaymentBody),
+  });
+};
+
+export const getCreateVendorPaymentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVendorPayment>>,
+    TError,
+    { id: number; data: BodyType<CreatePaymentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createVendorPayment>>,
+  TError,
+  { id: number; data: BodyType<CreatePaymentBody> },
+  TContext
+> => {
+  const mutationKey = ["createVendorPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createVendorPayment>>,
+    { id: number; data: BodyType<CreatePaymentBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createVendorPayment(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateVendorPaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createVendorPayment>>
+>;
+export type CreateVendorPaymentMutationBody = BodyType<CreatePaymentBody>;
+export type CreateVendorPaymentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a payment milestone to a vendor
+ */
+export const useCreateVendorPayment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVendorPayment>>,
+    TError,
+    { id: number; data: BodyType<CreatePaymentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createVendorPayment>>,
+  TError,
+  { id: number; data: BodyType<CreatePaymentBody> },
+  TContext
+> => {
+  return useMutation(getCreateVendorPaymentMutationOptions(options));
+};
+
+/**
+ * @summary Update a vendor payment
+ */
+export const getUpdateVendorPaymentUrl = (id: number, paymentId: number) => {
+  return `/api/vendors/${id}/payments/${paymentId}`;
+};
+
+export const updateVendorPayment = async (
+  id: number,
+  paymentId: number,
+  updatePaymentBody: UpdatePaymentBody,
+  options?: RequestInit,
+): Promise<VendorPayment> => {
+  return customFetch<VendorPayment>(getUpdateVendorPaymentUrl(id, paymentId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updatePaymentBody),
+  });
+};
+
+export const getUpdateVendorPaymentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVendorPayment>>,
+    TError,
+    { id: number; paymentId: number; data: BodyType<UpdatePaymentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateVendorPayment>>,
+  TError,
+  { id: number; paymentId: number; data: BodyType<UpdatePaymentBody> },
+  TContext
+> => {
+  const mutationKey = ["updateVendorPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateVendorPayment>>,
+    { id: number; paymentId: number; data: BodyType<UpdatePaymentBody> }
+  > = (props) => {
+    const { id, paymentId, data } = props ?? {};
+
+    return updateVendorPayment(id, paymentId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateVendorPaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateVendorPayment>>
+>;
+export type UpdateVendorPaymentMutationBody = BodyType<UpdatePaymentBody>;
+export type UpdateVendorPaymentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a vendor payment
+ */
+export const useUpdateVendorPayment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVendorPayment>>,
+    TError,
+    { id: number; paymentId: number; data: BodyType<UpdatePaymentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateVendorPayment>>,
+  TError,
+  { id: number; paymentId: number; data: BodyType<UpdatePaymentBody> },
+  TContext
+> => {
+  return useMutation(getUpdateVendorPaymentMutationOptions(options));
+};
+
+/**
+ * @summary Delete a vendor payment
+ */
+export const getDeleteVendorPaymentUrl = (id: number, paymentId: number) => {
+  return `/api/vendors/${id}/payments/${paymentId}`;
+};
+
+export const deleteVendorPayment = async (
+  id: number,
+  paymentId: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(
+    getDeleteVendorPaymentUrl(id, paymentId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteVendorPaymentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVendorPayment>>,
+    TError,
+    { id: number; paymentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteVendorPayment>>,
+  TError,
+  { id: number; paymentId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteVendorPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteVendorPayment>>,
+    { id: number; paymentId: number }
+  > = (props) => {
+    const { id, paymentId } = props ?? {};
+
+    return deleteVendorPayment(id, paymentId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteVendorPaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteVendorPayment>>
+>;
+
+export type DeleteVendorPaymentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a vendor payment
+ */
+export const useDeleteVendorPayment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVendorPayment>>,
+    TError,
+    { id: number; paymentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteVendorPayment>>,
+  TError,
+  { id: number; paymentId: number },
+  TContext
+> => {
+  return useMutation(getDeleteVendorPaymentMutationOptions(options));
+};
+
+/**
+ * @summary AI summarize a vendor reply email
+ */
+export const getSummarizeVendorEmailUrl = () => {
+  return `/api/vendor/email/summarize`;
+};
+
+export const summarizeVendorEmail = async (
+  summarizeEmailBody: SummarizeEmailBody,
+  options?: RequestInit,
+): Promise<SummarizeEmailResponse> => {
+  return customFetch<SummarizeEmailResponse>(getSummarizeVendorEmailUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(summarizeEmailBody),
+  });
+};
+
+export const getSummarizeVendorEmailMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof summarizeVendorEmail>>,
+    TError,
+    { data: BodyType<SummarizeEmailBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof summarizeVendorEmail>>,
+  TError,
+  { data: BodyType<SummarizeEmailBody> },
+  TContext
+> => {
+  const mutationKey = ["summarizeVendorEmail"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof summarizeVendorEmail>>,
+    { data: BodyType<SummarizeEmailBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return summarizeVendorEmail(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SummarizeVendorEmailMutationResult = NonNullable<
+  Awaited<ReturnType<typeof summarizeVendorEmail>>
+>;
+export type SummarizeVendorEmailMutationBody = BodyType<SummarizeEmailBody>;
+export type SummarizeVendorEmailMutationError = ErrorType<unknown>;
+
+/**
+ * @summary AI summarize a vendor reply email
+ */
+export const useSummarizeVendorEmail = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof summarizeVendorEmail>>,
+    TError,
+    { data: BodyType<SummarizeEmailBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof summarizeVendorEmail>>,
+  TError,
+  { data: BodyType<SummarizeEmailBody> },
+  TContext
+> => {
+  return useMutation(getSummarizeVendorEmailMutationOptions(options));
+};
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const getRequestUploadUrlUrl = () => {
+  return `/api/storage/uploads/request-url`;
+};
+
+export const requestUploadUrl = async (
+  uploadUrlRequest: UploadUrlRequest,
+  options?: RequestInit,
+): Promise<UploadUrlResponse> => {
+  return customFetch<UploadUrlResponse>(getRequestUploadUrlUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(uploadUrlRequest),
+  });
+};
+
+export const getRequestUploadUrlMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<UploadUrlRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<UploadUrlRequest> },
+  TContext
+> => {
+  const mutationKey = ["requestUploadUrl"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    { data: BodyType<UploadUrlRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestUploadUrl(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestUploadUrlMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestUploadUrl>>
+>;
+export type RequestUploadUrlMutationBody = BodyType<UploadUrlRequest>;
+export type RequestUploadUrlMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const useRequestUploadUrl = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<UploadUrlRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<UploadUrlRequest> },
+  TContext
+> => {
+  return useMutation(getRequestUploadUrlMutationOptions(options));
+};
+
+/**
+ * @summary Serve an uploaded object
+ */
+export const getGetStorageObjectUrl = (objectPath: string) => {
+  return `/api/storage/objects/${objectPath}`;
+};
+
+export const getStorageObject = async (
+  objectPath: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getGetStorageObjectUrl(objectPath), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStorageObjectQueryKey = (objectPath: string) => {
+  return [`/api/storage/objects/${objectPath}`] as const;
+};
+
+export const getGetStorageObjectQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStorageObject>>,
+  TError = ErrorType<unknown>,
+>(
+  objectPath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStorageObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStorageObjectQueryKey(objectPath);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStorageObject>>
+  > = ({ signal }) =>
+    getStorageObject(objectPath, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!objectPath,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStorageObject>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStorageObjectQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStorageObject>>
+>;
+export type GetStorageObjectQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Serve an uploaded object
+ */
+
+export function useGetStorageObject<
+  TData = Awaited<ReturnType<typeof getStorageObject>>,
+  TError = ErrorType<unknown>,
+>(
+  objectPath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStorageObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStorageObjectQueryOptions(objectPath, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get dashboard summary stats

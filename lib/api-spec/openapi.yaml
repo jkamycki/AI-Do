@@ -16,6 +16,8 @@ tags:
     description: AI timeline generation
   - name: vendor
     description: AI vendor email assistant
+  - name: vendors
+    description: Vendor management (Smart Vendor Sync)
   - name: budget
     description: Budget management
   - name: checklist
@@ -24,6 +26,8 @@ tags:
     description: Day-of coordinator mode
   - name: dashboard
     description: Dashboard summary
+  - name: storage
+    description: Object storage upload and serving endpoints
 paths:
   /healthz:
     get:
@@ -319,6 +323,233 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EmergencyAdvice"
+
+  /vendors:
+    get:
+      operationId: listVendors
+      tags: [vendors]
+      summary: List all vendors for the current user
+      responses:
+        "200":
+          description: List of vendors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Vendor"
+    post:
+      operationId: createVendor
+      tags: [vendors]
+      summary: Create a new vendor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVendorBody"
+      responses:
+        "201":
+          description: Vendor created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vendor"
+
+  /vendors/{id}:
+    get:
+      operationId: getVendor
+      tags: [vendors]
+      summary: Get a single vendor with its payments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Vendor with payments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorWithPayments"
+        "404":
+          description: Vendor not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateVendor
+      tags: [vendors]
+      summary: Update a vendor
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVendorBody"
+      responses:
+        "200":
+          description: Vendor updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vendor"
+    delete:
+      operationId: deleteVendor
+      tags: [vendors]
+      summary: Delete a vendor and all its payments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /vendors/{id}/payments:
+    post:
+      operationId: createVendorPayment
+      tags: [vendors]
+      summary: Add a payment milestone to a vendor
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentBody"
+      responses:
+        "201":
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorPayment"
+
+  /vendors/{id}/payments/{paymentId}:
+    put:
+      operationId: updateVendorPayment
+      tags: [vendors]
+      summary: Update a vendor payment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePaymentBody"
+      responses:
+        "200":
+          description: Payment updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorPayment"
+    delete:
+      operationId: deleteVendorPayment
+      tags: [vendors]
+      summary: Delete a vendor payment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /vendor/email/summarize:
+    post:
+      operationId: summarizeVendorEmail
+      tags: [vendor]
+      summary: AI summarize a vendor reply email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SummarizeEmailBody"
+      responses:
+        "200":
+          description: Email summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SummarizeEmailResponse"
+
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+
+  /storage/objects/{objectPath}:
+    get:
+      operationId: getStorageObject
+      tags: [storage]
+      summary: Serve an uploaded object
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Object content
 
   /dashboard/summary:
     get:
@@ -731,6 +962,241 @@ components:
       required:
         - advice
         - steps
+
+    VendorFile:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+        type:
+          type: string
+      required:
+        - name
+        - url
+        - type
+
+    Vendor:
+      type: object
+      properties:
+        id:
+          type: integer
+        profileId:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        portalLink:
+          type: string
+        notes:
+          type: string
+        totalCost:
+          type: number
+        depositAmount:
+          type: number
+        contractSigned:
+          type: boolean
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/VendorFile"
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - profileId
+        - name
+        - category
+        - totalCost
+        - depositAmount
+        - contractSigned
+        - files
+        - createdAt
+        - updatedAt
+
+    VendorPayment:
+      type: object
+      properties:
+        id:
+          type: integer
+        vendorId:
+          type: integer
+        label:
+          type: string
+        amount:
+          type: number
+        dueDate:
+          type: string
+        isPaid:
+          type: boolean
+        paidAt:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - vendorId
+        - label
+        - amount
+        - dueDate
+        - isPaid
+        - createdAt
+
+    VendorWithPayments:
+      allOf:
+        - $ref: "#/components/schemas/Vendor"
+        - type: object
+          properties:
+            payments:
+              type: array
+              items:
+                $ref: "#/components/schemas/VendorPayment"
+          required:
+            - payments
+
+    CreateVendorBody:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        portalLink:
+          type: string
+        notes:
+          type: string
+        totalCost:
+          type: number
+        depositAmount:
+          type: number
+        contractSigned:
+          type: boolean
+      required:
+        - name
+        - category
+
+    UpdateVendorBody:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        portalLink:
+          type: string
+        notes:
+          type: string
+        totalCost:
+          type: number
+        depositAmount:
+          type: number
+        contractSigned:
+          type: boolean
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/VendorFile"
+
+    CreatePaymentBody:
+      type: object
+      properties:
+        label:
+          type: string
+        amount:
+          type: number
+        dueDate:
+          type: string
+        isPaid:
+          type: boolean
+      required:
+        - label
+        - amount
+        - dueDate
+
+    UpdatePaymentBody:
+      type: object
+      properties:
+        label:
+          type: string
+        amount:
+          type: number
+        dueDate:
+          type: string
+        isPaid:
+          type: boolean
+
+    SummarizeEmailBody:
+      type: object
+      properties:
+        emailText:
+          type: string
+      required:
+        - emailText
+
+    SummarizeEmailResponse:
+      type: object
+      properties:
+        summary:
+          type: string
+        keyPoints:
+          type: array
+          items:
+            type: string
+        actionItems:
+          type: array
+          items:
+            type: string
+      required:
+        - summary
+        - keyPoints
+        - actionItems
+
+    UploadUrlRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+      required:
+        - name
+        - size
+        - contentType
+
+    UploadUrlResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
+      required:
+        - uploadURL
+        - objectPath
 
     DashboardSummary:
       type: object

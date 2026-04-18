@@ -321,6 +321,248 @@ export const EmergencyAdviceResponse = zod.object({
 });
 
 /**
+ * @summary List all vendors for the current user
+ */
+export const ListVendorsResponseItem = zod.object({
+  id: zod.number(),
+  profileId: zod.number(),
+  name: zod.string(),
+  category: zod.string(),
+  email: zod.string().optional(),
+  phone: zod.string().optional(),
+  website: zod.string().optional(),
+  portalLink: zod.string().optional(),
+  notes: zod.string().optional(),
+  totalCost: zod.number(),
+  depositAmount: zod.number(),
+  contractSigned: zod.boolean(),
+  files: zod.array(
+    zod.object({
+      name: zod.string(),
+      url: zod.string(),
+      type: zod.string(),
+    }),
+  ),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListVendorsResponse = zod.array(ListVendorsResponseItem);
+
+/**
+ * @summary Create a new vendor
+ */
+export const CreateVendorBody = zod.object({
+  name: zod.string(),
+  category: zod.string(),
+  email: zod.string().optional(),
+  phone: zod.string().optional(),
+  website: zod.string().optional(),
+  portalLink: zod.string().optional(),
+  notes: zod.string().optional(),
+  totalCost: zod.number().optional(),
+  depositAmount: zod.number().optional(),
+  contractSigned: zod.boolean().optional(),
+});
+
+/**
+ * @summary Get a single vendor with its payments
+ */
+export const GetVendorParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetVendorResponse = zod
+  .object({
+    id: zod.number(),
+    profileId: zod.number(),
+    name: zod.string(),
+    category: zod.string(),
+    email: zod.string().optional(),
+    phone: zod.string().optional(),
+    website: zod.string().optional(),
+    portalLink: zod.string().optional(),
+    notes: zod.string().optional(),
+    totalCost: zod.number(),
+    depositAmount: zod.number(),
+    contractSigned: zod.boolean(),
+    files: zod.array(
+      zod.object({
+        name: zod.string(),
+        url: zod.string(),
+        type: zod.string(),
+      }),
+    ),
+    createdAt: zod.string(),
+    updatedAt: zod.string(),
+  })
+  .and(
+    zod.object({
+      payments: zod.array(
+        zod.object({
+          id: zod.number(),
+          vendorId: zod.number(),
+          label: zod.string(),
+          amount: zod.number(),
+          dueDate: zod.string(),
+          isPaid: zod.boolean(),
+          paidAt: zod.string().optional(),
+          createdAt: zod.string(),
+        }),
+      ),
+    }),
+  );
+
+/**
+ * @summary Update a vendor
+ */
+export const UpdateVendorParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateVendorBody = zod.object({
+  name: zod.string().optional(),
+  category: zod.string().optional(),
+  email: zod.string().optional(),
+  phone: zod.string().optional(),
+  website: zod.string().optional(),
+  portalLink: zod.string().optional(),
+  notes: zod.string().optional(),
+  totalCost: zod.number().optional(),
+  depositAmount: zod.number().optional(),
+  contractSigned: zod.boolean().optional(),
+  files: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        url: zod.string(),
+        type: zod.string(),
+      }),
+    )
+    .optional(),
+});
+
+export const UpdateVendorResponse = zod.object({
+  id: zod.number(),
+  profileId: zod.number(),
+  name: zod.string(),
+  category: zod.string(),
+  email: zod.string().optional(),
+  phone: zod.string().optional(),
+  website: zod.string().optional(),
+  portalLink: zod.string().optional(),
+  notes: zod.string().optional(),
+  totalCost: zod.number(),
+  depositAmount: zod.number(),
+  contractSigned: zod.boolean(),
+  files: zod.array(
+    zod.object({
+      name: zod.string(),
+      url: zod.string(),
+      type: zod.string(),
+    }),
+  ),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a vendor and all its payments
+ */
+export const DeleteVendorParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteVendorResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Add a payment milestone to a vendor
+ */
+export const CreateVendorPaymentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateVendorPaymentBody = zod.object({
+  label: zod.string(),
+  amount: zod.number(),
+  dueDate: zod.string(),
+  isPaid: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update a vendor payment
+ */
+export const UpdateVendorPaymentParams = zod.object({
+  id: zod.coerce.number(),
+  paymentId: zod.coerce.number(),
+});
+
+export const UpdateVendorPaymentBody = zod.object({
+  label: zod.string().optional(),
+  amount: zod.number().optional(),
+  dueDate: zod.string().optional(),
+  isPaid: zod.boolean().optional(),
+});
+
+export const UpdateVendorPaymentResponse = zod.object({
+  id: zod.number(),
+  vendorId: zod.number(),
+  label: zod.string(),
+  amount: zod.number(),
+  dueDate: zod.string(),
+  isPaid: zod.boolean(),
+  paidAt: zod.string().optional(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Delete a vendor payment
+ */
+export const DeleteVendorPaymentParams = zod.object({
+  id: zod.coerce.number(),
+  paymentId: zod.coerce.number(),
+});
+
+export const DeleteVendorPaymentResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary AI summarize a vendor reply email
+ */
+export const SummarizeVendorEmailBody = zod.object({
+  emailText: zod.string(),
+});
+
+export const SummarizeVendorEmailResponse = zod.object({
+  summary: zod.string(),
+  keyPoints: zod.array(zod.string()),
+  actionItems: zod.array(zod.string()),
+});
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const RequestUploadUrlBody = zod.object({
+  name: zod.string(),
+  size: zod.number(),
+  contentType: zod.string(),
+});
+
+export const RequestUploadUrlResponse = zod.object({
+  uploadURL: zod.string(),
+  objectPath: zod.string(),
+});
+
+/**
+ * @summary Serve an uploaded object
+ */
+export const GetStorageObjectParams = zod.object({
+  objectPath: zod.coerce.string(),
+});
+
+/**
  * @summary Get dashboard summary stats
  */
 export const GetDashboardSummaryResponse = zod.object({
