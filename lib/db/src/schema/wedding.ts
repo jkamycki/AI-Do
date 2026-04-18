@@ -126,3 +126,31 @@ export const adminUsers = pgTable("admin_users", {
 });
 
 export type AdminUser = typeof adminUsers.$inferSelect;
+
+export const workspaceCollaborators = pgTable("workspace_collaborators", {
+  id: serial("id").primaryKey(),
+  profileId: integer("profile_id").notNull(),
+  inviterUserId: text("inviter_user_id").notNull(),
+  inviteeEmail: text("invitee_email").notNull(),
+  inviteeUserId: text("invitee_user_id"),
+  role: text("role").notNull().default("planner"),
+  status: text("status").notNull().default("pending"),
+  inviteToken: text("invite_token").notNull().unique(),
+  invitedAt: timestamp("invited_at").defaultNow().notNull(),
+  acceptedAt: timestamp("accepted_at"),
+});
+
+export type WorkspaceCollaborator = typeof workspaceCollaborators.$inferSelect;
+
+export const workspaceActivity = pgTable("workspace_activity", {
+  id: serial("id").primaryKey(),
+  profileId: integer("profile_id").notNull(),
+  userId: text("user_id").notNull(),
+  userName: text("user_name"),
+  action: text("action").notNull(),
+  resourceType: text("resource_type"),
+  details: jsonb("details").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type WorkspaceActivity = typeof workspaceActivity.$inferSelect;

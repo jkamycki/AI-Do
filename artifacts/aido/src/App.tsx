@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { setFetchTokenGetter } from "@/lib/authFetch";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import Profile from "@/pages/Profile";
@@ -17,6 +18,9 @@ import VendorEmail from "@/pages/VendorEmail";
 import Vendors from "@/pages/Vendors";
 import DayOf from "@/pages/DayOf";
 import Admin from "@/pages/Admin";
+import Settings from "@/pages/Settings";
+import InviteAccept from "@/pages/InviteAccept";
+import SharedWorkspace from "@/pages/SharedWorkspace";
 import NotFound from "@/pages/not-found";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -186,6 +190,7 @@ function Router() {
       <Route path="/" component={HomeRedirect} />
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />
+      <Route path="/invite/:token" component={InviteAccept} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
       <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} />} />
@@ -195,6 +200,8 @@ function Router() {
       <Route path="/vendor-email" component={() => <ProtectedRoute component={VendorEmail} />} />
       <Route path="/day-of" component={() => <ProtectedRoute component={DayOf} />} />
       <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
+      <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
+      <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} />} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -228,10 +235,12 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkTokenSetup />
         <ClerkQueryClientCacheInvalidator />
-        <TooltipProvider>
-          <Router />
-          <Toaster />
-        </TooltipProvider>
+        <WorkspaceProvider>
+          <TooltipProvider>
+            <Router />
+            <Toaster />
+          </TooltipProvider>
+        </WorkspaceProvider>
       </QueryClientProvider>
     </ClerkProvider>
   );

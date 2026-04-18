@@ -30,6 +30,7 @@ Full-stack AI-powered wedding planning application. pnpm workspace monorepo usin
 7. **Smart Vendor Sync** — Full CRUD vendor management (scoped by userId, not profileId)
 8. **PDF Export** — Server-side pdfkit generation with branded A.IDO layout for timeline + vendor emails
 9. **Operations Center** — Admin analytics dashboard with User Metrics, Product Usage, Money Metrics, System Health, and Event Log
+10. **Collaboration System** — Invite-by-link system with Partner/Planner/Vendor roles, accept/decline flow, workspace switching, shared workspace view, and activity log
 
 ## Authentication Architecture
 
@@ -60,6 +61,23 @@ Full-stack AI-powered wedding planning application. pnpm workspace monorepo usin
 - `/dashboard` — Main app (protected)
 - `/profile`, `/timeline`, `/budget`, `/checklist`, `/vendor-email`, `/day-of` — All protected
 - `/admin` — Operations Center (protected; also requires admin role via `/api/admin/check`)
+- `/settings` — Settings & Collaborators page (protected)
+- `/invite/:token` — Invite acceptance page (public, handles own auth state)
+- `/workspace/:profileId` — Shared workspace view (protected; requires collaborator access)
+
+## Collaboration Architecture
+
+- **`workspace_collaborators` table** — `profileId`, `inviterUserId`, `inviteeEmail`, `inviteeUserId` (filled on accept), `role` (partner/planner/vendor), `status` (pending/active/declined), `inviteToken` (UUID), `invitedAt`, `acceptedAt`
+- **`workspace_activity` table** — `profileId`, `userId`, `userName`, `action`, `resourceType`, `details` (jsonb), `createdAt`
+- **`logActivity(profileId, userId, action, resourceType?, details?, userName?)` helper** — fire-and-forget activity tracking; called from timeline, checklist, budget, and collaborator management routes
+- **Invite flow**: Owner creates invite (email + role) → UUID token generated → share link `/invite/:token` → invitee signs in → POST `/api/invite/:token/accept` claims the invite
+- **No email service**: Invite link must be copied and shared manually by the owner
+- **Workspace switching**: `WorkspaceContext` stores active workspace info in localStorage; `WorkspaceSwitcher` in sidebar fetches `/api/collaborators/my-workspaces` and lets user jump to any shared workspace
+- **Shared workspace view**: `/workspace/:profileId` page fetches timeline, budget, checklist, and activity from `/api/workspace/:profileId/*` endpoints with role-based access control (Vendors see timeline only; Planners/Partners see budget + checklist too)
+- **Real-time**: React Query `refetchInterval: 5000` on shared workspace queries for live updates
+- **Roles**: `owner` (full), `partner` (full edit), `planner` (edit timeline/checklist/budget/emails), `vendor` (view timeline + PDFs only)
+- **API endpoints** at `/api/collaborators/*` and `/api/workspace/:profileId/*`
+- **`workspaceAccess.ts` helper** — `resolveWorkspaceRole(userId, profileId)`, `hasMinRole(role, required)`, `logActivity(...)`
 
 ## PDF Export Architecture
 

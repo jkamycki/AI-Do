@@ -11,6 +11,8 @@ import dashboardRouter from "./wedding/dashboard";
 import storageRouter from "./storage";
 import pdfRouter from "./pdf";
 import adminRouter from "./admin";
+import collaboratorsRouter from "./collaborators";
+import workspaceRouter from "./workspace";
 
 const router: IRouter = Router();
 
@@ -26,5 +28,7 @@ router.use(dashboardRouter);
 router.use(storageRouter);
 router.use(pdfRouter);
 router.use(adminRouter);
+router.use(collaboratorsRouter);
+router.use(workspaceRouter);
 
 export default router;

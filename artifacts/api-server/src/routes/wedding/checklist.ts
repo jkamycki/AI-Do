@@ -5,6 +5,7 @@ import { eq, asc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
+import { logActivity } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -149,6 +150,7 @@ router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
     if (isCompleted) {
       trackEvent(req.userId!, "checklist_item_completed", { taskId: item.id, task: item.task });
     }
+    logActivity(item.profileId, req.userId!, `${isCompleted ? "Completed" : "Unchecked"}: ${item.task}`, "checklist", { taskId: item.id });
     res.json({
       id: item.id,
       month: item.month,

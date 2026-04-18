@@ -5,6 +5,7 @@ import { eq, desc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
+import { logActivity } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -100,6 +101,7 @@ Return ONLY a valid JSON array (no markdown, no explanation) with this exact str
       .returning();
 
     trackEvent(req.userId!, "timeline_generated", { eventCount: events.length });
+    logActivity(profile.id, req.userId!, `Generated day-of timeline (${events.length} events)`, "timeline", { eventCount: events.length });
     res.json({
       id: created.id,
       events: created.events,

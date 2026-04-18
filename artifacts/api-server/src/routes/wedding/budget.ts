@@ -5,6 +5,7 @@ import { eq, desc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
+import { logActivity } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -184,6 +185,7 @@ router.post("/budget/items", requireAuth, async (req, res) => {
       })
       .returning();
 
+    logActivity(profileId, req.userId!, `Added budget item: ${vendor} (${category})`, "budget", { itemId: item.id, vendor, category });
     res.json({
       id: item.id,
       category: item.category,
