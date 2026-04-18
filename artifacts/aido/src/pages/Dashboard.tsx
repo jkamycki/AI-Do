@@ -319,10 +319,26 @@ export default function Dashboard() {
                 <div className="flex items-start gap-2">
                   <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                   <div>
+                    <p className="text-xs text-muted-foreground">Venue</p>
                     <p className="text-sm font-medium text-foreground">{summary.profile.venue}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{summary.profile.location}</p>
                   </div>
                 </div>
+                {hotels.length > 0 && (
+                  <div className="flex items-start gap-2 pt-1 border-t border-border/30">
+                    <Hotel className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Hotel</p>
+                      <div className="flex flex-col gap-0.5">
+                        {hotels.map(h => (
+                          <p key={h.id} className="text-sm font-medium text-foreground">
+                            {h.hotelName || "Unnamed Hotel"}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Guests & Vibe */}
@@ -342,18 +358,6 @@ export default function Dashboard() {
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-primary flex-shrink-0" />
                     <span className="text-sm text-foreground">${summary.profile.totalBudget.toLocaleString()} budget</span>
-                  </div>
-                )}
-                {hotels.length > 0 && (
-                  <div className="flex items-start gap-2 pt-1 border-t border-border/30">
-                    <Hotel className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                    <div className="flex flex-wrap gap-1">
-                      {hotels.map(h => (
-                        <span key={h.id} className="text-xs bg-primary/8 text-primary px-2 py-0.5 rounded-full border border-primary/15 font-medium">
-                          {h.hotelName || "Unnamed Hotel"}
-                        </span>
-                      ))}
-                    </div>
                   </div>
                 )}
               </div>
