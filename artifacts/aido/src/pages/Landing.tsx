@@ -29,36 +29,20 @@ const testimonials = [
     text: "I was completely overwhelmed when we got engaged. A.IDO broke everything down month by month and I never missed a deadline. The budget tracker with payment history was a game changer — I could log each deposit as I made it and always knew exactly where we stood financially.",
   },
   {
-    name: "Sofia & Daniel",
-    location: "Denver, CO",
-    date: "Married March 2025",
-    avatar: "SD",
+    name: "Dominique & Anthony",
+    location: "Newark, NJ",
+    date: "Married October 2025",
+    avatar: "DA",
     rating: 5,
-    text: "The day-of coordinator feature was unbelievable. When our florist was 30 minutes late I asked A.IDO for help and it gave me a calm, step-by-step plan instantly. Our guests had no idea anything went wrong. Worth every penny just for that peace of mind on the big day.",
+    text: "Planning a New Jersey wedding with 250 guests felt impossible until we found A.IDO. It helped us negotiate with vendors, stay on top of every payment, and build a timeline that actually worked for our big Ballroom venue. The AI knew exactly what questions to ask our coordinator that we never would have thought of.",
   },
   {
-    name: "Aaliyah & Trevor",
-    location: "Atlanta, GA",
-    date: "Married November 2024",
-    avatar: "AT",
+    name: "Simone & Kevin",
+    location: "New York, NY",
+    date: "Married May 2025",
+    avatar: "SK",
     rating: 5,
-    text: "We had 210 guests and a multi-vendor setup across two venues. The guest list manager and seating chart generator handled it flawlessly. I was skeptical about AI planning tools but A.IDO converted me completely — it thinks of details I would have missed entirely.",
-  },
-  {
-    name: "Rachel & James",
-    location: "Nashville, TN",
-    date: "Married August 2025",
-    avatar: "RJ",
-    rating: 5,
-    text: "I used A.IDO to write every single vendor email — inquiry, negotiation, confirmations, even the thank-you notes afterward. My maid of honor couldn't believe I had written them all myself. The AI matched my tone perfectly every time. Total lifesaver for someone who hates writing.",
-  },
-  {
-    name: "Layla & Chris",
-    location: "Portland, OR",
-    date: "Married January 2025",
-    avatar: "LC",
-    rating: 5,
-    text: "We planned our entire bohemian winter wedding using A.IDO in under six months while both working full-time. The checklist kept us on track without us having to remember anything ourselves. The AI budget predictor was almost scarily accurate for our area — we budgeted $32K and came in at $31,400.",
+    text: "A NYC wedding on a budget felt like a pipe dream — A.IDO proved us wrong. The budget predictor was spot on for Manhattan vendor pricing, and the vendor email templates were so polished that three vendors actually commented on how professional our outreach was. Worth every bit of the time we put into it.",
   },
 ];
 
@@ -122,7 +106,7 @@ export default function Landing() {
           {/* Social proof bar */}
           <div className="mt-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <div className="flex -space-x-2">
-              {["PM","CJ","SD","AT","RJ"].map(initials => (
+              {["PM","CJ","DA","SK"].map(initials => (
                 <div key={initials} className="w-8 h-8 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center text-[10px] font-bold text-primary">
                   {initials}
                 </div>
@@ -170,7 +154,7 @@ export default function Landing() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
               {testimonials.map((t) => (
                 <div key={t.name} className="bg-card rounded-2xl p-6 border border-primary/10 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4">
                   {/* Quote icon */}
