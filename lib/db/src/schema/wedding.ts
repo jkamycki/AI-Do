@@ -260,3 +260,22 @@ export const hotelBlocks = pgTable("hotel_blocks", {
 });
 
 export type HotelBlock = typeof hotelBlocks.$inferSelect;
+
+export const weddingParty = pgTable("wedding_party", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  name: text("name").notNull(),
+  role: text("role").notNull(),
+  side: text("side").notNull().default("bride"),
+  phone: text("phone"),
+  email: text("email"),
+  outfitDetails: text("outfit_details"),
+  shoeSize: text("shoe_size"),
+  outfitStore: text("outfit_store"),
+  fittingDate: text("fitting_date"),
+  notes: text("notes"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type WeddingPartyMember = typeof weddingParty.$inferSelect;

@@ -18,6 +18,7 @@ import helpRouter from "./help";
 import seatingRouter from "./seating";
 import guestsRouter from "./guests";
 import hotelsRouter from "./wedding/hotels";
+import weddingPartyRouter from "./wedding/weddingParty";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(helpRouter);
 router.use(seatingRouter);
 router.use(guestsRouter);
 router.use(hotelsRouter);
+router.use(weddingPartyRouter);
 
 export default router;

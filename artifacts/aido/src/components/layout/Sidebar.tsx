@@ -25,6 +25,7 @@ import {
   Armchair,
   UsersRound,
   Hotel,
+  Flower2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -50,6 +51,7 @@ const navSections = [
     label: "Guests",
     items: [
       { href: "/guests", label: "Guest List", icon: UsersRound },
+      { href: "/wedding-party", label: "Wedding Party", icon: Flower2 },
       { href: "/seating-chart", label: "Seating Chart", icon: Armchair },
       { href: "/hotels", label: "Hotel Blocks", icon: Hotel },
     ],
