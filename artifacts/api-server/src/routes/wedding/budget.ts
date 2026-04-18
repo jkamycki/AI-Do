@@ -285,7 +285,7 @@ router.get("/budget/items/:id/payments", requireAuth, async (req, res) => {
 router.post("/budget/items/:id/payments", requireAuth, async (req, res) => {
   try {
     const itemId = parseInt(req.params.id);
-    const { amount, note } = req.body;
+    const { amount, note, paidAt } = req.body;
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
       res.status(400).json({ error: "amount must be a positive number" });
       return;
@@ -305,6 +305,7 @@ router.post("/budget/items/:id/payments", requireAuth, async (req, res) => {
         budgetItemId: itemId,
         amount: String(amount),
         note: note ?? null,
+        ...(paidAt ? { paidAt: new Date(paidAt) } : {}),
       })
       .returning();
 

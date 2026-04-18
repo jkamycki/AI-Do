@@ -373,6 +373,7 @@ export interface DashboardSummary {
 export type AddBudgetItemPaymentBody = {
   amount: number;
   note?: string | null;
+  paidAt?: string | null;
 };
 
 export type AddBudgetItemPayment200 = {

@@ -117,6 +117,7 @@ function LogPaymentContent({
   const addPayment = useAddBudgetItemPayment();
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
 
   const totalLogged = payments ? payments.reduce((s, p) => s + p.amount, 0) : item.amountPaid;
   const pct = item.actualCost > 0 ? Math.min((totalLogged / item.actualCost) * 100, 100) : 0;
@@ -127,7 +128,7 @@ function LogPaymentContent({
   const handleSubmit = () => {
     if (isNaN(amountNum) || amountNum <= 0) return;
     addPayment.mutate(
-      { id: item.id, data: { amount: amountNum, ...(note.trim() ? { note: note.trim() } : {}) } },
+      { id: item.id, data: { amount: amountNum, ...(note.trim() ? { note: note.trim() } : {}), ...(paidAt ? { paidAt } : {}) } },
       {
         onSuccess: () => {
           toast({ title: "Payment logged", description: `$${amountNum.toLocaleString()} recorded for ${item.vendor}.` });
@@ -203,13 +204,27 @@ function LogPaymentContent({
             className="w-full pl-7 pr-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-background"
           />
         </div>
-        <input
-          type="text"
-          value={note}
-          onChange={e => setNote(e.target.value)}
-          placeholder="Note (optional) — e.g. deposit, final payment…"
-          className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-background"
-        />
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Date paid</label>
+            <input
+              type="date"
+              value={paidAt}
+              onChange={e => setPaidAt(e.target.value)}
+              className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-background"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Note (optional)</label>
+            <input
+              type="text"
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="e.g. deposit, final…"
+              className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-background"
+            />
+          </div>
+        </div>
         {amount && !isNaN(amountNum) && amountNum > 0 && (
           <p className="text-xs text-muted-foreground">
             New total: <span className="font-semibold text-foreground">${projectedTotal.toLocaleString()}</span> of ${item.actualCost.toLocaleString()}

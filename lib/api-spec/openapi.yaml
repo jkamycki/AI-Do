@@ -294,6 +294,9 @@ paths:
                 note:
                   type: string
                   nullable: true
+                paidAt:
+                  type: string
+                  nullable: true
               required:
                 - amount
       responses:

@@ -281,6 +281,7 @@ export const AddBudgetItemPaymentParams = zod.object({
 export const AddBudgetItemPaymentBody = zod.object({
   amount: zod.number(),
   note: zod.string().nullish(),
+  paidAt: zod.string().nullish(),
 });
 
 export const AddBudgetItemPaymentResponse = zod.object({
