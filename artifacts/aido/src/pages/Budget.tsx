@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2 } from "lucide-react";
+import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const itemSchema = z.object({
@@ -117,6 +117,9 @@ export default function Budget() {
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [isPredicting, setIsPredicting] = useState(false);
   const [editingItem, setEditingItem] = useState<{ id: number; category: string; vendor: string; estimatedCost: number; actualCost: number; amountPaid: number; isPaid: boolean; notes?: string | null } | null>(null);
+  const [logPaymentItem, setLogPaymentItem] = useState<{ id: number; vendor: string; actualCost: number; amountPaid: number } | null>(null);
+  const [logPaymentAmount, setLogPaymentAmount] = useState("");
+  const [logPaymentNote, setLogPaymentNote] = useState("");
 
   const CATEGORIES = ["Venue", "Catering", "Photography", "Florist", "Attire", "Music", "Decor", "Other"];
 
@@ -227,6 +230,29 @@ export default function Budget() {
     });
   };
 
+  const handleLogPayment = () => {
+    if (!logPaymentItem) return;
+    const amount = parseFloat(logPaymentAmount);
+    if (isNaN(amount) || amount <= 0) return;
+    const newTotal = logPaymentItem.amountPaid + amount;
+    const fullyPaid = newTotal >= logPaymentItem.actualCost;
+    updateItem.mutate(
+      { id: logPaymentItem.id, data: { amountPaid: newTotal, ...(fullyPaid ? { isPaid: true } : {}) } },
+      {
+        onSuccess: () => {
+          toast({ title: "Payment logged", description: `$${amount.toLocaleString()} recorded for ${logPaymentItem.vendor}.` });
+          queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
+          setLogPaymentItem(null);
+          setLogPaymentAmount("");
+          setLogPaymentNote("");
+        },
+        onError: () => {
+          toast({ variant: "destructive", title: "Error", description: "Could not log payment." });
+        },
+      }
+    );
+  };
+
   const handlePredict = () => {
     if (!profile) {
       toast({ variant: "destructive", title: "Profile Required", description: "Complete your profile first." });
@@ -267,6 +293,61 @@ export default function Budget() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
+      {/* ── Log Payment Dialog ── */}
+      <Dialog open={!!logPaymentItem} onOpenChange={open => { if (!open) { setLogPaymentItem(null); setLogPaymentAmount(""); setLogPaymentNote(""); } }}>
+        <DialogContent className="sm:max-w-[360px]">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl text-primary flex items-center gap-2">
+              <CreditCard className="h-5 w-5" /> Log a Payment
+            </DialogTitle>
+            <DialogDescription>
+              {logPaymentItem && (
+                <>
+                  Recording a payment for <strong>{logPaymentItem.vendor}</strong>.{" "}
+                  Already paid: <strong>${logPaymentItem.amountPaid.toLocaleString()}</strong> of ${logPaymentItem.actualCost.toLocaleString()}.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Amount paid this time ($)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={logPaymentAmount}
+                  onChange={e => setLogPaymentAmount(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") handleLogPayment(); }}
+                  placeholder="0.00"
+                  autoFocus
+                  className="w-full pl-7 pr-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-background"
+                />
+              </div>
+              {logPaymentItem && logPaymentAmount && !isNaN(parseFloat(logPaymentAmount)) && (
+                <p className="text-xs text-muted-foreground">
+                  New total paid: <span className="font-semibold text-foreground">
+                    ${(logPaymentItem.amountPaid + parseFloat(logPaymentAmount || "0")).toLocaleString()}
+                  </span> of ${logPaymentItem.actualCost.toLocaleString()}
+                  {logPaymentItem.amountPaid + parseFloat(logPaymentAmount || "0") >= logPaymentItem.actualCost && (
+                    <span className="ml-1 text-emerald-600 font-medium">· Fully paid! ✓</span>
+                  )}
+                </p>
+              )}
+            </div>
+            <Button
+              className="w-full"
+              onClick={handleLogPayment}
+              disabled={updateItem.isPending || !logPaymentAmount || isNaN(parseFloat(logPaymentAmount)) || parseFloat(logPaymentAmount) <= 0}
+            >
+              {updateItem.isPending ? "Saving…" : "Record Payment"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Edit Expense Dialog ── */}
       <Dialog open={!!editingItem} onOpenChange={open => { if (!open) setEditingItem(null); }}>
         <DialogContent className="sm:max-w-[425px]">
@@ -650,6 +731,25 @@ export default function Budget() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-xs gap-1 border-primary/20 text-primary hover:bg-primary/5 hidden sm:flex"
+                                onClick={() => { setLogPaymentItem({ id: item.id, vendor: item.vendor, actualCost: item.actualCost, amountPaid: item.amountPaid ?? 0 }); setLogPaymentAmount(""); }}
+                                data-testid={`btn-log-payment-${item.id}`}
+                                title="Log a payment"
+                              >
+                                <CreditCard className="h-3 w-3" /> Pay
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-primary hover:text-primary/80 sm:hidden"
+                                onClick={() => { setLogPaymentItem({ id: item.id, vendor: item.vendor, actualCost: item.actualCost, amountPaid: item.amountPaid ?? 0 }); setLogPaymentAmount(""); }}
+                                title="Log a payment"
+                              >
+                                <CreditCard className="h-4 w-4" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
