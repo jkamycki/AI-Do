@@ -113,7 +113,7 @@ function LogPaymentContent({
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: payments, isLoading } = useGetBudgetItemPayments({ id: item.id });
+  const { data: payments, isLoading } = useGetBudgetItemPayments(item.id);
   const addPayment = useAddBudgetItemPayment();
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -797,7 +797,7 @@ export default function Budget() {
                                 variant="outline"
                                 size="sm"
                                 className="h-7 px-2 text-xs gap-1 border-primary/20 text-primary hover:bg-primary/5 hidden sm:flex"
-                                onClick={() => { setLogPaymentItem({ id: item.id, vendor: item.vendor, actualCost: item.actualCost, amountPaid: item.amountPaid ?? 0 }); setLogPaymentAmount(""); }}
+                                onClick={() => setLogPaymentItem({ id: item.id, vendor: item.vendor, actualCost: item.actualCost, amountPaid: item.amountPaid ?? 0 })}
                                 data-testid={`btn-log-payment-${item.id}`}
                                 title="Log a payment"
                               >
@@ -807,7 +807,7 @@ export default function Budget() {
                                 variant="ghost"
                                 size="icon"
                                 className="text-primary hover:text-primary/80 sm:hidden"
-                                onClick={() => { setLogPaymentItem({ id: item.id, vendor: item.vendor, actualCost: item.actualCost, amountPaid: item.amountPaid ?? 0 }); setLogPaymentAmount(""); }}
+                                onClick={() => setLogPaymentItem({ id: item.id, vendor: item.vendor, actualCost: item.actualCost, amountPaid: item.amountPaid ?? 0 })}
                                 title="Log a payment"
                               >
                                 <CreditCard className="h-4 w-4" />
