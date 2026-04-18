@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "A.IDO — AI Wedding Planning OS"
+version = "1.0.0"
+id = "artifacts/aido"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23752
+
+[services.development]
+run = "pnpm --filter @workspace/aido run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/aido", "run", "build" ]
+publicDir = "artifacts/aido/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23752"
+BASE_PATH = "/"

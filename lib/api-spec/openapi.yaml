@@ -3,13 +3,27 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: API specification for A.IDO Wedding Planning OS
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: profile
+    description: Wedding profile operations
+  - name: timeline
+    description: AI timeline generation
+  - name: vendor
+    description: AI vendor email assistant
+  - name: budget
+    description: Budget management
+  - name: checklist
+    description: Wedding checklist
+  - name: dayof
+    description: Day-of coordinator mode
+  - name: dashboard
+    description: Dashboard summary
 paths:
   /healthz:
     get:
@@ -24,6 +38,301 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [profile]
+      summary: Get wedding profile
+      responses:
+        "200":
+          description: Wedding profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeddingProfile"
+        "404":
+          description: No profile found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: saveProfile
+      tags: [profile]
+      summary: Save or update wedding profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveProfileBody"
+      responses:
+        "200":
+          description: Profile saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeddingProfile"
+
+  /timeline:
+    get:
+      operationId: getTimeline
+      tags: [timeline]
+      summary: Get saved timeline
+      responses:
+        "200":
+          description: Saved timeline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Timeline"
+        "404":
+          description: No timeline found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: generateTimeline
+      tags: [timeline]
+      summary: Generate AI wedding day timeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateTimelineBody"
+      responses:
+        "200":
+          description: Generated timeline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Timeline"
+
+  /vendor/email:
+    post:
+      operationId: generateVendorEmail
+      tags: [vendor]
+      summary: Generate vendor email using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateVendorEmailBody"
+      responses:
+        "200":
+          description: Generated email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorEmail"
+
+  /budget:
+    get:
+      operationId: getBudget
+      tags: [budget]
+      summary: Get budget plan
+      responses:
+        "200":
+          description: Budget plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Budget"
+        "404":
+          description: No budget found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: saveBudget
+      tags: [budget]
+      summary: Save or update budget
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveBudgetBody"
+      responses:
+        "200":
+          description: Budget saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Budget"
+
+  /budget/predict:
+    post:
+      operationId: predictBudget
+      tags: [budget]
+      summary: AI predict budget based on location and guest count
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PredictBudgetBody"
+      responses:
+        "200":
+          description: Budget predictions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetPrediction"
+
+  /budget/items:
+    post:
+      operationId: addBudgetItem
+      tags: [budget]
+      summary: Add a budget item/vendor quote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddBudgetItemBody"
+      responses:
+        "200":
+          description: Budget item added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetItem"
+
+  /budget/items/{id}:
+    put:
+      operationId: updateBudgetItem
+      tags: [budget]
+      summary: Update a budget item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBudgetItemBody"
+      responses:
+        "200":
+          description: Budget item updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetItem"
+    delete:
+      operationId: deleteBudgetItem
+      tags: [budget]
+      summary: Delete a budget item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /checklist:
+    get:
+      operationId: getChecklist
+      tags: [checklist]
+      summary: Get wedding checklist
+      responses:
+        "200":
+          description: Checklist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checklist"
+    post:
+      operationId: generateChecklist
+      tags: [checklist]
+      summary: Generate AI checklist based on wedding date
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateChecklistBody"
+      responses:
+        "200":
+          description: Generated checklist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checklist"
+
+  /checklist/items/{id}:
+    patch:
+      operationId: toggleChecklistItem
+      tags: [checklist]
+      summary: Toggle checklist item completion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToggleChecklistItemBody"
+      responses:
+        "200":
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistItem"
+
+  /dayof/emergency:
+    post:
+      operationId: emergencyAdvice
+      tags: [dayof]
+      summary: Get AI emergency advice for day-of situations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmergencyAdviceBody"
+      responses:
+        "200":
+          description: AI emergency advice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmergencyAdvice"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +343,429 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    WeddingProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        partner1Name:
+          type: string
+        partner2Name:
+          type: string
+        weddingDate:
+          type: string
+        ceremonyTime:
+          type: string
+        receptionTime:
+          type: string
+        venue:
+          type: string
+        location:
+          type: string
+        guestCount:
+          type: integer
+        totalBudget:
+          type: number
+        weddingVibe:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - partner1Name
+        - partner2Name
+        - weddingDate
+        - ceremonyTime
+        - receptionTime
+        - venue
+        - location
+        - guestCount
+        - totalBudget
+        - weddingVibe
+        - updatedAt
+
+    SaveProfileBody:
+      type: object
+      properties:
+        partner1Name:
+          type: string
+        partner2Name:
+          type: string
+        weddingDate:
+          type: string
+        ceremonyTime:
+          type: string
+        receptionTime:
+          type: string
+        venue:
+          type: string
+        location:
+          type: string
+        guestCount:
+          type: integer
+        totalBudget:
+          type: number
+        weddingVibe:
+          type: string
+      required:
+        - partner1Name
+        - partner2Name
+        - weddingDate
+        - ceremonyTime
+        - receptionTime
+        - venue
+        - location
+        - guestCount
+        - totalBudget
+        - weddingVibe
+
+    Timeline:
+      type: object
+      properties:
+        id:
+          type: integer
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineEvent"
+        generatedAt:
+          type: string
+      required:
+        - id
+        - events
+        - generatedAt
+
+    TimelineEvent:
+      type: object
+      properties:
+        time:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+      required:
+        - time
+        - title
+        - description
+        - category
+
+    GenerateTimelineBody:
+      type: object
+      properties:
+        profileId:
+          type: integer
+      required:
+        - profileId
+
+    VendorEmail:
+      type: object
+      properties:
+        subject:
+          type: string
+        body:
+          type: string
+        vendorType:
+          type: string
+        emailType:
+          type: string
+      required:
+        - subject
+        - body
+        - vendorType
+        - emailType
+
+    GenerateVendorEmailBody:
+      type: object
+      properties:
+        vendorType:
+          type: string
+        emailType:
+          type: string
+        vendorName:
+          type: string
+        weddingDate:
+          type: string
+        venue:
+          type: string
+        guestCount:
+          type: integer
+        additionalNotes:
+          type: string
+      required:
+        - vendorType
+        - emailType
+        - weddingDate
+        - venue
+        - guestCount
+
+    Budget:
+      type: object
+      properties:
+        id:
+          type: integer
+        totalBudget:
+          type: number
+        spent:
+          type: number
+        remaining:
+          type: number
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetItem"
+        updatedAt:
+          type: string
+      required:
+        - id
+        - totalBudget
+        - spent
+        - remaining
+        - items
+        - updatedAt
+
+    BudgetItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        category:
+          type: string
+        vendor:
+          type: string
+        estimatedCost:
+          type: number
+        actualCost:
+          type: number
+        isPaid:
+          type: boolean
+        notes:
+          type: string
+      required:
+        - id
+        - category
+        - vendor
+        - estimatedCost
+        - actualCost
+        - isPaid
+
+    SaveBudgetBody:
+      type: object
+      properties:
+        totalBudget:
+          type: number
+      required:
+        - totalBudget
+
+    AddBudgetItemBody:
+      type: object
+      properties:
+        category:
+          type: string
+        vendor:
+          type: string
+        estimatedCost:
+          type: number
+        actualCost:
+          type: number
+        isPaid:
+          type: boolean
+        notes:
+          type: string
+      required:
+        - category
+        - vendor
+        - estimatedCost
+        - actualCost
+        - isPaid
+
+    UpdateBudgetItemBody:
+      type: object
+      properties:
+        category:
+          type: string
+        vendor:
+          type: string
+        estimatedCost:
+          type: number
+        actualCost:
+          type: number
+        isPaid:
+          type: boolean
+        notes:
+          type: string
+
+    PredictBudgetBody:
+      type: object
+      properties:
+        location:
+          type: string
+        guestCount:
+          type: integer
+        weddingVibe:
+          type: string
+      required:
+        - location
+        - guestCount
+        - weddingVibe
+
+    BudgetPrediction:
+      type: object
+      properties:
+        totalEstimate:
+          type: number
+        breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              estimatedCost:
+                type: number
+              notes:
+                type: string
+            required:
+              - category
+              - estimatedCost
+              - notes
+        aiSuggestions:
+          type: string
+      required:
+        - totalEstimate
+        - breakdown
+        - aiSuggestions
+
+    Checklist:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChecklistItem"
+        generatedAt:
+          type: string
+      required:
+        - items
+        - generatedAt
+
+    ChecklistItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        month:
+          type: string
+        task:
+          type: string
+        description:
+          type: string
+        isCompleted:
+          type: boolean
+        completedAt:
+          type: string
+      required:
+        - id
+        - month
+        - task
+        - description
+        - isCompleted
+
+    GenerateChecklistBody:
+      type: object
+      properties:
+        weddingDate:
+          type: string
+        weddingVibe:
+          type: string
+        guestCount:
+          type: integer
+      required:
+        - weddingDate
+        - weddingVibe
+        - guestCount
+
+    ToggleChecklistItemBody:
+      type: object
+      properties:
+        isCompleted:
+          type: boolean
+      required:
+        - isCompleted
+
+    EmergencyAdviceBody:
+      type: object
+      properties:
+        situation:
+          type: string
+      required:
+        - situation
+
+    EmergencyAdvice:
+      type: object
+      properties:
+        advice:
+          type: string
+        steps:
+          type: array
+          items:
+            type: string
+      required:
+        - advice
+        - steps
+
+    DashboardSummary:
+      type: object
+      properties:
+        daysUntilWedding:
+          type: integer
+        checklistProgress:
+          type: number
+        budgetSpent:
+          type: number
+        budgetTotal:
+          type: number
+        budgetRemaining:
+          type: number
+        timelineEventCount:
+          type: integer
+        checklistCompleted:
+          type: integer
+        checklistTotal:
+          type: integer
+        hasProfile:
+          type: boolean
+        hasTimeline:
+          type: boolean
+        hasChecklist:
+          type: boolean
+      required:
+        - daysUntilWedding
+        - checklistProgress
+        - budgetSpent
+        - budgetTotal
+        - budgetRemaining
+        - timelineEventCount
+        - checklistCompleted
+        - checklistTotal
+        - hasProfile
+        - hasTimeline
+        - hasChecklist

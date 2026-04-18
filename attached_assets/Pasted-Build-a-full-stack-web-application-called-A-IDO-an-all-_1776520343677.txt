@@ -1,0 +1,45 @@
+Build a full-stack web application called A.IDO — an all‑in‑one AI Wedding Planning OS.
+The app should have a clean, modern, mobile‑friendly dashboard UI with the following core modules:
+1. Wedding Profile
+A page where users enter and save:
+• 	Names
+• 	Wedding date
+• 	Ceremony time
+- Reception time
+- Venue
+- Guest count
+- Wedding vibe/style
+Store this profile in a simple backend database (JSON or lightweight DB).
+2. AI Timeline Generator
+A page with a form that uses the saved wedding profile to generate a full wedding day timeline.
+When the user clicks “Generate Timeline,” call an OpenAI API endpoint.
+The AI should return a detailed, hour‑by‑hour schedule from morning prep through reception.
+Display the timeline in a styled results section with the ability to regenerate or export.
+3. AI Vendor Email Assistant
+A tool where users select a vendor type (venue, photographer, DJ, florist, etc.) and the app auto‑writes:
+- Inquiry emails
+- Quote requests
+- Negotiation emails
+- Follow‑ups
+Send the form inputs to an OpenAI API route and return the generated email text.
+4. AI Budget Manager
+A budgeting page that:
+- Predicts estimated costs based on location + guest count
+- Lets users enter actual vendor quotes
+- Shows totals, remaining budget, and suggestions
+Use simple backend storage and an AI endpoint for cost predictions.
+5. AI Checklist System
+Auto‑generate a month‑by‑month wedding planning checklist based on the wedding date.
+Allow users to check off tasks and save progress.
+6. Day‑Of Coordinator Mode
+A simplified mobile view that shows the timeline and gives real‑time guidance.
+Include a “What do I do if…?” emergency button that sends a prompt to the AI.
+Technical Requirements:
+- Use a modern frontend framework (React or Replit’s default).
+- Create backend routes for all AI calls.
+- Use environment variables for API keys.
+- Include loading states and error handling for all AI requests.
+- Make the UI clean, minimal, and professional.
+- Deploy the app so it runs immediately.
+Goal:
+Deliver a fully functional, cleanly designed, all‑in‑one AI wedding planning platform with timeline generation, vendor email automation, budgeting, checklists, and day‑of tools — all powered by OpenAI and running end‑to‑end inside Replit.
