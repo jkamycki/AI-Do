@@ -22,10 +22,6 @@ interface Member {
   side: string;
   phone?: string | null;
   email?: string | null;
-  outfitDetails?: string | null;
-  shoeSize?: string | null;
-  outfitStore?: string | null;
-  fittingDate?: string | null;
   notes?: string | null;
   sortOrder: number;
   createdAt: string;
@@ -339,7 +335,7 @@ export default function WeddingParty() {
             </div>
             <h3 className="text-xl font-serif text-foreground mb-2">No wedding party yet</h3>
             <p className="text-muted-foreground mb-6 max-w-sm text-sm">
-              Add your bridesmaids, groomsmen, flower girls, and more. Track outfit details, fitting dates, and contact info all in one place.
+              Add your bridesmaids, groomsmen, flower girls, and more. Keep all their contact info and notes in one place.
             </p>
             <Button onClick={() => setIsAdding(true)}>
               <Plus className="h-4 w-4 mr-2" /> Add First Member
