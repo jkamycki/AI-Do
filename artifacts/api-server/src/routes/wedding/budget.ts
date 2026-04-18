@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { budgets, budgetItems, weddingProfiles } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { budgets, budgetItems, weddingProfiles, budgetPaymentLogs } from "@workspace/db";
+import { eq, desc, asc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
@@ -254,6 +254,80 @@ router.delete("/budget/items/:id", requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     req.log.error(err, "Failed to delete budget item");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Payment Logs ──────────────────────────────────────────────────────────────
+
+router.get("/budget/items/:id/payments", requireAuth, async (req, res) => {
+  try {
+    const itemId = parseInt(req.params.id);
+    const logs = await db
+      .select()
+      .from(budgetPaymentLogs)
+      .where(eq(budgetPaymentLogs.budgetItemId, itemId))
+      .orderBy(asc(budgetPaymentLogs.paidAt));
+    res.json(
+      logs.map(l => ({
+        id: l.id,
+        amount: parseFloat(l.amount as string),
+        note: l.note ?? null,
+        paidAt: l.paidAt.toISOString(),
+      }))
+    );
+  } catch (err) {
+    req.log.error(err, "Failed to get payment logs");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/budget/items/:id/payments", requireAuth, async (req, res) => {
+  try {
+    const itemId = parseInt(req.params.id);
+    const { amount, note } = req.body;
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      res.status(400).json({ error: "amount must be a positive number" });
+      return;
+    }
+
+    // Get current item to calculate new amountPaid
+    const [item] = await db.select().from(budgetItems).where(eq(budgetItems.id, itemId)).limit(1);
+    if (!item) {
+      res.status(404).json({ error: "Budget item not found" });
+      return;
+    }
+
+    // Insert the log entry
+    const [log] = await db
+      .insert(budgetPaymentLogs)
+      .values({
+        budgetItemId: itemId,
+        amount: String(amount),
+        note: note ?? null,
+      })
+      .returning();
+
+    // Update the running total on the item
+    const currentPaid = parseFloat((item.amountPaid ?? "0") as string);
+    const newPaid = currentPaid + parseFloat(String(amount));
+    const actualCost = parseFloat(item.actualCost as string);
+    const fullyPaid = newPaid >= actualCost;
+    await db
+      .update(budgetItems)
+      .set({ amountPaid: String(newPaid), ...(fullyPaid ? { isPaid: true } : {}) })
+      .where(eq(budgetItems.id, itemId));
+
+    res.json({
+      id: log.id,
+      amount: parseFloat(log.amount as string),
+      note: log.note ?? null,
+      paidAt: log.paidAt.toISOString(),
+      newAmountPaid: newPaid,
+      isPaid: fullyPaid,
+    });
+  } catch (err) {
+    req.log.error(err, "Failed to add payment log");
     res.status(500).json({ error: "Internal server error" });
   }
 });

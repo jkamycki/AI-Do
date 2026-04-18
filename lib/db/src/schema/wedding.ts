@@ -61,6 +61,15 @@ export const insertBudgetItemSchema = createInsertSchema(budgetItems).omit({ id:
 export type InsertBudgetItem = z.infer<typeof insertBudgetItemSchema>;
 export type BudgetItem = typeof budgetItems.$inferSelect;
 
+export const budgetPaymentLogs = pgTable("budget_payment_logs", {
+  id: serial("id").primaryKey(),
+  budgetItemId: integer("budget_item_id").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  note: text("note"),
+  paidAt: timestamp("paid_at").defaultNow().notNull(),
+});
+export type BudgetPaymentLog = typeof budgetPaymentLogs.$inferSelect;
+
 export const checklistItems = pgTable("checklist_items", {
   id: serial("id").primaryKey(),
   profileId: integer("profile_id").notNull(),

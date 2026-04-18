@@ -255,6 +255,44 @@ export const DeleteBudgetItemResponse = zod.object({
 });
 
 /**
+ * @summary Get payment history for a budget item
+ */
+export const GetBudgetItemPaymentsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetBudgetItemPaymentsResponseItem = zod.object({
+  id: zod.number(),
+  amount: zod.number(),
+  note: zod.string().nullish(),
+  paidAt: zod.string(),
+});
+export const GetBudgetItemPaymentsResponse = zod.array(
+  GetBudgetItemPaymentsResponseItem,
+);
+
+/**
+ * @summary Log a payment against a budget item
+ */
+export const AddBudgetItemPaymentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AddBudgetItemPaymentBody = zod.object({
+  amount: zod.number(),
+  note: zod.string().nullish(),
+});
+
+export const AddBudgetItemPaymentResponse = zod.object({
+  id: zod.number(),
+  amount: zod.number(),
+  note: zod.string().nullish(),
+  paidAt: zod.string(),
+  newAmountPaid: zod.number(),
+  isPaid: zod.boolean(),
+});
+
+/**
  * @summary Get wedding checklist
  */
 export const GetChecklistResponse = zod.object({

@@ -17,6 +17,13 @@ export interface SuccessResponse {
   success: boolean;
 }
 
+export interface PaymentLogEntry {
+  id: number;
+  amount: number;
+  note?: string | null;
+  paidAt: string;
+}
+
 export interface WeddingProfile {
   id: number;
   partner1Name: string;
@@ -362,3 +369,17 @@ export interface DashboardSummary {
   upcomingTasks?: DashboardSummaryUpcomingTasksItem[];
   profile?: DashboardSummaryProfile;
 }
+
+export type AddBudgetItemPaymentBody = {
+  amount: number;
+  note?: string | null;
+};
+
+export type AddBudgetItemPayment200 = {
+  id: number;
+  amount: number;
+  note?: string | null;
+  paidAt: string;
+  newAmountPaid: number;
+  isPaid: boolean;
+};

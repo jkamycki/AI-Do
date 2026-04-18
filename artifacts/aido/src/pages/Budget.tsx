@@ -10,7 +10,9 @@ import {
   useGetProfile,
   getGetBudgetQueryKey,
   useUpdateBudgetItem,
-  useDeleteBudgetItem
+  useDeleteBudgetItem,
+  useGetBudgetItemPayments,
+  useAddBudgetItemPayment,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -25,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard } from "lucide-react";
+import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const itemSchema = z.object({
@@ -102,6 +104,129 @@ function PaymentProgressCell({
   );
 }
 
+function LogPaymentContent({
+  item,
+  onDone,
+}: {
+  item: { id: number; vendor: string; actualCost: number; amountPaid: number };
+  onDone: () => void;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: payments, isLoading } = useGetBudgetItemPayments({ id: item.id });
+  const addPayment = useAddBudgetItemPayment();
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+
+  const totalLogged = payments ? payments.reduce((s, p) => s + p.amount, 0) : item.amountPaid;
+  const pct = item.actualCost > 0 ? Math.min((totalLogged / item.actualCost) * 100, 100) : 0;
+  const amountNum = parseFloat(amount);
+  const projectedTotal = !isNaN(amountNum) ? totalLogged + amountNum : totalLogged;
+  const willComplete = projectedTotal >= item.actualCost;
+
+  const handleSubmit = () => {
+    if (isNaN(amountNum) || amountNum <= 0) return;
+    addPayment.mutate(
+      { id: item.id, data: { amount: amountNum, ...(note.trim() ? { note: note.trim() } : {}) } },
+      {
+        onSuccess: () => {
+          toast({ title: "Payment logged", description: `$${amountNum.toLocaleString()} recorded for ${item.vendor}.` });
+          queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
+          setAmount("");
+          setNote("");
+        },
+        onError: () => {
+          toast({ variant: "destructive", title: "Error", description: "Could not log payment." });
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-5 py-1">
+      {/* Progress bar */}
+      <div className="space-y-1.5">
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>Total paid</span>
+          <span className="font-medium text-foreground">${totalLogged.toLocaleString()} of ${item.actualCost.toLocaleString()}</span>
+        </div>
+        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${pct >= 100 ? "bg-emerald-500" : pct > 50 ? "bg-primary" : "bg-amber-400"}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <p className="text-[10px] text-muted-foreground text-right">{pct.toFixed(0)}% paid</p>
+      </div>
+
+      {/* Payment history */}
+      {isLoading ? (
+        <div className="text-xs text-muted-foreground text-center py-2">Loading history…</div>
+      ) : payments && payments.length > 0 ? (
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+            <History className="h-3 w-3" /> Payment history
+          </p>
+          <div className="max-h-40 overflow-y-auto rounded-lg border border-border/50 divide-y divide-border/40">
+            {payments.map(p => (
+              <div key={p.id} className="flex items-start justify-between px-3 py-2 text-sm">
+                <div>
+                  <span className="font-medium text-foreground">${p.amount.toLocaleString()}</span>
+                  {p.note && <span className="ml-2 text-muted-foreground text-xs italic">{p.note}</span>}
+                </div>
+                <span className="text-xs text-muted-foreground shrink-0 ml-3">
+                  {new Date(p.paidAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground text-center py-1">No payments recorded yet.</p>
+      )}
+
+      {/* Add payment */}
+      <div className="space-y-3 pt-1 border-t border-border/40">
+        <p className="text-sm font-medium">Log a new payment</p>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
+            placeholder="Amount paid today"
+            autoFocus
+            className="w-full pl-7 pr-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-background"
+          />
+        </div>
+        <input
+          type="text"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="Note (optional) — e.g. deposit, final payment…"
+          className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-background"
+        />
+        {amount && !isNaN(amountNum) && amountNum > 0 && (
+          <p className="text-xs text-muted-foreground">
+            New total: <span className="font-semibold text-foreground">${projectedTotal.toLocaleString()}</span> of ${item.actualCost.toLocaleString()}
+            {willComplete && <span className="ml-1 text-emerald-600 font-medium">· Fully paid! ✓</span>}
+          </p>
+        )}
+        <Button
+          className="w-full"
+          onClick={handleSubmit}
+          disabled={addPayment.isPending || !amount || isNaN(amountNum) || amountNum <= 0}
+        >
+          {addPayment.isPending ? "Saving…" : "Record Payment"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function Budget() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -118,8 +243,6 @@ export default function Budget() {
   const [isPredicting, setIsPredicting] = useState(false);
   const [editingItem, setEditingItem] = useState<{ id: number; category: string; vendor: string; estimatedCost: number; actualCost: number; amountPaid: number; isPaid: boolean; notes?: string | null } | null>(null);
   const [logPaymentItem, setLogPaymentItem] = useState<{ id: number; vendor: string; actualCost: number; amountPaid: number } | null>(null);
-  const [logPaymentAmount, setLogPaymentAmount] = useState("");
-  const [logPaymentNote, setLogPaymentNote] = useState("");
 
   const CATEGORIES = ["Venue", "Catering", "Photography", "Florist", "Attire", "Music", "Decor", "Other"];
 
@@ -230,29 +353,6 @@ export default function Budget() {
     });
   };
 
-  const handleLogPayment = () => {
-    if (!logPaymentItem) return;
-    const amount = parseFloat(logPaymentAmount);
-    if (isNaN(amount) || amount <= 0) return;
-    const newTotal = logPaymentItem.amountPaid + amount;
-    const fullyPaid = newTotal >= logPaymentItem.actualCost;
-    updateItem.mutate(
-      { id: logPaymentItem.id, data: { amountPaid: newTotal, ...(fullyPaid ? { isPaid: true } : {}) } },
-      {
-        onSuccess: () => {
-          toast({ title: "Payment logged", description: `$${amount.toLocaleString()} recorded for ${logPaymentItem.vendor}.` });
-          queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
-          setLogPaymentItem(null);
-          setLogPaymentAmount("");
-          setLogPaymentNote("");
-        },
-        onError: () => {
-          toast({ variant: "destructive", title: "Error", description: "Could not log payment." });
-        },
-      }
-    );
-  };
-
   const handlePredict = () => {
     if (!profile) {
       toast({ variant: "destructive", title: "Profile Required", description: "Complete your profile first." });
@@ -294,57 +394,19 @@ export default function Budget() {
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* ── Log Payment Dialog ── */}
-      <Dialog open={!!logPaymentItem} onOpenChange={open => { if (!open) { setLogPaymentItem(null); setLogPaymentAmount(""); setLogPaymentNote(""); } }}>
-        <DialogContent className="sm:max-w-[360px]">
+      <Dialog open={!!logPaymentItem} onOpenChange={open => { if (!open) setLogPaymentItem(null); }}>
+        <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
             <DialogTitle className="font-serif text-2xl text-primary flex items-center gap-2">
-              <CreditCard className="h-5 w-5" /> Log a Payment
+              <CreditCard className="h-5 w-5" /> Payment Tracker
             </DialogTitle>
             <DialogDescription>
-              {logPaymentItem && (
-                <>
-                  Recording a payment for <strong>{logPaymentItem.vendor}</strong>.{" "}
-                  Already paid: <strong>${logPaymentItem.amountPaid.toLocaleString()}</strong> of ${logPaymentItem.actualCost.toLocaleString()}.
-                </>
-              )}
+              {logPaymentItem && <>Payments for <strong>{logPaymentItem.vendor}</strong></>}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Amount paid this time ($)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={logPaymentAmount}
-                  onChange={e => setLogPaymentAmount(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") handleLogPayment(); }}
-                  placeholder="0.00"
-                  autoFocus
-                  className="w-full pl-7 pr-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-background"
-                />
-              </div>
-              {logPaymentItem && logPaymentAmount && !isNaN(parseFloat(logPaymentAmount)) && (
-                <p className="text-xs text-muted-foreground">
-                  New total paid: <span className="font-semibold text-foreground">
-                    ${(logPaymentItem.amountPaid + parseFloat(logPaymentAmount || "0")).toLocaleString()}
-                  </span> of ${logPaymentItem.actualCost.toLocaleString()}
-                  {logPaymentItem.amountPaid + parseFloat(logPaymentAmount || "0") >= logPaymentItem.actualCost && (
-                    <span className="ml-1 text-emerald-600 font-medium">· Fully paid! ✓</span>
-                  )}
-                </p>
-              )}
-            </div>
-            <Button
-              className="w-full"
-              onClick={handleLogPayment}
-              disabled={updateItem.isPending || !logPaymentAmount || isNaN(parseFloat(logPaymentAmount)) || parseFloat(logPaymentAmount) <= 0}
-            >
-              {updateItem.isPending ? "Saving…" : "Record Payment"}
-            </Button>
-          </div>
+          {logPaymentItem && (
+            <LogPaymentContent item={logPaymentItem} onDone={() => setLogPaymentItem(null)} />
+          )}
         </DialogContent>
       </Dialog>
 

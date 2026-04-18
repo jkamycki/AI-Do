@@ -252,6 +252,78 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
 
+  /budget/items/{id}/payments:
+    get:
+      operationId: getBudgetItemPayments
+      tags: [budget]
+      summary: Get payment history for a budget item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Payment log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentLogEntry"
+    post:
+      operationId: addBudgetItemPayment
+      tags: [budget]
+      summary: Log a payment against a budget item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                note:
+                  type: string
+                  nullable: true
+              required:
+                - amount
+      responses:
+        "200":
+          description: Created payment log
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  amount:
+                    type: number
+                  note:
+                    type: string
+                    nullable: true
+                  paidAt:
+                    type: string
+                  newAmountPaid:
+                    type: number
+                  isPaid:
+                    type: boolean
+                required:
+                  - id
+                  - amount
+                  - paidAt
+                  - newAmountPaid
+                  - isPaid
+
   /checklist:
     get:
       operationId: getChecklist
@@ -663,6 +735,23 @@ components:
           type: boolean
       required:
         - success
+
+    PaymentLogEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        amount:
+          type: number
+        note:
+          type: string
+          nullable: true
+        paidAt:
+          type: string
+      required:
+        - id
+        - amount
+        - paidAt
 
     WeddingProfile:
       type: object
