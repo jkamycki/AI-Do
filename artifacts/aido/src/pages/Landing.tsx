@@ -115,7 +115,7 @@ export default function Landing() {
             <span>Loved by <strong className="text-foreground">2,400+</strong> couples</span>
             <span className="mx-1">·</span>
             <Stars count={5} />
-            <span className="font-medium text-foreground">4.9</span>
+            <span className="font-medium text-foreground">5.0</span>
           </div>
         </section>
 
@@ -149,7 +149,7 @@ export default function Landing() {
               <h2 className="font-serif text-3xl md:text-4xl text-primary mb-3">Couples who planned with A.IDO</h2>
               <div className="flex items-center justify-center gap-2 text-muted-foreground">
                 <Stars />
-                <span className="font-semibold text-foreground text-lg">4.9</span>
+                <span className="font-semibold text-foreground text-lg">5.0</span>
                 <span>from 2,400+ reviews</span>
               </div>
             </div>
