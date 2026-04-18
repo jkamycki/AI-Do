@@ -211,3 +211,21 @@ export const seatingCharts = pgTable("seating_charts", {
 });
 
 export type SeatingChart = typeof seatingCharts.$inferSelect;
+
+export const guests = pgTable("guests", {
+  id: serial("id").primaryKey(),
+  profileId: integer("profile_id").notNull(),
+  name: text("name").notNull(),
+  email: text("email"),
+  rsvpStatus: text("rsvp_status").notNull().default("pending"),
+  mealChoice: text("meal_choice"),
+  plusOne: boolean("plus_one").notNull().default(false),
+  plusOneName: text("plus_one_name"),
+  tableAssignment: text("table_assignment"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertGuestSchema = createInsertSchema(guests).omit({ id: true, createdAt: true });
+export type InsertGuest = z.infer<typeof insertGuestSchema>;
+export type Guest = typeof guests.$inferSelect;

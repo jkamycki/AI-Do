@@ -23,6 +23,7 @@ import type {
   BudgetPrediction,
   Checklist,
   ChecklistItem,
+  CreateGuest,
   CreatePaymentBody,
   CreateVendorBody,
   DashboardSummary,
@@ -32,6 +33,8 @@ import type {
   GenerateChecklistBody,
   GenerateTimelineBody,
   GenerateVendorEmailBody,
+  Guest,
+  GuestList,
   HealthStatus,
   PredictBudgetBody,
   SaveBudgetBody,
@@ -42,6 +45,7 @@ import type {
   Timeline,
   ToggleChecklistItemBody,
   UpdateBudgetItemBody,
+  UpdateGuest,
   UpdatePaymentBody,
   UpdateVendorBody,
   UploadUrlRequest,
@@ -2385,3 +2389,325 @@ export function useGetDashboardSummary<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get all guests for the wedding
+ */
+export const getGetGuestsUrl = () => {
+  return `/api/guests`;
+};
+
+export const getGuests = async (options?: RequestInit): Promise<GuestList> => {
+  return customFetch<GuestList>(getGetGuestsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetGuestsQueryKey = () => {
+  return [`/api/guests`] as const;
+};
+
+export const getGetGuestsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getGuests>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getGuests>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetGuestsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getGuests>>> = ({
+    signal,
+  }) => getGuests({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getGuests>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetGuestsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getGuests>>
+>;
+export type GetGuestsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all guests for the wedding
+ */
+
+export function useGetGuests<
+  TData = Awaited<ReturnType<typeof getGuests>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getGuests>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetGuestsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a new guest
+ */
+export const getAddGuestUrl = () => {
+  return `/api/guests`;
+};
+
+export const addGuest = async (
+  createGuest: CreateGuest,
+  options?: RequestInit,
+): Promise<Guest> => {
+  return customFetch<Guest>(getAddGuestUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createGuest),
+  });
+};
+
+export const getAddGuestMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addGuest>>,
+    TError,
+    { data: BodyType<CreateGuest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addGuest>>,
+  TError,
+  { data: BodyType<CreateGuest> },
+  TContext
+> => {
+  const mutationKey = ["addGuest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addGuest>>,
+    { data: BodyType<CreateGuest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return addGuest(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddGuestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addGuest>>
+>;
+export type AddGuestMutationBody = BodyType<CreateGuest>;
+export type AddGuestMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a new guest
+ */
+export const useAddGuest = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addGuest>>,
+    TError,
+    { data: BodyType<CreateGuest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addGuest>>,
+  TError,
+  { data: BodyType<CreateGuest> },
+  TContext
+> => {
+  return useMutation(getAddGuestMutationOptions(options));
+};
+
+/**
+ * @summary Update a guest
+ */
+export const getUpdateGuestUrl = (id: number) => {
+  return `/api/guests/${id}`;
+};
+
+export const updateGuest = async (
+  id: number,
+  updateGuest: UpdateGuest,
+  options?: RequestInit,
+): Promise<Guest> => {
+  return customFetch<Guest>(getUpdateGuestUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateGuest),
+  });
+};
+
+export const getUpdateGuestMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateGuest>>,
+    TError,
+    { id: number; data: BodyType<UpdateGuest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateGuest>>,
+  TError,
+  { id: number; data: BodyType<UpdateGuest> },
+  TContext
+> => {
+  const mutationKey = ["updateGuest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateGuest>>,
+    { id: number; data: BodyType<UpdateGuest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateGuest(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateGuestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateGuest>>
+>;
+export type UpdateGuestMutationBody = BodyType<UpdateGuest>;
+export type UpdateGuestMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a guest
+ */
+export const useUpdateGuest = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateGuest>>,
+    TError,
+    { id: number; data: BodyType<UpdateGuest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateGuest>>,
+  TError,
+  { id: number; data: BodyType<UpdateGuest> },
+  TContext
+> => {
+  return useMutation(getUpdateGuestMutationOptions(options));
+};
+
+/**
+ * @summary Delete a guest
+ */
+export const getDeleteGuestUrl = (id: number) => {
+  return `/api/guests/${id}`;
+};
+
+export const deleteGuest = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getDeleteGuestUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteGuestMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteGuest>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteGuest>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteGuest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteGuest>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteGuest(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteGuestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteGuest>>
+>;
+
+export type DeleteGuestMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a guest
+ */
+export const useDeleteGuest = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteGuest>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteGuest>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteGuestMutationOptions(options));
+};

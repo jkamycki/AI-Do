@@ -17,6 +17,7 @@ import supportRouter from "./support";
 import helpRouter from "./help";
 import contractsRouter from "./contracts";
 import seatingRouter from "./seating";
+import guestsRouter from "./guests";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(supportRouter);
 router.use(helpRouter);
 router.use(contractsRouter);
 router.use(seatingRouter);
+router.use(guestsRouter);
 
 export default router;

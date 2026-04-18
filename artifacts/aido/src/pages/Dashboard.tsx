@@ -3,6 +3,7 @@ import { useUser } from "@clerk/react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { OnboardingWizard, useOnboardingWizard } from "@/components/OnboardingWizard";
 import {
   CalendarDays,
   DollarSign,
@@ -15,6 +16,9 @@ import {
   Heart,
   MapPin,
   AlertCircle,
+  Users,
+  UsersRound,
+  AlertTriangle,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -154,6 +158,7 @@ function FeatureCard({
 export default function Dashboard() {
   const { data: summary, isLoading, isError } = useGetDashboardSummary();
   const { user } = useUser();
+  const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingWizard(summary?.hasProfile ?? true);
 
   const firstName = user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] ?? "there";
 
@@ -192,6 +197,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
+      <OnboardingWizard open={showOnboarding} onDismiss={dismissOnboarding} />
 
       {/* Greeting */}
       <div>
@@ -253,7 +259,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <StatChip
           icon={DollarSign}
           label="Budget"
@@ -278,6 +284,13 @@ export default function Dashboard() {
           href="/timeline"
         />
         <StatChip
+          icon={UsersRound}
+          label="Guests"
+          value={`${summary.guestCount ?? 0}`}
+          sub="on the list"
+          href="/guests"
+        />
+        <StatChip
           icon={MapPin}
           label="Profile"
           value={summary.hasProfile ? "Complete" : "Pending"}
@@ -285,6 +298,32 @@ export default function Dashboard() {
           href="/profile"
         />
       </div>
+
+      {/* Upcoming tasks alert */}
+      {summary.upcomingTasks && summary.upcomingTasks.length > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+            <span className="text-sm font-semibold text-amber-800 uppercase tracking-wider">Needs Attention</span>
+          </div>
+          <div className="space-y-2">
+            {summary.upcomingTasks.map(task => (
+              <div key={task.id} className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0 mt-2" />
+                <div>
+                  <span className="text-sm text-amber-900 font-medium">{task.task}</span>
+                  <span className="text-xs text-amber-600 ml-2">{task.month}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Link href="/checklist" className="mt-3 inline-block">
+            <Button variant="outline" size="sm" className="border-amber-300 text-amber-800 hover:bg-amber-100 mt-2">
+              View Checklist <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Feature Cards */}
       <div>
@@ -351,6 +390,20 @@ export default function Dashboard() {
             cta="/vendor-email"
             ctaLabel="Draft an Email"
             testId="btn-goto-vendor-email"
+          />
+
+          <FeatureCard
+            icon={UsersRound}
+            title="Guest List"
+            description="Track every guest's RSVP, meal choice, plus one, and table assignment all in one place."
+            cta="/guests"
+            ctaLabel="Manage Guests"
+            stat={
+              summary.guestCount != null && summary.guestCount > 0
+                ? <div className="text-sm font-medium text-primary">{summary.guestCount} guests added</div>
+                : <div className="text-xs text-muted-foreground">No guests added yet</div>
+            }
+            testId="btn-goto-guests"
           />
 
           <FeatureCard

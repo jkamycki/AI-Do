@@ -580,7 +580,103 @@ export const GetDashboardSummaryResponse = zod.object({
   timelineEventCount: zod.number(),
   checklistCompleted: zod.number(),
   checklistTotal: zod.number(),
+  guestCount: zod.number(),
   hasProfile: zod.boolean(),
   hasTimeline: zod.boolean(),
   hasChecklist: zod.boolean(),
+  upcomingTasks: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        task: zod.string(),
+        month: zod.string(),
+        isCompleted: zod.boolean(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Get all guests for the wedding
+ */
+export const GetGuestsResponse = zod.object({
+  guests: zod.array(
+    zod.object({
+      id: zod.number(),
+      profileId: zod.number(),
+      name: zod.string(),
+      email: zod.string().nullish(),
+      rsvpStatus: zod.string(),
+      mealChoice: zod.string().nullish(),
+      plusOne: zod.boolean(),
+      plusOneName: zod.string().nullish(),
+      tableAssignment: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  ),
+  summary: zod.object({
+    total: zod.number(),
+    attending: zod.number(),
+    declined: zod.number(),
+    pending: zod.number(),
+    plusOnes: zod.number(),
+  }),
+});
+
+/**
+ * @summary Add a new guest
+ */
+export const AddGuestBody = zod.object({
+  name: zod.string(),
+  email: zod.string().optional(),
+  rsvpStatus: zod.string().optional(),
+  mealChoice: zod.string().optional(),
+  plusOne: zod.boolean().optional(),
+  plusOneName: zod.string().optional(),
+  tableAssignment: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+/**
+ * @summary Update a guest
+ */
+export const UpdateGuestParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateGuestBody = zod.object({
+  name: zod.string().optional(),
+  email: zod.string().optional(),
+  rsvpStatus: zod.string().optional(),
+  mealChoice: zod.string().optional(),
+  plusOne: zod.boolean().optional(),
+  plusOneName: zod.string().optional(),
+  tableAssignment: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+export const UpdateGuestResponse = zod.object({
+  id: zod.number(),
+  profileId: zod.number(),
+  name: zod.string(),
+  email: zod.string().nullish(),
+  rsvpStatus: zod.string(),
+  mealChoice: zod.string().nullish(),
+  plusOne: zod.boolean(),
+  plusOneName: zod.string().nullish(),
+  tableAssignment: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Delete a guest
+ */
+export const DeleteGuestParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteGuestResponse = zod.object({
+  success: zod.boolean(),
 });

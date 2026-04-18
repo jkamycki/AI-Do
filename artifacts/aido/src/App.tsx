@@ -24,6 +24,7 @@ import ContractReader from "@/pages/ContractReader";
 import SeatingChart from "@/pages/SeatingChart";
 import InviteAccept from "@/pages/InviteAccept";
 import SharedWorkspace from "@/pages/SharedWorkspace";
+import Guests from "@/pages/Guests";
 import NotFound from "@/pages/not-found";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -207,6 +208,7 @@ function Router() {
       <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
       <Route path="/contract-reader" component={() => <ProtectedRoute component={ContractReader} />} />
       <Route path="/seating-chart" component={() => <ProtectedRoute component={SeatingChart} />} />
+      <Route path="/guests" component={() => <ProtectedRoute component={Guests} />} />
       <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} />} />
       <Route component={NotFound} />
     </Switch>

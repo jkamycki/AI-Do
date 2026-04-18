@@ -274,6 +274,62 @@ export interface UploadUrlResponse {
   objectPath: string;
 }
 
+export interface Guest {
+  id: number;
+  profileId: number;
+  name: string;
+  email?: string | null;
+  rsvpStatus: string;
+  mealChoice?: string | null;
+  plusOne: boolean;
+  plusOneName?: string | null;
+  tableAssignment?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export type GuestListSummary = {
+  total: number;
+  attending: number;
+  declined: number;
+  pending: number;
+  plusOnes: number;
+};
+
+export interface GuestList {
+  guests: Guest[];
+  summary: GuestListSummary;
+}
+
+export interface CreateGuest {
+  name: string;
+  email?: string;
+  rsvpStatus?: string;
+  mealChoice?: string;
+  plusOne?: boolean;
+  plusOneName?: string;
+  tableAssignment?: string;
+  notes?: string;
+}
+
+export interface UpdateGuest {
+  name?: string;
+  email?: string;
+  rsvpStatus?: string;
+  mealChoice?: string;
+  plusOne?: boolean;
+  plusOneName?: string;
+  tableAssignment?: string;
+  notes?: string;
+}
+
+export type DashboardSummaryUpcomingTasksItem = {
+  id: number;
+  task: string;
+  month: string;
+  isCompleted: boolean;
+};
+
 export interface DashboardSummary {
   daysUntilWedding: number;
   checklistProgress: number;
@@ -283,7 +339,9 @@ export interface DashboardSummary {
   timelineEventCount: number;
   checklistCompleted: number;
   checklistTotal: number;
+  guestCount: number;
   hasProfile: boolean;
   hasTimeline: boolean;
   hasChecklist: boolean;
+  upcomingTasks?: DashboardSummaryUpcomingTasksItem[];
 }

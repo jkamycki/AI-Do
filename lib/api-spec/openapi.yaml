@@ -26,6 +26,8 @@ tags:
     description: Day-of coordinator mode
   - name: dashboard
     description: Dashboard summary
+  - name: guests
+    description: Guest list management
   - name: storage
     description: Object storage upload and serving endpoints
 paths:
@@ -563,6 +565,78 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardSummary"
+
+  /guests:
+    get:
+      operationId: getGuests
+      tags: [guests]
+      summary: Get all guests for the wedding
+      responses:
+        "200":
+          description: Guest list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuestList"
+    post:
+      operationId: addGuest
+      tags: [guests]
+      summary: Add a new guest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGuest"
+      responses:
+        "201":
+          description: Created guest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Guest"
+
+  /guests/{id}:
+    put:
+      operationId: updateGuest
+      tags: [guests]
+      summary: Update a guest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateGuest"
+      responses:
+        "200":
+          description: Updated guest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Guest"
+    delete:
+      operationId: deleteGuest
+      tags: [guests]
+      summary: Delete a guest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
 
 components:
   schemas:
@@ -1201,6 +1275,116 @@ components:
         - uploadURL
         - objectPath
 
+    Guest:
+      type: object
+      properties:
+        id:
+          type: integer
+        profileId:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          nullable: true
+        rsvpStatus:
+          type: string
+        mealChoice:
+          type: string
+          nullable: true
+        plusOne:
+          type: boolean
+        plusOneName:
+          type: string
+          nullable: true
+        tableAssignment:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - profileId
+        - name
+        - rsvpStatus
+        - plusOne
+        - createdAt
+
+    GuestList:
+      type: object
+      properties:
+        guests:
+          type: array
+          items:
+            $ref: "#/components/schemas/Guest"
+        summary:
+          type: object
+          properties:
+            total:
+              type: integer
+            attending:
+              type: integer
+            declined:
+              type: integer
+            pending:
+              type: integer
+            plusOnes:
+              type: integer
+          required:
+            - total
+            - attending
+            - declined
+            - pending
+            - plusOnes
+      required:
+        - guests
+        - summary
+
+    CreateGuest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        rsvpStatus:
+          type: string
+        mealChoice:
+          type: string
+        plusOne:
+          type: boolean
+        plusOneName:
+          type: string
+        tableAssignment:
+          type: string
+        notes:
+          type: string
+      required:
+        - name
+
+    UpdateGuest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        rsvpStatus:
+          type: string
+        mealChoice:
+          type: string
+        plusOne:
+          type: boolean
+        plusOneName:
+          type: string
+        tableAssignment:
+          type: string
+        notes:
+          type: string
+
     DashboardSummary:
       type: object
       properties:
@@ -1220,12 +1404,32 @@ components:
           type: integer
         checklistTotal:
           type: integer
+        guestCount:
+          type: integer
         hasProfile:
           type: boolean
         hasTimeline:
           type: boolean
         hasChecklist:
           type: boolean
+        upcomingTasks:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              task:
+                type: string
+              month:
+                type: string
+              isCompleted:
+                type: boolean
+            required:
+              - id
+              - task
+              - month
+              - isCompleted
       required:
         - daysUntilWedding
         - checklistProgress
@@ -1235,6 +1439,7 @@ components:
         - timelineEventCount
         - checklistCompleted
         - checklistTotal
+        - guestCount
         - hasProfile
         - hasTimeline
         - hasChecklist

@@ -28,6 +28,10 @@ Full-stack AI-powered wedding planning application. pnpm workspace monorepo usin
 5. **AI Checklist System** — Month-by-month planning tasks personalized by AI
 6. **Day-Of Coordinator Mode** — Emergency AI helper for the wedding day
 7. **Smart Vendor Sync** — Full CRUD vendor management (scoped by userId, not profileId)
+8. **Guest List Manager** — Full CRUD guest list with RSVP tracking, meal choices, plus-ones, table assignments, CSV export (`/guests` route, `guests` DB table)
+9. **Onboarding Wizard** — Multi-step profile setup modal for new users (`OnboardingWizard.tsx`)
+10. **Dashboard: Upcoming Tasks** — Shows checklist items due within 45 days on the dashboard
+11. **Dashboard: Guest Count Chip** — Guest stat chip on dashboard linking to guest list
 8. **PDF Export** — Server-side pdfkit generation with branded A.IDO layout for timeline + vendor emails
 9. **Operations Center** — Admin analytics dashboard with User Metrics, Product Usage, Money Metrics, System Health, and Event Log
 10. **Collaboration System** — Invite-by-link system with Partner/Planner/Vendor roles, accept/decline flow, workspace switching, shared workspace view, and activity log

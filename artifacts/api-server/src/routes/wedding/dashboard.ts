@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { weddingProfiles, timelines, budgets, budgetItems, checklistItems } from "@workspace/db";
+import { weddingProfiles, timelines, budgets, budgetItems, checklistItems, guests } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
@@ -52,6 +52,38 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
     const checklistCompleted = allChecklistItems.filter(item => item.isCompleted).length;
     const checklistProgress = checklistTotal > 0 ? (checklistCompleted / checklistTotal) * 100 : 0;
 
+    const guestRows = hasProfile
+      ? await db.select().from(guests).where(eq(guests.profileId, profileId))
+      : [];
+    const guestCount = guestRows.length;
+
+    function parseMonthsFromLabel(label: string): number | null {
+      const m = label.match(/(\d+)\s+month/i);
+      if (m) return parseInt(m[1]);
+      if (/week/i.test(label)) return 0.25;
+      if (/wedding day/i.test(label)) return 0;
+      return null;
+    }
+
+    let upcomingTasks: { id: number; task: string; month: string; isCompleted: boolean }[] = [];
+    if (hasProfile && hasChecklist) {
+      const weddingDate = new Date(profiles[0].weddingDate + "T12:00:00");
+      const today = new Date();
+      upcomingTasks = allChecklistItems
+        .filter(item => {
+          if (item.isCompleted) return false;
+          const months = parseMonthsFromLabel(item.month);
+          if (months === null) return false;
+          const due = new Date(weddingDate);
+          due.setMonth(due.getMonth() - Math.floor(months));
+          if (months === 0.25) due.setDate(weddingDate.getDate() - 7);
+          const diffDays = (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+          return diffDays <= 45;
+        })
+        .slice(0, 5)
+        .map(item => ({ id: item.id, task: item.task, month: item.month, isCompleted: item.isCompleted }));
+    }
+
     trackEvent(req.userId!, "user_login");
     res.json({
       daysUntilWedding,
@@ -62,9 +94,11 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       timelineEventCount,
       checklistCompleted,
       checklistTotal,
+      guestCount,
       hasProfile,
       hasTimeline,
       hasChecklist,
+      upcomingTasks,
     });
   } catch (err) {
     req.log.error(err, "Failed to get dashboard summary");
