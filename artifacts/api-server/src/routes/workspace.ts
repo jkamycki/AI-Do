@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { db, weddingProfiles, timelines, budgets, budgetItems, checklistItems, workspaceActivity } from "@workspace/db";
+import { db, weddingProfiles, timelines, budgets, budgetItems, checklistItems } from "@workspace/db";
+import { workspaceActivity } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveWorkspaceRole, hasMinRole } from "../lib/workspaceAccess";
@@ -16,14 +17,18 @@ async function getWorkspaceProfile(userId: string, profileId: number) {
     .where(eq(weddingProfiles.id, profileId))
     .limit(1);
 
-  return rows.length ? { profile: rows[0], role } : null;
+  if (!rows.length) return null;
+  return { profile: rows[0], role };
 }
 
 router.get("/workspace/:profileId", requireAuth, async (req, res) => {
   try {
-    const profileId = parseInt(req.params.profileId);
+    const profileId = parseInt(req.params["profileId"] ?? "0");
     const result = await getWorkspaceProfile(req.userId!, profileId);
-    if (!result) return res.status(403).json({ error: "Access denied." });
+    if (!result) {
+      res.status(403).json({ error: "Access denied." });
+      return;
+    }
 
     res.json({
       profile: {
@@ -40,9 +45,12 @@ router.get("/workspace/:profileId", requireAuth, async (req, res) => {
 
 router.get("/workspace/:profileId/timeline", requireAuth, async (req, res) => {
   try {
-    const profileId = parseInt(req.params.profileId);
+    const profileId = parseInt(req.params["profileId"] ?? "0");
     const result = await getWorkspaceProfile(req.userId!, profileId);
-    if (!result) return res.status(403).json({ error: "Access denied." });
+    if (!result) {
+      res.status(403).json({ error: "Access denied." });
+      return;
+    }
 
     const rows = await db
       .select()
@@ -51,7 +59,10 @@ router.get("/workspace/:profileId/timeline", requireAuth, async (req, res) => {
       .orderBy(desc(timelines.generatedAt))
       .limit(1);
 
-    if (!rows.length) return res.json({ events: [], role: result.role });
+    if (!rows.length) {
+      res.json({ events: [], role: result.role });
+      return;
+    }
 
     res.json({
       id: rows[0].id,
@@ -66,12 +77,16 @@ router.get("/workspace/:profileId/timeline", requireAuth, async (req, res) => {
 
 router.get("/workspace/:profileId/budget", requireAuth, async (req, res) => {
   try {
-    const profileId = parseInt(req.params.profileId);
+    const profileId = parseInt(req.params["profileId"] ?? "0");
     const result = await getWorkspaceProfile(req.userId!, profileId);
-    if (!result) return res.status(403).json({ error: "Access denied." });
+    if (!result) {
+      res.status(403).json({ error: "Access denied." });
+      return;
+    }
 
     if (!hasMinRole(result.role, "planner")) {
-      return res.status(403).json({ error: "Insufficient permissions." });
+      res.status(403).json({ error: "Insufficient permissions." });
+      return;
     }
 
     const budgetRows = await db
@@ -80,7 +95,10 @@ router.get("/workspace/:profileId/budget", requireAuth, async (req, res) => {
       .where(eq(budgets.profileId, profileId))
       .limit(1);
 
-    if (!budgetRows.length) return res.json({ budget: null, items: [], role: result.role });
+    if (!budgetRows.length) {
+      res.json({ budget: null, items: [], role: result.role });
+      return;
+    }
 
     const items = await db
       .select()
@@ -107,12 +125,16 @@ router.get("/workspace/:profileId/budget", requireAuth, async (req, res) => {
 
 router.get("/workspace/:profileId/checklist", requireAuth, async (req, res) => {
   try {
-    const profileId = parseInt(req.params.profileId);
+    const profileId = parseInt(req.params["profileId"] ?? "0");
     const result = await getWorkspaceProfile(req.userId!, profileId);
-    if (!result) return res.status(403).json({ error: "Access denied." });
+    if (!result) {
+      res.status(403).json({ error: "Access denied." });
+      return;
+    }
 
     if (!hasMinRole(result.role, "planner")) {
-      return res.status(403).json({ error: "Insufficient permissions." });
+      res.status(403).json({ error: "Insufficient permissions." });
+      return;
     }
 
     const items = await db
@@ -134,11 +156,15 @@ router.get("/workspace/:profileId/checklist", requireAuth, async (req, res) => {
 
 router.get("/workspace/:profileId/activity", requireAuth, async (req, res) => {
   try {
-    const profileId = parseInt(req.params.profileId);
+    const profileId = parseInt(req.params["profileId"] ?? "0");
     const result = await getWorkspaceProfile(req.userId!, profileId);
-    if (!result) return res.status(403).json({ error: "Access denied." });
+    if (!result) {
+      res.status(403).json({ error: "Access denied." });
+      return;
+    }
 
-    const limit = parseInt(String(req.query.limit ?? "50"));
+    const limitParam = req.query["limit"];
+    const limit = parseInt(typeof limitParam === "string" ? limitParam : "50");
     const activities = await db
       .select()
       .from(workspaceActivity)

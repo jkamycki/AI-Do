@@ -13,6 +13,7 @@ import pdfRouter from "./pdf";
 import adminRouter from "./admin";
 import collaboratorsRouter from "./collaborators";
 import workspaceRouter from "./workspace";
+import supportRouter from "./support";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(pdfRouter);
 router.use(adminRouter);
 router.use(collaboratorsRouter);
 router.use(workspaceRouter);
+router.use(supportRouter);
 
 export default router;

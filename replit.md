@@ -31,6 +31,7 @@ Full-stack AI-powered wedding planning application. pnpm workspace monorepo usin
 8. **PDF Export** — Server-side pdfkit generation with branded A.IDO layout for timeline + vendor emails
 9. **Operations Center** — Admin analytics dashboard with User Metrics, Product Usage, Money Metrics, System Health, and Event Log
 10. **Collaboration System** — Invite-by-link system with Partner/Planner/Vendor roles, accept/decline flow, workspace switching, shared workspace view, and activity log
+11. **Virtual Support Assistant (Aria)** — Floating AI chat widget on all authenticated pages; GPT-powered, knows all A.IDO features and general wedding planning; streams responses in real time
 
 ## Authentication Architecture
 
