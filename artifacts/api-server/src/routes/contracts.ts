@@ -16,20 +16,43 @@ const upload = multer({
   },
 });
 
+function sanitizeText(text: string): string {
+  // Remove null bytes and other control characters PostgreSQL can't handle
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/\u0000/g, "").replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ").trim();
+}
+
 async function extractText(buffer: Buffer, mimetype: string): Promise<string> {
   if (mimetype === "text/plain" || mimetype === "text/html") {
-    return buffer.toString("utf8").slice(0, 40000);
+    return sanitizeText(buffer.toString("utf8")).slice(0, 40000);
   }
   if (mimetype === "application/pdf") {
     try {
-      const pdfParse = (await import("pdf-parse")).default;
-      const data = await pdfParse(buffer);
-      return data.text.slice(0, 40000);
+      const { PDFParse } = await import("pdf-parse");
+      const parser = new PDFParse({ data: buffer });
+      const result = await parser.getText();
+      const text = sanitizeText(result.text);
+      if (!text) {
+        throw new Error("No text extracted from PDF");
+      }
+      return text.slice(0, 40000);
     } catch {
-      return buffer.toString("utf8").slice(0, 40000);
+      // PDF binary could not be parsed as text — do NOT fall back to raw bytes
+      return "";
     }
   }
-  return buffer.toString("utf8").slice(0, 40000);
+  // For Word docs and other types attempt raw text but sanitize heavily
+  try {
+    const raw = sanitizeText(buffer.toString("utf8"));
+    // If it looks mostly binary (low ratio of printable chars), reject it
+    const printable = (raw.match(/[\x20-\x7E\n\r\t]/g) ?? []).length;
+    if (raw.length > 0 && printable / raw.length < 0.6) {
+      return "";
+    }
+    return raw.slice(0, 40000);
+  } catch {
+    return "";
+  }
 }
 
 router.post("/contracts/upload", requireAuth, upload.single("file"), async (req, res) => {
@@ -42,7 +65,11 @@ router.post("/contracts/upload", requireAuth, upload.single("file"), async (req,
     const extractedText = await extractText(buffer, mimetype);
 
     if (!extractedText.trim()) {
-      return res.status(422).json({ error: "Could not extract readable text from this file." });
+      return res.status(422).json({
+        error: mimetype === "application/pdf"
+          ? "Could not extract readable text from this PDF. Please ensure it is a text-based PDF (not a scanned image). Try opening it in a PDF editor and re-saving, or paste the contract text into a .txt file."
+          : "Could not extract readable text from this file. Please upload a PDF or plain text (.txt) file.",
+      });
     }
 
     const prompt = `You are an expert wedding contract attorney reviewing a vendor contract for a couple. Analyze the following contract text and provide a structured risk assessment in JSON format.
