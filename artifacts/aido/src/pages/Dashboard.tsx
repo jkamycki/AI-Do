@@ -344,6 +344,18 @@ export default function Dashboard() {
                     <span className="text-sm text-foreground">${summary.profile.totalBudget.toLocaleString()} budget</span>
                   </div>
                 )}
+                {hotels.length > 0 && (
+                  <div className="flex items-start gap-2 pt-1 border-t border-border/30">
+                    <Hotel className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex flex-wrap gap-1">
+                      {hotels.map(h => (
+                        <span key={h.id} className="text-xs bg-primary/8 text-primary px-2 py-0.5 rounded-full border border-primary/15 font-medium">
+                          {h.hotelName}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -505,33 +517,6 @@ export default function Dashboard() {
                 : <div className="text-xs text-muted-foreground">No guests added yet</div>
             }
             testId="btn-goto-guests"
-          />
-
-          <FeatureCard
-            icon={Hotel}
-            title="Hotel Blocks"
-            description="Manage room blocks and discount codes so your guests always know where to stay."
-            cta="/hotels"
-            ctaLabel={hotels.length > 0 ? "View Hotels" : "Add Hotel Block"}
-            stat={(() => {
-              if (hotels.length === 0) return <div className="text-xs text-muted-foreground">No hotel blocks added yet</div>;
-              const totalRooms = hotels.reduce((s, h) => s + (h.roomsReserved ?? 0), 0);
-              const bookedRooms = hotels.reduce((s, h) => s + h.roomsBooked, 0);
-              const soonCutoff = hotels.filter(h => {
-                if (!h.cutoffDate) return false;
-                const days = Math.ceil((new Date(h.cutoffDate + "T12:00:00").getTime() - Date.now()) / 86400000);
-                return days >= 0 && days <= 14;
-              });
-              return (
-                <div className="space-y-1.5">
-                  <div className="text-sm font-medium text-primary">{hotels.length} hotel{hotels.length !== 1 ? "s" : ""} · {bookedRooms}/{totalRooms} rooms booked</div>
-                  {soonCutoff.length > 0 && (
-                    <div className="text-xs text-amber-600 font-medium">⚠ {soonCutoff.length} block cutoff{soonCutoff.length !== 1 ? "s" : ""} coming up soon</div>
-                  )}
-                </div>
-              );
-            })()}
-            testId="btn-goto-hotels"
           />
 
           <FeatureCard
