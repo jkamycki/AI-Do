@@ -1437,6 +1437,41 @@ components:
               - task
               - month
               - isCompleted
+        profile:
+          nullable: true
+          type: object
+          properties:
+            partner1Name:
+              type: string
+            partner2Name:
+              type: string
+            weddingDate:
+              type: string
+            venue:
+              type: string
+            location:
+              type: string
+            ceremonyTime:
+              type: string
+            receptionTime:
+              type: string
+            guestCount:
+              type: integer
+            totalBudget:
+              type: number
+            weddingVibe:
+              type: string
+          required:
+            - partner1Name
+            - partner2Name
+            - weddingDate
+            - venue
+            - location
+            - ceremonyTime
+            - receptionTime
+            - guestCount
+            - totalBudget
+            - weddingVibe
       required:
         - daysUntilWedding
         - checklistProgress

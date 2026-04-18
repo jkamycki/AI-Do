@@ -333,6 +333,19 @@ export type DashboardSummaryUpcomingTasksItem = {
   isCompleted: boolean;
 };
 
+export type DashboardSummaryProfile = {
+  partner1Name: string;
+  partner2Name: string;
+  weddingDate: string;
+  venue: string;
+  location: string;
+  ceremonyTime: string;
+  receptionTime: string;
+  guestCount: number;
+  totalBudget: number;
+  weddingVibe: string;
+} | null;
+
 export interface DashboardSummary {
   daysUntilWedding: number;
   checklistProgress: number;
@@ -347,4 +360,5 @@ export interface DashboardSummary {
   hasTimeline: boolean;
   hasChecklist: boolean;
   upcomingTasks?: DashboardSummaryUpcomingTasksItem[];
+  profile?: DashboardSummaryProfile;
 }

@@ -594,6 +594,20 @@ export const GetDashboardSummaryResponse = zod.object({
       }),
     )
     .optional(),
+  profile: zod
+    .object({
+      partner1Name: zod.string(),
+      partner2Name: zod.string(),
+      weddingDate: zod.string(),
+      venue: zod.string(),
+      location: zod.string(),
+      ceremonyTime: zod.string(),
+      receptionTime: zod.string(),
+      guestCount: zod.number(),
+      totalBudget: zod.number(),
+      weddingVibe: zod.string(),
+    })
+    .nullish(),
 });
 
 /**

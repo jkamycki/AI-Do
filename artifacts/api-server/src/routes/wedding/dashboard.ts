@@ -84,6 +84,19 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
         .map(item => ({ id: item.id, task: item.task, month: item.month, isCompleted: item.isCompleted }));
     }
 
+    const profile = hasProfile ? {
+      partner1Name: profiles[0].partner1Name,
+      partner2Name: profiles[0].partner2Name,
+      weddingDate: profiles[0].weddingDate,
+      venue: profiles[0].venue,
+      location: profiles[0].location,
+      ceremonyTime: profiles[0].ceremonyTime,
+      receptionTime: profiles[0].receptionTime,
+      guestCount: profiles[0].guestCount,
+      totalBudget: parseFloat(profiles[0].totalBudget as string),
+      weddingVibe: profiles[0].weddingVibe,
+    } : null;
+
     trackEvent(req.userId!, "user_login");
     res.json({
       daysUntilWedding,
@@ -99,6 +112,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       hasTimeline,
       hasChecklist,
       upcomingTasks,
+      profile,
     });
   } catch (err) {
     req.log.error(err, "Failed to get dashboard summary");

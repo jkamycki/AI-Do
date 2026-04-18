@@ -19,6 +19,8 @@ import {
   Users,
   UsersRound,
   AlertTriangle,
+  Pencil,
+  Gem,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -225,41 +227,117 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Countdown Hero */}
-      <div className="rounded-2xl bg-card border border-border/60 overflow-hidden">
-        <div className="p-6 flex flex-col sm:flex-row items-center gap-6">
-          <CountdownRing days={summary.daysUntilWedding} />
-          <div className="text-center sm:text-left">
-            <div className="flex items-center justify-center sm:justify-start gap-2 text-primary mb-1">
-              <Heart className="h-4 w-4 fill-primary" />
-              <span className="text-sm font-medium uppercase tracking-wider">Until your wedding</span>
-            </div>
-            <h2 className="text-2xl md:text-3xl font-serif text-foreground">
-              {!summary.hasProfile
-                ? "Your journey begins here"
-                : summary.daysUntilWedding === 0
-                ? "Today is the day! 🎉"
-                : summary.daysUntilWedding === 1
-                ? "Tomorrow is the big day!"
-                : `${summary.daysUntilWedding} days to go`}
-            </h2>
-            {summary.hasProfile && summary.daysUntilWedding > 0 && (
-              <div className="flex items-center gap-1.5 mt-2 text-sm text-muted-foreground justify-center sm:justify-start">
-                <CalendarDays className="h-3.5 w-3.5" />
-                <span>Countdown is live</span>
+      {/* Wedding Profile Overview */}
+      {summary.hasProfile && summary.profile ? (
+        <div className="rounded-2xl bg-card border border-border/60 overflow-hidden">
+          {/* Top gradient bar */}
+          <div className="h-1 bg-gradient-to-r from-primary/20 via-primary to-primary/20" />
+          <div className="p-6">
+            {/* Header row */}
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <div>
+                <div className="flex items-center gap-2 text-primary mb-1">
+                  <Heart className="h-4 w-4 fill-primary" />
+                  <span className="text-xs font-semibold uppercase tracking-widest">Your Wedding</span>
+                </div>
+                <h2 className="text-2xl md:text-3xl font-serif text-foreground">
+                  {summary.profile.partner1Name} &amp; {summary.profile.partner2Name}
+                </h2>
               </div>
-            )}
-            {!summary.hasProfile && (
-              <p className="text-sm text-muted-foreground mt-1">Complete your profile to start the countdown</p>
-            )}
+              <Link href="/profile" className="shrink-0">
+                <Button variant="outline" size="sm" className="gap-1.5 border-primary/20 text-primary hover:bg-primary/5">
+                  <Pencil className="h-3.5 w-3.5" /> Edit
+                </Button>
+              </Link>
+            </div>
+
+            {/* Details grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Countdown */}
+              <div className="flex items-center gap-3 rounded-xl bg-primary/5 border border-primary/10 p-4">
+                <CountdownRing days={summary.daysUntilWedding} />
+              </div>
+
+              {/* Date & Time */}
+              <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Date &amp; Time</p>
+                <div className="flex items-start gap-2">
+                  <CalendarDays className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{formatDate(summary.profile.weddingDate)}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Ceremony {summary.profile.ceremonyTime} · Reception {summary.profile.receptionTime}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    summary.daysUntilWedding === 0
+                      ? "bg-emerald-100 text-emerald-700"
+                      : summary.daysUntilWedding <= 30
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-primary/10 text-primary"
+                  }`}>
+                    {summary.daysUntilWedding === 0 ? "Today!" : `${summary.daysUntilWedding} days to go`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Venue */}
+              <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Venue &amp; Location</p>
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{summary.profile.venue}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{summary.profile.location}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Guests & Vibe */}
+              <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Details</p>
+                <div className="flex items-center gap-2">
+                  <UsersRound className="h-4 w-4 text-primary flex-shrink-0" />
+                  <span className="text-sm text-foreground"><strong>{summary.profile.guestCount}</strong> expected guests</span>
+                </div>
+                {summary.profile.weddingVibe && (
+                  <div className="flex items-center gap-2">
+                    <Gem className="h-4 w-4 text-primary flex-shrink-0" />
+                    <span className="text-sm text-foreground capitalize">{summary.profile.weddingVibe}</span>
+                  </div>
+                )}
+                {summary.profile.totalBudget > 0 && (
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-primary flex-shrink-0" />
+                    <span className="text-sm text-foreground">${summary.profile.totalBudget.toLocaleString()} budget</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-        {/* Decorative gradient bar */}
-        <div className="h-1 bg-gradient-to-r from-primary/20 via-primary to-primary/20" />
-      </div>
+      ) : (
+        /* No profile — simplified countdown */
+        <div className="rounded-2xl bg-card border border-border/60 overflow-hidden">
+          <div className="p-6 flex flex-col sm:flex-row items-center gap-6">
+            <CountdownRing days={0} />
+            <div className="text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-2 text-primary mb-1">
+                <Heart className="h-4 w-4 fill-primary" />
+                <span className="text-sm font-medium uppercase tracking-wider">Until your wedding</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-serif text-foreground">Your journey begins here</h2>
+              <p className="text-sm text-muted-foreground mt-1">Complete your profile to start the countdown</p>
+            </div>
+          </div>
+          <div className="h-1 bg-gradient-to-r from-primary/20 via-primary to-primary/20" />
+        </div>
+      )}
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatChip
           icon={DollarSign}
           label="Budget"
@@ -289,13 +367,6 @@ export default function Dashboard() {
           value={`${summary.guestCount ?? 0}`}
           sub="on the list"
           href="/guests"
-        />
-        <StatChip
-          icon={MapPin}
-          label="Profile"
-          value={summary.hasProfile ? "Complete" : "Pending"}
-          sub={summary.hasProfile ? "All set" : "Tap to fill in"}
-          href="/profile"
         />
       </div>
 
