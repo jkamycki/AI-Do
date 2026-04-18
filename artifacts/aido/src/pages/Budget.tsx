@@ -57,6 +57,9 @@ export default function Budget() {
 
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [isPredicting, setIsPredicting] = useState(false);
+  const [editingItem, setEditingItem] = useState<{ id: number; category: string; vendor: string; estimatedCost: number; actualCost: number; isPaid: boolean; notes?: string | null } | null>(null);
+
+  const CATEGORIES = ["Venue", "Catering", "Photography", "Florist", "Attire", "Music", "Decor", "Other"];
 
   const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemSchema),
@@ -71,7 +74,37 @@ export default function Budget() {
     },
   });
 
+  const editForm = useForm<ItemFormValues>({
+    resolver: zodResolver(itemSchema),
+    defaultValues: {
+      category: "",
+      customCategory: "",
+      vendor: "",
+      estimatedCost: 0,
+      actualCost: 0,
+      isPaid: false,
+      notes: "",
+    },
+  });
+
   const watchedCategory = form.watch("category");
+  const watchedEditCategory = editForm.watch("category");
+
+  // Populate edit form whenever a different item is selected for editing
+  const openEdit = (item: typeof editingItem) => {
+    if (!item) return;
+    const isKnown = CATEGORIES.slice(0, -1).includes(item.category);
+    editForm.reset({
+      category: isKnown ? item.category : "Other",
+      customCategory: isKnown ? "" : item.category,
+      vendor: item.vendor,
+      estimatedCost: item.estimatedCost,
+      actualCost: item.actualCost,
+      isPaid: item.isPaid,
+      notes: item.notes ?? "",
+    });
+    setEditingItem(item);
+  };
 
   const onSubmitItem = (data: ItemFormValues) => {
     const resolvedCategory = data.category === "Other" && data.customCategory?.trim()
@@ -89,6 +122,27 @@ export default function Budget() {
         toast({ variant: "destructive", title: "Error", description: "Could not add item." });
       }
     });
+  };
+
+  const onSubmitEdit = (data: ItemFormValues) => {
+    if (!editingItem) return;
+    const resolvedCategory = data.category === "Other" && data.customCategory?.trim()
+      ? data.customCategory.trim()
+      : data.category;
+    const { customCategory: _omit, ...rest } = data;
+    updateItem.mutate(
+      { id: editingItem.id, data: { ...rest, category: resolvedCategory } },
+      {
+        onSuccess: () => {
+          toast({ title: "Expense updated" });
+          queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
+          setEditingItem(null);
+        },
+        onError: () => {
+          toast({ variant: "destructive", title: "Error", description: "Could not update item." });
+        },
+      }
+    );
   };
 
   const togglePaid = (id: number, currentPaid: boolean) => {
@@ -151,6 +205,116 @@ export default function Budget() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
+      {/* ── Edit Expense Dialog ── */}
+      <Dialog open={!!editingItem} onOpenChange={open => { if (!open) setEditingItem(null); }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl text-primary">Edit Expense</DialogTitle>
+            <DialogDescription>Update the details for this expense.</DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4 py-4">
+              <FormField
+                control={editForm.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {CATEGORIES.map(c => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {watchedEditCategory === "Other" && (
+                <FormField
+                  control={editForm.control}
+                  name="customCategory"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Expense Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="E.g. Hair & Makeup, Rehearsal Dinner…" {...field} autoFocus />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              <FormField
+                control={editForm.control}
+                name="vendor"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vendor Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="E.g. Sweet Magnolia Florals" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="estimatedCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estimated ($)</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="actualCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Actual ($)</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={editForm.control}
+                name="isPaid"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                    <div className="space-y-0.5">
+                      <FormLabel>Fully Paid</FormLabel>
+                      <CardDescription>Has this been completely paid off?</CardDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full mt-4" disabled={updateItem.isPending}>
+                {updateItem.isPending ? "Saving…" : "Save Changes"}
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
@@ -185,7 +349,7 @@ export default function Budget() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {["Venue", "Catering", "Photography", "Florist", "Attire", "Music", "Decor", "Other"].map(c => (
+                          {CATEGORIES.map(c => (
                             <SelectItem key={c} value={c}>{c}</SelectItem>
                           ))}
                         </SelectContent>
@@ -369,15 +533,26 @@ export default function Budget() {
                             </button>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => handleDelete(item.id)}
-                              data-testid={`btn-delete-item-${item.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-muted-foreground hover:text-primary"
+                                onClick={() => openEdit(item)}
+                                data-testid={`btn-edit-item-${item.id}`}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDelete(item.id)}
+                                data-testid={`btn-delete-item-${item.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
