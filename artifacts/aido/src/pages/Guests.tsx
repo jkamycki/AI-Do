@@ -46,9 +46,8 @@ const GROUP_OPTIONS = [
   { value: "grooms_family", label: "Groom's Family" },
   { value: "brides_friends", label: "Bride's Friends" },
   { value: "grooms_friends", label: "Groom's Friends" },
-  { value: "coworkers", label: "Coworkers" },
-  { value: "family_friends", label: "Family Friends" },
-  { value: "vip", label: "VIP" },
+  { value: "brides_coworkers", label: "Bride's Coworkers" },
+  { value: "grooms_coworkers", label: "Groom's Coworkers" },
   { value: "other", label: "Other" },
 ];
 
@@ -63,9 +62,8 @@ const GROUP_COLORS: Record<string, string> = {
   grooms_family: "bg-violet-100 text-violet-800 border-violet-200",
   brides_friends: "bg-pink-100 text-pink-800 border-pink-200",
   grooms_friends: "bg-indigo-100 text-indigo-800 border-indigo-200",
-  coworkers: "bg-sky-100 text-sky-800 border-sky-200",
-  family_friends: "bg-teal-100 text-teal-800 border-teal-200",
-  vip: "bg-amber-100 text-amber-800 border-amber-200",
+  brides_coworkers: "bg-sky-100 text-sky-800 border-sky-200",
+  grooms_coworkers: "bg-teal-100 text-teal-800 border-teal-200",
   other: "bg-gray-100 text-gray-700 border-gray-200",
 };
 
