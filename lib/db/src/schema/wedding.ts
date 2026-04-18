@@ -163,6 +163,7 @@ export const contactMessages = pgTable("contact_messages", {
   subject: text("subject").notNull(),
   message: text("message").notNull(),
   isRead: boolean("is_read").notNull().default(false),
+  isResolved: boolean("is_resolved").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -175,6 +176,7 @@ export const feedbackSubmissions = pgTable("feedback_submissions", {
   category: text("category"),
   message: text("message").notNull(),
   isRead: boolean("is_read").notNull().default(false),
+  isResolved: boolean("is_resolved").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

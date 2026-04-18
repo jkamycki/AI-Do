@@ -13,7 +13,7 @@ import {
   AlertCircle, RefreshCw, CalendarClock, Mail, CheckSquare,
   Smartphone, FileDown, DollarSign as BudgetIcon, Activity,
   ChevronRight, Inbox, Star, MessageSquare, Bug, Lightbulb, Heart, ThumbsUp,
-  MailOpen, Circle,
+  MailOpen, Circle, CheckCircle2,
 } from "lucide-react";
 
 interface AdminMetrics {
@@ -437,6 +437,7 @@ interface HelpMessage {
   subject: string;
   message: string;
   isRead: boolean;
+  isResolved: boolean;
   createdAt: string;
 }
 
@@ -447,6 +448,7 @@ interface FeedbackItem {
   category: string | null;
   message: string;
   isRead: boolean;
+  isResolved: boolean;
   createdAt: string;
 }
 
@@ -461,6 +463,7 @@ function MessagesSection() {
   const { getToken } = useAuth();
   const [subTab, setSubTab] = useState<"contact" | "feedback">("contact");
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [showResolved, setShowResolved] = useState(false);
   const queryClient = useQueryClient();
 
   const authedFetch = async (url: string, init: RequestInit = {}) => {
@@ -493,6 +496,16 @@ function MessagesSection() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-messages"] }),
   });
 
+  const resolveMutation = useMutation({
+    mutationFn: async ({ type, id, resolved }: { type: "contact" | "feedback"; id: number; resolved: boolean }) => {
+      await authedFetch(`/api/help/messages/${type}/${id}/resolve`, {
+        method: "PATCH",
+        body: JSON.stringify({ resolved }),
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-messages"] }),
+  });
+
   const handleExpand = (id: number, type: "contact" | "feedback") => {
     setExpanded(prev => {
       if (prev === id) return null;
@@ -505,10 +518,13 @@ function MessagesSection() {
     return <div className="space-y-3">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>;
   }
 
-  const contacts = data?.contacts ?? [];
-  const feedback = data?.feedback ?? [];
-  const unreadC = contacts.filter(c => !c.isRead).length;
-  const unreadF = feedback.filter(f => !f.isRead).length;
+  const allContacts = data?.contacts ?? [];
+  const allFeedback = data?.feedback ?? [];
+  const contacts = showResolved ? allContacts : allContacts.filter(c => !c.isResolved);
+  const feedback = showResolved ? allFeedback : allFeedback.filter(f => !f.isResolved);
+  const unreadC = allContacts.filter(c => !c.isRead && !c.isResolved).length;
+  const unreadF = allFeedback.filter(f => !f.isRead && !f.isResolved).length;
+  const resolvedCount = allContacts.filter(c => c.isResolved).length + allFeedback.filter(f => f.isResolved).length;
 
   return (
     <div className="space-y-6">
@@ -517,33 +533,48 @@ function MessagesSection() {
         description="Contact requests and user feedback submitted through the Help page."
       />
 
-      <div className="flex gap-2">
-        <button
-          onClick={() => setSubTab("contact")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border
-            ${subTab === "contact" ? "bg-primary text-white border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
-        >
-          <Mail className="h-4 w-4" />
-          Contact Messages
-          {unreadC > 0 && (
-            <span className="bg-white/20 text-white text-xs rounded-full px-1.5 py-0.5 leading-none font-bold min-w-[18px] text-center">
-              {unreadC}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setSubTab("feedback")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border
-            ${subTab === "feedback" ? "bg-primary text-white border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
-        >
-          <MessageSquare className="h-4 w-4" />
-          Feedback
-          {unreadF > 0 && (
-            <span className="bg-white/20 text-white text-xs rounded-full px-1.5 py-0.5 leading-none font-bold min-w-[18px] text-center">
-              {unreadF}
-            </span>
-          )}
-        </button>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setSubTab("contact")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border
+              ${subTab === "contact" ? "bg-primary text-white border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
+          >
+            <Mail className="h-4 w-4" />
+            Contact Messages
+            {unreadC > 0 && (
+              <span className={`text-xs rounded-full px-1.5 py-0.5 leading-none font-bold min-w-[18px] text-center
+                ${subTab === "contact" ? "bg-white/20 text-white" : "bg-primary/15 text-primary"}`}>
+                {unreadC}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setSubTab("feedback")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border
+              ${subTab === "feedback" ? "bg-primary text-white border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
+          >
+            <MessageSquare className="h-4 w-4" />
+            Feedback
+            {unreadF > 0 && (
+              <span className={`text-xs rounded-full px-1.5 py-0.5 leading-none font-bold min-w-[18px] text-center
+                ${subTab === "feedback" ? "bg-white/20 text-white" : "bg-primary/15 text-primary"}`}>
+                {unreadF}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {resolvedCount > 0 && (
+          <button
+            onClick={() => setShowResolved(s => !s)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
+              ${showResolved ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted/50 text-muted-foreground border-border hover:border-primary/30"}`}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {showResolved ? "Hiding resolved" : `Show resolved (${resolvedCount})`}
+          </button>
+        )}
       </div>
 
       {subTab === "contact" && (
@@ -552,23 +583,36 @@ function MessagesSection() {
             <Card className="border-none shadow-sm">
               <CardContent className="py-12 text-center text-muted-foreground">
                 <Inbox className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                No contact messages yet.
+                {allContacts.length === 0 ? "No contact messages yet." : "All messages are resolved."}
               </CardContent>
             </Card>
           ) : (
             contacts.map(msg => (
-              <Card key={msg.id} className={`border-none shadow-sm overflow-hidden ${!msg.isRead ? "ring-1 ring-primary/30" : ""}`}>
+              <Card
+                key={msg.id}
+                className={`border-none shadow-sm overflow-hidden transition-all
+                  ${msg.isResolved ? "opacity-60" : !msg.isRead ? "ring-1 ring-primary/30" : ""}`}
+              >
                 <button
                   className="w-full text-left px-5 py-4 hover:bg-muted/20 transition-colors"
                   onClick={() => handleExpand(msg.id, "contact")}
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
-                      {!msg.isRead && <Circle className="h-2 w-2 fill-primary text-primary flex-shrink-0" />}
+                      {!msg.isRead && !msg.isResolved && (
+                        <Circle className="h-2 w-2 fill-primary text-primary flex-shrink-0" />
+                      )}
                       <div className="min-w-0">
-                        <p className={`font-medium text-sm truncate ${!msg.isRead ? "text-foreground" : "text-muted-foreground"}`}>
-                          {msg.subject}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className={`font-medium text-sm truncate ${!msg.isRead && !msg.isResolved ? "text-foreground" : "text-muted-foreground"}`}>
+                            {msg.subject}
+                          </p>
+                          {msg.isResolved && (
+                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex-shrink-0">
+                              Resolved
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground truncate">
                           {msg.name} &lt;{msg.email}&gt;
                         </p>
@@ -589,6 +633,18 @@ function MessagesSection() {
                     <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3">
                       {msg.message}
                     </p>
+                    <div className="mt-3 flex justify-end">
+                      <Button
+                        size="sm"
+                        variant={msg.isResolved ? "outline" : "default"}
+                        className={`gap-1.5 ${msg.isResolved ? "" : "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"}`}
+                        onClick={e => { e.stopPropagation(); resolveMutation.mutate({ type: "contact", id: msg.id, resolved: !msg.isResolved }); }}
+                        disabled={resolveMutation.isPending}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {msg.isResolved ? "Mark as Open" : "Mark as Resolved"}
+                      </Button>
+                    </div>
                   </div>
                 )}
               </Card>
@@ -603,7 +659,7 @@ function MessagesSection() {
             <Card className="border-none shadow-sm">
               <CardContent className="py-12 text-center text-muted-foreground">
                 <Star className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                No feedback submissions yet.
+                {allFeedback.length === 0 ? "No feedback submissions yet." : "All feedback is resolved."}
               </CardContent>
             </Card>
           ) : (
@@ -611,15 +667,21 @@ function MessagesSection() {
               const catMeta = item.category ? CATEGORY_META[item.category] : null;
               const CatIcon = catMeta?.icon ?? MessageSquare;
               return (
-                <Card key={item.id} className={`border-none shadow-sm overflow-hidden ${!item.isRead ? "ring-1 ring-primary/30" : ""}`}>
+                <Card
+                  key={item.id}
+                  className={`border-none shadow-sm overflow-hidden transition-all
+                    ${item.isResolved ? "opacity-60" : !item.isRead ? "ring-1 ring-primary/30" : ""}`}
+                >
                   <button
                     className="w-full text-left px-5 py-4 hover:bg-muted/20 transition-colors"
                     onClick={() => handleExpand(item.id, "feedback")}
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3 min-w-0">
-                        {!item.isRead && <Circle className="h-2 w-2 fill-primary text-primary flex-shrink-0" />}
-                        <div className="min-w-0 flex items-center gap-2">
+                        {!item.isRead && !item.isResolved && (
+                          <Circle className="h-2 w-2 fill-primary text-primary flex-shrink-0" />
+                        )}
+                        <div className="min-w-0 flex items-center gap-2 flex-wrap">
                           {catMeta && (
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${catMeta.color}`}>
                               <CatIcon className="h-3 w-3" />
@@ -629,6 +691,11 @@ function MessagesSection() {
                           {item.rating != null && (
                             <span className="flex items-center gap-0.5 text-amber-500 text-xs font-medium">
                               {"★".repeat(item.rating)}{"☆".repeat(5 - item.rating)}
+                            </span>
+                          )}
+                          {item.isResolved && (
+                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                              Resolved
                             </span>
                           )}
                         </div>
@@ -646,9 +713,21 @@ function MessagesSection() {
                       <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3 mt-3">
                         {item.message}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Submitted: {new Date(item.createdAt).toLocaleString()}
-                      </p>
+                      <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          Submitted: {new Date(item.createdAt).toLocaleString()}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant={item.isResolved ? "outline" : "default"}
+                          className={`gap-1.5 ${item.isResolved ? "" : "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"}`}
+                          onClick={e => { e.stopPropagation(); resolveMutation.mutate({ type: "feedback", id: item.id, resolved: !item.isResolved }); }}
+                          disabled={resolveMutation.isPending}
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          {item.isResolved ? "Mark as Open" : "Mark as Resolved"}
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </Card>

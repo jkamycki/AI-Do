@@ -138,4 +138,38 @@ router.patch("/help/messages/feedback/:id/read", requireAuth, async (req, res) =
   }
 });
 
+router.patch("/help/messages/contact/:id/resolve", requireAuth, async (req, res) => {
+  try {
+    const admin = await isAdmin(req.userId!);
+    if (!admin) return res.status(403).json({ error: "Access denied." });
+
+    const { resolved } = req.body as { resolved?: boolean };
+    await db
+      .update(contactMessages)
+      .set({ isResolved: resolved !== false, isRead: true })
+      .where(eq(contactMessages.id, parseInt(req.params["id"] ?? "0")));
+
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/help/messages/feedback/:id/resolve", requireAuth, async (req, res) => {
+  try {
+    const admin = await isAdmin(req.userId!);
+    if (!admin) return res.status(403).json({ error: "Access denied." });
+
+    const { resolved } = req.body as { resolved?: boolean };
+    await db
+      .update(feedbackSubmissions)
+      .set({ isResolved: resolved !== false, isRead: true })
+      .where(eq(feedbackSubmissions.id, parseInt(req.params["id"] ?? "0")));
+
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
