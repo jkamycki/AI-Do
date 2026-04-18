@@ -36,6 +36,14 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 }
 
+function formatTime(timeStr: string | null | undefined) {
+  if (!timeStr) return null;
+  const [h, m] = timeStr.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
 function CountdownRing({ days }: { days: number }) {
   const cap = 365;
   const pct = Math.max(0, Math.min(1, days / cap));
@@ -266,7 +274,10 @@ export default function Dashboard() {
                   <div>
                     <p className="text-sm font-medium text-foreground">{formatDate(summary.profile.weddingDate)}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Ceremony {summary.profile.ceremonyTime} · Reception {summary.profile.receptionTime}
+                      {[
+                        summary.profile.ceremonyTime && `Ceremony ${formatTime(summary.profile.ceremonyTime)}`,
+                        summary.profile.receptionTime && `Reception ${formatTime(summary.profile.receptionTime)}`,
+                      ].filter(Boolean).join(" · ")}
                     </p>
                   </div>
                 </div>
