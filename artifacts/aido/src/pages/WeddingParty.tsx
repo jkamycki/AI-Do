@@ -46,15 +46,13 @@ const ROLES = [
 ];
 
 const SIDES = [
-  { value: "bride", label: "Bride's Side" },
-  { value: "groom", label: "Groom's Side" },
-  { value: "both", label: "Both Sides" },
+  { value: "bride", label: "Bridal Party" },
+  { value: "groom", label: "Groomsmen" },
 ];
 
 const SIDE_COLORS: Record<string, string> = {
   bride: "bg-rose-100 text-rose-700 border-rose-200",
   groom: "bg-sky-100 text-sky-700 border-sky-200",
-  both: "bg-violet-100 text-violet-700 border-violet-200",
 };
 
 const ROLE_ICONS: Record<string, React.ElementType> = {
@@ -304,13 +302,13 @@ export default function WeddingParty() {
     onError: () => toast({ title: "Failed to remove member", variant: "destructive" }),
   });
 
-  const bridesSide = members.filter(m => m.side === "bride" || m.side === "both");
+  const bridesSide = members.filter(m => m.side === "bride");
   const groomsSide = members.filter(m => m.side === "groom");
 
   const stats = [
     { label: "Total Members", value: members.length, color: "text-primary" },
-    { label: "Bride's Side", value: members.filter(m => m.side === "bride" || m.side === "both").length, color: "text-rose-600" },
-    { label: "Groom's Side", value: members.filter(m => m.side === "groom").length, color: "text-sky-600" },
+    { label: "Bridal Party", value: bridesSide.length, color: "text-rose-600" },
+    { label: "Groomsmen", value: groomsSide.length, color: "text-sky-600" },
   ];
 
   if (isLoading) {
@@ -395,7 +393,7 @@ export default function WeddingParty() {
       ) : (
         <div className="space-y-8">
           <PartyGroup
-            title="Bride's Side"
+            title="Bridal Party"
             members={bridesSide}
             icon={Heart}
             color="bg-rose-50 text-rose-700 border-rose-200"
@@ -403,7 +401,7 @@ export default function WeddingParty() {
             onDelete={id => deleteMutation.mutate(id)}
           />
           <PartyGroup
-            title="Groom's Side"
+            title="Groomsmen"
             members={groomsSide}
             icon={Users}
             color="bg-sky-50 text-sky-700 border-sky-200"
