@@ -1,19 +1,31 @@
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
+import { clerkClient } from "@clerk/express";
 import { db, analyticsEvents, adminUsers } from "@workspace/db";
 import { eq, gte, desc, sql, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router = Router();
 
+const OWNER_EMAILS = [
+  "kamyckijoseph@gmail.com",
+  "kamyckijoseph@outlook.com",
+];
+
+async function isOwnerEmail(userId: string): Promise<boolean> {
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    const userEmails = user.emailAddresses.map(e => e.emailAddress.toLowerCase());
+    return OWNER_EMAILS.some(e => userEmails.includes(e));
+  } catch {
+    return false;
+  }
+}
+
 async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   try {
-    const rows = await db
-      .select()
-      .from(adminUsers)
-      .where(eq(adminUsers.userId, req.userId!))
-      .limit(1);
-    if (!rows.length) return res.status(403).json({ error: "Forbidden: admin only" });
+    const allowed = await isOwnerEmail(req.userId!);
+    if (!allowed) return res.status(403).json({ error: "Forbidden: admin only" });
     next();
   } catch {
     res.status(500).json({ error: "Internal server error" });
@@ -22,12 +34,8 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
 
 router.get("/admin/check", requireAuth, async (req, res) => {
   try {
-    const rows = await db
-      .select()
-      .from(adminUsers)
-      .where(eq(adminUsers.userId, req.userId!))
-      .limit(1);
-    res.json({ isAdmin: rows.length > 0 });
+    const isAdmin = await isOwnerEmail(req.userId!);
+    res.json({ isAdmin });
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }
