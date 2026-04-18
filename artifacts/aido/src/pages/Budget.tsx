@@ -134,6 +134,7 @@ function LogPaymentContent({
           queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
           setAmount("");
           setNote("");
+          onDone();
         },
         onError: () => {
           toast({ variant: "destructive", title: "Error", description: "Could not log payment." });
