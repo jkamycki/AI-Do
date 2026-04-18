@@ -27,17 +27,37 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/profile", label: "Wedding Profile", icon: User },
-  { href: "/timeline", label: "Timeline", icon: CalendarDays },
-  { href: "/budget", label: "Budget Manager", icon: DollarSign },
-  { href: "/checklist", label: "Checklist", icon: CheckSquare },
-  { href: "/vendors", label: "Vendors", icon: Store },
-  { href: "/vendor-email", label: "Vendor Emails", icon: Mail },
-  { href: "/guests", label: "Guest List", icon: UsersRound },
-  { href: "/seating-chart", label: "Seating Chart", icon: Armchair },
-  { href: "/day-of", label: "Day-Of Coordinator", icon: Smartphone },
+const navSections = [
+  {
+    label: "Planning",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/profile", label: "Wedding Profile", icon: User },
+      { href: "/timeline", label: "Timeline", icon: CalendarDays },
+      { href: "/checklist", label: "Checklist", icon: CheckSquare },
+    ],
+  },
+  {
+    label: "Budget & Vendors",
+    items: [
+      { href: "/budget", label: "Budget Manager", icon: DollarSign },
+      { href: "/vendors", label: "Vendors", icon: Store },
+      { href: "/vendor-email", label: "Vendor Emails", icon: Mail },
+    ],
+  },
+  {
+    label: "Guests",
+    items: [
+      { href: "/guests", label: "Guest List", icon: UsersRound },
+      { href: "/seating-chart", label: "Seating Chart", icon: Armchair },
+    ],
+  },
+  {
+    label: "Day Of",
+    items: [
+      { href: "/day-of", label: "Day-Of Coordinator", icon: Smartphone },
+    ],
+  },
 ];
 
 interface WorkspacesData {
@@ -275,25 +295,38 @@ export function Sidebar() {
           </div>
         )}
 
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => (
-            <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
+        <nav className="flex-1 p-4 overflow-y-auto space-y-4">
+          {navSections.map((section) => (
+            <div key={section.label}>
+              <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                {section.label}
+              </p>
+              <div className="space-y-0.5">
+                {section.items.map((item) => (
+                  <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
+                ))}
+              </div>
+            </div>
           ))}
 
-          <div className="pt-3 mt-3 border-t border-primary/10 space-y-1">
+          <div className="border-t border-primary/10 pt-4">
             <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               Workspace
             </p>
-            <NavLink href="/settings" label="Settings & Collaborators" icon={Settings} />
-            <NavLink href="/help" label="Help & Support" icon={HelpCircle} />
+            <div className="space-y-0.5">
+              <NavLink href="/settings" label="Settings & Collaborators" icon={Settings} />
+              <NavLink href="/help" label="Help & Support" icon={HelpCircle} />
+            </div>
           </div>
 
           {isAdmin && (
-            <div className="pt-3 mt-3 border-t border-primary/10 space-y-1">
+            <div className="border-t border-primary/10 pt-4">
               <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Admin
               </p>
-              <NavLink href="/admin" label="Operations Center" icon={Shield} special />
+              <div className="space-y-0.5">
+                <NavLink href="/admin" label="Operations Center" icon={Shield} special />
+              </div>
             </div>
           )}
         </nav>
