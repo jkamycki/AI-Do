@@ -29,11 +29,16 @@ import { Badge } from "@/components/ui/badge";
 
 const itemSchema = z.object({
   category: z.string().min(1, "Category is required"),
+  customCategory: z.string().optional(),
   vendor: z.string().min(1, "Vendor is required"),
   estimatedCost: z.coerce.number().min(0, "Must be >= 0"),
   actualCost: z.coerce.number().min(0, "Must be >= 0"),
   isPaid: z.boolean().default(false),
   notes: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.category === "Other" && !data.customCategory?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter an expense name", path: ["customCategory"] });
+  }
 });
 
 type ItemFormValues = z.infer<typeof itemSchema>;
@@ -57,6 +62,7 @@ export default function Budget() {
     resolver: zodResolver(itemSchema),
     defaultValues: {
       category: "",
+      customCategory: "",
       vendor: "",
       estimatedCost: 0,
       actualCost: 0,
@@ -65,8 +71,14 @@ export default function Budget() {
     },
   });
 
+  const watchedCategory = form.watch("category");
+
   const onSubmitItem = (data: ItemFormValues) => {
-    addBudgetItem.mutate({ data }, {
+    const resolvedCategory = data.category === "Other" && data.customCategory?.trim()
+      ? data.customCategory.trim()
+      : data.category;
+    const { customCategory: _omit, ...rest } = data;
+    addBudgetItem.mutate({ data: { ...rest, category: resolvedCategory } }, {
       onSuccess: () => {
         toast({ title: "Item added", description: "Budget item saved." });
         queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
@@ -182,6 +194,26 @@ export default function Budget() {
                     </FormItem>
                   )}
                 />
+                {watchedCategory === "Other" && (
+                  <FormField
+                    control={form.control}
+                    name="customCategory"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Expense Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="E.g. Hair & Makeup, Rehearsal Dinner…"
+                            {...field}
+                            data-testid="input-custom-category"
+                            autoFocus
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={form.control}
                   name="vendor"
