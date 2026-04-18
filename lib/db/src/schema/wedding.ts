@@ -179,3 +179,32 @@ export const feedbackSubmissions = pgTable("feedback_submissions", {
 });
 
 export type FeedbackSubmission = typeof feedbackSubmissions.$inferSelect;
+
+export const vendorContracts = pgTable("vendor_contracts", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  profileId: integer("profile_id"),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: text("mime_type"),
+  extractedText: text("extracted_text"),
+  analysis: jsonb("analysis").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type VendorContract = typeof vendorContracts.$inferSelect;
+
+export const seatingCharts = pgTable("seating_charts", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  profileId: integer("profile_id"),
+  name: text("name").notNull().default("My Seating Chart"),
+  guests: jsonb("guests").$type<Record<string, unknown>[]>().notNull().default([]),
+  tables: jsonb("tables").$type<Record<string, unknown>[]>(),
+  tableCount: integer("table_count").notNull().default(8),
+  seatsPerTable: integer("seats_per_table").notNull().default(8),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type SeatingChart = typeof seatingCharts.$inferSelect;

@@ -22,6 +22,8 @@ import {
   Users,
   Crown,
   HelpCircle,
+  FileSearch,
+  Armchair,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -33,6 +35,8 @@ const navItems = [
   { href: "/checklist", label: "Checklist", icon: CheckSquare },
   { href: "/vendors", label: "Vendors", icon: Store },
   { href: "/vendor-email", label: "Vendor Emails", icon: Mail },
+  { href: "/contract-reader", label: "Contract Reader", icon: FileSearch },
+  { href: "/seating-chart", label: "Seating Chart", icon: Armchair },
   { href: "/day-of", label: "Day-Of Coordinator", icon: Smartphone },
 ];
 

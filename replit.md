@@ -80,6 +80,22 @@ Full-stack AI-powered wedding planning application. pnpm workspace monorepo usin
 - **API endpoints** at `/api/collaborators/*` and `/api/workspace/:profileId/*`
 - **`workspaceAccess.ts` helper** — `resolveWorkspaceRole(userId, profileId)`, `hasMinRole(role, required)`, `logActivity(...)`
 
+## AI Contract Reader
+
+- **Page**: `/contract-reader` — drag-and-drop upload (PDF, DOCX, TXT, max 10 MB)
+- **API**: `POST /api/contracts/upload` — multer memory storage → pdf-parse text extraction → GPT-4.1-mini analysis
+- **Analysis output**: overall risk level (low/medium/high), vendor type, summary, red flags with severity, key terms, cancellation policy, payment terms, liability, positives, missing clauses, negotiation tips
+- **History**: `GET /api/contracts`, `DELETE /api/contracts/:id`; stored in `vendor_contracts` DB table
+- **Frontend**: split-panel layout — past contracts sidebar + analysis view with expandable risk flags
+
+## AI Seating Chart Generator
+
+- **Page**: `/seating-chart` — guest list manager with relationship mapping
+- **Guest features**: name, group (6 options), +1 toggle, notes, per-guest relationship picker (♥ prefer near / ⚡ avoid)
+- **API**: `POST /api/seating/generate` — GPT-4.1-mini assigns guests to named tables, avoids conflicts
+- **Chart output**: named tables with color-coded cards, AI insights, conflict warnings, regenerate button
+- **Persistence**: `POST/GET/PUT/DELETE /api/seating/charts` stored in `seating_charts` DB table
+
 ## Help & Support System
 
 - **Help page** at `/help` — three tabs: Contact Us, Feedback, FAQ
