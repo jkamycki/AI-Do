@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Plus, Phone, Mail, Shirt, Calendar, Trash2, Edit2, Crown, Heart } from "lucide-react";
+import { Users, Plus, Phone, Mail, Trash2, Edit2, Crown, Heart } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -62,8 +62,7 @@ const ROLE_ICONS: Record<string, React.ElementType> = {
 
 const EMPTY: Partial<Member> = {
   name: "", role: "Bridesmaid", side: "bride",
-  phone: "", email: "", outfitDetails: "", shoeSize: "",
-  outfitStore: "", fittingDate: "", notes: "", sortOrder: 0,
+  phone: "", email: "", notes: "", sortOrder: 0,
 };
 
 function MemberForm({
@@ -114,26 +113,6 @@ function MemberForm({
           <Input type="email" placeholder="jane@email.com" value={form.email ?? ""} onChange={e => set("email", e.target.value)} />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label>Outfit Details</Label>
-          <Input placeholder="Dusty rose chiffon, floor-length…" value={form.outfitDetails ?? ""} onChange={e => set("outfitDetails", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Outfit / Dress Store</Label>
-          <Input placeholder="David's Bridal, Men's Wearhouse…" value={form.outfitStore ?? ""} onChange={e => set("outfitStore", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Shoe Size</Label>
-          <Input placeholder="8.5" value={form.shoeSize ?? ""} onChange={e => set("shoeSize", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Fitting Date</Label>
-          <Input type="date" value={form.fittingDate ?? ""} onChange={e => set("fittingDate", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Sort Order</Label>
-          <Input type="number" min="0" placeholder="0" value={form.sortOrder ?? 0} onChange={e => set("sortOrder", Number(e.target.value))} />
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
           <Label>Notes</Label>
           <Textarea placeholder="Allergies, accessibility needs, hotel info…" rows={2} className="resize-none" value={form.notes ?? ""} onChange={e => set("notes", e.target.value)} />
         </div>
@@ -146,12 +125,8 @@ function MemberForm({
 }
 
 function MemberCard({ member, onEdit, onDelete }: { member: Member; onEdit: () => void; onDelete: () => void }) {
-  const RoleIcon = ROLE_ICONS[member.role] ?? Users;
-  const sideColor = SIDE_COLORS[member.side] ?? SIDE_COLORS.both;
+  const sideColor = SIDE_COLORS[member.side] ?? SIDE_COLORS.bride;
   const sideLabel = SIDES.find(s => s.value === member.side)?.label ?? member.side;
-  const fittingDate = member.fittingDate
-    ? new Date(member.fittingDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-    : null;
 
   return (
     <Card className="border-border/60 shadow-sm hover:shadow-md transition-shadow">
@@ -213,25 +188,6 @@ function MemberCard({ member, onEdit, onDelete }: { member: Member; onEdit: () =
                 <a href={`mailto:${member.email}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                   <Mail className="h-3.5 w-3.5" />{member.email}
                 </a>
-              )}
-            </div>
-          )}
-          {member.outfitDetails && (
-            <p className="text-xs flex items-start gap-1.5 text-muted-foreground">
-              <Shirt className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              {member.outfitDetails}
-              {member.outfitStore && <span className="text-primary/70 ml-1">({member.outfitStore})</span>}
-            </p>
-          )}
-          {(fittingDate || member.shoeSize) && (
-            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-              {fittingDate && (
-                <span className="inline-flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" /> Fitting: {fittingDate}
-                </span>
-              )}
-              {member.shoeSize && (
-                <span>Shoe size: <span className="font-medium text-foreground">{member.shoeSize}</span></span>
               )}
             </div>
           )}
