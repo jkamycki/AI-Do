@@ -235,7 +235,7 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
         partner2Name: weddingProfiles.partner2Name,
         weddingDate: weddingProfiles.weddingDate,
         venue: weddingProfiles.venue,
-        createdAt: weddingProfiles.createdAt,
+        updatedAt: weddingProfiles.updatedAt,
       }).from(weddingProfiles),
 
       db.execute(sql`

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import * as XLSX from "xlsx";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
@@ -187,11 +188,107 @@ function timeAgo(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
+function UserDetailModal({ user, onClose }: { user: AdminUser; onClose: () => void }) {
+  const fullName = `${user.firstName} ${user.lastName}`.trim() || "Unknown";
+  const sections = [
+    {
+      title: "Account",
+      items: [
+        { label: "Full Name", value: fullName },
+        { label: "Email", value: user.email ?? "—" },
+        { label: "Clerk ID", value: user.id },
+        { label: "Joined", value: new Date(user.joinedAt).toLocaleString() },
+        { label: "Last Active", value: user.lastActive ? new Date(user.lastActive).toLocaleString() : "Never" },
+        { label: "Total Events", value: String(user.eventCount) },
+      ],
+    },
+    {
+      title: "Profile",
+      items: [
+        { label: "Has Profile", value: user.hasProfile ? "Yes" : "No" },
+        { label: "Onboarded", value: user.onboarded ? "Yes" : "No" },
+        { label: "Partner 1", value: user.partner1Name ?? "—" },
+        { label: "Partner 2", value: user.partner2Name ?? "—" },
+        { label: "Wedding Date", value: user.weddingDate ?? "—" },
+        { label: "Venue", value: user.venue ?? "—" },
+      ],
+    },
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-background rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-background border-b border-border/50 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <div className="flex items-center gap-3">
+            <UserAvatar user={user} />
+            <div>
+              <h2 className="font-serif text-lg font-semibold">{fullName}</h2>
+              <p className="text-xs text-muted-foreground">{user.email ?? "No email"}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {user.onboarded && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold uppercase tracking-wide">
+                Onboarded
+              </span>
+            )}
+            {!user.hasProfile && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold uppercase tracking-wide">
+                No profile
+              </span>
+            )}
+            <button
+              onClick={onClose}
+              className="ml-2 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-muted"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {sections.map(section => (
+            <div key={section.title}>
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                {section.title}
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                {section.items.map(item => (
+                  <div key={item.label} className="bg-muted/30 rounded-xl p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                    <p className="text-sm text-foreground mt-1 break-all">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div className="pt-2">
+            <div className="flex items-center gap-4 text-sm text-muted-foreground bg-muted/20 rounded-xl p-4">
+              <Clock className="h-4 w-4 flex-shrink-0 text-primary" />
+              <span>Last seen <strong className="text-foreground">{timeAgo(user.lastActive)}</strong></span>
+              <Calendar className="h-4 w-4 flex-shrink-0 text-primary ml-auto" />
+              <span>Joined <strong className="text-foreground">{new Date(user.joinedAt).toLocaleDateString()}</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function UserDirectory() {
   const { getToken } = useAuth();
   const [search, setSearch] = useState("");
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -216,56 +313,110 @@ function UserDirectory() {
     },
   });
 
+  const exportToExcel = async () => {
+    setExporting(true);
+    try {
+      const r = await authedFetch(`/api/admin/users?limit=10000`);
+      if (!r.ok) throw new Error("Failed to fetch");
+      const result: { users: AdminUser[] } = await r.json();
+
+      const rows = result.users.map(u => ({
+        "First Name": u.firstName,
+        "Last Name": u.lastName,
+        "Email": u.email ?? "",
+        "Clerk ID": u.id,
+        "Joined": new Date(u.joinedAt).toLocaleString(),
+        "Last Active": u.lastActive ? new Date(u.lastActive).toLocaleString() : "Never",
+        "Events Fired": u.eventCount,
+        "Has Profile": u.hasProfile ? "Yes" : "No",
+        "Onboarded": u.onboarded ? "Yes" : "No",
+        "Partner 1": u.partner1Name ?? "",
+        "Partner 2": u.partner2Name ?? "",
+        "Wedding Date": u.weddingDate ?? "",
+        "Venue": u.venue ?? "",
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const colWidths = [
+        { wch: 14 }, { wch: 14 }, { wch: 28 }, { wch: 32 },
+        { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 12 },
+        { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 24 },
+      ];
+      ws["!cols"] = colWidths;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Users");
+      const today = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `aido-users-${today}.xlsx`);
+    } catch {
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const users = data?.users ?? [];
 
   return (
-    <Card className="border-none shadow-sm">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <CardTitle className="font-serif text-lg flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary" />
-              User Directory
-            </CardTitle>
-            <CardDescription className="mt-0.5">
-              {data ? `${data.total} user${data.total !== 1 ? "s" : ""} registered` : "Loading…"}
-            </CardDescription>
+    <>
+      {selectedUser && (
+        <UserDetailModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+      )}
+      <Card className="border-none shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <CardTitle className="font-serif text-lg flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                User Directory
+              </CardTitle>
+              <CardDescription className="mt-0.5">
+                {data ? `${data.total} user${data.total !== 1 ? "s" : ""} registered` : "Loading…"}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search by name or email…"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 w-52"
+                />
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={exportToExcel}
+                disabled={exporting || !data || data.total === 0}
+                className="gap-1.5 text-xs"
+              >
+                <FileDown className="h-3.5 w-3.5" />
+                {exporting ? "Exporting…" : "Export Excel"}
+              </Button>
+            </div>
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search by name or email…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 w-56"
-            />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        {isLoading ? (
-          <div className="p-4 space-y-3">
-            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
-          </div>
-        ) : error ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">
-            Failed to load users.
-          </div>
-        ) : users.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">
-            {search ? "No users match your search." : "No users have signed up yet."}
-          </div>
-        ) : (
-          <div className="divide-y divide-border/50">
-            {users.map(user => {
-              const isOpen = expanded === user.id;
-              const fullName = `${user.firstName} ${user.lastName}`.trim() || "Unknown";
-              return (
-                <div key={user.id} className="transition-colors hover:bg-muted/20">
-                  <button
-                    onClick={() => setExpanded(isOpen ? null : user.id)}
-                    className="w-full text-left px-5 py-3.5 flex items-center gap-3"
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-4 space-y-3">
+              {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
+            </div>
+          ) : error ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">Failed to load users.</div>
+          ) : users.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">
+              {search ? "No users match your search." : "No users have signed up yet."}
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {users.map(user => {
+                const fullName = `${user.firstName} ${user.lastName}`.trim() || "Unknown";
+                return (
+                  <div
+                    key={user.id}
+                    className="px-5 py-3.5 flex items-center gap-3 hover:bg-muted/20 transition-colors cursor-pointer"
+                    onClick={() => setSelectedUser(user)}
                   >
                     <UserAvatar user={user} />
                     <div className="flex-1 min-w-0">
@@ -295,42 +446,15 @@ function UserDirectory() {
                       </span>
                       <span className="text-primary font-medium">{user.eventCount} events</span>
                     </div>
-                    {isOpen
-                      ? <ChevronUpIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      : <ChevronDownIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    }
-                  </button>
-
-                  {isOpen && (
-                    <div className="px-5 pb-4 pt-0 border-t border-border/30 bg-muted/5">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
-                        {[
-                          { label: "Email", value: user.email ?? "—" },
-                          { label: "Clerk ID", value: user.id.slice(0, 20) + "…" },
-                          { label: "Joined", value: new Date(user.joinedAt).toLocaleString() },
-                          { label: "Last Active", value: user.lastActive ? new Date(user.lastActive).toLocaleString() : "Never" },
-                          { label: "Events Fired", value: String(user.eventCount) },
-                          { label: "Onboarded", value: user.onboarded ? "Yes" : "No" },
-                          { label: "Has Profile", value: user.hasProfile ? "Yes" : "No" },
-                          ...(user.weddingDate ? [{ label: "Wedding Date", value: user.weddingDate }] : []),
-                          ...(user.venue ? [{ label: "Venue", value: user.venue }] : []),
-                          ...(user.partner1Name ? [{ label: "Couple", value: `${user.partner1Name} & ${user.partner2Name ?? ""}` }] : []),
-                        ].map(item => (
-                          <div key={item.label} className="bg-muted/30 rounded-lg p-2.5">
-                            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</p>
-                            <p className="text-sm text-foreground mt-0.5 truncate" title={item.value}>{item.value}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }
 
