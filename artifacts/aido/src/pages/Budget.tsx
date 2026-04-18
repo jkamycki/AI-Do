@@ -31,7 +31,7 @@ const itemSchema = z.object({
   category: z.string().min(1, "Category is required"),
   customCategory: z.string().optional(),
   vendor: z.string().min(1, "Vendor is required"),
-  estimatedCost: z.coerce.number().min(0, "Must be >= 0"),
+  estimatedCost: z.coerce.number().min(0).default(0),
   actualCost: z.coerce.number().min(0, "Must be >= 0"),
   amountPaid: z.coerce.number().min(0, "Must be >= 0").default(0),
   isPaid: z.boolean().default(false),
@@ -325,34 +325,19 @@ export default function Budget() {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={editForm.control}
-                  name="estimatedCost"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Estimated ($)</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="actualCost"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Actual ($)</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={editForm.control}
+                name="actualCost"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cost ($)</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={editForm.control}
                 name="amountPaid"
@@ -465,34 +450,19 @@ export default function Budget() {
                     </FormItem>
                   )}
                 />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="estimatedCost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Estimated ($)</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} data-testid="input-estimated" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="actualCost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Actual ($)</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} data-testid="input-actual" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="actualCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cost ($)</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} data-testid="input-actual" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="amountPaid"
@@ -603,8 +573,7 @@ export default function Budget() {
                     <TableHeader className="bg-muted/10">
                       <TableRow>
                         <TableHead>Vendor / Category</TableHead>
-                        <TableHead className="text-right">Est.</TableHead>
-                        <TableHead className="text-right">Actual</TableHead>
+                        <TableHead className="text-right">Cost</TableHead>
                         <TableHead>Payment Progress</TableHead>
                         <TableHead className="text-center">Paid</TableHead>
                         <TableHead></TableHead>
@@ -616,9 +585,6 @@ export default function Budget() {
                           <TableCell>
                             <div className="font-medium text-foreground">{item.vendor}</div>
                             <div className="text-xs text-muted-foreground">{item.category}</div>
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            ${item.estimatedCost.toLocaleString()}
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             ${item.actualCost.toLocaleString()}
