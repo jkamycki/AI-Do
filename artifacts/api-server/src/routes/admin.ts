@@ -12,19 +12,27 @@ const OWNER_EMAILS = [
   "kamyckijoseph@outlook.com",
 ];
 
-async function isOwnerEmail(userId: string): Promise<boolean> {
-  try {
-    const user = await clerkClient.users.getUser(userId);
-    const userEmails = user.emailAddresses.map(e => e.emailAddress.toLowerCase());
-    return OWNER_EMAILS.some(e => userEmails.includes(e));
-  } catch {
-    return false;
-  }
+async function isAdmin(userId: string): Promise<boolean> {
+  const [emailCheck, dbCheck] = await Promise.allSettled([
+    (async () => {
+      const user = await clerkClient.users.getUser(userId);
+      const userEmails = user.emailAddresses.map(e => e.emailAddress.toLowerCase());
+      return OWNER_EMAILS.some(e => userEmails.includes(e));
+    })(),
+    (async () => {
+      const rows = await db.select().from(adminUsers).where(eq(adminUsers.userId, userId)).limit(1);
+      return rows.length > 0;
+    })(),
+  ]);
+
+  const emailPass = emailCheck.status === "fulfilled" && emailCheck.value;
+  const dbPass = dbCheck.status === "fulfilled" && dbCheck.value;
+  return emailPass || dbPass;
 }
 
 async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   try {
-    const allowed = await isOwnerEmail(req.userId!);
+    const allowed = await isAdmin(req.userId!);
     if (!allowed) return res.status(403).json({ error: "Forbidden: admin only" });
     next();
   } catch {
@@ -34,8 +42,8 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
 
 router.get("/admin/check", requireAuth, async (req, res) => {
   try {
-    const isAdmin = await isOwnerEmail(req.userId!);
-    res.json({ isAdmin });
+    const adminStatus = await isAdmin(req.userId!);
+    res.json({ isAdmin: adminStatus });
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }
