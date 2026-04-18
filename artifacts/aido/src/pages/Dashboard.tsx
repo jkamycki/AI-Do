@@ -350,7 +350,7 @@ export default function Dashboard() {
                     <div className="flex flex-wrap gap-1">
                       {hotels.map(h => (
                         <span key={h.id} className="text-xs bg-primary/8 text-primary px-2 py-0.5 rounded-full border border-primary/15 font-medium">
-                          {h.hotelName}
+                          {h.hotelName || "Unnamed Hotel"}
                         </span>
                       ))}
                     </div>

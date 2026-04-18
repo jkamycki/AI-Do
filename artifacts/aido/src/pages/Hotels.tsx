@@ -90,8 +90,8 @@ function HotelForm({
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5 sm:col-span-2">
-          <Label>Hotel Name *</Label>
-          <Input placeholder="Marriott Newark" value={form.hotelName ?? ""} onChange={e => set("hotelName", e.target.value)} required />
+          <Label>Hotel Name</Label>
+          <Input placeholder="Marriott Newark" value={form.hotelName ?? ""} onChange={e => set("hotelName", e.target.value)} />
         </div>
         <div className="space-y-1.5">
           <Label>Address</Label>
@@ -142,7 +142,7 @@ function HotelForm({
           <Textarea placeholder="Shuttle available, free breakfast included…" rows={2} className="resize-none" value={form.notes ?? ""} onChange={e => set("notes", e.target.value)} />
         </div>
       </div>
-      <Button type="submit" className="w-full" disabled={isPending || !form.hotelName}>
+      <Button type="submit" className="w-full" disabled={isPending}>
         {isPending ? "Saving…" : submitLabel}
       </Button>
     </form>
@@ -163,7 +163,7 @@ function HotelCard({ hotel, onEdit, onDelete }: { hotel: HotelBlock; onEdit: () 
               <Hotel className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base font-semibold">{hotel.hotelName}</CardTitle>
+              <CardTitle className="text-base font-semibold">{hotel.hotelName || "Unnamed Hotel"}</CardTitle>
               {hotel.address && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                   <MapPin className="h-3 w-3" /> {hotel.address}
@@ -180,7 +180,7 @@ function HotelCard({ hotel, onEdit, onDelete }: { hotel: HotelBlock; onEdit: () 
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Remove {hotel.hotelName}?</AlertDialogTitle>
+                  <AlertDialogTitle>Remove {hotel.hotelName || "this hotel"}?</AlertDialogTitle>
                   <AlertDialogDescription>This will permanently remove this hotel block.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

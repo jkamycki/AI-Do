@@ -34,10 +34,9 @@ router.post("/hotels", requireAuth, async (req, res) => {
       groupName, cutoffDate, roomsReserved, roomsBooked, pricePerNight,
       distanceFromVenue, notes,
     } = req.body;
-    if (!hotelName) return res.status(400).json({ error: "hotelName is required" });
     const [created] = await db.insert(hotelBlocks).values({
       userId: req.userId!,
-      hotelName,
+      hotelName: hotelName ?? "",
       address: address ?? null,
       phone: phone ?? null,
       email: email ?? null,
