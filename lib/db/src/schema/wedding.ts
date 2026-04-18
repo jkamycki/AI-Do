@@ -239,3 +239,24 @@ export const guests = pgTable("guests", {
 export const insertGuestSchema = createInsertSchema(guests).omit({ id: true, createdAt: true });
 export type InsertGuest = z.infer<typeof insertGuestSchema>;
 export type Guest = typeof guests.$inferSelect;
+
+export const hotelBlocks = pgTable("hotel_blocks", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  hotelName: text("hotel_name").notNull(),
+  address: text("address"),
+  phone: text("phone"),
+  email: text("email"),
+  bookingLink: text("booking_link"),
+  discountCode: text("discount_code"),
+  groupName: text("group_name"),
+  cutoffDate: text("cutoff_date"),
+  roomsReserved: integer("rooms_reserved"),
+  roomsBooked: integer("rooms_booked").notNull().default(0),
+  pricePerNight: numeric("price_per_night", { precision: 12, scale: 2 }),
+  distanceFromVenue: text("distance_from_venue"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type HotelBlock = typeof hotelBlocks.$inferSelect;

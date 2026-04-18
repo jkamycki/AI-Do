@@ -24,6 +24,7 @@ import {
   HelpCircle,
   Armchair,
   UsersRound,
+  Hotel,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -50,6 +51,7 @@ const navSections = [
     items: [
       { href: "/guests", label: "Guest List", icon: UsersRound },
       { href: "/seating-chart", label: "Seating Chart", icon: Armchair },
+      { href: "/hotels", label: "Hotel Blocks", icon: Hotel },
     ],
   },
   {
