@@ -1,9 +1,11 @@
 import { useGetDashboardSummary } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@clerk/react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { OnboardingWizard, useOnboardingWizard } from "@/components/OnboardingWizard";
+import { authFetch } from "@/lib/authFetch";
 import {
   CalendarDays,
   DollarSign,
@@ -21,8 +23,20 @@ import {
   AlertTriangle,
   Pencil,
   Gem,
+  Hotel,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+
+const API = import.meta.env.VITE_API_URL ?? "";
+
+interface HotelBlock {
+  id: number;
+  hotelName: string;
+  cutoffDate?: string | null;
+  roomsReserved?: number | null;
+  roomsBooked: number;
+  discountCode?: string | null;
+}
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -168,6 +182,11 @@ function FeatureCard({
 export default function Dashboard() {
   const { data: summary, isLoading, isError } = useGetDashboardSummary();
   const { user } = useUser();
+  const { data: hotels = [] } = useQuery<HotelBlock[]>({
+    queryKey: ["hotels"],
+    queryFn: () => authFetch(`${API}/api/hotels`).then(r => r.json()),
+    enabled: !!summary,
+  });
   const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingWizard(summary?.hasProfile ?? true);
 
   const firstName = user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] ?? "there";
@@ -486,6 +505,33 @@ export default function Dashboard() {
                 : <div className="text-xs text-muted-foreground">No guests added yet</div>
             }
             testId="btn-goto-guests"
+          />
+
+          <FeatureCard
+            icon={Hotel}
+            title="Hotel Blocks"
+            description="Manage room blocks and discount codes so your guests always know where to stay."
+            cta="/hotels"
+            ctaLabel={hotels.length > 0 ? "View Hotels" : "Add Hotel Block"}
+            stat={(() => {
+              if (hotels.length === 0) return <div className="text-xs text-muted-foreground">No hotel blocks added yet</div>;
+              const totalRooms = hotels.reduce((s, h) => s + (h.roomsReserved ?? 0), 0);
+              const bookedRooms = hotels.reduce((s, h) => s + h.roomsBooked, 0);
+              const soonCutoff = hotels.filter(h => {
+                if (!h.cutoffDate) return false;
+                const days = Math.ceil((new Date(h.cutoffDate + "T12:00:00").getTime() - Date.now()) / 86400000);
+                return days >= 0 && days <= 14;
+              });
+              return (
+                <div className="space-y-1.5">
+                  <div className="text-sm font-medium text-primary">{hotels.length} hotel{hotels.length !== 1 ? "s" : ""} · {bookedRooms}/{totalRooms} rooms booked</div>
+                  {soonCutoff.length > 0 && (
+                    <div className="text-xs text-amber-600 font-medium">⚠ {soonCutoff.length} block cutoff{soonCutoff.length !== 1 ? "s" : ""} coming up soon</div>
+                  )}
+                </div>
+              );
+            })()}
+            testId="btn-goto-hotels"
           />
 
           <FeatureCard
