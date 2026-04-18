@@ -2,12 +2,18 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { weddingProfiles } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { requireAuth } from "../../middlewares/requireAuth";
 
 const router = Router();
 
-router.get("/profile", async (req, res) => {
+router.get("/profile", requireAuth, async (req, res) => {
   try {
-    const profiles = await db.select().from(weddingProfiles).limit(1);
+    const profiles = await db
+      .select()
+      .from(weddingProfiles)
+      .where(eq(weddingProfiles.userId, req.userId))
+      .limit(1);
+
     if (!profiles.length) {
       res.status(404).json({ error: "No profile found" });
       return;
@@ -24,14 +30,18 @@ router.get("/profile", async (req, res) => {
   }
 });
 
-router.post("/profile", async (req, res) => {
+router.post("/profile", requireAuth, async (req, res) => {
   try {
     const {
       partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
       venue, location, guestCount, totalBudget, weddingVibe
     } = req.body;
 
-    const existing = await db.select().from(weddingProfiles).limit(1);
+    const existing = await db
+      .select()
+      .from(weddingProfiles)
+      .where(eq(weddingProfiles.userId, req.userId))
+      .limit(1);
 
     if (existing.length) {
       const [updated] = await db
@@ -52,6 +62,7 @@ router.post("/profile", async (req, res) => {
       const [created] = await db
         .insert(weddingProfiles)
         .values({
+          userId: req.userId,
           partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
           venue, location, guestCount, totalBudget: String(totalBudget), weddingVibe,
         })

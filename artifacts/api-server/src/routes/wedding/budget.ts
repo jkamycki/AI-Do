@@ -3,8 +3,18 @@ import { db } from "@workspace/db";
 import { budgets, budgetItems, weddingProfiles } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { requireAuth } from "../../middlewares/requireAuth";
 
 const router = Router();
+
+async function getProfileByUserId(userId: string) {
+  const profiles = await db
+    .select()
+    .from(weddingProfiles)
+    .where(eq(weddingProfiles.userId, userId))
+    .limit(1);
+  return profiles[0] ?? null;
+}
 
 async function getBudgetWithItems(budgetId: number) {
   const budget = await db.select().from(budgets).where(eq(budgets.id, budgetId)).limit(1);
@@ -34,9 +44,21 @@ async function getBudgetWithItems(budgetId: number) {
   };
 }
 
-router.get("/budget", async (req, res) => {
+router.get("/budget", requireAuth, async (req, res) => {
   try {
-    const rows = await db.select().from(budgets).orderBy(desc(budgets.id)).limit(1);
+    const profile = await getProfileByUserId(req.userId);
+    if (!profile) {
+      res.status(404).json({ error: "No budget found" });
+      return;
+    }
+
+    const rows = await db
+      .select()
+      .from(budgets)
+      .where(eq(budgets.profileId, profile.id))
+      .orderBy(desc(budgets.id))
+      .limit(1);
+
     if (!rows.length) {
       res.status(404).json({ error: "No budget found" });
       return;
@@ -49,15 +71,18 @@ router.get("/budget", async (req, res) => {
   }
 });
 
-router.post("/budget", async (req, res) => {
+router.post("/budget", requireAuth, async (req, res) => {
   try {
     const { totalBudget } = req.body;
 
-    const existing = await db.select().from(budgets).limit(1);
-    let profileId = 1;
+    const profile = await getProfileByUserId(req.userId);
+    const profileId = profile?.id ?? 0;
 
-    const profiles = await db.select().from(weddingProfiles).limit(1);
-    if (profiles.length) profileId = profiles[0].id;
+    const existing = await db
+      .select()
+      .from(budgets)
+      .where(eq(budgets.profileId, profileId))
+      .limit(1);
 
     if (existing.length) {
       await db
@@ -80,7 +105,7 @@ router.post("/budget", async (req, res) => {
   }
 });
 
-router.post("/budget/predict", async (req, res) => {
+router.post("/budget/predict", requireAuth, async (req, res) => {
   try {
     const { location, guestCount, weddingVibe } = req.body;
 
@@ -125,14 +150,20 @@ Include these categories: Venue, Catering & Bar, Photography, Videography, Flora
   }
 });
 
-router.post("/budget/items", async (req, res) => {
+router.post("/budget/items", requireAuth, async (req, res) => {
   try {
     const { category, vendor, estimatedCost, actualCost, isPaid, notes } = req.body;
 
-    let budgetRows = await db.select().from(budgets).limit(1);
+    const profile = await getProfileByUserId(req.userId);
+    const profileId = profile?.id ?? 0;
+
+    let budgetRows = await db
+      .select()
+      .from(budgets)
+      .where(eq(budgets.profileId, profileId))
+      .limit(1);
+
     if (!budgetRows.length) {
-      const profiles = await db.select().from(weddingProfiles).limit(1);
-      const profileId = profiles.length ? profiles[0].id : 1;
       const [newBudget] = await db.insert(budgets).values({ profileId, totalBudget: "0" }).returning();
       budgetRows = [newBudget];
     }
@@ -165,7 +196,7 @@ router.post("/budget/items", async (req, res) => {
   }
 });
 
-router.put("/budget/items/:id", async (req, res) => {
+router.put("/budget/items/:id", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { category, vendor, estimatedCost, actualCost, isPaid, notes } = req.body;
@@ -200,7 +231,7 @@ router.put("/budget/items/:id", async (req, res) => {
   }
 });
 
-router.delete("/budget/items/:id", async (req, res) => {
+router.delete("/budget/items/:id", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     await db.delete(budgetItems).where(eq(budgetItems.id, id));

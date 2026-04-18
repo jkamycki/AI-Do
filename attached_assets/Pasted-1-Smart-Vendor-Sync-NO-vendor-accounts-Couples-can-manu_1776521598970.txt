@@ -1,0 +1,85 @@
+1. Smart Vendor Sync (NO vendor accounts)
+
+Couples can manually add vendors: name, category, email, phone, website, portal link.
+
+Allow uploading vendor contracts (PDF), invoices, receipts.
+
+Add fields for deposit amount, total cost, payment schedule, and due dates.
+
+Add automatic reminders for upcoming payments.
+
+Store everything under the couple’s profile.
+
+2. AI Vendor Email Assistant
+
+Couples select a vendor and choose an action: inquire, negotiate, request availability, request contract, confirm details.
+
+AI generates the email text automatically.
+
+Add a “Summarize Vendor Reply” tool where users paste an email and the AI summarizes it.
+
+Store all generated emails in a message history per vendor.
+
+3. Advanced Timeline Generator
+
+Add vendor‑specific templates: photographer, videographer, DJ, makeup artist, florist, officiant, venue, catering.
+
+Timelines adapt based on ceremony time, guest count, venue type, and cultural traditions.
+
+Allow editing, reordering, and saving timelines.
+
+Add a “Generate Full Wedding Day Timeline” button.
+
+4. Auto‑Tasks + Checklist System
+
+When a couple adds a vendor, auto‑generate tasks (pay deposit, sign contract, confirm arrival time, send shot list, final payment).
+
+Allow custom tasks.
+
+Add due dates, reminders, and completion tracking.
+
+Organize tasks by category: planning, vendors, payments, day‑of.
+
+5. Budget Manager + Payment Tracking
+
+Couples enter estimated budget, actual costs, deposits, and payment schedules.
+
+Automatically calculate totals, remaining balance, and category breakdowns.
+
+Add reminders for upcoming payments.
+
+Add a visual budget summary (pie chart or bar chart).
+
+Integrate with vendor sync so vendor costs auto‑populate.
+
+6. Guest List + RSVP Manager
+
+Add guests with name, email, phone, household, meal choice, RSVP status.
+
+Allow CSV import and export.
+
+Add a seating chart tool with drag‑and‑drop tables and seats.
+
+Add filters for meal type, family side, and attendance.
+
+7. Day‑Of Mobile Mode
+
+A simplified mobile‑friendly interface showing the timeline, tasks, and vendor contacts.
+
+Add a “Mark Complete” mode for real‑time progress.
+
+Add an emergency AI helper for day‑of issues (e.g., vendor late, weather problems).
+
+Add a toggle on the dashboard to enter Day‑Of Mode.
+
+8. AI Decor + Mood Board Generator
+
+Couples enter colors, theme, venue type, and vibe.
+
+AI generates mood board descriptions and image suggestions.
+
+Add color palette generation.
+
+Add downloadable mood board PDF.
+
+Store saved mood boards in the user’s profile.

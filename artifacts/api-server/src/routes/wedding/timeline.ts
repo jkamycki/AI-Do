@@ -3,12 +3,34 @@ import { db } from "@workspace/db";
 import { timelines, weddingProfiles } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { requireAuth } from "../../middlewares/requireAuth";
 
 const router = Router();
 
-router.get("/timeline", async (req, res) => {
+async function getProfileByUserId(userId: string) {
+  const profiles = await db
+    .select()
+    .from(weddingProfiles)
+    .where(eq(weddingProfiles.userId, userId))
+    .limit(1);
+  return profiles[0] ?? null;
+}
+
+router.get("/timeline", requireAuth, async (req, res) => {
   try {
-    const rows = await db.select().from(timelines).orderBy(desc(timelines.id)).limit(1);
+    const profile = await getProfileByUserId(req.userId);
+    if (!profile) {
+      res.status(404).json({ error: "No timeline found" });
+      return;
+    }
+
+    const rows = await db
+      .select()
+      .from(timelines)
+      .where(eq(timelines.profileId, profile.id))
+      .orderBy(desc(timelines.id))
+      .limit(1);
+
     if (!rows.length) {
       res.status(404).json({ error: "No timeline found" });
       return;
@@ -25,16 +47,13 @@ router.get("/timeline", async (req, res) => {
   }
 });
 
-router.post("/timeline", async (req, res) => {
+router.post("/timeline", requireAuth, async (req, res) => {
   try {
-    const { profileId } = req.body;
-
-    const profiles = await db.select().from(weddingProfiles).where(eq(weddingProfiles.id, profileId)).limit(1);
-    if (!profiles.length) {
-      res.status(404).json({ error: "Profile not found" });
+    const profile = await getProfileByUserId(req.userId);
+    if (!profile) {
+      res.status(404).json({ error: "Profile not found. Please complete your wedding profile first." });
       return;
     }
-    const profile = profiles[0];
 
     const prompt = `Create a detailed wedding day timeline for the following wedding:
 - Couple: ${profile.partner1Name} & ${profile.partner2Name}
@@ -66,7 +85,7 @@ Return ONLY a valid JSON array (no markdown, no explanation) with this exact str
 
     const content = completion.choices[0]?.message?.content ?? "[]";
     let events: Array<{ time: string; title: string; description: string; category: string }>;
-    
+
     try {
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       events = JSON.parse(jsonMatch ? jsonMatch[0] : content);
@@ -76,7 +95,7 @@ Return ONLY a valid JSON array (no markdown, no explanation) with this exact str
 
     const [created] = await db
       .insert(timelines)
-      .values({ profileId, events })
+      .values({ profileId: profile.id, events })
       .returning();
 
     res.json({

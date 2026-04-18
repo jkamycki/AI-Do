@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <circle cx="60" cy="60" r="58" fill="#FAF7F5" stroke="#C4849C" stroke-width="1.5"/>
+  <path d="M60 82C60 82 30 65 30 46C30 37.2 37.2 30 46 30C51.2 30 55.8 32.6 58.6 36.6L60 38.8L61.4 36.6C64.2 32.6 68.8 30 74 30C82.8 30 90 37.2 90 46C90 65 60 82 60 82Z" fill="#C4849C" opacity="0.25"/>
+  <path d="M60 76C60 76 34 61 34 44C34 36.8 39.8 31 47 31C51.6 31 55.6 33.2 58.2 36.6L60 39L61.8 36.6C64.4 33.2 68.4 31 73 31C80.2 31 86 36.8 86 44C86 61 60 76 60 76Z" fill="#C4849C" opacity="0.55"/>
+  <circle cx="44" cy="84" r="10" stroke="#9B4D6C" stroke-width="2.5" fill="none"/>
+  <circle cx="76" cy="84" r="10" stroke="#9B4D6C" stroke-width="2.5" fill="none"/>
+  <path d="M54 84 Q60 80 66 84" stroke="#9B4D6C" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <text x="60" y="56" text-anchor="middle" font-family="Georgia, serif" font-size="13" font-weight="bold" fill="#9B4D6C" letter-spacing="1">A.IDO</text>
+</svg>

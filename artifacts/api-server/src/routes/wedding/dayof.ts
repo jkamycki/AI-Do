@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { requireAuth } from "../../middlewares/requireAuth";
 
 const router = Router();
 
-router.post("/dayof/emergency", async (req, res) => {
+router.post("/dayof/emergency", requireAuth, async (req, res) => {
   try {
     const { situation } = req.body;
 

@@ -1,14 +1,32 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { checklistItems } from "@workspace/db";
+import { checklistItems, weddingProfiles } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { requireAuth } from "../../middlewares/requireAuth";
 
 const router = Router();
 
-router.get("/checklist", async (req, res) => {
+async function getProfileByUserId(userId: string) {
+  const profiles = await db
+    .select()
+    .from(weddingProfiles)
+    .where(eq(weddingProfiles.userId, userId))
+    .limit(1);
+  return profiles[0] ?? null;
+}
+
+router.get("/checklist", requireAuth, async (req, res) => {
   try {
-    const items = await db.select().from(checklistItems).orderBy(asc(checklistItems.id));
+    const profile = await getProfileByUserId(req.userId);
+
+    const items = profile
+      ? await db
+          .select()
+          .from(checklistItems)
+          .where(eq(checklistItems.profileId, profile.id))
+          .orderBy(asc(checklistItems.id))
+      : [];
 
     res.json({
       items: items.map(item => ({
@@ -19,7 +37,7 @@ router.get("/checklist", async (req, res) => {
         isCompleted: item.isCompleted,
         completedAt: item.completedAt?.toISOString() ?? undefined,
       })),
-      generatedAt: items.length > 0 ? new Date().toISOString() : new Date().toISOString(),
+      generatedAt: new Date().toISOString(),
     });
   } catch (err) {
     req.log.error(err, "Failed to get checklist");
@@ -27,9 +45,15 @@ router.get("/checklist", async (req, res) => {
   }
 });
 
-router.post("/checklist", async (req, res) => {
+router.post("/checklist", requireAuth, async (req, res) => {
   try {
     const { weddingDate, weddingVibe, guestCount } = req.body;
+
+    const profile = await getProfileByUserId(req.userId);
+    if (!profile) {
+      res.status(404).json({ error: "Profile not found. Please complete your wedding profile first." });
+      return;
+    }
 
     const today = new Date();
     const wedding = new Date(weddingDate);
@@ -66,13 +90,10 @@ Include 5-8 tasks per relevant time period. Be specific and actionable. Make tas
       tasks = [];
     }
 
-    const profiles = await db.select().from(checklistItems).limit(1);
-    const profileId = profiles.length ? profiles[0].profileId : 1;
-
-    await db.delete(checklistItems).where(eq(checklistItems.profileId, profileId));
+    await db.delete(checklistItems).where(eq(checklistItems.profileId, profile.id));
 
     const insertData = tasks.map(t => ({
-      profileId,
+      profileId: profile.id,
       month: t.month,
       task: t.task,
       description: t.description,
@@ -82,7 +103,11 @@ Include 5-8 tasks per relevant time period. Be specific and actionable. Make tas
       await db.insert(checklistItems).values(insertData);
     }
 
-    const items = await db.select().from(checklistItems).orderBy(asc(checklistItems.id));
+    const items = await db
+      .select()
+      .from(checklistItems)
+      .where(eq(checklistItems.profileId, profile.id))
+      .orderBy(asc(checklistItems.id));
 
     res.json({
       items: items.map(item => ({
@@ -101,7 +126,7 @@ Include 5-8 tasks per relevant time period. Be specific and actionable. Make tas
   }
 });
 
-router.patch("/checklist/items/:id", async (req, res) => {
+router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { isCompleted } = req.body;
