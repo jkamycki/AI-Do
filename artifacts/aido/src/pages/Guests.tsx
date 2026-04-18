@@ -24,7 +24,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag } from "lucide-react";
+import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const RSVP_OPTIONS = [
   { value: "pending", label: "Pending", color: "bg-amber-100 text-amber-800 border-amber-200" },
@@ -282,6 +283,16 @@ export default function Guests() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
 
+  function handleRsvpChange(guest: Guest, newStatus: string) {
+    updateGuest.mutate({
+      id: guest.id,
+      data: { ...guest, rsvpStatus: newStatus as "pending" | "attending" | "declined" },
+    }, {
+      onSuccess: () => invalidate(),
+      onError: () => toast({ title: "Failed to update RSVP", variant: "destructive" }),
+    });
+  }
+
   function handleAdd(data: GuestFormValues) {
     addGuest.mutate({
       data: {
@@ -382,6 +393,42 @@ export default function Guests() {
           </Dialog>
         </div>
       </div>
+
+      {/* RSVP Response Rate Bar */}
+      {summary.total > 0 && (
+        <div className="bg-card border border-border/60 rounded-xl p-4 space-y-2 shadow-sm">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium text-foreground">RSVP Response Rate</span>
+            <span className="text-muted-foreground">
+              {summary.attending + summary.declined} of {summary.total} responded
+              {summary.total > 0 && (
+                <span className="ml-1 text-primary font-semibold">
+                  ({Math.round(((summary.attending + summary.declined) / summary.total) * 100)}%)
+                </span>
+              )}
+            </span>
+          </div>
+          <div className="h-3 rounded-full bg-muted overflow-hidden flex">
+            {summary.attending > 0 && (
+              <div
+                className="h-full bg-emerald-500 transition-all duration-500"
+                style={{ width: `${(summary.attending / summary.total) * 100}%` }}
+              />
+            )}
+            {summary.declined > 0 && (
+              <div
+                className="h-full bg-red-400 transition-all duration-500"
+                style={{ width: `${(summary.declined / summary.total) * 100}%` }}
+              />
+            )}
+          </div>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> Attending ({summary.attending})</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" /> Declined ({summary.declined})</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30 inline-block" /> Awaiting ({summary.pending})</span>
+          </div>
+        </div>
+      )}
 
       {/* Summary chips */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -529,9 +576,26 @@ export default function Guests() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${badge.color}`}>
-                            {badge.label}
-                          </span>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${badge.color} hover:opacity-80 transition-opacity cursor-pointer`}>
+                                {badge.label}
+                                <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-36">
+                              {RSVP_OPTIONS.map(opt => (
+                                <DropdownMenuItem
+                                  key={opt.value}
+                                  className={`text-xs font-medium cursor-pointer ${g.rsvpStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
+                                  onClick={() => handleRsvpChange(g, opt.value)}
+                                >
+                                  <span className={`w-2 h-2 rounded-full mr-2 ${opt.value === "attending" ? "bg-emerald-500" : opt.value === "declined" ? "bg-red-400" : "bg-amber-400"}`} />
+                                  {opt.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground capitalize">
                           {g.mealChoice ? g.mealChoice.replace(/_/g, " ") : "—"}
