@@ -41,7 +41,7 @@ const navSections = [
     label: "Budget & Vendors",
     items: [
       { href: "/budget", label: "Budget Manager", icon: DollarSign },
-      { href: "/vendors", label: "Vendors", icon: Store },
+      { href: "/vendors", label: "Vendor List", icon: Store },
       { href: "/vendor-email", label: "Vendor Emails", icon: Mail },
     ],
   },
