@@ -210,10 +210,7 @@ export default function HelpPage() {
               Contact Support
             </CardTitle>
             <CardDescription>
-              Send us a message and we'll get back to you as soon as possible.
-              <span className="block mt-1 text-xs text-primary/70 font-medium">
-                Replies sent via: A.IDO@support.com
-              </span>
+              Send us a message and our team will review it and get back to you as soon as possible.
             </CardDescription>
           </CardHeader>
           <CardContent>

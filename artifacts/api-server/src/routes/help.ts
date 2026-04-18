@@ -3,8 +3,6 @@ import { db, contactMessages, feedbackSubmissions, adminUsers } from "@workspace
 import { eq, desc, or } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 
-const REAL_RECIPIENT_EMAIL = "kamyckijoseph@outlook.com";
-
 const router = Router();
 
 router.post("/help/contact", requireAuth, async (req, res) => {
