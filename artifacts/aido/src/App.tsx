@@ -19,6 +19,7 @@ import Vendors from "@/pages/Vendors";
 import DayOf from "@/pages/DayOf";
 import Admin from "@/pages/Admin";
 import Settings from "@/pages/Settings";
+import Help from "@/pages/Help";
 import InviteAccept from "@/pages/InviteAccept";
 import SharedWorkspace from "@/pages/SharedWorkspace";
 import NotFound from "@/pages/not-found";
@@ -201,6 +202,7 @@ function Router() {
       <Route path="/day-of" component={() => <ProtectedRoute component={DayOf} />} />
       <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
+      <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
       <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} />} />
       <Route component={NotFound} />
     </Switch>

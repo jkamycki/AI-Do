@@ -154,3 +154,28 @@ export const workspaceActivity = pgTable("workspace_activity", {
 });
 
 export type WorkspaceActivity = typeof workspaceActivity.$inferSelect;
+
+export const contactMessages = pgTable("contact_messages", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id"),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ContactMessage = typeof contactMessages.$inferSelect;
+
+export const feedbackSubmissions = pgTable("feedback_submissions", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id"),
+  rating: integer("rating"),
+  category: text("category"),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type FeedbackSubmission = typeof feedbackSubmissions.$inferSelect;

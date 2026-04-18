@@ -14,6 +14,7 @@ import adminRouter from "./admin";
 import collaboratorsRouter from "./collaborators";
 import workspaceRouter from "./workspace";
 import supportRouter from "./support";
+import helpRouter from "./help";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(adminRouter);
 router.use(collaboratorsRouter);
 router.use(workspaceRouter);
 router.use(supportRouter);
+router.use(helpRouter);
 
 export default router;

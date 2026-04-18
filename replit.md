@@ -80,6 +80,14 @@ Full-stack AI-powered wedding planning application. pnpm workspace monorepo usin
 - **API endpoints** at `/api/collaborators/*` and `/api/workspace/:profileId/*`
 - **`workspaceAccess.ts` helper** — `resolveWorkspaceRole(userId, profileId)`, `hasMinRole(role, required)`, `logActivity(...)`
 
+## Help & Support System
+
+- **Help page** at `/help` — three tabs: Contact Us, Feedback, FAQ
+- **Contact form** — name, email, subject, message; displayed from address is "A.IDO@support.com"; stored in `contact_messages` DB table
+- **Feedback form** — star rating (1-5), category picker (Bug/Feature/General/Praise), message; stored in `feedback_submissions` DB table
+- **API endpoints**: `POST /api/help/contact`, `POST /api/help/feedback`, `GET /api/help/messages` (admin), `PATCH /api/help/messages/{type}/{id}/read` (admin)
+- **Admin Messages tab** in Operations Center — shows all contact messages and feedback with unread indicators and click-to-expand; auto-marks read on expand
+
 ## PDF Export Architecture
 
 - **Server-side**: `pdfkit` generates A4 PDFs with A.IDO branding (plum header, color-coded categories)

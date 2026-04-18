@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,8 @@ import {
   Users, TrendingUp, Zap, Shield, BarChart2, DollarSign,
   AlertCircle, RefreshCw, CalendarClock, Mail, CheckSquare,
   Smartphone, FileDown, DollarSign as BudgetIcon, Activity,
-  ChevronRight,
+  ChevronRight, Inbox, Star, MessageSquare, Bug, Lightbulb, Heart, ThumbsUp,
+  MailOpen, Circle,
 } from "lucide-react";
 
 interface AdminMetrics {
@@ -72,6 +73,7 @@ const TABS = [
   { key: "money", label: "Money Metrics", icon: DollarSign },
   { key: "system", label: "System Health", icon: Shield },
   { key: "events", label: "Event Log", icon: Activity },
+  { key: "messages", label: "Messages", icon: Inbox },
 ];
 
 const EVENT_LABELS: Record<string, string> = {
@@ -427,6 +429,238 @@ function EventLogSection({ events, isLoading }: { events: AdminEvent[]; isLoadin
   );
 }
 
+interface HelpMessage {
+  id: number;
+  userId: string | null;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+interface FeedbackItem {
+  id: number;
+  userId: string | null;
+  rating: number | null;
+  category: string | null;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+const CATEGORY_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+  bug: { label: "Bug Report", icon: Bug, color: "text-red-600 bg-red-50" },
+  feature: { label: "Feature Request", icon: Lightbulb, color: "text-amber-600 bg-amber-50" },
+  general: { label: "General Feedback", icon: ThumbsUp, color: "text-blue-600 bg-blue-50" },
+  praise: { label: "Something I Love", icon: Heart, color: "text-rose-600 bg-rose-50" },
+};
+
+function MessagesSection() {
+  const { getToken } = useAuth();
+  const [subTab, setSubTab] = useState<"contact" | "feedback">("contact");
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+
+  const authedFetch = async (url: string, init: RequestInit = {}) => {
+    const token = await getToken();
+    return fetch(url, {
+      ...init,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(init.headers ?? {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  };
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-messages"],
+    queryFn: async () => {
+      const r = await authedFetch("/api/help/messages");
+      if (!r.ok) throw new Error("Fetch failed");
+      return r.json() as Promise<{ contacts: HelpMessage[]; feedback: FeedbackItem[]; unreadCount: number }>;
+    },
+    refetchInterval: 30000,
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: async ({ type, id }: { type: "contact" | "feedback"; id: number }) => {
+      await authedFetch(`/api/help/messages/${type}/${id}/read`, { method: "PATCH" });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-messages"] }),
+  });
+
+  const handleExpand = (id: number, type: "contact" | "feedback") => {
+    setExpanded(prev => {
+      if (prev === id) return null;
+      markReadMutation.mutate({ type, id });
+      return id;
+    });
+  };
+
+  if (isLoading) {
+    return <div className="space-y-3">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>;
+  }
+
+  const contacts = data?.contacts ?? [];
+  const feedback = data?.feedback ?? [];
+  const unreadC = contacts.filter(c => !c.isRead).length;
+  const unreadF = feedback.filter(f => !f.isRead).length;
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader
+        title="Messages & Feedback"
+        description="Contact requests and user feedback submitted through the Help page."
+      />
+
+      <div className="flex gap-2">
+        <button
+          onClick={() => setSubTab("contact")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border
+            ${subTab === "contact" ? "bg-primary text-white border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
+        >
+          <Mail className="h-4 w-4" />
+          Contact Messages
+          {unreadC > 0 && (
+            <span className="bg-white/20 text-white text-xs rounded-full px-1.5 py-0.5 leading-none font-bold min-w-[18px] text-center">
+              {unreadC}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setSubTab("feedback")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border
+            ${subTab === "feedback" ? "bg-primary text-white border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
+        >
+          <MessageSquare className="h-4 w-4" />
+          Feedback
+          {unreadF > 0 && (
+            <span className="bg-white/20 text-white text-xs rounded-full px-1.5 py-0.5 leading-none font-bold min-w-[18px] text-center">
+              {unreadF}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {subTab === "contact" && (
+        <div className="space-y-2">
+          {contacts.length === 0 ? (
+            <Card className="border-none shadow-sm">
+              <CardContent className="py-12 text-center text-muted-foreground">
+                <Inbox className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                No contact messages yet.
+              </CardContent>
+            </Card>
+          ) : (
+            contacts.map(msg => (
+              <Card key={msg.id} className={`border-none shadow-sm overflow-hidden ${!msg.isRead ? "ring-1 ring-primary/30" : ""}`}>
+                <button
+                  className="w-full text-left px-5 py-4 hover:bg-muted/20 transition-colors"
+                  onClick={() => handleExpand(msg.id, "contact")}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {!msg.isRead && <Circle className="h-2 w-2 fill-primary text-primary flex-shrink-0" />}
+                      <div className="min-w-0">
+                        <p className={`font-medium text-sm truncate ${!msg.isRead ? "text-foreground" : "text-muted-foreground"}`}>
+                          {msg.subject}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {msg.name} &lt;{msg.email}&gt;
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                      {new Date(msg.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </button>
+                {expanded === msg.id && (
+                  <div className="px-5 pb-4 pt-0 border-t border-border/30 bg-muted/5">
+                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-3 mt-3">
+                      <span><strong>From:</strong> {msg.name}</span>
+                      <span><strong>Email:</strong> {msg.email}</span>
+                      <span><strong>Submitted:</strong> {new Date(msg.createdAt).toLocaleString()}</span>
+                    </div>
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3">
+                      {msg.message}
+                    </p>
+                  </div>
+                )}
+              </Card>
+            ))
+          )}
+        </div>
+      )}
+
+      {subTab === "feedback" && (
+        <div className="space-y-2">
+          {feedback.length === 0 ? (
+            <Card className="border-none shadow-sm">
+              <CardContent className="py-12 text-center text-muted-foreground">
+                <Star className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                No feedback submissions yet.
+              </CardContent>
+            </Card>
+          ) : (
+            feedback.map(item => {
+              const catMeta = item.category ? CATEGORY_META[item.category] : null;
+              const CatIcon = catMeta?.icon ?? MessageSquare;
+              return (
+                <Card key={item.id} className={`border-none shadow-sm overflow-hidden ${!item.isRead ? "ring-1 ring-primary/30" : ""}`}>
+                  <button
+                    className="w-full text-left px-5 py-4 hover:bg-muted/20 transition-colors"
+                    onClick={() => handleExpand(item.id, "feedback")}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {!item.isRead && <Circle className="h-2 w-2 fill-primary text-primary flex-shrink-0" />}
+                        <div className="min-w-0 flex items-center gap-2">
+                          {catMeta && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${catMeta.color}`}>
+                              <CatIcon className="h-3 w-3" />
+                              {catMeta.label}
+                            </span>
+                          )}
+                          {item.rating != null && (
+                            <span className="flex items-center gap-0.5 text-amber-500 text-xs font-medium">
+                              {"★".repeat(item.rating)}{"☆".repeat(5 - item.rating)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1 truncate px-5 -mx-5">
+                      {item.message.slice(0, 80)}{item.message.length > 80 ? "…" : ""}
+                    </p>
+                  </button>
+                  {expanded === item.id && (
+                    <div className="px-5 pb-4 pt-0 border-t border-border/30 bg-muted/5">
+                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3 mt-3">
+                        {item.message}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Submitted: {new Date(item.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </Card>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("users");
   const { getToken, isSignedIn } = useAuth();
@@ -587,6 +821,8 @@ export default function AdminPage() {
         {activeTab === "events" && (
           <EventLogSection events={eventsData?.events ?? []} isLoading={eventsLoading} />
         )}
+
+        {activeTab === "messages" && <MessagesSection />}
       </div>
     </div>
   );

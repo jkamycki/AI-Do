@@ -21,6 +21,7 @@ import {
   ChevronDown,
   Users,
   Crown,
+  HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -280,6 +281,7 @@ export function Sidebar() {
               Workspace
             </p>
             <NavLink href="/settings" label="Settings & Collaborators" icon={Settings} />
+            <NavLink href="/help" label="Help & Support" icon={HelpCircle} />
           </div>
 
           {isAdmin && (
