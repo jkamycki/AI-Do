@@ -112,8 +112,6 @@ export default function Landing() {
                 </div>
               ))}
             </div>
-            <span>Loved by <strong className="text-foreground">2,400+</strong> couples</span>
-            <span className="mx-1">·</span>
             <Stars count={5} />
             <span className="font-medium text-foreground">5.0</span>
           </div>
@@ -150,7 +148,6 @@ export default function Landing() {
               <div className="flex items-center justify-center gap-2 text-muted-foreground">
                 <Stars />
                 <span className="font-semibold text-foreground text-lg">5.0</span>
-                <span>from 2,400+ reviews</span>
               </div>
             </div>
 
@@ -188,7 +185,7 @@ export default function Landing() {
         <section className="w-full py-20 px-6 text-center">
           <h2 className="font-serif text-3xl md:text-4xl text-primary mb-4">Your dream day starts here</h2>
           <p className="text-muted-foreground mb-8 max-w-lg mx-auto text-lg">
-            Join 2,400+ couples planning their wedding with A.IDO. It's free to get started.
+            Start planning your perfect wedding with A.IDO. It's free to get started.
           </p>
           <Link href="/sign-up">
             <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-14 text-lg h-14 shadow-lg">
