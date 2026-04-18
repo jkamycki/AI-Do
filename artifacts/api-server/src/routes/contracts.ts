@@ -28,26 +28,14 @@ async function extractText(buffer: Buffer, mimetype: string): Promise<string> {
   }
   if (mimetype === "application/pdf") {
     try {
-      const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs") as any;
-      const data = new Uint8Array(buffer);
-      const loadingTask = getDocument({ data, useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true });
-      const pdf = await loadingTask.promise;
-      const parts: string[] = [];
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        const pageText = content.items
-          .map((item: any) => ("str" in item ? item.str : ""))
-          .join(" ");
-        parts.push(pageText);
-      }
-      const text = sanitizeText(parts.join("\n"));
+      const pdfParse = (await import("pdf-parse")).default;
+      const result = await pdfParse(buffer);
+      const text = sanitizeText(result.text);
       if (!text.trim()) {
         throw new Error("No text extracted from PDF");
       }
       return text.slice(0, 40000);
     } catch (err) {
-      // PDF binary could not be parsed as text — do NOT fall back to raw bytes
       console.error("[contracts] PDF extraction failed:", err instanceof Error ? err.message : String(err));
       return "";
     }
