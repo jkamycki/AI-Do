@@ -310,7 +310,7 @@ function GuestCollectorCard() {
           Guest Collector Link
         </CardTitle>
         <CardDescription>
-          Generate a shareable link to collect guest contact details — name, address, phone, email, and plus one info. No RSVP required.
+          Generate a shareable link so guests can submit their mailing address and contact info for invitations. RSVP is managed separately by you.
         </CardDescription>
       </CardHeader>
       <CardContent>
