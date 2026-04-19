@@ -94,8 +94,11 @@ export interface BudgetItem {
   vendor: string;
   estimatedCost: number;
   actualCost: number;
+  amountPaid?: number;
   isPaid: boolean;
   notes?: string;
+  /** ISO date string (YYYY-MM-DD) for next payment due date */
+  nextPaymentDue?: string | null;
 }
 
 export interface Budget {
@@ -116,8 +119,10 @@ export interface AddBudgetItemBody {
   vendor: string;
   estimatedCost: number;
   actualCost: number;
+  amountPaid?: number;
   isPaid: boolean;
   notes?: string;
+  nextPaymentDue?: string | null;
 }
 
 export interface UpdateBudgetItemBody {
@@ -125,8 +130,10 @@ export interface UpdateBudgetItemBody {
   vendor?: string;
   estimatedCost?: number;
   actualCost?: number;
+  amountPaid?: number;
   isPaid?: boolean;
   notes?: string;
+  nextPaymentDue?: string | null;
 }
 
 export interface PredictBudgetBody {

@@ -47,6 +47,7 @@ async function getBudgetWithItems(budgetId: number) {
       amountPaid: parseFloat((item.amountPaid ?? "0") as string),
       isPaid: item.isPaid,
       notes: item.notes ?? undefined,
+      nextPaymentDue: (item as Record<string, unknown>).nextPaymentDue as string ?? null,
     })),
   };
 }
@@ -161,7 +162,7 @@ Include these categories: Venue, Catering & Bar, Photography, Videography, Flora
 
 router.post("/budget/items", requireAuth, async (req, res) => {
   try {
-    const { category, vendor, estimatedCost, actualCost, isPaid, notes } = req.body;
+    const { category, vendor, estimatedCost, actualCost, isPaid, notes, nextPaymentDue, amountPaid } = req.body;
 
     const profile = await getProfileByUserId(req.userId);
     const profileId = profile?.id ?? 0;
@@ -177,8 +178,6 @@ router.post("/budget/items", requireAuth, async (req, res) => {
       budgetRows = [newBudget];
     }
 
-    const { amountPaid } = req.body;
-
     const [item] = await db
       .insert(budgetItems)
       .values({
@@ -190,7 +189,8 @@ router.post("/budget/items", requireAuth, async (req, res) => {
         amountPaid: String(amountPaid ?? 0),
         isPaid: isPaid ?? false,
         notes: notes ?? null,
-      })
+        nextPaymentDue: nextPaymentDue ?? null,
+      } as never)
       .returning();
 
     logActivity(profileId, req.userId!, `Added budget item: ${vendor} (${category})`, "budget", { itemId: item.id, vendor, category });
@@ -203,6 +203,7 @@ router.post("/budget/items", requireAuth, async (req, res) => {
       amountPaid: parseFloat((item.amountPaid ?? "0") as string),
       isPaid: item.isPaid,
       notes: item.notes ?? undefined,
+      nextPaymentDue: (item as Record<string, unknown>).nextPaymentDue as string ?? null,
     });
   } catch (err) {
     req.log.error(err, "Failed to add budget item");
@@ -213,7 +214,7 @@ router.post("/budget/items", requireAuth, async (req, res) => {
 router.put("/budget/items/:id", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { category, vendor, estimatedCost, actualCost, amountPaid, isPaid, notes } = req.body;
+    const { category, vendor, estimatedCost, actualCost, amountPaid, isPaid, notes, nextPaymentDue } = req.body;
 
     const updates: Record<string, unknown> = {};
     if (category !== undefined) updates.category = category;
@@ -223,8 +224,9 @@ router.put("/budget/items/:id", requireAuth, async (req, res) => {
     if (amountPaid !== undefined) updates.amountPaid = String(amountPaid);
     if (isPaid !== undefined) updates.isPaid = isPaid;
     if (notes !== undefined) updates.notes = notes;
+    if (nextPaymentDue !== undefined) updates.next_payment_due = nextPaymentDue ?? null;
 
-    const [item] = await db.update(budgetItems).set(updates).where(eq(budgetItems.id, id)).returning();
+    const [item] = await db.update(budgetItems).set(updates as never).where(eq(budgetItems.id, id)).returning();
 
     if (!item) {
       res.status(404).json({ error: "Item not found" });
@@ -240,6 +242,7 @@ router.put("/budget/items/:id", requireAuth, async (req, res) => {
       amountPaid: parseFloat((item.amountPaid ?? "0") as string),
       isPaid: item.isPaid,
       notes: item.notes ?? undefined,
+      nextPaymentDue: (item as Record<string, unknown>).nextPaymentDue as string ?? null,
     });
   } catch (err) {
     req.log.error(err, "Failed to update budget item");

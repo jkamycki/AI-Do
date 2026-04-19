@@ -27,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History } from "lucide-react";
+import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History, Bell, AlertTriangle, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const itemSchema = z.object({
@@ -39,6 +39,7 @@ const itemSchema = z.object({
   amountPaid: z.coerce.number().min(0, "Must be >= 0").default(0),
   isPaid: z.boolean().default(false),
   notes: z.string().optional(),
+  nextPaymentDue: z.string().optional(),
 }).superRefine((data, ctx) => {
   if (data.category === "Other" && !data.customCategory?.trim()) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter an expense name", path: ["customCategory"] });
@@ -273,6 +274,7 @@ export default function Budget() {
       amountPaid: 0,
       isPaid: false,
       notes: "",
+      nextPaymentDue: "",
     },
   });
 
@@ -287,6 +289,7 @@ export default function Budget() {
       amountPaid: 0,
       isPaid: false,
       notes: "",
+      nextPaymentDue: "",
     },
   });
 
@@ -306,6 +309,7 @@ export default function Budget() {
       amountPaid: item.amountPaid,
       isPaid: item.isPaid,
       notes: item.notes ?? "",
+      nextPaymentDue: (item as Record<string, unknown>).nextPaymentDue as string ?? "",
     });
     setEditingItem(item);
   };
@@ -315,7 +319,7 @@ export default function Budget() {
       ? data.customCategory.trim()
       : data.category;
     const { customCategory: _omit, ...rest } = data;
-    addBudgetItem.mutate({ data: { ...rest, category: resolvedCategory } }, {
+    addBudgetItem.mutate({ data: { ...rest, category: resolvedCategory, nextPaymentDue: data.nextPaymentDue || null } as never }, {
       onSuccess: () => {
         toast({ title: "Item added", description: "Budget item saved." });
         queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
@@ -335,7 +339,7 @@ export default function Budget() {
       : data.category;
     const { customCategory: _omit, ...rest } = data;
     updateItem.mutate(
-      { id: editingItem.id, data: { ...rest, category: resolvedCategory } },
+      { id: editingItem.id, data: { ...rest, category: resolvedCategory, nextPaymentDue: data.nextPaymentDue || null } as never },
       {
         onSuccess: () => {
           toast({ title: "Expense updated" });
@@ -544,6 +548,22 @@ export default function Budget() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={editForm.control}
+                name="nextPaymentDue"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-1.5">
+                      <Bell className="h-3.5 w-3.5 text-primary" /> Next Payment Due Date
+                    </FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <p className="text-[11px] text-muted-foreground">Set a reminder for your next deposit or final payment.</p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <Button type="submit" className="w-full mt-4" disabled={updateItem.isPending}>
                 {updateItem.isPending ? "Saving…" : "Save Changes"}
               </Button>
@@ -691,6 +711,22 @@ export default function Budget() {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="nextPaymentDue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-1.5">
+                        <Bell className="h-3.5 w-3.5 text-primary" /> Next Payment Due Date
+                      </FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <p className="text-[11px] text-muted-foreground">Optional — get a reminder as this date approaches.</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <Button type="submit" className="w-full mt-4" disabled={addBudgetItem.isPending} data-testid="btn-submit-item">
                   {addBudgetItem.isPending ? "Saving..." : "Save Expense"}
                 </Button>
@@ -745,6 +781,80 @@ export default function Budget() {
           </Card>
         </div>
       )}
+
+      {/* ── Upcoming Payment Reminders ── */}
+      {budget && (() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const upcoming = (budget.items as Array<{ id: number; vendor: string; category: string; actualCost: number; amountPaid: number; isPaid: boolean; nextPaymentDue?: string | null }>)
+          .filter(item => item.nextPaymentDue && !item.isPaid)
+          .map(item => {
+            const due = new Date(item.nextPaymentDue! + "T12:00:00");
+            const diff = Math.ceil((due.getTime() - today.getTime()) / 86400000);
+            return { ...item, due, diff };
+          })
+          .sort((a, b) => a.diff - b.diff);
+
+        if (upcoming.length === 0) return null;
+
+        const overdue = upcoming.filter(i => i.diff < 0);
+        const urgent = upcoming.filter(i => i.diff >= 0 && i.diff <= 7);
+        const later = upcoming.filter(i => i.diff > 7);
+
+        return (
+          <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-border/50 bg-muted/30">
+              <Bell className="h-4 w-4 text-primary" />
+              <span className="font-semibold text-sm text-foreground">Upcoming Payment Reminders</span>
+              <span className="ml-auto text-xs text-muted-foreground">{upcoming.length} payment{upcoming.length !== 1 ? "s" : ""} scheduled</span>
+            </div>
+            <div className="divide-y divide-border/40">
+              {overdue.map(item => (
+                <div key={item.id} className="flex items-center gap-3 px-4 py-3 bg-red-50/60">
+                  <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-red-800 truncate">{item.vendor}</p>
+                    <p className="text-xs text-red-600">
+                      {item.category} · ${(item.actualCost - item.amountPaid).toLocaleString()} remaining
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold text-red-600 shrink-0 bg-red-100 px-2 py-0.5 rounded-full border border-red-200">
+                    {Math.abs(item.diff)}d overdue
+                  </span>
+                </div>
+              ))}
+              {urgent.map(item => (
+                <div key={item.id} className="flex items-center gap-3 px-4 py-3 bg-amber-50/60">
+                  <Clock className="h-4 w-4 text-amber-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-amber-900 truncate">{item.vendor}</p>
+                    <p className="text-xs text-amber-700">
+                      {item.category} · ${(item.actualCost - item.amountPaid).toLocaleString()} remaining
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold text-amber-700 shrink-0 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                    {item.diff === 0 ? "Due today" : item.diff === 1 ? "Due tomorrow" : `${item.diff}d left`}
+                  </span>
+                </div>
+              ))}
+              {later.map(item => (
+                <div key={item.id} className="flex items-center gap-3 px-4 py-3">
+                  <Bell className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{item.vendor}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.category} · ${(item.actualCost - item.amountPaid).toLocaleString()} remaining
+                    </p>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {item.due.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {budget && (
         <div className="space-y-2">

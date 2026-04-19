@@ -141,8 +141,13 @@ export const GetBudgetResponse = zod.object({
       vendor: zod.string(),
       estimatedCost: zod.number(),
       actualCost: zod.number(),
+      amountPaid: zod.number().optional(),
       isPaid: zod.boolean(),
       notes: zod.string().optional(),
+      nextPaymentDue: zod
+        .string()
+        .nullish()
+        .describe("ISO date string (YYYY-MM-DD) for next payment due date"),
     }),
   ),
   updatedAt: zod.string(),
@@ -167,8 +172,13 @@ export const SaveBudgetResponse = zod.object({
       vendor: zod.string(),
       estimatedCost: zod.number(),
       actualCost: zod.number(),
+      amountPaid: zod.number().optional(),
       isPaid: zod.boolean(),
       notes: zod.string().optional(),
+      nextPaymentDue: zod
+        .string()
+        .nullish()
+        .describe("ISO date string (YYYY-MM-DD) for next payment due date"),
     }),
   ),
   updatedAt: zod.string(),
@@ -203,8 +213,10 @@ export const AddBudgetItemBody = zod.object({
   vendor: zod.string(),
   estimatedCost: zod.number(),
   actualCost: zod.number(),
+  amountPaid: zod.number().optional(),
   isPaid: zod.boolean(),
   notes: zod.string().optional(),
+  nextPaymentDue: zod.string().nullish(),
 });
 
 export const AddBudgetItemResponse = zod.object({
@@ -213,8 +225,13 @@ export const AddBudgetItemResponse = zod.object({
   vendor: zod.string(),
   estimatedCost: zod.number(),
   actualCost: zod.number(),
+  amountPaid: zod.number().optional(),
   isPaid: zod.boolean(),
   notes: zod.string().optional(),
+  nextPaymentDue: zod
+    .string()
+    .nullish()
+    .describe("ISO date string (YYYY-MM-DD) for next payment due date"),
 });
 
 /**
@@ -229,8 +246,10 @@ export const UpdateBudgetItemBody = zod.object({
   vendor: zod.string().optional(),
   estimatedCost: zod.number().optional(),
   actualCost: zod.number().optional(),
+  amountPaid: zod.number().optional(),
   isPaid: zod.boolean().optional(),
   notes: zod.string().optional(),
+  nextPaymentDue: zod.string().nullish(),
 });
 
 export const UpdateBudgetItemResponse = zod.object({
@@ -239,8 +258,13 @@ export const UpdateBudgetItemResponse = zod.object({
   vendor: zod.string(),
   estimatedCost: zod.number(),
   actualCost: zod.number(),
+  amountPaid: zod.number().optional(),
   isPaid: zod.boolean(),
   notes: zod.string().optional(),
+  nextPaymentDue: zod
+    .string()
+    .nullish()
+    .describe("ISO date string (YYYY-MM-DD) for next payment due date"),
 });
 
 /**

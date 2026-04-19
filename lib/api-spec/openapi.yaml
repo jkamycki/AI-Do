@@ -955,10 +955,16 @@ components:
           type: number
         actualCost:
           type: number
+        amountPaid:
+          type: number
         isPaid:
           type: boolean
         notes:
           type: string
+        nextPaymentDue:
+          type: string
+          nullable: true
+          description: ISO date string (YYYY-MM-DD) for next payment due date
       required:
         - id
         - category
@@ -986,10 +992,15 @@ components:
           type: number
         actualCost:
           type: number
+        amountPaid:
+          type: number
         isPaid:
           type: boolean
         notes:
           type: string
+        nextPaymentDue:
+          type: string
+          nullable: true
       required:
         - category
         - vendor
@@ -1008,10 +1019,15 @@ components:
           type: number
         actualCost:
           type: number
+        amountPaid:
+          type: number
         isPaid:
           type: boolean
         notes:
           type: string
+        nextPaymentDue:
+          type: string
+          nullable: true
 
     PredictBudgetBody:
       type: object

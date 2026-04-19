@@ -55,6 +55,7 @@ export const budgetItems = pgTable("budget_items", {
   amountPaid: numeric("amount_paid", { precision: 12, scale: 2 }).notNull().default("0"),
   isPaid: boolean("is_paid").notNull().default(false),
   notes: text("notes"),
+  nextPaymentDue: text("next_payment_due"),
 });
 
 export const insertBudgetItemSchema = createInsertSchema(budgetItems).omit({ id: true });
