@@ -13,8 +13,10 @@ import {
   useDeleteBudgetItem,
   useGetBudgetItemPayments,
   useAddBudgetItemPayment,
+  getGetBudgetItemPaymentsQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { authFetch } from "@/lib/authFetch";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -27,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History, Bell, AlertTriangle, Clock, RotateCcw } from "lucide-react";
+import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History, Bell, AlertTriangle, Clock, RotateCcw, Pencil, X, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const itemSchema = z.object({
@@ -119,6 +121,41 @@ function LogPaymentContent({
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editNote, setEditNote] = useState("");
+  const [editPaidAt, setEditPaidAt] = useState("");
+
+  const deletePayment = useMutation({
+    mutationFn: async (paymentId: number) => {
+      const res = await authFetch(`/api/budget/items/${item.id}/payments/${paymentId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+    },
+    onSuccess: () => {
+      toast({ title: "Payment deleted" });
+      queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetBudgetItemPaymentsQueryKey(item.id) });
+    },
+    onError: () => toast({ variant: "destructive", title: "Could not delete payment" }),
+  });
+
+  const updatePayment = useMutation({
+    mutationFn: async ({ paymentId, data }: { paymentId: number; data: { amount: number; note: string; paidAt: string } }) => {
+      const res = await authFetch(`/api/budget/items/${item.id}/payments/${paymentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+    },
+    onSuccess: () => {
+      toast({ title: "Payment updated" });
+      setEditingId(null);
+      queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetBudgetItemPaymentsQueryKey(item.id) });
+    },
+    onError: () => toast({ variant: "destructive", title: "Could not update payment" }),
+  });
 
   const totalLogged = payments ? payments.reduce((s, p) => s + p.amount, 0) : item.amountPaid;
   const pct = item.actualCost > 0 ? Math.min((totalLogged / item.actualCost) * 100, 100) : 0;
@@ -170,16 +207,75 @@ function LogPaymentContent({
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
             <History className="h-3 w-3" /> Payment history
           </p>
-          <div className="max-h-40 overflow-y-auto rounded-lg border border-border/50 divide-y divide-border/40">
+          <div className="max-h-52 overflow-y-auto rounded-lg border border-border/50 divide-y divide-border/40">
             {payments.map(p => (
-              <div key={p.id} className="flex items-start justify-between px-3 py-2 text-sm">
-                <div>
-                  <span className="font-medium text-foreground">${p.amount.toLocaleString()}</span>
-                  {p.note && <span className="ml-2 text-muted-foreground text-xs italic">{p.note}</span>}
-                </div>
-                <span className="text-xs text-muted-foreground shrink-0 ml-3">
-                  {new Date(p.paidAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-                </span>
+              <div key={p.id}>
+                {editingId === p.id ? (
+                  <div className="px-3 py-2 space-y-2 bg-muted/30">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-muted-foreground">Amount ($)</label>
+                        <input
+                          type="number" min="0" step="0.01"
+                          value={editAmount}
+                          onChange={e => setEditAmount(e.target.value)}
+                          className="w-full px-2 py-1 border border-input rounded text-sm bg-background"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground">Date</label>
+                        <input
+                          type="date"
+                          value={editPaidAt}
+                          onChange={e => setEditPaidAt(e.target.value)}
+                          className="w-full px-2 py-1 border border-input rounded text-sm bg-background"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground">Note</label>
+                      <input
+                        type="text"
+                        value={editNote}
+                        onChange={e => setEditNote(e.target.value)}
+                        placeholder="e.g. deposit, final…"
+                        className="w-full px-2 py-1 border border-input rounded text-sm bg-background"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" className="flex-1 h-7 text-xs" disabled={updatePayment.isPending}
+                        onClick={() => updatePayment.mutate({ paymentId: p.id, data: { amount: parseFloat(editAmount) || p.amount, note: editNote, paidAt: editPaidAt } })}>
+                        <Check className="h-3 w-3 mr-1" /> Save
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingId(null)}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between px-3 py-2 text-sm group">
+                    <div className="min-w-0">
+                      <span className="font-medium text-foreground">${p.amount.toLocaleString()}</span>
+                      {p.note && <span className="ml-2 text-muted-foreground text-xs italic">{p.note}</span>}
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {new Date(p.paidAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                      </span>
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">
+                      <button
+                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                        title="Edit"
+                        onClick={() => { setEditingId(p.id); setEditAmount(String(p.amount)); setEditNote(p.note ?? ""); setEditPaidAt(p.paidAt.slice(0, 10)); }}
+                      ><Pencil className="h-3 w-3" /></button>
+                      <button
+                        className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                        title="Delete"
+                        disabled={deletePayment.isPending}
+                        onClick={() => deletePayment.mutate(p.id)}
+                      ><Trash2 className="h-3 w-3" /></button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

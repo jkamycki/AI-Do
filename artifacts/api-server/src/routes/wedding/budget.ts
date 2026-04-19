@@ -350,4 +350,60 @@ router.post("/budget/items/:id/payments", requireAuth, async (req, res) => {
   }
 });
 
+router.patch("/budget/items/:id/payments/:paymentId", requireAuth, async (req, res) => {
+  try {
+    const itemId = parseInt(req.params.id);
+    const paymentId = parseInt(req.params.paymentId);
+    const { amount, note, paidAt } = req.body;
+
+    const [existing] = await db.select().from(budgetPaymentLogs).where(eq(budgetPaymentLogs.id, paymentId)).limit(1);
+    if (!existing) return res.status(404).json({ error: "Payment not found" });
+
+    const oldAmount = parseFloat(existing.amount as string);
+    const newAmount = amount !== undefined ? parseFloat(String(amount)) : oldAmount;
+
+    await db.update(budgetPaymentLogs).set({
+      ...(amount !== undefined ? { amount: String(newAmount) } : {}),
+      ...(note !== undefined ? { note: note || null } : {}),
+      ...(paidAt !== undefined ? { paidAt: new Date(paidAt) } : {}),
+    }).where(eq(budgetPaymentLogs.id, paymentId));
+
+    // Recalculate amountPaid on the item
+    const allLogs = await db.select().from(budgetPaymentLogs).where(eq(budgetPaymentLogs.budgetItemId, itemId));
+    const newTotal = allLogs.reduce((s, l) => s + parseFloat(l.amount as string), 0);
+    const [item] = await db.select().from(budgetItems).where(eq(budgetItems.id, itemId)).limit(1);
+    const fullyPaid = item ? newTotal >= parseFloat(item.actualCost as string) : false;
+    await db.update(budgetItems).set({ amountPaid: String(newTotal), isPaid: fullyPaid }).where(eq(budgetItems.id, itemId));
+
+    res.json({ success: true, newAmountPaid: newTotal });
+  } catch (err) {
+    req.log.error(err, "Failed to update payment");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/budget/items/:id/payments/:paymentId", requireAuth, async (req, res) => {
+  try {
+    const itemId = parseInt(req.params.id);
+    const paymentId = parseInt(req.params.paymentId);
+
+    const [existing] = await db.select().from(budgetPaymentLogs).where(eq(budgetPaymentLogs.id, paymentId)).limit(1);
+    if (!existing) return res.status(404).json({ error: "Payment not found" });
+
+    await db.delete(budgetPaymentLogs).where(eq(budgetPaymentLogs.id, paymentId));
+
+    // Recalculate amountPaid on the item
+    const allLogs = await db.select().from(budgetPaymentLogs).where(eq(budgetPaymentLogs.budgetItemId, itemId));
+    const newTotal = allLogs.reduce((s, l) => s + parseFloat(l.amount as string), 0);
+    const [item] = await db.select().from(budgetItems).where(eq(budgetItems.id, itemId)).limit(1);
+    const fullyPaid = item ? newTotal >= parseFloat(item.actualCost as string) : false;
+    await db.update(budgetItems).set({ amountPaid: String(newTotal), isPaid: fullyPaid }).where(eq(budgetItems.id, itemId));
+
+    res.json({ success: true, newAmountPaid: newTotal });
+  } catch (err) {
+    req.log.error(err, "Failed to delete payment");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
