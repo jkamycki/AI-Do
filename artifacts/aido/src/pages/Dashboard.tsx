@@ -318,22 +318,30 @@ export default function Dashboard() {
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Venue &amp; Location</p>
                 <div className="flex items-start gap-2">
                   <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Venue</p>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Venue Name</p>
                     <p className="text-sm font-medium text-foreground">{summary.profile.venue}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{summary.profile.location}</p>
+                    {summary.profile.location && (
+                      <>
+                        <p className="text-xs text-muted-foreground mt-1.5">Venue Address</p>
+                        <p className="text-sm text-foreground/80 leading-snug break-words">{summary.profile.location}</p>
+                      </>
+                    )}
                   </div>
                 </div>
                 {hotels.length > 0 && (
                   <div className="flex items-start gap-2 pt-1 border-t border-border/30">
                     <Hotel className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Hotel</p>
-                      <div className="flex flex-col gap-0.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-muted-foreground mb-1.5">Hotel{hotels.length > 1 ? "s" : ""}</p>
+                      <div className="flex flex-col gap-2">
                         {hotels.map(h => (
-                          <p key={h.id} className="text-sm font-medium text-foreground">
-                            {h.hotelName || "Unnamed Hotel"}
-                          </p>
+                          <div key={h.id}>
+                            <p className="text-sm font-medium text-foreground">{h.hotelName || "Unnamed Hotel"}</p>
+                            {h.address && (
+                              <p className="text-xs text-muted-foreground leading-snug break-words">{h.address}</p>
+                            )}
+                          </div>
                         ))}
                       </div>
                     </div>
