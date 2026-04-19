@@ -20,7 +20,9 @@ const profileSchema = z.object({
   ceremonyTime: z.string().min(1, "Time is required"),
   receptionTime: z.string().min(1, "Time is required"),
   venue: z.string().min(1, "Venue is required"),
-  location: z.string().min(1, "Location is required"),
+  location: z.string().optional().default(""),
+  venueCity: z.string().optional().default(""),
+  venueState: z.string().optional().default(""),
   guestCount: z.coerce.number().min(1, "Must be at least 1"),
   totalBudget: z.coerce.number().min(1, "Must be at least 1"),
   weddingVibe: z.string().min(1, "Vibe is required"),
@@ -44,6 +46,8 @@ export default function Profile() {
       receptionTime: "18:00",
       venue: "",
       location: "",
+      venueCity: "",
+      venueState: "",
       guestCount: 100,
       totalBudget: 30000,
       weddingVibe: "Romantic & Elegant",
@@ -60,6 +64,8 @@ export default function Profile() {
         receptionTime: profile.receptionTime,
         venue: profile.venue,
         location: profile.location,
+        venueCity: profile.venueCity ?? "",
+        venueState: profile.venueState ?? "",
         guestCount: profile.guestCount,
         totalBudget: profile.totalBudget,
         weddingVibe: profile.weddingVibe,
@@ -211,14 +217,43 @@ export default function Profile() {
                 name="location"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Venue Full Address</FormLabel>
+                    <FormLabel>Street Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="123 Magnolia Lane, Charleston, SC 29401" {...field} data-testid="input-location" className="bg-background" />
+                      <Input placeholder="123 Magnolia Lane" {...field} data-testid="input-location" className="bg-background" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="venueCity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>City</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Charleston" {...field} data-testid="input-venue-city" className="bg-background" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="venueState"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>State</FormLabel>
+                      <FormControl>
+                        <Input placeholder="SC" {...field} data-testid="input-venue-state" className="bg-background" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <div className="grid md:grid-cols-2 gap-6">
                 <FormField

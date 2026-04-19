@@ -1567,6 +1567,10 @@ components:
               type: string
             location:
               type: string
+            venueCity:
+              type: string
+            venueState:
+              type: string
             ceremonyTime:
               type: string
             receptionTime:

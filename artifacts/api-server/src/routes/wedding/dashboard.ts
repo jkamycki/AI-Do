@@ -90,6 +90,8 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       weddingDate: profiles[0].weddingDate,
       venue: profiles[0].venue,
       location: profiles[0].location,
+      venueCity: profiles[0].venueCity ?? "",
+      venueState: profiles[0].venueState ?? "",
       ceremonyTime: profiles[0].ceremonyTime,
       receptionTime: profiles[0].receptionTime,
       guestCount: profiles[0].guestCount,

@@ -670,6 +670,8 @@ export const GetDashboardSummaryResponse = zod.object({
       weddingDate: zod.string(),
       venue: zod.string(),
       location: zod.string(),
+      venueCity: zod.string().optional(),
+      venueState: zod.string().optional(),
       ceremonyTime: zod.string(),
       receptionTime: zod.string(),
       guestCount: zod.number(),

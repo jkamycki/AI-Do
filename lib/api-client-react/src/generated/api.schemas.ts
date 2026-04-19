@@ -357,6 +357,8 @@ export type DashboardSummaryProfile = {
   weddingDate: string;
   venue: string;
   location: string;
+  venueCity?: string;
+  venueState?: string;
   ceremonyTime: string;
   receptionTime: string;
   guestCount: number;

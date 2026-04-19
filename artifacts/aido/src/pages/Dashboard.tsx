@@ -319,14 +319,19 @@ export default function Dashboard() {
                 <div className="flex items-start gap-2">
                   <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Venue Name</p>
                     <p className="text-sm font-medium text-foreground">{summary.profile.venue}</p>
-                    {summary.profile.location && (
-                      <>
-                        <p className="text-xs text-muted-foreground mt-1.5">Venue Address</p>
-                        <p className="text-sm text-foreground/80 leading-snug break-words">{summary.profile.location}</p>
-                      </>
-                    )}
+                    {(() => {
+                      const parts = [
+                        summary.profile.location,
+                        summary.profile.venueCity,
+                        summary.profile.venueState,
+                      ].filter(Boolean);
+                      return parts.length > 0 ? (
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug break-words">
+                          {parts.join(", ")}
+                        </p>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
                 {hotels.length > 0 && (
