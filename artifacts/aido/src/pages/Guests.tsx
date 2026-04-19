@@ -24,7 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, MessageSquare } from "lucide-react";
+import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
 
@@ -361,24 +361,6 @@ function GuestCollectorCard() {
                 }}
               >
                 <Mail className="h-3.5 w-3.5" /> Email Link
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-sky-200 hover:bg-sky-50 text-sky-700 gap-2"
-                onClick={() => {
-                  const text = `Hi! We'd love your contact info for our wedding guest list. Please fill out this quick form: ${collectorUrl} 💕`;
-                  if (navigator.share) {
-                    navigator.share({ title: "Share your contact info with us!", text, url: collectorUrl ?? "" }).catch(() => {});
-                  } else {
-                    const a = document.createElement("a");
-                    a.href = `sms:?body=${encodeURIComponent(text)}`;
-                    a.click();
-                  }
-                }}
-              >
-                <MessageSquare className="h-3.5 w-3.5" /> Text / Share
               </Button>
 
               <AlertDialog>
