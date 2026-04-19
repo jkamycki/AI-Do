@@ -4,6 +4,7 @@ import { authFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import {
   FileText,
@@ -25,6 +26,8 @@ import {
   Copy,
   Check,
   Loader2,
+  Pencil,
+  X,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -309,10 +312,18 @@ function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; c
   );
 }
 
-function ContractCard({ contract, onDelete }: { contract: Contract; onDelete: () => void }) {
+function ContractCard({ contract, onDelete, onRename }: { contract: Contract; onDelete: () => void; onRename: (name: string) => void }) {
   const [expanded, setExpanded] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [nameInput, setNameInput] = useState(contract.fileName);
   const analysis = contract.analysis as ContractAnalysis | null;
   const riskLevel = analysis?.overallRiskLevel ?? null;
+
+  function submitRename() {
+    const trimmed = nameInput.trim();
+    if (trimmed && trimmed !== contract.fileName) onRename(trimmed);
+    setRenaming(false);
+  }
 
   return (
     <Card className="border-border/60 shadow-sm hover:shadow-md transition-shadow">
@@ -322,7 +333,28 @@ function ContractCard({ contract, onDelete }: { contract: Contract; onDelete: ()
             <FileText className="h-5 w-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-base font-semibold truncate">{contract.fileName}</CardTitle>
+            {renaming ? (
+              <div className="flex items-center gap-1.5">
+                <Input
+                  autoFocus
+                  value={nameInput}
+                  onChange={e => setNameInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") submitRename(); if (e.key === "Escape") { setRenaming(false); setNameInput(contract.fileName); } }}
+                  className="h-7 text-sm font-semibold"
+                />
+                <button onClick={submitRename} className="p-1 rounded hover:bg-muted text-emerald-600"><Check className="h-3.5 w-3.5" /></button>
+                <button onClick={() => { setRenaming(false); setNameInput(contract.fileName); }} className="p-1 rounded hover:bg-muted text-muted-foreground"><X className="h-3.5 w-3.5" /></button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 group">
+                <CardTitle className="text-base font-semibold truncate">{contract.fileName}</CardTitle>
+                <button
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted text-muted-foreground shrink-0"
+                  title="Rename"
+                  onClick={() => { setNameInput(contract.fileName); setRenaming(true); }}
+                ><Pencil className="h-3 w-3" /></button>
+              </div>
+            )}
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               {analysis?.vendorType && (
                 <span className="text-xs text-muted-foreground font-medium">{analysis.vendorType}</span>
@@ -393,6 +425,8 @@ export default function Contracts() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingName, setPendingName] = useState("");
 
   const { data: contracts = [], isLoading } = useQuery<Contract[]>({
     queryKey: ["contracts"],
@@ -407,18 +441,39 @@ export default function Contracts() {
     },
   });
 
-  async function handleUpload(file: File) {
-    if (!file) return;
+  const renameMutation = useMutation({
+    mutationFn: ({ id, fileName }: { id: number; fileName: string }) =>
+      authFetch(`${API}/api/contracts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["contracts"] });
+      toast({ title: "Contract renamed." });
+    },
+    onError: () => toast({ title: "Could not rename contract", variant: "destructive" }),
+  });
+
+  function stageFile(file: File) {
     const allowed = ["application/pdf", "text/plain", "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
     if (!allowed.includes(file.type) && !file.name.endsWith(".txt")) {
       toast({ title: "Unsupported file", description: "Please upload a PDF or .txt file.", variant: "destructive" });
       return;
     }
+    const baseName = file.name.replace(/\.[^.]+$/, "");
+    setPendingFile(file);
+    setPendingName(baseName);
+  }
+
+  async function confirmUpload() {
+    if (!pendingFile) return;
     setUploading(true);
     try {
       const form = new FormData();
-      form.append("file", file);
+      form.append("file", pendingFile);
+      if (pendingName.trim()) form.append("displayName", pendingName.trim());
       const res = await authFetch(`${API}/api/contracts/upload`, { method: "POST", body: form });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -426,6 +481,8 @@ export default function Contracts() {
       }
       await qc.invalidateQueries({ queryKey: ["contracts"] });
       toast({ title: "Contract analyzed!", description: "AI has reviewed your contract." });
+      setPendingFile(null);
+      setPendingName("");
     } catch (err) {
       toast({ title: "Upload failed", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" });
     } finally {
@@ -436,14 +493,14 @@ export default function Contracts() {
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) handleUpload(file);
+    if (file) stageFile(file);
   }
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) handleUpload(file);
+    if (file) stageFile(file);
   }
 
   const highRiskCount = contracts.filter(c => (c.analysis as ContractAnalysis | null)?.overallRiskLevel === "high").length;
@@ -477,42 +534,75 @@ export default function Contracts() {
         </div>
       )}
 
-      {/* Upload zone */}
-      <div
-        className={`rounded-2xl border-2 border-dashed transition-colors p-8 text-center cursor-pointer
-          ${dragOver ? "border-primary bg-primary/5" : "border-primary/25 hover:border-primary/50 hover:bg-primary/3"}
-          ${uploading ? "opacity-60 pointer-events-none" : ""}`}
-        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={onDrop}
-        onClick={() => fileRef.current?.click()}
-      >
-        <input ref={fileRef} type="file" className="hidden" accept=".pdf,.txt,.doc,.docx" onChange={onFileChange} />
-        <div className="flex flex-col items-center gap-3">
-          {uploading ? (
-            <>
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
-                <FileText className="h-6 w-6 text-primary" />
-              </div>
-              <p className="text-sm font-medium text-primary">Analyzing contract with AI…</p>
-              <p className="text-xs text-muted-foreground">Extracting red flags and payment dates</p>
-            </>
-          ) : (
-            <>
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Upload className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Drop your contract here</p>
-                <p className="text-xs text-muted-foreground mt-1">or click to browse · PDF or TXT · max 10 MB</p>
-              </div>
-              <Button size="sm" variant="outline" className="mt-1 border-primary/30 text-primary" onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}>
-                Choose File
-              </Button>
-            </>
-          )}
+      {/* Upload zone / naming step */}
+      {pendingFile && !uploading ? (
+        <div className="rounded-2xl border-2 border-primary/40 bg-primary/3 p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Selected file</p>
+              <p className="text-sm font-medium truncate">{pendingFile.name}</p>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Name this contract in the system</label>
+            <Input
+              autoFocus
+              value={pendingName}
+              onChange={e => setPendingName(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") confirmUpload(); if (e.key === "Escape") { setPendingFile(null); setPendingName(""); } }}
+              placeholder="e.g. Venue Contract, Photographer Agreement…"
+            />
+            <p className="text-xs text-muted-foreground">This is just the display name — you can rename it later too.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={confirmUpload} disabled={!pendingName.trim()}>
+              <Upload className="h-4 w-4 mr-2" /> Upload & Analyze
+            </Button>
+            <Button variant="outline" onClick={() => { setPendingFile(null); setPendingName(""); if (fileRef.current) fileRef.current.value = ""; }}>
+              Cancel
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div
+          className={`rounded-2xl border-2 border-dashed transition-colors p-8 text-center cursor-pointer
+            ${dragOver ? "border-primary bg-primary/5" : "border-primary/25 hover:border-primary/50 hover:bg-primary/3"}
+            ${uploading ? "opacity-60 pointer-events-none" : ""}`}
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+          onClick={() => fileRef.current?.click()}
+        >
+          <input ref={fileRef} type="file" className="hidden" accept=".pdf,.txt,.doc,.docx" onChange={onFileChange} />
+          <div className="flex flex-col items-center gap-3">
+            {uploading ? (
+              <>
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+                  <FileText className="h-6 w-6 text-primary" />
+                </div>
+                <p className="text-sm font-medium text-primary">Analyzing contract with AI…</p>
+                <p className="text-xs text-muted-foreground">Extracting red flags and payment dates</p>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Upload className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Drop your contract here</p>
+                  <p className="text-xs text-muted-foreground mt-1">or click to browse · PDF or TXT · max 10 MB</p>
+                </div>
+                <Button size="sm" variant="outline" className="mt-1 border-primary/30 text-primary" onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}>
+                  Choose File
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Contract list */}
       {isLoading ? (
@@ -534,6 +624,7 @@ export default function Contracts() {
               key={c.id}
               contract={c}
               onDelete={() => deleteMutation.mutate(c.id)}
+              onRename={(name) => renameMutation.mutate({ id: c.id, fileName: name })}
             />
           ))}
         </div>

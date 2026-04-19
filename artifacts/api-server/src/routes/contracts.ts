@@ -116,11 +116,13 @@ Be thorough, specific, and couple-friendly. Focus on clauses that could financia
       analysis = { error: "Failed to parse AI response", raw: analysisRaw };
     }
 
+    const displayName = (req.body?.displayName as string | undefined)?.trim() || originalname;
+
     const [saved] = await db
       .insert(vendorContracts)
       .values({
         userId: req.userId!,
-        fileName: originalname,
+        fileName: displayName,
         fileSize: size,
         mimeType: mimetype,
         extractedText: extractedText.slice(0, 10000),
@@ -212,6 +214,25 @@ router.get("/contracts", requireAuth, async (req, res) => {
 
     res.json(rows.map(r => ({ ...r, createdAt: r.createdAt.toISOString() })));
   } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/contracts/:id", requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params["id"] ?? "0");
+    const { fileName } = req.body;
+    if (!fileName || typeof fileName !== "string" || !fileName.trim()) {
+      return res.status(400).json({ error: "fileName is required" });
+    }
+    const [updated] = await db
+      .update(vendorContracts)
+      .set({ fileName: fileName.trim() })
+      .where(eq(vendorContracts.id, id))
+      .returning({ id: vendorContracts.id, fileName: vendorContracts.fileName });
+    if (!updated) return res.status(404).json({ error: "Contract not found" });
+    res.json(updated);
+  } catch {
     res.status(500).json({ error: "Internal server error" });
   }
 });
