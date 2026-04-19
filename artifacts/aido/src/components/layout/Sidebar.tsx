@@ -27,7 +27,6 @@ import {
   Hotel,
   Flower2,
   FileText,
-  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -48,7 +47,6 @@ const navSections = [
       { href: "/vendors", label: "Vendor List", icon: Store },
       { href: "/vendor-email", label: "Vendor Emails", icon: Mail },
       { href: "/contracts", label: "Contracts", icon: FileText },
-      { href: "/payments", label: "Payment Tracker", icon: Receipt },
     ],
   },
   {
