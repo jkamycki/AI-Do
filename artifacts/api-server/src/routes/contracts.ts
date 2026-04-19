@@ -1,9 +1,14 @@
 import { Router } from "express";
 import multer from "multer";
+import { createRequire } from "node:module";
 import { db, vendorContracts } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { openai } from "@workspace/integrations-openai-ai-server";
+
+const require = createRequire(import.meta.url);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require("pdf-parse");
 
 const router = Router();
 const upload = multer({
@@ -28,7 +33,6 @@ async function extractText(buffer: Buffer, mimetype: string): Promise<string> {
   }
   if (mimetype === "application/pdf") {
     try {
-      const pdfParse = (await import("pdf-parse")).default;
       const result = await pdfParse(buffer);
       const text = sanitizeText(result.text);
       if (!text.trim()) {
