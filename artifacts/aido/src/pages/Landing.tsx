@@ -117,6 +117,22 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* Promo Video */}
+        <section className="w-full max-w-5xl px-6 pb-20">
+          <div className="text-center mb-8">
+            <h2 className="font-serif text-3xl text-primary mb-3">See it in action</h2>
+            <p className="text-muted-foreground">A quick look at what A.IDO can do for your wedding.</p>
+          </div>
+          <div className="relative w-full overflow-hidden rounded-2xl shadow-2xl border border-primary/10" style={{ aspectRatio: "16/9" }}>
+            <iframe
+              src="/promo"
+              title="A.IDO Feature Preview"
+              className="absolute inset-0 w-full h-full border-0"
+              allow="autoplay"
+            />
+          </div>
+        </section>
+
         {/* Features */}
         <section className="w-full max-w-5xl px-6 pb-20">
           <div className="text-center mb-12">
