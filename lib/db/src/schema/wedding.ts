@@ -231,6 +231,7 @@ export const guests = pgTable("guests", {
   profileId: integer("profile_id").notNull(),
   name: text("name").notNull(),
   email: text("email"),
+  invitationStatus: text("invitation_status").notNull().default("pending"),
   rsvpStatus: text("rsvp_status").notNull().default("pending"),
   mealChoice: text("meal_choice"),
   guestGroup: text("guest_group"),

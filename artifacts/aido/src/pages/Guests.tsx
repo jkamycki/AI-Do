@@ -35,6 +35,11 @@ const RSVP_OPTIONS = [
   { value: "declined", label: "Declined", color: "bg-red-100 text-red-800 border-red-200" },
 ];
 
+const INVITATION_OPTIONS = [
+  { value: "pending", label: "Pending", color: "bg-amber-100 text-amber-800 border-amber-200" },
+  { value: "sent", label: "Sent", color: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+];
+
 const MEAL_OPTIONS = [
   { value: "chicken", label: "Chicken" },
   { value: "fish", label: "Fish" },
@@ -73,6 +78,7 @@ const GROUP_COLORS: Record<string, string> = {
 const guestSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email").or(z.literal("")).optional(),
+  invitationStatus: z.enum(["pending", "sent"]).default("pending"),
   rsvpStatus: z.enum(["pending", "attending", "declined"]).default("pending"),
   mealChoice: z.string().optional(),
   guestGroup: z.string().optional(),
@@ -106,6 +112,7 @@ function GuestForm({
     defaultValues: {
       name: "",
       email: "",
+      invitationStatus: "pending",
       rsvpStatus: "pending",
       mealChoice: "",
       guestGroup: "",
@@ -139,6 +146,21 @@ function GuestForm({
             </FormItem>
           )} />
         </div>
+
+        <FormField control={form.control} name="invitationStatus" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Invitation Status</FormLabel>
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <FormControl>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {INVITATION_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField control={form.control} name="rsvpStatus" render={({ field }) => (
@@ -238,7 +260,7 @@ function GuestForm({
         )} />
 
         <div className="flex gap-3 mt-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset({ name: "", email: "", rsvpStatus: "pending", mealChoice: "", guestGroup: "", plusOne: false, plusOneFirstName: "", plusOneLastName: "", tableAssignment: "", notes: "" })}>
+          <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset({ name: "", email: "", invitationStatus: "pending", rsvpStatus: "pending", mealChoice: "", guestGroup: "", plusOne: false, plusOneFirstName: "", plusOneLastName: "", tableAssignment: "", notes: "" })}>
             <RotateCcw className="h-4 w-4 mr-2" /> Reset
           </Button>
           <Button type="submit" className="flex-1" disabled={isPending}>
@@ -255,7 +277,7 @@ function exportCSV(guestList: Guest[]) {
   const rows = guestList.map(g => [
     g.name,
     g.email ?? "",
-    g.email ? "Sent" : "Not sent",
+    g.invitationStatus === "sent" ? "Sent" : "Pending",
     getGroupLabel(g.guestGroup),
     g.rsvpStatus,
     g.mealChoice ?? "",
@@ -473,6 +495,7 @@ export default function Guests() {
       data: {
         name: guest.name,
         email: guest.email ?? undefined,
+        invitationStatus: guest.invitationStatus ?? "pending",
         rsvpStatus: newStatus as "pending" | "attending" | "declined",
         mealChoice: guest.mealChoice ?? undefined,
         guestGroup: guest.guestGroup ?? undefined,
@@ -773,9 +796,39 @@ export default function Guests() {
                           )}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-sm">
-                          <Badge variant={g.email ? "default" : "secondary"} className="rounded-full">
-                            {g.email ? "Sent" : "Not sent"}
-                          </Badge>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${INVITATION_OPTIONS.find(o => o.value === g.invitationStatus)?.color ?? INVITATION_OPTIONS[0].color}`}>
+                                {INVITATION_OPTIONS.find(o => o.value === g.invitationStatus)?.label ?? "Pending"}
+                                <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-36">
+                              {INVITATION_OPTIONS.map(opt => (
+                                <DropdownMenuItem
+                                  key={opt.value}
+                                  className={`text-xs font-medium cursor-pointer ${g.invitationStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
+                                  onClick={() => updateGuest.mutate({
+                                    id: g.id,
+                                    data: {
+                                      name: g.name,
+                                      email: g.email ?? undefined,
+                                      invitationStatus: opt.value,
+                                      rsvpStatus: g.rsvpStatus as "pending" | "attending" | "declined",
+                                      mealChoice: g.mealChoice ?? undefined,
+                                      guestGroup: g.guestGroup ?? undefined,
+                                      plusOne: g.plusOne,
+                                      plusOneName: g.plusOneName ?? undefined,
+                                      tableAssignment: g.tableAssignment ?? undefined,
+                                      notes: g.notes ?? undefined,
+                                    },
+                                  })}
+                                >
+                                  {opt.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {grpLabel ? (

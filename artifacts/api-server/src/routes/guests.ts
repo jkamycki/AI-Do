@@ -51,7 +51,7 @@ router.post("/guests", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "No wedding profile found. Create a profile first." });
     }
 
-    const { name, email, rsvpStatus, mealChoice, guestGroup, plusOne, plusOneName, tableAssignment, notes } = req.body;
+    const { name, email, invitationStatus, rsvpStatus, mealChoice, guestGroup, plusOne, plusOneName, tableAssignment, notes } = req.body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return res.status(400).json({ error: "Guest name is required" });
@@ -63,6 +63,7 @@ router.post("/guests", requireAuth, async (req, res) => {
         profileId,
         name: name.trim(),
         email: email || null,
+        invitationStatus: invitationStatus || "pending",
         rsvpStatus: rsvpStatus || "pending",
         mealChoice: mealChoice || null,
         guestGroup: guestGroup || null,
@@ -88,11 +89,12 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     const profileId = await getProfileId(req.userId!);
     if (!profileId) return res.status(400).json({ error: "No wedding profile found." });
 
-    const { name, email, rsvpStatus, mealChoice, guestGroup, plusOne, plusOneName, tableAssignment, notes } = req.body;
+    const { name, email, invitationStatus, rsvpStatus, mealChoice, guestGroup, plusOne, plusOneName, tableAssignment, notes } = req.body;
 
     const updateData: Partial<typeof guests.$inferInsert> = {};
     if (name !== undefined) updateData.name = name;
     if (email !== undefined) updateData.email = email || null;
+    if (invitationStatus !== undefined) updateData.invitationStatus = invitationStatus;
     if (rsvpStatus !== undefined) updateData.rsvpStatus = rsvpStatus;
     if (mealChoice !== undefined) updateData.mealChoice = mealChoice || null;
     if (guestGroup !== undefined) updateData.guestGroup = guestGroup || null;

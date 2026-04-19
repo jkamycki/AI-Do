@@ -325,6 +325,7 @@ export interface GuestList {
 export interface CreateGuest {
   name: string;
   email?: string;
+  invitationStatus?: string;
   rsvpStatus?: string;
   mealChoice?: string;
   guestGroup?: string;
@@ -337,6 +338,7 @@ export interface CreateGuest {
 export interface UpdateGuest {
   name?: string;
   email?: string;
+  invitationStatus?: string;
   rsvpStatus?: string;
   mealChoice?: string;
   guestGroup?: string;
