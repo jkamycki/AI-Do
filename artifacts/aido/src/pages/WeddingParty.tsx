@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Plus, Phone, Mail, Trash2, Edit2, Crown, Heart } from "lucide-react";
+import { Users, Plus, Phone, Mail, Trash2, Edit2, Crown, Heart, RotateCcw } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -113,9 +113,14 @@ function MemberForm({
           <Textarea placeholder="Allergies, accessibility needs, hotel info…" rows={2} className="resize-none" value={form.notes ?? ""} onChange={e => set("notes", e.target.value)} />
         </div>
       </div>
-      <Button type="submit" className="w-full" disabled={isPending || !form.name || !form.role}>
-        {isPending ? "Saving…" : submitLabel}
-      </Button>
+      <div className="flex gap-3">
+        <Button type="button" variant="outline" className="flex-1" onClick={() => setForm({ ...EMPTY })}>
+          <RotateCcw className="h-4 w-4 mr-2" /> Reset
+        </Button>
+        <Button type="submit" className="flex-1" disabled={isPending || !form.name || !form.role}>
+          {isPending ? "Saving…" : submitLabel}
+        </Button>
+      </div>
     </form>
   );
 }

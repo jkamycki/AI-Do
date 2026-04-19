@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail, Copy, CheckCircle2, Sparkles, FileDown } from "lucide-react";
+import { Mail, Copy, CheckCircle2, Sparkles, FileDown, RotateCcw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const emailSchema = z.object({
@@ -255,24 +255,34 @@ export default function VendorEmailPage() {
                     )}
                   />
 
-                  <Button 
-                    type="submit" 
-                    className="w-full shadow-md" 
-                    disabled={generateEmail.isPending}
-                    data-testid="btn-generate-email"
-                  >
-                    {generateEmail.isPending ? (
-                      <span className="flex items-center gap-2">
-                        <div className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                        Drafting...
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4" />
-                        Generate Email
-                      </span>
-                    )}
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => { form.reset(); setGeneratedResult(null); }}
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" /> Clear
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      className="flex-1 shadow-md" 
+                      disabled={generateEmail.isPending}
+                      data-testid="btn-generate-email"
+                    >
+                      {generateEmail.isPending ? (
+                        <span className="flex items-center gap-2">
+                          <div className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                          Drafting...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4" />
+                          Generate
+                        </span>
+                      )}
+                    </Button>
+                  </div>
                 </form>
               </Form>
             </CardContent>

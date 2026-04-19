@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Hotel, Plus, ExternalLink, Phone, Mail, Copy, Check,
-  Trash2, Edit2, BedDouble, Calendar, DollarSign, MapPin, Tag,
+  Trash2, Edit2, BedDouble, Calendar, DollarSign, MapPin, Tag, RotateCcw,
 } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "";
@@ -142,9 +142,14 @@ function HotelForm({
           <Textarea placeholder="Shuttle available, free breakfast included…" rows={2} className="resize-none" value={form.notes ?? ""} onChange={e => set("notes", e.target.value)} />
         </div>
       </div>
-      <Button type="submit" className="w-full" disabled={isPending}>
-        {isPending ? "Saving…" : submitLabel}
-      </Button>
+      <div className="flex gap-3">
+        <Button type="button" variant="outline" className="flex-1" onClick={() => setForm({ ...EMPTY })}>
+          <RotateCcw className="h-4 w-4 mr-2" /> Reset
+        </Button>
+        <Button type="submit" className="flex-1" disabled={isPending}>
+          {isPending ? "Saving…" : submitLabel}
+        </Button>
+      </div>
     </form>
   );
 }

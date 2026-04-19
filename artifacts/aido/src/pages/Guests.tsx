@@ -24,7 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown } from "lucide-react";
+import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const RSVP_OPTIONS = [
@@ -224,9 +224,14 @@ function GuestForm({
           </FormItem>
         )} />
 
-        <Button type="submit" className="w-full mt-2" disabled={isPending}>
-          {isPending ? "Saving…" : submitLabel}
-        </Button>
+        <div className="flex gap-3 mt-2">
+          <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset({ name: "", email: "", rsvpStatus: "pending", mealChoice: "", guestGroup: "", plusOne: false, plusOneName: "", tableAssignment: "", notes: "" })}>
+            <RotateCcw className="h-4 w-4 mr-2" /> Reset
+          </Button>
+          <Button type="submit" className="flex-1" disabled={isPending}>
+            {isPending ? "Saving…" : submitLabel}
+          </Button>
+        </div>
       </form>
     </Form>
   );

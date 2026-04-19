@@ -27,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History, Bell, AlertTriangle, Clock } from "lucide-react";
+import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History, Bell, AlertTriangle, Clock, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const itemSchema = z.object({
@@ -564,9 +564,14 @@ export default function Budget() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full mt-4" disabled={updateItem.isPending}>
-                {updateItem.isPending ? "Saving…" : "Save Changes"}
-              </Button>
+              <div className="flex gap-3 mt-4">
+                <Button type="button" variant="outline" className="flex-1" onClick={() => editForm.reset()}>
+                  <RotateCcw className="h-4 w-4 mr-2" /> Reset
+                </Button>
+                <Button type="submit" className="flex-1" disabled={updateItem.isPending}>
+                  {updateItem.isPending ? "Saving…" : "Save Changes"}
+                </Button>
+              </div>
             </form>
           </Form>
         </DialogContent>
@@ -727,9 +732,14 @@ export default function Budget() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full mt-4" disabled={addBudgetItem.isPending} data-testid="btn-submit-item">
-                  {addBudgetItem.isPending ? "Saving..." : "Save Expense"}
-                </Button>
+                <div className="flex gap-3 mt-4">
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset()}>
+                    <RotateCcw className="h-4 w-4 mr-2" /> Reset
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={addBudgetItem.isPending} data-testid="btn-submit-item">
+                    {addBudgetItem.isPending ? "Saving..." : "Save Expense"}
+                  </Button>
+                </div>
               </form>
             </Form>
           </DialogContent>
