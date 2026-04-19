@@ -10,9 +10,9 @@ import {
   getGetGuestsQueryKey,
 } from "@workspace/api-client-react";
 import type { Guest } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -24,8 +24,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw } from "lucide-react";
+import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { authFetch } from "@/lib/authFetch";
 
 const RSVP_OPTIONS = [
   { value: "pending", label: "Pending", color: "bg-amber-100 text-amber-800 border-amber-200" },
@@ -260,6 +261,125 @@ function exportCSV(guestList: Guest[]) {
   URL.revokeObjectURL(url);
 }
 
+function GuestCollectorCard() {
+  const { toast } = useToast();
+  const [token, setToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const collectorUrl = token
+    ? `${window.location.origin}${base}/collect/${token}`
+    : null;
+
+  const generate = useMutation({
+    mutationFn: async () => {
+      const res = await authFetch("/api/guest-collect/generate", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to generate link");
+      return res.json() as Promise<{ token: string }>;
+    },
+    onSuccess: (data) => setToken(data.token),
+    onError: () => toast({ title: "Error", description: "Could not generate link.", variant: "destructive" }),
+  });
+
+  const regenerate = useMutation({
+    mutationFn: async () => {
+      const res = await authFetch("/api/guest-collect/regenerate", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to regenerate link");
+      return res.json() as Promise<{ token: string }>;
+    },
+    onSuccess: (data) => {
+      setToken(data.token);
+      toast({ title: "New link generated", description: "The old link is now inactive." });
+    },
+    onError: () => toast({ title: "Error", description: "Could not regenerate link.", variant: "destructive" }),
+  });
+
+  const copyLink = () => {
+    if (!collectorUrl) return;
+    navigator.clipboard.writeText(collectorUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <Card className="border-rose-200 bg-rose-50/30 shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <Link2 className="h-4 w-4 text-rose-500" />
+          Guest Collector Link
+        </CardTitle>
+        <CardDescription>
+          Generate a shareable link so guests can submit their own name, contact info, and plus one details.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {!token ? (
+          <Button
+            onClick={() => generate.mutate()}
+            disabled={generate.isPending}
+            className="bg-rose-500 hover:bg-rose-600 text-white"
+          >
+            {generate.isPending ? (
+              <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Generating...</>
+            ) : (
+              <><Link2 className="h-4 w-4 mr-2" /> Generate Collection Link</>
+            )}
+          </Button>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Input
+                readOnly
+                value={collectorUrl ?? ""}
+                className="text-xs font-mono bg-white border-rose-200 text-rose-700"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={copyLink}
+                className="shrink-0 border-rose-200 hover:bg-rose-100"
+                title="Copy link"
+              >
+                {copied ? <CheckCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-muted-foreground flex-1">
+                Share this link with guests — their info will appear in your guest list automatically.
+              </p>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-rose-600 shrink-0">
+                    <RefreshCw className="h-3 w-3 mr-1" /> Regenerate
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Regenerate link?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      The current link will stop working immediately. Anyone who has the old link won't be able to use it anymore.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-rose-500 hover:bg-rose-600"
+                      onClick={() => regenerate.mutate()}
+                    >
+                      Yes, Regenerate
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Guests() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -398,6 +518,9 @@ export default function Guests() {
           </Dialog>
         </div>
       </div>
+
+      {/* Guest Collector */}
+      <GuestCollectorCard />
 
       {/* RSVP Response Rate Bar */}
       {summary.total > 0 && (

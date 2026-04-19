@@ -18,6 +18,7 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   totalBudget: numeric("total_budget", { precision: 12, scale: 2 }).notNull().default("0"),
   weddingVibe: text("wedding_vibe").notNull(),
   preferredLanguage: text("preferred_language").default("English"),
+  guestCollectionToken: text("guest_collection_token"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -237,6 +238,8 @@ export const guests = pgTable("guests", {
   plusOneName: text("plus_one_name"),
   tableAssignment: text("table_assignment"),
   notes: text("notes"),
+  phone: text("phone"),
+  address: text("address"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
