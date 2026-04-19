@@ -355,9 +355,9 @@ function GuestCollectorCard() {
                 onClick={() => {
                   const subject = encodeURIComponent("Please share your contact info with us!");
                   const body = encodeURIComponent(
-                    `Hi!\n\nWe'd love to have your contact details for our wedding guest list.\n\nPlease take a moment to fill out this quick form:\n${collectorUrl}\n\nThank you! 💕`
+                    `Hi!\n\nWe'd love to have your contact details for our wedding guest list. Please take a moment to fill out this quick form below:\n\n${collectorUrl}\n\nThank you!`
                   );
-                  window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
+                  window.location.href = `mailto:?subject=${subject}&body=${body}`;
                 }}
               >
                 <Mail className="h-3.5 w-3.5" /> Email Link
