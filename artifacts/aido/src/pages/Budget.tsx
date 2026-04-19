@@ -554,7 +554,7 @@ export default function Budget() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="flex items-center gap-1.5">
-                      <Bell className="h-3.5 w-3.5 text-primary" /> Next Payment Due Date
+                      <Bell className="h-3.5 w-3.5 text-primary" /> Next Payment Due Date <span className="font-normal text-muted-foreground">(optional)</span>
                     </FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
@@ -717,12 +717,12 @@ export default function Budget() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-1.5">
-                        <Bell className="h-3.5 w-3.5 text-primary" /> Next Payment Due Date
+                        <Bell className="h-3.5 w-3.5 text-primary" /> Next Payment Due Date <span className="font-normal text-muted-foreground">(optional)</span>
                       </FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
-                      <p className="text-[11px] text-muted-foreground">Optional — get a reminder as this date approaches.</p>
+                      <p className="text-[11px] text-muted-foreground">Leave blank to skip — set one to get a reminder as this date approaches.</p>
                       <FormMessage />
                     </FormItem>
                   )}
