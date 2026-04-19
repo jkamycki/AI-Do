@@ -130,12 +130,12 @@ export default function GuestCollect() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2" style={{ fontFamily: "Georgia, serif" }}>
-                You're on the list!
+                Info received!
               </h2>
               <p className="text-gray-500 text-sm leading-relaxed">
-                Your info has been sent to{" "}
+                Your contact details have been sent to{" "}
                 <span className="font-semibold text-gray-700">{wedding.partner1Name} & {wedding.partner2Name}</span>.
-                They can't wait to celebrate with you!
+                Thank you for sharing!
               </p>
             </div>
             <div className="flex items-center justify-center gap-2 pt-2">
@@ -174,7 +174,7 @@ export default function GuestCollect() {
 
             <div>
               <p className="text-sm font-medium uppercase tracking-widest mb-2" style={{ color: "#a855f7" }}>
-                You're invited to share your details
+                Help us build our guest list
               </p>
               <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight" style={{ fontFamily: "Georgia, serif" }}>
                 {wedding.partner1Name} & {wedding.partner2Name}
@@ -203,7 +203,7 @@ export default function GuestCollect() {
             <CardContent className="pt-7 pb-8 px-6 sm:px-8 space-y-5">
               <div className="mb-1">
                 <p className="text-xs text-muted-foreground">
-                  Fill out the form below and your info will be sent directly to {wedding.partner1Name} & {wedding.partner2Name}'s guest list.
+                  Share your contact details with {wedding.partner1Name} & {wedding.partner2Name} so they can keep your info on file.
                 </p>
               </div>
 
@@ -272,8 +272,8 @@ export default function GuestCollect() {
                       render={({ field }) => (
                         <FormItem className="flex items-center justify-between gap-4">
                           <div>
-                            <FormLabel className="text-sm font-medium">Bringing a Plus One?</FormLabel>
-                            <p className="text-xs text-muted-foreground mt-0.5">Let the couple know if you'll have a guest</p>
+                            <FormLabel className="text-sm font-medium">Will you have a Plus One?</FormLabel>
+                            <p className="text-xs text-muted-foreground mt-0.5">Let them know if someone will be joining you</p>
                           </div>
                           <FormControl>
                             <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -319,7 +319,7 @@ export default function GuestCollect() {
                     ) : (
                       <>
                         <Heart className="h-4 w-4 mr-2" />
-                        Send My Info to {wedding.partner1Name} & {wedding.partner2Name}
+                        Submit My Contact Info
                       </>
                     )}
                   </Button>

@@ -112,7 +112,7 @@ router.post("/guest-collect/:token", async (req, res) => {
         email: email?.trim() || null,
         phone: phone?.trim() || null,
         address: address?.trim() || null,
-        rsvpStatus: "attending",
+        rsvpStatus: "pending",
         plusOne: !!plusOne,
         plusOneName: plusOne && plusOneName?.trim() ? plusOneName.trim() : null,
       })
