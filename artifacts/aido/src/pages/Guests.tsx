@@ -368,13 +368,17 @@ function GuestCollectorCard() {
                 size="sm"
                 className="border-sky-200 hover:bg-sky-50 text-sky-700 gap-2"
                 onClick={() => {
-                  const msg = encodeURIComponent(
-                    `Hi! We'd love your contact info for our wedding guest list. Please fill out this quick form: ${collectorUrl} 💕`
-                  );
-                  window.open(`sms:?body=${msg}`, "_blank");
+                  const text = `Hi! We'd love your contact info for our wedding guest list. Please fill out this quick form: ${collectorUrl} 💕`;
+                  if (navigator.share) {
+                    navigator.share({ title: "Share your contact info with us!", text, url: collectorUrl ?? "" }).catch(() => {});
+                  } else {
+                    const a = document.createElement("a");
+                    a.href = `sms:?body=${encodeURIComponent(text)}`;
+                    a.click();
+                  }
                 }}
               >
-                <MessageSquare className="h-3.5 w-3.5" /> Text Link
+                <MessageSquare className="h-3.5 w-3.5" /> Text / Share
               </Button>
 
               <AlertDialog>
