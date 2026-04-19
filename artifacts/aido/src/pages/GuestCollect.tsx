@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Heart, CheckCircle2, AlertCircle, Loader2, MapPin } from "lucide-react";
 
@@ -15,6 +16,9 @@ const schema = z.object({
   email: z.string().email("Please enter a valid email").or(z.literal("")),
   phone: z.string().optional(),
   address: z.string().optional(),
+  plusOne: z.boolean().default(false),
+  plusOneFirstName: z.string().optional(),
+  plusOneLastName: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -56,8 +60,10 @@ export default function GuestCollect() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", email: "", phone: "", address: "" },
+    defaultValues: { name: "", email: "", phone: "", address: "", plusOne: false, plusOneFirstName: "", plusOneLastName: "" },
   });
+
+  const plusOne = form.watch("plusOne");
 
   const submit = useMutation({
     mutationFn: async (data: FormData) => {
@@ -248,6 +254,55 @@ export default function GuestCollect() {
                       </FormItem>
                     )}
                   />
+
+                  {/* Plus One */}
+                  <div className="rounded-xl border border-rose-100 bg-rose-50/40 p-4 space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="plusOne"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between gap-4">
+                          <div>
+                            <FormLabel className="text-sm font-medium">Will you have a Plus One?</FormLabel>
+                            <p className="text-xs text-muted-foreground mt-0.5">Let them know if someone will be joining you</p>
+                          </div>
+                          <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    {plusOne && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="plusOneFirstName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>First Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Alex" className="bg-white border-rose-200" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="plusOneLastName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Last Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Smith" className="bg-white border-rose-200" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   {submit.isError && (
                     <p className="text-sm text-red-500 text-center">
