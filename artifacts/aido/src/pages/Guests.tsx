@@ -133,7 +133,7 @@ function GuestForm({
           )} />
           <FormField control={form.control} name="email" render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Email (optional)</FormLabel>
               <FormControl><Input type="email" placeholder="jane@example.com" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
@@ -251,10 +251,11 @@ function GuestForm({
 }
 
 function exportCSV(guestList: Guest[]) {
-  const headers = ["Name", "Email", "Group", "RSVP", "Meal", "Plus One", "Plus One Name", "Table", "Notes"];
+  const headers = ["Name", "Email", "Invitation Sent", "Group", "RSVP", "Meal", "Plus One", "Plus One Name", "Table", "Notes"];
   const rows = guestList.map(g => [
     g.name,
     g.email ?? "",
+    g.email ? "Sent" : "Not sent",
     getGroupLabel(g.guestGroup),
     g.rsvpStatus,
     g.mealChoice ?? "",
@@ -469,7 +470,17 @@ export default function Guests() {
   function handleRsvpChange(guest: Guest, newStatus: string) {
     updateGuest.mutate({
       id: guest.id,
-      data: { ...guest, rsvpStatus: newStatus as "pending" | "attending" | "declined" },
+      data: {
+        name: guest.name,
+        email: guest.email ?? undefined,
+        rsvpStatus: newStatus as "pending" | "attending" | "declined",
+        mealChoice: guest.mealChoice ?? undefined,
+        guestGroup: guest.guestGroup ?? undefined,
+        plusOne: guest.plusOne,
+        plusOneName: guest.plusOneName ?? undefined,
+        tableAssignment: guest.tableAssignment ?? undefined,
+        notes: guest.notes ?? undefined,
+      },
     }, {
       onSuccess: () => invalidate(),
       onError: () => toast({ title: "Failed to update RSVP", variant: "destructive" }),
@@ -735,6 +746,7 @@ export default function Guests() {
                 <TableHeader className="bg-muted/10">
                   <TableRow>
                     <TableHead>Name</TableHead>
+                    <TableHead className="hidden sm:table-cell">Invitation</TableHead>
                     <TableHead className="hidden sm:table-cell">Group</TableHead>
                     <TableHead>RSVP</TableHead>
                     <TableHead className="hidden md:table-cell">Meal</TableHead>
@@ -759,6 +771,11 @@ export default function Guests() {
                               {grpLabel}
                             </span>
                           )}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-sm">
+                          <Badge variant={g.email ? "default" : "secondary"} className="rounded-full">
+                            {g.email ? "Sent" : "Not sent"}
+                          </Badge>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {grpLabel ? (
