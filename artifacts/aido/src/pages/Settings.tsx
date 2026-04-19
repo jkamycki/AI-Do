@@ -8,11 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useGetProfile, useSaveProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
 import {
   Users, UserPlus, Mail, Shield, Eye, Briefcase, Copy,
   CheckCircle2, Clock, XCircle, Trash2, RefreshCw, ChevronDown,
-  Settings as SettingsIcon, Crown,
+  Settings as SettingsIcon, Crown, Globe, Check,
 } from "lucide-react";
+
+const LANGUAGES = [
+  "English", "Spanish", "French", "German", "Italian", "Portuguese",
+  "Chinese (Simplified)", "Japanese", "Korean", "Arabic", "Hindi",
+  "Russian", "Dutch", "Polish",
+];
 
 type CollabRole = "partner" | "planner" | "vendor";
 type CollabStatus = "pending" | "active" | "declined";
@@ -76,6 +84,100 @@ function StatusBadge({ status }: { status: CollabStatus }) {
       <Icon className="h-3 w-3" />
       {cfg.label}
     </span>
+  );
+}
+
+function LanguageSwitcherCard() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data: profile, isLoading } = useGetProfile();
+  const saveProfile = useSaveProfile();
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const current = selected ?? profile?.preferredLanguage ?? "English";
+  const hasChange = selected !== null && selected !== (profile?.preferredLanguage ?? "English");
+
+  function save() {
+    if (!profile) return;
+    saveProfile.mutate(
+      {
+        data: {
+          partner1Name: profile.partner1Name,
+          partner2Name: profile.partner2Name,
+          weddingDate: profile.weddingDate,
+          ceremonyTime: profile.ceremonyTime,
+          receptionTime: profile.receptionTime,
+          venue: profile.venue,
+          location: profile.location,
+          venueCity: profile.venueCity ?? undefined,
+          venueState: profile.venueState ?? undefined,
+          guestCount: profile.guestCount,
+          totalBudget: profile.totalBudget,
+          weddingVibe: profile.weddingVibe,
+          preferredLanguage: current,
+        },
+      },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
+          setSelected(null);
+          toast({ title: "Language updated", description: `Switched to ${current}.` });
+        },
+        onError: () => {
+          toast({ variant: "destructive", title: "Error", description: "Could not save language." });
+        },
+      }
+    );
+  }
+
+  return (
+    <Card className="border-none shadow-sm">
+      <CardHeader className="pb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+            <Globe className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <CardTitle className="font-serif text-lg">Preferred Language</CardTitle>
+            <CardDescription>AI features like Aria and vendor emails respond in this language.</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {isLoading ? (
+          <div className="h-10 bg-muted animate-pulse rounded-md" />
+        ) : !profile ? (
+          <p className="text-sm text-muted-foreground">Complete your wedding profile first to set a language.</p>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Select value={current} onValueChange={setSelected}>
+              <SelectTrigger className="w-56 bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map(lang => (
+                  <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={save}
+              disabled={!hasChange || saveProfile.isPending}
+              size="sm"
+              variant={hasChange ? "default" : "outline"}
+            >
+              {saveProfile.isPending ? (
+                <div className="h-3.5 w-3.5 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+              ) : hasChange ? (
+                <>Save</>
+              ) : (
+                <><Check className="h-3.5 w-3.5 mr-1" /> Saved</>
+              )}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -456,20 +558,23 @@ export default function SettingsPage() {
       )}
 
       {activeTab === "account" && (
-        <Card className="border-none shadow-sm">
-          <CardContent className="p-8 text-center space-y-4">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-              <SettingsIcon className="h-8 w-8 text-primary/60" />
-            </div>
-            <h3 className="font-serif text-xl text-foreground">Account Settings</h3>
-            <p className="text-muted-foreground max-w-sm mx-auto">
-              Manage your name, email, password, and connected accounts through your Clerk profile.
-            </p>
-            <Button variant="outline" onClick={() => window.open("https://accounts.clerk.dev", "_blank")}>
-              Manage Account
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <LanguageSwitcherCard />
+          <Card className="border-none shadow-sm">
+            <CardContent className="p-8 text-center space-y-4">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                <SettingsIcon className="h-8 w-8 text-primary/60" />
+              </div>
+              <h3 className="font-serif text-xl text-foreground">Account Settings</h3>
+              <p className="text-muted-foreground max-w-sm mx-auto">
+                Manage your name, email, password, and connected accounts through your Clerk profile.
+              </p>
+              <Button variant="outline" onClick={() => window.open("https://accounts.clerk.dev", "_blank")}>
+                Manage Account
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

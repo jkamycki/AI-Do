@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Heart, Calendar, MapPin, Users, DollarSign, Sparkles, ArrowRight, Check } from "lucide-react";
+import { Heart, Calendar, MapPin, Users, DollarSign, Sparkles, ArrowRight, Check, Globe } from "lucide-react";
 
 const ONBOARDING_KEY = "aido_onboarding_done";
 
@@ -24,6 +24,12 @@ const VIBES = [
   "Cultural & Traditional",
 ];
 
+const LANGUAGES = [
+  "English", "Spanish", "French", "German", "Italian", "Portuguese",
+  "Chinese (Simplified)", "Japanese", "Korean", "Arabic", "Hindi",
+  "Russian", "Dutch", "Polish",
+];
+
 const schema = z.object({
   partner1Name: z.string().min(1, "Required"),
   partner2Name: z.string().min(1, "Required"),
@@ -35,6 +41,7 @@ const schema = z.object({
   guestCount: z.coerce.number().min(1, "Must be at least 1"),
   totalBudget: z.coerce.number().min(0, "Must be 0 or more"),
   weddingVibe: z.string().min(1, "Required"),
+  preferredLanguage: z.string().default("English"),
 });
 
 type WizardValues = z.infer<typeof schema>;
@@ -63,6 +70,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
       guestCount: 100,
       totalBudget: 20000,
       weddingVibe: "",
+      preferredLanguage: "English",
     },
     mode: "onChange",
   });
@@ -226,6 +234,21 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                         {VIBES.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="preferredLanguage" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel><Globe className="h-3.5 w-3.5 inline mr-1" />Preferred Language</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Select language" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {LANGUAGES.map(lang => <SelectItem key={lang} value={lang}>{lang}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">AI features like Aria and vendor emails will respond in this language.</p>
                     <FormMessage />
                   </FormItem>
                 )} />
