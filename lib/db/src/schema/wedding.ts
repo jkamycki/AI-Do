@@ -17,6 +17,7 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   guestCount: integer("guest_count").notNull(),
   totalBudget: numeric("total_budget", { precision: 12, scale: 2 }).notNull().default("0"),
   weddingVibe: text("wedding_vibe").notNull(),
+  preferredLanguage: text("preferred_language").default("English"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

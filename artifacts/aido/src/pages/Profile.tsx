@@ -13,6 +13,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, Save, RotateCcw } from "lucide-react";
 
+const LANGUAGES = [
+  "English", "Spanish", "French", "German", "Italian", "Portuguese",
+  "Chinese (Simplified)", "Japanese", "Korean", "Arabic", "Hindi",
+  "Russian", "Dutch", "Polish",
+];
+
 const profileSchema = z.object({
   partner1Name: z.string().min(1, "Name is required"),
   partner2Name: z.string().min(1, "Name is required"),
@@ -26,6 +32,7 @@ const profileSchema = z.object({
   guestCount: z.coerce.number().min(1, "Must be at least 1"),
   totalBudget: z.coerce.number().min(1, "Must be at least 1"),
   weddingVibe: z.string().min(1, "Vibe is required"),
+  preferredLanguage: z.string().default("English"),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -51,6 +58,7 @@ export default function Profile() {
       guestCount: 100,
       totalBudget: 30000,
       weddingVibe: "Romantic & Elegant",
+      preferredLanguage: "English",
     },
   });
 
@@ -69,6 +77,7 @@ export default function Profile() {
         guestCount: profile.guestCount,
         totalBudget: profile.totalBudget,
         weddingVibe: profile.weddingVibe,
+        preferredLanguage: profile.preferredLanguage ?? "English",
       });
     }
   }, [profile, form]);
@@ -284,32 +293,57 @@ export default function Profile() {
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="weddingVibe"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Wedding Vibe / Style</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="bg-background" data-testid="select-vibe">
-                          <SelectValue placeholder="Select a vibe" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Romantic & Elegant">Romantic & Elegant</SelectItem>
-                        <SelectItem value="Modern & Minimalist">Modern & Minimalist</SelectItem>
-                        <SelectItem value="Rustic & Boho">Rustic & Boho</SelectItem>
-                        <SelectItem value="Vintage & Classic">Vintage & Classic</SelectItem>
-                        <SelectItem value="Glamorous & Luxurious">Glamorous & Luxurious</SelectItem>
-                        <SelectItem value="Casual & Intimate">Casual & Intimate</SelectItem>
-                        <SelectItem value="Whimsical & Playful">Whimsical & Playful</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="weddingVibe"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Wedding Vibe / Style</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="bg-background" data-testid="select-vibe">
+                            <SelectValue placeholder="Select a vibe" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Romantic & Elegant">Romantic & Elegant</SelectItem>
+                          <SelectItem value="Modern & Minimalist">Modern & Minimalist</SelectItem>
+                          <SelectItem value="Rustic & Boho">Rustic & Boho</SelectItem>
+                          <SelectItem value="Vintage & Classic">Vintage & Classic</SelectItem>
+                          <SelectItem value="Glamorous & Luxurious">Glamorous & Luxurious</SelectItem>
+                          <SelectItem value="Casual & Intimate">Casual & Intimate</SelectItem>
+                          <SelectItem value="Whimsical & Playful">Whimsical & Playful</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="preferredLanguage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preferred Language</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="bg-background" data-testid="select-language">
+                            <SelectValue placeholder="Select language" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {LANGUAGES.map((lang) => (
+                            <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <div className="flex justify-end gap-3 pt-4">
                 <Button
@@ -329,6 +363,7 @@ export default function Profile() {
                     guestCount: 0,
                     totalBudget: 0,
                     weddingVibe: "",
+                    preferredLanguage: "English",
                   })}
                   className="px-6"
                   data-testid="btn-reset-profile"

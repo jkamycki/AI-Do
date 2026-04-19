@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/react";
+import { useGetProfile } from "@workspace/api-client-react";
 import { X, Send, Sparkles, ChevronDown, RotateCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
@@ -25,6 +26,7 @@ const WELCOME_MESSAGE: Message = {
 
 export function SupportChat() {
   const { getToken } = useAuth();
+  const { data: profile } = useGetProfile();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
@@ -74,7 +76,7 @@ export function SupportChat() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: history, preferredLanguage: profile?.preferredLanguage ?? "English" }),
       });
 
       if (!res.ok || !res.body) throw new Error("Request failed");

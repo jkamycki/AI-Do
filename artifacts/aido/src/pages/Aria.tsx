@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { authFetch } from "@/lib/authFetch";
+import { useGetProfile } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -81,6 +82,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 
 export default function Aria() {
   const { toast } = useToast();
+  const { data: profile } = useGetProfile();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -126,6 +128,7 @@ export default function Aria() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: nextMessages.map(m => ({ role: m.role, content: m.content })),
+          preferredLanguage: profile?.preferredLanguage ?? "English",
         }),
         signal: abortRef.current.signal,
       });

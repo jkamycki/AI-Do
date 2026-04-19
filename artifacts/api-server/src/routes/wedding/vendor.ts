@@ -8,8 +8,10 @@ const router = Router();
 router.post("/vendor/email", requireAuth, async (req, res) => {
   try {
     const {
-      vendorType, emailType, vendorName, weddingDate, venue, guestCount, additionalNotes
+      vendorType, emailType, vendorName, weddingDate, venue, guestCount, additionalNotes, preferredLanguage,
     } = req.body;
+
+    const lang = preferredLanguage && preferredLanguage !== "English" ? preferredLanguage : null;
 
     const emailTypeDescriptions: Record<string, string> = {
       inquiry: "initial inquiry email introducing ourselves and asking about availability",
@@ -26,7 +28,7 @@ Wedding details:
 - Guest Count: ${guestCount}
 ${additionalNotes ? `- Additional Notes: ${additionalNotes}` : ""}
 
-Write in a warm, professional tone. Be specific and personable. The email should feel genuine, not like a template.
+Write in a warm, professional tone. Be specific and personable. The email should feel genuine, not like a template.${lang ? `\n\nIMPORTANT: Write the entire email (subject and body) in ${lang}.` : ""}
 
 Return ONLY valid JSON (no markdown) with this structure:
 {

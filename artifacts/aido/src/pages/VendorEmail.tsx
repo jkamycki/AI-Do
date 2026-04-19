@@ -61,6 +61,7 @@ export default function VendorEmailPage() {
           venue: profile?.venue ?? "",
           guestCount: profile?.guestCount ?? 0,
           additionalNotes: data.additionalNotes,
+          preferredLanguage: profile?.preferredLanguage ?? "English",
         }
       },
       {

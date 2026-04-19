@@ -39,8 +39,9 @@ const SYSTEM_PROMPT = `You are Aria, an expert AI wedding planning assistant bui
 
 router.post("/support/chat", requireAuth, async (req, res) => {
   try {
-    const { messages } = req.body as {
+    const { messages, preferredLanguage } = req.body as {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
+      preferredLanguage?: string;
     };
 
     if (!messages || !Array.isArray(messages)) {
@@ -55,11 +56,15 @@ router.post("/support/chat", requireAuth, async (req, res) => {
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
 
+    const langInstruction = preferredLanguage && preferredLanguage !== "English"
+      ? `\n\nIMPORTANT: Always respond in ${preferredLanguage}, regardless of what language the user writes in.`
+      : "";
+
     const stream = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
       max_completion_tokens: 800,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: SYSTEM_PROMPT + langInstruction },
         ...recent,
       ],
       stream: true,

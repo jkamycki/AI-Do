@@ -38,6 +38,7 @@ export interface WeddingProfile {
   guestCount: number;
   totalBudget: number;
   weddingVibe: string;
+  preferredLanguage?: string;
   updatedAt: string;
 }
 
@@ -54,6 +55,7 @@ export interface SaveProfileBody {
   guestCount: number;
   totalBudget: number;
   weddingVibe: string;
+  preferredLanguage?: string;
 }
 
 export interface TimelineEvent {
