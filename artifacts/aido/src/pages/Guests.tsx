@@ -8,6 +8,7 @@ import {
   useUpdateGuest,
   useDeleteGuest,
   getGetGuestsQueryKey,
+  useGetProfile,
 } from "@workspace/api-client-react";
 import type { Guest } from "@workspace/api-client-react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
@@ -276,11 +277,16 @@ function GuestCollectorCard() {
   const { toast } = useToast();
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const { data: profile } = useGetProfile();
 
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
   const collectorUrl = token
     ? `${window.location.origin}${base}/collect/${token}`
     : null;
+
+  const coupleNames = profile
+    ? `${profile.partner1Name ?? "Partner 1"} & ${profile.partner2Name ?? "Partner 2"}`
+    : "Your names";
 
   const generate = useMutation({
     mutationFn: async () => {
@@ -355,6 +361,25 @@ function GuestCollectorCard() {
               >
                 {copied ? <CheckCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
               </Button>
+            </div>
+
+            {/* Link preview — shows guests what they'll see before clicking */}
+            <div>
+              <p className="text-[11px] text-muted-foreground mb-1.5 font-medium">Preview — what guests see when you share this link:</p>
+            <div className="rounded-xl border border-rose-100 bg-white overflow-hidden shadow-sm">
+              <div className="h-1 w-full" style={{ background: "linear-gradient(90deg, #f43f5e, #a855f7)" }} />
+              <div className="flex items-start gap-3 p-3">
+                <div className="shrink-0 h-11 w-11 rounded-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, #fecdd3, #f9a8d4)" }}>
+                  <Heart className="h-5 w-5 fill-rose-400 text-rose-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "#a855f7" }}>Contact Info Request</p>
+                  <p className="text-sm font-bold text-gray-900 leading-tight truncate" style={{ fontFamily: "Georgia, serif" }}>{coupleNames}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">are collecting addresses for their wedding invitations</p>
+                  <p className="text-[10px] text-muted-foreground mt-1 truncate">{collectorUrl}</p>
+                </div>
+              </div>
+            </div>
             </div>
 
             {/* Share buttons */}
