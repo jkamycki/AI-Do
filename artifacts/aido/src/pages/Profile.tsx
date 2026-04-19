@@ -125,9 +125,9 @@ export default function Profile() {
                   name="partner1Name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Partner 1 Name</FormLabel>
+                      <FormLabel>Groom's Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Taylor" {...field} data-testid="input-partner1" className="bg-background" />
+                        <Input placeholder="James" {...field} data-testid="input-partner1" className="bg-background" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -138,9 +138,9 @@ export default function Profile() {
                   name="partner2Name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Partner 2 Name</FormLabel>
+                      <FormLabel>Bride's Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Jordan" {...field} data-testid="input-partner2" className="bg-background" />
+                        <Input placeholder="Sophia" {...field} data-testid="input-partner2" className="bg-background" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
