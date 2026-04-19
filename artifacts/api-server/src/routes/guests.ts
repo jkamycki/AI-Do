@@ -29,12 +29,13 @@ router.get("/guests", requireAuth, async (req, res) => {
       .where(eq(guests.profileId, profileId))
       .orderBy(guests.createdAt);
 
+    const plusOneCount = rows.filter(g => g.plusOne).length;
     const summary = {
-      total: rows.length,
-      attending: rows.filter(g => g.rsvpStatus === "attending").length,
-      declined: rows.filter(g => g.rsvpStatus === "declined").length,
-      pending: rows.filter(g => g.rsvpStatus === "pending").length,
-      plusOnes: rows.filter(g => g.plusOne).length,
+      total: rows.length + plusOneCount,
+      attending: rows.filter(g => g.rsvpStatus === "attending").length + rows.filter(g => g.rsvpStatus === "attending" && g.plusOne).length,
+      declined: rows.filter(g => g.rsvpStatus === "declined").length + rows.filter(g => g.rsvpStatus === "declined" && g.plusOne).length,
+      pending: rows.filter(g => g.rsvpStatus === "pending").length + rows.filter(g => g.rsvpStatus === "pending" && g.plusOne).length,
+      plusOnes: plusOneCount,
     };
 
     res.json({ guests: rows, summary });
