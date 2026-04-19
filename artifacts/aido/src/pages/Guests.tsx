@@ -24,7 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck } from "lucide-react";
+import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, MessageSquare } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
 
@@ -327,7 +327,8 @@ function GuestCollectorCard() {
             )}
           </Button>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
+            {/* Link display + copy */}
             <div className="flex items-center gap-2">
               <Input
                 readOnly
@@ -344,14 +345,42 @@ function GuestCollectorCard() {
                 {copied ? <CheckCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <p className="text-xs text-muted-foreground flex-1">
-                Share this link with guests — their info will appear in your guest list automatically.
-              </p>
+
+            {/* Share buttons */}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-rose-200 hover:bg-rose-50 text-rose-700 gap-2"
+                onClick={() => {
+                  const subject = encodeURIComponent("Please share your contact info with us!");
+                  const body = encodeURIComponent(
+                    `Hi!\n\nWe'd love to have your contact details for our wedding guest list.\n\nPlease take a moment to fill out this quick form:\n${collectorUrl}\n\nThank you! 💕`
+                  );
+                  window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
+                }}
+              >
+                <Mail className="h-3.5 w-3.5" /> Email Link
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-sky-200 hover:bg-sky-50 text-sky-700 gap-2"
+                onClick={() => {
+                  const msg = encodeURIComponent(
+                    `Hi! We'd love your contact info for our wedding guest list. Please fill out this quick form: ${collectorUrl} 💕`
+                  );
+                  window.open(`sms:?body=${msg}`, "_blank");
+                }}
+              >
+                <MessageSquare className="h-3.5 w-3.5" /> Text Link
+              </Button>
+
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-rose-600 shrink-0">
-                    <RefreshCw className="h-3 w-3 mr-1" /> Regenerate
+                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-rose-600 gap-1 ml-auto">
+                    <RefreshCw className="h-3 w-3" /> Regenerate
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -373,6 +402,10 @@ function GuestCollectorCard() {
                 </AlertDialogContent>
               </AlertDialog>
             </div>
+
+            <p className="text-xs text-muted-foreground">
+              Their info will appear in your guest list automatically once submitted.
+            </p>
           </div>
         )}
       </CardContent>
