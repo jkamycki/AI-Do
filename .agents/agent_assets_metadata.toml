@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "_Ga-87pC8_BSEtBY9RMtq"
+uri = "file://artifacts/aido/public/images/floral-bg.png"
+type = "image"
+title = "romantic floral texture background"
+
+[[generated]]
+id = "EE7nlj_-ZGPM4AvDdEorE"
+uri = "file://artifacts/aido/public/images/bokeh-bg.png"
+type = "image"
+title = "soft bokeh wedding atmosphere"

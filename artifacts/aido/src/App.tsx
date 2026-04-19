@@ -27,6 +27,7 @@ import Guests from "@/pages/Guests";
 import Hotels from "@/pages/Hotels";
 import WeddingParty from "@/pages/WeddingParty";
 import NotFound from "@/pages/not-found";
+import VideoTemplate from "@/components/video/VideoTemplate";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -212,6 +213,7 @@ function Router() {
       <Route path="/hotels" component={() => <ProtectedRoute component={Hotels} />} />
       <Route path="/wedding-party" component={() => <ProtectedRoute component={WeddingParty} />} />
       <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} />} />
+      <Route path="/promo" component={VideoTemplate} />
       <Route component={NotFound} />
     </Switch>
   );

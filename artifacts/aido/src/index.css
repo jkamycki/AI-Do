@@ -103,8 +103,8 @@
   --input: 34 20% 85%;
   --ring: 340 30% 45%;
 
-  --app-font-sans: 'Plus Jakarta Sans', sans-serif;
-  --app-font-serif: 'Playfair Display', serif;
+  --app-font-sans: 'Inter', sans-serif;
+  --app-font-serif: 'Cormorant Garamond', serif;
   --app-font-mono: Menlo, monospace;
   --radius: 0.75rem; 
 
