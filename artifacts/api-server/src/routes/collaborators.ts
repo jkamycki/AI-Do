@@ -6,6 +6,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import {
   getProfileByUserId,
   resolveWorkspaceRole,
+  hasMinRole,
   logActivity,
 } from "../lib/workspaceAccess";
 
