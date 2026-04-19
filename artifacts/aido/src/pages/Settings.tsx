@@ -355,7 +355,7 @@ export default function SettingsPage() {
       const role = ROLE_CONFIG[inviteRole]?.label ?? inviteRole;
       const subject = encodeURIComponent(`You're invited to collaborate on ${workspaceName}'s wedding planning`);
       const body = encodeURIComponent(
-        `Hi there!\n\nYou've been invited to collaborate on ${workspaceName}'s wedding workspace as a ${role} on A.IDO.\n\nClick the link below to accept your invitation:\n\n${link}\n\nSee you there!\n${workspaceName}`
+        `Hi there!\n\nYou've been invited to collaborate on ${workspaceName}'s wedding workspace as a ${role} on A.IDO.\n\nAccept your invitation by clicking the link below:\n\n${link}\n\n(If the link doesn't appear clickable, copy and paste it into your browser.)\n\nSee you there!\n${workspaceName}`
       );
       window.location.href = `mailto:${inviteEmail}?subject=${subject}&body=${body}`;
 
@@ -512,10 +512,15 @@ export default function SettingsPage() {
                     <Mail className="h-4 w-4 text-primary" />
                     <p className="text-sm font-medium text-primary">Invite link created — your email app should be opening.</p>
                   </div>
-                  <div className="flex gap-2">
-                    <code className="flex-1 text-xs bg-background border rounded-lg px-3 py-2 font-mono truncate">
+                  <div className="flex gap-2 items-center">
+                    <a
+                      href={newInviteLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-xs bg-background border rounded-lg px-3 py-2 font-mono truncate text-primary underline hover:text-primary/80 transition-colors"
+                    >
                       {newInviteLink}
-                    </code>
+                    </a>
                     <Button size="sm" variant="outline" onClick={() => copyLink(newInviteLink)} className="gap-1.5 shrink-0">
                       <Copy className="h-3.5 w-3.5" />
                       Copy
@@ -530,7 +535,7 @@ export default function SettingsPage() {
                         const workspaceName = data?.workspaceName ?? "our wedding";
                         const subject = encodeURIComponent(`You're invited to collaborate on ${workspaceName}'s wedding planning`);
                         const body = encodeURIComponent(
-                          `Hi there!\n\nYou've been invited to collaborate on ${workspaceName}'s wedding workspace on A.IDO.\n\nClick the link below to accept your invitation:\n\n${newInviteLink}\n\nSee you there!\n${workspaceName}`
+                          `Hi there!\n\nYou've been invited to collaborate on ${workspaceName}'s wedding workspace on A.IDO.\n\nAccept your invitation by clicking the link below:\n\n${newInviteLink}\n\n(If the link doesn't appear clickable, copy and paste it into your browser.)\n\nSee you there!\n${workspaceName}`
                         );
                         window.location.href = `mailto:?subject=${subject}&body=${body}`;
                       }}
