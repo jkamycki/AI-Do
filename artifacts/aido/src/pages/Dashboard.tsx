@@ -1,6 +1,8 @@
 import { useGetDashboardSummary } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@clerk/react";
+import { useLocation } from "wouter";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
@@ -182,12 +184,20 @@ function FeatureCard({
 export default function Dashboard() {
   const { data: summary, isLoading, isError } = useGetDashboardSummary();
   const { user } = useUser();
+  const { activeWorkspace } = useWorkspace();
+  const [, setLocation] = useLocation();
   const { data: hotels = [] } = useQuery<HotelBlock[]>({
     queryKey: ["hotels"],
     queryFn: () => authFetch(`${API}/api/hotels`).then(r => r.json()),
     enabled: !!summary,
   });
   const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingWizard(summary?.hasProfile ?? true);
+
+  // Collaborators have no own profile — send them straight to their shared workspace
+  if (activeWorkspace && !isLoading && !summary?.hasProfile) {
+    setLocation(`/workspace/${activeWorkspace.profileId}`);
+    return null;
+  }
 
   const firstName = user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] ?? "there";
 

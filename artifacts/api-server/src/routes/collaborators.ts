@@ -258,6 +258,17 @@ router.post("/invite/:token/accept", requireAuth, async (req, res) => {
       .where(eq(workspaceCollaborators.id, collab.id))
       .returning();
 
+    // Fetch the profile info so the frontend can set activeWorkspace immediately
+    const [profile] = await db
+      .select({
+        partner1Name: weddingProfiles.partner1Name,
+        partner2Name: weddingProfiles.partner2Name,
+        weddingDate: weddingProfiles.weddingDate,
+      })
+      .from(weddingProfiles)
+      .where(eq(weddingProfiles.id, collab.profileId))
+      .limit(1);
+
     await logActivity(
       collab.profileId,
       req.userId!,
@@ -267,7 +278,11 @@ router.post("/invite/:token/accept", requireAuth, async (req, res) => {
     );
 
     res.json({
-      ...updated,
+      profileId: collab.profileId,
+      role: collab.role,
+      partner1Name: profile?.partner1Name ?? "",
+      partner2Name: profile?.partner2Name ?? "",
+      weddingDate: profile?.weddingDate ?? "",
       invitedAt: updated.invitedAt.toISOString(),
       acceptedAt: updated.acceptedAt?.toISOString() ?? null,
     });

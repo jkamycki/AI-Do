@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useAuth, useClerk, SignIn } from "@clerk/react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heart, CheckCircle2, XCircle, Crown, Briefcase, Eye, AlertCircle } from "lucide-react";
@@ -34,6 +35,7 @@ export default function InviteAcceptPage() {
   const token = params?.token ?? "";
   const [, setLocation] = useLocation();
   const { isSignedIn, getToken } = useAuth();
+  const { setActiveWorkspace } = useWorkspace();
   const [accepted, setAccepted] = useState(false);
   const [declined, setDeclined] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,11 +84,25 @@ export default function InviteAcceptPage() {
         const err = await r.json();
         throw new Error(err.error ?? "Failed to accept");
       }
-      return r.json();
+      return r.json() as Promise<{
+        profileId: number;
+        role: string;
+        partner1Name: string;
+        partner2Name: string;
+        weddingDate: string;
+      }>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Set the active workspace so the collaborator lands in the right place
+      setActiveWorkspace({
+        profileId: data.profileId,
+        role: data.role,
+        partner1Name: data.partner1Name,
+        partner2Name: data.partner2Name,
+        weddingDate: data.weddingDate,
+      });
       setAccepted(true);
-      setTimeout(() => setLocation("/dashboard"), 2500);
+      setTimeout(() => setLocation(`/workspace/${data.profileId}`), 2500);
     },
     onError: (err: Error) => setError(err.message),
   });
