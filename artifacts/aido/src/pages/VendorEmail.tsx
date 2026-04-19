@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const emailSchema = z.object({
   vendorType: z.string().min(1, "Required"),
+  otherVendorType: z.string().optional(),
   emailType: z.string().min(1, "Required"),
   vendorName: z.string().optional(),
   additionalNotes: z.string().optional(),
@@ -35,17 +36,25 @@ export default function VendorEmailPage() {
     resolver: zodResolver(emailSchema),
     defaultValues: {
       vendorType: "",
+      otherVendorType: "",
       emailType: "",
       vendorName: "",
       additionalNotes: "",
     },
   });
 
+  const watchedVendorType = form.watch("vendorType");
+
   const onSubmit = (data: EmailFormValues) => {
+    const resolvedVendorType =
+      data.vendorType === "Other"
+        ? (data.otherVendorType?.trim() || "Other")
+        : data.vendorType;
+
     generateEmail.mutate(
       {
         data: {
-          vendorType: data.vendorType,
+          vendorType: resolvedVendorType,
           emailType: data.emailType,
           vendorName: data.vendorName,
           weddingDate: profile?.weddingDate ?? "",
@@ -156,7 +165,7 @@ export default function VendorEmailPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {["Venue", "Hotel", "Photographer", "Videographer", "Florist", "Caterer", "DJ/Band", "Hair & Makeup", "Planner/Coordinator"].map(t => (
+                            {["Venue", "Hotel", "Photographer", "Videographer", "Florist", "Caterer", "DJ/Band", "Hair & Makeup", "Planner/Coordinator", "Other"].map(t => (
                               <SelectItem key={t} value={t}>{t}</SelectItem>
                             ))}
                           </SelectContent>
@@ -165,6 +174,27 @@ export default function VendorEmailPage() {
                       </FormItem>
                     )}
                   />
+
+                  {watchedVendorType === "Other" && (
+                    <FormField
+                      control={form.control}
+                      name="otherVendorType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Vendor Type Description</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g. Officiant, Transportation, Photo Booth…"
+                              {...field}
+                              className="bg-background"
+                              data-testid="input-other-vendor-type"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <FormField
                     control={form.control}
