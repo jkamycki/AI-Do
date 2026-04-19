@@ -33,6 +33,8 @@ export interface WeddingProfile {
   receptionTime: string;
   venue: string;
   location: string;
+  venueCity?: string;
+  venueState?: string;
   guestCount: number;
   totalBudget: number;
   weddingVibe: string;
@@ -47,6 +49,8 @@ export interface SaveProfileBody {
   receptionTime: string;
   venue: string;
   location: string;
+  venueCity?: string;
+  venueState?: string;
   guestCount: number;
   totalBudget: number;
   weddingVibe: string;

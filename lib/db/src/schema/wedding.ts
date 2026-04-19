@@ -12,6 +12,8 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   receptionTime: text("reception_time").notNull(),
   venue: text("venue").notNull(),
   location: text("location").notNull(),
+  venueCity: text("venue_city"),
+  venueState: text("venue_state"),
   guestCount: integer("guest_count").notNull(),
   totalBudget: numeric("total_budget", { precision: 12, scale: 2 }).notNull().default("0"),
   weddingVibe: text("wedding_vibe").notNull(),

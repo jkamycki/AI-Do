@@ -35,7 +35,7 @@ router.post("/profile", requireAuth, async (req, res) => {
   try {
     const {
       partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
-      venue, location, guestCount, totalBudget, weddingVibe
+      venue, location, venueCity, venueState, guestCount, totalBudget, weddingVibe
     } = req.body;
 
     const existing = await db
@@ -49,7 +49,8 @@ router.post("/profile", requireAuth, async (req, res) => {
         .update(weddingProfiles)
         .set({
           partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
-          venue, location, guestCount, totalBudget: String(totalBudget), weddingVibe,
+          venue, location, venueCity: venueCity ?? null, venueState: venueState ?? null,
+          guestCount, totalBudget: String(totalBudget), weddingVibe,
           updatedAt: new Date(),
         })
         .where(eq(weddingProfiles.id, existing[0].id))
@@ -66,7 +67,8 @@ router.post("/profile", requireAuth, async (req, res) => {
         .values({
           userId: req.userId,
           partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
-          venue, location, guestCount, totalBudget: String(totalBudget), weddingVibe,
+          venue, location, venueCity: venueCity ?? null, venueState: venueState ?? null,
+          guestCount, totalBudget: String(totalBudget), weddingVibe,
         })
         .returning();
       trackEvent(req.userId!, "user_signup");

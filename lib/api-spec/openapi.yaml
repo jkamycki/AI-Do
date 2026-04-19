@@ -775,6 +775,10 @@ components:
           type: string
         location:
           type: string
+        venueCity:
+          type: string
+        venueState:
+          type: string
         guestCount:
           type: integer
         totalBudget:
@@ -813,6 +817,10 @@ components:
         venue:
           type: string
         location:
+          type: string
+        venueCity:
+          type: string
+        venueState:
           type: string
         guestCount:
           type: integer
