@@ -1,0 +1,92 @@
+import { Router } from "express";
+import { db } from "@workspace/db";
+import {
+  weddingProfiles, timelines, budgets, budgetItems, budgetPaymentLogs,
+  checklistItems, vendors, vendorPayments, analyticsEvents,
+  workspaceCollaborators, workspaceActivity, vendorContracts,
+  seatingCharts, guests, hotelBlocks, weddingParty,
+} from "@workspace/db";
+import { eq, inArray, or } from "drizzle-orm";
+import { clerkClient } from "@clerk/express";
+import { requireAuth } from "../middlewares/requireAuth";
+
+const router = Router();
+
+router.delete("/account", requireAuth, async (req, res) => {
+  const userId = req.userId!;
+
+  try {
+    const [profile] = await db
+      .select()
+      .from(weddingProfiles)
+      .where(eq(weddingProfiles.userId, userId))
+      .limit(1);
+
+    if (profile) {
+      const profileId = profile.id;
+
+      const userVendorRows = await db
+        .select({ id: vendors.id })
+        .from(vendors)
+        .where(eq(vendors.userId, userId));
+
+      if (userVendorRows.length > 0) {
+        const vendorIds = userVendorRows.map(v => v.id);
+        await db.delete(vendorPayments).where(inArray(vendorPayments.vendorId, vendorIds));
+      }
+
+      const userBudgetRows = await db
+        .select({ id: budgets.id })
+        .from(budgets)
+        .where(eq(budgets.profileId, profileId));
+
+      if (userBudgetRows.length > 0) {
+        const budgetIds = userBudgetRows.map(b => b.id);
+        const userBudgetItemRows = await db
+          .select({ id: budgetItems.id })
+          .from(budgetItems)
+          .where(inArray(budgetItems.budgetId, budgetIds));
+
+        if (userBudgetItemRows.length > 0) {
+          const budgetItemIds = userBudgetItemRows.map(i => i.id);
+          await db.delete(budgetPaymentLogs).where(inArray(budgetPaymentLogs.budgetItemId, budgetItemIds));
+        }
+        await db.delete(budgetItems).where(inArray(budgetItems.budgetId, budgetIds));
+      }
+      await db.delete(budgets).where(eq(budgets.profileId, profileId));
+
+      await db.delete(workspaceActivity).where(eq(workspaceActivity.profileId, profileId));
+      await db.delete(workspaceCollaborators).where(
+        or(
+          eq(workspaceCollaborators.profileId, profileId),
+          eq(workspaceCollaborators.inviterUserId, userId),
+        )!
+      );
+      await db.delete(timelines).where(eq(timelines.profileId, profileId));
+      await db.delete(checklistItems).where(eq(checklistItems.profileId, profileId));
+      await db.delete(guests).where(eq(guests.profileId, profileId));
+    }
+
+    await db.delete(workspaceCollaborators).where(eq(workspaceCollaborators.inviteeUserId, userId));
+    await db.delete(workspaceActivity).where(eq(workspaceActivity.userId, userId));
+    await db.delete(vendors).where(eq(vendors.userId, userId));
+    await db.delete(weddingParty).where(eq(weddingParty.userId, userId));
+    await db.delete(vendorContracts).where(eq(vendorContracts.userId, userId));
+    await db.delete(seatingCharts).where(eq(seatingCharts.userId, userId));
+    await db.delete(hotelBlocks).where(eq(hotelBlocks.userId, userId));
+    await db.delete(analyticsEvents).where(eq(analyticsEvents.userId, userId));
+
+    if (profile) {
+      await db.delete(weddingProfiles).where(eq(weddingProfiles.userId, userId));
+    }
+
+    await clerkClient.users.deleteUser(userId);
+
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "Failed to delete account");
+    res.status(500).json({ error: "Failed to delete account. Please try again." });
+  }
+});
+
+export default router;

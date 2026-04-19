@@ -11,9 +11,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGetProfile, useSaveProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Users, UserPlus, Mail, Shield, Eye, Briefcase, Copy,
   CheckCircle2, Clock, XCircle, Trash2, RefreshCw, ChevronDown,
-  Settings as SettingsIcon, Crown, Globe, Check,
+  Settings as SettingsIcon, Crown, Globe, Check, TriangleAlert,
 } from "lucide-react";
 
 const LANGUAGES = [
@@ -84,6 +88,103 @@ function StatusBadge({ status }: { status: CollabStatus }) {
       <Icon className="h-3 w-3" />
       {cfg.label}
     </span>
+  );
+}
+
+function DeleteAccountCard() {
+  const { getToken, signOut } = useAuth();
+  const { toast } = useToast();
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const token = await getToken();
+      const res = await fetch("/api/account", {
+        method: "DELETE",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Failed to delete account");
+      }
+      await signOut({ redirectUrl: "/" });
+    } catch (err: unknown) {
+      setDeleting(false);
+      toast({
+        variant: "destructive",
+        title: "Could not delete account",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    }
+  }
+
+  return (
+    <Card className="border border-destructive/30 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-destructive/10 rounded-xl flex items-center justify-center">
+            <TriangleAlert className="h-5 w-5 text-destructive" />
+          </div>
+          <div>
+            <CardTitle className="font-serif text-lg text-destructive">Danger Zone</CardTitle>
+            <CardDescription>Permanent and irreversible actions.</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+          <div>
+            <p className="font-medium text-sm">Delete my account</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Permanently removes all your wedding data and cancels your account. This cannot be undone.
+            </p>
+          </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={deleting}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                Delete Account
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="font-serif text-xl text-destructive">
+                  Delete your account?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-sm space-y-2">
+                  <span className="block">This will permanently delete:</span>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Your wedding profile and all settings</li>
+                    <li>Budget, checklist, timeline, and vendor data</li>
+                    <li>Guest list, seating chart, and wedding party</li>
+                    <li>All contracts and uploaded files</li>
+                    <li>Your collaborator access and invitations</li>
+                  </ul>
+                  <span className="block font-medium text-foreground mt-2">
+                    This action is permanent and cannot be reversed.
+                  </span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep My Account</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  {deleting ? "Deleting…" : "Yes, Delete Everything"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -560,6 +661,7 @@ export default function SettingsPage() {
       {activeTab === "account" && (
         <div className="space-y-4">
           <LanguageSwitcherCard />
+          <DeleteAccountCard />
           <Card className="border-none shadow-sm">
             <CardContent className="p-8 text-center space-y-4">
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
