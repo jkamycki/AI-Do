@@ -487,9 +487,21 @@ export default function Guests() {
     return matchesSearch && matchesRsvp && matchesGroup;
   });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
+  const queryKey = getGetGuestsQueryKey();
+  const invalidate = () => queryClient.invalidateQueries({ queryKey });
+
+  function optimisticUpdate(guestId: number, patch: Partial<Guest>) {
+    queryClient.setQueryData(queryKey, (old: typeof data) => {
+      if (!old) return old;
+      return {
+        ...old,
+        guests: old.guests.map((g: Guest) => g.id === guestId ? { ...g, ...patch } : g),
+      };
+    });
+  }
 
   function handleRsvpChange(guest: Guest, newStatus: string) {
+    optimisticUpdate(guest.id, { rsvpStatus: newStatus });
     updateGuest.mutate({
       id: guest.id,
       data: {
@@ -506,7 +518,35 @@ export default function Guests() {
       },
     }, {
       onSuccess: () => invalidate(),
-      onError: () => toast({ title: "Failed to update RSVP", variant: "destructive" }),
+      onError: () => {
+        optimisticUpdate(guest.id, { rsvpStatus: guest.rsvpStatus });
+        toast({ title: "Failed to update RSVP", variant: "destructive" });
+      },
+    });
+  }
+
+  function handleInvitationChange(guest: Guest, newStatus: string) {
+    optimisticUpdate(guest.id, { invitationStatus: newStatus });
+    updateGuest.mutate({
+      id: guest.id,
+      data: {
+        name: guest.name,
+        email: guest.email ?? undefined,
+        invitationStatus: newStatus,
+        rsvpStatus: guest.rsvpStatus as "pending" | "attending" | "declined",
+        mealChoice: guest.mealChoice ?? undefined,
+        guestGroup: guest.guestGroup ?? undefined,
+        plusOne: guest.plusOne,
+        plusOneName: guest.plusOneName ?? undefined,
+        tableAssignment: guest.tableAssignment ?? undefined,
+        notes: guest.notes ?? undefined,
+      },
+    }, {
+      onSuccess: () => invalidate(),
+      onError: () => {
+        optimisticUpdate(guest.id, { invitationStatus: guest.invitationStatus ?? "pending" });
+        toast({ title: "Failed to update invitation status", variant: "destructive" });
+      },
     });
   }
 
@@ -808,21 +848,7 @@ export default function Guests() {
                                 <DropdownMenuItem
                                   key={opt.value}
                                   className={`text-xs font-medium cursor-pointer ${g.invitationStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
-                                  onClick={() => updateGuest.mutate({
-                                    id: g.id,
-                                    data: {
-                                      name: g.name,
-                                      email: g.email ?? undefined,
-                                      invitationStatus: opt.value,
-                                      rsvpStatus: g.rsvpStatus as "pending" | "attending" | "declined",
-                                      mealChoice: g.mealChoice ?? undefined,
-                                      guestGroup: g.guestGroup ?? undefined,
-                                      plusOne: g.plusOne,
-                                      plusOneName: g.plusOneName ?? undefined,
-                                      tableAssignment: g.tableAssignment ?? undefined,
-                                      notes: g.notes ?? undefined,
-                                    },
-                                  })}
+                                  onClick={() => handleInvitationChange(g, opt.value)}
                                 >
                                   {opt.label}
                                 </DropdownMenuItem>
