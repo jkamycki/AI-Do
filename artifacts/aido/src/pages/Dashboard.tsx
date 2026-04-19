@@ -193,8 +193,8 @@ export default function Dashboard() {
   });
   const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingWizard(summary?.hasProfile ?? true);
 
-  // Collaborators have no own profile — send them straight to their shared workspace
-  if (activeWorkspace && !isLoading && !summary?.hasProfile) {
+  // Non-owner collaborators always land on the shared workspace, not their own dashboard
+  if (activeWorkspace && activeWorkspace.role !== "owner" && !isLoading) {
     setLocation(`/workspace/${activeWorkspace.profileId}`);
     return null;
   }

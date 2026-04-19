@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
-  Calendar, DollarSign, CheckSquare, Clock, Activity,
+  Calendar, DollarSign, CheckSquare, Clock,
   Crown, Briefcase, Eye, Heart, Users,
 } from "lucide-react";
 
@@ -84,17 +84,6 @@ export default function SharedWorkspacePage() {
     refetchInterval: 10000,
   });
 
-  const { data: activityData } = useQuery({
-    queryKey: ["workspace-activity", profileId],
-    queryFn: async () => {
-      const r = await authedFetch(`/api/workspace/${profileId}/activity?limit=20`);
-      if (!r.ok) return null;
-      return r.json();
-    },
-    enabled: !!profileId,
-    refetchInterval: 5000,
-  });
-
   if (!activeWorkspace) {
     return (
       <div className="text-center py-24 space-y-4">
@@ -115,7 +104,6 @@ export default function SharedWorkspacePage() {
   const budget = budgetData?.budget;
   const budgetItems = budgetData?.items ?? [];
   const totalSpent = budgetItems.reduce((s: number, i: { actualCost: number }) => s + i.actualCost, 0);
-  const activities = activityData?.activities ?? [];
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -298,35 +286,6 @@ export default function SharedWorkspacePage() {
         )}
       </div>
 
-      <Card className="border-none shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="font-serif text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            Recent Activity
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {activities.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No activity recorded yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {activities.map((activity: { id: number; action: string; userName: string | null; userId: string; createdAt: string; resourceType: string | null }) => (
-                <div key={activity.id} className="flex items-start gap-3 py-2 border-b border-border/40 last:border-0">
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-semibold flex-shrink-0">
-                    {(activity.userName ?? activity.userId)[0]?.toUpperCase() ?? "?"}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground">{activity.action}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {new Date(activity.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
