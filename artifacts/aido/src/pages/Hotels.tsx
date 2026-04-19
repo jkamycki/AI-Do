@@ -93,9 +93,9 @@ function HotelForm({
           <Label>Hotel Name</Label>
           <Input placeholder="Marriott Newark" value={form.hotelName ?? ""} onChange={e => set("hotelName", e.target.value)} />
         </div>
-        <div className="space-y-1.5">
-          <Label>Address</Label>
-          <Input placeholder="123 Main St, Newark, NJ" value={form.address ?? ""} onChange={e => set("address", e.target.value)} />
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>Full Address</Label>
+          <Input placeholder="123 Main St, Newark, NJ 07101" value={form.address ?? ""} onChange={e => set("address", e.target.value)} />
         </div>
         <div className="space-y-1.5">
           <Label>Distance from Venue</Label>

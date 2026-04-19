@@ -148,7 +148,7 @@ export default function Profile() {
                 />
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-3 gap-6">
                 <FormField
                   control={form.control}
                   name="weddingDate"
@@ -164,22 +164,6 @@ export default function Profile() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>City / Region</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Charleston, SC" {...field} data-testid="input-location" className="bg-background" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
                   name="ceremonyTime"
@@ -213,9 +197,23 @@ export default function Profile() {
                 name="venue"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Venue</FormLabel>
+                    <FormLabel>Venue Name</FormLabel>
                     <FormControl>
                       <Input placeholder="The Historic Magnolia Estate" {...field} data-testid="input-venue" className="bg-background" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Venue Full Address</FormLabel>
+                    <FormControl>
+                      <Input placeholder="123 Magnolia Lane, Charleston, SC 29401" {...field} data-testid="input-location" className="bg-background" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
