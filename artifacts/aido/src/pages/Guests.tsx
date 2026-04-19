@@ -76,7 +76,8 @@ const guestSchema = z.object({
   mealChoice: z.string().optional(),
   guestGroup: z.string().optional(),
   plusOne: z.boolean().default(false),
-  plusOneName: z.string().optional(),
+  plusOneFirstName: z.string().optional(),
+  plusOneLastName: z.string().optional(),
   tableAssignment: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -108,7 +109,8 @@ function GuestForm({
       mealChoice: "",
       guestGroup: "",
       plusOne: false,
-      plusOneName: "",
+      plusOneFirstName: "",
+      plusOneLastName: "",
       tableAssignment: "",
       notes: "",
       ...defaultValues,
@@ -206,13 +208,22 @@ function GuestForm({
         )} />
 
         {plusOne && (
-          <FormField control={form.control} name="plusOneName" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Plus One Name</FormLabel>
-              <FormControl><Input placeholder="Plus one's name" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
+          <div className="grid grid-cols-2 gap-3">
+            <FormField control={form.control} name="plusOneFirstName" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Plus One First Name</FormLabel>
+                <FormControl><Input placeholder="Alex" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="plusOneLastName" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Last Name</FormLabel>
+                <FormControl><Input placeholder="Smith" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
         )}
 
         <FormField control={form.control} name="notes" render={({ field }) => (
@@ -226,7 +237,7 @@ function GuestForm({
         )} />
 
         <div className="flex gap-3 mt-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset({ name: "", email: "", rsvpStatus: "pending", mealChoice: "", guestGroup: "", plusOne: false, plusOneName: "", tableAssignment: "", notes: "" })}>
+          <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset({ name: "", email: "", rsvpStatus: "pending", mealChoice: "", guestGroup: "", plusOne: false, plusOneFirstName: "", plusOneLastName: "", tableAssignment: "", notes: "" })}>
             <RotateCcw className="h-4 w-4 mr-2" /> Reset
           </Button>
           <Button type="submit" className="flex-1" disabled={isPending}>
@@ -438,9 +449,13 @@ export default function Guests() {
   }
 
   function handleAdd(data: GuestFormValues) {
+    const plusOneName = data.plusOne
+      ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()].filter(Boolean).join(" ") || undefined
+      : undefined;
     addGuest.mutate({
       data: {
         ...data,
+        plusOneName,
         email: data.email || undefined,
         mealChoice: data.mealChoice === "none" ? undefined : data.mealChoice || undefined,
         guestGroup: data.guestGroup === "none" ? undefined : data.guestGroup || undefined,
@@ -457,10 +472,14 @@ export default function Guests() {
 
   function handleEdit(data: GuestFormValues) {
     if (!editGuest) return;
+    const plusOneName = data.plusOne
+      ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()].filter(Boolean).join(" ") || undefined
+      : undefined;
     updateGuest.mutate({
       id: editGuest.id,
       data: {
         ...data,
+        plusOneName,
         email: data.email || undefined,
         mealChoice: data.mealChoice === "none" ? undefined : data.mealChoice || undefined,
         guestGroup: data.guestGroup === "none" ? undefined : data.guestGroup || undefined,
@@ -812,7 +831,8 @@ export default function Guests() {
                 mealChoice: editGuest.mealChoice ?? "",
                 guestGroup: editGuest.guestGroup ?? "",
                 plusOne: editGuest.plusOne,
-                plusOneName: editGuest.plusOneName ?? "",
+                plusOneFirstName: editGuest.plusOneName?.split(" ").slice(0, 1).join("") ?? "",
+                plusOneLastName: editGuest.plusOneName?.split(" ").slice(1).join(" ") ?? "",
                 tableAssignment: editGuest.tableAssignment ?? "",
                 notes: editGuest.notes ?? "",
               }}
