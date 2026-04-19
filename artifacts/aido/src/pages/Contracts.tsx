@@ -21,7 +21,12 @@ import {
   XCircle,
   Clock,
   FileCheck,
+  MessageSquareDiff,
+  Copy,
+  Check,
+  Loader2,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -78,7 +83,84 @@ function formatSize(bytes: number | null) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function AnalysisPanel({ analysis }: { analysis: ContractAnalysis }) {
+function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; redFlagCount: number }) {
+  const { toast } = useToast();
+  const [email, setEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function generate() {
+    setLoading(true);
+    try {
+      const res = await authFetch(`${API}/api/contracts/${contractId}/negotiate`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to generate");
+      setEmail(data.negotiationEmail);
+    } catch (err) {
+      toast({ title: "Couldn't generate response", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function copy() {
+    if (!email) return;
+    navigator.clipboard.writeText(email).then(() => {
+      setCopied(true);
+      toast({ title: "Copied to clipboard!" });
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="rounded-xl border border-rose-200 bg-rose-50/40 overflow-hidden">
+      <div className="px-4 py-3 flex items-center gap-2 border-b border-rose-200/60 bg-rose-50/60">
+        <MessageSquareDiff className="h-4 w-4 text-rose-600" />
+        <span className="text-sm font-semibold text-rose-800">Negotiation Response</span>
+        <span className="ml-1 text-xs text-rose-600">({redFlagCount} flag{redFlagCount !== 1 ? "s" : ""} to address)</span>
+      </div>
+      <div className="p-4 space-y-3">
+        {!email ? (
+          <>
+            <p className="text-xs text-rose-700 leading-relaxed">
+              AI will draft a professional email you can send directly to the vendor — addressing each red flag diplomatically and requesting specific contract changes.
+            </p>
+            <Button
+              size="sm"
+              className="bg-rose-600 hover:bg-rose-700 text-white gap-2 w-full"
+              onClick={generate}
+              disabled={loading}
+            >
+              {loading
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Drafting response…</>
+                : <><MessageSquareDiff className="h-3.5 w-3.5" /> Draft Negotiation Email</>}
+            </Button>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <Textarea
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              rows={14}
+              className="text-sm font-mono leading-relaxed resize-y bg-white border-rose-200 focus:ring-rose-300"
+            />
+            <p className="text-[11px] text-rose-600">Edit as needed — replace <strong>[Your Names]</strong> and <strong>[Vendor Name]</strong> before sending.</p>
+            <div className="flex gap-2">
+              <Button size="sm" className="flex-1 gap-2 bg-rose-600 hover:bg-rose-700 text-white" onClick={copy}>
+                {copied ? <><Check className="h-3.5 w-3.5" /> Copied!</> : <><Copy className="h-3.5 w-3.5" /> Copy to Clipboard</>}
+              </Button>
+              <Button size="sm" variant="outline" className="border-rose-200 text-rose-700 hover:bg-rose-50" onClick={generate} disabled={loading}>
+                {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Regenerate"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; contractId: number }) {
   return (
     <div className="space-y-5 pt-2">
       {/* Summary */}
@@ -218,6 +300,11 @@ function AnalysisPanel({ analysis }: { analysis: ContractAnalysis }) {
           </ul>
         </div>
       )}
+
+      {/* Negotiation Response — only when red flags exist */}
+      {analysis.redFlags?.length > 0 && (
+        <NegotiationPanel contractId={contractId} redFlagCount={analysis.redFlags.length} />
+      )}
     </div>
   );
 }
@@ -286,7 +373,7 @@ function ContractCard({ contract, onDelete }: { contract: Contract; onDelete: ()
 
         {expanded && analysis && (
           <div className="mt-4 border-t border-border/30 pt-4">
-            <AnalysisPanel analysis={analysis} />
+            <AnalysisPanel analysis={analysis} contractId={contract.id} />
           </div>
         )}
 

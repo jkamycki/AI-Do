@@ -135,6 +135,66 @@ Be thorough, specific, and couple-friendly. Focus on clauses that could financia
   }
 });
 
+router.post("/contracts/:id/negotiate", requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params["id"] ?? "0");
+    const [contract] = await db
+      .select({
+        extractedText: vendorContracts.extractedText,
+        analysis: vendorContracts.analysis,
+        fileName: vendorContracts.fileName,
+        userId: vendorContracts.userId,
+      })
+      .from(vendorContracts)
+      .where(eq(vendorContracts.id, id))
+      .limit(1);
+
+    if (!contract || contract.userId !== req.userId) {
+      return res.status(404).json({ error: "Contract not found." });
+    }
+
+    const analysis = contract.analysis as Record<string, unknown> | null;
+    const redFlags = (analysis?.redFlags ?? []) as Array<{ severity: string; title: string; detail: string; recommendation: string }>;
+
+    if (!redFlags.length) {
+      return res.status(400).json({ error: "No red flags found — no negotiation needed." });
+    }
+
+    const vendorType = (analysis?.vendorType as string) ?? "vendor";
+    const flagsSummary = redFlags
+      .map((f, i) => `${i + 1}. [${f.severity.toUpperCase()}] ${f.title}: ${f.detail}. Recommendation: ${f.recommendation}`)
+      .join("\n");
+
+    const prompt = `You are a professional wedding planner helping a couple negotiate contract terms with their ${vendorType}.
+
+The couple's contract has the following red flags identified by an attorney review:
+
+${flagsSummary}
+
+Write a professional, polite, and firm negotiation email from the couple to the vendor. The email should:
+- Open with appreciation for their services
+- Address each red flag clearly but diplomatically, requesting specific changes
+- Be assertive but not aggressive — assume good faith from the vendor
+- Close with a request for a revised contract and a positive tone
+- Sound like a real person wrote it, not a legal document
+- Be ready to copy and paste — use [Your Names] and [Vendor Name] as placeholders
+
+Return ONLY the email body text, no subject line, no extra explanation.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4.1-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 1200,
+    });
+
+    const emailText = completion.choices[0]?.message?.content?.trim() ?? "";
+    res.json({ negotiationEmail: emailText });
+  } catch (err) {
+    req.log.error(err, "Failed to generate negotiation response");
+    res.status(500).json({ error: "Failed to generate negotiation response. Please try again." });
+  }
+});
+
 router.get("/contracts", requireAuth, async (req, res) => {
   try {
     const rows = await db
