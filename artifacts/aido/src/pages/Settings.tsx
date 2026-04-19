@@ -349,8 +349,18 @@ export default function SettingsPage() {
       qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
       const link = `${window.location.origin}/invite/${collab.inviteToken}`;
       setNewInviteLink(link);
+
+      // Open the user's email client with everything pre-filled
+      const workspaceName = data?.workspaceName ?? "our wedding";
+      const role = ROLE_CONFIG[inviteRole]?.label ?? inviteRole;
+      const subject = encodeURIComponent(`You're invited to collaborate on ${workspaceName}'s wedding planning`);
+      const body = encodeURIComponent(
+        `Hi there!\n\nYou've been invited to collaborate on ${workspaceName}'s wedding workspace as a ${role} on A.IDO.\n\nClick the link below to accept your invitation:\n\n${link}\n\nSee you there!\n${workspaceName}`
+      );
+      window.location.href = `mailto:${inviteEmail}?subject=${subject}&body=${body}`;
+
       setInviteEmail("");
-      toast({ title: "Invite created!", description: "Copy the link below and share it with them." });
+      toast({ title: "Invite ready!", description: "Your email app should open with the invite pre-filled." });
     },
     onError: (err: Error) => {
       toast({ title: "Failed to invite", description: err.message, variant: "destructive" });
@@ -497,8 +507,11 @@ export default function SettingsPage() {
               </Button>
 
               {newInviteLink && (
-                <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-2">
-                  <p className="text-sm font-medium text-primary">Share this invite link:</p>
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-medium text-primary">Invite link created — your email app should be opening.</p>
+                  </div>
                   <div className="flex gap-2">
                     <code className="flex-1 text-xs bg-background border rounded-lg px-3 py-2 font-mono truncate">
                       {newInviteLink}
@@ -508,7 +521,25 @@ export default function SettingsPage() {
                       Copy
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Send this link to your collaborator. They'll be able to accept the invite after signing in.</p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 text-primary border-primary/30"
+                      onClick={() => {
+                        const workspaceName = data?.workspaceName ?? "our wedding";
+                        const subject = encodeURIComponent(`You're invited to collaborate on ${workspaceName}'s wedding planning`);
+                        const body = encodeURIComponent(
+                          `Hi there!\n\nYou've been invited to collaborate on ${workspaceName}'s wedding workspace on A.IDO.\n\nClick the link below to accept your invitation:\n\n${newInviteLink}\n\nSee you there!\n${workspaceName}`
+                        );
+                        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+                      }}
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      Open Email Again
+                    </Button>
+                    <p className="text-xs text-muted-foreground">Or copy the link above if your email app didn't open.</p>
+                  </div>
                 </div>
               )}
             </CardContent>
