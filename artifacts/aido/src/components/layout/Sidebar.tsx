@@ -60,15 +60,10 @@ const navSections = [
     ],
   },
   {
-    label: "Day Of",
-    items: [
-      { href: "/day-of", label: "Day-Of Coordinator", icon: Smartphone },
-    ],
-  },
-  {
-    label: "Assistant",
+    label: "AI Assistants",
     items: [
       { href: "/aria", label: "Aria — Planner AI", icon: Sparkles },
+      { href: "/day-of", label: "Day-Of Coordinator", icon: Smartphone },
     ],
   },
 ];
