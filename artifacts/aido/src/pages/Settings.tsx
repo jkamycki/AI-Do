@@ -292,6 +292,7 @@ export default function SettingsPage() {
   const [inviteRole, setInviteRole] = useState<CollabRole>("planner");
   const [newInviteLink, setNewInviteLink] = useState<string | null>(null);
   const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<number | null>(null);
 
   const sharedProfileId = activeWorkspace?.profileId ?? null;
 
@@ -375,11 +376,19 @@ export default function SettingsPage() {
   const removeMutation = useMutation({
     mutationFn: async (id: number) => {
       const r = await authedFetch(`/api/collaborators/${id}`, { method: "DELETE" });
-      if (!r.ok) throw new Error("Failed to remove");
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "Failed to remove");
+      }
     },
     onSuccess: () => {
+      setConfirmRemoveId(null);
       qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
       toast({ title: "Collaborator removed" });
+    },
+    onError: (err: Error) => {
+      setConfirmRemoveId(null);
+      toast({ title: "Could not remove collaborator", description: err.message, variant: "destructive" });
     },
   });
 
@@ -594,15 +603,33 @@ export default function SettingsPage() {
                               </button>
                             </>
                           )}
-                          <button
-                            className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                            onClick={() => {
-                              if (confirm("Remove this collaborator?")) removeMutation.mutate(collab.id);
-                            }}
-                            title="Remove"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {confirmRemoveId === collab.id ? (
+                            <div className="flex items-center gap-1.5 bg-destructive/5 border border-destructive/20 rounded-lg px-2.5 py-1.5">
+                              <span className="text-xs text-destructive font-medium whitespace-nowrap">Remove?</span>
+                              <button
+                                className="text-xs font-semibold text-destructive hover:underline"
+                                onClick={() => removeMutation.mutate(collab.id)}
+                                disabled={removeMutation.isPending}
+                              >
+                                {removeMutation.isPending ? "…" : "Yes"}
+                              </button>
+                              <span className="text-muted-foreground text-xs">·</span>
+                              <button
+                                className="text-xs text-muted-foreground hover:text-foreground"
+                                onClick={() => setConfirmRemoveId(null)}
+                              >
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                              onClick={() => setConfirmRemoveId(collab.id)}
+                              title="Remove collaborator"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                         )}
                       </div>
