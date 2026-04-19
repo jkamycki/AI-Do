@@ -4,16 +4,14 @@ import { weddingProfiles, timelines, budgets, budgetItems, checklistItems, guest
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
+import { resolveProfile } from "../../lib/workspaceAccess";
 
 const router = Router();
 
 router.get("/dashboard/summary", requireAuth, async (req, res) => {
   try {
-    const profiles = await db
-      .select()
-      .from(weddingProfiles)
-      .where(eq(weddingProfiles.userId, req.userId))
-      .limit(1);
+    const effectiveProfile = await resolveProfile(req);
+    const profiles = effectiveProfile ? [effectiveProfile] : [];
 
     const hasProfile = profiles.length > 0;
 

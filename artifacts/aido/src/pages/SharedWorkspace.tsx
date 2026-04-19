@@ -139,37 +139,97 @@ export default function SharedWorkspacePage() {
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="border-none shadow-sm bg-primary text-primary-foreground">
-            <CardContent className="p-5">
-              <p className="text-xs font-medium uppercase tracking-wider text-primary-foreground/70 mb-1">Couple</p>
-              <p className="text-lg font-bold font-serif leading-tight">
-                {activeWorkspace.partner1Name}<br />& {activeWorkspace.partner2Name}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="border-none shadow-sm">
-            <CardContent className="p-5">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Wedding Date</p>
-              <p className="text-lg font-bold font-serif text-foreground">{activeWorkspace.weddingDate}</p>
-              <Calendar className="h-4 w-4 text-muted-foreground mt-1" />
-            </CardContent>
-          </Card>
-          <Card className="border-none shadow-sm">
-            <CardContent className="p-5">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Timeline Events</p>
-              <p className="text-3xl font-bold font-serif text-foreground">{events.length}</p>
-            </CardContent>
-          </Card>
-          {role !== "vendor" && (
-            <Card className="border-none shadow-sm">
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="border-none shadow-sm bg-primary text-primary-foreground">
               <CardContent className="p-5">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Checklist</p>
-                <p className="text-3xl font-bold font-serif text-foreground">{completedItems}<span className="text-lg text-muted-foreground">/{items.length}</span></p>
+                <p className="text-xs font-medium uppercase tracking-wider text-primary-foreground/70 mb-1">Couple</p>
+                <p className="text-lg font-bold font-serif leading-tight">
+                  {activeWorkspace.partner1Name}<br />& {activeWorkspace.partner2Name}
+                </p>
               </CardContent>
             </Card>
-          )}
-        </div>
+            <Card className="border-none shadow-sm">
+              <CardContent className="p-5">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Wedding Date</p>
+                <p className="text-lg font-bold font-serif text-foreground">{activeWorkspace.weddingDate}</p>
+                <Calendar className="h-4 w-4 text-muted-foreground mt-1" />
+              </CardContent>
+            </Card>
+            <Card className="border-none shadow-sm">
+              <CardContent className="p-5">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Timeline Events</p>
+                <p className="text-3xl font-bold font-serif text-foreground">{events.length}</p>
+              </CardContent>
+            </Card>
+            {role !== "vendor" && (
+              <Card className="border-none shadow-sm">
+                <CardContent className="p-5">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Checklist</p>
+                  <p className="text-3xl font-bold font-serif text-foreground">{completedItems}<span className="text-lg text-muted-foreground">/{items.length}</span></p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Full profile details */}
+          <Card className="border-none shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="font-serif text-lg flex items-center gap-2">
+                <Heart className="h-5 w-5 text-primary" />
+                Wedding Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-3 text-sm">
+                {profile.venue && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-0.5">Venue</p>
+                    <p className="text-foreground font-medium">{String(profile.venue)}</p>
+                  </div>
+                )}
+                {(profile.venueCity || profile.venueState || profile.location) && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-0.5">Location</p>
+                    <p className="text-foreground font-medium">
+                      {[profile.venueCity, profile.venueState, profile.location].filter(Boolean).join(", ")}
+                    </p>
+                  </div>
+                )}
+                {profile.ceremonyTime && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-0.5">Ceremony</p>
+                    <p className="text-foreground font-medium">{String(profile.ceremonyTime)}</p>
+                  </div>
+                )}
+                {profile.receptionTime && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-0.5">Reception</p>
+                    <p className="text-foreground font-medium">{String(profile.receptionTime)}</p>
+                  </div>
+                )}
+                {profile.guestCount && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-0.5">Guest Count</p>
+                    <p className="text-foreground font-medium">{String(profile.guestCount)} guests</p>
+                  </div>
+                )}
+                {profile.weddingVibe && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-0.5">Wedding Vibe</p>
+                    <p className="text-foreground font-medium capitalize">{String(profile.weddingVibe)}</p>
+                  </div>
+                )}
+                {profile.totalBudget && Number(profile.totalBudget) > 0 && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-0.5">Total Budget</p>
+                    <p className="text-foreground font-medium">${Number(profile.totalBudget).toLocaleString()}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       <div className={`grid ${role !== "vendor" ? "md:grid-cols-2" : "md:grid-cols-1"} gap-6`}>

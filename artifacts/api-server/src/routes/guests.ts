@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, guests, weddingProfiles } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { resolveProfile } from "../lib/workspaceAccess";
 
 const router = Router();
 
@@ -16,7 +17,8 @@ async function getProfileId(userId: string): Promise<number | null> {
 
 router.get("/guests", requireAuth, async (req, res) => {
   try {
-    const profileId = await getProfileId(req.userId!);
+    const profile = await resolveProfile(req);
+    const profileId = profile?.id ?? null;
     if (!profileId) {
       return res.json({ guests: [], summary: { total: 0, attending: 0, declined: 0, pending: 0, plusOnes: 0 } });
     }

@@ -4,22 +4,18 @@ import { weddingProfiles } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
+import { resolveProfile } from "../../lib/workspaceAccess";
 
 const router = Router();
 
 router.get("/profile", requireAuth, async (req, res) => {
   try {
-    const profiles = await db
-      .select()
-      .from(weddingProfiles)
-      .where(eq(weddingProfiles.userId, req.userId))
-      .limit(1);
+    const p = await resolveProfile(req);
 
-    if (!profiles.length) {
+    if (!p) {
       res.status(404).json({ error: "No profile found" });
       return;
     }
-    const p = profiles[0];
     res.json({
       ...p,
       totalBudget: parseFloat(p.totalBudget as string),

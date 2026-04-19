@@ -17,6 +17,15 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
+let _workspaceProfileId: number | null = null;
+
+/**
+ * Set the active workspace profile ID to be included in every request as
+ * `x-workspace-profile-id`. Pass `null` to clear it (own profile mode).
+ */
+export function setWorkspaceProfileId(id: number | null): void {
+  _workspaceProfileId = id;
+}
 
 /**
  * Set a base URL that is prepended to every relative request URL
@@ -356,6 +365,11 @@ export async function customFetch<T = unknown>(
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
     }
+  }
+
+  // Forward active workspace profile ID so the server can serve the right data.
+  if (_workspaceProfileId != null && !headers.has("x-workspace-profile-id")) {
+    headers.set("x-workspace-profile-id", String(_workspaceProfileId));
   }
 
   const requestInfo = { method, url: resolveUrl(input) };

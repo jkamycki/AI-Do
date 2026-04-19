@@ -5,7 +5,7 @@ import { eq, desc, asc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
-import { logActivity } from "../../lib/workspaceAccess";
+import { logActivity, resolveProfile } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -54,7 +54,7 @@ async function getBudgetWithItems(budgetId: number) {
 
 router.get("/budget", requireAuth, async (req, res) => {
   try {
-    const profile = await getProfileByUserId(req.userId);
+    const profile = await resolveProfile(req);
     if (!profile) {
       res.status(404).json({ error: "No budget found" });
       return;

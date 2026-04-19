@@ -43,11 +43,15 @@ export async function resolveWorkspaceRole(
 }
 
 export async function resolveProfile(req: Request) {
-  const workspaceId = req.query.workspaceId
-    ? parseInt(String(req.query.workspaceId))
-    : null;
+  // Check header first (sent by customFetch when activeWorkspace is set), then query param
+  const headerVal = req.headers["x-workspace-profile-id"];
+  const workspaceId = headerVal
+    ? parseInt(String(headerVal))
+    : req.query.workspaceId
+      ? parseInt(String(req.query.workspaceId))
+      : null;
 
-  if (!workspaceId) {
+  if (!workspaceId || isNaN(workspaceId)) {
     return getProfileByUserId(req.userId!);
   }
 

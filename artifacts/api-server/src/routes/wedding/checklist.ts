@@ -5,7 +5,7 @@ import { eq, asc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
-import { logActivity } from "../../lib/workspaceAccess";
+import { logActivity, resolveProfile } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -20,7 +20,7 @@ async function getProfileByUserId(userId: string) {
 
 router.get("/checklist", requireAuth, async (req, res) => {
   try {
-    const profile = await getProfileByUserId(req.userId);
+    const profile = await resolveProfile(req);
 
     const items = profile
       ? await db
