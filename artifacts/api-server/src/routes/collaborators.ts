@@ -13,8 +13,23 @@ const router = Router();
 
 router.get("/collaborators", requireAuth, async (req, res) => {
   try {
-    const profile = await getProfileByUserId(req.userId!);
-    if (!profile) return res.json({ collaborators: [], pendingForMe: [] });
+    const workspaceIdParam = req.query.workspaceId ? parseInt(String(req.query.workspaceId)) : null;
+
+    let profile: Awaited<ReturnType<typeof getProfileByUserId>> = null;
+    let myRole: string = "owner";
+
+    if (workspaceIdParam) {
+      const role = await resolveWorkspaceRole(req.userId!, workspaceIdParam);
+      if (!role) return res.status(403).json({ error: "Access denied." });
+      myRole = role;
+      const rows = await db.select().from(weddingProfiles).where(eq(weddingProfiles.id, workspaceIdParam)).limit(1);
+      profile = rows[0] ?? null;
+    } else {
+      profile = await getProfileByUserId(req.userId!);
+      myRole = "owner";
+    }
+
+    if (!profile) return res.json({ collaborators: [], pendingForMe: [], myRole });
 
     const collaborators = await db
       .select()
@@ -51,6 +66,7 @@ router.get("/collaborators", requireAuth, async (req, res) => {
       })),
       workspaceName: `${profile.partner1Name} & ${profile.partner2Name}`,
       profileId: profile.id,
+      myRole,
     });
   } catch (err) {
     req.log.error(err, "Failed to fetch collaborators");
@@ -102,12 +118,24 @@ router.get("/collaborators/my-workspaces", requireAuth, async (req, res) => {
 
 router.post("/collaborators/invite", requireAuth, async (req, res) => {
   try {
-    const profile = await getProfileByUserId(req.userId!);
+    const { email, role, workspaceId: bodyWorkspaceId } = req.body as { email: string; role: string; workspaceId?: number };
+
+    let profile: Awaited<ReturnType<typeof getProfileByUserId>> = null;
+
+    if (bodyWorkspaceId) {
+      const myRole = await resolveWorkspaceRole(req.userId!, bodyWorkspaceId);
+      if (!hasMinRole(myRole, "partner")) {
+        return res.status(403).json({ error: "Only owners and partners can invite collaborators." });
+      }
+      const rows = await db.select().from(weddingProfiles).where(eq(weddingProfiles.id, bodyWorkspaceId)).limit(1);
+      profile = rows[0] ?? null;
+    } else {
+      profile = await getProfileByUserId(req.userId!);
+    }
+
     if (!profile) {
       return res.status(400).json({ error: "Create your wedding profile first before inviting collaborators." });
     }
-
-    const { email, role } = req.body as { email: string; role: string };
 
     if (!email || !role) {
       return res.status(400).json({ error: "Email and role are required." });
@@ -289,7 +317,7 @@ router.patch("/collaborators/:id/role", requireAuth, async (req, res) => {
     if (!collab) return res.status(404).json({ error: "Collaborator not found." });
 
     const myRole = await resolveWorkspaceRole(req.userId!, collab.profileId);
-    if (myRole !== "owner") return res.status(403).json({ error: "Only the owner can change roles." });
+    if (!hasMinRole(myRole, "partner")) return res.status(403).json({ error: "Only owners and partners can change roles." });
 
     const [updated] = await db
       .update(workspaceCollaborators)
@@ -329,7 +357,7 @@ router.delete("/collaborators/:id", requireAuth, async (req, res) => {
     if (!collab) return res.status(404).json({ error: "Collaborator not found." });
 
     const myRole = await resolveWorkspaceRole(req.userId!, collab.profileId);
-    if (myRole !== "owner") return res.status(403).json({ error: "Only the owner can remove collaborators." });
+    if (!hasMinRole(myRole, "partner")) return res.status(403).json({ error: "Only owners and partners can remove collaborators." });
 
     await db.delete(workspaceCollaborators).where(eq(workspaceCollaborators.id, id));
 
@@ -361,7 +389,7 @@ router.post("/collaborators/:id/resend", requireAuth, async (req, res) => {
     if (!collab) return res.status(404).json({ error: "Collaborator not found." });
 
     const myRole = await resolveWorkspaceRole(req.userId!, collab.profileId);
-    if (myRole !== "owner") return res.status(403).json({ error: "Only the owner can resend invites." });
+    if (!hasMinRole(myRole, "partner")) return res.status(403).json({ error: "Only owners and partners can resend invites." });
 
     const newToken = randomUUID();
     const [updated] = await db

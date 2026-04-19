@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,11 +83,14 @@ export default function SettingsPage() {
   const { getToken } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { activeWorkspace } = useWorkspace();
   const [activeTab, setActiveTab] = useState<"collaborators" | "account">("collaborators");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<CollabRole>("planner");
   const [newInviteLink, setNewInviteLink] = useState<string | null>(null);
   const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
+
+  const sharedProfileId = activeWorkspace?.profileId ?? null;
 
   const authedFetch = async (url: string, init: RequestInit = {}) => {
     const token = await getToken();
@@ -102,25 +106,34 @@ export default function SettingsPage() {
   };
 
   const { data, isLoading } = useQuery({
-    queryKey: ["collaborators"],
+    queryKey: ["collaborators", sharedProfileId],
     queryFn: async () => {
-      const r = await authedFetch("/api/collaborators");
+      const url = sharedProfileId
+        ? `/api/collaborators?workspaceId=${sharedProfileId}`
+        : "/api/collaborators";
+      const r = await authedFetch(url);
       if (!r.ok) throw new Error("Failed to fetch");
       return r.json() as Promise<{
         collaborators: Collaborator[];
         workspaceName: string;
         profileId: number;
+        myRole: string;
       }>;
     },
     staleTime: 10000,
     refetchInterval: 15000,
   });
 
+  const myRole = data?.myRole ?? (sharedProfileId ? activeWorkspace?.role ?? "viewer" : "owner");
+  const canManage = myRole === "owner" || myRole === "partner";
+
   const inviteMutation = useMutation({
     mutationFn: async () => {
+      const body: Record<string, unknown> = { email: inviteEmail, role: inviteRole };
+      if (sharedProfileId) body.workspaceId = sharedProfileId;
       const r = await authedFetch("/api/collaborators/invite", {
         method: "POST",
-        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+        body: JSON.stringify(body),
       });
       if (!r.ok) {
         const err = await r.json();
@@ -129,7 +142,7 @@ export default function SettingsPage() {
       return r.json() as Promise<Collaborator>;
     },
     onSuccess: (collab) => {
-      qc.invalidateQueries({ queryKey: ["collaborators"] });
+      qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
       const link = `${window.location.origin}/invite/${collab.inviteToken}`;
       setNewInviteLink(link);
       setInviteEmail("");
@@ -150,7 +163,7 @@ export default function SettingsPage() {
       return r.json();
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["collaborators"] });
+      qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
       setEditingRoleId(null);
       toast({ title: "Role updated" });
     },
@@ -162,7 +175,7 @@ export default function SettingsPage() {
       if (!r.ok) throw new Error("Failed to remove");
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["collaborators"] });
+      qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
       toast({ title: "Collaborator removed" });
     },
   });
@@ -174,7 +187,7 @@ export default function SettingsPage() {
       return r.json() as Promise<Collaborator>;
     },
     onSuccess: (collab) => {
-      qc.invalidateQueries({ queryKey: ["collaborators"] });
+      qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
       const link = `${window.location.origin}/invite/${collab.inviteToken}`;
       setNewInviteLink(link);
       toast({ title: "New invite link generated" });
@@ -215,6 +228,7 @@ export default function SettingsPage() {
 
       {activeTab === "collaborators" && (
         <div className="space-y-6">
+          {canManage && (
           <Card className="border-none shadow-sm">
             <CardHeader>
               <CardTitle className="font-serif text-xl flex items-center gap-2">
@@ -287,6 +301,7 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+          )}
 
           <Card className="border-none shadow-sm">
             <CardHeader>
@@ -331,6 +346,7 @@ export default function SettingsPage() {
                           <RoleBadge role={collab.role as CollabRole} />
                           <StatusBadge status={collab.status as CollabStatus} />
                         </div>
+                        {canManage && (
                         <div className="flex items-center gap-1 flex-shrink-0">
                           {collab.status !== "declined" && (
                             <div className="relative">
@@ -385,6 +401,7 @@ export default function SettingsPage() {
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
+                        )}
                       </div>
                     );
                   })}
