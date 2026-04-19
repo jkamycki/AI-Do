@@ -42,12 +42,13 @@ router.get("/payments", requireAuth, async (req, res) => {
       .orderBy(desc(vendorPayments.createdAt));
     res.json(rows.map(r => ({
       ...r,
-      totalAmount: parseFloat(r.totalAmount as unknown as string),
-      amountPaid: parseFloat(r.amountPaid as unknown as string),
+      totalAmount: parseFloat(String(r.totalAmount ?? "0")),
+      amountPaid: parseFloat(String(r.amountPaid ?? "0")),
       status: computeStatus(r as never),
-      createdAt: r.createdAt.toISOString(),
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
     })));
-  } catch {
+  } catch (err) {
+    console.error("[payments] GET error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -71,11 +72,13 @@ router.post("/payments", requireAuth, async (req, res) => {
     }).returning();
     res.json({
       ...created,
-      totalAmount: parseFloat(created.totalAmount as unknown as string),
-      amountPaid: parseFloat(created.amountPaid as unknown as string),
+      totalAmount: parseFloat(String(created.totalAmount ?? "0")),
+      amountPaid: parseFloat(String(created.amountPaid ?? "0")),
       status: computeStatus(created as never),
+      createdAt: created.createdAt instanceof Date ? created.createdAt.toISOString() : String(created.createdAt),
     });
-  } catch {
+  } catch (err) {
+    console.error("[payments] POST error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

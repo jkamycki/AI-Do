@@ -323,10 +323,16 @@ export default function Payments() {
   const [addOpen, setAddOpen] = useState(false);
   const [editPayment, setEditPayment] = useState<Payment | null>(null);
 
-  const { data: payments = [], isLoading } = useQuery<Payment[]>({
+  const { data: paymentsRaw, isLoading } = useQuery<Payment[]>({
     queryKey: ["payments"],
-    queryFn: () => authFetch(`${API}/api/payments`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await authFetch(`${API}/api/payments`);
+      if (!r.ok) throw new Error(`Server error ${r.status}`);
+      const data = await r.json();
+      return Array.isArray(data) ? data : [];
+    },
   });
+  const payments = Array.isArray(paymentsRaw) ? paymentsRaw : [];
 
   const createMutation = useMutation({
     mutationFn: (data: Partial<Payment>) =>
