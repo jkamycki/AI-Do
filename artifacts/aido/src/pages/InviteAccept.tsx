@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useAuth, useClerk, SignIn } from "@clerk/react";
+import { useAuth, SignIn, SignUp } from "@clerk/react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,12 @@ export default function InviteAcceptPage() {
   const [accepted, setAccepted] = useState(false);
   const [declined, setDeclined] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSignUp, setShowSignUp] = useState(false);
+
+  // The current invite URL — after sign-in/up Clerk will redirect back here
+  const inviteUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/invite/${token}`
+    : `/invite/${token}`;
 
   const authedFetch = async (url: string, init: RequestInit = {}) => {
     const t = await getToken();
@@ -93,7 +99,6 @@ export default function InviteAcceptPage() {
       }>;
     },
     onSuccess: (data) => {
-      // Set the active workspace so the collaborator lands in the right place
       setActiveWorkspace({
         profileId: data.profileId,
         role: data.role,
@@ -102,10 +107,24 @@ export default function InviteAcceptPage() {
         weddingDate: data.weddingDate,
       });
       setAccepted(true);
-      setTimeout(() => setLocation(`/workspace/${data.profileId}`), 2500);
+      setTimeout(() => setLocation(`/workspace/${data.profileId}`), 2000);
     },
     onError: (err: Error) => setError(err.message),
   });
+
+  // If signed in and invite is already accepted, restore workspace context and redirect
+  useEffect(() => {
+    if (isSignedIn && invite && invite.status === "accepted" && !accepted) {
+      setActiveWorkspace({
+        profileId: invite.profileId,
+        role: invite.role,
+        partner1Name: invite.partner1Name,
+        partner2Name: invite.partner2Name,
+        weddingDate: invite.weddingDate,
+      });
+      setLocation(`/workspace/${invite.profileId}`);
+    }
+  }, [isSignedIn, invite, accepted]);
 
   const declineMutation = useMutation({
     mutationFn: async () => {
@@ -221,16 +240,35 @@ export default function InviteAcceptPage() {
           )}
 
           {!isSignedIn ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <p className="text-sm text-muted-foreground text-center">
                 Sign in or create an account to accept this invitation.
               </p>
-              <Button className="w-full" onClick={() => setLocation(`/sign-in?redirect=/invite/${token}`)}>
-                Sign In to Accept
-              </Button>
-              <Button variant="outline" className="w-full" onClick={() => setLocation(`/sign-up?redirect=/invite/${token}`)}>
-                Create Account
-              </Button>
+              {showSignUp ? (
+                <>
+                  <SignUp
+                    forceRedirectUrl={inviteUrl}
+                    signInUrl={`/sign-in`}
+                    appearance={{ elements: { rootBox: "w-full", card: "shadow-none border-0 p-0" } }}
+                  />
+                  <p className="text-xs text-center text-muted-foreground">
+                    Already have an account?{" "}
+                    <button className="text-primary underline" onClick={() => setShowSignUp(false)}>Sign in</button>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <SignIn
+                    forceRedirectUrl={inviteUrl}
+                    signUpUrl={`/sign-up`}
+                    appearance={{ elements: { rootBox: "w-full", card: "shadow-none border-0 p-0" } }}
+                  />
+                  <p className="text-xs text-center text-muted-foreground">
+                    Don't have an account?{" "}
+                    <button className="text-primary underline" onClick={() => setShowSignUp(true)}>Create one</button>
+                  </p>
+                </>
+              )}
             </div>
           ) : invite.status === "pending" ? (
             <div className="flex gap-3">
