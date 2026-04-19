@@ -293,57 +293,56 @@ export default function Profile() {
                 />
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="weddingVibe"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Wedding Vibe / Style</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-background" data-testid="select-vibe">
-                            <SelectValue placeholder="Select a vibe" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Romantic & Elegant">Romantic & Elegant</SelectItem>
-                          <SelectItem value="Modern & Minimalist">Modern & Minimalist</SelectItem>
-                          <SelectItem value="Rustic & Boho">Rustic & Boho</SelectItem>
-                          <SelectItem value="Vintage & Classic">Vintage & Classic</SelectItem>
-                          <SelectItem value="Glamorous & Luxurious">Glamorous & Luxurious</SelectItem>
-                          <SelectItem value="Casual & Intimate">Casual & Intimate</SelectItem>
-                          <SelectItem value="Whimsical & Playful">Whimsical & Playful</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <FormField
+                control={form.control}
+                name="weddingVibe"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Wedding Vibe / Style</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="bg-background" data-testid="select-vibe">
+                          <SelectValue placeholder="Select a vibe" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Romantic & Elegant">Romantic & Elegant</SelectItem>
+                        <SelectItem value="Modern & Minimalist">Modern & Minimalist</SelectItem>
+                        <SelectItem value="Rustic & Boho">Rustic & Boho</SelectItem>
+                        <SelectItem value="Vintage & Classic">Vintage & Classic</SelectItem>
+                        <SelectItem value="Glamorous & Luxurious">Glamorous & Luxurious</SelectItem>
+                        <SelectItem value="Casual & Intimate">Casual & Intimate</SelectItem>
+                        <SelectItem value="Whimsical & Playful">Whimsical & Playful</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <FormField
-                  control={form.control}
-                  name="preferredLanguage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Preferred Language</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-background" data-testid="select-language">
-                            <SelectValue placeholder="Select language" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {LANGUAGES.map((lang) => (
-                            <SelectItem key={lang} value={lang}>{lang}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="preferredLanguage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preferred Language for AI Responses</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || "English"}>
+                      <FormControl>
+                        <SelectTrigger className="bg-background" data-testid="select-language">
+                          <SelectValue placeholder="Select language" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {LANGUAGES.map((lang) => (
+                          <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Aria and vendor emails will respond in this language. You can also change this in Settings.</p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="flex justify-end gap-3 pt-4">
                 <Button
