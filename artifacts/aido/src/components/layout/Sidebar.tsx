@@ -26,6 +26,7 @@ import {
   UsersRound,
   Hotel,
   Flower2,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -45,6 +46,7 @@ const navSections = [
       { href: "/budget", label: "Budget Manager", icon: DollarSign },
       { href: "/vendors", label: "Vendor List", icon: Store },
       { href: "/vendor-email", label: "Vendor Emails", icon: Mail },
+      { href: "/contracts", label: "Contracts", icon: FileText },
     ],
   },
   {

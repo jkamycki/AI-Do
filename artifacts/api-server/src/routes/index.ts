@@ -19,6 +19,7 @@ import seatingRouter from "./seating";
 import guestsRouter from "./guests";
 import hotelsRouter from "./wedding/hotels";
 import weddingPartyRouter from "./wedding/weddingParty";
+import contractsRouter from "./contracts";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(seatingRouter);
 router.use(guestsRouter);
 router.use(hotelsRouter);
 router.use(weddingPartyRouter);
+router.use(contractsRouter);
 
 export default router;
