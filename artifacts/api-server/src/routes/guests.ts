@@ -38,9 +38,11 @@ router.get("/guests", requireAuth, async (req, res) => {
     };
 
     res.json({ guests: rows, summary });
+    return;
   } catch (err) {
     req.log.error(err, "Failed to get guests");
     res.status(500).json({ error: "Internal server error" });
+    return;
   }
 });
 
@@ -75,15 +77,17 @@ router.post("/guests", requireAuth, async (req, res) => {
       .returning();
 
     res.status(201).json(created);
+    return;
   } catch (err) {
     req.log.error(err, "Failed to add guest");
     res.status(500).json({ error: "Internal server error" });
+    return;
   }
 });
 
 router.put("/guests/:id", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid guest ID" });
 
     const profileId = await getProfileId(req.userId!);
@@ -111,15 +115,17 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
 
     if (!updated) return res.status(404).json({ error: "Guest not found" });
     res.json(updated);
+    return;
   } catch (err) {
     req.log.error(err, "Failed to update guest");
     res.status(500).json({ error: "Internal server error" });
+    return;
   }
 });
 
 router.delete("/guests/:id", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid guest ID" });
 
     const profileId = await getProfileId(req.userId!);
@@ -130,9 +136,11 @@ router.delete("/guests/:id", requireAuth, async (req, res) => {
       .where(and(eq(guests.id, id), eq(guests.profileId, profileId)));
 
     res.json({ success: true });
+    return;
   } catch (err) {
     req.log.error(err, "Failed to delete guest");
     res.status(500).json({ error: "Internal server error" });
+    return;
   }
 });
 
