@@ -53,7 +53,14 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
     const guestRows = hasProfile
       ? await db.select().from(guests).where(eq(guests.profileId, profileId))
       : [];
-    const guestCount = guestRows.length;
+    const plusOneCount = guestRows.filter(g => g.plusOne).length;
+    const guestCount = guestRows.length + plusOneCount;
+    const guestRsvpSummary = {
+      total: guestCount,
+      attending: guestRows.filter(g => g.rsvpStatus === "attending").length + guestRows.filter(g => g.rsvpStatus === "attending" && g.plusOne).length,
+      declined: guestRows.filter(g => g.rsvpStatus === "declined").length + guestRows.filter(g => g.rsvpStatus === "declined" && g.plusOne).length,
+      pending: guestRows.filter(g => g.rsvpStatus === "pending").length + guestRows.filter(g => g.rsvpStatus === "pending" && g.plusOne).length,
+    };
 
     function parseMonthsFromLabel(label: string): number | null {
       const m = label.match(/(\d+)\s+month/i);
@@ -108,6 +115,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       checklistCompleted,
       checklistTotal,
       guestCount,
+      guestRsvpSummary,
       hasProfile,
       hasTimeline,
       hasChecklist,

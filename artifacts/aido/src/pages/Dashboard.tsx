@@ -26,6 +26,10 @@ import {
   Pencil,
   Gem,
   Hotel,
+  ChevronRight,
+  LayoutGrid,
+  Building2,
+  Armchair,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -34,10 +38,41 @@ const API = import.meta.env.VITE_API_URL ?? "";
 interface HotelBlock {
   id: number;
   hotelName: string;
+  address?: string | null;
+  phone?: string | null;
+  bookingLink?: string | null;
+  discountCode?: string | null;
   cutoffDate?: string | null;
   roomsReserved?: number | null;
   roomsBooked: number;
-  discountCode?: string | null;
+  pricePerNight?: number | null;
+  distanceFromVenue?: string | null;
+}
+
+interface Vendor {
+  id: number;
+  name: string;
+  category: string;
+  email?: string | null;
+  phone?: string | null;
+  booked?: boolean;
+  contractSigned?: boolean;
+}
+
+interface WeddingPartyMember {
+  id: number;
+  name: string;
+  role: string;
+  side: string;
+}
+
+interface SeatingChart {
+  id: number;
+  name: string;
+  tableCount: number;
+  seatsPerTable: number;
+  tables?: Array<{ tableNumber: number; tableName: string; guests: string[] }> | null;
+  createdAt: string;
 }
 
 function getGreeting() {
@@ -189,6 +224,21 @@ export default function Dashboard() {
   const { data: hotels = [] } = useQuery<HotelBlock[]>({
     queryKey: ["hotels"],
     queryFn: () => authFetch(`${API}/api/hotels`).then(r => r.json()),
+    enabled: !!summary,
+  });
+  const { data: vendors = [] } = useQuery<Vendor[]>({
+    queryKey: ["vendors-dashboard"],
+    queryFn: () => authFetch(`${API}/api/vendors`).then(r => r.json()),
+    enabled: !!summary,
+  });
+  const { data: weddingParty = [] } = useQuery<WeddingPartyMember[]>({
+    queryKey: ["wedding-party-dashboard"],
+    queryFn: () => authFetch(`${API}/api/wedding-party`).then(r => r.json()),
+    enabled: !!summary,
+  });
+  const { data: seatingCharts = [] } = useQuery<SeatingChart[]>({
+    queryKey: ["seating-charts-dashboard"],
+    queryFn: () => authFetch(`${API}/api/seating/charts`).then(r => r.json()),
     enabled: !!summary,
   });
   const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingWizard(summary?.hasProfile ?? true);
@@ -434,9 +484,155 @@ export default function Dashboard() {
           icon={UsersRound}
           label="Guests"
           value={`${summary.guestCount ?? 0}`}
-          sub="on the list"
+          sub={`incl. plus-ones · ${(summary as any).guestRsvpSummary?.attending ?? 0} attending`}
           href="/guests"
         />
+      </div>
+
+      {/* Overview row: Guest RSVPs + Vendors + Wedding Party + Seating */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+
+        {/* Guest RSVP breakdown */}
+        <Link href="/guests">
+          <div className="bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer h-full">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Users className="h-4 w-4" />
+                <span className="text-xs font-medium uppercase tracking-wider">Guest RSVPs</span>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+            </div>
+            {summary.guestCount > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /><span className="text-xs text-muted-foreground">Attending</span></div>
+                  <span className="text-sm font-semibold text-emerald-600">{(summary as any).guestRsvpSummary?.attending ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" /><span className="text-xs text-muted-foreground">Declined</span></div>
+                  <span className="text-sm font-semibold text-red-500">{(summary as any).guestRsvpSummary?.declined ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /><span className="text-xs text-muted-foreground">Awaiting</span></div>
+                  <span className="text-sm font-semibold text-amber-600">{(summary as any).guestRsvpSummary?.pending ?? 0}</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-muted overflow-hidden flex mt-1">
+                  {((summary as any).guestRsvpSummary?.attending ?? 0) > 0 && (
+                    <div className="h-full bg-emerald-500" style={{ width: `${((summary as any).guestRsvpSummary?.attending / summary.guestCount) * 100}%` }} />
+                  )}
+                  {((summary as any).guestRsvpSummary?.declined ?? 0) > 0 && (
+                    <div className="h-full bg-red-400" style={{ width: `${((summary as any).guestRsvpSummary?.declined / summary.guestCount) * 100}%` }} />
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">No guests added yet</p>
+            )}
+          </div>
+        </Link>
+
+        {/* Vendor overview */}
+        <Link href="/vendors">
+          <div className="bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer h-full">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Building2 className="h-4 w-4" />
+                <span className="text-xs font-medium uppercase tracking-wider">Vendors</span>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+            </div>
+            {vendors.length > 0 ? (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-2xl font-serif font-semibold text-foreground">{vendors.length}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">
+                    {vendors.filter(v => v.booked).length} booked
+                  </span>
+                </div>
+                {vendors.slice(0, 3).map(v => (
+                  <div key={v.id} className="flex items-center justify-between">
+                    <span className="text-xs text-foreground truncate max-w-[120px]">{v.name}</span>
+                    <span className="text-[10px] text-muted-foreground capitalize">{v.category}</span>
+                  </div>
+                ))}
+                {vendors.length > 3 && (
+                  <p className="text-[10px] text-muted-foreground">+{vendors.length - 3} more</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">No vendors added yet</p>
+            )}
+          </div>
+        </Link>
+
+        {/* Wedding party */}
+        <Link href="/wedding-party">
+          <div className="bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer h-full">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <LayoutGrid className="h-4 w-4" />
+                <span className="text-xs font-medium uppercase tracking-wider">Wedding Party</span>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+            </div>
+            {weddingParty.length > 0 ? (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-2xl font-serif font-semibold text-foreground">{weddingParty.length}</span>
+                  <div className="text-xs text-muted-foreground leading-tight">
+                    <div>{weddingParty.filter(m => m.side === "bride").length} bride side</div>
+                    <div>{weddingParty.filter(m => m.side === "groom").length} groom side</div>
+                  </div>
+                </div>
+                {weddingParty.slice(0, 3).map(m => (
+                  <div key={m.id} className="flex items-center justify-between">
+                    <span className="text-xs text-foreground truncate max-w-[120px]">{m.name}</span>
+                    <span className="text-[10px] text-muted-foreground capitalize">{m.role}</span>
+                  </div>
+                ))}
+                {weddingParty.length > 3 && (
+                  <p className="text-[10px] text-muted-foreground">+{weddingParty.length - 3} more</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">No members added yet</p>
+            )}
+          </div>
+        </Link>
+
+        {/* Seating chart */}
+        <Link href="/seating">
+          <div className="bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer h-full">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Armchair className="h-4 w-4" />
+                <span className="text-xs font-medium uppercase tracking-wider">Seating</span>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+            </div>
+            {seatingCharts.length > 0 ? (() => {
+              const latest = seatingCharts[0];
+              const tableCount = latest.tables?.length ?? latest.tableCount ?? 0;
+              const totalSeated = latest.tables?.reduce((sum, t) => sum + t.guests.length, 0) ?? 0;
+              return (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-2xl font-serif font-semibold text-foreground">{seatingCharts.length}</span>
+                    <span className="text-xs text-muted-foreground">chart{seatingCharts.length !== 1 ? "s" : ""}</span>
+                  </div>
+                  <p className="text-xs font-medium text-foreground truncate">{latest.name}</p>
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    {tableCount > 0 && <div>{tableCount} tables</div>}
+                    {totalSeated > 0 && <div>{totalSeated} guests seated</div>}
+                  </div>
+                </div>
+              );
+            })() : (
+              <p className="text-xs text-muted-foreground">No seating charts yet</p>
+            )}
+          </div>
+        </Link>
+
       </div>
 
       {/* Upcoming tasks alert */}
