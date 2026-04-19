@@ -68,8 +68,21 @@ router.get("/budget", requireAuth, async (req, res) => {
       .limit(1);
 
     if (!rows.length) {
-      res.status(404).json({ error: "No budget found" });
+      const profileBudget = profile.totalBudget ? String(profile.totalBudget) : "0";
+      const [created] = await db
+        .insert(budgets)
+        .values({ profileId: profile.id, totalBudget: profileBudget })
+        .returning();
+      const result = await getBudgetWithItems(created.id);
+      res.json(result);
       return;
+    }
+    // If existing budget has no total set, sync from profile
+    if (parseFloat(rows[0].totalBudget as string) === 0 && profile.totalBudget && parseFloat(String(profile.totalBudget)) > 0) {
+      await db
+        .update(budgets)
+        .set({ totalBudget: String(profile.totalBudget), updatedAt: new Date() })
+        .where(eq(budgets.id, rows[0].id));
     }
     const result = await getBudgetWithItems(rows[0].id);
     res.json(result);
@@ -174,7 +187,8 @@ router.post("/budget/items", requireAuth, async (req, res) => {
       .limit(1);
 
     if (!budgetRows.length) {
-      const [newBudget] = await db.insert(budgets).values({ profileId, totalBudget: "0" }).returning();
+      const profileBudget = profile?.totalBudget ? String(profile.totalBudget) : "0";
+      const [newBudget] = await db.insert(budgets).values({ profileId, totalBudget: profileBudget }).returning();
       budgetRows = [newBudget];
     }
 
