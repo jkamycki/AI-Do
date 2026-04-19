@@ -27,6 +27,7 @@ import Guests from "@/pages/Guests";
 import Hotels from "@/pages/Hotels";
 import WeddingParty from "@/pages/WeddingParty";
 import Contracts from "@/pages/Contracts";
+import Aria from "@/pages/Aria";
 import NotFound from "@/pages/not-found";
 import VideoTemplate from "@/components/video/VideoTemplate";
 
@@ -214,6 +215,7 @@ function Router() {
       <Route path="/hotels" component={() => <ProtectedRoute component={Hotels} />} />
       <Route path="/wedding-party" component={() => <ProtectedRoute component={WeddingParty} />} />
       <Route path="/contracts" component={() => <ProtectedRoute component={Contracts} />} />
+      <Route path="/aria" component={() => <ProtectedRoute component={Aria} />} />
       <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} />} />
       <Route path="/promo" component={VideoTemplate} />
       <Route component={NotFound} />

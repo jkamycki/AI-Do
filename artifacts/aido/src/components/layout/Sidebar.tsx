@@ -27,6 +27,7 @@ import {
   Hotel,
   Flower2,
   FileText,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -62,6 +63,12 @@ const navSections = [
     label: "Day Of",
     items: [
       { href: "/day-of", label: "Day-Of Coordinator", icon: Smartphone },
+    ],
+  },
+  {
+    label: "Assistant",
+    items: [
+      { href: "/aria", label: "Aria — Planner AI", icon: Sparkles },
     ],
   },
 ];
