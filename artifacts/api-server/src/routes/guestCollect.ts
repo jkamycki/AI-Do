@@ -98,11 +98,14 @@ router.post("/guest-collect/:token", async (req, res) => {
       return res.status(404).json({ error: "Invalid or expired link." });
     }
 
-    const { name, email, phone, address, plusOne, plusOneName } = req.body;
+    const { name, email, phone, address, plusOne, plusOneName, attendanceIntent } = req.body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return res.status(400).json({ error: "Your name is required." });
     }
+
+    const validStatuses = ["attending", "pending", "declined"];
+    const rsvpStatus = validStatuses.includes(attendanceIntent) ? attendanceIntent : "pending";
 
     const [created] = await db
       .insert(guests)
@@ -112,7 +115,7 @@ router.post("/guest-collect/:token", async (req, res) => {
         email: email?.trim() || null,
         phone: phone?.trim() || null,
         address: address?.trim() || null,
-        rsvpStatus: "pending",
+        rsvpStatus,
         plusOne: !!plusOne,
         plusOneName: plusOne && plusOneName?.trim() ? plusOneName.trim() : null,
       })
