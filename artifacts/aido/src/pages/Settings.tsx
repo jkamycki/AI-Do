@@ -433,7 +433,7 @@ export default function SettingsPage() {
                       ["Edit Timeline & Checklist", true, true, false],
                       ["Edit Budget", true, true, false],
                       ["Manage Vendors & Emails", true, true, false],
-                      ["Manage Collaborators", false, false, false],
+                      ["Manage Collaborators", true, false, false],
                       ["Delete Workspace", false, false, false],
                     ].map(([feature, partner, planner, vendor]) => (
                       <tr key={String(feature)}>
