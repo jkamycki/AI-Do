@@ -1,14 +1,37 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGetTimeline, useGenerateTimeline, useGetProfile, getGetTimelineQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { authFetch } from "@/lib/authFetch";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarClock, Wand2, Clock, FileDown, Sparkles } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  CalendarClock, Wand2, Clock, FileDown, Sparkles,
+  Pencil, Trash2, Plus, Check, X, Save,
+} from "lucide-react";
 
+const API = import.meta.env.VITE_API_URL ?? "";
+
+type TimelineEvent = {
+  time: string;
+  title: string;
+  description: string;
+  category: string;
+};
+
+const CATEGORIES = ["preparation", "ceremony", "cocktail", "reception", "dancing", "other"];
 const VISION_STORAGE_KEY = "aido_timeline_day_vision";
+
+function categoryColor(cat: string) {
+  if (cat.toLowerCase().includes("ceremony")) return "text-primary bg-primary/10 border-primary/20";
+  if (cat.toLowerCase().includes("reception")) return "text-secondary-foreground bg-secondary/50 border-secondary/50";
+  if (cat.toLowerCase().includes("prep")) return "text-accent-foreground bg-accent border-accent/50";
+  return "text-muted-foreground bg-muted border-muted-foreground/20";
+}
 
 export default function Timeline() {
   const { toast } = useToast();
@@ -21,6 +44,71 @@ export default function Timeline() {
     () => localStorage.getItem(VISION_STORAGE_KEY) ?? ""
   );
 
+  const [localEvents, setLocalEvents] = useState<TimelineEvent[]>([]);
+  const [isDirty, setIsDirty] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<TimelineEvent>({ time: "", title: "", description: "", category: "other" });
+  const [addingEvent, setAddingEvent] = useState(false);
+  const [newEvent, setNewEvent] = useState<TimelineEvent>({ time: "", title: "", description: "", category: "other" });
+
+  useEffect(() => {
+    if (timeline?.events) {
+      setLocalEvents(timeline.events as TimelineEvent[]);
+      setIsDirty(false);
+    }
+  }, [timeline]);
+
+  const saveTimeline = useMutation({
+    mutationFn: (events: TimelineEvent[]) =>
+      authFetch(`${API}/api/timeline/${timeline!.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ events }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
+      setIsDirty(false);
+      toast({ title: "Timeline saved." });
+    },
+    onError: () => toast({ title: "Could not save timeline", variant: "destructive" }),
+  });
+
+  function updateLocal(events: TimelineEvent[]) {
+    setLocalEvents(events);
+    setIsDirty(true);
+  }
+
+  function startEdit(index: number) {
+    setEditingIndex(index);
+    setEditDraft({ ...localEvents[index] });
+  }
+
+  function cancelEdit() {
+    setEditingIndex(null);
+  }
+
+  function submitEdit() {
+    if (editingIndex === null) return;
+    const updated = localEvents.map((e, i) => (i === editingIndex ? { ...editDraft } : e));
+    updateLocal(updated);
+    setEditingIndex(null);
+  }
+
+  function deleteEvent(index: number) {
+    updateLocal(localEvents.filter((_, i) => i !== index));
+  }
+
+  function startAdd() {
+    setNewEvent({ time: "", title: "", description: "", category: "other" });
+    setAddingEvent(true);
+  }
+
+  function submitAdd() {
+    if (!newEvent.time.trim() || !newEvent.title.trim()) return;
+    updateLocal([...localEvents, { ...newEvent }]);
+    setAddingEvent(false);
+  }
+
   const handleVisionChange = (val: string) => {
     setDayVision(val);
     localStorage.setItem(VISION_STORAGE_KEY, val);
@@ -28,61 +116,41 @@ export default function Timeline() {
 
   const handleGenerate = () => {
     if (!profile?.id) {
-      toast({
-        variant: "destructive",
-        title: "Profile Required",
-        description: "Please complete your wedding profile first.",
-      });
+      toast({ variant: "destructive", title: "Profile Required", description: "Please complete your wedding profile first." });
       return;
     }
-
     generateTimeline.mutate(
       { data: { profileId: profile.id, dayVision: dayVision.trim() || undefined } },
       {
         onSuccess: () => {
-          toast({
-            title: "Timeline Generated",
-            description: "Your personalized wedding day timeline is ready.",
-          });
+          toast({ title: "Timeline Generated", description: "Your personalized wedding day timeline is ready." });
           queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
+          setIsDirty(false);
+          setEditingIndex(null);
+          setAddingEvent(false);
         },
-        onError: () => {
-          toast({
-            variant: "destructive",
-            title: "Generation Failed",
-            description: "Could not generate timeline. Please try again.",
-          });
-        }
+        onError: () => toast({ variant: "destructive", title: "Generation Failed", description: "Could not generate timeline. Please try again." }),
       }
     );
   };
 
   const handleDownloadPdf = async () => {
-    if (!timeline?.events?.length) return;
+    if (!localEvents.length) return;
     setIsDownloadingPdf(true);
     try {
-      const coupleName = profile
-        ? `${profile.partner1Name} & ${profile.partner2Name}`
-        : undefined;
+      const coupleName = profile ? `${profile.partner1Name} & ${profile.partner2Name}` : undefined;
       const response = await fetch("/api/pdf/timeline", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          events: timeline.events,
-          coupleName,
-          weddingDate: profile?.weddingDate,
-          venue: profile?.venue,
-        }),
+        body: JSON.stringify({ events: localEvents, coupleName, weddingDate: profile?.weddingDate, venue: profile?.venue }),
       });
       if (!response.ok) throw new Error("PDF generation failed");
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.download = "aido-timeline.pdf";
-      document.body.appendChild(a);
-      a.click();
+      a.href = url; a.download = "aido-timeline.pdf";
+      document.body.appendChild(a); a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast({ title: "PDF Downloaded", description: "Your timeline has been saved as a PDF." });
@@ -104,43 +172,43 @@ export default function Timeline() {
     );
   }
 
-  const hasTimeline = timeline && timeline.events && timeline.events.length > 0;
+  const hasTimeline = localEvents.length > 0;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
-            <CalendarClock className="h-8 w-8" /> 
+            <CalendarClock className="h-8 w-8" />
             Day-Of Timeline
           </h1>
           <p className="text-lg text-muted-foreground mt-2">A beautiful orchestration of your special day.</p>
         </div>
-        <div className="flex items-center gap-3">
-          {hasTimeline && (
+        <div className="flex items-center gap-3 flex-wrap">
+          {isDirty && (
             <Button
-              variant="outline"
+              variant="default"
               size="lg"
-              onClick={handleDownloadPdf}
-              disabled={isDownloadingPdf}
-              data-testid="btn-download-timeline-pdf"
-              className="gap-2"
+              onClick={() => saveTimeline.mutate(localEvents)}
+              disabled={saveTimeline.isPending}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
             >
-              {isDownloadingPdf ? (
-                <>
-                  <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                  Exporting…
-                </>
+              {saveTimeline.isPending ? (
+                <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
               ) : (
-                <>
-                  <FileDown className="h-4 w-4" />
-                  Download PDF
-                </>
+                <Save className="h-4 w-4" />
               )}
+              Save Changes
             </Button>
           )}
-          <Button 
-            onClick={handleGenerate} 
+          {hasTimeline && (
+            <Button variant="outline" size="lg" onClick={handleDownloadPdf} disabled={isDownloadingPdf} data-testid="btn-download-timeline-pdf" className="gap-2">
+              {isDownloadingPdf ? <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" /> : <FileDown className="h-4 w-4" />}
+              {isDownloadingPdf ? "Exporting…" : "Download PDF"}
+            </Button>
+          )}
+          <Button
+            onClick={handleGenerate}
             disabled={generateTimeline.isPending}
             variant={hasTimeline ? "outline" : "default"}
             size="lg"
@@ -173,7 +241,7 @@ export default function Timeline() {
         </CardHeader>
         <CardContent className="space-y-3">
           <Textarea
-            placeholder="e.g. We want a relaxed, intimate morning with just close family before the ceremony. The afternoon should feel celebratory and high-energy with lots of dancing. We'd love a golden-hour portrait session and a sparkler exit. Our guests tend to party late so we want the bar open until midnight..."
+            placeholder="e.g. We want a relaxed, intimate morning with just close family before the ceremony. The afternoon should feel celebratory and high-energy with lots of dancing..."
             value={dayVision}
             onChange={e => handleVisionChange(e.target.value)}
             className="min-h-[120px] resize-none text-sm leading-relaxed"
@@ -203,19 +271,65 @@ export default function Timeline() {
       ) : (
         <div className="relative mt-12 pb-12">
           <div className="absolute left-[27px] md:left-1/2 top-4 bottom-0 w-0.5 bg-primary/20 transform md:-translate-x-1/2" />
-          
+
           <div className="space-y-8">
-            {timeline.events.map((event, index) => {
+            {localEvents.map((event, index) => {
               const isEven = index % 2 === 0;
-              const categoryColor = 
-                event.category.toLowerCase().includes('ceremony') ? 'text-primary bg-primary/10 border-primary/20' :
-                event.category.toLowerCase().includes('reception') ? 'text-secondary-foreground bg-secondary/50 border-secondary/50' :
-                event.category.toLowerCase().includes('prep') ? 'text-accent-foreground bg-accent border-accent/50' :
-                'text-muted-foreground bg-muted border-muted-foreground/20';
+              const catColor = categoryColor(event.category);
+
+              if (editingIndex === index) {
+                return (
+                  <div key={index} className="relative flex flex-col md:flex-row items-start md:items-center gap-6">
+                    <div className="absolute left-[28px] md:left-1/2 w-4 h-4 rounded-full bg-primary border-2 border-background transform -translate-x-1/2 mt-6 md:mt-0 z-10" />
+                    <div className={`w-full md:w-1/2 ${isEven ? 'md:pr-12' : 'md:order-last md:pl-12'} pl-16 md:pl-0`} />
+                    <div className={`w-full md:w-1/2 ${isEven ? 'md:order-last md:pl-12' : 'md:pr-12'} pl-16 md:pl-0`}>
+                      <Card className="border-primary/30 shadow-md">
+                        <CardContent className="p-5 space-y-3">
+                          <div className="flex gap-2">
+                            <Input
+                              value={editDraft.time}
+                              onChange={e => setEditDraft(d => ({ ...d, time: e.target.value }))}
+                              placeholder="Time (e.g. 10:00 AM)"
+                              className="w-36 font-serif text-primary"
+                            />
+                            <Select value={editDraft.category} onValueChange={v => setEditDraft(d => ({ ...d, category: v }))}>
+                              <SelectTrigger className="flex-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Input
+                            value={editDraft.title}
+                            onChange={e => setEditDraft(d => ({ ...d, title: e.target.value }))}
+                            placeholder="Event title"
+                            className="font-medium"
+                          />
+                          <Textarea
+                            value={editDraft.description}
+                            onChange={e => setEditDraft(d => ({ ...d, description: e.target.value }))}
+                            placeholder="Description"
+                            className="text-sm resize-none min-h-[72px]"
+                          />
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={submitEdit} disabled={!editDraft.time.trim() || !editDraft.title.trim()}>
+                              <Check className="h-3.5 w-3.5 mr-1.5" /> Save
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                              <X className="h-3.5 w-3.5 mr-1.5" /> Cancel
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                );
+              }
 
               return (
-                <div key={index} className="relative flex flex-col md:flex-row items-start md:items-center gap-6 group animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${index * 100}ms` }}>
-                  
+                <div key={index} className="relative flex flex-col md:flex-row items-start md:items-center gap-6 group animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${index * 80}ms` }}>
                   <div className="absolute left-[28px] md:left-1/2 w-4 h-4 rounded-full bg-background border-2 border-primary transform -translate-x-1/2 mt-6 md:mt-0 z-10 group-hover:scale-125 group-hover:bg-primary transition-transform duration-300" />
 
                   <div className={`w-full md:w-1/2 ${isEven ? 'md:text-right md:pr-12' : 'md:order-last md:pl-12'} pl-16 md:pl-0`}>
@@ -229,23 +343,79 @@ export default function Timeline() {
                       <CardContent className="p-5 space-y-2">
                         <div className="flex items-center justify-between gap-4 mb-2 md:hidden">
                           <span className="text-xl font-serif text-primary font-medium">{event.time}</span>
-                          <span className={`text-xs px-2 py-1 rounded-full border ${categoryColor}`}>
-                            {event.category}
-                          </span>
+                          <span className={`text-xs px-2 py-1 rounded-full border ${catColor}`}>{event.category}</span>
                         </div>
                         <div className="hidden md:flex justify-between items-start mb-1">
-                          <span className={`text-xs px-2 py-1 rounded-full border ${categoryColor} ${isEven ? '' : 'ml-auto'}`}>
-                            {event.category}
-                          </span>
+                          <span className={`text-xs px-2 py-1 rounded-full border ${catColor} ${isEven ? '' : 'ml-auto'}`}>{event.category}</span>
                         </div>
                         <h4 className="text-lg font-medium text-foreground">{event.title}</h4>
                         <p className="text-muted-foreground text-sm leading-relaxed">{event.description}</p>
+                        <div className="flex gap-1 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => startEdit(index)} className="p-1.5 rounded hover:bg-muted text-muted-foreground" title="Edit event">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button onClick={() => deleteEvent(index)} className="p-1.5 rounded hover:bg-destructive/10 text-destructive" title="Delete event">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </CardContent>
                     </Card>
                   </div>
                 </div>
               );
             })}
+
+            {addingEvent ? (
+              <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6 pl-16 md:pl-0">
+                <div className="absolute left-[28px] md:left-1/2 w-4 h-4 rounded-full bg-primary border-2 border-background transform -translate-x-1/2 z-10" />
+                <div className="w-full md:w-1/2 md:order-last md:pl-12">
+                  <Card className="border-primary/30 shadow-md">
+                    <CardContent className="p-5 space-y-3">
+                      <p className="text-sm font-medium text-primary">New Event</p>
+                      <div className="flex gap-2">
+                        <Input
+                          value={newEvent.time}
+                          onChange={e => setNewEvent(d => ({ ...d, time: e.target.value }))}
+                          placeholder="Time (e.g. 3:00 PM)"
+                          className="w-36 font-serif text-primary"
+                          autoFocus
+                        />
+                        <Select value={newEvent.category} onValueChange={v => setNewEvent(d => ({ ...d, category: v }))}>
+                          <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Input
+                        value={newEvent.title}
+                        onChange={e => setNewEvent(d => ({ ...d, title: e.target.value }))}
+                        placeholder="Event title"
+                        className="font-medium"
+                      />
+                      <Textarea
+                        value={newEvent.description}
+                        onChange={e => setNewEvent(d => ({ ...d, description: e.target.value }))}
+                        placeholder="Description (optional)"
+                        className="text-sm resize-none min-h-[60px]"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={submitAdd} disabled={!newEvent.time.trim() || !newEvent.title.trim()}>
+                          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Event
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setAddingEvent(false)}>Cancel</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-center pt-4">
+                <Button variant="outline" onClick={startAdd} className="gap-2">
+                  <Plus className="h-4 w-4" /> Add Event
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}

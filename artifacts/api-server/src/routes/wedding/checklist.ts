@@ -131,14 +131,20 @@ Include 5-8 tasks per relevant time period. Be specific and actionable. Make tas
 router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { isCompleted } = req.body;
+    const { isCompleted, task, description, month } = req.body;
+
+    const updates: Record<string, unknown> = {};
+    if (isCompleted !== undefined) {
+      updates.isCompleted = isCompleted;
+      updates.completedAt = isCompleted ? new Date() : null;
+    }
+    if (task !== undefined) updates.task = task;
+    if (description !== undefined) updates.description = description;
+    if (month !== undefined) updates.month = month;
 
     const [item] = await db
       .update(checklistItems)
-      .set({
-        isCompleted,
-        completedAt: isCompleted ? new Date() : null,
-      })
+      .set(updates)
       .where(eq(checklistItems.id, id))
       .returning();
 
@@ -150,7 +156,7 @@ router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
     if (isCompleted) {
       trackEvent(req.userId!, "checklist_item_completed", { taskId: item.id, task: item.task });
     }
-    logActivity(item.profileId, req.userId!, `${isCompleted ? "Completed" : "Unchecked"}: ${item.task}`, "checklist", { taskId: item.id });
+    logActivity(item.profileId, req.userId!, `${isCompleted !== undefined ? (isCompleted ? "Completed" : "Unchecked") : "Edited"}: ${item.task}`, "checklist", { taskId: item.id });
     res.json({
       id: item.id,
       month: item.month,
@@ -160,7 +166,46 @@ router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
       completedAt: item.completedAt?.toISOString() ?? undefined,
     });
   } catch (err) {
-    req.log.error(err, "Failed to toggle checklist item");
+    req.log.error(err, "Failed to update checklist item");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/checklist/items/:id", requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [deleted] = await db.delete(checklistItems).where(eq(checklistItems.id, id)).returning();
+    if (!deleted) return res.status(404).json({ error: "Item not found" });
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "Failed to delete checklist item");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/checklist/items", requireAuth, async (req, res) => {
+  try {
+    const profile = await getProfileByUserId(req.userId!);
+    if (!profile) return res.status(404).json({ error: "Profile not found" });
+
+    const { task, description, month } = req.body;
+    if (!task?.trim() || !month?.trim()) return res.status(400).json({ error: "task and month are required" });
+
+    const [item] = await db
+      .insert(checklistItems)
+      .values({ profileId: profile.id, task: task.trim(), description: description?.trim() ?? "", month: month.trim() })
+      .returning();
+
+    res.json({
+      id: item.id,
+      month: item.month,
+      task: item.task,
+      description: item.description,
+      isCompleted: item.isCompleted,
+      completedAt: item.completedAt?.toISOString() ?? undefined,
+    });
+  } catch (err) {
+    req.log.error(err, "Failed to add checklist item");
     res.status(500).json({ error: "Internal server error" });
   }
 });

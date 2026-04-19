@@ -115,4 +115,32 @@ Return ONLY a valid JSON array (no markdown, no explanation) with this exact str
   }
 });
 
+router.patch("/timeline/:id", requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { events } = req.body;
+    if (!Array.isArray(events)) return res.status(400).json({ error: "events must be an array" });
+
+    const [updated] = await db
+      .update(timelines)
+      .set({ events })
+      .where(eq(timelines.id, id))
+      .returning();
+
+    if (!updated) return res.status(404).json({ error: "Timeline not found" });
+
+    const profile = await getProfileByUserId(req.userId!);
+    if (profile) logActivity(profile.id, req.userId!, `Edited day-of timeline`, "timeline", { eventCount: events.length });
+
+    res.json({
+      id: updated.id,
+      events: updated.events,
+      generatedAt: updated.generatedAt.toISOString(),
+    });
+  } catch (err) {
+    req.log.error(err, "Failed to update timeline");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
