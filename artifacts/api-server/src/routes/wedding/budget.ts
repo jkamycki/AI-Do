@@ -326,14 +326,14 @@ router.post("/budget/items/:id/payments", requireAuth, async (req, res) => {
       })
       .returning();
 
-    // Update the running total on the item
-    const currentPaid = parseFloat((item.amountPaid ?? "0") as string);
-    const newPaid = currentPaid + parseFloat(String(amount));
+    // Recalculate amountPaid from all logs (same as PATCH/DELETE) to stay consistent
+    const allLogs = await db.select().from(budgetPaymentLogs).where(eq(budgetPaymentLogs.budgetItemId, itemId));
+    const newPaid = allLogs.reduce((s, l) => s + parseFloat(l.amount as string), 0);
     const actualCost = parseFloat(item.actualCost as string);
     const fullyPaid = newPaid >= actualCost;
     await db
       .update(budgetItems)
-      .set({ amountPaid: String(newPaid), ...(fullyPaid ? { isPaid: true } : {}) })
+      .set({ amountPaid: String(newPaid), isPaid: fullyPaid })
       .where(eq(budgetItems.id, itemId));
 
     res.json({
