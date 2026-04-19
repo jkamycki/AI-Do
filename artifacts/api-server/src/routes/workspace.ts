@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, weddingProfiles, timelines, budgets, budgetItems, checklistItems } from "@workspace/db";
+import { db, weddingProfiles, timelines, budgets, budgetItems, checklistItems, guests, vendors, hotelBlocks, weddingParty, seatingCharts } from "@workspace/db";
 import { workspaceActivity } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -149,6 +149,85 @@ router.get("/workspace/:profileId/checklist", requireAuth, async (req, res) => {
       })),
       role: result.role,
     });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/workspace/:profileId/guests", requireAuth, async (req, res) => {
+  try {
+    const profileId = parseInt(req.params["profileId"] ?? "0");
+    const result = await getWorkspaceProfile(req.userId!, profileId);
+    if (!result) { res.status(403).json({ error: "Access denied." }); return; }
+
+    const rows = await db.select().from(guests).where(eq(guests.profileId, profileId));
+    const plusOneCount = rows.filter(g => g.plusOne).length;
+    const total = rows.length + plusOneCount;
+    res.json({
+      total,
+      attending: rows.filter(g => g.rsvpStatus === "attending").length + rows.filter(g => g.rsvpStatus === "attending" && g.plusOne).length,
+      declined: rows.filter(g => g.rsvpStatus === "declined").length + rows.filter(g => g.rsvpStatus === "declined" && g.plusOne).length,
+      pending: rows.filter(g => g.rsvpStatus === "pending").length + rows.filter(g => g.rsvpStatus === "pending" && g.plusOne).length,
+      plusOnes: plusOneCount,
+      role: result.role,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/workspace/:profileId/vendors", requireAuth, async (req, res) => {
+  try {
+    const profileId = parseInt(req.params["profileId"] ?? "0");
+    const result = await getWorkspaceProfile(req.userId!, profileId);
+    if (!result) { res.status(403).json({ error: "Access denied." }); return; }
+    if (!hasMinRole(result.role, "planner")) { res.status(403).json({ error: "Insufficient permissions." }); return; }
+
+    const ownerUserId = result.profile.userId;
+    const rows = await db.select().from(vendors).where(eq(vendors.userId, ownerUserId));
+    res.json({ vendors: rows.map(v => ({ id: v.id, name: v.name, category: v.category, booked: v.booked, contractSigned: v.contractSigned })), role: result.role });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/workspace/:profileId/hotels", requireAuth, async (req, res) => {
+  try {
+    const profileId = parseInt(req.params["profileId"] ?? "0");
+    const result = await getWorkspaceProfile(req.userId!, profileId);
+    if (!result) { res.status(403).json({ error: "Access denied." }); return; }
+
+    const ownerUserId = result.profile.userId;
+    const rows = await db.select().from(hotelBlocks).where(eq(hotelBlocks.userId, ownerUserId));
+    res.json({ hotels: rows.map(h => ({ id: h.id, hotelName: h.hotelName, address: h.address, phone: h.phone, bookingLink: h.bookingLink, discountCode: h.discountCode, cutoffDate: h.cutoffDate, roomsReserved: h.roomsReserved, roomsBooked: h.roomsBooked, pricePerNight: h.pricePerNight != null ? Number(h.pricePerNight) : null, distanceFromVenue: h.distanceFromVenue })), role: result.role });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/workspace/:profileId/wedding-party", requireAuth, async (req, res) => {
+  try {
+    const profileId = parseInt(req.params["profileId"] ?? "0");
+    const result = await getWorkspaceProfile(req.userId!, profileId);
+    if (!result) { res.status(403).json({ error: "Access denied." }); return; }
+
+    const ownerUserId = result.profile.userId;
+    const rows = await db.select().from(weddingParty).where(eq(weddingParty.userId, ownerUserId));
+    res.json({ members: rows.map(m => ({ id: m.id, name: m.name, role: m.role, side: m.side, phone: m.phone, email: m.email })), role: result.role });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/workspace/:profileId/seating", requireAuth, async (req, res) => {
+  try {
+    const profileId = parseInt(req.params["profileId"] ?? "0");
+    const result = await getWorkspaceProfile(req.userId!, profileId);
+    if (!result) { res.status(403).json({ error: "Access denied." }); return; }
+
+    const ownerUserId = result.profile.userId;
+    const rows = await db.select().from(seatingCharts).where(eq(seatingCharts.userId, ownerUserId)).orderBy(desc(seatingCharts.createdAt));
+    res.json({ charts: rows.map(c => ({ id: c.id, name: c.name, tableCount: c.tableCount, seatsPerTable: c.seatsPerTable, tables: c.tables, createdAt: c.createdAt.toISOString() })), role: result.role });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }
