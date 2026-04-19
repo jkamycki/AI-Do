@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Save } from "lucide-react";
+import { CalendarIcon, Save, RotateCcw } from "lucide-react";
 
 const profileSchema = z.object({
   partner1Name: z.string().min(1, "Name is required"),
@@ -311,7 +311,33 @@ export default function Profile() {
                 )}
               />
 
-              <div className="flex justify-end pt-4">
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  onClick={() => form.reset({
+                    partner1Name: "",
+                    partner2Name: "",
+                    weddingDate: "",
+                    ceremonyTime: "",
+                    receptionTime: "",
+                    venue: "",
+                    location: "",
+                    venueCity: "",
+                    venueState: "",
+                    guestCount: 0,
+                    totalBudget: 0,
+                    weddingVibe: "",
+                  })}
+                  className="px-6"
+                  data-testid="btn-reset-profile"
+                >
+                  <span className="flex items-center gap-2">
+                    <RotateCcw className="h-4 w-4" />
+                    Reset
+                  </span>
+                </Button>
                 <Button 
                   type="submit" 
                   size="lg" 
