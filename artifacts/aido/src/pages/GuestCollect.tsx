@@ -23,19 +23,6 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-function formatDate(dateStr: string) {
-  if (!dateStr) return "";
-  try {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
-}
 
 export default function GuestCollect() {
   const [, params] = useRoute("/collect/:token");
@@ -129,11 +116,6 @@ export default function GuestCollect() {
                 now have your info and will be in touch!
               </p>
             </div>
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <Heart className="h-3.5 w-3.5 fill-rose-400 text-rose-400" />
-              <span className="text-xs text-muted-foreground font-medium">{formatDate(wedding.weddingDate)}</span>
-              <Heart className="h-3.5 w-3.5 fill-rose-400 text-rose-400" />
-            </div>
           </CardContent>
         </Card>
         <p className="mt-6 text-xs text-muted-foreground">Powered by A.IDO — AI Wedding Planning OS</p>
@@ -173,19 +155,6 @@ export default function GuestCollect() {
                 are collecting addresses for their wedding invitations
               </p>
             </div>
-            {(wedding.weddingDate || wedding.venue) && (
-              <div className="inline-flex flex-col sm:flex-row items-center gap-2 sm:gap-4 bg-white/80 border border-rose-100 rounded-2xl px-5 py-3 shadow-sm">
-                {wedding.weddingDate && (
-                  <span className="text-sm font-medium text-gray-700">{formatDate(wedding.weddingDate)}</span>
-                )}
-                {wedding.weddingDate && wedding.venue && (
-                  <span className="hidden sm:block text-rose-300">•</span>
-                )}
-                {wedding.venue && (
-                  <span className="text-sm text-muted-foreground">{wedding.venue}</span>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Form card */}
