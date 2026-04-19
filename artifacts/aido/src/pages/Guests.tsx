@@ -280,8 +280,11 @@ function GuestCollectorCard() {
   const { data: profile } = useGetProfile();
 
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const collectorUrl = token
+  const formUrl = token
     ? `${window.location.origin}${base}/collect/${token}`
+    : null;
+  const collectorUrl = token
+    ? `${window.location.origin}/api/guest-collect/${token}/preview`
     : null;
 
   const coupleNames = profile
@@ -376,7 +379,7 @@ function GuestCollectorCard() {
                   <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "#a855f7" }}>Contact Info Request</p>
                   <p className="text-sm font-bold text-gray-900 leading-tight truncate" style={{ fontFamily: "Georgia, serif" }}>{coupleNames}</p>
                   <p className="text-xs text-gray-500 mt-0.5">are collecting addresses for their wedding invitations</p>
-                  <p className="text-[10px] text-muted-foreground mt-1 truncate">{collectorUrl}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1 truncate">{formUrl}</p>
                 </div>
               </div>
             </div>

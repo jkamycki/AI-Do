@@ -61,6 +61,57 @@ router.post("/guest-collect/regenerate", requireAuth, async (req, res) => {
   }
 });
 
+router.get("/guest-collect/:token/preview", async (req, res) => {
+  try {
+    const profiles = await db
+      .select()
+      .from(weddingProfiles)
+      .where(eq(weddingProfiles.guestCollectionToken, req.params.token))
+      .limit(1);
+
+    if (!profiles.length) {
+      return res.status(404).send("<h1>Link not found</h1>");
+    }
+
+    const p = profiles[0];
+    const name1 = p.partner1Name ?? "Partner 1";
+    const name2 = p.partner2Name ?? "Partner 2";
+    const title = `${name1} & ${name2} — Contact Info Request`;
+    const description = `${name1} & ${name2} are collecting mailing addresses for their wedding invitations. Tap to share your contact info.`;
+
+    const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() || req.protocol;
+    const host = (req.headers["x-forwarded-host"] as string)?.split(",")[0]?.trim() || req.get("host");
+    const origin = `${proto}://${host}`;
+    const formUrl = `${origin}/collect/${req.params.token}`;
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>${title}</title>
+  <meta name="description" content="${description}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="${origin}/api/guest-collect/${req.params.token}/preview" />
+  <meta property="og:title" content="${title}" />
+  <meta property="og:description" content="${description}" />
+  <meta property="og:site_name" content="A.IDO — AI Wedding Planning OS" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="${title}" />
+  <meta name="twitter:description" content="${description}" />
+  <meta http-equiv="refresh" content="0;url=${formUrl}" />
+</head>
+<body>
+  <script>window.location.replace(${JSON.stringify(formUrl)});</script>
+  <p>Redirecting… <a href="${formUrl}">Click here if you are not redirected</a></p>
+</body>
+</html>`);
+  } catch (err) {
+    req.log.error(err, "Failed to render OG preview");
+    res.status(500).send("Error");
+  }
+});
+
 router.get("/guest-collect/:token", async (req, res) => {
   try {
     const profiles = await db
