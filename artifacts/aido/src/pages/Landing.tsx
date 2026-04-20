@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Sparkles, Calendar, DollarSign, CheckSquare, Mail, FileText, Armchair, Link2, Star, Quote } from "lucide-react";
+import { Sparkles, Calendar, DollarSign, CheckSquare, Mail, FileText, Armchair, Link2, Smartphone, Star, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const features = [
@@ -11,6 +11,7 @@ const features = [
   { icon: Sparkles, title: "Wedding Profile", desc: "Your vision, style, and details — all in one place." },
   { icon: Armchair, title: "AI Seating Chart", desc: "Auto-generate the perfect seating arrangement for your guests." },
   { icon: Link2, title: "Guest Collector", desc: "Share a link so guests submit their own contact info and address." },
+  { icon: Smartphone, title: "Day-Of Mode", desc: "Emergency AI help right when you need it most." },
 ];
 
 const testimonials = [
@@ -141,7 +142,7 @@ export default function Landing() {
         <section className="w-full max-w-5xl px-6 pb-20">
           <div className="text-center mb-12">
             <h2 className="font-serif text-3xl text-primary mb-3">Everything you need</h2>
-            <p className="text-muted-foreground text-lg">Eight AI-powered tools designed for your wedding journey.</p>
+            <p className="text-muted-foreground text-lg">Nine AI-powered tools designed for your wedding journey.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map(({ icon: Icon, title, desc }) => (
