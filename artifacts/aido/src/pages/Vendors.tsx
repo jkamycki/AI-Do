@@ -710,13 +710,21 @@ function VendorDetailDialog({
                 </div>
               </div>
 
-              {totalScheduled > 0 && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Paid so far</span>
-                    <span className="font-medium">{formatCurrency(paidAmount)} of {formatCurrency(totalScheduled)}</span>
+              {totalForProgress > 0 && (
+                <div className={`space-y-2 rounded-xl p-3 transition-colors ${paidAmount >= totalForProgress ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50" : "bg-muted/20"}`}>
+                  <div className="flex justify-between text-sm items-center">
+                    <span className={`font-medium ${paidAmount >= totalForProgress ? "text-green-700 dark:text-green-300" : "text-muted-foreground"}`}>
+                      {paidAmount >= totalForProgress ? "Fully Paid!" : "Paid so far"}
+                    </span>
+                    <span className={`font-bold tabular-nums ${paidAmount >= totalForProgress ? "text-green-700 dark:text-green-300" : "text-foreground"}`}>
+                      {formatCurrency(paidAmount)}
+                      <span className="font-normal text-muted-foreground"> of {formatCurrency(totalForProgress)}</span>
+                    </span>
                   </div>
-                  <Progress value={totalScheduled > 0 ? (paidAmount / totalScheduled) * 100 : 0} className="h-2" />
+                  <Progress
+                    value={Math.min((paidAmount / totalForProgress) * 100, 100)}
+                    className={`h-2 ${paidAmount >= totalForProgress ? "[&>div]:bg-green-500" : ""}`}
+                  />
                 </div>
               )}
 
