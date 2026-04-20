@@ -981,6 +981,9 @@ export default function Budget() {
           <Card className="border-none shadow-md overflow-hidden">
             <CardHeader className="bg-muted/30 border-b pb-4">
               <CardTitle className="font-serif text-xl">Expenses</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Payments recorded in your <a href="/vendors" className="text-primary hover:underline font-medium">Vendor List</a> — deposits and milestone payments — appear here automatically as read-only rows. No need to enter them twice.
+              </p>
             </CardHeader>
             <CardContent className="p-0">
               {budget && (budget.items.length > 0 || (vendorFinancials?.vendors ?? []).length > 0) ? (
