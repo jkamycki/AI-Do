@@ -86,11 +86,11 @@ const guestSchema = z.object({
   plusOneFirstName: z.string().optional(),
   plusOneLastName: z.string().optional(),
   tableAssignment: z.string().optional(),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  guestCity: z.string().optional(),
-  guestState: z.string().optional(),
-  guestZip: z.string().optional(),
+  phone: z.string().min(1, "Phone is required"),
+  address: z.string().min(1, "Address is required"),
+  guestCity: z.string().min(1, "City is required"),
+  guestState: z.string().min(1, "State is required"),
+  guestZip: z.string().min(1, "ZIP code is required"),
   notes: z.string().optional(),
 });
 
@@ -262,35 +262,35 @@ function GuestForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField control={form.control} name="phone" render={({ field }) => (
             <FormItem>
-              <FormLabel>Phone (optional)</FormLabel>
+              <FormLabel>Phone *</FormLabel>
               <FormControl><Input type="tel" placeholder="(555) 000-0000" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="address" render={({ field }) => (
             <FormItem>
-              <FormLabel>Street Address (optional)</FormLabel>
+              <FormLabel>Street Address *</FormLabel>
               <FormControl><Input placeholder="123 Main St" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="guestCity" render={({ field }) => (
             <FormItem>
-              <FormLabel>City (optional)</FormLabel>
+              <FormLabel>City *</FormLabel>
               <FormControl><Input placeholder="Boston" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="guestState" render={({ field }) => (
             <FormItem>
-              <FormLabel>State (optional)</FormLabel>
+              <FormLabel>State *</FormLabel>
               <FormControl><Input placeholder="MA" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="guestZip" render={({ field }) => (
             <FormItem>
-              <FormLabel>ZIP Code (optional)</FormLabel>
+              <FormLabel>ZIP Code *</FormLabel>
               <FormControl><Input placeholder="02101" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
