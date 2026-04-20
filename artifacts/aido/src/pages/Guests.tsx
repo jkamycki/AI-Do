@@ -25,7 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail } from "lucide-react";
+import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, Phone, MapPin } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
 
@@ -873,10 +873,32 @@ export default function Guests() {
                     const grpColor = g.guestGroup ? (GROUP_COLORS[g.guestGroup] ?? "bg-gray-100 text-gray-700 border-gray-200") : "";
                     return (
                       <TableRow key={g.id} className="group">
-                        <TableCell>
+                        <TableCell className="min-w-[200px]">
                           <div className="font-medium">{g.name}</div>
-                          {g.notes && <div className="text-xs text-muted-foreground italic truncate max-w-[160px]" title={g.notes}>{g.notes}</div>}
-                          <div className="sm:hidden text-xs text-muted-foreground">{g.email}</div>
+                          {g.email && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                              <Mail className="h-3 w-3 shrink-0" />
+                              <span className="truncate max-w-[180px]">{g.email}</span>
+                            </div>
+                          )}
+                          {(g as any).phone && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Phone className="h-3 w-3 shrink-0" />
+                              <span>{(g as any).phone}</span>
+                            </div>
+                          )}
+                          {(g as any).address && (
+                            <div className="flex items-start gap-1 text-xs text-muted-foreground">
+                              <MapPin className="h-3 w-3 shrink-0 mt-0.5" />
+                              <span className="leading-snug">
+                                {(g as any).address}
+                                {((g as any).guestCity || (g as any).guestState || (g as any).guestZip) && (
+                                  <><br />{[(g as any).guestCity, (g as any).guestState, (g as any).guestZip].filter(Boolean).join(", ")}</>
+                                )}
+                              </span>
+                            </div>
+                          )}
+                          {g.notes && <div className="text-xs text-muted-foreground italic truncate max-w-[180px] mt-0.5" title={g.notes}>{g.notes}</div>}
                           {grpLabel && (
                             <span className={`sm:hidden inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium border ${grpColor}`}>
                               {grpLabel}
