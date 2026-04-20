@@ -135,7 +135,6 @@ type VendorFormData = {
   totalCost: string;
   depositAmount: string;
   contractSigned: boolean;
-  nextPaymentDue: string;
 };
 
 const defaultFormData: VendorFormData = {
@@ -149,7 +148,6 @@ const defaultFormData: VendorFormData = {
   totalCost: "",
   depositAmount: "",
   contractSigned: false,
-  nextPaymentDue: "",
 };
 
 function AddEditVendorDialog({
@@ -176,7 +174,6 @@ function AddEditVendorDialog({
           totalCost: vendor.totalCost > 0 ? String(vendor.totalCost) : "",
           depositAmount: vendor.depositAmount > 0 ? String(vendor.depositAmount) : "",
           contractSigned: vendor.contractSigned,
-          nextPaymentDue: vendor.nextPaymentDue ?? "",
         }
       : defaultFormData
   );
@@ -223,7 +220,6 @@ function AddEditVendorDialog({
       totalCost: form.totalCost ? Number(form.totalCost) : 0,
       depositAmount: form.depositAmount ? Number(form.depositAmount) : 0,
       contractSigned: form.contractSigned,
-      nextPaymentDue: form.nextPaymentDue || null,
     };
     if (vendor) {
       updateMutation.mutate({ id: vendor.id, data: payload });
@@ -331,22 +327,6 @@ function AddEditVendorDialog({
                 rows={3}
               />
             </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label className="flex items-center gap-1.5">
-                <Bell className="h-3.5 w-3.5 text-primary" />
-                Next Payment Due Date
-                <span className="font-normal text-muted-foreground text-xs">(optional)</span>
-              </Label>
-              <Input
-                type="date"
-                value={form.nextPaymentDue}
-                onChange={(e) => setForm({ ...form, nextPaymentDue: e.target.value })}
-                className="font-sans [color-scheme:light] dark:[color-scheme:dark]"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Set a reminder — a badge will appear on this vendor card when payment is approaching or overdue.
-              </p>
-            </div>
             <div className="flex items-center gap-2 sm:col-span-2">
               <Checkbox
                 id="contractSigned"
@@ -383,6 +363,7 @@ function PaymentRow({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
+        qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
       },
       onError: () => toast({ title: "Failed to update payment", variant: "destructive" }),
     },
@@ -390,33 +371,45 @@ function PaymentRow({
 
   const days = daysUntil(payment.dueDate);
   const isOverdue = !payment.isPaid && days < 0;
-  const isDueSoon = !payment.isPaid && days >= 0 && days <= 14;
 
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-      payment.isPaid ? "bg-muted/30 border-border/40" : isOverdue ? "bg-red-50 border-red-200" : isDueSoon ? "bg-amber-50 border-amber-200" : "bg-card border-border/60"
+    <div className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+      payment.isPaid
+        ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/50"
+        : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/50"
     }`}>
       <button
         className="flex-shrink-0"
+        title={payment.isPaid ? "Mark as unpaid" : "Mark as paid"}
         onClick={() => toggleMutation.mutate({ id: vendorId, paymentId: payment.id, data: { isPaid: !payment.isPaid } })}
         disabled={toggleMutation.isPending}
       >
-        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-          payment.isPaid ? "bg-green-500 border-green-500" : "border-muted-foreground/40 hover:border-primary"
+        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+          payment.isPaid
+            ? "bg-green-500 border-green-500"
+            : "border-red-400 dark:border-red-500 bg-white dark:bg-transparent hover:bg-red-100 dark:hover:bg-red-900/30"
         }`}>
-          {payment.isPaid && <CheckCircle2 className="h-3 w-3 text-white" />}
+          {payment.isPaid && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
         </div>
       </button>
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium ${payment.isPaid ? "line-through text-muted-foreground" : ""}`}>
+        <p className={`text-sm font-medium ${payment.isPaid ? "text-green-800 dark:text-green-300" : "text-red-800 dark:text-red-300"}`}>
           {payment.label}
         </p>
-        <p className="text-xs text-muted-foreground">
-          {payment.isPaid ? "Paid" : isOverdue ? `${Math.abs(days)} days overdue` : isDueSoon ? `Due in ${days} days` : `Due ${formatDate(payment.dueDate)}`}
+        <p className={`text-xs ${payment.isPaid ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+          {payment.isPaid
+            ? `Paid${payment.paidAt ? " · " + formatDate(payment.paidAt.slice(0, 10)) : ""}`
+            : isOverdue
+              ? `${Math.abs(days)} day${Math.abs(days) !== 1 ? "s" : ""} overdue`
+              : days === 0
+                ? "Due today"
+                : `Due ${formatDate(payment.dueDate)}`}
         </p>
       </div>
-      <div className="text-sm font-semibold text-right shrink-0">{formatCurrency(payment.amount)}</div>
-      <button onClick={onDelete} className="text-muted-foreground hover:text-destructive transition-colors">
+      <div className={`text-sm font-bold text-right shrink-0 ${payment.isPaid ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"}`}>
+        {formatCurrency(payment.amount)}
+      </div>
+      <button onClick={onDelete} className="text-muted-foreground hover:text-destructive transition-colors ml-1">
         <X className="h-4 w-4" />
       </button>
     </div>
@@ -435,11 +428,13 @@ function AddPaymentForm({
   const [label, setLabel] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [isPaid, setIsPaid] = useState(false);
 
   const mutation = useCreateVendorPayment({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
+        qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         toast({ title: "Payment added" });
         onDone();
       },
@@ -453,35 +448,71 @@ function AddPaymentForm({
       toast({ title: "All payment fields are required", variant: "destructive" });
       return;
     }
-    mutation.mutate({ id: vendorId, data: { label, amount: Number(amount), dueDate } });
+    mutation.mutate({ id: vendorId, data: { label, amount: Number(amount), dueDate, isPaid } });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-muted/30 rounded-lg p-3 space-y-3 border">
-      <p className="text-sm font-medium">Add Payment Milestone</p>
-      <div className="grid grid-cols-2 gap-2">
-        <Input
-          placeholder="e.g. Deposit"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          className="col-span-2"
-        />
-        <Input
-          type="number"
-          placeholder="Amount $"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          min="0"
-          step="0.01"
-        />
-        <Input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-        />
+    <form onSubmit={handleSubmit} className="rounded-xl p-4 space-y-4 border bg-muted/20">
+      <p className="text-sm font-semibold">Add Payment</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1.5">
+          <Label className="text-xs">Payment Label</Label>
+          <Input
+            placeholder="e.g. Deposit, Final Payment…"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Amount ($)</Label>
+          <Input
+            type="number"
+            placeholder="0.00"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            min="0"
+            step="0.01"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Due Date</Label>
+          <Input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="[color-scheme:light] dark:[color-scheme:dark]"
+          />
+        </div>
+        <div className="col-span-2">
+          <Label className="text-xs mb-2 block">Payment Status</Label>
+          <div className="flex rounded-lg overflow-hidden border">
+            <button
+              type="button"
+              onClick={() => setIsPaid(false)}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                !isPaid
+                  ? "bg-red-500 text-white"
+                  : "bg-background text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              Not Paid
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsPaid(true)}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                isPaid
+                  ? "bg-green-500 text-white"
+                  : "bg-background text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              Paid
+            </button>
+          </div>
+        </div>
       </div>
-      <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={mutation.isPending}>
+      <div className="flex gap-2 pt-1">
+        <Button type="submit" size="sm" disabled={mutation.isPending} className="flex-1">
           {mutation.isPending ? "Adding..." : "Add Payment"}
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={onDone}>Cancel</Button>
@@ -597,6 +628,7 @@ function VendorDetailDialog({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
+        qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         setDeletingPaymentId(null);
         toast({ title: "Payment removed" });
       },

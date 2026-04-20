@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, vendors, vendorPayments } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
@@ -21,6 +21,16 @@ function formatPayment(p: typeof vendorPayments.$inferSelect) {
     paidAt: p.paidAt ? p.paidAt.toISOString() : null,
     createdAt: p.createdAt.toISOString(),
   };
+}
+
+async function syncNextPaymentDue(vendorId: number) {
+  const unpaid = await db
+    .select({ dueDate: vendorPayments.dueDate })
+    .from(vendorPayments)
+    .where(and(eq(vendorPayments.vendorId, vendorId), eq(vendorPayments.isPaid, false)))
+    .orderBy(asc(vendorPayments.dueDate));
+  const nextDate = unpaid.length > 0 ? unpaid[0].dueDate : null;
+  await db.update(vendors).set({ nextPaymentDue: nextDate }).where(eq(vendors.id, vendorId));
 }
 
 router.get("/vendors", requireAuth, async (req, res) => {
@@ -161,6 +171,7 @@ router.post("/vendors/:id/payments", requireAuth, async (req, res) => {
       dueDate,
       isPaid: isPaid ?? false,
     }).returning();
+    await syncNextPaymentDue(vendorId);
     res.status(201).json(formatPayment(payment));
   } catch (err) {
     req.log.error(err, "Failed to create vendor payment");
@@ -170,6 +181,7 @@ router.post("/vendors/:id/payments", requireAuth, async (req, res) => {
 
 router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => {
   try {
+    const vendorId = parseInt(req.params.id, 10);
     const paymentId = parseInt(req.params.paymentId, 10);
     const { label, amount, dueDate, isPaid } = req.body;
     const updates: Partial<typeof vendorPayments.$inferInsert> = {};
@@ -188,6 +200,7 @@ router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => 
     if (!updated) {
       return res.status(404).json({ error: "Payment not found" });
     }
+    await syncNextPaymentDue(vendorId);
     res.json(formatPayment(updated));
   } catch (err) {
     req.log.error(err, "Failed to update vendor payment");
@@ -197,6 +210,7 @@ router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => 
 
 router.delete("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => {
   try {
+    const vendorId = parseInt(req.params.id, 10);
     const paymentId = parseInt(req.params.paymentId, 10);
     const [deleted] = await db
       .delete(vendorPayments)
@@ -205,6 +219,7 @@ router.delete("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) 
     if (!deleted) {
       return res.status(404).json({ error: "Payment not found" });
     }
+    await syncNextPaymentDue(vendorId);
     res.json({ success: true });
   } catch (err) {
     req.log.error(err, "Failed to delete vendor payment");
