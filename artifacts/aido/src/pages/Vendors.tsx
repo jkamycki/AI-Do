@@ -777,6 +777,32 @@ function VendorDetailDialog({
               {vendor.payments.length === 0 && !showAddPayment && (
                 <p className="text-sm text-muted-foreground text-center py-4">No payments scheduled yet. Add your deposit and final payment milestones.</p>
               )}
+
+              {vendor.payments.length > 0 && (
+                <div className="rounded-xl border bg-muted/20 p-4 space-y-2.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground font-medium">Total Paid</span>
+                    <span className={`font-bold tabular-nums ${paidAmount >= totalScheduled && totalScheduled > 0 ? "text-green-600 dark:text-green-400" : "text-foreground"}`}>
+                      {formatCurrency(paidAmount)}
+                      <span className="font-normal text-muted-foreground"> / {formatCurrency(totalScheduled)}</span>
+                    </span>
+                  </div>
+                  <Progress
+                    value={totalScheduled > 0 ? (paidAmount / totalScheduled) * 100 : 0}
+                    className="h-2.5"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{vendor.payments.filter(p => p.isPaid).length} of {vendor.payments.length} payment{vendor.payments.length !== 1 ? "s" : ""} paid</span>
+                    {totalScheduled > 0 && paidAmount < totalScheduled && (
+                      <span>{formatCurrency(totalScheduled - paidAmount)} remaining</span>
+                    )}
+                    {paidAmount >= totalScheduled && totalScheduled > 0 && (
+                      <span className="text-green-600 dark:text-green-400 font-medium">All paid!</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 {vendor.payments.map((payment) => (
                   <PaymentRow
