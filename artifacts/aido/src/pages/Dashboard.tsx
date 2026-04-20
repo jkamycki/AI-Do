@@ -637,24 +637,24 @@ export default function Dashboard() {
 
       {/* Upcoming tasks alert */}
       {summary.upcomingTasks && summary.upcomingTasks.length > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
+        <div className="rounded-2xl border border-amber-200 dark:border-amber-700/50 bg-amber-50/60 dark:bg-amber-900/20 p-5">
           <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
-            <span className="text-sm font-semibold text-amber-800 uppercase tracking-wider">Needs Attention</span>
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+            <span className="text-sm font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Needs Attention</span>
           </div>
           <div className="space-y-2">
             {summary.upcomingTasks.map(task => (
               <div key={task.id} className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0 mt-2" />
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400 flex-shrink-0 mt-2" />
                 <div>
-                  <span className="text-sm text-amber-900 font-medium">{task.task}</span>
-                  <span className="text-xs text-amber-600 ml-2">{task.month}</span>
+                  <span className="text-sm text-amber-900 dark:text-amber-200 font-medium">{task.task}</span>
+                  <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">{task.month}</span>
                 </div>
               </div>
             ))}
           </div>
           <Link href="/checklist" className="mt-3 inline-block">
-            <Button variant="outline" size="sm" className="border-amber-300 text-amber-800 hover:bg-amber-100 mt-2">
+            <Button variant="outline" size="sm" className="border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 mt-2">
               View Checklist <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
             </Button>
           </Link>
