@@ -363,9 +363,9 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2 text-sm">
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                     summary.daysUntilWedding === 0
-                      ? "bg-emerald-100 text-emerald-700"
+                      ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
                       : summary.daysUntilWedding <= 30
-                      ? "bg-amber-100 text-amber-700"
+                      ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
                       : "bg-primary/10 text-primary"
                   }`}>
                     {summary.daysUntilWedding === 0 ? "Today!" : `${summary.daysUntilWedding} days to go`}
@@ -506,15 +506,15 @@ export default function Dashboard() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /><span className="text-xs text-muted-foreground">Attending</span></div>
-                  <span className="text-sm font-semibold text-emerald-600">{(summary as any).guestRsvpSummary?.attending ?? 0}</span>
+                  <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{(summary as any).guestRsvpSummary?.attending ?? 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" /><span className="text-xs text-muted-foreground">Declined</span></div>
-                  <span className="text-sm font-semibold text-red-500">{(summary as any).guestRsvpSummary?.declined ?? 0}</span>
+                  <span className="text-sm font-semibold text-red-500 dark:text-red-400">{(summary as any).guestRsvpSummary?.declined ?? 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /><span className="text-xs text-muted-foreground">Awaiting</span></div>
-                  <span className="text-sm font-semibold text-amber-600">{(summary as any).guestRsvpSummary?.pending ?? 0}</span>
+                  <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{(summary as any).guestRsvpSummary?.pending ?? 0}</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-muted overflow-hidden flex mt-1">
                   {((summary as any).guestRsvpSummary?.attending ?? 0) > 0 && (
@@ -545,7 +545,7 @@ export default function Dashboard() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-2xl font-serif font-semibold text-foreground">{vendors.length}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-medium">
                     {vendors.filter(v => v.booked).length} booked
                   </span>
                 </div>
