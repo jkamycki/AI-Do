@@ -86,11 +86,11 @@ const guestSchema = z.object({
   plusOneFirstName: z.string().optional(),
   plusOneLastName: z.string().optional(),
   tableAssignment: z.string().optional(),
-  phone: z.string().min(1, "Phone is required"),
-  address: z.string().min(1, "Address is required"),
-  guestCity: z.string().min(1, "City is required"),
-  guestState: z.string().min(1, "State is required"),
-  guestZip: z.string().min(1, "ZIP code is required"),
+  phone: z.string().optional().default(""),
+  address: z.string().optional().default(""),
+  guestCity: z.string().optional().default(""),
+  guestState: z.string().optional().default(""),
+  guestZip: z.string().optional().default(""),
   notes: z.string().optional(),
 });
 
@@ -262,35 +262,35 @@ function GuestForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField control={form.control} name="phone" render={({ field }) => (
             <FormItem>
-              <FormLabel>Phone *</FormLabel>
+              <FormLabel>Phone</FormLabel>
               <FormControl><Input type="tel" placeholder="(555) 000-0000" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="address" render={({ field }) => (
             <FormItem>
-              <FormLabel>Street Address *</FormLabel>
+              <FormLabel>Street Address</FormLabel>
               <FormControl><Input placeholder="123 Main St" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="guestCity" render={({ field }) => (
             <FormItem>
-              <FormLabel>City *</FormLabel>
+              <FormLabel>City</FormLabel>
               <FormControl><Input placeholder="Boston" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="guestState" render={({ field }) => (
             <FormItem>
-              <FormLabel>State *</FormLabel>
+              <FormLabel>State</FormLabel>
               <FormControl><Input placeholder="MA" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="guestZip" render={({ field }) => (
             <FormItem>
-              <FormLabel>ZIP Code *</FormLabel>
+              <FormLabel>ZIP Code</FormLabel>
               <FormControl><Input placeholder="02101" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
@@ -623,17 +623,27 @@ export default function Guests() {
   function handleEdit(data: GuestFormValues) {
     if (!editGuest) return;
     const plusOneName = data.plusOne
-      ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()].filter(Boolean).join(" ") || undefined
-      : undefined;
+      ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()].filter(Boolean).join(" ") || null
+      : null;
     updateGuest.mutate({
       id: editGuest.id,
       data: {
-        ...data,
-        plusOneName,
-        email: data.email || undefined,
-        mealChoice: data.mealChoice === "none" ? undefined : data.mealChoice || undefined,
-        guestGroup: data.guestGroup === "none" ? undefined : data.guestGroup || undefined,
-      }
+        name: data.name,
+        email: data.email || null,
+        invitationStatus: data.invitationStatus,
+        rsvpStatus: data.rsvpStatus,
+        plusOne: data.plusOne,
+        plusOneName: plusOneName ?? undefined,
+        mealChoice: (data.mealChoice === "none" || !data.mealChoice) ? null : data.mealChoice,
+        guestGroup: (data.guestGroup === "none" || !data.guestGroup) ? null : data.guestGroup,
+        tableAssignment: data.tableAssignment || null,
+        notes: data.notes || null,
+        phone: data.phone || null,
+        address: data.address || null,
+        guestCity: data.guestCity || null,
+        guestState: data.guestState || null,
+        guestZip: data.guestZip || null,
+      } as Parameters<typeof updateGuest.mutate>[0]["data"]
     }, {
       onSuccess: () => {
         toast({ title: "Guest updated" });

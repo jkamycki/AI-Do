@@ -1,5 +1,5 @@
 import { useState, useId } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
   Users, Plus, Trash2, Wand2, Heart, AlertTriangle, UserPlus,
-  ChevronDown, ChevronUp, Download, RefreshCw, Info, Armchair,
+  ChevronDown, ChevronUp, RefreshCw, Info, Armchair, Save,
+  Clock, ChevronRight,
 } from "lucide-react";
 
 type RelType = "prefer" | "avoid";
@@ -41,18 +42,29 @@ interface SeatingResult {
   totalSeated: number;
 }
 
+interface SavedChart {
+  id: number;
+  name: string;
+  tableCount: number;
+  seatsPerTable: number;
+  tables?: SeatingTable[] | null;
+  guests?: Guest[] | null;
+  createdAt: string;
+}
+
 const GROUPS = ["Bride's Family", "Groom's Family", "Bride's Friends", "Groom's Friends", "Colleagues", "Other"];
+
 const TABLE_COLORS = [
-  "bg-rose-50 border-rose-200",
-  "bg-violet-50 border-violet-200",
-  "bg-sky-50 border-sky-200",
-  "bg-emerald-50 border-emerald-200",
-  "bg-amber-50 border-amber-200",
-  "bg-pink-50 border-pink-200",
-  "bg-indigo-50 border-indigo-200",
-  "bg-teal-50 border-teal-200",
-  "bg-orange-50 border-orange-200",
-  "bg-cyan-50 border-cyan-200",
+  "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/50 text-rose-900 dark:text-rose-100",
+  "bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800/50 text-violet-900 dark:text-violet-100",
+  "bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800/50 text-sky-900 dark:text-sky-100",
+  "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-100",
+  "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50 text-amber-900 dark:text-amber-100",
+  "bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800/50 text-pink-900 dark:text-pink-100",
+  "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800/50 text-indigo-900 dark:text-indigo-100",
+  "bg-teal-50 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800/50 text-teal-900 dark:text-teal-100",
+  "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800/50 text-orange-900 dark:text-orange-100",
+  "bg-cyan-50 dark:bg-cyan-950/30 border-cyan-200 dark:border-cyan-800/50 text-cyan-900 dark:text-cyan-100",
 ];
 
 function GuestCard({
@@ -102,9 +114,9 @@ function GuestCard({
             </select>
             {(preferCount > 0 || avoidCount > 0) && (
               <span className="text-xs text-muted-foreground">
-                {preferCount > 0 && <span className="text-emerald-600">♥ {preferCount}</span>}
+                {preferCount > 0 && <span className="text-emerald-600 dark:text-emerald-400">♥ {preferCount}</span>}
                 {preferCount > 0 && avoidCount > 0 && " · "}
-                {avoidCount > 0 && <span className="text-red-500">⚡ {avoidCount}</span>}
+                {avoidCount > 0 && <span className="text-red-500 dark:text-red-400">⚡ {avoidCount}</span>}
               </span>
             )}
           </div>
@@ -148,14 +160,14 @@ function GuestCard({
                       <button
                         onClick={() => toggleRelation(other.id, "prefer")}
                         title="Seat together"
-                        className={`px-1.5 py-0.5 text-xs transition-colors ${rel?.type === "prefer" ? "bg-emerald-100 text-emerald-700" : "hover:bg-emerald-50 text-muted-foreground"}`}
+                        className={`px-1.5 py-0.5 text-xs transition-colors ${rel?.type === "prefer" ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300" : "hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-muted-foreground"}`}
                       >
                         ♥
                       </button>
                       <button
                         onClick={() => toggleRelation(other.id, "avoid")}
                         title="Keep apart"
-                        className={`px-1.5 py-0.5 text-xs transition-colors ${rel?.type === "avoid" ? "bg-red-100 text-red-700" : "hover:bg-red-50 text-muted-foreground"}`}
+                        className={`px-1.5 py-0.5 text-xs transition-colors ${rel?.type === "avoid" ? "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300" : "hover:bg-red-50 dark:hover:bg-red-900/30 text-muted-foreground"}`}
                       >
                         ⚡
                       </button>
@@ -174,11 +186,11 @@ function GuestCard({
 function TableCard({ table, index }: { table: SeatingTable; index: number }) {
   const colorClass = TABLE_COLORS[index % TABLE_COLORS.length];
   return (
-    <Card className={`border ${colorClass} shadow-sm`}>
+    <Card className={`border ${colorClass.split(" ").filter(c => c.startsWith("bg-") || c.startsWith("border-")).join(" ")} shadow-sm`}>
       <CardHeader className="pb-2 pt-4 px-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-bold font-serif">{table.tableName}</CardTitle>
-          <Badge variant="outline" className="text-xs border-current">
+          <CardTitle className="text-sm font-bold font-serif text-foreground">{table.tableName}</CardTitle>
+          <Badge variant="outline" className="text-xs border-current text-muted-foreground">
             <Armchair className="h-3 w-3 mr-1" />
             {table.guests.length} guests
           </Badge>
@@ -190,8 +202,8 @@ function TableCard({ table, index }: { table: SeatingTable; index: number }) {
       <CardContent className="px-4 pb-4 pt-0">
         <ul className="space-y-1">
           {table.guests.map((g, i) => (
-            <li key={i} className="flex items-center gap-2 text-sm">
-              <div className="w-5 h-5 rounded-full bg-current/15 text-[10px] flex items-center justify-center font-bold flex-shrink-0">
+            <li key={i} className="flex items-center gap-2 text-sm text-foreground">
+              <div className="w-5 h-5 rounded-full bg-primary/15 text-primary text-[10px] flex items-center justify-center font-bold flex-shrink-0">
                 {i + 1}
               </div>
               {g}
@@ -206,6 +218,7 @@ function TableCard({ table, index }: { table: SeatingTable; index: number }) {
 export default function SeatingChartPage() {
   const { getToken } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const uid = useId();
   const [guests, setGuests] = useState<Guest[]>([
     { id: `${uid}-0`, name: "", group: "Bride's Family", plusOne: false, notes: "", relations: [] },
@@ -215,6 +228,7 @@ export default function SeatingChartPage() {
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [result, setResult] = useState<SeatingResult | null>(null);
   const [showGuests, setShowGuests] = useState(true);
+  const [showSaved, setShowSaved] = useState(false);
 
   const addGuest = () => {
     setGuests(prev => [
@@ -246,6 +260,48 @@ export default function SeatingChartPage() {
       },
     });
   };
+
+  const { data: savedCharts = [], isLoading: chartsLoading } = useQuery<SavedChart[]>({
+    queryKey: ["seating-charts"],
+    queryFn: async () => {
+      const r = await authedFetch("/api/seating/charts");
+      if (!r.ok) return [];
+      return r.json();
+    },
+  });
+
+  const saveChartMutation = useMutation({
+    mutationFn: async (chartResult: SeatingResult) => {
+      const name = `Seating Chart ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+      const filledGuests = guests.filter(g => g.name.trim());
+      const r = await authedFetch("/api/seating/charts", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          guests: filledGuests,
+          tables: chartResult.tables,
+          tableCount,
+          seatsPerTable,
+        }),
+      });
+      if (!r.ok) throw new Error("Save failed");
+      return r.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
+    },
+  });
+
+  const deleteChartMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const r = await authedFetch(`/api/seating/charts/${id}`, { method: "DELETE" });
+      if (!r.ok) throw new Error("Delete failed");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
+      toast({ title: "Chart deleted" });
+    },
+  });
 
   const generateMutation = useMutation({
     mutationFn: async () => {
@@ -280,11 +336,30 @@ export default function SeatingChartPage() {
       setResult(data);
       setShowGuests(false);
       toast({ title: "Seating chart ready!", description: `${data.totalSeated} guests assigned across ${data.tables.length} tables.` });
+      saveChartMutation.mutate(data);
     },
     onError: (err: Error) => {
       toast({ title: "Generation failed", description: err.message, variant: "destructive" });
     },
   });
+
+  const loadChart = (chart: SavedChart) => {
+    if (chart.tables) {
+      setResult({
+        tables: chart.tables,
+        insights: [],
+        warnings: [],
+        totalSeated: chart.tables.reduce((sum, t) => sum + t.guests.length, 0),
+      });
+      setShowGuests(false);
+      setShowSaved(false);
+    }
+    if (chart.guests && Array.isArray(chart.guests)) {
+      setGuests(chart.guests as Guest[]);
+      setTableCount(chart.tableCount);
+      setSeatsPerTable(chart.seatsPerTable);
+    }
+  };
 
   const filledCount = guests.filter(g => g.name.trim()).length;
   const totalCapacity = tableCount * seatsPerTable;
@@ -300,6 +375,52 @@ export default function SeatingChartPage() {
           Add your guests, flag any tricky dynamics, and let AI arrange everyone harmoniously.
         </p>
       </div>
+
+      {/* Saved charts */}
+      {savedCharts.length > 0 && (
+        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+          <button
+            onClick={() => setShowSaved(!showSaved)}
+            className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Clock className="h-4 w-4 text-primary" />
+              Saved Charts ({savedCharts.length})
+            </div>
+            <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${showSaved ? "rotate-90" : ""}`} />
+          </button>
+          {showSaved && (
+            <div className="border-t border-border/50 divide-y divide-border/40">
+              {chartsLoading ? (
+                <p className="text-sm text-muted-foreground px-5 py-4">Loading…</p>
+              ) : savedCharts.map(chart => {
+                const seated = chart.tables?.reduce((s, t) => s + t.guests.length, 0) ?? 0;
+                const tables = chart.tables?.length ?? 0;
+                return (
+                  <div key={chart.id} className="flex items-center gap-3 px-5 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{chart.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {tables > 0 ? `${tables} tables · ${seated} guests` : "No layout yet"}
+                        {" · "}{new Date(chart.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => loadChart(chart)} className="text-xs h-7 px-3">
+                      Load
+                    </Button>
+                    <button
+                      onClick={() => deleteChartMutation.mutate(chart.id)}
+                      className="text-muted-foreground hover:text-destructive p-1"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid md:grid-cols-3 gap-4">
         <Card className="border-none shadow-sm">
@@ -429,6 +550,19 @@ export default function SeatingChartPage() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => {
+                  saveChartMutation.mutate(result);
+                  toast({ title: "Saved!", description: "This chart has been saved to your collection." });
+                }}
+                disabled={saveChartMutation.isPending}
+                className="gap-1"
+              >
+                <Save className="h-3.5 w-3.5" />
+                Save Copy
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => generateMutation.mutate()}
                 disabled={generateMutation.isPending}
                 className="gap-1"
@@ -440,7 +574,7 @@ export default function SeatingChartPage() {
           </div>
 
           {result.warnings?.length > 0 && (
-            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800">
+            <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-amber-800 dark:text-amber-200">
               <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="font-medium text-sm">Potential Conflicts</p>
@@ -476,6 +610,12 @@ export default function SeatingChartPage() {
             <span>{result.tables.length} tables</span>
             <span>·</span>
             <span>Generated by A.IDO AI</span>
+            {saveChartMutation.isSuccess && (
+              <>
+                <span>·</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">Auto-saved ✓</span>
+              </>
+            )}
           </div>
         </div>
       )}

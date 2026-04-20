@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History, Bell, AlertTriangle, Clock, RotateCcw, Pencil, X, Check } from "lucide-react";
+import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History, AlertTriangle, Clock, RotateCcw, Pencil, X, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const itemSchema = z.object({
@@ -644,22 +644,6 @@ export default function Budget() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={editForm.control}
-                name="nextPaymentDue"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-1.5">
-                      <Bell className="h-3.5 w-3.5 text-primary" /> Next Payment Due Date <span className="font-normal text-muted-foreground">(optional)</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <p className="text-[11px] text-muted-foreground">Set a reminder for your next deposit or final payment.</p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <div className="flex gap-3 mt-4">
                 <Button type="button" variant="outline" className="flex-1" onClick={() => editForm.reset()}>
                   <RotateCcw className="h-4 w-4 mr-2" /> Reset
@@ -812,22 +796,6 @@ export default function Budget() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="nextPaymentDue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-1.5">
-                        <Bell className="h-3.5 w-3.5 text-primary" /> Next Payment Due Date <span className="font-normal text-muted-foreground">(optional)</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <p className="text-[11px] text-muted-foreground">Leave blank to skip — set one to get a reminder as this date approaches.</p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <div className="flex gap-3 mt-4">
                   <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset()}>
                     <RotateCcw className="h-4 w-4 mr-2" /> Reset
@@ -888,8 +856,7 @@ export default function Budget() {
         </div>
       )}
 
-      {/* ── Upcoming Payment Reminders ── */}
-      {budget && (() => {
+      {budget && false && (() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const upcoming = (budget.items as Array<{ id: number; vendor: string; category: string; actualCost: number; amountPaid: number; isPaid: boolean; nextPaymentDue?: string | null }>)

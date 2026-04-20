@@ -29,7 +29,6 @@ import {
   ChevronRight,
   LayoutGrid,
   Building2,
-  Armchair,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -66,14 +65,6 @@ interface WeddingPartyMember {
   side: string;
 }
 
-interface SeatingChart {
-  id: number;
-  name: string;
-  tableCount: number;
-  seatsPerTable: number;
-  tables?: Array<{ tableNumber: number; tableName: string; guests: string[] }> | null;
-  createdAt: string;
-}
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -234,11 +225,6 @@ export default function Dashboard() {
   const { data: weddingParty = [] } = useQuery<WeddingPartyMember[]>({
     queryKey: ["wedding-party-dashboard"],
     queryFn: () => authFetch(`${API}/api/wedding-party`).then(r => r.json()),
-    enabled: !!summary,
-  });
-  const { data: seatingCharts = [] } = useQuery<SeatingChart[]>({
-    queryKey: ["seating-charts-dashboard"],
-    queryFn: () => authFetch(`${API}/api/seating/charts`).then(r => r.json()),
     enabled: !!summary,
   });
   const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingWizard(summary?.hasProfile ?? true);
@@ -489,8 +475,8 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Overview row: Guest RSVPs + Vendors + Wedding Party + Seating */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      {/* Overview row: Guest RSVPs + Vendors + Wedding Party */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
         {/* Guest RSVP breakdown */}
         <Link href="/guests">
@@ -596,39 +582,6 @@ export default function Dashboard() {
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">No members added yet</p>
-            )}
-          </div>
-        </Link>
-
-        {/* Seating chart */}
-        <Link href="/seating">
-          <div className="bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer h-full">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Armchair className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">Seating</span>
-              </div>
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-            </div>
-            {seatingCharts.length > 0 ? (() => {
-              const latest = seatingCharts[0];
-              const tableCount = latest.tables?.length ?? latest.tableCount ?? 0;
-              const totalSeated = latest.tables?.reduce((sum, t) => sum + t.guests.length, 0) ?? 0;
-              return (
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-2xl font-serif font-semibold text-foreground">{seatingCharts.length}</span>
-                    <span className="text-xs text-muted-foreground">chart{seatingCharts.length !== 1 ? "s" : ""}</span>
-                  </div>
-                  <p className="text-xs font-medium text-foreground truncate">{latest.name}</p>
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    {tableCount > 0 && <div>{tableCount} tables</div>}
-                    {totalSeated > 0 && <div>{totalSeated} guests seated</div>}
-                  </div>
-                </div>
-              );
-            })() : (
-              <p className="text-xs text-muted-foreground">No seating charts yet</p>
             )}
           </div>
         </Link>

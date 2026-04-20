@@ -175,7 +175,7 @@ export default function Profile() {
                       <FormLabel>Wedding Date</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Input type="date" {...field} data-testid="input-date" className="bg-background" />
+                          <Input type="date" {...field} data-testid="input-date" className="bg-background font-sans [color-scheme:light] dark:[color-scheme:dark]" />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -189,7 +189,7 @@ export default function Profile() {
                     <FormItem>
                       <FormLabel>Ceremony Time</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} data-testid="input-ceremony-time" className="bg-background" />
+                        <Input type="time" {...field} data-testid="input-ceremony-time" className="bg-background font-sans [color-scheme:light] dark:[color-scheme:dark]" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -202,7 +202,7 @@ export default function Profile() {
                     <FormItem>
                       <FormLabel>Reception Time</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} data-testid="input-reception-time" className="bg-background" />
+                        <Input type="time" {...field} data-testid="input-reception-time" className="bg-background font-sans [color-scheme:light] dark:[color-scheme:dark]" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
