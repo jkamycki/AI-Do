@@ -8,6 +8,7 @@ import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { setFetchTokenGetter } from "@/lib/authFetch";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import Profile from "@/pages/Profile";
@@ -254,10 +255,12 @@ function ClerkProviderWithRoutes() {
         <ClerkTokenSetup />
         <ClerkQueryClientCacheInvalidator />
         <WorkspaceProvider>
-          <TooltipProvider>
-            <Router />
-            <Toaster />
-          </TooltipProvider>
+          <ThemeProvider>
+            <TooltipProvider>
+              <Router />
+              <Toaster />
+            </TooltipProvider>
+          </ThemeProvider>
         </WorkspaceProvider>
       </QueryClientProvider>
     </ClerkProvider>
