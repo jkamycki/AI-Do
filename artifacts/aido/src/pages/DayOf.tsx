@@ -7,10 +7,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Clock, Smartphone, ChevronRight, CheckCircle2, Siren } from "lucide-react";
 import { format } from "date-fns";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 
 export default function DayOf() {
   const { data: timeline, isLoading: isLoadingTimeline } = useGetTimeline();
   const { data: profile } = useGetProfile();
+  const { activeWorkspace } = useWorkspace();
   const getAdvice = useEmergencyAdvice();
   
   const [emergencyText, setEmergencyText] = useState("");
@@ -49,6 +51,11 @@ export default function DayOf() {
       <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b px-4 py-4 mb-6 text-center shadow-sm">
         <h1 className="font-serif text-2xl text-primary font-bold">The Big Day</h1>
         <p className="text-sm text-muted-foreground font-medium">{dateStr}</p>
+        {activeWorkspace && activeWorkspace.role !== "owner" && (
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {activeWorkspace.partner1Name} &amp; {activeWorkspace.partner2Name}'s wedding
+          </p>
+        )}
       </div>
 
       <div className="px-4 space-y-6">

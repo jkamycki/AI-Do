@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import { setWorkspaceProfileId } from "@workspace/api-client-react";
 
 export interface WorkspaceInfo {
@@ -23,7 +23,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [activeWorkspace, setActiveWorkspaceState] = useState<WorkspaceInfo | null>(() => {
     try {
       const stored = localStorage.getItem("aido_active_workspace");
-      return stored ? JSON.parse(stored) : null;
+      const w: WorkspaceInfo | null = stored ? JSON.parse(stored) : null;
+      // Initialize synchronously BEFORE the first render so React Query hooks
+      // always send the correct x-workspace-profile-id header on their first fetch.
+      setWorkspaceProfileId(w && w.role !== "owner" ? w.profileId : null);
+      return w;
     } catch {
       return null;
     }
@@ -40,15 +44,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("aido_active_workspace");
     }
   };
-
-  // On mount, restore the workspace profile ID from localStorage into the API client.
-  useEffect(() => {
-    if (activeWorkspace && activeWorkspace.role !== "owner") {
-      setWorkspaceProfileId(activeWorkspace.profileId);
-    } else {
-      setWorkspaceProfileId(null);
-    }
-  }, []);
 
   return (
     <WorkspaceContext.Provider value={{ activeWorkspace, setActiveWorkspace }}>
