@@ -650,8 +650,10 @@ function VendorDetailDialog({
     );
   }
 
-  const paidAmount = vendor.payments.filter((p) => p.isPaid).reduce((s, p) => s + p.amount, 0);
+  const paidFromPayments = vendor.payments.filter((p) => p.isPaid).reduce((s, p) => s + p.amount, 0);
+  const paidAmount = vendor.depositAmount + paidFromPayments;
   const totalScheduled = vendor.payments.reduce((s, p) => s + p.amount, 0);
+  const totalForProgress = vendor.totalCost > 0 ? vendor.totalCost : totalScheduled;
   const overdue = vendor.payments.filter((p) => !p.isPaid && daysUntil(p.dueDate) < 0);
 
   return (
@@ -778,25 +780,30 @@ function VendorDetailDialog({
                 <p className="text-sm text-muted-foreground text-center py-4">No payments scheduled yet. Add your deposit and final payment milestones.</p>
               )}
 
-              {vendor.payments.length > 0 && (
+              {(vendor.payments.length > 0 || vendor.depositAmount > 0) && (
                 <div className="rounded-xl border bg-muted/20 p-4 space-y-2.5">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground font-medium">Total Paid</span>
-                    <span className={`font-bold tabular-nums ${paidAmount >= totalScheduled && totalScheduled > 0 ? "text-green-600 dark:text-green-400" : "text-foreground"}`}>
+                    <span className={`font-bold tabular-nums ${totalForProgress > 0 && paidAmount >= totalForProgress ? "text-green-600 dark:text-green-400" : "text-foreground"}`}>
                       {formatCurrency(paidAmount)}
-                      <span className="font-normal text-muted-foreground"> / {formatCurrency(totalScheduled)}</span>
+                      <span className="font-normal text-muted-foreground"> / {formatCurrency(totalForProgress)}</span>
                     </span>
                   </div>
                   <Progress
-                    value={totalScheduled > 0 ? (paidAmount / totalScheduled) * 100 : 0}
+                    value={totalForProgress > 0 ? Math.min((paidAmount / totalForProgress) * 100, 100) : 0}
                     className="h-2.5"
                   />
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{vendor.payments.filter(p => p.isPaid).length} of {vendor.payments.length} payment{vendor.payments.length !== 1 ? "s" : ""} paid</span>
-                    {totalScheduled > 0 && paidAmount < totalScheduled && (
-                      <span>{formatCurrency(totalScheduled - paidAmount)} remaining</span>
+                    <span>
+                      {vendor.depositAmount > 0 && (
+                        <span>Deposit {formatCurrency(vendor.depositAmount)} included · </span>
+                      )}
+                      {vendor.payments.filter(p => p.isPaid).length} of {vendor.payments.length} milestone{vendor.payments.length !== 1 ? "s" : ""} paid
+                    </span>
+                    {totalForProgress > 0 && paidAmount < totalForProgress && (
+                      <span>{formatCurrency(totalForProgress - paidAmount)} remaining</span>
                     )}
-                    {paidAmount >= totalScheduled && totalScheduled > 0 && (
+                    {totalForProgress > 0 && paidAmount >= totalForProgress && (
                       <span className="text-green-600 dark:text-green-400 font-medium">All paid!</span>
                     )}
                   </div>
