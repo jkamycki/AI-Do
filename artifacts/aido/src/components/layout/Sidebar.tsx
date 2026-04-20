@@ -265,7 +265,7 @@ export function Sidebar() {
     <>
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b border-primary/10 z-50 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <img src="/logo.svg" alt="A.I Do Logo" className="h-10 w-auto object-contain" />
+          <img src="/logo.png" alt="A.I Do Logo" className="h-10 w-auto object-contain" />
         </div>
         <Button
           variant="ghost"
@@ -285,7 +285,7 @@ export function Sidebar() {
         `}
       >
         <div className="hidden md:flex items-center justify-center px-4 py-4 border-b border-primary/10">
-          <img src="/logo.svg" alt="A.I Do — AI Wedding Planner Assistant" className="h-16 w-auto object-contain" />
+          <img src="/logo.png" alt="A.I Do — AI Wedding Planner Assistant" className="h-16 w-auto object-contain" />
         </div>
 
         <div className="pt-3 pb-1">
