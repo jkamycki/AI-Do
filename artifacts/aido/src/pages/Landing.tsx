@@ -61,7 +61,7 @@ export default function Landing() {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="px-8 py-4 flex items-center justify-between border-b border-primary/10 bg-white/80 backdrop-blur-sm">
         <div className="flex items-center">
-          <img src="/logo.png" alt="A.I Do" className="h-14 w-auto object-contain" />
+          <img src="/logo.png" alt="A.I Do" className="h-20 w-auto object-contain" />
         </div>
         <div className="flex items-center gap-3">
           <Link href="/sign-in">
@@ -79,7 +79,7 @@ export default function Landing() {
         {/* Hero */}
         <section className="text-center px-6 pt-16 pb-16 max-w-3xl mx-auto">
           <div className="flex justify-center mb-8">
-            <img src="/logo.png" alt="A.I Do — AI Wedding Planner Assistant" className="h-40 w-auto object-contain drop-shadow-xl" />
+            <img src="/logo.png" alt="A.I Do — AI Wedding Planner Assistant" className="h-56 w-auto object-contain drop-shadow-xl" />
           </div>
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-sm font-semibold px-4 py-2 rounded-full mb-6">
             <Sparkles className="h-4 w-4" />
@@ -216,7 +216,7 @@ export default function Landing() {
 
       <footer className="px-8 py-6 border-t border-primary/10 text-center text-sm text-muted-foreground">
         <div className="flex items-center justify-center gap-2">
-          <img src="/logo.png" alt="A.I Do" className="h-8 w-auto object-contain" />
+          <img src="/logo.png" alt="A.I Do" className="h-12 w-auto object-contain" />
           <span className="brand-gradient-text font-semibold">A.I Do — AI Wedding Planning OS</span>
         </div>
       </footer>
