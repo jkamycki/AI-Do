@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -70,48 +70,49 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* Cream/Champagne */
-  --background: 34 30% 96%;
-  --foreground: 20 10% 20%;
+  /* Soft pink-white */
+  --background: 340 50% 97%;
+  --foreground: 270 15% 18%;
   
-  --card: 34 40% 98%;
-  --card-foreground: 20 10% 20%;
-  --card-border: 34 20% 88%;
+  --card: 0 0% 100%;
+  --card-foreground: 270 15% 18%;
+  --card-border: 330 25% 90%;
 
-  --popover: 34 40% 98%;
-  --popover-foreground: 20 10% 20%;
-  --popover-border: 34 20% 88%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 270 15% 18%;
+  --popover-border: 330 25% 90%;
 
-  /* Deep Dusty Rose */
-  --primary: 340 30% 45%;
+  /* Vibrant hot pink — matches the logo */
+  --primary: 327 76% 52%;
   --primary-foreground: 0 0% 100%;
   
-  /* Soft Gold / Champagne */
-  --secondary: 40 30% 80%;
-  --secondary-foreground: 20 10% 20%;
+  /* Warm gold — matches "Do" in logo */
+  --secondary: 42 85% 52%;
+  --secondary-foreground: 270 15% 18%;
 
-  --muted: 34 20% 90%;
-  --muted-foreground: 20 5% 45%;
+  --muted: 330 25% 93%;
+  --muted-foreground: 270 10% 48%;
 
-  --accent: 34 30% 92%;
-  --accent-foreground: 20 10% 20%;
+  /* Soft lavender accent */
+  --accent: 280 30% 94%;
+  --accent-foreground: 270 15% 18%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 34 20% 85%;
-  --input: 34 20% 85%;
-  --ring: 340 30% 45%;
+  --border: 330 20% 88%;
+  --input: 330 20% 88%;
+  --ring: 327 76% 52%;
 
-  --app-font-sans: 'Inter', sans-serif;
-  --app-font-serif: 'Cormorant Garamond', serif;
+  --app-font-sans: 'Plus Jakarta Sans', sans-serif;
+  --app-font-serif: 'Playfair Display', serif;
   --app-font-mono: Menlo, monospace;
   --radius: 0.75rem; 
 
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
-  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 2px 0 rgb(220 50 140 / 0.06);
+  --shadow: 0 4px 6px -1px rgb(220 50 140 / 0.07), 0 2px 4px -2px rgb(220 50 140 / 0.05);
+  --shadow-md: 0 10px 15px -3px rgb(220 50 140 / 0.07), 0 4px 6px -4px rgb(220 50 140 / 0.05);
+  --shadow-lg: 0 20px 25px -5px rgb(220 50 140 / 0.07), 0 8px 10px -6px rgb(220 50 140 / 0.05);
 
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -121,37 +122,35 @@
 }
 
 .dark {
-  --background: 20 15% 10%;
-  --foreground: 34 30% 96%;
+  --background: 270 20% 10%;
+  --foreground: 330 30% 95%;
   
-  --card: 20 15% 12%;
-  --card-foreground: 34 30% 96%;
-  --card-border: 20 10% 20%;
+  --card: 270 20% 13%;
+  --card-foreground: 330 30% 95%;
+  --card-border: 270 15% 20%;
 
-  --popover: 20 15% 12%;
-  --popover-foreground: 34 30% 96%;
-  --popover-border: 20 10% 20%;
+  --popover: 270 20% 13%;
+  --popover-foreground: 330 30% 95%;
+  --popover-border: 270 15% 20%;
 
-  /* Deep Dusty Rose */
-  --primary: 340 30% 55%;
+  --primary: 327 76% 62%;
   --primary-foreground: 0 0% 100%;
   
-  /* Soft Gold / Champagne */
-  --secondary: 40 25% 25%;
-  --secondary-foreground: 34 30% 96%;
+  --secondary: 42 70% 40%;
+  --secondary-foreground: 330 30% 95%;
 
-  --muted: 20 10% 18%;
-  --muted-foreground: 34 10% 65%;
+  --muted: 270 15% 18%;
+  --muted-foreground: 330 15% 62%;
 
-  --accent: 20 10% 18%;
-  --accent-foreground: 34 30% 96%;
+  --accent: 280 20% 18%;
+  --accent-foreground: 330 30% 95%;
 
   --destructive: 0 62% 30%;
-  --destructive-foreground: 34 30% 96%;
+  --destructive-foreground: 330 30% 95%;
 
-  --border: 20 10% 20%;
-  --input: 20 10% 20%;
-  --ring: 340 30% 55%;
+  --border: 270 15% 20%;
+  --input: 270 15% 20%;
+  --ring: 327 76% 62%;
 }
 
 @layer base {
@@ -161,12 +160,43 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    background-image: radial-gradient(hsl(var(--secondary)) 0.5px, transparent 0.5px);
-    background-size: 24px 24px;
+    background-image: radial-gradient(hsl(327 76% 52% / 0.08) 1px, transparent 1px);
+    background-size: 22px 22px;
     background-attachment: fixed;
   }
   
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif font-medium tracking-tight;
   }
+}
+
+/* Brand gradient utilities */
+.brand-gradient-text {
+  background: linear-gradient(135deg, #E91E8C 0%, #7B2FBE 55%, #4F8EF7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.brand-gradient-bg {
+  background: linear-gradient(135deg, #E91E8C 0%, #7B2FBE 55%, #4F8EF7 100%);
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #D4A017 0%, #F5C842 50%, #D4A017 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.btn-gradient {
+  background: linear-gradient(135deg, #E91E8C 0%, #7B2FBE 100%);
+  color: white;
+  border: none;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.btn-gradient:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
 }

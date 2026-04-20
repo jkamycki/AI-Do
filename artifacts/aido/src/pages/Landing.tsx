@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Heart, Sparkles, Calendar, DollarSign, CheckSquare, Mail, Smartphone, Star, Quote } from "lucide-react";
+import { Sparkles, Calendar, DollarSign, CheckSquare, Mail, Smartphone, Star, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const features = [
@@ -59,17 +59,16 @@ function Stars({ count = 5 }: { count?: number }) {
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="px-8 py-6 flex items-center justify-between border-b border-primary/10">
-        <div className="flex items-center gap-2 text-primary font-serif font-bold text-2xl">
-          <Heart className="h-7 w-7 fill-primary" />
-          <span>A.IDO</span>
+      <header className="px-8 py-4 flex items-center justify-between border-b border-primary/10 bg-white/80 backdrop-blur-sm">
+        <div className="flex items-center">
+          <img src="/logo.jpeg" alt="A.I Do" className="h-14 w-auto object-contain" />
         </div>
         <div className="flex items-center gap-3">
           <Link href="/sign-in">
-            <Button variant="ghost" className="text-primary hover:bg-primary/5">Sign In</Button>
+            <Button variant="ghost" className="text-primary hover:bg-primary/5 font-medium">Sign In</Button>
           </Link>
           <Link href="/sign-up">
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6">
+            <Button className="btn-gradient rounded-full px-6 shadow-sm">
               Get Started Free
             </Button>
           </Link>
@@ -78,22 +77,25 @@ export default function Landing() {
 
       <main className="flex-1 flex flex-col items-center">
         {/* Hero */}
-        <section className="text-center px-6 pt-20 pb-16 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-sm font-medium px-4 py-2 rounded-full mb-8">
-            <Sparkles className="h-4 w-4" />
-            <span>AI-Powered Wedding Planning</span>
+        <section className="text-center px-6 pt-16 pb-16 max-w-3xl mx-auto">
+          <div className="flex justify-center mb-8">
+            <img src="/logo.jpeg" alt="A.I Do — AI Wedding Planner Assistant" className="h-40 w-auto object-contain drop-shadow-xl" />
           </div>
-          <h1 className="font-serif text-5xl md:text-6xl text-primary leading-tight mb-6">
-            Plan your perfect day,<br />
-            <span className="text-primary/60">effortlessly.</span>
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-sm font-semibold px-4 py-2 rounded-full mb-6">
+            <Sparkles className="h-4 w-4" />
+            <span>AI Wedding Planner Assistant</span>
+          </div>
+          <h1 className="font-serif text-5xl md:text-6xl leading-tight mb-6">
+            <span className="brand-gradient-text">Plan your perfect day,</span><br />
+            <span className="gold-gradient-text italic">effortlessly.</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-            A.IDO is your AI wedding planning partner — from setting a budget and building a timeline
+            A.I Do is your AI wedding planning partner — from setting a budget and building a timeline
             to drafting vendor emails and coordinating the big day itself.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/sign-up">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-10 text-lg h-14">
+              <Button size="lg" className="btn-gradient rounded-full px-10 text-lg h-14 shadow-lg">
                 Start Planning Free
               </Button>
             </Link>
@@ -204,7 +206,7 @@ export default function Landing() {
             Start planning your perfect wedding with A.IDO. It's free to get started.
           </p>
           <Link href="/sign-up">
-            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-14 text-lg h-14 shadow-lg">
+            <Button size="lg" className="btn-gradient rounded-full px-14 text-lg h-14 shadow-lg">
               Create Your Account — Free
             </Button>
           </Link>
@@ -214,8 +216,8 @@ export default function Landing() {
 
       <footer className="px-8 py-6 border-t border-primary/10 text-center text-sm text-muted-foreground">
         <div className="flex items-center justify-center gap-2">
-          <Heart className="h-4 w-4 fill-primary text-primary" />
-          <span>A.IDO — AI Wedding Planning OS</span>
+          <img src="/logo.jpeg" alt="A.I Do" className="h-8 w-auto object-contain" />
+          <span className="brand-gradient-text font-semibold">A.I Do — AI Wedding Planning OS</span>
         </div>
       </footer>
     </div>

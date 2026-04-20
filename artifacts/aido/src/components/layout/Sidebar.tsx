@@ -263,10 +263,9 @@ export function Sidebar() {
 
   return (
     <>
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b z-50 flex items-center justify-between px-4">
-        <div className="flex items-center gap-2 text-primary font-serif font-bold text-xl">
-          <Heart className="h-6 w-6 fill-primary" />
-          <span>A.IDO</span>
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b border-primary/10 z-50 flex items-center justify-between px-4">
+        <div className="flex items-center gap-2">
+          <img src="/logo.jpeg" alt="A.I Do Logo" className="h-10 w-auto object-contain" />
         </div>
         <Button
           variant="ghost"
@@ -285,9 +284,8 @@ export function Sidebar() {
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
       >
-        <div className="hidden md:flex items-center gap-2 px-6 py-6 text-primary font-serif font-bold text-2xl border-b border-primary/10">
-          <Heart className="h-8 w-8 fill-primary" />
-          <span>A.IDO</span>
+        <div className="hidden md:flex items-center justify-center px-4 py-4 border-b border-primary/10">
+          <img src="/logo.jpeg" alt="A.I Do — AI Wedding Planner Assistant" className="h-16 w-auto object-contain" />
         </div>
 
         <div className="pt-3 pb-1">
