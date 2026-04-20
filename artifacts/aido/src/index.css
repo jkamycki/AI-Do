@@ -82,13 +82,13 @@
   --popover-foreground: 270 15% 18%;
   --popover-border: 330 25% 90%;
 
-  /* Vibrant hot pink — matches the logo */
-  --primary: 327 76% 52%;
+  /* Warm gold — matches "Do" in logo, used as primary in logged-in app */
+  --primary: 40 82% 42%;
   --primary-foreground: 0 0% 100%;
   
-  /* Warm gold — matches "Do" in logo */
-  --secondary: 42 85% 52%;
-  --secondary-foreground: 270 15% 18%;
+  /* Hot pink — matches heart/robot in logo */
+  --secondary: 327 76% 52%;
+  --secondary-foreground: 0 0% 100%;
 
   --muted: 330 25% 93%;
   --muted-foreground: 270 10% 48%;
@@ -100,19 +100,19 @@
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 330 20% 88%;
-  --input: 330 20% 88%;
-  --ring: 327 76% 52%;
+  --border: 40 20% 86%;
+  --input: 40 20% 86%;
+  --ring: 40 82% 42%;
 
   --app-font-sans: 'Plus Jakarta Sans', sans-serif;
   --app-font-serif: 'Playfair Display', serif;
   --app-font-mono: Menlo, monospace;
   --radius: 0.75rem; 
 
-  --shadow-sm: 0 1px 2px 0 rgb(220 50 140 / 0.06);
-  --shadow: 0 4px 6px -1px rgb(220 50 140 / 0.07), 0 2px 4px -2px rgb(220 50 140 / 0.05);
-  --shadow-md: 0 10px 15px -3px rgb(220 50 140 / 0.07), 0 4px 6px -4px rgb(220 50 140 / 0.05);
-  --shadow-lg: 0 20px 25px -5px rgb(220 50 140 / 0.07), 0 8px 10px -6px rgb(220 50 140 / 0.05);
+  --shadow-sm: 0 1px 2px 0 rgb(180 130 10 / 0.08);
+  --shadow: 0 4px 6px -1px rgb(180 130 10 / 0.09), 0 2px 4px -2px rgb(180 130 10 / 0.06);
+  --shadow-md: 0 10px 15px -3px rgb(180 130 10 / 0.09), 0 4px 6px -4px rgb(180 130 10 / 0.06);
+  --shadow-lg: 0 20px 25px -5px rgb(180 130 10 / 0.09), 0 8px 10px -6px rgb(180 130 10 / 0.06);
 
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -133,11 +133,11 @@
   --popover-foreground: 330 30% 95%;
   --popover-border: 270 15% 20%;
 
-  --primary: 327 76% 62%;
-  --primary-foreground: 0 0% 100%;
+  --primary: 40 82% 52%;
+  --primary-foreground: 270 15% 10%;
   
-  --secondary: 42 70% 40%;
-  --secondary-foreground: 330 30% 95%;
+  --secondary: 327 76% 62%;
+  --secondary-foreground: 0 0% 100%;
 
   --muted: 270 15% 18%;
   --muted-foreground: 330 15% 62%;
@@ -150,7 +150,7 @@
 
   --border: 270 15% 20%;
   --input: 270 15% 20%;
-  --ring: 327 76% 62%;
+  --ring: 40 82% 52%;
 }
 
 @layer base {
@@ -160,7 +160,7 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    background-image: radial-gradient(hsl(327 76% 52% / 0.08) 1px, transparent 1px);
+    background-image: radial-gradient(hsl(40 82% 42% / 0.07) 1px, transparent 1px);
     background-size: 22px 22px;
     background-attachment: fixed;
   }
@@ -190,7 +190,7 @@
 }
 
 .btn-gradient {
-  background: linear-gradient(135deg, #E91E8C 0%, #7B2FBE 100%);
+  background: linear-gradient(135deg, #B8860B 0%, #D4A017 50%, #F5C842 100%);
   color: white;
   border: none;
   transition: opacity 0.2s, transform 0.1s;
