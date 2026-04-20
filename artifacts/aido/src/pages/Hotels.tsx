@@ -22,6 +22,9 @@ interface HotelBlock {
   id: number;
   hotelName: string;
   address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
   phone?: string | null;
   email?: string | null;
   bookingLink?: string | null;
@@ -37,7 +40,7 @@ interface HotelBlock {
 }
 
 const EMPTY: Partial<HotelBlock> = {
-  hotelName: "", address: "", phone: "", email: "", bookingLink: "",
+  hotelName: "", address: "", city: "", state: "", zip: "", phone: "", email: "", bookingLink: "",
   discountCode: "", groupName: "", cutoffDate: "", roomsReserved: undefined,
   roomsBooked: 0, pricePerNight: undefined, distanceFromVenue: "", notes: "",
 };
@@ -94,8 +97,20 @@ function HotelForm({
           <Input placeholder="Marriott Newark" value={form.hotelName ?? ""} onChange={e => set("hotelName", e.target.value)} />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label>Full Address</Label>
-          <Input placeholder="123 Main St, Newark, NJ 07101" value={form.address ?? ""} onChange={e => set("address", e.target.value)} />
+          <Label>Street Address</Label>
+          <Input placeholder="123 Main St" value={form.address ?? ""} onChange={e => set("address", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>City</Label>
+          <Input placeholder="Newark" value={form.city ?? ""} onChange={e => set("city", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>State</Label>
+          <Input placeholder="NJ" value={form.state ?? ""} onChange={e => set("state", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>ZIP Code</Label>
+          <Input placeholder="07101" value={form.zip ?? ""} onChange={e => set("zip", e.target.value)} />
         </div>
         <div className="space-y-1.5">
           <Label>Distance from Venue</Label>
@@ -169,9 +184,10 @@ function HotelCard({ hotel, onEdit, onDelete }: { hotel: HotelBlock; onEdit: () 
             </div>
             <div>
               <CardTitle className="text-base font-semibold">{hotel.hotelName || "Unnamed Hotel"}</CardTitle>
-              {hotel.address && (
+              {(hotel.address || hotel.city || hotel.state) && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                  <MapPin className="h-3 w-3" /> {hotel.address}
+                  <MapPin className="h-3 w-3" />
+                  {[hotel.address, [hotel.city, hotel.state, hotel.zip].filter(Boolean).join(", ")].filter(Boolean).join(", ")}
                   {hotel.distanceFromVenue && <span className="ml-1 text-primary font-medium">· {hotel.distanceFromVenue}</span>}
                 </p>
               )}

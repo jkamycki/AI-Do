@@ -29,6 +29,7 @@ const profileSchema = z.object({
   location: z.string().optional().default(""),
   venueCity: z.string().optional().default(""),
   venueState: z.string().optional().default(""),
+  venueZip: z.string().optional().default(""),
   guestCount: z.coerce.number().min(1, "Must be at least 1"),
   totalBudget: z.coerce.number().min(1, "Must be at least 1"),
   weddingVibe: z.string().min(1, "Vibe is required"),
@@ -55,6 +56,7 @@ export default function Profile() {
       location: "",
       venueCity: "",
       venueState: "",
+      venueZip: "",
       guestCount: 100,
       totalBudget: 30000,
       weddingVibe: "Romantic & Elegant",
@@ -74,6 +76,7 @@ export default function Profile() {
         location: profile.location,
         venueCity: profile.venueCity ?? "",
         venueState: profile.venueState ?? "",
+        venueZip: (profile as any).venueZip ?? "",
         guestCount: profile.guestCount,
         totalBudget: profile.totalBudget,
         weddingVibe: profile.weddingVibe,
@@ -235,7 +238,7 @@ export default function Profile() {
                 )}
               />
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-3 gap-6">
                 <FormField
                   control={form.control}
                   name="venueCity"
@@ -257,6 +260,19 @@ export default function Profile() {
                       <FormLabel>State</FormLabel>
                       <FormControl>
                         <Input placeholder="SC" {...field} data-testid="input-venue-state" className="bg-background" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="venueZip"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ZIP Code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="29401" {...field} data-testid="input-venue-zip" className="bg-background" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -359,6 +375,7 @@ export default function Profile() {
                     location: "",
                     venueCity: "",
                     venueState: "",
+                    venueZip: "",
                     guestCount: 0,
                     totalBudget: 0,
                     weddingVibe: "",

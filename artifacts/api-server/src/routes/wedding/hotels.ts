@@ -30,7 +30,7 @@ router.get("/hotels", requireAuth, async (req, res) => {
 router.post("/hotels", requireAuth, async (req, res) => {
   try {
     const {
-      hotelName, address, phone, email, bookingLink, discountCode,
+      hotelName, address, city, state, zip, phone, email, bookingLink, discountCode,
       groupName, cutoffDate, roomsReserved, roomsBooked, pricePerNight,
       distanceFromVenue, notes,
     } = req.body;
@@ -38,6 +38,9 @@ router.post("/hotels", requireAuth, async (req, res) => {
       userId: req.userId!,
       hotelName: hotelName ?? "",
       address: address ?? null,
+      city: city ?? null,
+      state: state ?? null,
+      zip: zip ?? null,
       phone: phone ?? null,
       email: email ?? null,
       bookingLink: bookingLink ?? null,
@@ -61,14 +64,15 @@ router.patch("/hotels/:id", requireAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const {
-      hotelName, address, phone, email, bookingLink, discountCode,
+      hotelName, address, city, state, zip, phone, email, bookingLink, discountCode,
       groupName, cutoffDate, roomsReserved, roomsBooked, pricePerNight,
       distanceFromVenue, notes,
     } = req.body;
     const [updated] = await db
       .update(hotelBlocks)
       .set({
-        hotelName, address, phone, email, bookingLink, discountCode,
+        hotelName, address, city: city ?? null, state: state ?? null, zip: zip ?? null,
+        phone, email, bookingLink, discountCode,
         groupName, cutoffDate, roomsReserved, roomsBooked,
         pricePerNight: pricePerNight != null ? String(pricePerNight) : null,
         distanceFromVenue, notes,

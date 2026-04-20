@@ -14,6 +14,7 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   location: text("location").notNull(),
   venueCity: text("venue_city"),
   venueState: text("venue_state"),
+  venueZip: text("venue_zip"),
   guestCount: integer("guest_count").notNull(),
   totalBudget: numeric("total_budget", { precision: 12, scale: 2 }).notNull().default("0"),
   weddingVibe: text("wedding_vibe").notNull(),
@@ -241,6 +242,9 @@ export const guests = pgTable("guests", {
   notes: text("notes"),
   phone: text("phone"),
   address: text("address"),
+  guestCity: text("guest_city"),
+  guestState: text("guest_state"),
+  guestZip: text("guest_zip"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -253,6 +257,9 @@ export const hotelBlocks = pgTable("hotel_blocks", {
   userId: text("user_id").notNull(),
   hotelName: text("hotel_name").notNull(),
   address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zip: text("zip"),
   phone: text("phone"),
   email: text("email"),
   bookingLink: text("booking_link"),

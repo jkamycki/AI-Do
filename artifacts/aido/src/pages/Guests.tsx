@@ -86,6 +86,11 @@ const guestSchema = z.object({
   plusOneFirstName: z.string().optional(),
   plusOneLastName: z.string().optional(),
   tableAssignment: z.string().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  guestCity: z.string().optional(),
+  guestState: z.string().optional(),
+  guestZip: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -120,6 +125,11 @@ function GuestForm({
       plusOneFirstName: "",
       plusOneLastName: "",
       tableAssignment: "",
+      phone: "",
+      address: "",
+      guestCity: "",
+      guestState: "",
+      guestZip: "",
       notes: "",
       ...defaultValues,
     },
@@ -249,6 +259,44 @@ function GuestForm({
           </div>
         )}
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField control={form.control} name="phone" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone (optional)</FormLabel>
+              <FormControl><Input type="tel" placeholder="(555) 000-0000" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="address" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Street Address (optional)</FormLabel>
+              <FormControl><Input placeholder="123 Main St" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="guestCity" render={({ field }) => (
+            <FormItem>
+              <FormLabel>City (optional)</FormLabel>
+              <FormControl><Input placeholder="Boston" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="guestState" render={({ field }) => (
+            <FormItem>
+              <FormLabel>State (optional)</FormLabel>
+              <FormControl><Input placeholder="MA" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="guestZip" render={({ field }) => (
+            <FormItem>
+              <FormLabel>ZIP Code (optional)</FormLabel>
+              <FormControl><Input placeholder="02101" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
+
         <FormField control={form.control} name="notes" render={({ field }) => (
           <FormItem>
             <FormLabel>Notes</FormLabel>
@@ -260,7 +308,7 @@ function GuestForm({
         )} />
 
         <div className="flex gap-3 mt-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset({ name: "", email: "", invitationStatus: "pending", rsvpStatus: "pending", mealChoice: "", guestGroup: "", plusOne: false, plusOneFirstName: "", plusOneLastName: "", tableAssignment: "", notes: "" })}>
+          <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset({ name: "", email: "", invitationStatus: "pending", rsvpStatus: "pending", mealChoice: "", guestGroup: "", plusOne: false, plusOneFirstName: "", plusOneLastName: "", tableAssignment: "", phone: "", address: "", guestCity: "", guestState: "", guestZip: "", notes: "" })}>
             <RotateCcw className="h-4 w-4 mr-2" /> Reset
           </Button>
           <Button type="submit" className="flex-1" disabled={isPending}>
@@ -958,6 +1006,11 @@ export default function Guests() {
                 plusOneFirstName: editGuest.plusOneName?.split(" ").slice(0, 1).join("") ?? "",
                 plusOneLastName: editGuest.plusOneName?.split(" ").slice(1).join(" ") ?? "",
                 tableAssignment: editGuest.tableAssignment ?? "",
+                phone: (editGuest as any).phone ?? "",
+                address: (editGuest as any).address ?? "",
+                guestCity: (editGuest as any).guestCity ?? "",
+                guestState: (editGuest as any).guestState ?? "",
+                guestZip: (editGuest as any).guestZip ?? "",
                 notes: editGuest.notes ?? "",
               }}
               onSubmit={handleEdit}

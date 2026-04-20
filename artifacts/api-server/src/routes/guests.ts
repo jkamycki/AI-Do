@@ -54,7 +54,7 @@ router.post("/guests", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "No wedding profile found. Create a profile first." });
     }
 
-    const { name, email, invitationStatus, rsvpStatus, mealChoice, guestGroup, plusOne, plusOneName, tableAssignment, notes } = req.body;
+    const { name, email, invitationStatus, rsvpStatus, mealChoice, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, guestCity, guestState, guestZip } = req.body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return res.status(400).json({ error: "Guest name is required" });
@@ -74,6 +74,11 @@ router.post("/guests", requireAuth, async (req, res) => {
         plusOneName: plusOneName || null,
         tableAssignment: tableAssignment || null,
         notes: notes || null,
+        phone: phone || null,
+        address: address || null,
+        guestCity: guestCity || null,
+        guestState: guestState || null,
+        guestZip: guestZip || null,
       })
       .returning();
 
@@ -94,7 +99,7 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     const profileId = await getProfileId(req.userId!);
     if (!profileId) return res.status(400).json({ error: "No wedding profile found." });
 
-    const { name, email, invitationStatus, rsvpStatus, mealChoice, guestGroup, plusOne, plusOneName, tableAssignment, notes } = req.body;
+    const { name, email, invitationStatus, rsvpStatus, mealChoice, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, guestCity, guestState, guestZip } = req.body;
 
     const updateData: Partial<typeof guests.$inferInsert> = {};
     if (name !== undefined) updateData.name = name;
@@ -107,6 +112,11 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     if (plusOneName !== undefined) updateData.plusOneName = plusOneName || null;
     if (tableAssignment !== undefined) updateData.tableAssignment = tableAssignment || null;
     if (notes !== undefined) updateData.notes = notes || null;
+    if (phone !== undefined) updateData.phone = phone || null;
+    if (address !== undefined) updateData.address = address || null;
+    if (guestCity !== undefined) updateData.guestCity = guestCity || null;
+    if (guestState !== undefined) updateData.guestState = guestState || null;
+    if (guestZip !== undefined) updateData.guestZip = guestZip || null;
 
     const [updated] = await db
       .update(guests)

@@ -31,7 +31,7 @@ router.post("/profile", requireAuth, async (req, res) => {
   try {
     const {
       partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
-      venue, location, venueCity, venueState, guestCount, totalBudget, weddingVibe,
+      venue, location, venueCity, venueState, venueZip, guestCount, totalBudget, weddingVibe,
       preferredLanguage,
     } = req.body;
 
@@ -47,6 +47,7 @@ router.post("/profile", requireAuth, async (req, res) => {
         .set({
           partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
           venue, location, venueCity: venueCity ?? null, venueState: venueState ?? null,
+          venueZip: venueZip ?? null,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           preferredLanguage: preferredLanguage ?? "English",
           updatedAt: new Date(),
@@ -66,6 +67,7 @@ router.post("/profile", requireAuth, async (req, res) => {
           userId: req.userId,
           partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
           venue, location, venueCity: venueCity ?? null, venueState: venueState ?? null,
+          venueZip: venueZip ?? null,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           preferredLanguage: preferredLanguage ?? "English",
         })
