@@ -1,9 +1,179 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
-  <circle cx="60" cy="60" r="58" fill="#FAF7F5" stroke="#C4849C" stroke-width="1.5"/>
-  <path d="M60 82C60 82 30 65 30 46C30 37.2 37.2 30 46 30C51.2 30 55.8 32.6 58.6 36.6L60 38.8L61.4 36.6C64.2 32.6 68.8 30 74 30C82.8 30 90 37.2 90 46C90 65 60 82 60 82Z" fill="#C4849C" opacity="0.25"/>
-  <path d="M60 76C60 76 34 61 34 44C34 36.8 39.8 31 47 31C51.6 31 55.6 33.2 58.2 36.6L60 39L61.8 36.6C64.4 33.2 68.4 31 73 31C80.2 31 86 36.8 86 44C86 61 60 76 60 76Z" fill="#C4849C" opacity="0.55"/>
-  <circle cx="44" cy="84" r="10" stroke="#9B4D6C" stroke-width="2.5" fill="none"/>
-  <circle cx="76" cy="84" r="10" stroke="#9B4D6C" stroke-width="2.5" fill="none"/>
-  <path d="M54 84 Q60 80 66 84" stroke="#9B4D6C" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-  <text x="60" y="56" text-anchor="middle" font-family="Georgia, serif" font-size="13" font-weight="bold" fill="#9B4D6C" letter-spacing="1">A.IDO</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 545" width="500" height="545">
+  <defs>
+    <!-- Heart gradient: pink (left) → lavender → sky blue (right) -->
+    <linearGradient id="heartGrad" x1="0%" y1="10%" x2="100%" y2="90%">
+      <stop offset="0%"   stop-color="#FF6FB7"/>
+      <stop offset="48%"  stop-color="#CB80F8"/>
+      <stop offset="100%" stop-color="#89BFFF"/>
+    </linearGradient>
+    <!-- "A.I" text: purple → hot pink -->
+    <linearGradient id="aiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#7B2FBE"/>
+      <stop offset="100%" stop-color="#E91E8C"/>
+    </linearGradient>
+    <!-- "Do" text + rings: warm gold -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#C9A036"/>
+      <stop offset="50%"  stop-color="#F5D06A"/>
+      <stop offset="100%" stop-color="#C9A036"/>
+    </linearGradient>
+    <!-- Subtitle color -->
+    <linearGradient id="subGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#9B7CC4"/>
+      <stop offset="100%" stop-color="#C879F5"/>
+    </linearGradient>
+    <!-- Heart glow / drop shadow -->
+    <filter id="heartShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#D060B0" flood-opacity="0.28"/>
+    </filter>
+    <!-- Sparkle glow -->
+    <filter id="sparkGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- ═══════ HEART BACKDROP ═══════ -->
+  <path d="M250,308 C168,260 72,212 72,149 C72,97 109,66 155,66
+           C186,66 216,84 250,113 C284,84 314,66 345,66
+           C391,66 428,97 428,149 C428,212 332,260 250,308Z"
+        fill="url(#heartGrad)" filter="url(#heartShadow)"/>
+
+  <!-- ═══════ SPARKLE STARS ═══════ -->
+  <!-- Left sparkle cluster -->
+  <g fill="white" filter="url(#sparkGlow)">
+    <path d="M147,107 L150,100 L153,107 L160,110 L153,113 L150,120 L147,113 L140,110Z" opacity="0.96"/>
+    <circle cx="129" cy="132" r="3.5" opacity="0.85"/>
+    <circle cx="165" cy="97"  r="2.2" opacity="0.75"/>
+  </g>
+  <!-- Right sparkle cluster -->
+  <g fill="white" filter="url(#sparkGlow)">
+    <path d="M353,101 L356,94 L359,101 L366,104 L359,107 L356,114 L353,107 L346,104Z" opacity="0.96"/>
+    <circle cx="371" cy="127" r="3.5" opacity="0.85"/>
+    <circle cx="338" cy="93"  r="2.2" opacity="0.75"/>
+  </g>
+
+  <!-- ═══════ WEDDING VEIL ═══════ -->
+  <!-- Cap / crown piece -->
+  <ellipse cx="250" cy="110" rx="60" ry="14" fill="white" opacity="0.97"/>
+  <!-- Left drape -->
+  <path d="M196,112 C182,122 172,145 170,168 C169,183 173,198 179,208
+           C191,194 202,178 210,162 C215,150 215,132 210,118Z"
+        fill="white" opacity="0.93"/>
+  <!-- Right drape -->
+  <path d="M304,112 C318,122 328,145 330,168 C331,183 327,198 321,208
+           C309,194 298,178 290,162 C285,150 285,132 290,118Z"
+        fill="white" opacity="0.93"/>
+  <!-- Veil inner fold shadow -->
+  <ellipse cx="250" cy="110" rx="42" ry="9" fill="#DDD8F5" opacity="0.3"/>
+
+  <!-- ═══════ GOLD RINGS (entwined) ═══════ -->
+  <!-- Ring 1 (back) -->
+  <circle cx="239" cy="83" r="17" fill="none" stroke="url(#goldGrad)" stroke-width="5.5"/>
+  <circle cx="239" cy="83" r="12" fill="none" stroke="#F8E57A" stroke-width="1.2" opacity="0.55"/>
+  <!-- Ring 2 (front, overlapping) -->
+  <circle cx="260" cy="83" r="17" fill="none" stroke="url(#goldGrad)" stroke-width="5.5"/>
+  <circle cx="260" cy="83" r="12" fill="none" stroke="#F8E57A" stroke-width="1.2" opacity="0.55"/>
+  <!-- Ring overlap mask: top arc of ring1 over ring2 -->
+  <path d="M243,67 A17,17 0 0,1 260,66" stroke="url(#goldGrad)" stroke-width="5.5" fill="none"/>
+
+  <!-- ═══════ PINK ROSE ═══════ -->
+  <g transform="translate(288,78)">
+    <!-- Leaves -->
+    <ellipse cx="-9" cy="7"  rx="7" ry="3" fill="#48A14D" transform="rotate(-40,-9,7)"/>
+    <ellipse cx="8"  cy="7"  rx="7" ry="3" fill="#48A14D" transform="rotate(35,8,7)"/>
+    <!-- Petals outer -->
+    <ellipse cx="0"  cy="0"  rx="10" ry="8" fill="#FF6FB7"/>
+    <ellipse cx="-6" cy="-5" rx="8" ry="5" fill="#FF4081" transform="rotate(-30,-6,-5)"/>
+    <ellipse cx="6"  cy="-5" rx="8" ry="5" fill="#FF4081" transform="rotate(30,6,-5)"/>
+    <!-- Petals inner -->
+    <ellipse cx="0"  cy="-7" rx="5" ry="4" fill="#FF88C2"/>
+    <ellipse cx="-2" cy="-2" rx="3" ry="2.5" fill="#FFB3D9" transform="rotate(-15,-2,-2)"/>
+    <!-- Center dot -->
+    <circle cx="0" cy="-1" r="2" fill="#E91E8C"/>
+  </g>
+
+  <!-- ═══════ ROBOT HEAD ═══════ -->
+  <ellipse cx="250" cy="182" rx="53" ry="51" fill="#1E1B4B"/>
+  <!-- Head highlight -->
+  <ellipse cx="232" cy="159" rx="19" ry="12" fill="white" opacity="0.07" transform="rotate(-25,232,159)"/>
+
+  <!-- Heart eyes -->
+  <!-- Left eye -->
+  <g transform="translate(226,174)" filter="url(#sparkGlow)">
+    <path d="M0,-12 C-1,-18 -13,-19 -13,-11 C-13,-5 0,3 0,12
+             C0,3 13,-5 13,-11 C13,-19 1,-18 0,-12Z" fill="#FF4081"/>
+    <ellipse cx="5" cy="-9" rx="3.5" ry="2.2" fill="white" opacity="0.65" transform="rotate(-20,5,-9)"/>
+  </g>
+  <!-- Right eye -->
+  <g transform="translate(274,174)" filter="url(#sparkGlow)">
+    <path d="M0,-12 C-1,-18 -13,-19 -13,-11 C-13,-5 0,3 0,12
+             C0,3 13,-5 13,-11 C13,-19 1,-18 0,-12Z" fill="#FF4081"/>
+    <ellipse cx="5" cy="-9" rx="3.5" ry="2.2" fill="white" opacity="0.65" transform="rotate(-20,5,-9)"/>
+  </g>
+
+  <!-- Smile -->
+  <path d="M232,206 Q250,221 268,206" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+
+  <!-- ═══════ ROBOT BODY / SUIT ═══════ -->
+  <!-- Neck -->
+  <rect x="240" y="220" width="20" height="11" rx="3" fill="#E8E4F5"/>
+  <!-- Body rectangle -->
+  <rect x="207" y="226" width="86" height="70" rx="20" fill="white" opacity="0.95"/>
+  <!-- Subtle suit shading -->
+  <path d="M207,248 Q250,262 293,248" stroke="#DDD8F5" stroke-width="1.5" fill="none" opacity="0.8"/>
+
+  <!-- Pink bowtie -->
+  <!-- Left wing -->
+  <path d="M250,241 L224,228 L224,254Z" fill="#E91E8C"/>
+  <path d="M250,241 L226,231 L232,242Z" fill="#C8178A" opacity="0.45"/>
+  <!-- Right wing -->
+  <path d="M250,241 L276,228 L276,254Z" fill="#E91E8C"/>
+  <path d="M250,241 L274,231 L268,242Z" fill="#C8178A" opacity="0.45"/>
+  <!-- Knot -->
+  <circle cx="250" cy="241" r="6.5" fill="#C8178A"/>
+  <circle cx="250" cy="241" r="3"   fill="#E91E8C"/>
+
+  <!-- ═══════ BRAND TEXT ═══════ -->
+
+  <!-- "A.I" — purple→pink italic serif -->
+  <text x="66" y="432"
+        font-family="Georgia,'Times New Roman',serif"
+        font-size="108" font-style="italic" font-weight="bold"
+        fill="url(#aiGrad)">A.I</text>
+
+  <!-- "Do" — gold italic serif -->
+  <text x="278" y="432"
+        font-family="Georgia,'Times New Roman',serif"
+        font-size="108" font-style="italic" font-weight="bold"
+        fill="url(#goldGrad)">Do</text>
+
+  <!-- Diamond ring icon (accent above the "o" in "Do") -->
+  <g transform="translate(413,345)">
+    <!-- Diamond facets -->
+    <polygon points="0,-15 13,-4 13,5 0,15 -13,5 -13,-4"
+             fill="url(#goldGrad)" stroke="#E8C040" stroke-width="0.8"/>
+    <polygon points="0,-15 13,-4 0,3 -13,-4"
+             fill="white" opacity="0.28"/>
+    <polygon points="0,3 13,-4 13,5 0,15 -12,5 -12,-4"
+             fill="#B88B20" opacity="0.4"/>
+    <!-- Shine -->
+    <line x1="-5" y1="-9" x2="5" y2="-5" stroke="white" stroke-width="1.8"
+          stroke-linecap="round" opacity="0.7"/>
+    <!-- Ring band -->
+    <path d="M-10,13 Q0,24 10,13" stroke="url(#goldGrad)" stroke-width="3.2"
+          fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- ═══════ SUBTITLE ═══════ -->
+  <!-- Left rule -->
+  <line x1="40"  y1="457" x2="118" y2="457" stroke="url(#subGrad)" stroke-width="1.4"/>
+  <!-- Right rule -->
+  <line x1="382" y1="457" x2="460" y2="457" stroke="url(#subGrad)" stroke-width="1.4"/>
+  <!-- Text -->
+  <text x="250" y="462"
+        font-family="Arial,Helvetica,sans-serif"
+        font-size="13.5" font-weight="700" letter-spacing="3.8"
+        fill="url(#subGrad)" text-anchor="middle">AI WEDDING PLANNER ASSISTANT</text>
+
 </svg>
