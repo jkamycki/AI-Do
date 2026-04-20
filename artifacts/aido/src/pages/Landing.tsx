@@ -61,8 +61,8 @@ function Stars({ count = 5 }: { count?: number }) {
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="px-8 py-4 flex items-center justify-between border-b border-primary/10 bg-white/80 backdrop-blur-sm">
+    <div className="dark min-h-screen bg-background flex flex-col">
+      <header className="px-8 py-4 flex items-center justify-between border-b border-primary/20 bg-black/60 backdrop-blur-md">
         <div className="flex items-center">
           <img src="/logo.png" alt="A.I Do" className="h-32 w-auto object-contain" />
         </div>
