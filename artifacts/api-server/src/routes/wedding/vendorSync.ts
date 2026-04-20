@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, vendors, vendorPayments } from "@workspace/db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, inArray } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
@@ -43,6 +43,39 @@ router.get("/vendors", requireAuth, async (req, res) => {
     res.json(rows.map(formatVendor));
   } catch (err) {
     req.log.error(err, "Failed to list vendors");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/vendors/financials", requireAuth, async (req, res) => {
+  try {
+    const userVendors = await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.userId, req.userId!));
+
+    const totalCommitted = userVendors.reduce((s, v) => s + Number(v.totalCost), 0);
+    const totalDeposits = userVendors.reduce((s, v) => s + Number(v.depositAmount), 0);
+
+    let totalPaidMilestones = 0;
+    const vendorIds = userVendors.map((v) => v.id);
+    if (vendorIds.length > 0) {
+      const paidPayments = await db
+        .select()
+        .from(vendorPayments)
+        .where(and(inArray(vendorPayments.vendorId, vendorIds), eq(vendorPayments.isPaid, true)));
+      totalPaidMilestones = paidPayments.reduce((s, p) => s + Number(p.amount), 0);
+    }
+
+    res.json({
+      vendorCount: userVendors.length,
+      totalCommitted,
+      totalDeposits,
+      totalPaidMilestones,
+      totalPaid: totalDeposits + totalPaidMilestones,
+    });
+  } catch (err) {
+    req.log.error(err, "Failed to fetch vendor financials");
     res.status(500).json({ error: "Internal server error" });
   }
 });

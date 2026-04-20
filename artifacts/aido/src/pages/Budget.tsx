@@ -15,7 +15,7 @@ import {
   useAddBudgetItemPayment,
   getGetBudgetItemPaymentsQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History, AlertTriangle, Clock, RotateCcw, Pencil, X, Check } from "lucide-react";
+import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History, AlertTriangle, Clock, RotateCcw, Pencil, X, Check, RefreshCcw, ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const itemSchema = z.object({
@@ -351,6 +351,21 @@ export default function Budget() {
   const predictBudget = usePredictBudget();
   const updateItem = useUpdateBudgetItem();
   const deleteItem = useDeleteBudgetItem();
+
+  const { data: vendorFinancials } = useQuery({
+    queryKey: ["vendor-financials"],
+    queryFn: async () => {
+      const res = await authFetch("/api/vendors/financials");
+      if (!res.ok) throw new Error("Failed to fetch vendor financials");
+      return res.json() as Promise<{
+        vendorCount: number;
+        totalCommitted: number;
+        totalDeposits: number;
+        totalPaidMilestones: number;
+        totalPaid: number;
+      }>;
+    },
+  });
 
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [isPredicting, setIsPredicting] = useState(false);
@@ -853,6 +868,30 @@ export default function Budget() {
               <p className="text-xs text-muted-foreground mt-0.5">Remaining payments</p>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {vendorFinancials && vendorFinancials.vendorCount > 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+          <RefreshCcw className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-primary">
+              Vendor payments are automatically synced here from your Vendor List.
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Across {vendorFinancials.vendorCount} vendor{vendorFinancials.vendorCount !== 1 ? "s" : ""}:{" "}
+              <strong>${vendorFinancials.totalCommitted.toLocaleString()}</strong> committed &middot;{" "}
+              <strong>${vendorFinancials.totalDeposits.toLocaleString()}</strong> in deposits paid &middot;{" "}
+              <strong>${vendorFinancials.totalPaidMilestones.toLocaleString()}</strong> in milestones paid.
+              No need to enter the same payment twice — everything recorded in the Vendor List flows here automatically.
+            </p>
+          </div>
+          <a
+            href="/vendors"
+            className="shrink-0 flex items-center gap-1 text-xs text-primary hover:underline font-medium mt-0.5"
+          >
+            View Vendors <ArrowUpRight className="h-3 w-3" />
+          </a>
         </div>
       )}
 

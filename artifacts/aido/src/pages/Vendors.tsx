@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { authFetch } from "@/lib/authFetch";
 import {
   useListVendors,
   useCreateVendor,
@@ -1091,8 +1092,18 @@ export default function Vendors() {
     },
   });
 
+  const { data: vendorFinancials } = useQuery({
+    queryKey: ["vendor-financials"],
+    queryFn: async () => {
+      const res = await authFetch("/api/vendors/financials");
+      if (!res.ok) throw new Error("Failed");
+      return res.json() as Promise<{ totalCommitted: number; totalDeposits: number; totalPaidMilestones: number; totalPaid: number; vendorCount: number }>;
+    },
+  });
+
   const totalCost = vendors.reduce((s, v) => s + v.totalCost, 0);
   const totalDeposit = vendors.reduce((s, v) => s + v.depositAmount, 0);
+  const paidOut = vendorFinancials?.totalPaid ?? totalDeposit;
   const signedCount = vendors.filter((v) => v.contractSigned).length;
 
   if (isLoading) {
@@ -1149,9 +1160,9 @@ export default function Vendors() {
           <div className="bg-card border border-border/60 rounded-2xl p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <DollarSign className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wider">Total Deposits</span>
+              <span className="text-xs font-medium uppercase tracking-wider">Paid Out</span>
             </div>
-            <p className="text-2xl font-serif font-semibold">{formatCurrency(totalDeposit)}</p>
+            <p className="text-2xl font-serif font-semibold">{formatCurrency(paidOut)}</p>
           </div>
           <div className="bg-card border border-border/60 rounded-2xl p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
