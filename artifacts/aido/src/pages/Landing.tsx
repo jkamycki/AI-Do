@@ -92,7 +92,7 @@ export default function Landing() {
             <span className="brand-gradient-text">Plan your perfect day,</span><br />
             <span className="gold-gradient-text italic">effortlessly.</span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl text-white/75 mb-10 max-w-2xl mx-auto leading-relaxed">
             A.I Do is your AI wedding planning partner — from setting a budget and building a timeline
             to drafting vendor emails and coordinating the big day itself.
           </p>
@@ -109,7 +109,7 @@ export default function Landing() {
             </Link>
           </div>
           {/* Social proof bar */}
-          <div className="mt-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <div className="mt-10 flex items-center justify-center gap-2 text-sm text-white/65">
             <div className="flex -space-x-2">
               {["PM","CJ","DA","SK"].map(initials => (
                 <div key={initials} className="w-8 h-8 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center text-[10px] font-bold text-primary">
@@ -126,7 +126,7 @@ export default function Landing() {
         <section className="w-full max-w-5xl px-6 pb-20">
           <div className="text-center mb-8">
             <h2 className="font-serif text-3xl text-primary mb-3">See it in action</h2>
-            <p className="text-muted-foreground">A quick look at what A.IDO can do for your wedding.</p>
+            <p className="text-white/65">A quick look at what A.IDO can do for your wedding.</p>
           </div>
           <div className="relative w-full overflow-hidden rounded-2xl shadow-2xl border border-primary/10" style={{ aspectRatio: "16/9" }}>
             <iframe
@@ -142,7 +142,7 @@ export default function Landing() {
         <section className="w-full max-w-5xl px-6 pb-20">
           <div className="text-center mb-12">
             <h2 className="font-serif text-3xl text-primary mb-3">Everything you need</h2>
-            <p className="text-muted-foreground text-lg">Eight AI-powered tools designed for your wedding journey.</p>
+            <p className="text-white/65 text-lg">Eight AI-powered tools designed for your wedding journey.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map(({ icon: Icon, title, desc }) => (
@@ -151,7 +151,7 @@ export default function Landing() {
                   <Icon className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="font-serif text-lg text-primary mb-2">{title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{desc}</p>
+                <p className="text-white/65 text-sm leading-relaxed">{desc}</p>
               </div>
             ))}
           </div>
@@ -161,12 +161,12 @@ export default function Landing() {
         <section className="w-full bg-primary/5 border-t border-b border-primary/10 py-20 px-6">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-14">
-              <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-700 text-sm font-medium px-4 py-1.5 rounded-full mb-4">
-                <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+              <div className="inline-flex items-center gap-2 bg-amber-900/40 text-amber-300 text-sm font-medium px-4 py-1.5 rounded-full mb-4">
+                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                 <span>Real couples, real results</span>
               </div>
               <h2 className="font-serif text-3xl md:text-4xl text-primary mb-3">Couples who planned with A.IDO</h2>
-              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+              <div className="flex items-center justify-center gap-2 text-white/65">
                 <Stars />
                 <span className="font-semibold text-foreground text-lg">5.0</span>
               </div>
@@ -179,7 +179,7 @@ export default function Landing() {
                   <Quote className="h-8 w-8 text-primary/20 fill-primary/10 -mb-1" />
 
                   {/* Review text */}
-                  <p className="text-sm leading-relaxed text-foreground/80 flex-1">
+                  <p className="text-sm leading-relaxed text-white/75 flex-1">
                     "{t.text}"
                   </p>
 
@@ -193,7 +193,7 @@ export default function Landing() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">{t.name}</p>
-                      <p className="text-xs text-muted-foreground">{t.date} · {t.location}</p>
+                      <p className="text-xs text-white/50">{t.date} · {t.location}</p>
                     </div>
                   </div>
                 </div>
@@ -205,7 +205,7 @@ export default function Landing() {
         {/* CTA */}
         <section className="w-full py-20 px-6 text-center">
           <h2 className="font-serif text-3xl md:text-4xl text-primary mb-4">Your dream day starts here</h2>
-          <p className="text-muted-foreground mb-8 max-w-lg mx-auto text-lg">
+          <p className="text-white/70 mb-8 max-w-lg mx-auto text-lg">
             Start planning your perfect wedding with A.IDO. It's free to get started.
           </p>
           <Link href="/sign-up">
@@ -213,16 +213,16 @@ export default function Landing() {
               Create Your Account — Free
             </Button>
           </Link>
-          <p className="mt-4 text-xs text-muted-foreground">No credit card required.</p>
+          <p className="mt-4 text-xs text-white/50">No credit card required.</p>
         </section>
       </main>
 
-      <footer className="px-8 py-8 border-t border-primary/10 text-center text-sm text-muted-foreground">
+      <footer className="px-8 py-8 border-t border-primary/10 text-center text-sm text-white/60">
         <div className="flex items-center justify-center gap-2 mb-3">
           <img src="/logo.png" alt="A.I Do" className="h-20 w-auto object-contain" />
           <span className="brand-gradient-text font-semibold">A.I Do — AI Wedding Planning OS</span>
         </div>
-        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground/70">
+        <div className="flex items-center justify-center gap-4 text-xs text-white/45">
           <span>© {new Date().getFullYear()} A.IDO. All rights reserved.</span>
           <span className="w-px h-3 bg-border inline-block" />
           <Link href="/terms" className="hover:text-primary transition-colors underline underline-offset-2">
