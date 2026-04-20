@@ -378,6 +378,9 @@ export default function Budget() {
       if (!res.ok) throw new Error("Failed to fetch vendor financials");
       return res.json() as Promise<VendorFinancials>;
     },
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const vfCommitted = vendorFinancials?.totalCommitted ?? 0;

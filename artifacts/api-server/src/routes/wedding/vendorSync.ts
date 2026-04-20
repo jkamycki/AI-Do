@@ -84,7 +84,11 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
         depositAmount: deposit,
         totalPaid,
         isPaidOff: totalCost > 0 && totalPaid >= totalCost,
-        nextPaymentDue: v.nextPaymentDue ? v.nextPaymentDue.toISOString().slice(0, 10) : null,
+        nextPaymentDue: v.nextPaymentDue
+          ? (v.nextPaymentDue instanceof Date
+            ? v.nextPaymentDue.toISOString().slice(0, 10)
+            : String(v.nextPaymentDue).slice(0, 10))
+          : null,
       };
     });
 

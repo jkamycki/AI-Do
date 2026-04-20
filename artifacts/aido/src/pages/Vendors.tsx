@@ -183,6 +183,7 @@ function AddEditVendorDialog({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        qc.invalidateQueries({ queryKey: ["vendor-financials"] });
         toast({ title: "Vendor added" });
         onClose();
       },
@@ -195,6 +196,7 @@ function AddEditVendorDialog({
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         if (vendor) qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendor.id) });
+        qc.invalidateQueries({ queryKey: ["vendor-financials"] });
         toast({ title: "Vendor updated" });
         onClose();
       },
@@ -365,6 +367,7 @@ function PaymentRow({
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        qc.invalidateQueries({ queryKey: ["vendor-financials"] });
       },
       onError: () => toast({ title: "Failed to update payment", variant: "destructive" }),
     },
@@ -436,6 +439,7 @@ function AddPaymentForm({
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        qc.invalidateQueries({ queryKey: ["vendor-financials"] });
         toast({ title: "Payment added" });
         onDone();
       },
@@ -536,6 +540,7 @@ function FileUploadSection({
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendor.id) });
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        qc.invalidateQueries({ queryKey: ["vendor-financials"] });
       },
       onError: () => toast({ title: "Failed to save file", variant: "destructive" }),
     },
@@ -630,6 +635,7 @@ function VendorDetailDialog({
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        qc.invalidateQueries({ queryKey: ["vendor-financials"] });
         setDeletingPaymentId(null);
         toast({ title: "Payment removed" });
       },
@@ -1085,6 +1091,7 @@ export default function Vendors() {
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        qc.invalidateQueries({ queryKey: ["vendor-financials"] });
         setDeletingVendorId(null);
         toast({ title: "Vendor removed" });
       },
