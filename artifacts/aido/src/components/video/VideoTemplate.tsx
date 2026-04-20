@@ -7,58 +7,67 @@ import { Scene4 } from "./video_scenes/Scene4";
 import { Scene5 } from "./video_scenes/Scene5";
 
 const SCENE_DURATIONS = {
-  hero: 4000,
-  planning: 4500,
-  dayToDay: 4500,
-  bigDay: 4000,
-  outro: 4000,
+  hero: 4500,
+  planning: 5000,
+  vendors: 5000,
+  bigDay: 4500,
+  outro: 5000,
 };
 
-// Persistent petal/ring shapes
-const persistentElements = [
-  { size: "w-64 h-64", border: "border-primary/20", blur: "blur-3xl", bg: "bg-primary/10" },
-  { size: "w-96 h-96", border: "border-white/10", blur: "blur-2xl", bg: "bg-white/5" },
-];
+const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
+  id: i,
+  x: `${Math.random() * 100}%`,
+  y: `${Math.random() * 100}%`,
+  size: Math.random() * 3 + 1,
+  delay: Math.random() * 4,
+  duration: Math.random() * 3 + 2,
+}));
 
 export default function VideoTemplate() {
   const { currentScene } = useVideoPlayer({ durations: SCENE_DURATIONS });
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#fdf6ee] text-[#3C2A32]">
-      {/* Background Video Layer */}
+    <div className="relative w-full h-screen overflow-hidden bg-[#07030d] text-white">
+
+      {/* Deep space gradient background */}
       <div className="absolute inset-0 z-0">
-        <video
-          src={`${import.meta.env.BASE_URL}videos/hero-background.mp4`}
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="w-full h-full object-cover opacity-30"
-        />
-        <div className="absolute inset-0 bg-[#fdf6ee]/60 mix-blend-overlay"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_60%_-20%,rgba(180,80,200,0.18)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_20%_100%,rgba(212,160,23,0.12)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_80%_80%,rgba(233,30,140,0.08)_0%,transparent_60%)]" />
       </div>
 
-      {/* Persistent Animated Shapes */}
+      {/* Floating particles */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <motion.div
-          className="absolute rounded-full border border-[#c9956b]/30 bg-[#7c3f5e]/5 blur-3xl w-[800px] h-[800px]"
-          animate={{
-            x: ["-20%", "40%", "-10%", "30%", "-20%"][currentScene],
-            y: ["-10%", "-30%", "20%", "-10%", "-10%"][currentScene],
-            scale: [1, 1.2, 0.8, 1.1, 1][currentScene],
-          }}
-          transition={{ duration: 3, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute rounded-full border border-[#7c3f5e]/20 blur-2xl w-[600px] h-[600px]"
-          animate={{
-            x: ["60%", "10%", "70%", "10%", "60%"][currentScene],
-            y: ["40%", "60%", "10%", "50%", "40%"][currentScene],
-            scale: [1.2, 0.9, 1.3, 0.9, 1.2][currentScene],
-          }}
-          transition={{ duration: 4, ease: "easeInOut" }}
-        />
+        {PARTICLES.map((p) => (
+          <motion.div
+            key={p.id}
+            className="absolute rounded-full bg-amber-300/60"
+            style={{ left: p.x, top: p.y, width: p.size, height: p.size }}
+            animate={{ opacity: [0, 1, 0], y: [0, -18, 0] }}
+            transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: "easeInOut" }}
+          />
+        ))}
       </div>
+
+      {/* Animated slow orbs */}
+      <motion.div
+        className="absolute rounded-full blur-[100px] w-[700px] h-[700px] bg-purple-600/10 pointer-events-none"
+        animate={{
+          x: ["-20%", "30%", "-10%", "20%", "-20%"][currentScene] ?? "-20%",
+          y: ["-10%", "-30%", "25%", "-5%", "-10%"][currentScene] ?? "-10%",
+          scale: [1, 1.15, 0.9, 1.1, 1][currentScene] ?? 1,
+        }}
+        transition={{ duration: 3.5, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute rounded-full blur-[80px] w-[500px] h-[500px] bg-amber-400/8 pointer-events-none"
+        animate={{
+          x: ["70%", "20%", "75%", "15%", "70%"][currentScene] ?? "70%",
+          y: ["50%", "65%", "15%", "60%", "50%"][currentScene] ?? "50%",
+          scale: [1.1, 0.85, 1.25, 0.9, 1.1][currentScene] ?? 1.1,
+        }}
+        transition={{ duration: 4, ease: "easeInOut" }}
+      />
 
       {/* Scene Content */}
       <div className="relative z-10 w-full h-full">
