@@ -92,16 +92,16 @@ const EVENT_LABELS: Record<string, string> = {
 };
 
 const EVENT_COLORS: Record<string, string> = {
-  user_signup: "bg-emerald-100 text-emerald-700",
-  user_login: "bg-blue-100 text-blue-700",
-  onboarding_completed: "bg-purple-100 text-purple-700",
-  timeline_generated: "bg-pink-100 text-pink-700",
-  vendor_email_generated: "bg-orange-100 text-orange-700",
-  checklist_item_completed: "bg-teal-100 text-teal-700",
-  budget_updated: "bg-amber-100 text-amber-700",
-  day_of_mode_activated: "bg-indigo-100 text-indigo-700",
-  pdf_exported: "bg-rose-100 text-rose-700",
-  api_error: "bg-red-100 text-red-700",
+  user_signup: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
+  user_login: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
+  onboarding_completed: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300",
+  timeline_generated: "bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300",
+  vendor_email_generated: "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300",
+  checklist_item_completed: "bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300",
+  budget_updated: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
+  day_of_mode_activated: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300",
+  pdf_exported: "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300",
+  api_error: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
 };
 
 function MetricCard({ title, value, sub, icon: Icon, accent = false }: {

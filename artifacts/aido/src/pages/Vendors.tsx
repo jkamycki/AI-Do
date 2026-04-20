@@ -90,21 +90,21 @@ const VENDOR_CATEGORIES = [
 ] as const;
 
 const CATEGORY_COLORS: Record<string, string> = {
-  "Venue": "bg-purple-100 text-purple-800",
-  "Caterer": "bg-orange-100 text-orange-800",
-  "Photographer": "bg-blue-100 text-blue-800",
-  "Videographer": "bg-indigo-100 text-indigo-800",
-  "Florist": "bg-green-100 text-green-800",
-  "DJ / Band": "bg-pink-100 text-pink-800",
-  "Officiant": "bg-amber-100 text-amber-800",
-  "Hair & Makeup": "bg-rose-100 text-rose-800",
-  "Transportation": "bg-cyan-100 text-cyan-800",
-  "Cake & Desserts": "bg-yellow-100 text-yellow-800",
-  "Invitations": "bg-lime-100 text-lime-800",
-  "Lighting & AV": "bg-violet-100 text-violet-800",
-  "Photo Booth": "bg-fuchsia-100 text-fuchsia-800",
-  "Wedding Planner": "bg-teal-100 text-teal-800",
-  "Other": "bg-gray-100 text-gray-800",
+  "Venue": "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300",
+  "Caterer": "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
+  "Photographer": "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+  "Videographer": "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300",
+  "Florist": "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+  "DJ / Band": "bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-300",
+  "Officiant": "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300",
+  "Hair & Makeup": "bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300",
+  "Transportation": "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300",
+  "Cake & Desserts": "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+  "Invitations": "bg-lime-100 dark:bg-lime-900/30 text-lime-800 dark:text-lime-300",
+  "Lighting & AV": "bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300",
+  "Photo Booth": "bg-fuchsia-100 dark:bg-fuchsia-900/30 text-fuchsia-800 dark:text-fuchsia-300",
+  "Wedding Planner": "bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300",
+  "Other": "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
 };
 
 function formatCurrency(n: number) {

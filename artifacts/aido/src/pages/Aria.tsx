@@ -65,7 +65,7 @@ function MessageBubble({ msg }: { msg: Message }) {
       <AriaAvatar />
       <div className="max-w-[78%] bg-card border border-border/50 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
         {msg.content ? (
-          <div className="prose prose-sm max-w-none text-foreground prose-p:my-1 prose-ul:my-1 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-foreground">
+          <div className="prose prose-sm dark:prose-invert max-w-none text-foreground prose-p:my-1 prose-ul:my-1 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-foreground">
             <ReactMarkdown>{msg.content}</ReactMarkdown>
           </div>
         ) : (

@@ -66,13 +66,13 @@ function getGroupLabel(value: string | null | undefined): string {
 }
 
 const GROUP_COLORS: Record<string, string> = {
-  brides_family: "bg-rose-100 text-rose-800 border-rose-200",
-  grooms_family: "bg-violet-100 text-violet-800 border-violet-200",
-  brides_friends: "bg-pink-100 text-pink-800 border-pink-200",
-  grooms_friends: "bg-indigo-100 text-indigo-800 border-indigo-200",
-  brides_coworkers: "bg-sky-100 text-sky-800 border-sky-200",
-  grooms_coworkers: "bg-teal-100 text-teal-800 border-teal-200",
-  other: "bg-gray-100 text-gray-700 border-gray-200",
+  brides_family: "bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800/40",
+  grooms_family: "bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300 border-violet-200 dark:border-violet-800/40",
+  brides_friends: "bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-300 border-pink-200 dark:border-pink-800/40",
+  grooms_friends: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/40",
+  brides_coworkers: "bg-sky-100 dark:bg-sky-900/30 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-800/40",
+  grooms_coworkers: "bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/40",
+  other: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700",
 };
 
 const guestSchema = z.object({
