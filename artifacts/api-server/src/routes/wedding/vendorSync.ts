@@ -41,7 +41,7 @@ router.post("/vendors", requireAuth, async (req, res) => {
   try {
     const {
       name, category, email, phone, website, portalLink,
-      notes, totalCost, depositAmount, contractSigned,
+      notes, totalCost, depositAmount, contractSigned, nextPaymentDue,
     } = req.body;
     const [created] = await db.insert(vendors).values({
       userId: req.userId!,
@@ -55,6 +55,7 @@ router.post("/vendors", requireAuth, async (req, res) => {
       totalCost: String(totalCost ?? 0),
       depositAmount: String(depositAmount ?? 0),
       contractSigned: contractSigned ?? false,
+      nextPaymentDue: nextPaymentDue || null,
       files: [],
     }).returning();
     res.status(201).json(formatVendor(created));
@@ -92,7 +93,7 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
     const vendorId = parseInt(req.params.id, 10);
     const {
       name, category, email, phone, website, portalLink,
-      notes, totalCost, depositAmount, contractSigned, files,
+      notes, totalCost, depositAmount, contractSigned, files, nextPaymentDue,
     } = req.body;
     const updates: Partial<typeof vendors.$inferInsert> = {};
     if (name !== undefined) updates.name = name;
@@ -105,6 +106,7 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
     if (totalCost !== undefined) updates.totalCost = String(totalCost);
     if (depositAmount !== undefined) updates.depositAmount = String(depositAmount);
     if (contractSigned !== undefined) updates.contractSigned = contractSigned;
+    if (nextPaymentDue !== undefined) updates.nextPaymentDue = nextPaymentDue || null;
     if (files !== undefined) updates.files = files;
     updates.updatedAt = new Date();
     const [updated] = await db

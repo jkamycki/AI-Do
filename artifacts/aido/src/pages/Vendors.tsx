@@ -68,6 +68,7 @@ import {
   Sparkles,
   X,
   ChevronRight,
+  Bell,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -134,6 +135,7 @@ type VendorFormData = {
   totalCost: string;
   depositAmount: string;
   contractSigned: boolean;
+  nextPaymentDue: string;
 };
 
 const defaultFormData: VendorFormData = {
@@ -147,6 +149,7 @@ const defaultFormData: VendorFormData = {
   totalCost: "",
   depositAmount: "",
   contractSigned: false,
+  nextPaymentDue: "",
 };
 
 function AddEditVendorDialog({
@@ -173,6 +176,7 @@ function AddEditVendorDialog({
           totalCost: vendor.totalCost > 0 ? String(vendor.totalCost) : "",
           depositAmount: vendor.depositAmount > 0 ? String(vendor.depositAmount) : "",
           contractSigned: vendor.contractSigned,
+          nextPaymentDue: vendor.nextPaymentDue ?? "",
         }
       : defaultFormData
   );
@@ -219,6 +223,7 @@ function AddEditVendorDialog({
       totalCost: form.totalCost ? Number(form.totalCost) : 0,
       depositAmount: form.depositAmount ? Number(form.depositAmount) : 0,
       contractSigned: form.contractSigned,
+      nextPaymentDue: form.nextPaymentDue || null,
     };
     if (vendor) {
       updateMutation.mutate({ id: vendor.id, data: payload });
@@ -325,6 +330,22 @@ function AddEditVendorDialog({
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 rows={3}
               />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="flex items-center gap-1.5">
+                <Bell className="h-3.5 w-3.5 text-primary" />
+                Next Payment Due Date
+                <span className="font-normal text-muted-foreground text-xs">(optional)</span>
+              </Label>
+              <Input
+                type="date"
+                value={form.nextPaymentDue}
+                onChange={(e) => setForm({ ...form, nextPaymentDue: e.target.value })}
+                className="font-sans [color-scheme:light] dark:[color-scheme:dark]"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Set a reminder — a badge will appear on this vendor card when payment is approaching or overdue.
+              </p>
             </div>
             <div className="flex items-center gap-2 sm:col-span-2">
               <Checkbox
@@ -917,6 +938,38 @@ function VendorCard({
         )}
       </div>
 
+      {vendor.nextPaymentDue && (() => {
+        const days = daysUntil(vendor.nextPaymentDue);
+        const isOverdue = days < 0;
+        const isDueSoon = days >= 0 && days <= 14;
+        if (isOverdue) {
+          return (
+            <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-lg">
+              <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
+              <span className="text-xs font-medium text-red-700 dark:text-red-300">
+                Payment overdue by {Math.abs(days)} day{Math.abs(days) !== 1 ? "s" : ""}
+              </span>
+            </div>
+          );
+        }
+        if (isDueSoon) {
+          return (
+            <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-lg">
+              <Bell className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                {days === 0 ? "Payment due today" : `Payment due in ${days} day${days !== 1 ? "s" : ""}`}
+              </span>
+            </div>
+          );
+        }
+        return (
+          <div className="flex items-center gap-1.5 mb-3 text-xs text-muted-foreground">
+            <Bell className="h-3 w-3 flex-shrink-0" />
+            <span>Next payment: {formatDate(vendor.nextPaymentDue)}</span>
+          </div>
+        );
+      })()}
+
       <div className="flex items-center justify-between">
         <div>
           <p className="text-lg font-serif font-semibold text-foreground">{formatCurrency(vendor.totalCost)}</p>
@@ -926,13 +979,13 @@ function VendorCard({
         </div>
         <div className="flex items-center gap-1.5">
           {vendor.contractSigned && (
-            <div className="flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+            <div className="flex items-center gap-1 text-xs text-green-700 bg-green-50 dark:bg-green-900/30 dark:text-green-300 px-2 py-0.5 rounded-full">
               <CheckCircle2 className="h-3 w-3" />
               <span>Signed</span>
             </div>
           )}
           {!vendor.contractSigned && (
-            <div className="flex items-center gap-1 text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+            <div className="flex items-center gap-1 text-xs text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-0.5 rounded-full">
               <Clock className="h-3 w-3" />
               <span>Pending</span>
             </div>

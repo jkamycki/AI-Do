@@ -212,6 +212,7 @@ export interface Vendor {
   totalCost: number;
   depositAmount: number;
   contractSigned: boolean;
+  nextPaymentDue?: string | null;
   files: VendorFile[];
   createdAt: string;
   updatedAt: string;
@@ -243,6 +244,7 @@ export interface CreateVendorBody {
   totalCost?: number;
   depositAmount?: number;
   contractSigned?: boolean;
+  nextPaymentDue?: string | null;
 }
 
 export interface UpdateVendorBody {
@@ -256,6 +258,7 @@ export interface UpdateVendorBody {
   totalCost?: number;
   depositAmount?: number;
   contractSigned?: boolean;
+  nextPaymentDue?: string | null;
   files?: VendorFile[];
 }
 
