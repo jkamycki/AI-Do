@@ -267,9 +267,9 @@ export function Sidebar() {
 
   return (
     <>
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b border-primary/10 z-50 flex items-center justify-between px-4">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-20 bg-background border-b border-primary/10 z-50 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="A.I Do Logo" className="h-14 w-auto object-contain" />
+          <img src="/logo.png" alt="A.I Do Logo" className="h-16 w-auto object-contain" />
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -295,13 +295,13 @@ export function Sidebar() {
 
       <div
         className={`
-          fixed top-0 left-0 h-full w-64 bg-card border-r z-40 transform transition-transform duration-300 ease-in-out pt-16 md:pt-0
+          fixed top-0 left-0 h-full w-64 bg-card border-r z-40 transform transition-transform duration-300 ease-in-out pt-20 md:pt-0
           flex flex-col
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
       >
         <div className="hidden md:flex items-center justify-center px-4 py-4 border-b border-primary/10">
-          <img src="/logo.png" alt="A.I Do — AI Wedding Planner Assistant" className="h-24 w-auto object-contain" />
+          <img src="/logo.png" alt="A.I Do — AI Wedding Planner Assistant" className="h-44 w-auto object-contain" />
         </div>
 
         <div className="pt-3 pb-1">
