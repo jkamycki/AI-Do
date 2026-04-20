@@ -352,20 +352,39 @@ export default function Budget() {
   const updateItem = useUpdateBudgetItem();
   const deleteItem = useDeleteBudgetItem();
 
+  interface VendorFinancialRow {
+    id: number;
+    name: string;
+    category: string;
+    totalCost: number;
+    depositAmount: number;
+    totalPaid: number;
+    isPaidOff: boolean;
+    nextPaymentDue: string | null;
+  }
+  interface VendorFinancials {
+    vendorCount: number;
+    totalCommitted: number;
+    totalDeposits: number;
+    totalPaidMilestones: number;
+    totalPaid: number;
+    vendors: VendorFinancialRow[];
+  }
+
   const { data: vendorFinancials } = useQuery({
     queryKey: ["vendor-financials"],
     queryFn: async () => {
       const res = await authFetch("/api/vendors/financials");
       if (!res.ok) throw new Error("Failed to fetch vendor financials");
-      return res.json() as Promise<{
-        vendorCount: number;
-        totalCommitted: number;
-        totalDeposits: number;
-        totalPaidMilestones: number;
-        totalPaid: number;
-      }>;
+      return res.json() as Promise<VendorFinancials>;
     },
   });
+
+  const vfCommitted = vendorFinancials?.totalCommitted ?? 0;
+  const vfPaid = vendorFinancials?.totalPaid ?? 0;
+  const combinedCommitted = (budget?.spent ?? 0) + vfCommitted;
+  const combinedPaid = ((budget as any)?.totalPaid ?? 0) + vfPaid;
+  const combinedOwed = Math.max(0, combinedCommitted - combinedPaid);
 
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [isPredicting, setIsPredicting] = useState(false);
@@ -519,8 +538,8 @@ export default function Budget() {
     );
   }
 
-  const spentPercentage = budget && budget.totalBudget > 0 ? (budget.spent / budget.totalBudget) * 100 : 0;
-  const isOverBudget = budget ? budget.spent > budget.totalBudget : false;
+  const spentPercentage = budget && budget.totalBudget > 0 ? (combinedCommitted / budget.totalBudget) * 100 : 0;
+  const isOverBudget = budget ? combinedCommitted > budget.totalBudget : false;
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -840,8 +859,8 @@ export default function Budget() {
               <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Committed</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4">
-              <div className="text-3xl font-serif">${budget.spent.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground mt-0.5">Total billed</p>
+              <div className="text-3xl font-serif">${combinedCommitted.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground mt-0.5">Budget + vendor total</p>
             </CardContent>
           </Card>
           <Card className="bg-emerald-50 border-none shadow-sm">
@@ -849,49 +868,25 @@ export default function Budget() {
               <CardTitle className="text-xs font-medium text-emerald-700 uppercase tracking-wider">Paid Out</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4">
-              <div className="text-3xl font-serif text-emerald-700">${(budget as any).totalPaid?.toLocaleString() ?? "0"}</div>
+              <div className="text-3xl font-serif text-emerald-700">${combinedPaid.toLocaleString()}</div>
               <p className="text-xs text-emerald-600 mt-0.5">
-                {budget.spent > 0 ? Math.round(((budget as any).totalPaid / budget.spent) * 100) : 0}% of committed
+                {combinedCommitted > 0 ? Math.round((combinedPaid / combinedCommitted) * 100) : 0}% of committed
               </p>
             </CardContent>
           </Card>
-          <Card className={`${(budget as any).stillOwed > 0 ? 'bg-amber-50' : 'bg-secondary/20'} border-none shadow-sm`}>
+          <Card className={`${combinedOwed > 0 ? 'bg-amber-50' : 'bg-secondary/20'} border-none shadow-sm`}>
             <CardHeader className="pb-1 pt-4 px-4">
-              <CardTitle className={`text-xs font-medium uppercase tracking-wider ${(budget as any).stillOwed > 0 ? 'text-amber-700' : 'text-muted-foreground'}`}>
+              <CardTitle className={`text-xs font-medium uppercase tracking-wider ${combinedOwed > 0 ? 'text-amber-700' : 'text-muted-foreground'}`}>
                 Still Owed
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4">
-              <div className={`text-3xl font-serif ${(budget as any).stillOwed > 0 ? 'text-amber-700' : 'text-foreground'}`}>
-                ${(budget as any).stillOwed?.toLocaleString() ?? "0"}
+              <div className={`text-3xl font-serif ${combinedOwed > 0 ? 'text-amber-700' : 'text-foreground'}`}>
+                ${combinedOwed.toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">Remaining payments</p>
             </CardContent>
           </Card>
-        </div>
-      )}
-
-      {vendorFinancials && vendorFinancials.vendorCount > 0 && (
-        <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
-          <RefreshCcw className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-primary">
-              Vendor payments are automatically synced here from your Vendor List.
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Across {vendorFinancials.vendorCount} vendor{vendorFinancials.vendorCount !== 1 ? "s" : ""}:{" "}
-              <strong>${vendorFinancials.totalCommitted.toLocaleString()}</strong> committed &middot;{" "}
-              <strong>${vendorFinancials.totalDeposits.toLocaleString()}</strong> in deposits paid &middot;{" "}
-              <strong>${vendorFinancials.totalPaidMilestones.toLocaleString()}</strong> in milestones paid.
-              No need to enter the same payment twice — everything recorded in the Vendor List flows here automatically.
-            </p>
-          </div>
-          <a
-            href="/vendors"
-            className="shrink-0 flex items-center gap-1 text-xs text-primary hover:underline font-medium mt-0.5"
-          >
-            View Vendors <ArrowUpRight className="h-3 w-3" />
-          </a>
         </div>
       )}
 
@@ -985,7 +980,7 @@ export default function Budget() {
               <CardTitle className="font-serif text-xl">Expenses</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {budget && budget.items && budget.items.length > 0 ? (
+              {budget && (budget.items.length > 0 || (vendorFinancials?.vendors ?? []).length > 0) ? (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader className="bg-muted/10">
@@ -1072,6 +1067,59 @@ export default function Budget() {
                           </TableCell>
                         </TableRow>
                       ))}
+
+                      {/* ── Vendor List rows (auto-synced, read-only) ── */}
+                      {(vendorFinancials?.vendors ?? []).map((v) => {
+                        const pct = v.totalCost > 0 ? Math.min((v.totalPaid / v.totalCost) * 100, 100) : 0;
+                        return (
+                          <TableRow key={`vendor-${v.id}`} className="bg-primary/[0.025] hover:bg-primary/[0.04] transition-colors">
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="font-medium text-foreground">{v.name}</div>
+                                <span className="text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                  Vendor List
+                                </span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">{v.category}</div>
+                              {v.nextPaymentDue && !v.isPaidOff && (
+                                <div className="text-xs text-amber-600 mt-0.5">
+                                  Next due: {new Date(v.nextPaymentDue + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              ${v.totalCost.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="min-w-[160px]">
+                              <div className="space-y-1 py-0.5">
+                                <div className="text-xs text-left">
+                                  <span className="font-medium">${v.totalPaid.toLocaleString()}</span>
+                                  <span className="text-muted-foreground"> / ${v.totalCost.toLocaleString()}</span>
+                                </div>
+                                <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${v.isPaidOff ? "bg-green-500" : "bg-primary"}`}
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${v.isPaidOff ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground"}`}>
+                                <CheckCircle2 className="h-5 w-5" />
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <a
+                                href="/vendors"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium px-2 py-1"
+                              >
+                                View <ArrowUpRight className="h-3 w-3" />
+                              </a>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>

@@ -57,15 +57,38 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
     const totalCommitted = userVendors.reduce((s, v) => s + Number(v.totalCost), 0);
     const totalDeposits = userVendors.reduce((s, v) => s + Number(v.depositAmount), 0);
 
-    let totalPaidMilestones = 0;
     const vendorIds = userVendors.map((v) => v.id);
+
+    // Fetch all paid milestone payments grouped by vendorId
+    const paidByVendor: Record<number, number> = {};
     if (vendorIds.length > 0) {
       const paidPayments = await db
         .select()
         .from(vendorPayments)
         .where(and(inArray(vendorPayments.vendorId, vendorIds), eq(vendorPayments.isPaid, true)));
-      totalPaidMilestones = paidPayments.reduce((s, p) => s + Number(p.amount), 0);
+      for (const p of paidPayments) {
+        paidByVendor[p.vendorId] = (paidByVendor[p.vendorId] ?? 0) + Number(p.amount);
+      }
     }
+
+    const vendorDetails = userVendors.map((v) => {
+      const deposit = Number(v.depositAmount);
+      const milestones = paidByVendor[v.id] ?? 0;
+      const totalPaid = deposit + milestones;
+      const totalCost = Number(v.totalCost);
+      return {
+        id: v.id,
+        name: v.name,
+        category: v.category ?? "Vendor",
+        totalCost,
+        depositAmount: deposit,
+        totalPaid,
+        isPaidOff: totalCost > 0 && totalPaid >= totalCost,
+        nextPaymentDue: v.nextPaymentDue ? v.nextPaymentDue.toISOString().slice(0, 10) : null,
+      };
+    });
+
+    const totalPaidMilestones = Object.values(paidByVendor).reduce((s, v) => s + v, 0);
 
     res.json({
       vendorCount: userVendors.length,
@@ -73,6 +96,7 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
       totalDeposits,
       totalPaidMilestones,
       totalPaid: totalDeposits + totalPaidMilestones,
+      vendors: vendorDetails,
     });
   } catch (err) {
     req.log.error(err, "Failed to fetch vendor financials");
