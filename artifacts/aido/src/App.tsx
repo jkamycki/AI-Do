@@ -65,13 +65,13 @@ const clerkAppearance = {
     logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
   },
   variables: {
-    colorPrimary: "#9B4D6C",
-    colorBackground: "#FAF7F5",
-    colorInputBackground: "#FFFFFF",
-    colorText: "#3C2A32",
-    colorTextSecondary: "#7A5C6A",
-    colorInputText: "#3C2A32",
-    colorNeutral: "#C4A0B2",
+    colorPrimary: "#D4A017",
+    colorBackground: "#120c1e",
+    colorInputBackground: "#1e1530",
+    colorText: "#ffffff",
+    colorTextSecondary: "#b8a9cc",
+    colorInputText: "#ffffff",
+    colorNeutral: "#7c6a9a",
     borderRadius: "0.75rem",
     fontFamily: "Georgia, 'Times New Roman', serif",
     fontFamilyButtons: "system-ui, sans-serif",
@@ -79,38 +79,46 @@ const clerkAppearance = {
   },
   elements: {
     rootBox: "w-full",
-    cardBox: "shadow-2xl rounded-2xl w-full overflow-hidden border border-primary/10",
+    cardBox: "shadow-2xl rounded-2xl w-full overflow-hidden border border-amber-500/20",
     card: "!shadow-none !border-0 !bg-transparent !rounded-none",
     footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    headerTitle: { color: "#3C2A32", fontFamily: "Georgia, serif" },
-    headerSubtitle: { color: "#7A5C6A" },
-    socialButtonsBlockButtonText: { color: "#3C2A32" },
-    formFieldLabel: { color: "#3C2A32" },
-    footerActionLink: { color: "#9B4D6C" },
-    footerActionText: { color: "#7A5C6A" },
-    dividerText: { color: "#C4A0B2" },
-    identityPreviewEditButton: { color: "#9B4D6C" },
-    formFieldSuccessText: { color: "#7A5C6A" },
-    alertText: { color: "#3C2A32" },
+    headerTitle: { color: "#ffffff", fontFamily: "Georgia, serif" },
+    headerSubtitle: { color: "#b8a9cc" },
+    socialButtonsBlockButtonText: { color: "#ffffff" },
+    socialButtonsBlockButtonArrow: { color: "#ffffff" },
+    formFieldLabel: { color: "#e2d9f3" },
+    footerActionLink: { color: "#D4A017" },
+    footerActionText: { color: "#b8a9cc" },
+    dividerText: { color: "#7c6a9a" },
+    identityPreviewEditButton: { color: "#D4A017" },
+    formFieldSuccessText: { color: "#86efac" },
+    alertText: { color: "#ffffff" },
     logoBox: "flex justify-center py-4",
     logoImage: "h-16 w-16",
-    socialButtonsBlockButton: "border border-primary/20 hover:bg-primary/5",
-    formButtonPrimary: "bg-primary hover:bg-primary/90 text-white rounded-lg",
-    formFieldInput: "border border-primary/20 focus:border-primary rounded-lg bg-white",
-    footerAction: "border-t border-primary/10",
-    dividerLine: "bg-primary/15",
+    socialButtonsBlockButton: "border border-white/15 hover:bg-white/8 !text-white",
+    formButtonPrimary: "!bg-amber-600 hover:!bg-amber-500 !text-white rounded-lg",
+    formFieldInput: "!border-white/15 focus:!border-amber-400 rounded-lg !bg-white/5 !text-white",
+    footerAction: "border-t border-white/10",
+    dividerLine: "!bg-white/10",
     main: "px-6 pb-6",
   },
 };
 
 function AuthPageWrapper({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 py-10 gap-6">
-      <div className="flex flex-col items-center gap-2">
-        <img src="/logo.png" alt="A.IDO" className="h-28 w-auto object-contain" />
-        <p className="text-sm text-muted-foreground font-medium tracking-wide">AI Wedding Planning OS</p>
+    <div
+      className="flex min-h-[100dvh] flex-col items-center justify-center px-4 py-10 gap-6"
+      style={{ background: "linear-gradient(135deg, #09060f 0%, #130b22 50%, #09060f 100%)" }}
+    >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(212,160,23,0.12) 0%, transparent 60%)" }}
+      />
+      <div className="relative flex flex-col items-center gap-2">
+        <img src="/logo.png" alt="A.IDO" className="h-24 w-auto object-contain" style={{ filter: "drop-shadow(0 0 20px rgba(212,160,23,0.4))" }} />
+        <p className="text-sm font-medium tracking-widest uppercase" style={{ color: "#b8a9cc" }}>AI Wedding Planning OS</p>
       </div>
-      <div className="w-full max-w-md">
+      <div className="relative w-full max-w-md">
         {children}
       </div>
     </div>
