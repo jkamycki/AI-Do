@@ -4,6 +4,7 @@ import { useClerk, useUser, useAuth } from "@clerk/react";
 import { useQuery } from "@tanstack/react-query";
 import { useWorkspace, type WorkspaceInfo } from "@/contexts/WorkspaceContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useTranslation } from "react-i18next";
 import {
   Heart,
   LayoutDashboard,
@@ -36,37 +37,37 @@ import { Button } from "@/components/ui/button";
 
 const navSections = [
   {
-    label: "Planning",
+    labelKey: "Planning",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/profile", label: "Wedding Profile", icon: User },
-      { href: "/timeline", label: "Timeline", icon: CalendarDays },
-      { href: "/checklist", label: "Checklist", icon: CheckSquare },
+      { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
+      { href: "/profile", labelKey: "nav.profile", icon: User },
+      { href: "/timeline", labelKey: "nav.timeline", icon: CalendarDays },
+      { href: "/checklist", labelKey: "nav.checklist", icon: CheckSquare },
     ],
   },
   {
-    label: "Budget & Vendors",
+    labelKey: "nav.budget_vendors",
     items: [
-      { href: "/budget", label: "Budget Manager", icon: DollarSign },
-      { href: "/vendors", label: "Vendor List", icon: Store },
-      { href: "/vendor-email", label: "Vendor Emails", icon: Mail },
-      { href: "/contracts", label: "Contracts", icon: FileText },
+      { href: "/budget", labelKey: "nav.budget", icon: DollarSign },
+      { href: "/vendors", labelKey: "nav.vendors", icon: Store },
+      { href: "/vendor-email", labelKey: "nav.emails", icon: Mail },
+      { href: "/contracts", labelKey: "nav.contracts", icon: FileText },
     ],
   },
   {
-    label: "Guests",
+    labelKey: "nav.guests_label",
     items: [
-      { href: "/guests", label: "Guest List", icon: UsersRound },
-      { href: "/wedding-party", label: "Wedding Party", icon: Flower2 },
-      { href: "/seating-chart", label: "Seating Chart", icon: Armchair },
-      { href: "/hotels", label: "Hotel Blocks", icon: Hotel },
+      { href: "/guests", labelKey: "nav.guests", icon: UsersRound },
+      { href: "/wedding-party", labelKey: "nav.party", icon: Flower2 },
+      { href: "/seating-chart", labelKey: "nav.seating", icon: Armchair },
+      { href: "/hotels", labelKey: "nav.hotels", icon: Hotel },
     ],
   },
   {
-    label: "AI Assistants",
+    labelKey: "nav.ai_label",
     items: [
-      { href: "/aria", label: "Aria — Planner AI", icon: Sparkles },
-      { href: "/day-of", label: "Day-Of Coordinator", icon: Smartphone },
+      { href: "/aria", labelKey: "nav.aria", icon: Sparkles },
+      { href: "/day-of", labelKey: "nav.dayof", icon: Smartphone },
     ],
   },
 ];
@@ -199,6 +200,7 @@ export function Sidebar() {
   const { getToken, isSignedIn } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation();
 
   const { data: adminCheck } = useQuery({
     queryKey: ["admin-check"],
@@ -319,13 +321,13 @@ export function Sidebar() {
 
         <nav className="flex-1 p-4 overflow-y-auto space-y-4">
           {navSections.map((section) => (
-            <div key={section.label}>
+            <div key={section.labelKey}>
               <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                {section.label}
+                {t(section.labelKey, { defaultValue: section.labelKey })}
               </p>
               <div className="space-y-0.5">
                 {section.items.map((item) => (
-                  <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
+                  <NavLink key={item.href} href={item.href} label={t(item.labelKey)} icon={item.icon} />
                 ))}
               </div>
             </div>
@@ -336,8 +338,8 @@ export function Sidebar() {
               Workspace
             </p>
             <div className="space-y-0.5">
-              <NavLink href="/settings" label="Settings & Collaborators" icon={Settings} />
-              <NavLink href="/help" label="Help & Support" icon={HelpCircle} />
+              <NavLink href="/settings" label={t("nav.settings")} icon={Settings} />
+              <NavLink href="/help" label={t("nav.help")} icon={HelpCircle} />
             </div>
           </div>
 
@@ -347,7 +349,7 @@ export function Sidebar() {
                 Admin
               </p>
               <div className="space-y-0.5">
-                <NavLink href="/admin" label="Operations Center" icon={Shield} special />
+                <NavLink href="/admin" label={t("nav.admin")} icon={Shield} special />
               </div>
             </div>
           )}

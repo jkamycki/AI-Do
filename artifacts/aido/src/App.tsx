@@ -9,6 +9,8 @@ import { setFetchTokenGetter } from "@/lib/authFetch";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { useGetProfile } from "@workspace/api-client-react";
+import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import Profile from "@/pages/Profile";
@@ -186,6 +188,19 @@ function ClerkTokenSetup() {
   return null;
 }
 
+function LanguageSyncProvider() {
+  const { data: profile } = useGetProfile();
+  useEffect(() => {
+    if (!profile?.preferredLanguage) return;
+    const code = LANG_NAME_TO_CODE[profile.preferredLanguage] ?? "en";
+    if (i18n.language !== code) {
+      i18n.changeLanguage(code);
+      localStorage.setItem("aido_language", code);
+    }
+  }, [profile?.preferredLanguage]);
+  return null;
+}
+
 function ClerkQueryClientCacheInvalidator() {
   const { addListener } = useClerk();
   const qc = useQueryClient();
@@ -266,6 +281,7 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkTokenSetup />
         <ClerkQueryClientCacheInvalidator />
+        <LanguageSyncProvider />
         <WorkspaceProvider>
           <ThemeProvider>
             <TooltipProvider>

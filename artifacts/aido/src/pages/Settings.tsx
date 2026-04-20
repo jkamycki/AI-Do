@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGetProfile, useSaveProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
+import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -220,6 +221,9 @@ function LanguageSwitcherCard() {
       },
       {
         onSuccess: () => {
+          const code = LANG_NAME_TO_CODE[current] ?? "en";
+          i18n.changeLanguage(code);
+          localStorage.setItem("aido_language", code);
           qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
           setSelected(null);
           toast({ title: "Language updated", description: `Switched to ${current}.` });
@@ -240,7 +244,7 @@ function LanguageSwitcherCard() {
           </div>
           <div>
             <CardTitle className="font-serif text-lg">Preferred Language</CardTitle>
-            <CardDescription>AI features like Aria and vendor emails respond in this language.</CardDescription>
+            <CardDescription>Sets the display language for the entire platform, including all menus and pages.</CardDescription>
           </div>
         </div>
       </CardHeader>
