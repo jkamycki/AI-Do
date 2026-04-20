@@ -30,6 +30,7 @@ import Hotels from "@/pages/Hotels";
 import WeddingParty from "@/pages/WeddingParty";
 import Contracts from "@/pages/Contracts";
 import Aria from "@/pages/Aria";
+import Terms from "@/pages/Terms";
 import NotFound from "@/pages/not-found";
 import VideoTemplate from "@/components/video/VideoTemplate";
 
@@ -220,6 +221,7 @@ function Router() {
       <Route path="/contracts" component={() => <ProtectedRoute component={Contracts} />} />
       <Route path="/aria" component={() => <ProtectedRoute component={Aria} />} />
       <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} />} />
+      <Route path="/terms" component={Terms} />
       <Route path="/promo" component={VideoTemplate} />
       <Route component={NotFound} />
     </Switch>

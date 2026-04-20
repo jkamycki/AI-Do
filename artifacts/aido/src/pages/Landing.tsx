@@ -217,10 +217,17 @@ export default function Landing() {
         </section>
       </main>
 
-      <footer className="px-8 py-6 border-t border-primary/10 text-center text-sm text-muted-foreground">
-        <div className="flex items-center justify-center gap-2">
+      <footer className="px-8 py-8 border-t border-primary/10 text-center text-sm text-muted-foreground">
+        <div className="flex items-center justify-center gap-2 mb-3">
           <img src="/logo.png" alt="A.I Do" className="h-20 w-auto object-contain" />
           <span className="brand-gradient-text font-semibold">A.I Do — AI Wedding Planning OS</span>
+        </div>
+        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground/70">
+          <span>© {new Date().getFullYear()} A.IDO. All rights reserved.</span>
+          <span className="w-px h-3 bg-border inline-block" />
+          <Link href="/terms" className="hover:text-primary transition-colors underline underline-offset-2">
+            Terms of Service
+          </Link>
         </div>
       </footer>
     </div>
