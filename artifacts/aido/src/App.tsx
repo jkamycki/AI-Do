@@ -101,20 +101,32 @@ const clerkAppearance = {
   },
 };
 
+function AuthPageWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 py-10 gap-6">
+      <div className="flex flex-col items-center gap-2">
+        <img src="/logo.png" alt="A.IDO" className="h-28 w-auto object-contain" />
+        <p className="text-sm text-muted-foreground font-medium tracking-wide">AI Wedding Planning OS</p>
+      </div>
+      <div className="w-full max-w-md">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function SignInPage() {
   // To update login providers, app branding, or OAuth settings use the Auth
   // pane in the workspace toolbar. More information can be found in the Replit docs.
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md">
-        <SignIn
-          routing="path"
-          path={`${basePath}/sign-in`}
-          signUpUrl={`${basePath}/sign-up`}
-          fallbackRedirectUrl={`${basePath}/dashboard`}
-        />
-      </div>
-    </div>
+    <AuthPageWrapper>
+      <SignIn
+        routing="path"
+        path={`${basePath}/sign-in`}
+        signUpUrl={`${basePath}/sign-up`}
+        fallbackRedirectUrl={`${basePath}/dashboard`}
+      />
+    </AuthPageWrapper>
   );
 }
 
@@ -122,16 +134,14 @@ function SignUpPage() {
   // To update login providers, app branding, or OAuth settings use the Auth
   // pane in the workspace toolbar. More information can be found in the Replit docs.
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md">
-        <SignUp
-          routing="path"
-          path={`${basePath}/sign-up`}
-          signInUrl={`${basePath}/sign-in`}
-          fallbackRedirectUrl={`${basePath}/dashboard`}
-        />
-      </div>
-    </div>
+    <AuthPageWrapper>
+      <SignUp
+        routing="path"
+        path={`${basePath}/sign-up`}
+        signInUrl={`${basePath}/sign-in`}
+        fallbackRedirectUrl={`${basePath}/dashboard`}
+      />
+    </AuthPageWrapper>
   );
 }
 
