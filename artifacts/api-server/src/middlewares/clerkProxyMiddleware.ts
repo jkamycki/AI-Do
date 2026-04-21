@@ -22,8 +22,23 @@
 import { createProxyMiddleware } from "http-proxy-middleware";
 import type { RequestHandler } from "express";
 
-const CLERK_FAPI = "https://frontend-api.clerk.dev";
 export const CLERK_PROXY_PATH = "/api/__clerk";
+
+function getClerkFapiTarget(): string {
+  // Decode instance domain from publishable key (it's base64 encoded after pk_test_ or pk_live_)
+  const pubKey = process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY || "";
+  if (pubKey) {
+    try {
+      const parts = pubKey.split("_");
+      const encoded = parts[2] || "";
+      const decoded = Buffer.from(encoded, "base64").toString("utf8").replace(/\$$/, "");
+      if (decoded && decoded.includes("clerk")) {
+        return `https://${decoded}`;
+      }
+    } catch {}
+  }
+  return "https://frontend-api.clerk.dev";
+}
 
 export function clerkProxyMiddleware(): RequestHandler {
   // Only run proxy in production — Clerk proxying doesn't work for dev instances
@@ -36,8 +51,11 @@ export function clerkProxyMiddleware(): RequestHandler {
     return (_req, _res, next) => next();
   }
 
+  const target = getClerkFapiTarget();
+  console.log("[Clerk Proxy] Using FAPI target:", target);
+
   return createProxyMiddleware({
-    target: CLERK_FAPI,
+    target,
     changeOrigin: true,
     pathRewrite: (path: string) =>
       path.replace(new RegExp(`^${CLERK_PROXY_PATH}`), ""),
@@ -57,6 +75,18 @@ export function clerkProxyMiddleware(): RequestHandler {
           "";
         if (clientIp) {
           proxyReq.setHeader("X-Forwarded-For", clientIp);
+        }
+      },
+      proxyRes: (proxyRes, req) => {
+        if (proxyRes.statusCode === 422 && req.url?.includes("sign_up")) {
+          const chunks: Buffer[] = [];
+          proxyRes.on("data", (chunk: Buffer) => chunks.push(chunk));
+          proxyRes.on("end", () => {
+            try {
+              const body = Buffer.concat(chunks).toString("utf8");
+              console.error("[Clerk 422 sign_up error]", body.substring(0, 800));
+            } catch {}
+          });
         }
       },
     },
