@@ -322,49 +322,72 @@ if (process.env.NODE_ENV === "production") {
           return forwardResponse(fapiRes, fapiBody, res);
         }
 
-        console.log("[sign_in] BAPI verified password — rotating to bypass HIBP");
+        console.log("[sign_in] BAPI verified password — using ticket strategy");
 
-        // Strategy: temporarily change the user's password to a strong
-        // random one, sign in via FAPI with that, then revert.  This
-        // is necessary because FAPI sign-in always checks HIBP and we
-        // need to actually establish session cookies on the browser.
-        const tempPassword = `Aido${Date.now()}!${Math.random().toString(36).slice(2, 12)}Wedding#2026`;
+        // Strategy: use an admin-issued sign-in ticket.  Tickets bypass
+        // BOTH the HIBP password check AND the "new device" reverification
+        // challenge that password sign-ins trigger.
 
-        const updateRes = await bapiFetch(
-          `/v1/users/${user.id}`,
+        // Create a one-time sign-in token for this user
+        const tokenRes = await bapiFetch("/v1/sign_in_tokens", "POST", {
+          user_id: user.id,
+          expires_in_seconds: 60,
+        });
+        const tokenBody = await tokenRes.text();
+        if (!tokenRes.ok) {
+          console.error("[sign_in] sign_in_token failed:", tokenRes.status, tokenBody.substring(0, 300));
+          return forwardResponse(fapiRes, fapiBody, res);
+        }
+        const tokenJson = JSON.parse(tokenBody);
+        const ticket = tokenJson.token;
+
+        // Create a fresh FAPI sign-in using the ticket strategy
+        const ticketParams = new URLSearchParams();
+        ticketParams.set("strategy", "ticket");
+        ticketParams.set("ticket", ticket);
+
+        const ticketRes = await fapiFetch(
+          "/v1/client/sign_ins",
           "POST",
-          { password: tempPassword, skip_password_checks: true },
+          { ...commonHdrs, "Content-Type": "application/x-www-form-urlencoded" },
+          ticketParams.toString(),
         );
-        if (!updateRes.ok) {
-          console.error("[sign_in] password rotation update failed:", updateRes.status);
+        const ticketBody = await ticketRes.text();
+        console.log("[sign_in] ticket sign-in status:", ticketRes.status);
+
+        if (!ticketRes.ok) {
+          console.error("[sign_in] ticket sign-in body:", ticketBody.substring(0, 400));
           return forwardResponse(fapiRes, fapiBody, res);
         }
 
-        // Now sign in via FAPI with the temp password — this establishes
-        // proper browser session cookies and produces a valid response
-        const tempParams = new URLSearchParams();
-        tempParams.set(
-          "strategy",
-          (params.get("strategy") as string) || "password",
-        );
-        tempParams.set("password", tempPassword);
-
-        const retryRes = await fapiFetch(
-          `/v1/client/sign_ins/${siaId}/attempt_first_factor`,
-          "POST",
-          commonHdrs,
-          tempParams.toString(),
-        );
-        const retryBody = await retryRes.text();
-
-        // Restore the user's original password (skip_password_checks bypasses HIBP)
-        await bapiFetch(`/v1/users/${user.id}`, "POST", {
-          password,
-          skip_password_checks: true,
-        });
-
-        console.log("[sign_in] password restored, FAPI status:", retryRes.status);
-        return forwardResponse(retryRes, retryBody, res);
+        // The ticket flow returns a complete sign-in with a new sia_id.
+        // We rewrite the response to use the original sia_id so the
+        // browser SDK (which is tracking that id) handles it cleanly.
+        try {
+          const ticketJson = JSON.parse(ticketBody);
+          const synthetic = {
+            response: {
+              ...ticketJson.response,
+              id: siaId,
+              object: "sign_in_attempt",
+              status: "complete",
+            },
+            client: ticketJson.client,
+          };
+          // Forward Set-Cookie from the ticket sign-in (multi-value)
+          const setCookies =
+            (ticketRes.headers as unknown as {
+              getSetCookie?: () => string[];
+            }).getSetCookie?.() ?? [];
+          if (setCookies.length > 0) {
+            res.setHeader("Set-Cookie", setCookies);
+          }
+          res.setHeader("Content-Type", "application/json");
+          return res.status(200).json(synthetic);
+        } catch (err) {
+          console.error("[sign_in] failed to parse ticket response:", err);
+          return forwardResponse(ticketRes, ticketBody, res);
+        }
       },
     );
   }
