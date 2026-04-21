@@ -93,7 +93,9 @@ function LandingLanguagePicker() {
         <ChevronDown className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 w-48 bg-card border border-primary/20 rounded-xl shadow-xl z-50 py-1 max-h-72 overflow-y-auto">
+        <div className="absolute left-0 mt-1 w-48 bg-card border border-primary/20 rounded-xl shadow-xl z-50 py-1 max-h-64 overflow-y-auto"
+          style={{ maxWidth: "calc(100vw - 1rem)" }}
+        >
           {LANGUAGES.map(lang => (
             <button
               key={lang}
