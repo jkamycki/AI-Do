@@ -170,6 +170,12 @@
   }
 }
 
+/* Clerk dark theme overrides — outside @layer so they have proper specificity */
+.cl-formFieldInput::placeholder {
+  color: rgba(180, 160, 210, 0.55);
+  opacity: 1;
+}
+
 /* Brand gradient utilities */
 .brand-gradient-text {
   background: linear-gradient(135deg, #E91E8C 0%, #7B2FBE 55%, #4F8EF7 100%);
