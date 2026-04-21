@@ -21,6 +21,7 @@
 
 import { createProxyMiddleware } from "http-proxy-middleware";
 import type { RequestHandler } from "express";
+import type { IncomingMessage, ClientRequest } from "http";
 
 const CLERK_FAPI = "https://frontend-api.clerk.dev";
 export const CLERK_PROXY_PATH = "/api/__clerk";
@@ -36,15 +37,19 @@ export function clerkProxyMiddleware(): RequestHandler {
     return (_req, _res, next) => next();
   }
 
+  const pubKey = process.env.VITE_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY || "";
+  console.log("[Clerk Proxy] Initialising. PubKey prefix:", pubKey.substring(0, 20));
+
   return createProxyMiddleware({
     target: CLERK_FAPI,
     changeOrigin: true,
+    selfHandleResponse: false,
     pathRewrite: (path: string) =>
       path.replace(new RegExp(`^${CLERK_PROXY_PATH}`), ""),
     on: {
-      proxyReq: (proxyReq, req) => {
-        const protocol = req.headers["x-forwarded-proto"] || "https";
-        const host = req.headers.host || "";
+      proxyReq: (proxyReq: ClientRequest, req: IncomingMessage & { headers: Record<string, string | string[] | undefined> }) => {
+        const protocol = (req.headers["x-forwarded-proto"] as string) || "https";
+        const host = (req.headers["host"] as string) || "";
         const proxyUrl = `${protocol}://${host}${CLERK_PROXY_PATH}`;
 
         proxyReq.setHeader("Clerk-Proxy-Url", proxyUrl);
@@ -53,10 +58,28 @@ export function clerkProxyMiddleware(): RequestHandler {
         const xff = req.headers["x-forwarded-for"];
         const clientIp =
           (Array.isArray(xff) ? xff[0] : xff)?.split(",")[0]?.trim() ||
-          req.socket?.remoteAddress ||
+          (req.socket as any)?.remoteAddress ||
           "";
         if (clientIp) {
           proxyReq.setHeader("X-Forwarded-For", clientIp);
+        }
+
+        const url = (req as any).url || "";
+        if (url.includes("sign_up")) {
+          console.log("[Clerk Proxy] sign_up request → proxyUrl:", proxyUrl, "secretPrefix:", secretKey.substring(0, 15));
+        }
+      },
+      proxyRes: (proxyRes: IncomingMessage, req: IncomingMessage) => {
+        const url = (req as any).url || "";
+        if (proxyRes.statusCode === 422 && url.includes("sign_up")) {
+          const chunks: Buffer[] = [];
+          proxyRes.on("data", (chunk: Buffer) => chunks.push(chunk));
+          proxyRes.on("end", () => {
+            try {
+              const body = Buffer.concat(chunks).toString("utf8");
+              console.error("[Clerk 422 sign_up BODY]", body.substring(0, 1200));
+            } catch {}
+          });
         }
       },
     },
