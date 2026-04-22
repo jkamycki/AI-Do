@@ -212,7 +212,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
         <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-          Also send copy to:
+          CC my email:
         </label>
         <Input
           type="email"
@@ -233,7 +233,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
           <p className="w-full text-xs text-destructive">Enter a valid email address.</p>
         )}
         <p className="w-full text-[11px] text-muted-foreground">
-          A blind copy of every message you send is mailed here. Vendors won't see this address.
+          You'll be CC'd on every message. The vendor will see this address and can reply-all to include you directly.
         </p>
       </div>
 

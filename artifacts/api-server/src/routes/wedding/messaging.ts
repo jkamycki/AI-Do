@@ -184,13 +184,14 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
       // Personalize From name with the couple — feels like a real person, not a robot.
       const fromName = coupleNames || undefined;
 
-      // BCC the user's personal email if they configured one in Settings.
-      const bccEmail = profile?.vendorBccEmail?.trim() || undefined;
+      // CC the user's personal email if they configured one in Settings.
+      // Stored in `vendorBccEmail` for legacy reasons; semantics are now CC.
+      const ccEmail = profile?.vendorBccEmail?.trim() || undefined;
 
       result = await sendEmail({
         to: vendor.email,
         replyTo,
-        bcc: bccEmail,
+        cc: ccEmail,
         subject: finalSubject,
         text,
         html,

@@ -338,9 +338,9 @@ function VendorBccEmailCard() {
             <Mail className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <CardTitle className="font-serif text-lg">Personal Email Backup</CardTitle>
+            <CardTitle className="font-serif text-lg">CC My Personal Email</CardTitle>
             <CardDescription>
-              Get a copy of every vendor message in your personal inbox. Vendors only see your portal address — replies still come back to the chat.
+              Get a copy of every vendor message in your personal inbox. The vendor will see this address and can reply-all to include you directly.
             </CardDescription>
           </div>
         </div>

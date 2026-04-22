@@ -13,6 +13,7 @@ export interface SendEmailParams {
   fromName?: string;
   replyTo: string;
   bcc?: string | string[];
+  cc?: string | string[];
   subject: string;
   text: string;
   html?: string;
@@ -73,6 +74,7 @@ export async function sendEmail(p: SendEmailParams): Promise<SendEmailResult> {
     text: p.text,
   };
   if (p.bcc) body.bcc = Array.isArray(p.bcc) ? p.bcc : [p.bcc];
+  if (p.cc) body.cc = Array.isArray(p.cc) ? p.cc : [p.cc];
   if (p.html) body.html = p.html;
   if (p.attachments && p.attachments.length > 0) {
     body.attachments = p.attachments.map((a) => ({
