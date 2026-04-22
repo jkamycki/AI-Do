@@ -1,0 +1,56 @@
+Build a “Vendor Messaging” feature inside my wedding planning app (A.IDo).
+This feature must allow couples to message vendors directly inside the portal, and vendors receive the messages as normal emails. When vendors reply by email, the reply must appear inside the app as part of the same conversation thread. Include AI‑generated reply suggestions for the couple.
+Core Requirements
+- Messaging UI
+- Chat-style interface inside each vendor profile
+- Show messages from couple, vendor, and system
+- Support text, attachments, timestamps
+- Include a button “AI Suggest Reply” that generates a draft response using the conversation context
+- Unique Email Routing
+- Generate a unique inbound email address for each couple, e.g. messages+{coupleID}@aido.app
+- All vendor replies must route to this address
+- Parse inbound emails and attach them to the correct conversation
+- Outbound Email Sending
+- When the couple sends a message in the app, send an email to the vendor
+- Email format:
+- From: A.IDo Messaging
+- Reply-To: the couple’s unique email address
+- Body: the message text + attachments
+- Inbound Email Parsing
+- Use an inbound email webhook (SendGrid/Mailgun/Postmark)
+- Extract:
+- sender email
+- subject
+- body
+- attachments
+- thread ID
+- Save as a new message in the correct conversation
+- Database Structure
+- Couples
+- Vendors
+- Conversations (coupleID, vendorID, lastUpdated)
+- Messages (conversationID, senderType, body, attachments, timestamp)
+- AI Drafts (optional)
+- AI Reply Generation
+- When the user clicks “AI Suggest Reply,” generate a message using:
+- last 10 messages
+- vendor name
+- couple names
+- wedding date
+- Output a friendly, professional draft the user can edit before sending
+- UI Requirements
+- Show messages in bubbles (left = vendor, right = couple)
+- Show vendor avatar
+- Show “Delivered to vendor via email” status
+- Show “Vendor replied by email” tag on inbound messages
+- Security
+- Strip email signatures
+- Remove quoted previous messages
+- Sanitize HTML
+- Prevent vendor from seeing couple’s unique routing address
+- Extra Features
+- Allow uploading PDFs, images, contracts
+- Auto-detect missing info (e.g., vendor didn’t confirm arrival time)
+- Auto-create tasks from messages (optional)
+Build the full frontend, backend workflows, database, and email routing logic.
+Make everything functional and ready to test.
