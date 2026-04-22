@@ -28,7 +28,8 @@
     "pdfjs-dist": "^5.6.205",
     "pdfkit": "^0.18.0",
     "pino": "^9",
-    "pino-http": "^10"
+    "pino-http": "^10",
+    "svix": "^1.91.1"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

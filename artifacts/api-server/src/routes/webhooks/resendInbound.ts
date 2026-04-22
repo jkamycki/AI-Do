@@ -2,8 +2,9 @@ import { Router, raw } from "express";
 import { db } from "@workspace/db";
 import { vendorConversations, vendorMessages, vendors } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
-import { cleanInboundText, htmlToText, parseInboundAddress, verifyResendWebhook } from "../../lib/resend";
+import { cleanInboundText, htmlToText, parseInboundAddress } from "../../lib/resend";
 import { logger } from "../../lib/logger";
+import { Webhook } from "svix";
 
 const router = Router();
 
@@ -46,13 +47,20 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
   try {
     const rawBody = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : "";
 
-    const ok = verifyResendWebhook(rawBody, {
-      svixId: req.header("svix-id") ?? undefined,
-      svixTimestamp: req.header("svix-timestamp") ?? undefined,
-      svixSignature: req.header("svix-signature") ?? undefined,
-    });
-    if (!ok) {
-      logger.warn({ svixId: req.header("svix-id") }, "Inbound webhook signature verification failed");
+    const secret = process.env.RESEND_WEBHOOK_SECRET;
+    if (!secret) {
+      logger.error("RESEND_WEBHOOK_SECRET not set");
+      return res.status(500).json({ error: "Server not configured" });
+    }
+    try {
+      const wh = new Webhook(secret);
+      wh.verify(rawBody, {
+        "svix-id": req.header("svix-id") ?? "",
+        "svix-timestamp": req.header("svix-timestamp") ?? "",
+        "svix-signature": req.header("svix-signature") ?? "",
+      });
+    } catch (err) {
+      logger.warn({ svixId: req.header("svix-id"), err: String(err) }, "Inbound webhook signature verification failed");
       return res.status(401).json({ error: "Invalid signature" });
     }
 
