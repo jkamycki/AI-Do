@@ -37,6 +37,16 @@ router.post("/webhooks/cloudflare/inbound", async (req, res) => {
 
     const payload = (req.body ?? {}) as CloudflareInboundPayload;
 
+    logger.info(
+      {
+        payloadTo: payload.to,
+        payloadFrom: payload.from,
+        rawMimeLen: payload.rawMime?.length ?? 0,
+        rawMimeHead: payload.rawMime?.slice(0, 300) ?? null,
+      },
+      "Cloudflare inbound: received payload",
+    );
+
     // Parse the raw MIME on our side (so the worker stays dependency-free)
     let parsedMime: Awaited<ReturnType<InstanceType<typeof PostalMime>["parse"]>> | null = null;
     if (payload.rawMime) {
@@ -46,6 +56,15 @@ router.post("/webhooks/cloudflare/inbound", async (req, res) => {
         logger.warn({ err: String(e) }, "Cloudflare inbound: MIME parse failed");
       }
     }
+
+    logger.info(
+      {
+        parsedTo: parsedMime?.to,
+        parsedFrom: parsedMime?.from,
+        parsedSubject: parsedMime?.subject,
+      },
+      "Cloudflare inbound: parsed MIME",
+    );
 
     const recipient = payload.to ?? parsedMime?.to?.[0]?.address ?? "";
     const parsed = parseInboundAddress(recipient);
