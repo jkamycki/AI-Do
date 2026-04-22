@@ -189,7 +189,15 @@ export function VendorMessagesTab({ vendorId }: Props) {
       <Textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        placeholder={hasVendorEmail ? "Write a message to the vendor..." : "Add an email address for this vendor first."}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            if (draft.trim() && hasVendorEmail && !sendMutation.isPending) {
+              handleSend();
+            }
+          }
+        }}
+        placeholder={hasVendorEmail ? "Write a message to the vendor... (Enter to send, Shift+Enter for new line)" : "Add an email address for this vendor first."}
         className="min-h-[100px] resize-none"
         disabled={!hasVendorEmail}
       />
