@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { vendorConversations, vendorMessages, vendors } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
+import PostalMime from "postal-mime";
 import { cleanInboundText, htmlToText, parseInboundAddress } from "../../lib/resend";
 import { logger } from "../../lib/logger";
 
@@ -10,12 +11,7 @@ const router = Router();
 interface CloudflareInboundPayload {
   to?: string;
   from?: string;
-  fromName?: string;
-  subject?: string;
-  text?: string;
-  html?: string;
-  messageId?: string;
-  attachments?: Array<{ name?: string; url?: string; type?: string; size?: number }>;
+  rawMime?: string;
 }
 
 function parseFromHeader(from: string | undefined): { email: string; name?: string } {
@@ -40,7 +36,18 @@ router.post("/webhooks/cloudflare/inbound", async (req, res) => {
     }
 
     const payload = (req.body ?? {}) as CloudflareInboundPayload;
-    const recipient = payload.to ?? "";
+
+    // Parse the raw MIME on our side (so the worker stays dependency-free)
+    let parsedMime: Awaited<ReturnType<InstanceType<typeof PostalMime>["parse"]>> | null = null;
+    if (payload.rawMime) {
+      try {
+        parsedMime = await new PostalMime().parse(payload.rawMime);
+      } catch (e) {
+        logger.warn({ err: String(e) }, "Cloudflare inbound: MIME parse failed");
+      }
+    }
+
+    const recipient = payload.to ?? parsedMime?.to?.[0]?.address ?? "";
     const parsed = parseInboundAddress(recipient);
     if (!parsed) {
       logger.warn({ recipient }, "Cloudflare inbound: no routing match");
@@ -58,36 +65,41 @@ router.post("/webhooks/cloudflare/inbound", async (req, res) => {
       return res.status(200).json({ ignored: true, reason: "token mismatch" });
     }
 
+    const messageId = parsedMime?.messageId ?? null;
+
     // Idempotency
-    if (payload.messageId) {
+    if (messageId) {
       const [existing] = await db
         .select({ id: vendorMessages.id })
         .from(vendorMessages)
-        .where(and(eq(vendorMessages.conversationId, conv.id), eq(vendorMessages.inboundMessageId, payload.messageId)))
+        .where(and(eq(vendorMessages.conversationId, conv.id), eq(vendorMessages.inboundMessageId, messageId)))
         .limit(1);
       if (existing) {
         return res.status(200).json({ ok: true, deduped: true });
       }
     }
 
-    const sender = parseFromHeader(payload.from);
-    if (payload.fromName && !sender.name) sender.name = payload.fromName;
+    const fromAddr = parsedMime?.from?.address ?? "";
+    const fromName = parsedMime?.from?.name ?? "";
+    const sender = fromAddr
+      ? { email: fromAddr, name: fromName || undefined }
+      : parseFromHeader(payload.from);
 
-    const bodyText = (payload.text && payload.text.trim()) || "";
-    const bodyHtml = payload.html || "";
+    const bodyText = (parsedMime?.text && parsedMime.text.trim()) || "";
+    const bodyHtml = parsedMime?.html || "";
     const rawText = bodyText || (bodyHtml ? htmlToText(bodyHtml) : "");
     const cleanedAttempt = cleanInboundText(rawText);
     const cleaned = cleanedAttempt || rawText.trim() || "(empty message)";
-    const subject = payload.subject ?? conv.subject;
+    const subject = parsedMime?.subject ?? conv.subject;
 
-    const attachments = (payload.attachments ?? [])
-      .filter((a) => a && a.url && /^https:\/\//i.test(a.url))
-      .map((a) => ({
-        name: a.name ?? "attachment",
-        url: a.url!,
-        type: a.type ?? "application/octet-stream",
-        size: a.size,
-      }));
+    // Attachments arrive as buffers from postal-mime; we record metadata only
+    // for now (vendor replies rarely include heavy attachments).
+    const attachments = (parsedMime?.attachments ?? []).slice(0, 10).map((a) => ({
+      name: a.filename ?? "attachment",
+      url: "",
+      type: a.mimeType ?? "application/octet-stream",
+      size: a.content instanceof ArrayBuffer ? a.content.byteLength : undefined,
+    }));
 
     await db.insert(vendorMessages).values({
       conversationId: conv.id,
@@ -97,7 +109,7 @@ router.post("/webhooks/cloudflare/inbound", async (req, res) => {
       subject,
       body: cleaned,
       attachments,
-      inboundMessageId: payload.messageId ?? null,
+      inboundMessageId: messageId,
       deliveryStatus: "received",
     });
 
