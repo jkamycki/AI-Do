@@ -493,6 +493,8 @@ app.use(cors({ credentials: true, origin: true }));
 
 import resendInboundRouter from "./routes/webhooks/resendInbound";
 app.use("/api", resendInboundRouter);
+import cloudflareInboundRouter from "./routes/webhooks/cloudflareInbound";
+app.use("/api", cloudflareInboundRouter);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
