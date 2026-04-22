@@ -25,6 +25,33 @@ export interface SendEmailResult {
   error?: string;
 }
 
+export interface RetrievedEmail {
+  text?: string;
+  html?: string;
+  subject?: string;
+  from?: string;
+  to?: string[];
+}
+
+/** Fetch full email body from Resend by email_id (webhook payload only contains metadata). */
+export async function getEmail(emailId: string): Promise<RetrievedEmail | null> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const r = await fetch(`${RESEND_API}/emails/${emailId}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!r.ok) {
+      logger.warn({ status: r.status, emailId }, "Failed to fetch full email from Resend");
+      return null;
+    }
+    return (await r.json()) as RetrievedEmail;
+  } catch (err) {
+    logger.error(err, "Resend getEmail network error");
+    return null;
+  }
+}
+
 export async function sendEmail(p: SendEmailParams): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return { ok: false, error: "RESEND_API_KEY not configured" };

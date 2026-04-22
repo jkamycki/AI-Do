@@ -2,7 +2,7 @@ import { Router, raw } from "express";
 import { db } from "@workspace/db";
 import { vendorConversations, vendorMessages, vendors } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
-import { cleanInboundText, htmlToText, parseInboundAddress } from "../../lib/resend";
+import { cleanInboundText, htmlToText, parseInboundAddress, getEmail } from "../../lib/resend";
 import { logger } from "../../lib/logger";
 import { Webhook } from "svix";
 
@@ -11,6 +11,7 @@ const router = Router();
 interface ResendInboundEvent {
   type?: string;
   data?: {
+    email_id?: string;
     from?: { email?: string; name?: string } | string;
     to?: Array<{ email?: string } | string> | string;
     subject?: string;
@@ -110,14 +111,15 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
     }
 
     const sender = extractSender(data.from);
-    const rawText = (data.text && data.text.trim()) || (data.html ? htmlToText(data.html) : "");
-    logger.info({
-      hasText: !!data.text,
-      textLen: data.text?.length ?? 0,
-      hasHtml: !!data.html,
-      htmlLen: data.html?.length ?? 0,
-      rawTextSample: rawText.slice(0, 200),
-    }, "inbound email payload");
+
+    let bodyText = (data.text && data.text.trim()) || "";
+    let bodyHtml = data.html || "";
+    if (!bodyText && !bodyHtml && data.email_id) {
+      const full = await getEmail(data.email_id);
+      bodyText = full?.text?.trim() || "";
+      bodyHtml = full?.html || "";
+    }
+    const rawText = bodyText || (bodyHtml ? htmlToText(bodyHtml) : "");
     const cleanedAttempt = cleanInboundText(rawText);
     const cleaned = cleanedAttempt || rawText.trim() || "(empty message)";
     const subject = data.subject ?? conv.subject;
