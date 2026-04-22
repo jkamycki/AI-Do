@@ -71,6 +71,8 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
       return res.status(400).json({ error: "Invalid JSON" });
     }
 
+    logger.info({ payload: rawBody.slice(0, 4000) }, "inbound raw payload");
+
     const data = event.data ?? {};
     const recipients = extractRecipient(data.to);
     let conversationId: number | null = null;
