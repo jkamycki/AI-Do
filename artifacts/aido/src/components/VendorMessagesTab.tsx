@@ -210,6 +210,13 @@ export function VendorMessagesTab({ vendorId }: Props) {
         <span>Replies from {conv.vendorEmail ?? "the vendor"} land here automatically.</span>
       </div>
 
+      <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-3 py-2 text-xs flex items-start gap-2">
+        <AlertCircle className="h-3.5 w-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
+        <span className="text-amber-800 dark:text-amber-200">
+          <strong>Heads up:</strong> First-time emails to vendors may land in their <strong>spam or promotions</strong> folder. If you don't hear back in 1–2 days, give them a quick text or call to check, and ask them to mark this address as "not spam" so future messages reach their inbox.
+        </span>
+      </div>
+
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
         <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
           CC my email:
