@@ -900,6 +900,9 @@ components:
           type: string
         preferredLanguage:
           type: string
+        vendorBccEmail:
+          type: string
+          nullable: true
         updatedAt:
           type: string
       required:
@@ -945,6 +948,9 @@ components:
           type: string
         preferredLanguage:
           type: string
+        vendorBccEmail:
+          type: string
+          nullable: true
       required:
         - partner1Name
         - partner2Name

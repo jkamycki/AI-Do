@@ -33,6 +33,7 @@ export const GetProfileResponse = zod.object({
   totalBudget: zod.number(),
   weddingVibe: zod.string(),
   preferredLanguage: zod.string().optional(),
+  vendorBccEmail: zod.string().nullish(),
   updatedAt: zod.string(),
 });
 
@@ -53,6 +54,7 @@ export const SaveProfileBody = zod.object({
   totalBudget: zod.number(),
   weddingVibe: zod.string(),
   preferredLanguage: zod.string().optional(),
+  vendorBccEmail: zod.string().nullish(),
 });
 
 export const SaveProfileResponse = zod.object({
@@ -70,6 +72,7 @@ export const SaveProfileResponse = zod.object({
   totalBudget: zod.number(),
   weddingVibe: zod.string(),
   preferredLanguage: zod.string().optional(),
+  vendorBccEmail: zod.string().nullish(),
   updatedAt: zod.string(),
 });
 

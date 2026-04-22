@@ -20,6 +20,7 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   weddingVibe: text("wedding_vibe").notNull(),
   preferredLanguage: text("preferred_language").default("English"),
   guestCollectionToken: text("guest_collection_token"),
+  vendorBccEmail: text("vendor_bcc_email"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

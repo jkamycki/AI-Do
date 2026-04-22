@@ -39,6 +39,7 @@ export interface WeddingProfile {
   totalBudget: number;
   weddingVibe: string;
   preferredLanguage?: string;
+  vendorBccEmail?: string | null;
   updatedAt: string;
 }
 
@@ -56,6 +57,7 @@ export interface SaveProfileBody {
   totalBudget: number;
   weddingVibe: string;
   preferredLanguage?: string;
+  vendorBccEmail?: string | null;
 }
 
 export interface TimelineEvent {

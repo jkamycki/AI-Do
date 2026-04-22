@@ -286,6 +286,106 @@ function LanguageSwitcherCard() {
   );
 }
 
+function VendorBccEmailCard() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data: profile, isLoading } = useGetProfile();
+  const saveProfile = useSaveProfile();
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const current = draft ?? (profile as { vendorBccEmail?: string | null } | undefined)?.vendorBccEmail ?? "";
+  const original = (profile as { vendorBccEmail?: string | null } | undefined)?.vendorBccEmail ?? "";
+  const hasChange = draft !== null && draft.trim() !== original.trim();
+  const isValid = !current || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(current.trim());
+
+  function save() {
+    if (!profile || !isValid) return;
+    saveProfile.mutate(
+      {
+        data: {
+          partner1Name: profile.partner1Name,
+          partner2Name: profile.partner2Name,
+          weddingDate: profile.weddingDate,
+          ceremonyTime: profile.ceremonyTime,
+          receptionTime: profile.receptionTime,
+          venue: profile.venue,
+          location: profile.location,
+          venueCity: profile.venueCity ?? undefined,
+          venueState: profile.venueState ?? undefined,
+          guestCount: profile.guestCount,
+          totalBudget: profile.totalBudget,
+          weddingVibe: profile.weddingVibe,
+          preferredLanguage: profile.preferredLanguage ?? "English",
+          vendorBccEmail: current.trim() || null,
+        } as never,
+      },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
+          setDraft(null);
+          toast({ title: "Saved", description: current ? `Vendor messages will also BCC ${current}.` : "Removed personal BCC." });
+        },
+        onError: () => toast({ variant: "destructive", title: "Error", description: "Could not save." }),
+      }
+    );
+  }
+
+  return (
+    <Card className="border-none shadow-sm">
+      <CardHeader className="pb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+            <Mail className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <CardTitle className="font-serif text-lg">Personal Email Backup</CardTitle>
+            <CardDescription>
+              Get a copy of every vendor message in your personal inbox. Vendors only see your portal address — replies still come back to the chat.
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {isLoading ? (
+          <div className="h-10 bg-muted animate-pulse rounded-md" />
+        ) : !profile ? (
+          <p className="text-sm text-muted-foreground">Complete your wedding profile first.</p>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <Input
+                type="email"
+                placeholder="you@youremail.com"
+                value={current}
+                onChange={(e) => setDraft(e.target.value)}
+                className="max-w-sm bg-background"
+              />
+              <Button
+                onClick={save}
+                disabled={!hasChange || !isValid || saveProfile.isPending}
+                size="sm"
+                variant={hasChange ? "default" : "outline"}
+              >
+                {saveProfile.isPending ? (
+                  <div className="h-3.5 w-3.5 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                ) : hasChange ? (
+                  <>Save</>
+                ) : (
+                  <><Check className="h-3.5 w-3.5 mr-1" /> Saved</>
+                )}
+              </Button>
+            </div>
+            {!isValid && current && (
+              <p className="text-xs text-destructive">Enter a valid email address.</p>
+            )}
+            <p className="text-xs text-muted-foreground">Leave empty to disable. The vendor will not see this address.</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SettingsPage() {
   const { getToken } = useAuth();
   const { toast } = useToast();
@@ -728,6 +828,7 @@ export default function SettingsPage() {
       {activeTab === "account" && (
         <div className="space-y-4">
           <LanguageSwitcherCard />
+          <VendorBccEmailCard />
           <DeleteAccountCard />
           <Card className="border-none shadow-sm">
             <CardContent className="p-8 text-center space-y-4">
