@@ -199,6 +199,85 @@ export interface VendorFile {
   type: string;
 }
 
+export interface ConversationSummary {
+  id: number;
+  vendorId: number;
+  vendorName: string;
+  vendorEmail?: string | null;
+  subject: string;
+  lastMessagePreview: string;
+  lastMessageAt: string;
+  unreadCount: number;
+}
+
+export interface Conversation {
+  id: number;
+  vendorId: number;
+  vendorName: string;
+  vendorEmail?: string | null;
+  /** Routing address vendor replies hit */
+  inboundAddress: string;
+  subject: string;
+  unreadCount: number;
+}
+
+export type MessageSenderType =
+  (typeof MessageSenderType)[keyof typeof MessageSenderType];
+
+export const MessageSenderType = {
+  couple: "couple",
+  vendor: "vendor",
+  system: "system",
+} as const;
+
+export type MessageAttachmentsItem = {
+  name: string;
+  url: string;
+  type: string;
+  size?: number | null;
+};
+
+export type MessageDeliveryStatus =
+  (typeof MessageDeliveryStatus)[keyof typeof MessageDeliveryStatus];
+
+export const MessageDeliveryStatus = {
+  queued: "queued",
+  sent: "sent",
+  failed: "failed",
+  received: "received",
+} as const;
+
+export interface Message {
+  id: number;
+  conversationId: number;
+  senderType: MessageSenderType;
+  senderName?: string | null;
+  senderEmail?: string | null;
+  subject?: string | null;
+  body: string;
+  attachments: MessageAttachmentsItem[];
+  deliveryStatus: MessageDeliveryStatus;
+  errorMessage?: string | null;
+  createdAt: string;
+}
+
+export type SendMessageBodyAttachmentsItem = {
+  name: string;
+  url: string;
+  type: string;
+  size?: number | null;
+};
+
+export interface SendMessageBody {
+  body: string;
+  subject?: string;
+  attachments?: SendMessageBodyAttachmentsItem[];
+}
+
+export interface SuggestReplyResponse {
+  draft: string;
+}
+
 export interface Vendor {
   id: number;
   profileId: number;
@@ -212,7 +291,6 @@ export interface Vendor {
   totalCost: number;
   depositAmount: number;
   contractSigned: boolean;
-  nextPaymentDue?: string | null;
   files: VendorFile[];
   createdAt: string;
   updatedAt: string;
@@ -244,7 +322,6 @@ export interface CreateVendorBody {
   totalCost?: number;
   depositAmount?: number;
   contractSigned?: boolean;
-  nextPaymentDue?: string | null;
 }
 
 export interface UpdateVendorBody {
@@ -258,7 +335,6 @@ export interface UpdateVendorBody {
   totalCost?: number;
   depositAmount?: number;
   contractSigned?: boolean;
-  nextPaymentDue?: string | null;
   files?: VendorFile[];
 }
 
@@ -328,7 +404,6 @@ export interface GuestList {
 export interface CreateGuest {
   name: string;
   email?: string;
-  invitationStatus?: string;
   rsvpStatus?: string;
   mealChoice?: string;
   guestGroup?: string;
@@ -341,7 +416,6 @@ export interface CreateGuest {
 export interface UpdateGuest {
   name?: string;
   email?: string;
-  invitationStatus?: string;
   rsvpStatus?: string;
   mealChoice?: string;
   guestGroup?: string;

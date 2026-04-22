@@ -22,6 +22,8 @@ import weddingPartyRouter from "./wedding/weddingParty";
 import contractsRouter from "./contracts";
 import accountRouter from "./account";
 import guestCollectRouter from "./guestCollect";
+import messagingRouter from "./wedding/messaging";
+import resendInboundRouter from "./webhooks/resendInbound";
 
 const router: IRouter = Router();
 
@@ -48,5 +50,7 @@ router.use(weddingPartyRouter);
 router.use(contractsRouter);
 router.use(accountRouter);
 router.use(guestCollectRouter);
+router.use(messagingRouter);
+router.use(resendInboundRouter);
 
 export default router;

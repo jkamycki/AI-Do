@@ -126,6 +126,37 @@ export const insertVendorPaymentSchema = createInsertSchema(vendorPayments).omit
 export type InsertVendorPayment = z.infer<typeof insertVendorPaymentSchema>;
 export type VendorPayment = typeof vendorPayments.$inferSelect;
 
+export const vendorConversations = pgTable("vendor_conversations", {
+  id: serial("id").primaryKey(),
+  vendorId: integer("vendor_id").notNull(),
+  userId: text("user_id").notNull(),
+  inboundToken: text("inbound_token").notNull().unique(),
+  subject: text("subject").notNull().default("Wedding planning"),
+  lastMessagePreview: text("last_message_preview").default(""),
+  lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
+  unreadCount: integer("unread_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type VendorConversation = typeof vendorConversations.$inferSelect;
+
+export const vendorMessages = pgTable("vendor_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull(),
+  senderType: text("sender_type").notNull(),
+  senderName: text("sender_name"),
+  senderEmail: text("sender_email"),
+  subject: text("subject"),
+  body: text("body").notNull(),
+  attachments: jsonb("attachments").$type<Array<{ name: string; url: string; type: string; size?: number }>>().default([]).notNull(),
+  inboundMessageId: text("inbound_message_id"),
+  deliveryStatus: text("delivery_status").notNull().default("queued"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type VendorMessage = typeof vendorMessages.$inferSelect;
+
 export const analyticsEvents = pgTable("analytics_events", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),

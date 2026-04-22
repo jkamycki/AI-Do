@@ -16,6 +16,7 @@ import {
 } from "@workspace/api-client-react";
 import type { Vendor, VendorPayment } from "@workspace/api-client-react";
 import { useUpload } from "@workspace/object-storage-web";
+import { VendorMessagesTab } from "@/components/VendorMessagesTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -696,6 +697,7 @@ function VendorDetailDialog({
           <Tabs defaultValue="overview">
             <TabsList className="w-full">
               <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
+              <TabsTrigger value="messages" className="flex-1">Messages</TabsTrigger>
               <TabsTrigger value="payments" className="flex-1">
                 Payments {vendor.payments.length > 0 && `(${vendor.payments.length})`}
               </TabsTrigger>
@@ -703,6 +705,10 @@ function VendorDetailDialog({
                 Files {vendor.files.length > 0 && `(${vendor.files.length})`}
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="messages" className="mt-4">
+              <VendorMessagesTab vendorId={vendor.id} />
+            </TabsContent>
 
             <TabsContent value="overview" className="space-y-5 mt-4">
               <div className="grid grid-cols-2 gap-3">

@@ -607,6 +607,113 @@ export const DeleteVendorPaymentResponse = zod.object({
 });
 
 /**
+ * @summary List vendor conversations for the current user
+ */
+export const ListConversationsResponseItem = zod.object({
+  id: zod.number(),
+  vendorId: zod.number(),
+  vendorName: zod.string(),
+  vendorEmail: zod.string().nullish(),
+  subject: zod.string(),
+  lastMessagePreview: zod.string(),
+  lastMessageAt: zod.string(),
+  unreadCount: zod.number(),
+});
+export const ListConversationsResponse = zod.array(
+  ListConversationsResponseItem,
+);
+
+/**
+ * @summary Get (or create) the conversation for a vendor
+ */
+export const GetOrCreateConversationByVendorParams = zod.object({
+  vendorId: zod.coerce.number(),
+});
+
+export const GetOrCreateConversationByVendorResponse = zod.object({
+  id: zod.number(),
+  vendorId: zod.number(),
+  vendorName: zod.string(),
+  vendorEmail: zod.string().nullish(),
+  inboundAddress: zod.string().describe("Routing address vendor replies hit"),
+  subject: zod.string(),
+  unreadCount: zod.number(),
+});
+
+/**
+ * @summary List messages in a conversation
+ */
+export const ListMessagesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListMessagesResponseItem = zod.object({
+  id: zod.number(),
+  conversationId: zod.number(),
+  senderType: zod.enum(["couple", "vendor", "system"]),
+  senderName: zod.string().nullish(),
+  senderEmail: zod.string().nullish(),
+  subject: zod.string().nullish(),
+  body: zod.string(),
+  attachments: zod.array(
+    zod.object({
+      name: zod.string(),
+      url: zod.string(),
+      type: zod.string(),
+      size: zod.number().nullish(),
+    }),
+  ),
+  deliveryStatus: zod.enum(["queued", "sent", "failed", "received"]),
+  errorMessage: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+export const ListMessagesResponse = zod.array(ListMessagesResponseItem);
+
+/**
+ * @summary Send a message from the couple to the vendor (delivers via email)
+ */
+export const SendMessageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SendMessageBody = zod.object({
+  body: zod.string(),
+  subject: zod.string().optional(),
+  attachments: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        url: zod.string(),
+        type: zod.string(),
+        size: zod.number().nullish(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary AI generate a draft reply for the conversation
+ */
+export const SuggestReplyParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SuggestReplyResponse = zod.object({
+  draft: zod.string(),
+});
+
+/**
+ * @summary Mark all messages in conversation as read
+ */
+export const MarkConversationReadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const MarkConversationReadResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
  * @summary AI summarize a vendor reply email
  */
 export const SummarizeVendorEmailBody = zod.object({

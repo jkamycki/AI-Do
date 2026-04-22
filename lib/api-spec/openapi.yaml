@@ -30,6 +30,8 @@ tags:
     description: Guest list management
   - name: storage
     description: Object storage upload and serving endpoints
+  - name: messaging
+    description: Vendor messaging (in-app chat with email bridge)
 paths:
   /healthz:
     get:
@@ -570,6 +572,117 @@ paths:
       responses:
         "200":
           description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /messaging/conversations:
+    get:
+      operationId: listConversations
+      tags: [messaging]
+      summary: List vendor conversations for the current user
+      responses:
+        "200":
+          description: Conversation list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConversationSummary"
+
+  /messaging/conversations/by-vendor/{vendorId}:
+    get:
+      operationId: getOrCreateConversationByVendor
+      tags: [messaging]
+      summary: Get (or create) the conversation for a vendor
+      parameters:
+        - name: vendorId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+
+  /messaging/conversations/{id}/messages:
+    get:
+      operationId: listMessages
+      tags: [messaging]
+      summary: List messages in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Message list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendMessage
+      tags: [messaging]
+      summary: Send a message from the couple to the vendor (delivers via email)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageBody"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /messaging/conversations/{id}/suggest-reply:
+    post:
+      operationId: suggestReply
+      tags: [messaging]
+      summary: AI generate a draft reply for the conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Suggested draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuggestReplyResponse"
+
+  /messaging/conversations/{id}/read:
+    post:
+      operationId: markConversationRead
+      tags: [messaging]
+      summary: Mark all messages in conversation as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Marked read
           content:
             application/json:
               schema:
@@ -1173,6 +1286,79 @@ components:
         - name
         - url
         - type
+
+    ConversationSummary:
+      type: object
+      properties:
+        id: { type: integer }
+        vendorId: { type: integer }
+        vendorName: { type: string }
+        vendorEmail: { type: string, nullable: true }
+        subject: { type: string }
+        lastMessagePreview: { type: string }
+        lastMessageAt: { type: string }
+        unreadCount: { type: integer }
+      required: [id, vendorId, vendorName, subject, lastMessagePreview, lastMessageAt, unreadCount]
+
+    Conversation:
+      type: object
+      properties:
+        id: { type: integer }
+        vendorId: { type: integer }
+        vendorName: { type: string }
+        vendorEmail: { type: string, nullable: true }
+        inboundAddress: { type: string, description: "Routing address vendor replies hit" }
+        subject: { type: string }
+        unreadCount: { type: integer }
+      required: [id, vendorId, vendorName, inboundAddress, subject, unreadCount]
+
+    Message:
+      type: object
+      properties:
+        id: { type: integer }
+        conversationId: { type: integer }
+        senderType: { type: string, enum: [couple, vendor, system] }
+        senderName: { type: string, nullable: true }
+        senderEmail: { type: string, nullable: true }
+        subject: { type: string, nullable: true }
+        body: { type: string }
+        attachments:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              url: { type: string }
+              type: { type: string }
+              size: { type: integer, nullable: true }
+            required: [name, url, type]
+        deliveryStatus: { type: string, enum: [queued, sent, failed, received] }
+        errorMessage: { type: string, nullable: true }
+        createdAt: { type: string }
+      required: [id, conversationId, senderType, body, attachments, deliveryStatus, createdAt]
+
+    SendMessageBody:
+      type: object
+      properties:
+        body: { type: string }
+        subject: { type: string }
+        attachments:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              url: { type: string }
+              type: { type: string }
+              size: { type: integer, nullable: true }
+            required: [name, url, type]
+      required: [body]
+
+    SuggestReplyResponse:
+      type: object
+      properties:
+        draft: { type: string }
+      required: [draft]
 
     Vendor:
       type: object
