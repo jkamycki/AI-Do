@@ -1,5 +1,6 @@
 import { Sidebar } from "./Sidebar";
 import { SupportChat } from "@/components/SupportChat";
+import { VendorReplyNotifier } from "@/components/VendorReplyNotifier";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -15,6 +16,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
       </main>
       <SupportChat />
+      <VendorReplyNotifier />
     </div>
   );
 }
