@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
@@ -336,18 +336,23 @@ function UserDirectory() {
         "Venue": u.venue ?? "",
       }));
 
-      const ws = XLSX.utils.json_to_sheet(rows);
-      const colWidths = [
-        { wch: 14 }, { wch: 14 }, { wch: 28 }, { wch: 32 },
-        { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 12 },
-        { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 24 },
-      ];
-      ws["!cols"] = colWidths;
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Users");
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Users");
+      const colWidths = [14, 14, 28, 32, 20, 20, 12, 12, 12, 18, 18, 14, 24];
+      if (rows.length > 0) {
+        const headers = Object.keys(rows[0]);
+        ws.columns = headers.map((h, i) => ({ header: h, key: h, width: colWidths[i] ?? 14 }));
+        rows.forEach(row => ws.addRow(row));
+      }
       const today = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `aido-users-${today}.xlsx`);
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `aido-users-${today}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch {
     } finally {
       setExporting(false);

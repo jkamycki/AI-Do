@@ -12,7 +12,14 @@
   "pnpm": {
     "overrides": {
       "react": "19.1.0",
-      "react-dom": "19.1.0"
+      "react-dom": "19.1.0",
+      "picomatch": "4.0.4",
+      "path-to-regexp": "8.4.2",
+      "lodash": "4.18.1",
+      "yaml": "2.8.3",
+      "brace-expansion": "2.1.0",
+      "@tootallnate/once": "3.0.1",
+      "esbuild": "0.27.3"
     }
   },
   "devDependencies": {
