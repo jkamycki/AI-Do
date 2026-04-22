@@ -490,6 +490,10 @@ if (process.env.NODE_ENV === "production") {
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 app.use(cors({ credentials: true, origin: true }));
+
+import resendInboundRouter from "./routes/webhooks/resendInbound";
+app.use("/api", resendInboundRouter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
