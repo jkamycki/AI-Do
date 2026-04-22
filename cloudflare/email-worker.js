@@ -1,32 +1,14 @@
-// Cloudflare Email Worker — forwards inbound vendor emails to the A.IDO API.
-// Paste this whole file into the Cloudflare dashboard worker editor — no npm
-// install needed. The API does the email parsing.
-//
-// Required worker secrets (set via dashboard → Settings → Variables):
-//   API_URL         = https://aidowedding.net
-//   INBOUND_SECRET  = (same value as CLOUDFLARE_INBOUND_SECRET in Replit)
-
 export default {
-  async email(message, env) {
+  async email(message, env, ctx) {
     try {
-      // Read the full raw MIME message as text
-      const reader = message.raw.getReader();
-      const chunks = [];
-      let total = 0;
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        total += value.length;
-        if (total > 25 * 1024 * 1024) break; // 25 MB cap
-      }
-      const merged = new Uint8Array(total);
-      let offset = 0;
-      for (const c of chunks) {
-        merged.set(c, offset);
-        offset += c.length;
-      }
-      const rawMime = new TextDecoder("utf-8").decode(merged);
+      const buf = await new Response(message.raw).arrayBuffer();
+      const rawMime = new TextDecoder("utf-8").decode(new Uint8Array(buf));
+
+      console.log("aido-inbound: received email", {
+        to: message.to,
+        from: message.from,
+        size: buf.byteLength,
+      });
 
       const res = await fetch(`${env.API_URL}/api/webhooks/cloudflare/inbound`, {
         method: "POST",
@@ -43,10 +25,12 @@ export default {
 
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
-        console.error("inbound forward failed", res.status, txt.slice(0, 500));
+        console.error("aido-inbound: forward failed", res.status, txt.slice(0, 500));
+      } else {
+        console.log("aido-inbound: forwarded ok");
       }
     } catch (err) {
-      console.error("worker error", err);
+      console.error("aido-inbound: worker error", err && err.stack ? err.stack : String(err));
     }
   },
 };
