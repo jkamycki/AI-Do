@@ -33,23 +33,29 @@ export interface RetrievedEmail {
   to?: string[];
 }
 
-/** Fetch full email body from Resend by email_id (webhook payload only contains metadata). */
+/** Fetch full inbound email body from Resend by email_id (webhook only sends metadata). */
 export async function getEmail(emailId: string): Promise<RetrievedEmail | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return null;
-  try {
-    const r = await fetch(`${RESEND_API}/emails/${emailId}`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-    if (!r.ok) {
-      logger.warn({ status: r.status, emailId }, "Failed to fetch full email from Resend");
-      return null;
+  const candidates = [
+    `${RESEND_API}/inbound/emails/${emailId}`,
+    `${RESEND_API}/inbound/${emailId}`,
+    `${RESEND_API}/emails/${emailId}`,
+  ];
+  for (const url of candidates) {
+    try {
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+      if (r.ok) {
+        const json = (await r.json()) as RetrievedEmail;
+        logger.info({ url, keys: Object.keys(json) }, "Fetched full email from Resend");
+        return json;
+      }
+      logger.info({ url, status: r.status }, "Resend email fetch attempt failed");
+    } catch (err) {
+      logger.error({ url, err: String(err) }, "Resend getEmail network error");
     }
-    return (await r.json()) as RetrievedEmail;
-  } catch (err) {
-    logger.error(err, "Resend getEmail network error");
-    return null;
   }
+  return null;
 }
 
 export async function sendEmail(p: SendEmailParams): Promise<SendEmailResult> {
