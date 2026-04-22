@@ -6,18 +6,22 @@ import {
   useSendMessage,
   useSuggestReply,
   useMarkConversationRead,
+  useGetProfile,
+  useSaveProfile,
   getListMessagesQueryKey,
   getGetOrCreateConversationByVendorQueryKey,
   getListConversationsQueryKey,
+  getGetProfileQueryKey,
 } from "@workspace/api-client-react";
 import type { Message } from "@workspace/api-client-react";
 import { useUpload } from "@workspace/object-storage-web";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Sparkles, Paperclip, X, Mail, AlertCircle, CheckCircle2, Inbox } from "lucide-react";
+import { Send, Sparkles, Paperclip, X, Mail, AlertCircle, CheckCircle2, Inbox, Check } from "lucide-react";
 
 interface Props {
   vendorId: number;
@@ -75,6 +79,44 @@ export function VendorMessagesTab({ vendorId }: Props) {
   });
 
   const markReadMutation = useMarkConversationRead();
+
+  const { data: profile } = useGetProfile();
+  const savedBcc = (profile as { vendorBccEmail?: string | null } | undefined)?.vendorBccEmail ?? "";
+  const [bccDraft, setBccDraft] = useState<string | null>(null);
+  const bccValue = bccDraft ?? savedBcc;
+  const bccChanged = bccDraft !== null && bccDraft.trim() !== savedBcc.trim();
+  const bccValid = !bccValue || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bccValue.trim());
+  const saveProfile = useSaveProfile({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
+        setBccDraft(null);
+        toast({ title: bccValue.trim() ? "BCC saved" : "BCC removed", description: bccValue.trim() ? `Vendor messages will also go to ${bccValue.trim()}.` : undefined });
+      },
+      onError: () => toast({ title: "Could not save BCC", variant: "destructive" }),
+    },
+  });
+  const saveBcc = () => {
+    if (!profile || !bccValid) return;
+    saveProfile.mutate({
+      data: {
+        partner1Name: profile.partner1Name,
+        partner2Name: profile.partner2Name,
+        weddingDate: profile.weddingDate,
+        ceremonyTime: profile.ceremonyTime,
+        receptionTime: profile.receptionTime,
+        venue: profile.venue,
+        location: profile.location,
+        venueCity: profile.venueCity ?? undefined,
+        venueState: profile.venueState ?? undefined,
+        guestCount: profile.guestCount,
+        totalBudget: profile.totalBudget,
+        weddingVibe: profile.weddingVibe,
+        preferredLanguage: profile.preferredLanguage ?? "English",
+        vendorBccEmail: bccValue.trim() || null,
+      } as never,
+    });
+  };
 
   useEffect(() => {
     if (conversationId && messages && messages.length > 0) {
@@ -166,6 +208,33 @@ export function VendorMessagesTab({ vendorId }: Props) {
       <div className="flex flex-wrap gap-2 items-center text-xs text-muted-foreground">
         <Mail className="h-3.5 w-3.5" />
         <span>Replies from {conv.vendorEmail ?? "the vendor"} land here automatically.</span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+        <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+          Also send copy to:
+        </label>
+        <Input
+          type="email"
+          placeholder="your@email.com (optional)"
+          value={bccValue}
+          onChange={(e) => setBccDraft(e.target.value)}
+          className="h-8 flex-1 min-w-[180px] max-w-sm bg-background text-sm"
+        />
+        <Button
+          size="sm"
+          variant={bccChanged ? "default" : "outline"}
+          onClick={saveBcc}
+          disabled={!bccChanged || !bccValid || saveProfile.isPending}
+        >
+          {saveProfile.isPending ? "Saving…" : bccChanged ? "Save" : (<><Check className="h-3.5 w-3.5 mr-1" />Saved</>)}
+        </Button>
+        {!bccValid && bccValue && (
+          <p className="w-full text-xs text-destructive">Enter a valid email address.</p>
+        )}
+        <p className="w-full text-[11px] text-muted-foreground">
+          A blind copy of every message you send is mailed here. Vendors won't see this address.
+        </p>
       </div>
 
       {attachments.length > 0 && (
