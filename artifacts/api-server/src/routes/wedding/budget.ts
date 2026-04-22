@@ -8,16 +8,6 @@ import { trackEvent } from "../../lib/trackEvent";
 import { logActivity, resolveProfile } from "../../lib/workspaceAccess";
 
 const router = Router();
-
-async function getProfileByUserId(userId: string) {
-  const profiles = await db
-    .select()
-    .from(weddingProfiles)
-    .where(eq(weddingProfiles.userId, userId))
-    .limit(1);
-  return profiles[0] ?? null;
-}
-
 async function getBudgetWithItems(budgetId: number) {
   const budget = await db.select().from(budgets).where(eq(budgets.id, budgetId)).limit(1);
   if (!budget.length) return null;
@@ -96,7 +86,7 @@ router.post("/budget", requireAuth, async (req, res) => {
   try {
     const { totalBudget } = req.body;
 
-    const profile = await getProfileByUserId(req.userId);
+    const profile = await resolveProfile(req);
     const profileId = profile?.id ?? 0;
 
     const existing = await db
@@ -177,7 +167,7 @@ router.post("/budget/items", requireAuth, async (req, res) => {
   try {
     const { category, vendor, estimatedCost, actualCost, isPaid, notes, nextPaymentDue, amountPaid } = req.body;
 
-    const profile = await getProfileByUserId(req.userId);
+    const profile = await resolveProfile(req);
     const profileId = profile?.id ?? 0;
 
     let budgetRows = await db

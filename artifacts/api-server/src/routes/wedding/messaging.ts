@@ -11,6 +11,7 @@ import {
   randomToken,
   sendEmail,
 } from "../../lib/resend";
+import { resolveProfile } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -129,7 +130,7 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
     const [vendor] = await db.select().from(vendors).where(eq(vendors.id, conv.vendorId)).limit(1);
     if (!vendor) return res.status(404).json({ error: "Vendor not found" });
 
-    const [profile] = await db.select().from(weddingProfiles).where(eq(weddingProfiles.userId, req.userId!)).limit(1);
+    const profile = await resolveProfile(req);
     const coupleNames = profile ? `${profile.partner1Name} & ${profile.partner2Name}` : "";
     const finalSubject = subject?.trim() || conv.subject || `Wedding planning — ${vendor.name}`;
     const replyTo = buildInboundAddress(conv.id, conv.inboundToken);
@@ -243,7 +244,7 @@ router.post("/messaging/conversations/:id/suggest-reply", requireAuth, async (re
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
 
     const [vendor] = await db.select().from(vendors).where(eq(vendors.id, conv.vendorId)).limit(1);
-    const [profile] = await db.select().from(weddingProfiles).where(eq(weddingProfiles.userId, req.userId!)).limit(1);
+    const profile = await resolveProfile(req);
 
     const recent = await db.select().from(vendorMessages)
       .where(eq(vendorMessages.conversationId, id))

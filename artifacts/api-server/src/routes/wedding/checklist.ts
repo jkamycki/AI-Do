@@ -8,16 +8,6 @@ import { trackEvent } from "../../lib/trackEvent";
 import { logActivity, resolveProfile } from "../../lib/workspaceAccess";
 
 const router = Router();
-
-async function getProfileByUserId(userId: string) {
-  const profiles = await db
-    .select()
-    .from(weddingProfiles)
-    .where(eq(weddingProfiles.userId, userId))
-    .limit(1);
-  return profiles[0] ?? null;
-}
-
 router.get("/checklist", requireAuth, async (req, res) => {
   try {
     const profile = await resolveProfile(req);
@@ -51,7 +41,7 @@ router.post("/checklist", requireAuth, async (req, res) => {
   try {
     const { weddingDate, weddingVibe, guestCount } = req.body;
 
-    const profile = await getProfileByUserId(req.userId);
+    const profile = await resolveProfile(req);
     if (!profile) {
       res.status(404).json({ error: "Profile not found. Please complete your wedding profile first." });
       return;
@@ -185,7 +175,7 @@ router.delete("/checklist/items/:id", requireAuth, async (req, res) => {
 
 router.post("/checklist/items", requireAuth, async (req, res) => {
   try {
-    const profile = await getProfileByUserId(req.userId!);
+    const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Profile not found" });
 
     const { task, description, month } = req.body;

@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
+import { useLocation } from "wouter";
+import { useAuth } from "@clerk/react";
 import { useListConversations } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { Mail } from "lucide-react";
 
 export function VendorReplyNotifier() {
   const { isSignedIn } = useAuth();
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const seenUnread = useRef<Map<number, number>>(new Map());
   const initialized = useRef(false);

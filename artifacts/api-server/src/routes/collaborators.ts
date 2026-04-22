@@ -2,6 +2,7 @@ import { Router } from "express";
 import { randomUUID } from "crypto";
 import { db, workspaceCollaborators, workspaceActivity, weddingProfiles } from "@workspace/db";
 import { eq, and, or } from "drizzle-orm";
+import { clerkClient } from "@clerk/express";
 import { requireAuth } from "../middlewares/requireAuth";
 import {
   getProfileByUserId,
@@ -9,6 +10,18 @@ import {
   hasMinRole,
   logActivity,
 } from "../lib/workspaceAccess";
+
+async function getUserPrimaryEmail(userId: string): Promise<string | null> {
+  try {
+    const u = await clerkClient.users.getUser(userId);
+    const primaryId = u.primaryEmailAddressId;
+    const primary =
+      u.emailAddresses.find((e) => e.id === primaryId) ?? u.emailAddresses[0];
+    return primary?.emailAddress?.toLowerCase() ?? null;
+  } catch {
+    return null;
+  }
+}
 
 const router = Router();
 
@@ -38,26 +51,29 @@ router.get("/collaborators", requireAuth, async (req, res) => {
       .where(eq(workspaceCollaborators.profileId, profile.id))
       .orderBy(workspaceCollaborators.invitedAt);
 
-    const pendingForMe = await db
-      .select({
-        id: workspaceCollaborators.id,
-        role: workspaceCollaborators.role,
-        status: workspaceCollaborators.status,
-        inviteToken: workspaceCollaborators.inviteToken,
-        invitedAt: workspaceCollaborators.invitedAt,
-        profileId: workspaceCollaborators.profileId,
-        partner1Name: weddingProfiles.partner1Name,
-        partner2Name: weddingProfiles.partner2Name,
-        inviterUserId: workspaceCollaborators.inviterUserId,
-      })
-      .from(workspaceCollaborators)
-      .innerJoin(weddingProfiles, eq(workspaceCollaborators.profileId, weddingProfiles.id))
-      .where(
-        and(
-          eq(workspaceCollaborators.inviteeEmail, req.userId!),
-          eq(workspaceCollaborators.status, "pending")
-        )
-      );
+    const myEmail = await getUserPrimaryEmail(req.userId!);
+    const pendingForMe = myEmail
+      ? await db
+          .select({
+            id: workspaceCollaborators.id,
+            role: workspaceCollaborators.role,
+            status: workspaceCollaborators.status,
+            inviteToken: workspaceCollaborators.inviteToken,
+            invitedAt: workspaceCollaborators.invitedAt,
+            profileId: workspaceCollaborators.profileId,
+            partner1Name: weddingProfiles.partner1Name,
+            partner2Name: weddingProfiles.partner2Name,
+            inviterUserId: workspaceCollaborators.inviterUserId,
+          })
+          .from(workspaceCollaborators)
+          .innerJoin(weddingProfiles, eq(workspaceCollaborators.profileId, weddingProfiles.id))
+          .where(
+            and(
+              eq(workspaceCollaborators.inviteeEmail, myEmail),
+              eq(workspaceCollaborators.status, "pending")
+            )
+          )
+      : [];
 
     res.json({
       collaborators: collaborators.map(c => ({

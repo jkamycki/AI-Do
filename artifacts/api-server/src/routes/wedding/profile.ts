@@ -4,7 +4,7 @@ import { weddingProfiles } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
-import { resolveProfile } from "../../lib/workspaceAccess";
+import { resolveProfile, resolveWorkspaceRole, hasMinRole } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -35,13 +35,16 @@ router.post("/profile", requireAuth, async (req, res) => {
       preferredLanguage,
     } = req.body;
 
-    const existing = await db
-      .select()
-      .from(weddingProfiles)
-      .where(eq(weddingProfiles.userId, req.userId))
-      .limit(1);
+    // Workspace-aware: if a workspaceId/header is set, edit that shared workspace
+    // (requires partner+ role). Otherwise, edit the user's own profile.
+    const existingProfile = await resolveProfile(req);
 
-    if (existing.length) {
+    if (existingProfile) {
+      // Permission check: only owner/partner can edit core wedding details on a shared workspace
+      const role = await resolveWorkspaceRole(req.userId!, existingProfile.id);
+      if (!hasMinRole(role, "partner")) {
+        return res.status(403).json({ error: "Only owners and partners can edit core wedding details." });
+      }
       const [updated] = await db
         .update(weddingProfiles)
         .set({
@@ -52,10 +55,10 @@ router.post("/profile", requireAuth, async (req, res) => {
           preferredLanguage: preferredLanguage ?? "English",
           updatedAt: new Date(),
         })
-        .where(eq(weddingProfiles.id, existing[0].id))
+        .where(eq(weddingProfiles.id, existingProfile.id))
         .returning();
       trackEvent(req.userId!, "onboarding_completed", { updated: true });
-      res.json({
+      return res.json({
         ...updated,
         totalBudget: parseFloat(updated.totalBudget as string),
         updatedAt: updated.updatedAt.toISOString(),
