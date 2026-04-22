@@ -109,7 +109,15 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
 
     const sender = extractSender(data.from);
     const rawText = (data.text && data.text.trim()) || (data.html ? htmlToText(data.html) : "");
-    const cleaned = cleanInboundText(rawText) || "(empty message)";
+    logger.info({
+      hasText: !!data.text,
+      textLen: data.text?.length ?? 0,
+      hasHtml: !!data.html,
+      htmlLen: data.html?.length ?? 0,
+      rawTextSample: rawText.slice(0, 200),
+    }, "inbound email payload");
+    const cleanedAttempt = cleanInboundText(rawText);
+    const cleaned = cleanedAttempt || rawText.trim() || "(empty message)";
     const subject = data.subject ?? conv.subject;
 
     const attachments = (data.attachments ?? [])
