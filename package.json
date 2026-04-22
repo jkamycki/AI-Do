@@ -19,7 +19,8 @@
       "yaml": "2.8.3",
       "brace-expansion": "2.1.0",
       "@tootallnate/once": "3.0.1",
-      "esbuild": "0.27.3"
+      "esbuild": "0.27.3",
+      "uuid": "11.0.5"
     }
   },
   "devDependencies": {
