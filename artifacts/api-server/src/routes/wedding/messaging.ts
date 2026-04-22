@@ -162,14 +162,35 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
       const attachmentsLine = safeAttachments.length > 0
         ? `\n\nAttachments:\n${safeAttachments.map((a) => `- ${a.name}: ${toAbsolute(a.url)}`).join("\n")}`
         : "";
-      const signature = coupleNames ? `\n\n— ${coupleNames}` : "";
-      const text = `${body}${attachmentsLine}${signature}\n\n---\nReply to this email and your message will appear in our planning portal.`;
+      const signature = coupleNames ? `\n\nThanks,\n${coupleNames}` : "";
+      const text = `${body}${attachmentsLine}${signature}`;
+
+      // Simple plain-style HTML — mirrors the text closely so spam filters
+      // see a consistent text/html ratio. Avoids images, bright colors, and
+      // marketing-style buttons that trigger Outlook's filters.
+      const esc = (s: string) =>
+        s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const bodyHtml = esc(body).replace(/\n/g, "<br>");
+      const attHtml = safeAttachments.length > 0
+        ? `<p style="margin:16px 0 0 0;font-size:14px;color:#444;"><b>Attachments</b><br>${safeAttachments
+            .map((a) => `<a href="${toAbsolute(a.url)}">${esc(a.name)}</a>`)
+            .join("<br>")}</p>`
+        : "";
+      const sigHtml = coupleNames
+        ? `<p style="margin:16px 0 0 0;">Thanks,<br>${esc(coupleNames)}</p>`
+        : "";
+      const html = `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#222;"><div>${bodyHtml}</div>${attHtml}${sigHtml}</body></html>`;
+
+      // Personalize From name with the couple — feels like a real person, not a robot.
+      const fromName = coupleNames || undefined;
 
       result = await sendEmail({
         to: vendor.email,
         replyTo,
         subject: finalSubject,
         text,
+        html,
+        fromName,
       });
     } else {
       result = { ok: false, error: "Vendor has no email address" };
