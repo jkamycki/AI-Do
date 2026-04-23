@@ -31,9 +31,9 @@ function RotatingTagline() {
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           exit={{ opacity: 0, y: -12, filter: "blur(6px)" }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="font-serif italic text-lg sm:text-xl tracking-wide whitespace-nowrap"
+          className="font-serif italic text-lg sm:text-xl tracking-wide whitespace-nowrap text-center"
           style={{
-            background: "linear-gradient(135deg, #D4A017 0%, #F5C842 50%, #D4A017 100%)",
+            background: "linear-gradient(135deg, #FFFFFF 0%, #F8E1F0 50%, #E91E8C 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
@@ -174,10 +174,11 @@ export default function Landing() {
           borderImage: "linear-gradient(90deg, #B8860B 0%, #D4A017 35%, #F5C842 50%, #D4A017 65%, #B8860B 100%) 1",
         }}
       >
-        <div className="flex items-center">
+        <div className="hidden md:block w-1 flex-shrink-0" />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
           <RotatingTagline />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-auto">
           <LandingLanguagePicker />
           <Link href="/sign-in">
             <Button variant="ghost" className="text-primary hover:bg-primary/5 font-medium">{t("landing.cta_signin")}</Button>
