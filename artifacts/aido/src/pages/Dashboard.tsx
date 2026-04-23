@@ -2,6 +2,7 @@ import { useGetDashboardSummary } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@clerk/react";
 import { useLocation } from "wouter";
+import { useEffect, useMemo, useState } from "react";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,8 @@ import {
   ChevronRight,
   LayoutGrid,
   Building2,
+  GripVertical,
+  RotateCcw,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -203,6 +206,143 @@ function FeatureCard({
           <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
         </Button>
       </Link>
+    </div>
+  );
+}
+
+type StatChipDef = {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  sub?: string;
+  progress?: number;
+  href: string;
+};
+
+const STAT_ORDER_KEY = "aido:dashboard:statOrder";
+const DEFAULT_STAT_ORDER = ["budget", "checklist", "timeline", "guests"] as const;
+type StatKey = typeof DEFAULT_STAT_ORDER[number];
+
+function loadStatOrder(validKeys: string[]): StatKey[] {
+  try {
+    const raw = localStorage.getItem(STAT_ORDER_KEY);
+    if (!raw) return [...DEFAULT_STAT_ORDER];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [...DEFAULT_STAT_ORDER];
+    const filtered = parsed.filter((k) => validKeys.includes(k)) as StatKey[];
+    // Append any keys missing from saved order (e.g. after we add new chips)
+    for (const k of DEFAULT_STAT_ORDER) {
+      if (!filtered.includes(k)) filtered.push(k);
+    }
+    return filtered.length ? filtered : [...DEFAULT_STAT_ORDER];
+  } catch {
+    return [...DEFAULT_STAT_ORDER];
+  }
+}
+
+function DraggableStatsRow({ chips }: { chips: Record<StatKey, StatChipDef> }) {
+  const validKeys = useMemo(() => Object.keys(chips), [chips]);
+  const [order, setOrder] = useState<StatKey[]>(() => loadStatOrder(validKeys));
+  const [draggingKey, setDraggingKey] = useState<StatKey | null>(null);
+  const [dragOverKey, setDragOverKey] = useState<StatKey | null>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STAT_ORDER_KEY, JSON.stringify(order));
+    } catch {
+      /* ignore */
+    }
+  }, [order]);
+
+  const move = (from: StatKey, to: StatKey) => {
+    if (from === to) return;
+    setOrder((prev) => {
+      const next = [...prev];
+      const fromIdx = next.indexOf(from);
+      const toIdx = next.indexOf(to);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, from);
+      return next;
+    });
+  };
+
+  const reset = () => setOrder([...DEFAULT_STAT_ORDER]);
+  const isCustomized = order.join(",") !== DEFAULT_STAT_ORDER.join(",");
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between px-1">
+        <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1.5">
+          <GripVertical className="h-3 w-3" /> Drag any tile to reorder your dashboard
+        </p>
+        {isCustomized && (
+          <button
+            onClick={reset}
+            className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+            data-testid="btn-reset-stat-order"
+          >
+            <RotateCcw className="h-3 w-3" /> Reset
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {order.map((key) => {
+          const def = chips[key];
+          if (!def) return null;
+          const isDragging = draggingKey === key;
+          const isOver = dragOverKey === key && draggingKey && draggingKey !== key;
+          return (
+            <div
+              key={key}
+              draggable
+              onDragStart={(e) => {
+                setDraggingKey(key);
+                e.dataTransfer.effectAllowed = "move";
+                try {
+                  e.dataTransfer.setData("text/plain", key);
+                } catch {
+                  /* some browsers require this */
+                }
+              }}
+              onDragOver={(e) => {
+                if (!draggingKey || draggingKey === key) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setDragOverKey(key);
+              }}
+              onDragEnter={(e) => {
+                if (!draggingKey || draggingKey === key) return;
+                e.preventDefault();
+                setDragOverKey(key);
+              }}
+              onDragLeave={(e) => {
+                // Only clear if we actually leave the element (not its children)
+                if (e.currentTarget === e.target) setDragOverKey(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (draggingKey) move(draggingKey, key);
+                setDraggingKey(null);
+                setDragOverKey(null);
+              }}
+              onDragEnd={() => {
+                setDraggingKey(null);
+                setDragOverKey(null);
+              }}
+              className={`relative transition-all ${isDragging ? "opacity-40 scale-[0.98]" : ""} ${
+                isOver ? "ring-2 ring-primary/60 rounded-2xl" : ""
+              }`}
+              data-testid={`stat-chip-${key}`}
+            >
+              <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 hover:opacity-100 text-muted-foreground/40 cursor-grab active:cursor-grabbing pointer-events-none">
+                <GripVertical className="h-3.5 w-3.5" />
+              </div>
+              <StatChip {...def} />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -441,39 +581,42 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatChip
-          icon={DollarSign}
-          label="Budget"
-          value={`$${summary.budgetSpent.toLocaleString()}`}
-          sub={`of $${summary.budgetTotal.toLocaleString()} spent`}
-          progress={budgetPct}
-          href="/budget"
-        />
-        <StatChip
-          icon={CheckSquare}
-          label="Checklist"
-          value={`${summary.checklistCompleted}/${summary.checklistTotal}`}
-          sub={`${Math.round(summary.checklistProgress)}% done`}
-          progress={summary.checklistProgress}
-          href="/checklist"
-        />
-        <StatChip
-          icon={Clock}
-          label="Timeline"
-          value={`${summary.timelineEventCount}`}
-          sub="events scheduled"
-          href="/timeline"
-        />
-        <StatChip
-          icon={UsersRound}
-          label="Guests"
-          value={`${summary.guestCount ?? 0}`}
-          sub={`incl. plus-ones · ${(summary as any).guestRsvpSummary?.attending ?? 0} attending`}
-          href="/guests"
-        />
-      </div>
+      {/* Stats row — drag to reorder */}
+      <DraggableStatsRow
+        chips={{
+          budget: {
+            icon: DollarSign,
+            label: "Budget",
+            value: `$${summary.budgetSpent.toLocaleString()}`,
+            sub: `of $${summary.budgetTotal.toLocaleString()} spent`,
+            progress: budgetPct,
+            href: "/budget",
+          },
+          checklist: {
+            icon: CheckSquare,
+            label: "Checklist",
+            value: `${summary.checklistCompleted}/${summary.checklistTotal}`,
+            sub: `${Math.round(summary.checklistProgress)}% done`,
+            progress: summary.checklistProgress,
+            href: "/checklist",
+          },
+          timeline: {
+            icon: Clock,
+            label: "Timeline",
+            value: `${summary.timelineEventCount}`,
+            sub: "events scheduled",
+            href: "/timeline",
+          },
+          guests: {
+            icon: UsersRound,
+            label: "Guests",
+            value: `${summary.guestCount ?? 0}`,
+            sub: `incl. plus-ones · ${(summary as any).guestRsvpSummary?.attending ?? 0} attending`,
+            href: "/guests",
+          },
+        }}
+      />
+
 
       {/* Overview row: Guest RSVPs + Vendors + Wedding Party */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
