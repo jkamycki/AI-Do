@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Scene1 } from "./video_scenes/Scene1";
 import { Scene2 } from "./video_scenes/Scene2";
 import { Scene3 } from "./video_scenes/Scene3";
@@ -10,13 +10,7 @@ import { Scene7 } from "./video_scenes/Scene7";
 import { Volume2, VolumeX } from "lucide-react";
 
 const SCENE_COUNT = 7;
-
-// Fallback durations used only when narration audio is muted or fails to load.
-// When narration plays, scenes advance the instant the voice finishes.
-const FALLBACK_DURATIONS = [5500, 9000, 9500, 9300, 9300, 9200, 11000];
-
-// Tiny breath between voice lines (ms).
-const POST_NARRATION_GAP = 350;
+const SCENE_DURATIONS = [5500, 9000, 9500, 9300, 9300, 9200, 11000];
 
 const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
   id: i,
@@ -27,102 +21,197 @@ const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
   duration: Math.random() * 3 + 2,
 }));
 
-function useAudioDrivenPlayer(audioEnabled: boolean) {
+function useTimerPlayer() {
   const [currentScene, setCurrentScene] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sceneRef = useRef(0);
-
-  // Keep a ref of the current scene so callbacks always see the latest value
-  // without needing to re-bind.
-  useEffect(() => { sceneRef.current = currentScene; }, [currentScene]);
-
-  const advance = useCallback(() => {
-    setCurrentScene((s) => (s + 1) % SCENE_COUNT);
-  }, []);
-
-  const scheduleFallback = useCallback((scene: number) => {
-    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
-    fallbackTimerRef.current = setTimeout(() => {
-      if (sceneRef.current === scene) advance();
-    }, FALLBACK_DURATIONS[scene] ?? 9000);
-  }, [advance]);
-
-  // Build / tear down the audio element when narration is toggled.
   useEffect(() => {
-    if (!audioEnabled) {
-      if (audioRef.current) {
-        try { audioRef.current.pause(); audioRef.current.src = ""; } catch {}
-        audioRef.current = null;
+    const t = setTimeout(
+      () => setCurrentScene((s) => (s + 1) % SCENE_COUNT),
+      SCENE_DURATIONS[currentScene] ?? 9000
+    );
+    return () => clearTimeout(t);
+  }, [currentScene]);
+  return currentScene;
+}
+
+// Warm, cinematic ambient progression in C major.
+// Each chord is held for CHORD_BEATS * BEAT_MS (= 8s by default) so one loop
+// is roughly 64s — matches the total video length without obvious looping.
+const BEAT_MS = 1000;
+const CHORD_BEATS = 8;
+
+// MIDI note numbers
+const PROGRESSION: number[][] = [
+  [60, 64, 67, 71, 74], // Cmaj9
+  [57, 60, 64, 67, 71], // Am9
+  [53, 57, 60, 64, 67], // Fmaj9
+  [55, 59, 62, 65, 69], // G13
+  [52, 55, 59, 62, 65], // Em11
+  [57, 60, 64, 67, 71], // Am9
+  [50, 53, 57, 60, 64], // Dm9
+  [55, 59, 62, 65, 69], // G13 → resolves back to Cmaj9
+];
+
+const midiToFreq = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
+
+function useAmbientMusic(enabled: boolean) {
+  const ctxRef = useRef<AudioContext | null>(null);
+  const masterRef = useRef<GainNode | null>(null);
+  const stopRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (!enabled) {
+      if (stopRef.current) {
+        stopRef.current();
+        stopRef.current = null;
       }
       return;
     }
-    const audio = new Audio();
-    audio.preload = "auto";
-    audio.volume = 0.95;
-    audioRef.current = audio;
 
-    // Pre-warm cache for every scene so playback is instant.
-    Array.from({ length: SCENE_COUNT }).forEach((_, i) => {
-      fetch(`/api/tts/narration/${i}`).catch(() => {});
-    });
+    const AC: typeof AudioContext =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AC();
+    ctxRef.current = ctx;
+
+    // Master + gentle compressor + lowpass for warmth
+    const master = ctx.createGain();
+    master.gain.value = 0;
+    master.gain.linearRampToValueAtTime(0.42, ctx.currentTime + 1.2);
+
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = "lowpass";
+    lowpass.frequency.value = 2400;
+    lowpass.Q.value = 0.4;
+
+    // Lush stereo delay for ambience
+    const delayL = ctx.createDelay(1.5);
+    const delayR = ctx.createDelay(1.5);
+    delayL.delayTime.value = 0.43;
+    delayR.delayTime.value = 0.61;
+    const fbL = ctx.createGain();
+    const fbR = ctx.createGain();
+    fbL.gain.value = 0.32;
+    fbR.gain.value = 0.32;
+    const wetGain = ctx.createGain();
+    wetGain.gain.value = 0.35;
+    const merger = ctx.createChannelMerger(2);
+
+    delayL.connect(fbL).connect(delayR);
+    delayR.connect(fbR).connect(delayL);
+    delayL.connect(merger, 0, 0);
+    delayR.connect(merger, 0, 1);
+    merger.connect(wetGain).connect(master);
+
+    lowpass.connect(master);
+    lowpass.connect(delayL);
+    master.connect(ctx.destination);
+    masterRef.current = master;
+
+    const sources: { stop: (t: number) => void }[] = [];
+
+    // Schedule one chord at time `t` (seconds, AudioContext time).
+    const playChord = (notes: number[], t: number, durationSec: number) => {
+      const attack = 1.6;
+      const release = 2.4;
+      const sustain = Math.max(0.5, durationSec - attack - release);
+
+      // Soft sub-bass: root one octave down on a sine
+      const bassFreq = midiToFreq(notes[0] - 12);
+      const bassOsc = ctx.createOscillator();
+      bassOsc.type = "sine";
+      bassOsc.frequency.value = bassFreq;
+      const bassGain = ctx.createGain();
+      bassGain.gain.setValueAtTime(0.0001, t);
+      bassGain.gain.exponentialRampToValueAtTime(0.18, t + attack);
+      bassGain.gain.setValueAtTime(0.18, t + attack + sustain);
+      bassGain.gain.exponentialRampToValueAtTime(0.0001, t + attack + sustain + release);
+      bassOsc.connect(bassGain).connect(lowpass);
+      bassOsc.start(t);
+      bassOsc.stop(t + attack + sustain + release + 0.1);
+      sources.push({ stop: (s) => { try { bassOsc.stop(s); } catch {} } });
+
+      // Pad voices: triangle + detuned sine pair per note for chorus
+      notes.forEach((midi, i) => {
+        const freq = midiToFreq(midi);
+        const detunes = [0, 6, -6];
+        const types: OscillatorType[] = ["triangle", "sine", "sine"];
+        detunes.forEach((det, k) => {
+          const osc = ctx.createOscillator();
+          osc.type = types[k];
+          osc.frequency.value = freq;
+          osc.detune.value = det;
+
+          const g = ctx.createGain();
+          const peak = (k === 0 ? 0.07 : 0.045) / Math.max(1, notes.length / 4);
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(peak, t + attack + i * 0.08);
+          g.gain.setValueAtTime(peak, t + attack + sustain);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + attack + sustain + release);
+
+          osc.connect(g).connect(lowpass);
+          osc.start(t);
+          osc.stop(t + attack + sustain + release + 0.1);
+          sources.push({ stop: (s) => { try { osc.stop(s); } catch {} } });
+        });
+      });
+
+      // Sparkle: top note an octave up, plucked-ish, very quiet
+      const sparkleFreq = midiToFreq(notes[notes.length - 1] + 12);
+      const spOsc = ctx.createOscillator();
+      spOsc.type = "sine";
+      spOsc.frequency.value = sparkleFreq;
+      const spGain = ctx.createGain();
+      const spStart = t + 0.6;
+      spGain.gain.setValueAtTime(0.0001, spStart);
+      spGain.gain.exponentialRampToValueAtTime(0.04, spStart + 0.05);
+      spGain.gain.exponentialRampToValueAtTime(0.0001, spStart + 2.2);
+      spOsc.connect(spGain).connect(lowpass);
+      spOsc.start(spStart);
+      spOsc.stop(spStart + 2.4);
+      sources.push({ stop: (s) => { try { spOsc.stop(s); } catch {} } });
+    };
+
+    // Schedule the entire progression and loop indefinitely.
+    const chordSec = (CHORD_BEATS * BEAT_MS) / 1000;
+    let scheduled = 0;
+    const scheduleAhead = () => {
+      const ahead = ctx.currentTime + 4; // schedule ~4s ahead
+      while (scheduled < ahead) {
+        const idx = Math.round(scheduled / chordSec) % PROGRESSION.length;
+        playChord(PROGRESSION[idx], ctx.currentTime + (scheduled - ctx.currentTime), chordSec);
+        scheduled += chordSec;
+      }
+    };
+    // Start a bit ahead of "now" so the first chord doesn't click in.
+    scheduled = ctx.currentTime + 0.05;
+    scheduleAhead();
+    const interval = window.setInterval(scheduleAhead, 1000);
+
+    stopRef.current = () => {
+      clearInterval(interval);
+      try {
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.6);
+      } catch {}
+      window.setTimeout(() => {
+        sources.forEach((s) => s.stop(ctx.currentTime));
+        try { ctx.close(); } catch {}
+      }, 700);
+    };
 
     return () => {
-      try { audio.pause(); audio.src = ""; } catch {}
-      audioRef.current = null;
+      if (stopRef.current) {
+        stopRef.current();
+        stopRef.current = null;
+      }
     };
-  }, [audioEnabled]);
-
-  // Whenever the scene changes, play matching narration and schedule the next
-  // scene to fire as soon as the voice ends (with a tiny breath gap).
-  useEffect(() => {
-    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
-
-    if (!audioEnabled || !audioRef.current) {
-      // No audio — use fallback timer only.
-      scheduleFallback(currentScene);
-      return;
-    }
-
-    const audio = audioRef.current;
-    audio.onended = null;
-
-    const onEnded = () => {
-      if (sceneRef.current !== currentScene) return;
-      // Brief breath, then advance.
-      setTimeout(() => {
-        if (sceneRef.current === currentScene) advance();
-      }, POST_NARRATION_GAP);
-    };
-
-    audio.onended = onEnded;
-    audio.pause();
-    audio.currentTime = 0;
-    audio.src = `/api/tts/narration/${currentScene}`;
-
-    // Fallback in case audio fails to play (e.g. autoplay blocked).
-    scheduleFallback(currentScene);
-
-    audio.play().catch(() => {
-      // Autoplay blocked; the fallback timer will still advance the scene.
-    });
-
-    return () => {
-      audio.onended = null;
-    };
-  }, [currentScene, audioEnabled, advance, scheduleFallback]);
-
-  // Cleanup any pending timers on unmount.
-  useEffect(() => () => {
-    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
-  }, []);
-
-  return { currentScene };
+  }, [enabled]);
 }
 
 export default function VideoTemplate() {
   const [audioEnabled, setAudioEnabled] = useState(false);
-  const { currentScene } = useAudioDrivenPlayer(audioEnabled);
+  const currentScene = useTimerPlayer();
+  useAmbientMusic(audioEnabled);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#07030d] text-white">
@@ -180,14 +269,14 @@ export default function VideoTemplate() {
         </AnimatePresence>
       </div>
 
-      {/* Sound toggle */}
+      {/* Music toggle */}
       <button
         onClick={() => setAudioEnabled(v => !v)}
         className="absolute bottom-4 right-4 z-30 flex items-center gap-2 px-3 py-2 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 transition-all text-white/90 text-xs font-medium"
-        aria-label={audioEnabled ? "Mute soundtrack" : "Play soundtrack"}
+        aria-label={audioEnabled ? "Mute music" : "Play music"}
       >
         {audioEnabled ? <Volume2 className="h-4 w-4 text-amber-300" /> : <VolumeX className="h-4 w-4" />}
-        <span>{audioEnabled ? "Sound on" : "Tap for sound"}</span>
+        <span>{audioEnabled ? "Music on" : "Tap for music"}</span>
       </button>
     </div>
   );
