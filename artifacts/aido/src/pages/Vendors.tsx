@@ -1268,14 +1268,13 @@ export default function Vendors() {
         />
       )}
 
-      {viewingVendorId !== null && (
+      {viewingVendorId !== null && !editingVendor && (
         <VendorDetailDialog
           vendorId={viewingVendorId}
           onClose={() => setViewingVendorId(null)}
           onEdit={() => {
             const v = vendors.find((vv) => vv.id === viewingVendorId);
             if (v) {
-              setViewingVendorId(null);
               setEditingVendor(v);
             }
           }}
