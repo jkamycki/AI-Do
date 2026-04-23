@@ -215,22 +215,34 @@ function AddEditVendorDialog({
       toast({ title: "Name and category are required", variant: "destructive" });
       return;
     }
-    const payload = {
-      name: form.name.trim(),
-      category: form.category,
-      email: form.email || undefined,
-      phone: form.phone || undefined,
-      website: form.website || undefined,
-      portalLink: form.portalLink || undefined,
-      notes: form.notes || undefined,
-      totalCost: form.totalCost ? Number(form.totalCost) : 0,
-      depositAmount: form.depositAmount ? Number(form.depositAmount) : 0,
-      contractSigned: form.contractSigned,
-    };
     if (vendor) {
-      updateMutation.mutate({ id: vendor.id, data: payload });
+      const updatePayload = {
+        name: form.name.trim(),
+        category: form.category,
+        email: form.email.trim() || null,
+        phone: form.phone.trim() || null,
+        website: form.website.trim() || null,
+        portalLink: form.portalLink.trim() || null,
+        notes: form.notes.trim() || null,
+        totalCost: form.totalCost ? Number(form.totalCost) : 0,
+        depositAmount: form.depositAmount ? Number(form.depositAmount) : 0,
+        contractSigned: form.contractSigned,
+      };
+      updateMutation.mutate({ id: vendor.id, data: updatePayload as never });
     } else {
-      createMutation.mutate({ data: payload });
+      const createPayload = {
+        name: form.name.trim(),
+        category: form.category,
+        email: form.email.trim() || undefined,
+        phone: form.phone.trim() || undefined,
+        website: form.website.trim() || undefined,
+        portalLink: form.portalLink.trim() || undefined,
+        notes: form.notes.trim() || undefined,
+        totalCost: form.totalCost ? Number(form.totalCost) : 0,
+        depositAmount: form.depositAmount ? Number(form.depositAmount) : 0,
+        contractSigned: form.contractSigned,
+      };
+      createMutation.mutate({ data: createPayload });
     }
   }
 

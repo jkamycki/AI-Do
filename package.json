@@ -9,7 +9,6 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
-  "packageManager": "pnpm@9.15.4",
   "engines": {
     "node": ">=20"
   },
@@ -25,10 +24,17 @@
       "@tootallnate/once": "3.0.1",
       "esbuild": "0.27.3",
       "uuid": "14.0.0"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@pnpm/exe",
+      "@swc/core",
+      "esbuild",
+      "msw",
+      "unrs-resolver"
+    ]
   },
   "devDependencies": {
-    "typescript": "~5.9.2",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "typescript": "~5.9.2"
   }
 }
