@@ -116,21 +116,21 @@ function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; re
   }
 
   return (
-    <div className="rounded-xl border border-rose-200 bg-rose-50/40 overflow-hidden">
-      <div className="px-4 py-3 flex items-center gap-2 border-b border-rose-200/60 bg-rose-50/60">
-        <MessageSquareDiff className="h-4 w-4 text-rose-600" />
-        <span className="text-sm font-semibold text-rose-800">Negotiation Response</span>
-        <span className="ml-1 text-xs text-rose-600">({redFlagCount} flag{redFlagCount !== 1 ? "s" : ""} to address)</span>
+    <div className="rounded-xl border border-border/40 bg-muted/20 overflow-hidden">
+      <div className="px-4 py-3 flex items-center gap-2 border-b border-border/40 bg-muted/30">
+        <MessageSquareDiff className="h-4 w-4 text-primary" />
+        <span className="text-sm font-semibold text-foreground">Negotiation Response</span>
+        <span className="ml-1 text-xs text-muted-foreground">({redFlagCount} flag{redFlagCount !== 1 ? "s" : ""} to address)</span>
       </div>
       <div className="p-4 space-y-3">
         {!email ? (
           <>
-            <p className="text-xs text-rose-700 leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               AI will draft a professional email you can send directly to the vendor — addressing each red flag diplomatically and requesting specific contract changes.
             </p>
             <Button
               size="sm"
-              className="bg-rose-600 hover:bg-rose-700 text-white gap-2 w-full"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 w-full"
               onClick={generate}
               disabled={loading}
             >
@@ -145,14 +145,14 @@ function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; re
               value={email}
               onChange={e => setEmail(e.target.value)}
               rows={14}
-              className="text-sm font-mono leading-relaxed resize-y bg-white text-slate-900 placeholder:text-slate-400 border-rose-200 focus:ring-rose-300"
+              className="text-sm font-mono leading-relaxed resize-y bg-background text-foreground placeholder:text-muted-foreground border-border/60 focus:ring-primary/40"
             />
-            <p className="text-[11px] text-rose-600">Edit as needed — replace <strong>[Your Names]</strong> and <strong>[Vendor Name]</strong> before sending.</p>
+            <p className="text-[11px] text-muted-foreground">Edit as needed — replace <strong className="text-foreground">[Your Names]</strong> and <strong className="text-foreground">[Vendor Name]</strong> before sending.</p>
             <div className="flex gap-2">
-              <Button size="sm" className="flex-1 gap-2 bg-rose-600 hover:bg-rose-700 text-white" onClick={copy}>
+              <Button size="sm" className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={copy}>
                 {copied ? <><Check className="h-3.5 w-3.5" /> Copied!</> : <><Copy className="h-3.5 w-3.5" /> Copy to Clipboard</>}
               </Button>
-              <Button size="sm" variant="outline" className="border-rose-200 text-rose-700 hover:bg-rose-50" onClick={generate} disabled={loading}>
+              <Button size="sm" variant="outline" className="border-border/60 text-foreground hover:bg-muted/50" onClick={generate} disabled={loading}>
                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Regenerate"}
               </Button>
             </div>
