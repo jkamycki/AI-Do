@@ -23,14 +23,14 @@ function RotatingTagline() {
     return () => clearInterval(id);
   }, []);
   return (
-    <div className="relative h-9 flex items-center overflow-hidden min-w-[280px] sm:min-w-[420px]">
+    <div className="relative h-9 flex items-center justify-center overflow-hidden min-w-[280px] sm:min-w-[480px]">
       <AnimatePresence mode="wait">
         <motion.span
           key={index}
-          initial={{ opacity: 0, y: 12, filter: "blur(6px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          exit={{ opacity: 0, y: -12, filter: "blur(6px)" }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          initial={{ clipPath: "inset(0 100% 0 0)" }}
+          animate={{ clipPath: "inset(0 0% 0 0)" }}
+          exit={{ clipPath: "inset(0 0 0 100%)" }}
+          transition={{ duration: 1.1, ease: [0.65, 0, 0.35, 1] }}
           className="font-serif italic text-lg sm:text-xl tracking-wide whitespace-nowrap text-center"
           style={{
             background: "linear-gradient(135deg, #FFFFFF 0%, #F8E1F0 50%, #E91E8C 100%)",
