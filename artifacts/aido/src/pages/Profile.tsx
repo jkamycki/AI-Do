@@ -314,7 +314,7 @@ export default function Profile() {
                         />
                       </FormControl>
                       <div className="space-y-1 leading-tight">
-                        <FormLabel className="cursor-pointer">Ceremony will be held at the reception venue</FormLabel>
+                        <FormLabel className="cursor-pointer">Check this box if the ceremony will be held at the venue</FormLabel>
                         <p className="text-xs text-muted-foreground">
                           Uncheck if your ceremony is at a separate location (church, garden, etc.).
                         </p>
