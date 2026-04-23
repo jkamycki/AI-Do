@@ -1,4 +1,4 @@
-import { useState, useId } from "react";
+import { useEffect, useState, useId } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -220,12 +220,40 @@ export default function SeatingChartPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const uid = useId();
-  const [guests, setGuests] = useState<Guest[]>([
-    { id: `${uid}-0`, name: "", group: "Bride's Family", plusOne: false, notes: "", relations: [] },
-  ]);
-  const [tableCount, setTableCount] = useState(6);
-  const [seatsPerTable, setSeatsPerTable] = useState(8);
-  const [additionalNotes, setAdditionalNotes] = useState("");
+  const STORAGE_KEY = "aido_seating_draft_v1";
+  const draft = (() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) as {
+        guests?: Guest[];
+        tableCount?: number;
+        seatsPerTable?: number;
+        additionalNotes?: string;
+      } : null;
+    } catch { return null; }
+  })();
+
+  const [guests, setGuests] = useState<Guest[]>(
+    draft?.guests && Array.isArray(draft.guests) && draft.guests.length > 0
+      ? draft.guests
+      : [{ id: `${uid}-0`, name: "", group: "Bride's Family", plusOne: false, notes: "", relations: [] }]
+  );
+  const [tableCount, setTableCount] = useState(draft?.tableCount ?? 6);
+  const [seatsPerTable, setSeatsPerTable] = useState(draft?.seatsPerTable ?? 8);
+  const [additionalNotes, setAdditionalNotes] = useState(draft?.additionalNotes ?? "");
+
+  // Persist the in-progress chart so leaving and returning to the tab
+  // preserves whatever was being entered.
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ guests, tableCount, seatsPerTable, additionalNotes })
+      );
+    } catch {
+      // ignore quota errors
+    }
+  }, [guests, tableCount, seatsPerTable, additionalNotes]);
   const [result, setResult] = useState<SeatingResult | null>(null);
   const [showGuests, setShowGuests] = useState(true);
   const [showSaved, setShowSaved] = useState(false);
@@ -289,6 +317,7 @@ export default function SeatingChartPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
+      try { localStorage.removeItem(STORAGE_KEY); } catch {}
     },
   });
 
