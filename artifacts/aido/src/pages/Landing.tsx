@@ -4,6 +4,47 @@ import { Sparkles, Calendar, DollarSign, CheckSquare, Mail, FileText, Armchair, 
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
+import { AnimatePresence, motion } from "framer-motion";
+
+const HEADER_TAGLINES = [
+  "Wedding planning, made easy.",
+  "Your AI wedding planner — always on call.",
+  "From timeline to seating chart, all in one place.",
+  "Plan together. Stress less. Celebrate more.",
+  "Smart vendors. Smart budget. Smart you.",
+];
+
+function RotatingTagline() {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIndex(i => (i + 1) % HEADER_TAGLINES.length);
+    }, 4200);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div className="relative h-9 flex items-center overflow-hidden min-w-[280px] sm:min-w-[420px]">
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={index}
+          initial={{ opacity: 0, y: 12, filter: "blur(6px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, y: -12, filter: "blur(6px)" }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="font-serif italic text-lg sm:text-xl tracking-wide whitespace-nowrap"
+          style={{
+            background: "linear-gradient(135deg, #D4A017 0%, #F5C842 50%, #D4A017 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}
+        >
+          {HEADER_TAGLINES[index]}
+        </motion.span>
+      </AnimatePresence>
+    </div>
+  );
+}
 
 const LANGUAGES = [
   "English", "Spanish", "French", "German", "Italian", "Portuguese",
@@ -134,7 +175,7 @@ export default function Landing() {
         }}
       >
         <div className="flex items-center">
-          <img src="/logo.png" alt="A.I Do" className="h-32 w-auto object-contain" />
+          <RotatingTagline />
         </div>
         <div className="flex items-center gap-2">
           <LandingLanguagePicker />
