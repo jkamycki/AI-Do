@@ -197,17 +197,44 @@ function LanguageSwitcherCard() {
   const [selected, setSelected] = useState<string | null>(null);
 
   const current = selected ?? profile?.preferredLanguage ?? "English";
-  const hasChange = selected !== null && selected !== (profile?.preferredLanguage ?? "English");
+  const original = profile?.preferredLanguage ?? "English";
+  const hasChange = selected !== null && selected !== original;
   const currentCode = LANG_NAME_TO_CODE[current] ?? "en";
+  const languageOptions = [
+    "English", "Spanish", "French", "German", "Italian", "Portuguese",
+    "Chinese (Simplified)", "Japanese", "Korean", "Arabic", "Hindi",
+    "Russian", "Dutch", "Polish",
+  ];
 
   function save() {
-    // The display language is stored per-user (in this browser only) so each
-    // collaborator can pick their own language without affecting the others.
+    if (!hasChange) return;
     const code = LANG_NAME_TO_CODE[current] ?? "en";
     i18n.changeLanguage(code);
     localStorage.setItem("aido_language", code);
-    setSelected(null);
-    toast({ title: "Language updated", description: `Switched to ${current}.` });
+    saveProfile.mutate(
+      {
+        data: {
+          partner1Name: profile?.partner1Name ?? "",
+          partner2Name: profile?.partner2Name ?? "",
+          weddingDate: profile?.weddingDate ?? "",
+          preferredLanguage: current,
+        },
+      },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
+          setSelected(null);
+          toast({ title: "Language updated", description: `Switched to ${current}.` });
+        },
+        onError: (err: unknown) => {
+          toast({
+            variant: "destructive",
+            title: "Could not save language",
+            description: err instanceof Error ? err.message : "Please try again.",
+          });
+        },
+      }
+    );
   }
 
   return (
@@ -230,12 +257,12 @@ function LanguageSwitcherCard() {
           <p className="text-sm text-muted-foreground">Complete your wedding profile first to set a language.</p>
         ) : (
           <div className="flex items-center gap-3">
-            <Select value={currentCode} onValueChange={value => setSelected(Object.keys(LANG_NAME_TO_CODE).find(name => LANG_NAME_TO_CODE[name] === value) ?? value)}>
+            <Select value={currentCode} onValueChange={value => setSelected(languageOptions.find(name => LANG_NAME_TO_CODE[name] === value) ?? "English")}>
               <SelectTrigger className="w-56 bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {LANGUAGES.map(lang => (
+                {languageOptions.map(lang => (
                   <SelectItem key={lang} value={LANG_NAME_TO_CODE[lang] ?? "en"}>{lang}</SelectItem>
                 ))}
               </SelectContent>
