@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import { db } from "@workspace/db";
 import { vendorConversations, vendorMessages, vendors } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -21,7 +21,7 @@ function parseFromHeader(from: string | undefined): { email: string; name?: stri
   return { email: from.trim() };
 }
 
-router.post("/webhooks/cloudflare/inbound", async (req, res) => {
+router.post("/webhooks/cloudflare/inbound", json({ limit: "20mb" }), async (req, res) => {
   try {
     const secret = process.env.CLOUDFLARE_INBOUND_SECRET;
     if (!secret) {
