@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, guests, weddingProfiles } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { resolveProfile } from "../lib/workspaceAccess";
+import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 
 const router = Router();
 
@@ -19,6 +19,11 @@ void getProfileId;
 
 router.get("/guests", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const profile = await resolveProfile(req);
     const profileId = profile?.id ?? null;
     if (!profileId) {
@@ -51,6 +56,11 @@ router.get("/guests", requireAuth, async (req, res) => {
 
 router.post("/guests", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const profile = await resolveProfile(req);
     const profileId = profile?.id ?? null;
     if (!profileId) {
@@ -97,6 +107,11 @@ router.post("/guests", requireAuth, async (req, res) => {
 
 router.put("/guests/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid guest ID" });
 
@@ -142,6 +157,11 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
 
 router.delete("/guests/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid guest ID" });
 

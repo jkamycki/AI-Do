@@ -1,15 +1,20 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { checklistItems, weddingProfiles } from "@workspace/db";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
-import { logActivity, resolveProfile } from "../../lib/workspaceAccess";
+import { logActivity, resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 
 const router = Router();
 router.get("/checklist", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const profile = await resolveProfile(req);
 
     const items = profile
@@ -39,6 +44,11 @@ router.get("/checklist", requireAuth, async (req, res) => {
 
 router.post("/checklist", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const { weddingDate, weddingVibe, guestCount } = req.body;
 
     const profile = await resolveProfile(req);
@@ -120,7 +130,17 @@ Include 5-8 tasks per relevant time period. Be specific and actionable. Make tas
 
 router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const id = parseInt(req.params.id);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const { isCompleted, task, description, month } = req.body;
 
     const updates: Record<string, unknown> = {};
@@ -135,7 +155,7 @@ router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
     const [item] = await db
       .update(checklistItems)
       .set(updates)
-      .where(eq(checklistItems.id, id))
+      .where(and(eq(checklistItems.id, id), eq(checklistItems.profileId, profile.id)))
       .returning();
 
     if (!item) {
@@ -163,8 +183,21 @@ router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
 
 router.delete("/checklist/items/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const id = parseInt(req.params.id);
-    const [deleted] = await db.delete(checklistItems).where(eq(checklistItems.id, id)).returning();
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const [deleted] = await db
+      .delete(checklistItems)
+      .where(and(eq(checklistItems.id, id), eq(checklistItems.profileId, profile.id)))
+      .returning();
     if (!deleted) return res.status(404).json({ error: "Item not found" });
     res.json({ success: true });
   } catch (err) {
@@ -175,6 +208,11 @@ router.delete("/checklist/items/:id", requireAuth, async (req, res) => {
 
 router.post("/checklist/items", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Profile not found" });
 

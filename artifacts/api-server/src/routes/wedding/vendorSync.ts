@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, vendors, vendorPayments } from "@workspace/db";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
-import { resolveScopeUserId } from "../../lib/workspaceAccess";
+import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
@@ -36,6 +36,11 @@ async function syncNextPaymentDue(vendorId: number) {
 
 router.get("/vendors", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const rows = await db
       .select()
@@ -51,6 +56,11 @@ router.get("/vendors", requireAuth, async (req, res) => {
 
 router.get("/vendors/financials", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const userVendors = await db
       .select()
@@ -113,6 +123,11 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
 
 router.post("/vendors", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const {
       name, category, email, phone, website, portalLink,
@@ -142,6 +157,11 @@ router.post("/vendors", requireAuth, async (req, res) => {
 
 router.get("/vendors/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const vendorId = parseInt(req.params.id, 10);
     const [vendor] = await db
@@ -166,6 +186,11 @@ router.get("/vendors/:id", requireAuth, async (req, res) => {
 
 router.put("/vendors/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const vendorId = parseInt(req.params.id, 10);
     const {
@@ -203,16 +228,23 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
 
 router.delete("/vendors/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const vendorId = parseInt(req.params.id, 10);
-    await db.delete(vendorPayments).where(eq(vendorPayments.vendorId, vendorId));
-    const [deleted] = await db
-      .delete(vendors)
+    const [vendor] = await db
+      .select({ id: vendors.id })
+      .from(vendors)
       .where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)))
-      .returning();
-    if (!deleted) {
+      .limit(1);
+    if (!vendor) {
       return res.status(404).json({ error: "Vendor not found" });
     }
+    await db.delete(vendorPayments).where(eq(vendorPayments.vendorId, vendorId));
+    await db.delete(vendors).where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)));
     res.json({ success: true });
   } catch (err) {
     req.log.error(err, "Failed to delete vendor");
@@ -222,6 +254,11 @@ router.delete("/vendors/:id", requireAuth, async (req, res) => {
 
 router.post("/vendors/:id/payments", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const vendorId = parseInt(req.params.id, 10);
     const [vendor] = await db
@@ -250,8 +287,22 @@ router.post("/vendors/:id/payments", requireAuth, async (req, res) => {
 
 router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const userId = await resolveScopeUserId(req);
     const vendorId = parseInt(req.params.id, 10);
     const paymentId = parseInt(req.params.paymentId, 10);
+    const [vendor] = await db
+      .select({ id: vendors.id })
+      .from(vendors)
+      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)))
+      .limit(1);
+    if (!vendor) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
     const { label, amount, dueDate, isPaid } = req.body;
     const updates: Partial<typeof vendorPayments.$inferInsert> = {};
     if (label !== undefined) updates.label = label;
@@ -264,7 +315,7 @@ router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => 
     const [updated] = await db
       .update(vendorPayments)
       .set(updates)
-      .where(eq(vendorPayments.id, paymentId))
+      .where(and(eq(vendorPayments.id, paymentId), eq(vendorPayments.vendorId, vendorId)))
       .returning();
     if (!updated) {
       return res.status(404).json({ error: "Payment not found" });
@@ -279,11 +330,25 @@ router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => 
 
 router.delete("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const userId = await resolveScopeUserId(req);
     const vendorId = parseInt(req.params.id, 10);
     const paymentId = parseInt(req.params.paymentId, 10);
+    const [vendor] = await db
+      .select({ id: vendors.id })
+      .from(vendors)
+      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)))
+      .limit(1);
+    if (!vendor) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
     const [deleted] = await db
       .delete(vendorPayments)
-      .where(eq(vendorPayments.id, paymentId))
+      .where(and(eq(vendorPayments.id, paymentId), eq(vendorPayments.vendorId, vendorId)))
       .returning();
     if (!deleted) {
       return res.status(404).json({ error: "Payment not found" });

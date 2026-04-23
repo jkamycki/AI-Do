@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, hotelBlocks } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
-import { resolveScopeUserId } from "../../lib/workspaceAccess";
+import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -16,6 +16,11 @@ function fmt(h: typeof hotelBlocks.$inferSelect) {
 
 router.get("/hotels", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const rows = await db
       .select()
@@ -31,6 +36,11 @@ router.get("/hotels", requireAuth, async (req, res) => {
 
 router.post("/hotels", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const {
       hotelName, address, city, state, zip, phone, email, bookingLink, discountCode,
@@ -65,6 +75,11 @@ router.post("/hotels", requireAuth, async (req, res) => {
 
 router.patch("/hotels/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
     const {
@@ -93,6 +108,11 @@ router.patch("/hotels/:id", requireAuth, async (req, res) => {
 
 router.delete("/hotels/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
     await db

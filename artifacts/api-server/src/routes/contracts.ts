@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { db, vendorContracts } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { resolveScopeUserId } from "../lib/workspaceAccess";
+import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const require = createRequire(import.meta.url);
@@ -61,6 +61,11 @@ async function extractText(buffer: Buffer, mimetype: string): Promise<string> {
 
 router.post("/contracts/upload", requireAuth, upload.single("file"), async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded." });
     }
@@ -141,6 +146,11 @@ Be thorough, specific, and couple-friendly. Focus on clauses that could financia
 
 router.post("/contracts/:id/negotiate", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const id = parseInt(req.params["id"] ?? "0");
     const [contract] = await db
       .select({
@@ -202,6 +212,11 @@ Return ONLY the email body text, no subject line, no extra explanation.`;
 
 router.get("/contracts", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const rows = await db
       .select({
@@ -224,15 +239,21 @@ router.get("/contracts", requireAuth, async (req, res) => {
 
 router.patch("/contracts/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const id = parseInt(req.params["id"] ?? "0");
     const { fileName } = req.body;
     if (!fileName || typeof fileName !== "string" || !fileName.trim()) {
       return res.status(400).json({ error: "fileName is required" });
     }
+    const userId = await resolveScopeUserId(req);
     const [updated] = await db
       .update(vendorContracts)
       .set({ fileName: fileName.trim() })
-      .where(eq(vendorContracts.id, id))
+      .where(and(eq(vendorContracts.id, id), eq(vendorContracts.userId, userId)))
       .returning({ id: vendorContracts.id, fileName: vendorContracts.fileName });
     if (!updated) return res.status(404).json({ error: "Contract not found" });
     res.json(updated);
@@ -243,6 +264,11 @@ router.patch("/contracts/:id", requireAuth, async (req, res) => {
 
 router.delete("/contracts/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     await db
       .delete(vendorContracts)

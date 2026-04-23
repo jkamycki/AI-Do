@@ -1,15 +1,20 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { timelines, weddingProfiles } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
-import { logActivity, resolveProfile } from "../../lib/workspaceAccess";
+import { logActivity, resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 
 const router = Router();
 router.get("/timeline", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const profile = await resolveProfile(req);
     if (!profile) {
       res.status(404).json({ error: "No timeline found" });
@@ -41,6 +46,11 @@ router.get("/timeline", requireAuth, async (req, res) => {
 
 router.post("/timeline", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const profile = await resolveProfile(req);
     if (!profile) {
       res.status(404).json({ error: "Profile not found. Please complete your wedding profile first." });
@@ -107,20 +117,30 @@ Return ONLY a valid JSON array (no markdown, no explanation) with this exact str
 
 router.patch("/timeline/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const id = parseInt(req.params.id);
     const { events } = req.body;
     if (!Array.isArray(events)) return res.status(400).json({ error: "events must be an array" });
 
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+
     const [updated] = await db
       .update(timelines)
       .set({ events })
-      .where(eq(timelines.id, id))
+      .where(and(eq(timelines.id, id), eq(timelines.profileId, profile.id)))
       .returning();
 
     if (!updated) return res.status(404).json({ error: "Timeline not found" });
 
-    const profile = await resolveProfile(req);
-    if (profile) logActivity(profile.id, req.userId!, `Edited day-of timeline`, "timeline", { eventCount: events.length });
+    logActivity(profile.id, req.userId!, `Edited day-of timeline`, "timeline", { eventCount: events.length });
 
     res.json({
       id: updated.id,

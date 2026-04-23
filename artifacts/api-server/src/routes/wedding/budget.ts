@@ -5,9 +5,20 @@ import { eq, desc, asc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
-import { logActivity, resolveProfile } from "../../lib/workspaceAccess";
+import { logActivity, resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 
 const router = Router();
+
+async function verifyBudgetItemOwnership(itemId: number, profileId: number): Promise<boolean> {
+  const rows = await db
+    .select({ budgetProfileId: budgets.profileId })
+    .from(budgetItems)
+    .innerJoin(budgets, eq(budgetItems.budgetId, budgets.id))
+    .where(eq(budgetItems.id, itemId))
+    .limit(1);
+  return rows.length > 0 && rows[0].budgetProfileId === profileId;
+}
+
 async function getBudgetWithItems(budgetId: number, _profileUserId?: string) {
   const budget = await db.select().from(budgets).where(eq(budgets.id, budgetId)).limit(1);
   if (!budget.length) return null;
@@ -48,6 +59,11 @@ async function getBudgetWithItems(budgetId: number, _profileUserId?: string) {
 
 router.get("/budget", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const profile = await resolveProfile(req);
     if (!profile) {
       res.status(404).json({ error: "No budget found" });
@@ -88,6 +104,11 @@ router.get("/budget", requireAuth, async (req, res) => {
 
 router.post("/budget", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const { totalBudget } = req.body;
 
     const profile = await resolveProfile(req);
@@ -169,6 +190,11 @@ Include these categories: Venue, Catering & Bar, Photography, Videography, Flora
 
 router.post("/budget/items", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const { category, vendor, estimatedCost, actualCost, isPaid, notes, nextPaymentDue, amountPaid } = req.body;
 
     const profile = await resolveProfile(req);
@@ -221,7 +247,22 @@ router.post("/budget/items", requireAuth, async (req, res) => {
 
 router.put("/budget/items/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const id = parseInt(req.params.id);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const owned = await verifyBudgetItemOwnership(id, profile.id);
+    if (!owned) {
+      res.status(404).json({ error: "Item not found" });
+      return;
+    }
     const { category, vendor, estimatedCost, actualCost, amountPaid, isPaid, notes, nextPaymentDue } = req.body;
 
     const updates: Record<string, unknown> = {};
@@ -260,7 +301,22 @@ router.put("/budget/items/:id", requireAuth, async (req, res) => {
 
 router.delete("/budget/items/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const id = parseInt(req.params.id);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const owned = await verifyBudgetItemOwnership(id, profile.id);
+    if (!owned) {
+      res.status(404).json({ error: "Item not found" });
+      return;
+    }
     await db.delete(budgetItems).where(eq(budgetItems.id, id));
     res.json({ success: true });
   } catch (err) {
@@ -273,7 +329,22 @@ router.delete("/budget/items/:id", requireAuth, async (req, res) => {
 
 router.get("/budget/items/:id/payments", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const itemId = parseInt(req.params.id);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const owned = await verifyBudgetItemOwnership(itemId, profile.id);
+    if (!owned) {
+      res.status(404).json({ error: "Budget item not found" });
+      return;
+    }
     const logs = await db
       .select()
       .from(budgetPaymentLogs)
@@ -295,16 +366,32 @@ router.get("/budget/items/:id/payments", requireAuth, async (req, res) => {
 
 router.post("/budget/items/:id/payments", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const itemId = parseInt(req.params.id);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const { amount, note, paidAt } = req.body;
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
       res.status(400).json({ error: "amount must be a positive number" });
       return;
     }
 
+    const owned = await verifyBudgetItemOwnership(itemId, profile.id);
+    if (!owned) {
+      res.status(404).json({ error: "Budget item not found" });
+      return;
+    }
+
     // Get current item to calculate new amountPaid
-    const [item] = await db.select().from(budgetItems).where(eq(budgetItems.id, itemId)).limit(1);
-    if (!item) {
+    const [itemRow] = await db.select().from(budgetItems).where(eq(budgetItems.id, itemId)).limit(1);
+    if (!itemRow) {
       res.status(404).json({ error: "Budget item not found" });
       return;
     }
@@ -323,7 +410,7 @@ router.post("/budget/items/:id/payments", requireAuth, async (req, res) => {
     // Recalculate amountPaid from all logs (same as PATCH/DELETE) to stay consistent
     const allLogs = await db.select().from(budgetPaymentLogs).where(eq(budgetPaymentLogs.budgetItemId, itemId));
     const newPaid = allLogs.reduce((s, l) => s + parseFloat(l.amount as string), 0);
-    const actualCost = parseFloat(item.actualCost as string);
+    const actualCost = parseFloat(itemRow.actualCost as string);
     const fullyPaid = newPaid >= actualCost;
     await db
       .update(budgetItems)
@@ -346,12 +433,33 @@ router.post("/budget/items/:id/payments", requireAuth, async (req, res) => {
 
 router.patch("/budget/items/:id/payments/:paymentId", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const itemId = parseInt(req.params.id);
     const paymentId = parseInt(req.params.paymentId);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const owned = await verifyBudgetItemOwnership(itemId, profile.id);
+    if (!owned) {
+      res.status(404).json({ error: "Payment not found" });
+      return;
+    }
     const { amount, note, paidAt } = req.body;
 
-    const [existing] = await db.select().from(budgetPaymentLogs).where(eq(budgetPaymentLogs.id, paymentId)).limit(1);
-    if (!existing) return res.status(404).json({ error: "Payment not found" });
+    const [existing] = await db
+      .select()
+      .from(budgetPaymentLogs)
+      .where(eq(budgetPaymentLogs.id, paymentId))
+      .limit(1);
+    if (!existing || existing.budgetItemId !== itemId) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
 
     const oldAmount = parseFloat(existing.amount as string);
     const newAmount = amount !== undefined ? parseFloat(String(amount)) : oldAmount;
@@ -378,11 +486,32 @@ router.patch("/budget/items/:id/payments/:paymentId", requireAuth, async (req, r
 
 router.delete("/budget/items/:id/payments/:paymentId", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const itemId = parseInt(req.params.id);
     const paymentId = parseInt(req.params.paymentId);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const owned = await verifyBudgetItemOwnership(itemId, profile.id);
+    if (!owned) {
+      res.status(404).json({ error: "Payment not found" });
+      return;
+    }
 
-    const [existing] = await db.select().from(budgetPaymentLogs).where(eq(budgetPaymentLogs.id, paymentId)).limit(1);
-    if (!existing) return res.status(404).json({ error: "Payment not found" });
+    const [existing] = await db
+      .select()
+      .from(budgetPaymentLogs)
+      .where(eq(budgetPaymentLogs.id, paymentId))
+      .limit(1);
+    if (!existing || existing.budgetItemId !== itemId) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
 
     await db.delete(budgetPaymentLogs).where(eq(budgetPaymentLogs.id, paymentId));
 

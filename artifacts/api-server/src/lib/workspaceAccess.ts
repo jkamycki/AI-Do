@@ -97,6 +97,29 @@ export function hasMinRole(
   return ROLE_RANK[role] >= ROLE_RANK[required];
 }
 
+/**
+ * Returns the CollaboratorRole of the authenticated caller in the current
+ * workspace context.  If no workspace header is present (i.e. the caller is
+ * operating in their own workspace), "owner" is returned.  If the header is
+ * present but the caller is not an active member, the most-restricted role
+ * "vendor" is returned so downstream hasMinRole checks fail safely.
+ */
+export async function resolveCallerRole(req: Request): Promise<CollaboratorRole> {
+  const headerVal = req.headers["x-workspace-profile-id"];
+  const workspaceId = headerVal
+    ? parseInt(String(headerVal))
+    : req.query.workspaceId
+      ? parseInt(String(req.query.workspaceId))
+      : null;
+
+  if (!workspaceId || isNaN(workspaceId)) {
+    return "owner";
+  }
+
+  const role = await resolveWorkspaceRole(req.userId!, workspaceId);
+  return role ?? "vendor";
+}
+
 export async function logActivity(
   profileId: number,
   userId: string,

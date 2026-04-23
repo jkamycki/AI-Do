@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, weddingParty } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
-import { resolveScopeUserId } from "../../lib/workspaceAccess";
+import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -12,6 +12,11 @@ function fmt(m: typeof weddingParty.$inferSelect) {
 
 router.get("/wedding-party", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const rows = await db
       .select()
@@ -27,6 +32,11 @@ router.get("/wedding-party", requireAuth, async (req, res) => {
 
 router.post("/wedding-party", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const {
       name, role, side, phone, email,
@@ -56,6 +66,11 @@ router.post("/wedding-party", requireAuth, async (req, res) => {
 
 router.patch("/wedding-party/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
     const {
@@ -77,6 +92,11 @@ router.patch("/wedding-party/:id", requireAuth, async (req, res) => {
 
 router.delete("/wedding-party/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
     await db.delete(weddingParty).where(and(eq(weddingParty.id, id), eq(weddingParty.userId, userId)));

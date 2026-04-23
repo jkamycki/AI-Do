@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, seatingCharts } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { resolveScopeUserId } from "../lib/workspaceAccess";
+import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
@@ -106,6 +106,11 @@ Use only the exact guest names from the list. Only create tables that have guest
 
 router.post("/seating/charts", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const { name, guests, tables, tableCount, seatsPerTable, profileId } = req.body;
     const [saved] = await db
@@ -128,6 +133,11 @@ router.post("/seating/charts", requireAuth, async (req, res) => {
 
 router.get("/seating/charts", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const rows = await db
       .select()
@@ -142,6 +152,12 @@ router.get("/seating/charts", requireAuth, async (req, res) => {
 
 router.put("/seating/charts/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const userId = await resolveScopeUserId(req);
     const { name, guests, tables, tableCount, seatsPerTable } = req.body;
     const [updated] = await db
       .update(seatingCharts)
@@ -153,8 +169,12 @@ router.put("/seating/charts/:id", requireAuth, async (req, res) => {
         seatsPerTable,
         updatedAt: new Date(),
       })
-      .where(eq(seatingCharts.id, parseInt(req.params["id"] ?? "0")))
+      .where(and(eq(seatingCharts.id, parseInt(req.params["id"] ?? "0")), eq(seatingCharts.userId, userId)))
       .returning();
+    if (!updated) {
+      res.status(404).json({ error: "Seating chart not found" });
+      return;
+    }
     res.json({ ...updated, createdAt: updated.createdAt.toISOString(), updatedAt: updated.updatedAt.toISOString() });
   } catch {
     res.status(500).json({ error: "Internal server error" });
@@ -163,6 +183,11 @@ router.put("/seating/charts/:id", requireAuth, async (req, res) => {
 
 router.delete("/seating/charts/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     await db
       .delete(seatingCharts)

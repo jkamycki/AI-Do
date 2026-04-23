@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, manualExpenses } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
-import { resolveScopeUserId } from "../../lib/workspaceAccess";
+import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -35,6 +35,11 @@ function format(row: typeof manualExpenses.$inferSelect) {
 
 router.get("/manual-expenses", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const rows = await db
       .select()
@@ -50,6 +55,11 @@ router.get("/manual-expenses", requireAuth, async (req, res) => {
 
 router.post("/manual-expenses", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const { name, category, cost, amountPaid, notes, receiptUrl, receiptName } = req.body ?? {};
     if (!name || typeof name !== "string" || !name.trim()) {
@@ -84,6 +94,11 @@ router.post("/manual-expenses", requireAuth, async (req, res) => {
 
 router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const id = parseInt(req.params.id, 10);
     const { name, category, cost, amountPaid, notes, receiptUrl, receiptName } = req.body ?? {};
@@ -135,6 +150,11 @@ router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
 
 router.delete("/manual-expenses/:id", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const userId = await resolveScopeUserId(req);
     const id = parseInt(req.params.id, 10);
     const result = await db
