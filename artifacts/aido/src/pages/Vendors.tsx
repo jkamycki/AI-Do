@@ -199,9 +199,17 @@ function AddEditVendorDialog({
 
   const updateMutation = useUpdateVendor({
     mutation: {
-      onSuccess: () => {
-        qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
-        if (vendor) qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendor.id) });
+      onSuccess: async (updated) => {
+        if (vendor) {
+          const key = getGetVendorQueryKey(vendor.id);
+          const existing = qc.getQueryData<{ payments?: unknown[] }>(key);
+          qc.setQueryData(key, {
+            ...(updated as object),
+            payments: existing?.payments ?? [],
+          });
+          await qc.refetchQueries({ queryKey: key });
+        }
+        await qc.refetchQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
         toast({ title: "Vendor updated" });
         onClose();
