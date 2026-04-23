@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
-import { useVideoPlayer } from "@/lib/video/hooks";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Scene1 } from "./video_scenes/Scene1";
 import { Scene2 } from "./video_scenes/Scene2";
 import { Scene3 } from "./video_scenes/Scene3";
@@ -10,72 +9,14 @@ import { Scene6 } from "./video_scenes/Scene6";
 import { Scene7 } from "./video_scenes/Scene7";
 import { Volume2, VolumeX } from "lucide-react";
 
-const SCENE_DURATIONS = {
-  hero: 5000,
-  budget: 8500,
-  vendors: 9000,
-  contracts: 8800,
-  guests: 8900,
-  seating: 8700,
-  ariaOutro: 10600,
-};
+const SCENE_COUNT = 7;
 
-// Maps the playback index (0-6) to the narration script index on the server,
-// since the scene render order is 1, 2, 3, 4, 6, 7, 5 (Aria/outro last).
-const NARRATION_INDEX_BY_PLAYBACK = [0, 1, 2, 3, 4, 5, 6];
+// Fallback durations used only when narration audio is muted or fails to load.
+// When narration plays, scenes advance the instant the voice finishes.
+const FALLBACK_DURATIONS = [5500, 9000, 9500, 9300, 9300, 9200, 11000];
 
-function useNarration(currentScene: number, enabled: boolean) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const lastSceneRef = useRef<number>(-1);
-
-  useEffect(() => {
-    if (!enabled) {
-      if (audioRef.current) {
-        try {
-          audioRef.current.pause();
-          audioRef.current.src = "";
-        } catch {}
-        audioRef.current = null;
-      }
-      lastSceneRef.current = -1;
-      return;
-    }
-    const audio = new Audio();
-    audio.preload = "auto";
-    audio.volume = 0.95;
-    audioRef.current = audio;
-
-    // Pre-warm the cache for every scene so playback is instant.
-    NARRATION_INDEX_BY_PLAYBACK.forEach((i) => {
-      fetch(`/api/tts/narration/${i}`).catch(() => {});
-    });
-
-    return () => {
-      try {
-        audio.pause();
-        audio.src = "";
-      } catch {}
-      audioRef.current = null;
-    };
-  }, [enabled]);
-
-  useEffect(() => {
-    if (!enabled) return;
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (lastSceneRef.current === currentScene) return;
-    lastSceneRef.current = currentScene;
-
-    const narrationIdx = NARRATION_INDEX_BY_PLAYBACK[currentScene] ?? 0;
-    audio.pause();
-    audio.currentTime = 0;
-    audio.src = `/api/tts/narration/${narrationIdx}`;
-    audio.play().catch(() => {
-      // Autoplay blocked until first user interaction; the click on the sound
-      // toggle (or anywhere on the page) will resume narration on next scene.
-    });
-  }, [currentScene, enabled]);
-}
+// Tiny breath between voice lines (ms).
+const POST_NARRATION_GAP = 350;
 
 const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
   id: i,
@@ -86,10 +27,102 @@ const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
   duration: Math.random() * 3 + 2,
 }));
 
+function useAudioDrivenPlayer(audioEnabled: boolean) {
+  const [currentScene, setCurrentScene] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sceneRef = useRef(0);
+
+  // Keep a ref of the current scene so callbacks always see the latest value
+  // without needing to re-bind.
+  useEffect(() => { sceneRef.current = currentScene; }, [currentScene]);
+
+  const advance = useCallback(() => {
+    setCurrentScene((s) => (s + 1) % SCENE_COUNT);
+  }, []);
+
+  const scheduleFallback = useCallback((scene: number) => {
+    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+    fallbackTimerRef.current = setTimeout(() => {
+      if (sceneRef.current === scene) advance();
+    }, FALLBACK_DURATIONS[scene] ?? 9000);
+  }, [advance]);
+
+  // Build / tear down the audio element when narration is toggled.
+  useEffect(() => {
+    if (!audioEnabled) {
+      if (audioRef.current) {
+        try { audioRef.current.pause(); audioRef.current.src = ""; } catch {}
+        audioRef.current = null;
+      }
+      return;
+    }
+    const audio = new Audio();
+    audio.preload = "auto";
+    audio.volume = 0.95;
+    audioRef.current = audio;
+
+    // Pre-warm cache for every scene so playback is instant.
+    Array.from({ length: SCENE_COUNT }).forEach((_, i) => {
+      fetch(`/api/tts/narration/${i}`).catch(() => {});
+    });
+
+    return () => {
+      try { audio.pause(); audio.src = ""; } catch {}
+      audioRef.current = null;
+    };
+  }, [audioEnabled]);
+
+  // Whenever the scene changes, play matching narration and schedule the next
+  // scene to fire as soon as the voice ends (with a tiny breath gap).
+  useEffect(() => {
+    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+
+    if (!audioEnabled || !audioRef.current) {
+      // No audio — use fallback timer only.
+      scheduleFallback(currentScene);
+      return;
+    }
+
+    const audio = audioRef.current;
+    audio.onended = null;
+
+    const onEnded = () => {
+      if (sceneRef.current !== currentScene) return;
+      // Brief breath, then advance.
+      setTimeout(() => {
+        if (sceneRef.current === currentScene) advance();
+      }, POST_NARRATION_GAP);
+    };
+
+    audio.onended = onEnded;
+    audio.pause();
+    audio.currentTime = 0;
+    audio.src = `/api/tts/narration/${currentScene}`;
+
+    // Fallback in case audio fails to play (e.g. autoplay blocked).
+    scheduleFallback(currentScene);
+
+    audio.play().catch(() => {
+      // Autoplay blocked; the fallback timer will still advance the scene.
+    });
+
+    return () => {
+      audio.onended = null;
+    };
+  }, [currentScene, audioEnabled, advance, scheduleFallback]);
+
+  // Cleanup any pending timers on unmount.
+  useEffect(() => () => {
+    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+  }, []);
+
+  return { currentScene };
+}
+
 export default function VideoTemplate() {
-  const { currentScene } = useVideoPlayer({ durations: SCENE_DURATIONS });
   const [audioEnabled, setAudioEnabled] = useState(true);
-  useNarration(currentScene, audioEnabled);
+  const { currentScene } = useAudioDrivenPlayer(audioEnabled);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#07030d] text-white">
