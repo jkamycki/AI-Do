@@ -32,8 +32,11 @@ router.post("/profile", requireAuth, async (req, res) => {
     const {
       partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
       venue, location, venueCity, venueState, venueZip, guestCount, totalBudget, weddingVibe,
-      preferredLanguage,
+      preferredLanguage, vendorBccEmail,
     } = req.body;
+    const hasVendorBccEmail = Object.prototype.hasOwnProperty.call(req.body, "vendorBccEmail");
+    const normalizedVendorBcc =
+      typeof vendorBccEmail === "string" ? (vendorBccEmail.trim() || null) : null;
 
     // Workspace-aware: if a workspaceId/header is set, edit that shared workspace
     // (requires partner+ role). Otherwise, edit the user's own profile.
@@ -53,6 +56,7 @@ router.post("/profile", requireAuth, async (req, res) => {
           venueZip: venueZip ?? null,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           preferredLanguage: preferredLanguage ?? "English",
+          ...(hasVendorBccEmail ? { vendorBccEmail: normalizedVendorBcc } : {}),
           updatedAt: new Date(),
         })
         .where(eq(weddingProfiles.id, existingProfile.id))
