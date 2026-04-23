@@ -1,5 +1,11 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { setWorkspaceProfileId } from "@workspace/api-client-react";
+import { setAuthFetchWorkspaceProfileId } from "@/lib/authFetch";
+
+function syncWorkspaceProfileId(id: number | null) {
+  setWorkspaceProfileId(id);
+  setAuthFetchWorkspaceProfileId(id);
+}
 
 export interface WorkspaceInfo {
   profileId: number;
@@ -26,7 +32,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const w: WorkspaceInfo | null = stored ? JSON.parse(stored) : null;
       // Initialize synchronously BEFORE the first render so React Query hooks
       // always send the correct x-workspace-profile-id header on their first fetch.
-      setWorkspaceProfileId(w && w.role !== "owner" ? w.profileId : null);
+      syncWorkspaceProfileId(w && w.role !== "owner" ? w.profileId : null);
       return w;
     } catch {
       return null;
@@ -37,7 +43,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setActiveWorkspaceState(w);
     // Sync the workspace profile ID into the API client so every request
     // automatically fetches data from the right profile.
-    setWorkspaceProfileId(w?.role !== "owner" ? (w?.profileId ?? null) : null);
+    syncWorkspaceProfileId(w?.role !== "owner" ? (w?.profileId ?? null) : null);
     if (w) {
       localStorage.setItem("aido_active_workspace", JSON.stringify(w));
     } else {
