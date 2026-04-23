@@ -307,16 +307,16 @@ export default function Profile() {
                     <FormItem className="flex flex-row items-start gap-3 space-y-0">
                       <FormControl>
                         <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
+                          checked={!field.value}
+                          onCheckedChange={(checked) => field.onChange(!checked)}
                           data-testid="checkbox-ceremony-at-venue"
                           className="mt-0.5"
                         />
                       </FormControl>
                       <div className="space-y-1 leading-tight">
-                        <FormLabel className="cursor-pointer">Check this box if the ceremony will be held at the venue</FormLabel>
+                        <FormLabel className="cursor-pointer">Check this box if the ceremony won't be held at the venue</FormLabel>
                         <p className="text-xs text-muted-foreground">
-                          Uncheck if your ceremony is at a separate location (church, garden, etc.).
+                          Check this if your ceremony is at a separate location (church, garden, etc.).
                         </p>
                       </div>
                     </FormItem>
