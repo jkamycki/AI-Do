@@ -207,18 +207,28 @@ function LanguageSwitcherCard() {
   ];
 
   function save() {
-    if (!hasChange) return;
+    if (!hasChange || !profile) return;
     const code = LANG_NAME_TO_CODE[current] ?? "en";
     i18n.changeLanguage(code);
     localStorage.setItem("aido_language", code);
     saveProfile.mutate(
       {
         data: {
-          partner1Name: profile?.partner1Name ?? "",
-          partner2Name: profile?.partner2Name ?? "",
-          weddingDate: profile?.weddingDate ?? "",
+          partner1Name: profile.partner1Name,
+          partner2Name: profile.partner2Name,
+          weddingDate: profile.weddingDate,
+          ceremonyTime: profile.ceremonyTime,
+          receptionTime: profile.receptionTime,
+          venue: profile.venue,
+          location: profile.location,
+          venueCity: profile.venueCity ?? undefined,
+          venueState: profile.venueState ?? undefined,
+          guestCount: profile.guestCount,
+          totalBudget: profile.totalBudget,
+          weddingVibe: profile.weddingVibe,
           preferredLanguage: current,
-        },
+          vendorBccEmail: (profile as { vendorBccEmail?: string | null }).vendorBccEmail ?? null,
+        } as never,
       },
       {
         onSuccess: () => {
