@@ -215,12 +215,14 @@ function DraggableRow({
   storageKey,
   items,
   gridClassName,
-  hint = "Drag any card to reorder",
+  hint,
+  showHint = false,
 }: {
   storageKey: string;
   items: { id: string; node: React.ReactNode }[];
   gridClassName: string;
   hint?: string;
+  showHint?: boolean;
 }) {
   const defaultIds = useMemo(() => items.map((i) => i.id), [items]);
 
@@ -278,20 +280,26 @@ function DraggableRow({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between px-1">
-        <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1.5">
-          <GripVertical className="h-3 w-3" /> {hint}
-        </p>
-        {isCustomized && (
-          <button
-            onClick={reset}
-            className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
-            data-testid={`btn-reset-${storageKey}`}
-          >
-            <RotateCcw className="h-3 w-3" /> Reset
-          </button>
-        )}
-      </div>
+      {(showHint || isCustomized) && (
+        <div className="flex items-center justify-between px-1 min-h-[18px]">
+          {showHint ? (
+            <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1.5">
+              <GripVertical className="h-3 w-3" /> {hint ?? "Drag any card to rearrange your dashboard"}
+            </p>
+          ) : (
+            <span />
+          )}
+          {isCustomized && (
+            <button
+              onClick={reset}
+              className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors ml-auto"
+              data-testid={`btn-reset-${storageKey}`}
+            >
+              <RotateCcw className="h-3 w-3" /> Reset
+            </button>
+          )}
+        </div>
+      )}
       <div className={gridClassName}>
         {order.map((id) => {
           const node = byId.get(id);
@@ -413,7 +421,7 @@ function DraggableStatsRow({ chips }: { chips: Record<StatKey, StatChipDef> }) {
     <div className="space-y-2">
       <div className="flex items-center justify-between px-1">
         <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1.5">
-          <GripVertical className="h-3 w-3" /> Drag any tile to reorder your dashboard
+          <GripVertical className="h-3 w-3" /> Drag any card to rearrange your dashboard
         </p>
         {isCustomized && (
           <button
@@ -607,7 +615,6 @@ export default function Dashboard() {
             <DraggableRow
               storageKey="aido:dashboard:weddingDetailsOrder"
               gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-              hint="Drag any card to rearrange your wedding details"
               items={[
                 {
                   id: "countdown",
@@ -740,7 +747,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Stats row — drag to reorder */}
+      {/* Stats row — drag to reorder (single hint shown here for the whole dashboard) */}
       <DraggableStatsRow
         chips={{
           budget: {
@@ -781,7 +788,6 @@ export default function Dashboard() {
       <DraggableRow
         storageKey="aido:dashboard:overviewOrder"
         gridClassName="grid grid-cols-1 sm:grid-cols-3 gap-3"
-        hint="Drag any card to rearrange this row"
         items={[
           {
             id: "rsvps",
@@ -937,7 +943,6 @@ export default function Dashboard() {
         <DraggableRow
           storageKey="aido:dashboard:planningToolsOrder"
           gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-          hint="Drag any tool to rearrange your planning tools"
           items={[
             {
               id: "timeline",
