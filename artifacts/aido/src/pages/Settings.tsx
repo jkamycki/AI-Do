@@ -198,6 +198,7 @@ function LanguageSwitcherCard() {
 
   const current = selected ?? profile?.preferredLanguage ?? "English";
   const hasChange = selected !== null && selected !== (profile?.preferredLanguage ?? "English");
+  const currentCode = LANG_NAME_TO_CODE[current] ?? "en";
 
   function save() {
     // The display language is stored per-user (in this browser only) so each
@@ -229,13 +230,13 @@ function LanguageSwitcherCard() {
           <p className="text-sm text-muted-foreground">Complete your wedding profile first to set a language.</p>
         ) : (
           <div className="flex items-center gap-3">
-            <Select value={current} onValueChange={setSelected}>
+            <Select value={currentCode} onValueChange={value => setSelected(Object.keys(LANG_NAME_TO_CODE).find(name => LANG_NAME_TO_CODE[name] === value) ?? value)}>
               <SelectTrigger className="w-56 bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {LANGUAGES.map(lang => (
-                  <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                  <SelectItem key={lang} value={LANG_NAME_TO_CODE[lang] ?? "en"}>{lang}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
