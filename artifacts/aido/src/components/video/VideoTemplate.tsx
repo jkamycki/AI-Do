@@ -258,16 +258,61 @@ export default function VideoTemplate() {
 
       {/* Scene Content */}
       <div className="relative z-10 w-full h-full">
-        <AnimatePresence mode="popLayout">
-          {currentScene === 0 && <Scene1 key="scene1" />}
-          {currentScene === 1 && <Scene2 key="scene2" />}
-          {currentScene === 2 && <Scene3 key="scene3" />}
-          {currentScene === 3 && <Scene4 key="scene4" />}
-          {currentScene === 4 && <Scene6 key="scene6" />}
-          {currentScene === 5 && <Scene7 key="scene7" />}
-          {currentScene === 6 && <Scene5 key="scene5" />}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentScene}
+            className="absolute inset-0"
+            initial={{ opacity: 0, scale: 1.04, filter: "blur(14px)" }}
+            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, scale: 0.97, filter: "blur(10px)" }}
+            transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {currentScene === 0 && <Scene1 />}
+            {currentScene === 1 && <Scene2 />}
+            {currentScene === 2 && <Scene3 />}
+            {currentScene === 3 && <Scene4 />}
+            {currentScene === 4 && <Scene6 />}
+            {currentScene === 5 && <Scene7 />}
+            {currentScene === 6 && <Scene5 />}
+          </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* Cinematic transition sweep — fires on every scene change */}
+      <AnimatePresence>
+        <motion.div
+          key={`sweep-${currentScene}`}
+          className="absolute inset-0 z-20 pointer-events-none"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 0] }}
+          transition={{ duration: 1.1, times: [0, 0.45, 1], ease: "easeOut" }}
+        >
+          {/* Diagonal shimmer bar */}
+          <motion.div
+            className="absolute top-0 bottom-0 w-[60%]"
+            style={{
+              background:
+                "linear-gradient(115deg, transparent 0%, rgba(245,200,66,0.08) 35%, rgba(233,30,140,0.18) 50%, rgba(123,47,190,0.10) 65%, transparent 100%)",
+              filter: "blur(24px)",
+              mixBlendMode: "screen",
+            }}
+            initial={{ x: "-80%", skewX: -12 }}
+            animate={{ x: "180%", skewX: -12 }}
+            transition={{ duration: 1.1, ease: [0.65, 0, 0.35, 1] }}
+          />
+          {/* Soft vignette pulse */}
+          <motion.div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse 80% 60% at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%)",
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.7, 0] }}
+            transition={{ duration: 0.9, times: [0, 0.4, 1], ease: "easeOut" }}
+          />
+        </motion.div>
+      </AnimatePresence>
 
       {/* Music toggle */}
       <button
