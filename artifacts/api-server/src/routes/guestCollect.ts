@@ -6,6 +6,15 @@ import crypto from "crypto";
 
 const router = Router();
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 router.post("/guest-collect/generate", requireAuth, async (req, res) => {
   try {
     const profiles = await db
@@ -84,26 +93,31 @@ router.get("/guest-collect/:token/preview", async (req, res) => {
     const origin = `${proto}://${host}`;
     const formUrl = `${origin}/collect/${req.params.token}`;
 
+    const safeTitle = escapeHtml(title);
+    const safeDescription = escapeHtml(description);
+    const safeFormUrl = escapeHtml(formUrl);
+    const safePreviewUrl = escapeHtml(`${origin}/api/guest-collect/${req.params.token}/preview`);
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>${title}</title>
-  <meta name="description" content="${description}" />
+  <title>${safeTitle}</title>
+  <meta name="description" content="${safeDescription}" />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="${origin}/api/guest-collect/${req.params.token}/preview" />
-  <meta property="og:title" content="${title}" />
-  <meta property="og:description" content="${description}" />
+  <meta property="og:url" content="${safePreviewUrl}" />
+  <meta property="og:title" content="${safeTitle}" />
+  <meta property="og:description" content="${safeDescription}" />
   <meta property="og:site_name" content="A.IDO — AI Wedding Planning OS" />
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="${title}" />
-  <meta name="twitter:description" content="${description}" />
-  <meta http-equiv="refresh" content="0;url=${formUrl}" />
+  <meta name="twitter:title" content="${safeTitle}" />
+  <meta name="twitter:description" content="${safeDescription}" />
+  <meta http-equiv="refresh" content="0;url=${safeFormUrl}" />
 </head>
 <body>
   <script>window.location.replace(${JSON.stringify(formUrl)});</script>
-  <p>Redirecting… <a href="${formUrl}">Click here if you are not redirected</a></p>
+  <p>Redirecting… <a href="${safeFormUrl}">Click here if you are not redirected</a></p>
 </body>
 </html>`);
   } catch (err) {
