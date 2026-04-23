@@ -25,80 +25,62 @@ const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
   duration: Math.random() * 3 + 2,
 }));
 
-// Narration script — one short line per scene, sized to fit each scene's duration.
-const SCENE_NARRATION: string[] = [
-  "Meet A.I.Do — your AI wedding planning operating system.",
-  "Build your timeline and budget in minutes, not months.",
-  "Vendor emails, checklists, contracts, seating charts, guests, and collaboration — all in one place.",
-  "And meet Aria, your A.I planner — ready around the clock to answer anything.",
-  "Plan smarter. Stress less. Start your wedding journey with A.I.Do today.",
-];
+// Narration uses real AI text-to-speech (warm, natural voice) served from
+// /api/tts/narration/:scene. The server caches the MP3 per scene so playback
+// is instant on subsequent loads.
+const SCENE_COUNT = 5;
 
 function useNarration(currentScene: number, enabled: boolean) {
-  const lastSpokenRef = useRef<number>(-1);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastSceneRef = useRef<number>(-1);
 
-  // Pick a pleasant voice once available (browsers load voices async).
-  const pickVoice = (): SpeechSynthesisVoice | null => {
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length === 0) return null;
-    // Prefer a natural English female voice if available.
-    const preferred =
-      voices.find(v => /Samantha|Google US English|Microsoft Aria|Jenny|Zira|Karen/i.test(v.name)) ||
-      voices.find(v => v.lang?.toLowerCase().startsWith("en") && /female/i.test(v.name)) ||
-      voices.find(v => v.lang?.toLowerCase().startsWith("en")) ||
-      voices[0];
-    return preferred ?? null;
-  };
+  // Create / tear down the audio element when narration is toggled.
+  useEffect(() => {
+    if (!enabled) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
+      lastSceneRef.current = -1;
+      return;
+    }
+    const audio = new Audio();
+    audio.preload = "auto";
+    audio.volume = 0.95;
+    audioRef.current = audio;
 
-  // Speak whenever the scene changes (and audio is enabled).
+    // Pre-warm the cache by fetching all scenes in the background once
+    // narration is enabled (browsers cache the response for instant playback).
+    Array.from({ length: SCENE_COUNT }).forEach((_, i) => {
+      fetch(`/api/tts/narration/${i}`).catch(() => {});
+    });
+
+    return () => {
+      try {
+        audio.pause();
+        audio.src = "";
+      } catch {}
+      audioRef.current = null;
+    };
+  }, [enabled]);
+
+  // Play the matching narration whenever the scene changes.
   useEffect(() => {
     if (!enabled) return;
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    if (lastSpokenRef.current === currentScene) return;
-    lastSpokenRef.current = currentScene;
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (lastSceneRef.current === currentScene) return;
+    lastSceneRef.current = currentScene;
 
-    const text = SCENE_NARRATION[currentScene];
-    if (!text) return;
-
-    const speakNow = () => {
-      const utter = new SpeechSynthesisUtterance(text);
-      const voice = pickVoice();
-      if (voice) utter.voice = voice;
-      utter.rate = 0.98;
-      utter.pitch = 1.05;
-      utter.volume = 0.95;
-      window.speechSynthesis.cancel(); // clear any leftover queue from prior scene
-      window.speechSynthesis.speak(utter);
-    };
-
-    // If voices haven't loaded yet, wait for them.
-    if (window.speechSynthesis.getVoices().length === 0) {
-      const handler = () => {
-        speakNow();
-        window.speechSynthesis.removeEventListener("voiceschanged", handler);
-      };
-      window.speechSynthesis.addEventListener("voiceschanged", handler);
-      // Fallback in case the event never fires
-      setTimeout(speakNow, 400);
-    } else {
-      speakNow();
-    }
+    audio.pause();
+    audio.currentTime = 0;
+    audio.src = `/api/tts/narration/${currentScene}`;
+    audio.play().catch(() => {
+      // Likely blocked by autoplay policy until first user interaction —
+      // the wake-up listener will retry once the user clicks anywhere.
+    });
   }, [currentScene, enabled]);
-
-  // When narration is turned off (or component unmounts), stop speaking immediately.
-  useEffect(() => {
-    return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
-  useEffect(() => {
-    if (!enabled && typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      lastSpokenRef.current = -1;
-    }
-  }, [enabled]);
 }
 
 export default function VideoTemplate() {
