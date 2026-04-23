@@ -19,7 +19,7 @@ function RotatingTagline() {
   useEffect(() => {
     const id = setInterval(() => {
       setIndex(i => (i + 1) % HEADER_TAGLINES.length);
-    }, 4200);
+    }, 8000);
     return () => clearInterval(id);
   }, []);
   return (
@@ -30,7 +30,7 @@ function RotatingTagline() {
           initial={{ clipPath: "inset(0 100% 0 0)" }}
           animate={{ clipPath: "inset(0 0% 0 0)" }}
           exit={{ clipPath: "inset(0 0 0 100%)" }}
-          transition={{ duration: 1.1, ease: [0.65, 0, 0.35, 1] }}
+          transition={{ duration: 2.2, ease: [0.65, 0, 0.35, 1] }}
           className="font-serif italic text-2xl sm:text-3xl md:text-4xl font-semibold tracking-wide whitespace-nowrap text-left"
           style={{
             background: "linear-gradient(135deg, #FFFFFF 0%, #F8E1F0 50%, #E91E8C 100%)",
