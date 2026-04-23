@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -415,9 +416,15 @@ export default function Profile() {
                   name="totalBudget"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Total Budget ($)</FormLabel>
+                      <FormLabel>Total Budget</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} data-testid="input-budget" className="bg-background" />
+                        <MoneyInput
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          onBlur={field.onBlur}
+                          data-testid="input-budget"
+                          className="bg-background"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

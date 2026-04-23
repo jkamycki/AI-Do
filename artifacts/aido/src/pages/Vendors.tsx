@@ -19,6 +19,7 @@ import { useUpload } from "@workspace/object-storage-web";
 import { VendorMessagesTab } from "@/components/VendorMessagesTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -293,25 +294,19 @@ function AddEditVendorDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Total Cost ($)</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0"
+              <Label>Total Cost</Label>
+              <MoneyInput
                 value={form.totalCost}
-                onChange={(e) => setForm({ ...form, totalCost: e.target.value })}
+                onChange={(v) => setForm({ ...form, totalCost: v })}
+                placeholder="0.00"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Deposit Amount ($)</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0"
+              <Label>Deposit Amount</Label>
+              <MoneyInput
                 value={form.depositAmount}
-                onChange={(e) => setForm({ ...form, depositAmount: e.target.value })}
+                onChange={(v) => setForm({ ...form, depositAmount: v })}
+                placeholder="0.00"
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
@@ -470,14 +465,11 @@ function AddPaymentForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Amount ($)</Label>
-          <Input
-            type="number"
-            placeholder="0.00"
+          <Label className="text-xs">Amount</Label>
+          <MoneyInput
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            min="0"
-            step="0.01"
+            onChange={setAmount}
+            placeholder="0.00"
           />
         </div>
         <div className="space-y-1.5">

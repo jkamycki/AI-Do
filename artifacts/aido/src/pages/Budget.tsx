@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -73,16 +74,16 @@ function PaymentProgressCell({
     <div className="space-y-1 py-0.5">
       {editing ? (
         <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground">$</span>
-          <input
-            type="number"
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
-            className="w-20 text-sm border border-primary/40 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary/50 bg-background"
-            autoFocus
-          />
+          <div className="w-28">
+            <MoneyInput
+              value={draft}
+              onChange={setDraft}
+              onBlur={commit}
+              onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
+              autoFocus
+              className="h-7 text-sm"
+            />
+          </div>
           <span className="text-xs text-muted-foreground">of ${total.toLocaleString()}</span>
         </div>
       ) : (
@@ -214,12 +215,11 @@ function LogPaymentContent({
                   <div className="px-3 py-2 space-y-2 bg-muted/30">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] text-muted-foreground">Amount ($)</label>
-                        <input
-                          type="number" min="0" step="0.01"
+                        <label className="text-[10px] text-muted-foreground">Amount</label>
+                        <MoneyInput
                           value={editAmount}
-                          onChange={e => setEditAmount(e.target.value)}
-                          className="w-full px-2 py-1 border border-input rounded text-sm bg-background"
+                          onChange={setEditAmount}
+                          className="h-8 text-sm"
                         />
                       </div>
                       <div>
@@ -287,18 +287,13 @@ function LogPaymentContent({
       {/* Add payment */}
       <div className="space-y-3 pt-1 border-t border-border/40">
         <p className="text-sm font-medium">Log a new payment</p>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
+        <div>
+          <MoneyInput
             value={amount}
-            onChange={e => setAmount(e.target.value)}
+            onChange={setAmount}
             onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
             placeholder="Amount paid today"
             autoFocus
-            className="w-full pl-7 pr-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-background"
           />
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -627,9 +622,13 @@ export default function Budget() {
                 name="actualCost"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cost ($)</FormLabel>
+                    <FormLabel>Cost</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <MoneyInput
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        onBlur={field.onBlur}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -640,9 +639,13 @@ export default function Budget() {
                 name="amountPaid"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Amount Paid So Far ($)</FormLabel>
+                    <FormLabel>Amount Paid So Far</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <MoneyInput
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        onBlur={field.onBlur}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -775,9 +778,14 @@ export default function Budget() {
                   name="actualCost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Cost ($)</FormLabel>
+                      <FormLabel>Cost</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} data-testid="input-actual" />
+                        <MoneyInput
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          onBlur={field.onBlur}
+                          data-testid="input-actual"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -788,9 +796,14 @@ export default function Budget() {
                   name="amountPaid"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Amount Paid So Far ($)</FormLabel>
+                      <FormLabel>Amount Paid So Far</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} data-testid="input-amount-paid" />
+                        <MoneyInput
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          onBlur={field.onBlur}
+                          data-testid="input-amount-paid"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

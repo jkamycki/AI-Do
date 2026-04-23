@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Heart, Calendar, MapPin, Users, DollarSign, Sparkles, ArrowRight, Check, Globe } from "lucide-react";
@@ -217,8 +218,14 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                   )} />
                   <FormField control={form.control} name="totalBudget" render={({ field }) => (
                     <FormItem>
-                      <FormLabel><DollarSign className="h-3.5 w-3.5 inline mr-1" />Total Budget ($)</FormLabel>
-                      <FormControl><Input type="number" min={0} {...field} /></FormControl>
+                      <FormLabel><DollarSign className="h-3.5 w-3.5 inline mr-1" />Total Budget</FormLabel>
+                      <FormControl>
+                        <MoneyInput
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          onBlur={field.onBlur}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

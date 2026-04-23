@@ -5,6 +5,7 @@ import { authFetch } from "@/lib/authFetch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -137,8 +138,8 @@ function HotelForm({
           <Input type="date" value={form.cutoffDate ?? ""} onChange={e => set("cutoffDate", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label>Price / Night ($)</Label>
-          <Input type="number" min="0" step="0.01" placeholder="189.00" value={form.pricePerNight ?? ""} onChange={e => set("pricePerNight", e.target.value ? Number(e.target.value) : null)} />
+          <Label>Price / Night</Label>
+          <MoneyInput value={form.pricePerNight ?? ""} onValueChange={(n) => set("pricePerNight", n)} placeholder="189.00" />
         </div>
         <div className="space-y-1.5">
           <Label>Rooms Reserved</Label>
