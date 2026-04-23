@@ -102,23 +102,95 @@ export function VendorMessagesTab({ vendorId }: Props) {
   const markReadMutation = useMarkConversationRead();
 
   const { data: profile } = useGetProfile();
-  const savedBcc = (profile as { vendorBccEmail?: string | null } | undefined)?.vendorBccEmail ?? "";
-  const [bccDraft, setBccDraft] = useState<string | null>(null);
-  const bccValue = bccDraft ?? savedBcc;
-  const bccChanged = bccDraft !== null && bccDraft.trim() !== savedBcc.trim();
-  const bccValid = !bccValue || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bccValue.trim());
+  const savedCcRaw = (profile as { vendorBccEmail?: string | null } | undefined)?.vendorBccEmail ?? "";
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const parseEmails = (raw: string): string[] =>
+    Array.from(
+      new Set(
+        raw
+          .split(/[,;\s]+/)
+          .map((e) => e.trim().toLowerCase())
+          .filter((e) => EMAIL_RE.test(e))
+      )
+    );
+
+  const savedCcList = parseEmails(savedCcRaw);
+  const [ccDraftList, setCcDraftList] = useState<string[] | null>(null);
+  const [ccInput, setCcInput] = useState("");
+  const ccList = ccDraftList ?? savedCcList;
+  const ccDirty =
+    ccDraftList !== null &&
+    (ccDraftList.length !== savedCcList.length ||
+      ccDraftList.some((e, i) => e !== savedCcList[i]));
+  const ccInputInvalid = ccInput.trim() !== "" && !EMAIL_RE.test(ccInput.trim());
+
+  const setCc = (next: string[]) => setCcDraftList(next);
+  const addCcEmail = (raw: string) => {
+    const candidates = parseEmails(raw);
+    if (candidates.length === 0) return false;
+    const merged = Array.from(new Set([...ccList, ...candidates]));
+    setCc(merged);
+    return true;
+  };
+  const removeCcEmail = (email: string) => {
+    setCc(ccList.filter((e) => e !== email));
+  };
+  const handleCcKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === "," || e.key === ";" || e.key === " " || e.key === "Tab") {
+      const v = ccInput.trim();
+      if (v) {
+        if (addCcEmail(v)) {
+          e.preventDefault();
+          setCcInput("");
+        } else if (e.key !== "Tab") {
+          e.preventDefault();
+        }
+      }
+    } else if (e.key === "Backspace" && ccInput === "" && ccList.length > 0) {
+      e.preventDefault();
+      setCc(ccList.slice(0, -1));
+    }
+  };
+  const handleCcPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData.getData("text");
+    if (/[,;\s]/.test(pasted)) {
+      e.preventDefault();
+      addCcEmail(pasted);
+      setCcInput("");
+    }
+  };
+  const handleCcBlur = () => {
+    const v = ccInput.trim();
+    if (v && addCcEmail(v)) setCcInput("");
+  };
+
   const saveProfile = useSaveProfile({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
-        setBccDraft(null);
-        toast({ title: bccValue.trim() ? "BCC saved" : "BCC removed", description: bccValue.trim() ? `Vendor messages will also go to ${bccValue.trim()}.` : undefined });
+        setCcDraftList(null);
+        toast({
+          title: ccList.length > 0 ? "CC list saved" : "CC list cleared",
+          description:
+            ccList.length > 0
+              ? `Vendor messages will also go to ${ccList.length} recipient${ccList.length === 1 ? "" : "s"}.`
+              : undefined,
+        });
       },
-      onError: () => toast({ title: "Could not save BCC", variant: "destructive" }),
+      onError: () => toast({ title: "Could not save CC list", variant: "destructive" }),
     },
   });
-  const saveBcc = () => {
-    if (!profile || !bccValid) return;
+  const saveCc = () => {
+    if (!profile) return;
+    // Flush any pending input first
+    const pending = ccInput.trim();
+    let finalList = ccList;
+    if (pending && EMAIL_RE.test(pending)) {
+      finalList = Array.from(new Set([...ccList, pending.toLowerCase()]));
+      setCc(finalList);
+      setCcInput("");
+    }
     saveProfile.mutate({
       data: {
         partner1Name: profile.partner1Name,
@@ -134,7 +206,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
         totalBudget: profile.totalBudget,
         weddingVibe: profile.weddingVibe,
         preferredLanguage: profile.preferredLanguage ?? "English",
-        vendorBccEmail: bccValue.trim() || null,
+        vendorBccEmail: finalList.length > 0 ? finalList.join(", ") : null,
       } as never,
     });
   };
@@ -238,30 +310,59 @@ export function VendorMessagesTab({ vendorId }: Props) {
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-        <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-          CC my email:
-        </label>
-        <Input
-          type="email"
-          placeholder="your@email.com (optional)"
-          value={bccValue}
-          onChange={(e) => setBccDraft(e.target.value)}
-          className="h-8 flex-1 min-w-[180px] max-w-sm bg-background text-sm"
-        />
-        <Button
-          size="sm"
-          variant={bccChanged ? "default" : "outline"}
-          onClick={saveBcc}
-          disabled={!bccChanged || !bccValid || saveProfile.isPending}
-        >
-          {saveProfile.isPending ? "Saving…" : bccChanged ? "Save" : (<><Check className="h-3.5 w-3.5 mr-1" />Saved</>)}
-        </Button>
-        {!bccValid && bccValue && (
-          <p className="w-full text-xs text-destructive">Enter a valid email address.</p>
+      <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <label htmlFor="cc-emails-input" className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+            CC recipients{ccList.length > 0 ? ` (${ccList.length})` : ""}:
+          </label>
+          <Button
+            size="sm"
+            variant={ccDirty ? "default" : "outline"}
+            onClick={saveCc}
+            disabled={(!ccDirty && !(ccInput.trim() && !ccInputInvalid)) || ccInputInvalid || saveProfile.isPending}
+            data-testid="btn-save-cc"
+          >
+            {saveProfile.isPending ? "Saving…" : ccDirty || (ccInput.trim() && !ccInputInvalid) ? "Save" : (<><Check className="h-3.5 w-3.5 mr-1" />Saved</>)}
+          </Button>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 rounded-md border bg-background px-2 py-1.5 min-h-[36px]">
+          {ccList.map((email) => (
+            <Badge
+              key={email}
+              variant="secondary"
+              className="gap-1 pl-2 pr-1 py-0.5 text-xs font-normal"
+              data-testid={`cc-chip-${email}`}
+            >
+              <span className="max-w-[220px] truncate">{email}</span>
+              <button
+                type="button"
+                onClick={() => removeCcEmail(email)}
+                className="ml-0.5 rounded-sm hover:bg-muted-foreground/20 p-0.5"
+                aria-label={`Remove ${email}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+          <input
+            id="cc-emails-input"
+            type="email"
+            aria-describedby="cc-emails-help"
+            placeholder={ccList.length === 0 ? "your@email.com — press Enter to add (no limit)" : "Add another email…"}
+            value={ccInput}
+            onChange={(e) => setCcInput(e.target.value)}
+            onKeyDown={handleCcKeyDown}
+            onPaste={handleCcPaste}
+            onBlur={handleCcBlur}
+            className="flex-1 min-w-[180px] bg-transparent outline-none text-sm placeholder:text-muted-foreground/70"
+            data-testid="input-cc-email"
+          />
+        </div>
+        {ccInputInvalid && (
+          <p className="text-xs text-destructive">Enter a valid email address.</p>
         )}
-        <p className="w-full text-[11px] text-muted-foreground">
-          You'll be CC'd on every message. The vendor will see this address and can reply-all to include you directly.
+        <p className="text-[11px] text-muted-foreground">
+          Add as many CC recipients as you like — press Enter, comma, space, or paste a list. They'll be CC'd on every message you send to vendors and can reply-all to include you directly.
         </p>
       </div>
 
