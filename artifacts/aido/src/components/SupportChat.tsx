@@ -168,26 +168,26 @@ export function SupportChat() {
         style={{ maxWidth: "calc(100vw - 3rem)" }}
       >
         <div className="flex items-center gap-3 px-4 py-3.5 bg-primary text-primary-foreground flex-shrink-0">
-          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-            <Sparkles className="h-5 w-5 text-white" />
+          <div className="w-9 h-9 rounded-full bg-primary-foreground/15 flex items-center justify-center flex-shrink-0">
+            <Sparkles className="h-5 w-5 text-primary-foreground" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm leading-tight">Aria</p>
-            <p className="text-xs text-white/70">A.IDO Support Assistant · Always here</p>
+            <p className="font-semibold text-sm leading-tight text-primary-foreground">Aria</p>
+            <p className="text-xs text-primary-foreground/80">A.IDO Support Assistant · Always here</p>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={handleReset}
-              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-primary-foreground/15 transition-colors"
               title="New conversation"
             >
-              <RotateCcw className="h-4 w-4 text-white/80" />
+              <RotateCcw className="h-4 w-4 text-primary-foreground/90" />
             </button>
             <button
               onClick={() => setOpen(false)}
-              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-primary-foreground/15 transition-colors"
             >
-              <X className="h-4 w-4 text-white/80" />
+              <X className="h-4 w-4 text-primary-foreground/90" />
             </button>
           </div>
         </div>
@@ -204,11 +204,11 @@ export function SupportChat() {
                 className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed
                   ${msg.role === "user"
                     ? "bg-primary text-primary-foreground rounded-tr-sm"
-                    : "bg-muted/60 text-foreground rounded-tl-sm"
+                    : "bg-muted text-foreground border border-border/50 rounded-tl-sm"
                   }`}
               >
                 {msg.role === "assistant" ? (
-                  <div className="prose prose-sm max-w-none prose-p:my-0.5 prose-ul:my-1 prose-li:my-0 prose-strong:text-foreground">
+                  <div className="prose prose-sm dark:prose-invert max-w-none text-foreground prose-p:my-0.5 prose-p:text-foreground prose-ul:my-1 prose-li:my-0 prose-li:text-foreground prose-strong:text-primary prose-headings:text-foreground prose-a:text-primary">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                     {msg.streaming && msg.content && (
                       <span className="inline-block w-1.5 h-4 bg-primary/60 rounded-sm ml-0.5 animate-pulse" />
