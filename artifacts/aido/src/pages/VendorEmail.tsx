@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -12,6 +13,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Mail, Copy, CheckCircle2, Sparkles, FileDown, RotateCcw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+const DRAFT_STORAGE_KEY = "aido_vendor_email_draft";
 
 const emailSchema = z.object({
   vendorType: z.string().min(1, "Required"),
@@ -30,7 +43,62 @@ export default function VendorEmailPage() {
   
   const [copied, setCopied] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-  const [generatedResult, setGeneratedResult] = useState<{subject: string, body: string, vendorType?: string, emailType?: string, vendorName?: string} | null>(null);
+  const [generatedResult, setGeneratedResult] = useState<{subject: string, body: string, vendorType?: string, emailType?: string, vendorName?: string} | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [, setLocation] = useLocation();
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const pendingHrefRef = useRef<string | null>(null);
+
+  // Persist generated draft to sessionStorage so it survives navigation away.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (generatedResult) {
+        sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(generatedResult));
+      } else {
+        sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+      }
+    } catch { /* storage unavailable */ }
+  }, [generatedResult]);
+
+  // Intercept in-app navigation while a generated draft exists.
+  useEffect(() => {
+    if (!generatedResult) return;
+    const handler = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const anchor = (e.target as HTMLElement | null)?.closest?.("a");
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href) return;
+      // Skip external, hash-only, or same-page links
+      if (/^(https?:|mailto:|tel:|#)/i.test(href)) return;
+      if (anchor.target && anchor.target !== "" && anchor.target !== "_self") return;
+      const currentPath = window.location.pathname.replace(/\/+$/, "");
+      const targetPath = href.replace(/\/+$/, "");
+      if (currentPath.endsWith(targetPath) || targetPath.endsWith(currentPath)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      pendingHrefRef.current = href;
+      setShowLeaveDialog(true);
+    };
+    document.addEventListener("click", handler, true);
+    return () => document.removeEventListener("click", handler, true);
+  }, [generatedResult]);
+
+  const continueNavigation = (clearDraft: boolean) => {
+    const href = pendingHrefRef.current;
+    pendingHrefRef.current = null;
+    setShowLeaveDialog(false);
+    if (clearDraft) setGeneratedResult(null);
+    if (href) setLocation(href);
+  };
 
   const form = useForm<EmailFormValues>({
     resolver: zodResolver(emailSchema),
@@ -359,6 +427,25 @@ export default function VendorEmailPage() {
           </Card>
         </div>
       </div>
+
+      <AlertDialog open={showLeaveDialog} onOpenChange={(open) => { if (!open) { pendingHrefRef.current = null; setShowLeaveDialog(false); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear your generated email?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have a generated email draft on this page. Do you want to clear it before leaving, or keep it so it's still here when you come back?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => continueNavigation(false)}>
+              Keep it
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => continueNavigation(true)}>
+              Clear and leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
