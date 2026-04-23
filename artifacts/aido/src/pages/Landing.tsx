@@ -277,7 +277,10 @@ export default function Landing() {
         </section>
 
         {/* Testimonials */}
-        <section className="w-full bg-primary/5 border-t border-b border-primary/10 py-20 px-6">
+        <section
+          className="w-full border-t border-b border-primary/10 py-20 px-6"
+          style={{ background: "linear-gradient(135deg, #1F0A3A 0%, #2A1248 50%, #1F0A3A 100%)" }}
+        >
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-14">
               <div className="inline-flex items-center gap-2 bg-amber-900/40 text-amber-300 text-sm font-medium px-4 py-1.5 rounded-full mb-4">
