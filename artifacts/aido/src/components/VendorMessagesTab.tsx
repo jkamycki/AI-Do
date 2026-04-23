@@ -8,12 +8,24 @@ import {
   useMarkConversationRead,
   useGetProfile,
   useSaveProfile,
+  useGenerateVendorEmail,
+  useGetVendor,
   getListMessagesQueryKey,
   getGetOrCreateConversationByVendorQueryKey,
   getListConversationsQueryKey,
   getGetProfileQueryKey,
 } from "@workspace/api-client-react";
 import type { Message } from "@workspace/api-client-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useUpload } from "@workspace/object-storage-web";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +56,13 @@ export function VendorMessagesTab({ vendorId }: Props) {
 
   const { data: conv, isLoading: convLoading } = useGetOrCreateConversationByVendor(vendorId);
   const conversationId = conv?.id;
+  const { data: vendor } = useGetVendor(vendorId);
+
+  // AI Draft (first-contact / standalone email) — embedded so users don't bounce to /vendor-email
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [draftPurpose, setDraftPurpose] = useState("");
+  const [draftNotes, setDraftNotes] = useState("");
+  const generateEmail = useGenerateVendorEmail();
 
   const { data: messages, isLoading: msgsLoading } = useListMessages(conversationId ?? 0, {
     query: {
@@ -298,6 +317,15 @@ export function VendorMessagesTab({ vendorId }: Props) {
             <Sparkles className="h-3.5 w-3.5 mr-1.5" />
             {isSuggesting ? "Drafting..." : "AI Suggest Reply"}
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            type="button"
+            onClick={() => { setDraftPurpose(""); setDraftNotes(""); setShowDraftDialog(true); }}
+          >
+            <Mail className="h-3.5 w-3.5 mr-1.5" />
+            AI Draft Email
+          </Button>
         </div>
         <Button
           size="sm"
@@ -308,6 +336,93 @@ export function VendorMessagesTab({ vendorId }: Props) {
           {sendMutation.isPending ? "Sending..." : "Send"}
         </Button>
       </div>
+
+      <Dialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              AI Draft Email{vendor?.name ? ` to ${vendor.name}` : ""}
+            </DialogTitle>
+            <DialogDescription>
+              The draft will appear in your message box below — review and edit before sending.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Purpose</Label>
+              <Select value={draftPurpose} onValueChange={setDraftPurpose}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="What's this email about?" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Initial Inquiry / Availability">Initial Inquiry / Availability</SelectItem>
+                  <SelectItem value="Quote Request">Request a Quote</SelectItem>
+                  <SelectItem value="Follow-up">Follow-up on Previous Email</SelectItem>
+                  <SelectItem value="Negotiation / Budget Discussion">Negotiate Budget / Package</SelectItem>
+                  <SelectItem value="Contract Confirmation">Confirm Contract / Booking</SelectItem>
+                  <SelectItem value="Polite Decline">Polite Decline</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Specific details <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Textarea
+                value={draftNotes}
+                onChange={(e) => setDraftNotes(e.target.value)}
+                placeholder="e.g. We love your dark and moody style, want an 8-hour package…"
+                className="resize-none h-24 bg-background"
+              />
+            </div>
+            {vendor && (
+              <p className="text-[11px] text-muted-foreground">
+                Vendor: <strong>{vendor.name}</strong> · {vendor.category}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDraftDialog(false)}>Cancel</Button>
+            <Button
+              disabled={!draftPurpose || generateEmail.isPending || !vendor}
+              onClick={() => {
+                if (!vendor) return;
+                generateEmail.mutate(
+                  {
+                    data: {
+                      vendorType: vendor.category || "Vendor",
+                      emailType: draftPurpose,
+                      vendorName: vendor.name,
+                      weddingDate: profile?.weddingDate ?? "",
+                      venue: profile?.venue ?? "",
+                      guestCount: profile?.guestCount ?? 0,
+                      additionalNotes: draftNotes,
+                      preferredLanguage: profile?.preferredLanguage ?? "English",
+                    },
+                  },
+                  {
+                    onSuccess: (result) => {
+                      const composed = `Subject: ${result.subject}\n\n${result.body}`;
+                      setDraft((d) => (d ? `${d}\n\n${composed}` : composed));
+                      setShowDraftDialog(false);
+                      toast({ title: "Draft ready", description: "Inserted into your message box — edit and send when ready." });
+                    },
+                    onError: () => toast({ title: "Could not generate draft", variant: "destructive" }),
+                  }
+                );
+              }}
+            >
+              {generateEmail.isPending ? (
+                <span className="flex items-center gap-2">
+                  <div className="h-3.5 w-3.5 rounded-full border-2 border-current/30 border-t-current animate-spin" />
+                  Drafting…
+                </span>
+              ) : (
+                <span className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" />Generate</span>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
