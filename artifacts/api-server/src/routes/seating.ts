@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, seatingCharts } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveScopeUserId } from "../lib/workspaceAccess";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -163,9 +163,13 @@ router.put("/seating/charts/:id", requireAuth, async (req, res) => {
 
 router.delete("/seating/charts/:id", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     await db
       .delete(seatingCharts)
-      .where(eq(seatingCharts.id, parseInt(req.params["id"] ?? "0")));
+      .where(and(
+        eq(seatingCharts.id, parseInt(req.params["id"] ?? "0")),
+        eq(seatingCharts.userId, userId),
+      ));
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Internal server error" });

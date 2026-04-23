@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { createRequire } from "node:module";
 import { db, vendorContracts } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveScopeUserId } from "../lib/workspaceAccess";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -243,9 +243,13 @@ router.patch("/contracts/:id", requireAuth, async (req, res) => {
 
 router.delete("/contracts/:id", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     await db
       .delete(vendorContracts)
-      .where(eq(vendorContracts.id, parseInt(req.params["id"] ?? "0")));
+      .where(and(
+        eq(vendorContracts.id, parseInt(req.params["id"] ?? "0")),
+        eq(vendorContracts.userId, userId),
+      ));
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Internal server error" });

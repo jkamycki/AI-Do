@@ -757,7 +757,7 @@ export default function SettingsPage() {
                           )}
                           {confirmRemoveId === collab.id ? (
                             <div className="flex items-center gap-1.5 bg-destructive/5 border border-destructive/20 rounded-lg px-2.5 py-1.5">
-                              <span className="text-xs text-destructive font-medium whitespace-nowrap">Remove?</span>
+                              <span className="text-xs text-destructive font-medium whitespace-nowrap" title="Removes access only — no wedding data is deleted">Remove access?</span>
                               <button
                                 className="text-xs font-semibold text-destructive hover:underline"
                                 onClick={() => removeMutation.mutate(collab.id)}
@@ -777,7 +777,7 @@ export default function SettingsPage() {
                             <button
                               className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                               onClick={() => setConfirmRemoveId(collab.id)}
-                              title="Remove collaborator"
+                              title="Remove this collaborator's access (your wedding data is kept)"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
