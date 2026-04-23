@@ -198,7 +198,7 @@ function LanguageSwitcherCard() {
 
   const current = selected ?? profile?.preferredLanguage ?? "English";
   const original = profile?.preferredLanguage ?? "English";
-  const hasChange = selected !== null && selected !== original;
+  const hasChange = selected !== null;
   const currentCode = LANG_NAME_TO_CODE[current] ?? "en";
   const languageOptions = [
     "English", "Spanish", "French", "German", "Italian", "Portuguese",
