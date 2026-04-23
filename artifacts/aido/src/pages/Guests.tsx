@@ -47,6 +47,7 @@ const MEAL_OPTIONS = [
   { value: "vegetarian", label: "Vegetarian" },
   { value: "vegan", label: "Vegan" },
   { value: "kids", label: "Kids Meal" },
+  { value: "other", label: "Other" },
 ];
 
 const GROUP_OPTIONS = [
@@ -81,6 +82,7 @@ const guestSchema = z.object({
   invitationStatus: z.enum(["pending", "sent"]).default("pending"),
   rsvpStatus: z.enum(["pending", "attending", "declined"]).default("pending"),
   mealChoice: z.string().optional(),
+  dietaryNotes: z.string().max(500).optional(),
   guestGroup: z.string().optional(),
   plusOne: z.boolean().default(false),
   plusOneFirstName: z.string().optional(),
@@ -120,6 +122,7 @@ function GuestForm({
       invitationStatus: "pending",
       rsvpStatus: "pending",
       mealChoice: "",
+      dietaryNotes: "",
       guestGroup: "",
       plusOne: false,
       plusOneFirstName: "",
@@ -136,6 +139,7 @@ function GuestForm({
   });
 
   const plusOne = form.watch("plusOne");
+  const meal = form.watch("mealChoice");
 
   return (
     <Form {...form}>
@@ -229,34 +233,16 @@ function GuestForm({
           )} />
         </div>
 
-        <FormField control={form.control} name="plusOne" render={({ field }) => (
-          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-            <div className="space-y-0.5">
-              <FormLabel>Plus One</FormLabel>
-            </div>
-            <FormControl>
-              <Switch checked={field.value} onCheckedChange={field.onChange} />
-            </FormControl>
-          </FormItem>
-        )} />
-
-        {plusOne && (
-          <div className="grid grid-cols-2 gap-3">
-            <FormField control={form.control} name="plusOneFirstName" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Plus One First Name</FormLabel>
-                <FormControl><Input placeholder="Alex" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="plusOneLastName" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Last Name</FormLabel>
-                <FormControl><Input placeholder="Smith" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-          </div>
+        {meal === "other" && (
+          <FormField control={form.control} name="dietaryNotes" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Dietary Needs / Custom Preference</FormLabel>
+              <FormControl>
+                <Textarea placeholder="e.g. Gluten-free, nut allergy, halal, kosher…" rows={2} maxLength={500} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -296,6 +282,36 @@ function GuestForm({
             </FormItem>
           )} />
         </div>
+
+        <FormField control={form.control} name="plusOne" render={({ field }) => (
+          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+            <div className="space-y-0.5">
+              <FormLabel>Plus One</FormLabel>
+            </div>
+            <FormControl>
+              <Switch checked={field.value} onCheckedChange={field.onChange} />
+            </FormControl>
+          </FormItem>
+        )} />
+
+        {plusOne && (
+          <div className="grid grid-cols-2 gap-3">
+            <FormField control={form.control} name="plusOneFirstName" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Plus One First Name</FormLabel>
+                <FormControl><Input placeholder="Alex" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="plusOneLastName" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Last Name</FormLabel>
+                <FormControl><Input placeholder="Smith" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
+        )}
 
         <FormField control={form.control} name="notes" render={({ field }) => (
           <FormItem>
@@ -635,6 +651,7 @@ export default function Guests() {
         plusOne: data.plusOne,
         plusOneName: plusOneName ?? undefined,
         mealChoice: (data.mealChoice === "none" || !data.mealChoice) ? null : data.mealChoice,
+        dietaryNotes: data.mealChoice === "other" ? (data.dietaryNotes?.trim() || null) : null,
         guestGroup: (data.guestGroup === "none" || !data.guestGroup) ? null : data.guestGroup,
         tableAssignment: data.tableAssignment || null,
         notes: data.notes || null,
@@ -975,7 +992,7 @@ export default function Guests() {
                         </TableCell>
                         <TableCell className="hidden lg:table-cell text-sm">
                           {g.plusOne ? (
-                            <span className="text-rose-500">
+                            <span className="font-bold text-primary">
                               ♥ {g.plusOneName || "Yes"}
                             </span>
                           ) : "—"}
@@ -1033,6 +1050,7 @@ export default function Guests() {
                 email: editGuest.email ?? "",
                 rsvpStatus: (editGuest.rsvpStatus as "pending" | "attending" | "declined") ?? "pending",
                 mealChoice: editGuest.mealChoice ?? "",
+                dietaryNotes: (editGuest as any).dietaryNotes ?? "",
                 guestGroup: editGuest.guestGroup ?? "",
                 plusOne: editGuest.plusOne,
                 plusOneFirstName: editGuest.plusOneName?.split(" ").slice(0, 1).join("") ?? "",

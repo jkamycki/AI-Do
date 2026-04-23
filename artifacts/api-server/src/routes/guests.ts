@@ -57,7 +57,7 @@ router.post("/guests", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "No wedding profile found. Create a profile first." });
     }
 
-    const { name, email, invitationStatus, rsvpStatus, mealChoice, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, guestCity, guestState, guestZip } = req.body;
+    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, guestCity, guestState, guestZip } = req.body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return res.status(400).json({ error: "Guest name is required" });
@@ -72,6 +72,7 @@ router.post("/guests", requireAuth, async (req, res) => {
         invitationStatus: invitationStatus || "pending",
         rsvpStatus: rsvpStatus || "pending",
         mealChoice: mealChoice || null,
+        dietaryNotes: dietaryNotes || null,
         guestGroup: guestGroup || null,
         plusOne: !!plusOne,
         plusOneName: plusOneName || null,
@@ -103,7 +104,7 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     const profileId = profile?.id ?? null;
     if (!profileId) return res.status(400).json({ error: "No wedding profile found." });
 
-    const { name, email, invitationStatus, rsvpStatus, mealChoice, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, guestCity, guestState, guestZip } = req.body;
+    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, guestCity, guestState, guestZip } = req.body;
 
     const updateData: Partial<typeof guests.$inferInsert> = {};
     if (name !== undefined) updateData.name = name;
@@ -111,6 +112,7 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     if (invitationStatus !== undefined) updateData.invitationStatus = invitationStatus;
     if (rsvpStatus !== undefined) updateData.rsvpStatus = rsvpStatus;
     if (mealChoice !== undefined) updateData.mealChoice = mealChoice || null;
+    if (dietaryNotes !== undefined) updateData.dietaryNotes = dietaryNotes || null;
     if (guestGroup !== undefined) updateData.guestGroup = guestGroup || null;
     if (plusOne !== undefined) updateData.plusOne = !!plusOne;
     if (plusOneName !== undefined) updateData.plusOneName = plusOneName || null;

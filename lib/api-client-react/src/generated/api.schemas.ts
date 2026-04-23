@@ -405,6 +405,7 @@ export interface Guest {
   email?: string | null;
   rsvpStatus: string;
   mealChoice?: string | null;
+  dietaryNotes?: string | null;
   guestGroup?: string | null;
   plusOne: boolean;
   plusOneName?: string | null;
@@ -431,6 +432,7 @@ export interface CreateGuest {
   email?: string;
   rsvpStatus?: string;
   mealChoice?: string;
+  dietaryNotes?: string;
   guestGroup?: string;
   plusOne?: boolean;
   plusOneName?: string;
@@ -443,6 +445,7 @@ export interface UpdateGuest {
   email?: string;
   rsvpStatus?: string;
   mealChoice?: string;
+  dietaryNotes?: string;
   guestGroup?: string;
   plusOne?: boolean;
   plusOneName?: string;

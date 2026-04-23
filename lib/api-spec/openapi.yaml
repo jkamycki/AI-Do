@@ -1727,6 +1727,9 @@ components:
         mealChoice:
           type: string
           nullable: true
+        dietaryNotes:
+          type: string
+          nullable: true
         guestGroup:
           type: string
           nullable: true
@@ -1792,6 +1795,8 @@ components:
           type: string
         mealChoice:
           type: string
+        dietaryNotes:
+          type: string
         guestGroup:
           type: string
         plusOne:
@@ -1815,6 +1820,8 @@ components:
         rsvpStatus:
           type: string
         mealChoice:
+          type: string
+        dietaryNotes:
           type: string
         guestGroup:
           type: string
