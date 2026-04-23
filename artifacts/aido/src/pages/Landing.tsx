@@ -251,7 +251,15 @@ export default function Landing() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
               {testimonials.map((item) => (
-                <div key={item.name} className="bg-card rounded-2xl p-6 border border-primary/10 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4">
+                <div
+                  key={item.name}
+                  className="rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow flex flex-col gap-4"
+                  style={{
+                    background: "linear-gradient(135deg, #2A1248 0%, #3D1A6B 50%, #2A1248 100%)",
+                    border: "2px solid",
+                    borderImage: "linear-gradient(135deg, #B8860B 0%, #D4A017 50%, #F5C842 100%) 1",
+                  }}
+                >
                   <Quote className="h-8 w-8 text-primary/20 fill-primary/10 -mb-1" />
                   <p className="text-sm leading-relaxed text-white/75 flex-1">"{item.text}"</p>
                   <Stars count={item.rating} />
