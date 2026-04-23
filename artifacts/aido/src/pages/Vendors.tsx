@@ -227,21 +227,6 @@ function AddEditVendorDialog({
     };
   }
 
-  function hasChanges() {
-    return (
-      form.name !== initialForm.name ||
-      form.category !== initialForm.category ||
-      form.email !== initialForm.email ||
-      form.phone !== initialForm.phone ||
-      form.website !== initialForm.website ||
-      form.portalLink !== initialForm.portalLink ||
-      form.notes !== initialForm.notes ||
-      form.totalCost !== initialForm.totalCost ||
-      form.depositAmount !== initialForm.depositAmount ||
-      form.contractSigned !== initialForm.contractSigned
-    );
-  }
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim() || !form.category) {
@@ -267,22 +252,9 @@ function AddEditVendorDialog({
     }
   }
 
-  function handleClose() {
-    if (
-      vendor &&
-      hasChanges() &&
-      form.name.trim() &&
-      form.category &&
-      !isLoading
-    ) {
-      updateMutation.mutate({ id: vendor.id, data: buildUpdatePayload() as never });
-      return;
-    }
-    onClose();
-  }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-serif text-2xl">
