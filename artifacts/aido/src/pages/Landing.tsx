@@ -234,7 +234,7 @@ export default function Landing() {
         </section>
 
         {/* Promo Video */}
-        <section className="w-full max-w-5xl px-6 pb-20">
+        <section className="w-full max-w-7xl px-6 pb-20">
           <div className="text-center mb-8">
             <h2 className="font-serif text-3xl text-primary mb-3">{t("landing.video_title")}</h2>
             <p className="text-white/65">{t("landing.video_desc")}</p>

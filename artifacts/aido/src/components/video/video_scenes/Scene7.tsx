@@ -9,8 +9,8 @@ const TABLES: Table[] = [
     id: "head",
     label: "Head Table",
     cx: 50,
-    cy: 22,
-    r: 11,
+    cy: 24,
+    r: 7,
     seats: [
       { id: "h1", name: "Sarah", tag: "Bride" },
       { id: "h2", name: "Michael", tag: "Groom" },
@@ -21,9 +21,9 @@ const TABLES: Table[] = [
   {
     id: "t1",
     label: "Table 1 · Family",
-    cx: 22,
-    cy: 58,
-    r: 9.5,
+    cx: 20,
+    cy: 62,
+    r: 6.5,
     seats: [
       { id: "t1-1", name: "Mom" },
       { id: "t1-2", name: "Dad" },
@@ -37,8 +37,8 @@ const TABLES: Table[] = [
     id: "t2",
     label: "Table 2 · College",
     cx: 50,
-    cy: 70,
-    r: 9.5,
+    cy: 62,
+    r: 6.5,
     seats: [
       { id: "t2-1", name: "David" },
       { id: "t2-2", name: "Priya" },
@@ -51,9 +51,9 @@ const TABLES: Table[] = [
   {
     id: "t3",
     label: "Table 3 · Work",
-    cx: 78,
-    cy: 58,
-    r: 9.5,
+    cx: 80,
+    cy: 62,
+    r: 6.5,
     seats: [
       { id: "t3-1", name: "Anna" },
       { id: "t3-2", name: "Ben" },
