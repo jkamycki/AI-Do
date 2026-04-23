@@ -126,7 +126,13 @@ export default function Landing() {
 
   return (
     <div className="dark min-h-screen bg-background flex flex-col">
-      <header className="px-8 py-4 flex items-center justify-between border-b border-primary/20 bg-background/80 backdrop-blur-md">
+      <header
+        className="px-8 py-4 flex items-center justify-between bg-background/80 backdrop-blur-md relative"
+        style={{
+          borderBottom: "4px solid transparent",
+          borderImage: "linear-gradient(90deg, #B8860B 0%, #D4A017 35%, #F5C842 50%, #D4A017 65%, #B8860B 100%) 1",
+        }}
+      >
         <div className="flex items-center">
           <img src="/logo.png" alt="A.I Do" className="h-32 w-auto object-contain" />
         </div>
