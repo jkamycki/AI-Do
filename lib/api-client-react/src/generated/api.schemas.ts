@@ -96,14 +96,6 @@ export interface GenerateVendorEmailBody {
   additionalNotes?: string;
 }
 
-export type BudgetItemLinkedVendorsItem = {
-  id: number;
-  name: string;
-  category: string;
-  totalCost: number;
-  totalPaid: number;
-};
-
 export interface BudgetItem {
   id: number;
   category: string;
@@ -111,15 +103,6 @@ export interface BudgetItem {
   estimatedCost: number;
   actualCost: number;
   amountPaid?: number;
-  /** Manually entered actual cost (excludes linked vendor totals) */
-  baseActualCost?: number;
-  /** Manually entered amount paid (excludes linked vendor payments) */
-  baseAmountPaid?: number;
-  /** Sum of totalCost from vendors linked to this budget item */
-  linkedActualCost?: number;
-  /** Sum of paid amounts (deposit + paid milestones) from linked vendors */
-  linkedPaid?: number;
-  linkedVendors?: BudgetItemLinkedVendorsItem[];
   isPaid: boolean;
   notes?: string;
   /** ISO date string (YYYY-MM-DD) for next payment due date */
@@ -310,8 +293,6 @@ export interface Vendor {
   totalCost: number;
   depositAmount: number;
   contractSigned: boolean;
-  /** Optional link to a budget line item; payments and costs roll into that budget category */
-  budgetItemId?: number | null;
   files: VendorFile[];
   createdAt: string;
   updatedAt: string;
@@ -343,7 +324,6 @@ export interface CreateVendorBody {
   totalCost?: number;
   depositAmount?: number;
   contractSigned?: boolean;
-  budgetItemId?: number | null;
 }
 
 export interface UpdateVendorBody {
@@ -357,7 +337,6 @@ export interface UpdateVendorBody {
   totalCost?: number;
   depositAmount?: number;
   contractSigned?: boolean;
-  budgetItemId?: number | null;
   files?: VendorFile[];
 }
 

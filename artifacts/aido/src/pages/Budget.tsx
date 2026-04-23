@@ -30,8 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History, AlertTriangle, Clock, RotateCcw, Pencil, X, Check, RefreshCcw, ArrowUpRight, Link2 as LinkIcon } from "lucide-react";
-import { useLocation } from "wouter";
+import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History, AlertTriangle, Clock, RotateCcw, Pencil, X, Check, RefreshCcw, ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const itemSchema = z.object({
@@ -1018,37 +1017,6 @@ export default function Budget() {
                           <TableCell>
                             <div className="font-medium text-foreground">{item.vendor}</div>
                             <div className="text-xs text-muted-foreground">{item.category}</div>
-                            {(() => {
-                              const ext = item as { linkedVendors?: Array<{ id: number; name: string; totalCost: number; totalPaid: number }>; baseActualCost?: number; linkedActualCost?: number };
-                              const linked = ext.linkedVendors ?? [];
-                              const showDoubleWarning = (ext.baseActualCost ?? 0) > 0 && (ext.linkedActualCost ?? 0) > 0;
-                              if (linked.length === 0) return null;
-                              return (
-                                <div className="flex flex-wrap gap-1 mt-1.5">
-                                  {linked.map((lv) => (
-                                    <button
-                                      key={lv.id}
-                                      type="button"
-                                      onClick={() => setLocation(`/vendors/${lv.id}`)}
-                                      className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[11px] text-primary hover:bg-primary/10"
-                                      title={`${lv.name} • $${lv.totalPaid.toLocaleString()} paid of $${lv.totalCost.toLocaleString()} — click to open`}
-                                    >
-                                      <LinkIcon className="h-2.5 w-2.5" />
-                                      {lv.name}
-                                    </button>
-                                  ))}
-                                  {showDoubleWarning && (
-                                    <span
-                                      className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700"
-                                      title={`This row has $${(ext.baseActualCost ?? 0).toLocaleString()} entered manually and $${(ext.linkedActualCost ?? 0).toLocaleString()} from linked vendors. The total is the sum of both — clear the manual cost in Edit if you only want vendor totals to count.`}
-                                    >
-                                      <AlertTriangle className="h-2.5 w-2.5" />
-                                      Manual + linked totals — review
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })()}
                             {item.notes && (
                               <div className="text-xs text-muted-foreground/70 italic mt-0.5 max-w-[220px] truncate" title={item.notes}>
                                 {item.notes}

@@ -7,7 +7,6 @@ import {
   useUpdateVendor,
   useDeleteVendor,
   useGetVendor,
-  useGetBudget,
   useCreateVendorPayment,
   useUpdateVendorPayment,
   useDeleteVendorPayment,
@@ -139,7 +138,6 @@ type VendorFormData = {
   totalCost: string;
   depositAmount: string;
   contractSigned: boolean;
-  budgetItemId: string;
 };
 
 const defaultFormData: VendorFormData = {
@@ -153,7 +151,6 @@ const defaultFormData: VendorFormData = {
   totalCost: "",
   depositAmount: "",
   contractSigned: false,
-  budgetItemId: "",
 };
 
 function AddEditVendorDialog({
@@ -180,13 +177,9 @@ function AddEditVendorDialog({
           totalCost: vendor.totalCost > 0 ? String(vendor.totalCost) : "",
           depositAmount: vendor.depositAmount > 0 ? String(vendor.depositAmount) : "",
           contractSigned: vendor.contractSigned,
-          budgetItemId: vendor.budgetItemId != null ? String(vendor.budgetItemId) : "",
         }
       : defaultFormData
   );
-
-  const { data: budget } = useGetBudget();
-  const budgetItemOptions = (budget?.items ?? []) as Array<{ id: number; category: string; vendor: string }>;
 
   const createMutation = useCreateVendor({
     mutation: {
@@ -232,7 +225,6 @@ function AddEditVendorDialog({
       totalCost: form.totalCost ? Number(form.totalCost) : 0,
       depositAmount: form.depositAmount ? Number(form.depositAmount) : 0,
       contractSigned: form.contractSigned,
-      budgetItemId: form.budgetItemId ? Number(form.budgetItemId) : null,
     };
     if (vendor) {
       updateMutation.mutate({ id: vendor.id, data: payload });
@@ -317,30 +309,6 @@ function AddEditVendorDialog({
                 placeholder="0.00"
               />
             </div>
-            {(() => {
-              const matchedItem = budgetItemOptions.find(
-                (bi) => bi.category.trim().toLowerCase() === form.category.trim().toLowerCase()
-              );
-              if (!form.category) return null;
-              return (
-                <div className="space-y-1.5 sm:col-span-2">
-                  <div className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-foreground/80">
-                    <span className="mt-0.5 text-primary">↪</span>
-                    <div>
-                      {matchedItem ? (
-                        <>
-                          This vendor's costs & payments will <strong>auto-link</strong> to your <strong>{matchedItem.category}</strong> budget line.
-                        </>
-                      ) : (
-                        <>
-                          No matching <strong>{form.category}</strong> budget line yet — add one in <strong>Budget</strong> with the same category and they'll link automatically.
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Vendor Portal / Booking Link</Label>
               <Input

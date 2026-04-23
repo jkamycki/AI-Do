@@ -1,90 +1,28 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { budgets, budgetItems, weddingProfiles, budgetPaymentLogs, vendors, vendorPayments } from "@workspace/db";
-import { eq, desc, asc, and, inArray } from "drizzle-orm";
+import { budgets, budgetItems, weddingProfiles, budgetPaymentLogs } from "@workspace/db";
+import { eq, desc, asc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 import { logActivity, resolveProfile } from "../../lib/workspaceAccess";
-import { normalizeCategory } from "../../lib/categoryMatch";
 
 const router = Router();
-async function getBudgetWithItems(budgetId: number, profileUserId?: string) {
+async function getBudgetWithItems(budgetId: number, _profileUserId?: string) {
   const budget = await db.select().from(budgets).where(eq(budgets.id, budgetId)).limit(1);
   if (!budget.length) return null;
 
   const items = await db.select().from(budgetItems).where(eq(budgetItems.budgetId, budgetId));
-  const itemIds = items.map(i => i.id);
-
-  // Fetch vendors linked to any of these budget items, plus their paid milestones
-  type LinkedVendor = { id: number; name: string; category: string; totalCost: number; totalPaid: number };
-  const linkedByItem = new Map<number, LinkedVendor[]>();
-
-  if (profileUserId && itemIds.length > 0) {
-    // Fetch ALL vendors for this workspace — link by explicit budgetItemId OR by fuzzy category match
-    const allVendorRows = await db
-      .select()
-      .from(vendors)
-      .where(eq(vendors.userId, profileUserId));
-
-    // Build normalized-root -> first matching budget item id
-    const rootToItemId = new Map<string, number>();
-    for (const it of items) {
-      const key = normalizeCategory(it.category);
-      if (key && !rootToItemId.has(key)) rootToItemId.set(key, it.id);
-    }
-
-    const vendorIds = allVendorRows.map(v => v.id);
-    const paidByVendor: Record<number, number> = {};
-    if (vendorIds.length > 0) {
-      const paidPayments = await db
-        .select()
-        .from(vendorPayments)
-        .where(and(inArray(vendorPayments.vendorId, vendorIds), eq(vendorPayments.isPaid, true)));
-      for (const p of paidPayments) {
-        paidByVendor[p.vendorId] = (paidByVendor[p.vendorId] ?? 0) + Number(p.amount);
-      }
-    }
-
-    for (const v of allVendorRows) {
-      const explicitId = v.budgetItemId ?? null;
-      const fallbackId = explicitId == null
-        ? (rootToItemId.get(normalize(v.category)) ?? null)
-        : null;
-      const linkId = explicitId ?? fallbackId;
-      if (linkId == null) continue;
-      // Skip if explicit id doesn't belong to this profile's items
-      if (!itemIds.includes(linkId)) continue;
-      const totalCost = Number(v.totalCost);
-      const deposit = Number(v.depositAmount);
-      const milestones = paidByVendor[v.id] ?? 0;
-      const totalPaid = deposit + milestones;
-      const arr = linkedByItem.get(linkId) ?? [];
-      arr.push({ id: v.id, name: v.name, category: v.category, totalCost, totalPaid });
-      linkedByItem.set(linkId, arr);
-    }
-  }
-
   const totalBudget = parseFloat(budget[0].totalBudget as string);
 
   const itemsOut = items.map(item => {
-    const linkedVendors = linkedByItem.get(item.id) ?? [];
-    const linkedActualCost = linkedVendors.reduce((s, v) => s + v.totalCost, 0);
-    const linkedPaid = linkedVendors.reduce((s, v) => s + v.totalPaid, 0);
-    const baseActual = parseFloat(item.actualCost as string);
-    const basePaid = parseFloat((item.amountPaid ?? "0") as string);
     return {
       id: item.id,
       category: item.category,
       vendor: item.vendor,
       estimatedCost: parseFloat(item.estimatedCost as string),
-      actualCost: baseActual + linkedActualCost,
-      amountPaid: basePaid + linkedPaid,
-      baseActualCost: baseActual,
-      baseAmountPaid: basePaid,
-      linkedActualCost,
-      linkedPaid,
-      linkedVendors,
+      actualCost: parseFloat(item.actualCost as string),
+      amountPaid: parseFloat((item.amountPaid ?? "0") as string),
       isPaid: item.isPaid,
       notes: item.notes ?? undefined,
       nextPaymentDue: (item as Record<string, unknown>).nextPaymentDue as string ?? null,
