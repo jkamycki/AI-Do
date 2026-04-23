@@ -5,12 +5,16 @@ import { Scene2 } from "./video_scenes/Scene2";
 import { Scene3 } from "./video_scenes/Scene3";
 import { Scene4 } from "./video_scenes/Scene4";
 import { Scene5 } from "./video_scenes/Scene5";
+import { Scene6 } from "./video_scenes/Scene6";
+import { Scene7 } from "./video_scenes/Scene7";
 
 const SCENE_DURATIONS = {
   hero: 4500,
   budget: 5500,
   vendors: 6000,
   contracts: 5500,
+  guests: 5500,
+  seating: 6000,
   ariaOutro: 6000,
 };
 
@@ -76,7 +80,9 @@ export default function VideoTemplate() {
           {currentScene === 1 && <Scene2 key="scene2" />}
           {currentScene === 2 && <Scene3 key="scene3" />}
           {currentScene === 3 && <Scene4 key="scene4" />}
-          {currentScene === 4 && <Scene5 key="scene5" />}
+          {currentScene === 4 && <Scene6 key="scene6" />}
+          {currentScene === 5 && <Scene7 key="scene7" />}
+          {currentScene === 6 && <Scene5 key="scene5" />}
         </AnimatePresence>
       </div>
     </div>
