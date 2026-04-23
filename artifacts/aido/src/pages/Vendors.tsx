@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useAuth } from "@clerk/react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
@@ -165,22 +165,25 @@ function AddEditVendorDialog({
 }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [form, setForm] = useState<VendorFormData>(
-    vendor
-      ? {
-          name: vendor.name,
-          category: vendor.category,
-          email: vendor.email ?? "",
-          phone: vendor.phone ?? "",
-          website: vendor.website ?? "",
-          portalLink: vendor.portalLink ?? "",
-          notes: vendor.notes ?? "",
-          totalCost: vendor.totalCost > 0 ? String(vendor.totalCost) : "",
-          depositAmount: vendor.depositAmount > 0 ? String(vendor.depositAmount) : "",
-          contractSigned: vendor.contractSigned,
-        }
-      : defaultFormData
+  const initialForm = useMemo<VendorFormData>(
+    () =>
+      vendor
+        ? {
+            name: vendor.name,
+            category: vendor.category,
+            email: vendor.email ?? "",
+            phone: vendor.phone ?? "",
+            website: vendor.website ?? "",
+            portalLink: vendor.portalLink ?? "",
+            notes: vendor.notes ?? "",
+            totalCost: vendor.totalCost > 0 ? String(vendor.totalCost) : "",
+            depositAmount: vendor.depositAmount > 0 ? String(vendor.depositAmount) : "",
+            contractSigned: vendor.contractSigned,
+          }
+        : defaultFormData,
+    [vendor]
   );
+  const [form, setForm] = useState<VendorFormData>(initialForm);
 
   const createMutation = useCreateVendor({
     mutation: {
@@ -209,6 +212,36 @@ function AddEditVendorDialog({
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
+  function buildUpdatePayload() {
+    return {
+      name: form.name.trim(),
+      category: form.category,
+      email: form.email.trim() || null,
+      phone: form.phone.trim() || null,
+      website: form.website.trim() || null,
+      portalLink: form.portalLink.trim() || null,
+      notes: form.notes.trim() || null,
+      totalCost: form.totalCost ? Number(form.totalCost) : 0,
+      depositAmount: form.depositAmount ? Number(form.depositAmount) : 0,
+      contractSigned: form.contractSigned,
+    };
+  }
+
+  function hasChanges() {
+    return (
+      form.name !== initialForm.name ||
+      form.category !== initialForm.category ||
+      form.email !== initialForm.email ||
+      form.phone !== initialForm.phone ||
+      form.website !== initialForm.website ||
+      form.portalLink !== initialForm.portalLink ||
+      form.notes !== initialForm.notes ||
+      form.totalCost !== initialForm.totalCost ||
+      form.depositAmount !== initialForm.depositAmount ||
+      form.contractSigned !== initialForm.contractSigned
+    );
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim() || !form.category) {
@@ -216,19 +249,7 @@ function AddEditVendorDialog({
       return;
     }
     if (vendor) {
-      const updatePayload = {
-        name: form.name.trim(),
-        category: form.category,
-        email: form.email.trim() || null,
-        phone: form.phone.trim() || null,
-        website: form.website.trim() || null,
-        portalLink: form.portalLink.trim() || null,
-        notes: form.notes.trim() || null,
-        totalCost: form.totalCost ? Number(form.totalCost) : 0,
-        depositAmount: form.depositAmount ? Number(form.depositAmount) : 0,
-        contractSigned: form.contractSigned,
-      };
-      updateMutation.mutate({ id: vendor.id, data: updatePayload as never });
+      updateMutation.mutate({ id: vendor.id, data: buildUpdatePayload() as never });
     } else {
       const createPayload = {
         name: form.name.trim(),
@@ -246,8 +267,22 @@ function AddEditVendorDialog({
     }
   }
 
+  function handleClose() {
+    if (
+      vendor &&
+      hasChanges() &&
+      form.name.trim() &&
+      form.category &&
+      !isLoading
+    ) {
+      updateMutation.mutate({ id: vendor.id, data: buildUpdatePayload() as never });
+      return;
+    }
+    onClose();
+  }
+
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-serif text-2xl">
