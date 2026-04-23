@@ -26,6 +26,30 @@ const features = [
     title: "AI flags the risks before you sign.",
     desc: "Upload any vendor contract and get a plain-English summary of every clause that matters.",
   },
+  {
+    icon: "💺",
+    color: "#7B2FBE",
+    glow: "rgba(123,47,190,0.3)",
+    label: "06 — Smart Seating",
+    title: "Seating charts, solved by AI.",
+    desc: "Tell us who shouldn't sit together and we'll arrange every table — diplomatically.",
+  },
+  {
+    icon: "🎉",
+    color: "#E91E8C",
+    glow: "rgba(233,30,140,0.3)",
+    label: "07 — Guest Collector",
+    title: "RSVPs and details, on autopilot.",
+    desc: "Send one link. Guests fill in dietary needs, plus-ones, and song requests — straight to your dashboard.",
+  },
+  {
+    icon: "👥",
+    color: "#D4A017",
+    glow: "rgba(212,160,23,0.3)",
+    label: "08 — Plan Together",
+    title: "Invite your partner, planner, or family.",
+    desc: "Real-time collaboration with role-based access and per-user language — everyone stays on the same page.",
+  },
 ];
 
 export function Scene3() {
@@ -33,9 +57,12 @@ export function Scene3() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 300),
-      setTimeout(() => setPhase(2), 900),
-      setTimeout(() => setPhase(3), 1700),
+      setTimeout(() => setPhase(1), 250),
+      setTimeout(() => setPhase(2), 600),
+      setTimeout(() => setPhase(3), 950),
+      setTimeout(() => setPhase(4), 1300),
+      setTimeout(() => setPhase(5), 1650),
+      setTimeout(() => setPhase(6), 2000),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
@@ -64,39 +91,54 @@ export function Scene3() {
       </motion.div>
 
       {/* Feature cards */}
-      <div className="flex gap-[1.5vw] w-full">
+      <div className="grid grid-cols-3 gap-[1.2vw] w-full">
         {features.map((feat, i) => (
           <motion.div
             key={feat.label}
-            className="flex-1 rounded-2xl p-[1.6vw] border flex flex-col gap-3"
+            className="rounded-2xl p-[1.2vw] border flex flex-col gap-2"
             style={{
               background: "rgba(255,255,255,0.03)",
-              borderColor: `rgba(${feat.color === "#E91E8C" ? "233,30,140" : feat.color === "#D4A017" ? "212,160,23" : "79,142,247"},0.2)`,
+              borderColor: `${feat.color}33`,
               backdropFilter: "blur(12px)",
               boxShadow: `0 0 40px ${feat.glow}, inset 0 1px 0 rgba(255,255,255,0.06)`,
             }}
             initial={{ opacity: 0, y: 40, scale: 0.92 }}
             animate={phase >= i + 1 ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 40, scale: 0.92 }}
-            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
             <div
-              className="w-[3.5vw] h-[3.5vw] rounded-xl flex items-center justify-center text-[1.6vw]"
+              className="w-[2.8vw] h-[2.8vw] rounded-xl flex items-center justify-center text-[1.3vw]"
               style={{ background: `${feat.glow}`, border: `1px solid ${feat.color}40` }}
             >
               {feat.icon}
             </div>
-            <div className="text-[0.9vw] font-bold tracking-[0.18em] uppercase" style={{ color: feat.color }}>
+            <div className="text-[0.75vw] font-bold tracking-[0.18em] uppercase" style={{ color: feat.color }}>
               {feat.label}
             </div>
-            <div className="font-serif text-[1.5vw] leading-snug text-white">
+            <div className="font-serif text-[1.15vw] leading-snug text-white">
               {feat.title}
             </div>
-            <div className="text-[1vw] leading-relaxed text-white/50">
+            <div className="text-[0.85vw] leading-relaxed text-white/50">
               {feat.desc}
             </div>
           </motion.div>
         ))}
       </div>
+
+      {/* "and so much more" footer */}
+      <motion.div
+        className="mt-[2vw] flex items-center gap-3"
+        initial={{ opacity: 0, y: 20 }}
+        animate={phase >= 6 ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+      >
+        <span
+          className="font-serif italic text-[1.6vw]"
+          style={{ background: "linear-gradient(135deg, #D4A017 0%, #F5C842 50%, #D4A017 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
+        >
+          …and so much more
+        </span>
+      </motion.div>
     </motion.div>
   );
 }

@@ -126,7 +126,7 @@ export default function Landing() {
 
   return (
     <div className="dark min-h-screen bg-background flex flex-col">
-      <header className="px-8 py-4 flex items-center justify-between border-b border-primary/20 bg-black/60 backdrop-blur-md">
+      <header className="px-8 py-4 flex items-center justify-between border-b border-primary/20 bg-background/80 backdrop-blur-md">
         <div className="flex items-center">
           <img src="/logo.png" alt="A.I Do" className="h-32 w-auto object-contain" />
         </div>
@@ -217,6 +217,14 @@ export default function Landing() {
                 <p className="text-white/65 text-sm leading-relaxed">{desc}</p>
               </div>
             ))}
+          </div>
+          <div className="mt-10 flex justify-center">
+            <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 border border-primary/20">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="brand-gradient-text font-serif text-lg font-semibold">
+                {t("landing.features_more", "…and so much more")}
+              </span>
+            </div>
           </div>
         </section>
 
