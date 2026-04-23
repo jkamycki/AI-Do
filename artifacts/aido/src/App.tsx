@@ -248,6 +248,11 @@ function LanguageSyncProvider() {
   const { data: profile } = useGetProfile();
   useEffect(() => {
     if (!profile?.preferredLanguage) return;
+    // Only seed the UI language from the workspace profile if THIS user has
+    // never picked one themselves. Otherwise each collaborator's choice would
+    // overwrite the others. The shared profile.preferredLanguage continues to
+    // drive AI/vendor-email language at the workspace level.
+    if (localStorage.getItem("aido_language")) return;
     const code = LANG_NAME_TO_CODE[profile.preferredLanguage] ?? "en";
     if (i18n.language !== code) {
       i18n.changeLanguage(code);

@@ -200,39 +200,13 @@ function LanguageSwitcherCard() {
   const hasChange = selected !== null && selected !== (profile?.preferredLanguage ?? "English");
 
   function save() {
-    if (!profile) return;
-    saveProfile.mutate(
-      {
-        data: {
-          partner1Name: profile.partner1Name,
-          partner2Name: profile.partner2Name,
-          weddingDate: profile.weddingDate,
-          ceremonyTime: profile.ceremonyTime,
-          receptionTime: profile.receptionTime,
-          venue: profile.venue,
-          location: profile.location,
-          venueCity: profile.venueCity ?? undefined,
-          venueState: profile.venueState ?? undefined,
-          guestCount: profile.guestCount,
-          totalBudget: profile.totalBudget,
-          weddingVibe: profile.weddingVibe,
-          preferredLanguage: current,
-        },
-      },
-      {
-        onSuccess: () => {
-          const code = LANG_NAME_TO_CODE[current] ?? "en";
-          i18n.changeLanguage(code);
-          localStorage.setItem("aido_language", code);
-          qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
-          setSelected(null);
-          toast({ title: "Language updated", description: `Switched to ${current}.` });
-        },
-        onError: () => {
-          toast({ variant: "destructive", title: "Error", description: "Could not save language." });
-        },
-      }
-    );
+    // The display language is stored per-user (in this browser only) so each
+    // collaborator can pick their own language without affecting the others.
+    const code = LANG_NAME_TO_CODE[current] ?? "en";
+    i18n.changeLanguage(code);
+    localStorage.setItem("aido_language", code);
+    setSelected(null);
+    toast({ title: "Language updated", description: `Switched to ${current}.` });
   }
 
   return (
