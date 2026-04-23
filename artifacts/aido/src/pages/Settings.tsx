@@ -621,7 +621,7 @@ export default function SettingsPage() {
                       href={newInviteLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 text-xs bg-background border rounded-lg px-3 py-2 font-mono truncate text-primary underline hover:text-primary/80 transition-colors"
+                      className="flex-1 text-xs bg-background border border-border rounded-lg px-3 py-2 font-mono truncate text-foreground underline decoration-primary/60 underline-offset-2 hover:text-primary transition-colors"
                     >
                       {newInviteLink}
                     </a>
