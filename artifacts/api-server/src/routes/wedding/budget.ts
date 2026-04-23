@@ -20,12 +20,20 @@ async function getBudgetWithItems(budgetId: number, profileUserId?: string) {
   const linkedByItem = new Map<number, LinkedVendor[]>();
 
   if (profileUserId && itemIds.length > 0) {
-    const linkedVendorRows = await db
+    // Fetch ALL vendors for this workspace — link by explicit budgetItemId OR by matching category
+    const allVendorRows = await db
       .select()
       .from(vendors)
-      .where(and(eq(vendors.userId, profileUserId), inArray(vendors.budgetItemId, itemIds)));
+      .where(eq(vendors.userId, profileUserId));
 
-    const vendorIds = linkedVendorRows.map(v => v.id);
+    // Build category -> first matching budget item id (case-insensitive, trimmed)
+    const categoryToItemId = new Map<string, number>();
+    for (const it of items) {
+      const key = (it.category ?? "").trim().toLowerCase();
+      if (key && !categoryToItemId.has(key)) categoryToItemId.set(key, it.id);
+    }
+
+    const vendorIds = allVendorRows.map(v => v.id);
     const paidByVendor: Record<number, number> = {};
     if (vendorIds.length > 0) {
       const paidPayments = await db
@@ -37,15 +45,22 @@ async function getBudgetWithItems(budgetId: number, profileUserId?: string) {
       }
     }
 
-    for (const v of linkedVendorRows) {
-      if (v.budgetItemId == null) continue;
+    for (const v of allVendorRows) {
+      const explicitId = v.budgetItemId ?? null;
+      const fallbackId = explicitId == null
+        ? (categoryToItemId.get((v.category ?? "").trim().toLowerCase()) ?? null)
+        : null;
+      const linkId = explicitId ?? fallbackId;
+      if (linkId == null) continue;
+      // Skip if explicit id doesn't belong to this profile's items
+      if (!itemIds.includes(linkId)) continue;
       const totalCost = Number(v.totalCost);
       const deposit = Number(v.depositAmount);
       const milestones = paidByVendor[v.id] ?? 0;
       const totalPaid = deposit + milestones;
-      const arr = linkedByItem.get(v.budgetItemId) ?? [];
+      const arr = linkedByItem.get(linkId) ?? [];
       arr.push({ id: v.id, name: v.name, category: v.category, totalCost, totalPaid });
-      linkedByItem.set(v.budgetItemId, arr);
+      linkedByItem.set(linkId, arr);
     }
   }
 

@@ -317,28 +317,30 @@ function AddEditVendorDialog({
                 placeholder="0.00"
               />
             </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Linked Budget Line</Label>
-              <Select
-                value={form.budgetItemId || "none"}
-                onValueChange={(v) => setForm({ ...form, budgetItemId: v === "none" ? "" : v })}
-              >
-                <SelectTrigger data-testid="select-vendor-budget-item">
-                  <SelectValue placeholder="Not linked to a budget line" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— Not linked —</SelectItem>
-                  {budgetItemOptions.map((bi) => (
-                    <SelectItem key={bi.id} value={String(bi.id)}>
-                      {bi.category}{bi.vendor ? ` — ${bi.vendor}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Linking rolls this vendor's cost & payments into the chosen budget category automatically.
-              </p>
-            </div>
+            {(() => {
+              const matchedItem = budgetItemOptions.find(
+                (bi) => bi.category.trim().toLowerCase() === form.category.trim().toLowerCase()
+              );
+              if (!form.category) return null;
+              return (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <div className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-foreground/80">
+                    <span className="mt-0.5 text-primary">↪</span>
+                    <div>
+                      {matchedItem ? (
+                        <>
+                          This vendor's costs & payments will <strong>auto-link</strong> to your <strong>{matchedItem.category}</strong> budget line.
+                        </>
+                      ) : (
+                        <>
+                          No matching <strong>{form.category}</strong> budget line yet — add one in <strong>Budget</strong> with the same category and they'll link automatically.
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Vendor Portal / Booking Link</Label>
               <Input
