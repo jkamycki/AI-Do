@@ -6,6 +6,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 import { logActivity, resolveProfile } from "../../lib/workspaceAccess";
+import { normalizeCategory } from "../../lib/categoryMatch";
 
 const router = Router();
 async function getBudgetWithItems(budgetId: number, profileUserId?: string) {
@@ -26,43 +27,10 @@ async function getBudgetWithItems(budgetId: number, profileUserId?: string) {
       .from(vendors)
       .where(eq(vendors.userId, profileUserId));
 
-    // Normalize a category/role label down to a comparable root, e.g.
-    //   "Photographer", "Photography", "photographers" → "photograph"
-    //   "Caterer", "Catering & Bar"                    → "cater"
-    //   "DJ"                                           → "music"
-    //   "Florist", "Florals & Decor"                   → "floral"
-    const SYNONYMS: Array<[RegExp, string]> = [
-      [/\b(dj|band|musician|music)\b/i, "music"],
-      [/\b(photograph\w*)\b/i, "photograph"],
-      [/\b(videograph\w*|video|cinematograph\w*)\b/i, "videograph"],
-      [/\b(cater\w*|food|bar|drink|beverage)\b/i, "cater"],
-      [/\b(florist|floral\w*|flower\w*|decor\w*)\b/i, "floral"],
-      [/\b(venue|reception|ceremony)\b/i, "venue"],
-      [/\b(cake|baker\w*|pastr\w*|dessert\w*)\b/i, "cake"],
-      [/\b(officiant|minister|priest|rabbi)\b/i, "officiant"],
-      [/\b(transport\w*|limo|car|shuttle)\b/i, "transport"],
-      [/\b(invit\w*|stationer\w*|paper)\b/i, "stationery"],
-      [/\b(attire|dress|suit|tux|gown|beauty|hair|makeup|hmua)\b/i, "attire"],
-      [/\b(planner|coordinator|coordination)\b/i, "planner"],
-      [/\b(favor\w*|gift\w*)\b/i, "favors"],
-      [/\b(honeymoon|travel)\b/i, "honeymoon"],
-      [/\b(rental\w*)\b/i, "rentals"],
-    ];
-    const normalize = (raw: string | null | undefined): string => {
-      const s = (raw ?? "").trim().toLowerCase();
-      if (!s) return "";
-      for (const [re, root] of SYNONYMS) if (re.test(s)) return root;
-      // Fall back: strip trailing "s", "er", "ers", "ing" so plurals/role-forms still match
-      return s.replace(/\s*&.*$/, "")  // drop "& Bar", "& Decor"
-              .replace(/(ers|er|ing|ist|s)\b/g, "")
-              .replace(/[^a-z0-9]+/g, "")
-              .trim();
-    };
-
     // Build normalized-root -> first matching budget item id
     const rootToItemId = new Map<string, number>();
     for (const it of items) {
-      const key = normalize(it.category);
+      const key = normalizeCategory(it.category);
       if (key && !rootToItemId.has(key)) rootToItemId.set(key, it.id);
     }
 
