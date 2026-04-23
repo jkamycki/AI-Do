@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useAuth } from "@clerk/react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
 import {
@@ -525,6 +526,7 @@ function FileUploadSection({
   vendor: { id: number; files: Array<{ name: string; url: string; type: string }> };
 }) {
   const { toast } = useToast();
+  const { getToken } = useAuth();
   const qc = useQueryClient();
   const pendingFileRef = useRef<File | null>(null);
 
@@ -540,6 +542,7 @@ function FileUploadSection({
   });
 
   const { uploadFile, isUploading } = useUpload({
+    getToken,
     onSuccess: (response) => {
       const newFile = {
         name: pendingFileRef.current?.name ?? response.objectPath.split("/").pop() ?? "File",

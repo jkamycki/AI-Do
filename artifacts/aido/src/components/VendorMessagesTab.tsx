@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetOrCreateConversationByVendor,
@@ -49,6 +50,7 @@ interface PendingAttachment {
 export function VendorMessagesTab({ vendorId }: Props) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { getToken } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState("");
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
@@ -226,6 +228,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
   }, [messages?.length]);
 
   const upload = useUpload({
+    getToken,
     onError: (e) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
   });
 

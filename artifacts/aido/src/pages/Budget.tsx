@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useAuth } from "@clerk/react";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
@@ -104,6 +105,7 @@ function formatDate(d: string | null) {
 
 export default function Budget() {
   const { toast } = useToast();
+  const { getToken } = useAuth();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
@@ -134,6 +136,7 @@ export default function Budget() {
   const [form, setForm] = useState<ManualExpenseFormState>(emptyManualForm());
 
   const upload = useUpload({
+    getToken,
     onError: (e) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
   });
 
