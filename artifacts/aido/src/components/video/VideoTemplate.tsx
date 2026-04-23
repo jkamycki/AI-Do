@@ -1,10 +1,12 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import { useVideoPlayer } from "@/lib/video/hooks";
 import { Scene1 } from "./video_scenes/Scene1";
 import { Scene2 } from "./video_scenes/Scene2";
 import { Scene3 } from "./video_scenes/Scene3";
 import { Scene4 } from "./video_scenes/Scene4";
 import { Scene5 } from "./video_scenes/Scene5";
+import { Volume2, VolumeX } from "lucide-react";
 
 const SCENE_DURATIONS = {
   hero: 4500,
@@ -23,8 +25,92 @@ const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
   duration: Math.random() * 3 + 2,
 }));
 
+// Soft chord progression (one chord per scene) — gentle, romantic, ambient pad.
+// Frequencies in Hz. Each chord = root + third + fifth + soft octave color tone.
+const SCENE_CHORDS: number[][] = [
+  [130.81, 164.81, 196.00, 261.63], // Scene 1 — C major (warm welcome)
+  [110.00, 130.81, 164.81, 220.00], // Scene 2 — A minor (planning, contemplative)
+  [174.61, 220.00, 261.63, 349.23], // Scene 3 — F major (uplift, features)
+  [146.83, 196.00, 246.94, 293.66], // Scene 4 — G major (Aria — bright)
+  [130.81, 164.81, 196.00, 392.00], // Scene 5 — C major (resolution, with high color)
+];
+
+function useAmbientSoundtrack(currentScene: number, enabled: boolean) {
+  const ctxRef = useRef<AudioContext | null>(null);
+  const masterGainRef = useRef<GainNode | null>(null);
+  const voicesRef = useRef<{ osc: OscillatorNode; gain: GainNode }[]>([]);
+
+  // Initialize / teardown the audio graph when toggled.
+  useEffect(() => {
+    if (!enabled) return;
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const master = ctx.createGain();
+    master.gain.value = 0;
+    master.connect(ctx.destination);
+    // Fade in master volume to a gentle level
+    master.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 1.5);
+
+    // Start 4 sine voices (one per chord tone) + 1 soft sub for warmth.
+    const voices = Array.from({ length: 4 }).map(() => {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      const gain = ctx.createGain();
+      gain.gain.value = 0.22;
+      osc.connect(gain).connect(master);
+      osc.start();
+      return { osc, gain };
+    });
+
+    // Add a slow, breathing tremolo on master for organic motion
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.18;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.04;
+    lfo.connect(lfoGain).connect(master.gain);
+    lfo.start();
+
+    ctxRef.current = ctx;
+    masterGainRef.current = master;
+    voicesRef.current = voices;
+
+    return () => {
+      try {
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+        setTimeout(() => {
+          voices.forEach(v => { try { v.osc.stop(); } catch {} });
+          try { lfo.stop(); } catch {}
+          try { ctx.close(); } catch {}
+        }, 700);
+      } catch {}
+      ctxRef.current = null;
+      masterGainRef.current = null;
+      voicesRef.current = [];
+    };
+  }, [enabled]);
+
+  // Smoothly transition voice frequencies whenever the scene changes.
+  useEffect(() => {
+    const ctx = ctxRef.current;
+    const voices = voicesRef.current;
+    if (!ctx || voices.length === 0) return;
+    const chord = SCENE_CHORDS[currentScene] ?? SCENE_CHORDS[0];
+    const now = ctx.currentTime;
+    voices.forEach((v, i) => {
+      const target = chord[i] ?? chord[chord.length - 1];
+      v.osc.frequency.cancelScheduledValues(now);
+      v.osc.frequency.setValueAtTime(v.osc.frequency.value, now);
+      v.osc.frequency.exponentialRampToValueAtTime(target, now + 1.8);
+    });
+  }, [currentScene]);
+}
+
 export default function VideoTemplate() {
   const { currentScene } = useVideoPlayer({ durations: SCENE_DURATIONS });
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  useAmbientSoundtrack(currentScene, audioEnabled);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#07030d] text-white">
@@ -79,6 +165,16 @@ export default function VideoTemplate() {
           {currentScene === 4 && <Scene5 key="scene5" />}
         </AnimatePresence>
       </div>
+
+      {/* Sound toggle — sits in the bottom-right of the video */}
+      <button
+        onClick={() => setAudioEnabled(v => !v)}
+        className="absolute bottom-4 right-4 z-30 flex items-center gap-2 px-3 py-2 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 transition-all text-white/90 text-xs font-medium"
+        aria-label={audioEnabled ? "Mute soundtrack" : "Play soundtrack"}
+      >
+        {audioEnabled ? <Volume2 className="h-4 w-4 text-amber-300" /> : <VolumeX className="h-4 w-4" />}
+        <span>{audioEnabled ? "Sound on" : "Tap for sound"}</span>
+      </button>
     </div>
   );
 }
