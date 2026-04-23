@@ -931,89 +931,113 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Feature Cards */}
+      {/* Feature Cards — drag to reorder */}
       <div>
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">Planning Tools</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-          <FeatureCard
-            icon={Clock}
-            title="Timeline"
-            description="A minute-by-minute schedule for your entire wedding day, built by AI from your profile."
-            cta="/timeline"
-            ctaLabel={summary.hasTimeline ? "View Timeline" : "Generate Timeline"}
-            stat={summary.hasTimeline
-              ? <div className="text-sm font-medium text-primary">{summary.timelineEventCount} events planned</div>
-              : <div className="text-xs text-muted-foreground">No timeline yet — let AI build one</div>
-            }
-            testId="btn-goto-timeline"
-          />
-
-          <FeatureCard
-            icon={DollarSign}
-            title="Budget Manager"
-            description="Track every expense and get AI-powered cost predictions based on your location and guest count."
-            cta="/budget"
-            ctaLabel="Manage Budget"
-            stat={
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>${summary.budgetSpent.toLocaleString()} spent</span>
-                  <span>{budgetPct}%</span>
-                </div>
-                <Progress value={budgetPct} className="h-1.5" />
-              </div>
-            }
-            testId="btn-goto-budget"
-          />
-
-          <FeatureCard
-            icon={CheckSquare}
-            title="Checklist"
-            description="Month-by-month planning tasks tailored to your wedding date, guest count, and vibe."
-            cta="/checklist"
-            ctaLabel={summary.hasChecklist ? "Continue Checklist" : "Create Checklist"}
-            stat={
-              summary.hasChecklist ? (
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{summary.checklistCompleted} of {summary.checklistTotal} done</span>
-                    <span>{Math.round(summary.checklistProgress)}%</span>
-                  </div>
-                  <Progress value={summary.checklistProgress} className="h-1.5" />
-                </div>
-              ) : (
-                <div className="text-xs text-muted-foreground">Generate your personalized task list</div>
-              )
-            }
-            testId="btn-goto-checklist"
-          />
-
-          <FeatureCard
-            icon={UsersRound}
-            title="Guest List"
-            description="Track every guest's RSVP, meal choice, plus one, and table assignment all in one place."
-            cta="/guests"
-            ctaLabel="Manage Guests"
-            stat={
-              summary.guestCount != null && summary.guestCount > 0
-                ? <div className="text-sm font-medium text-primary">{summary.guestCount} guests added</div>
-                : <div className="text-xs text-muted-foreground">No guests added yet</div>
-            }
-            testId="btn-goto-guests"
-          />
-
-          <FeatureCard
-            icon={Smartphone}
-            title="Day-Of Mode"
-            description="On your wedding day, get a clean mobile view of your timeline and instant AI help for any emergency."
-            cta="/day-of"
-            ctaLabel="Open Day-Of Mode"
-            accent
-            testId="btn-day-of-mode"
-          />
-
-        </div>
+        <DraggableRow
+          storageKey="aido:dashboard:planningToolsOrder"
+          gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+          hint="Drag any tool to rearrange your planning tools"
+          items={[
+            {
+              id: "timeline",
+              node: (
+                <FeatureCard
+                  icon={Clock}
+                  title="Timeline"
+                  description="A minute-by-minute schedule for your entire wedding day, built by AI from your profile."
+                  cta="/timeline"
+                  ctaLabel={summary.hasTimeline ? "View Timeline" : "Generate Timeline"}
+                  stat={summary.hasTimeline
+                    ? <div className="text-sm font-medium text-primary">{summary.timelineEventCount} events planned</div>
+                    : <div className="text-xs text-muted-foreground">No timeline yet — let AI build one</div>
+                  }
+                  testId="btn-goto-timeline"
+                />
+              ),
+            },
+            {
+              id: "budget",
+              node: (
+                <FeatureCard
+                  icon={DollarSign}
+                  title="Budget Manager"
+                  description="Track every expense and get AI-powered cost predictions based on your location and guest count."
+                  cta="/budget"
+                  ctaLabel="Manage Budget"
+                  stat={
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>${summary.budgetSpent.toLocaleString()} spent</span>
+                        <span>{budgetPct}%</span>
+                      </div>
+                      <Progress value={budgetPct} className="h-1.5" />
+                    </div>
+                  }
+                  testId="btn-goto-budget"
+                />
+              ),
+            },
+            {
+              id: "checklist",
+              node: (
+                <FeatureCard
+                  icon={CheckSquare}
+                  title="Checklist"
+                  description="Month-by-month planning tasks tailored to your wedding date, guest count, and vibe."
+                  cta="/checklist"
+                  ctaLabel={summary.hasChecklist ? "Continue Checklist" : "Create Checklist"}
+                  stat={
+                    summary.hasChecklist ? (
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{summary.checklistCompleted} of {summary.checklistTotal} done</span>
+                          <span>{Math.round(summary.checklistProgress)}%</span>
+                        </div>
+                        <Progress value={summary.checklistProgress} className="h-1.5" />
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">Generate your personalized task list</div>
+                    )
+                  }
+                  testId="btn-goto-checklist"
+                />
+              ),
+            },
+            {
+              id: "guests",
+              node: (
+                <FeatureCard
+                  icon={UsersRound}
+                  title="Guest List"
+                  description="Track every guest's RSVP, meal choice, plus one, and table assignment all in one place."
+                  cta="/guests"
+                  ctaLabel="Manage Guests"
+                  stat={
+                    summary.guestCount != null && summary.guestCount > 0
+                      ? <div className="text-sm font-medium text-primary">{summary.guestCount} guests added</div>
+                      : <div className="text-xs text-muted-foreground">No guests added yet</div>
+                  }
+                  testId="btn-goto-guests"
+                />
+              ),
+            },
+            {
+              id: "dayOf",
+              node: (
+                <FeatureCard
+                  icon={Smartphone}
+                  title="Day-Of Mode"
+                  description="On your wedding day, get a clean mobile view of your timeline and instant AI help for any emergency."
+                  cta="/day-of"
+                  ctaLabel="Open Day-Of Mode"
+                  accent
+                  testId="btn-day-of-mode"
+                />
+              ),
+            },
+          ]}
+        />
       </div>
     </div>
   );
