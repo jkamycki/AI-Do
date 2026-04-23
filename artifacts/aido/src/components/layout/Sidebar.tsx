@@ -298,7 +298,7 @@ export function Sidebar() {
       <div
         className={`
           fixed top-0 left-0 h-full w-64 bg-card border-r z-40 transform transition-transform duration-300 ease-in-out pt-20 md:pt-0
-          flex flex-col
+          flex flex-col overflow-y-auto
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
       >
@@ -319,7 +319,7 @@ export function Sidebar() {
           </div>
         )}
 
-        <nav className="flex-1 p-4 overflow-y-auto space-y-4">
+        <nav className="flex-1 p-4 space-y-4">
           {navSections.map((section) => (
             <div key={section.labelKey}>
               <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
