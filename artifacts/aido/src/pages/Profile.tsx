@@ -452,30 +452,6 @@ export default function Profile() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="preferredLanguage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Preferred Language for AI Responses</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || "English"}>
-                      <FormControl>
-                        <SelectTrigger className="bg-background" data-testid="select-language">
-                          <SelectValue placeholder="Select language" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {LANGUAGES.map((lang) => (
-                          <SelectItem key={lang} value={lang}>{lang}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">Aria and vendor emails will respond in this language. You can also change this in Settings.</p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <div className="flex justify-end gap-3 pt-4">
                 <Button
                   type="button"
