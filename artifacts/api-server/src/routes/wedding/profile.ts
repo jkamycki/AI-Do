@@ -33,7 +33,26 @@ router.post("/profile", requireAuth, async (req, res) => {
       partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
       venue, location, venueCity, venueState, venueZip, guestCount, totalBudget, weddingVibe,
       preferredLanguage, vendorBccEmail,
+      ceremonyAtVenue, ceremonyVenueName, ceremonyAddress, ceremonyCity, ceremonyState, ceremonyZip,
     } = req.body;
+    const ceremonyAtVenueBool = ceremonyAtVenue === undefined ? true : Boolean(ceremonyAtVenue);
+    const ceremonyFields = ceremonyAtVenueBool
+      ? {
+          ceremonyAtVenue: true,
+          ceremonyVenueName: null,
+          ceremonyAddress: null,
+          ceremonyCity: null,
+          ceremonyState: null,
+          ceremonyZip: null,
+        }
+      : {
+          ceremonyAtVenue: false,
+          ceremonyVenueName: ceremonyVenueName ?? null,
+          ceremonyAddress: ceremonyAddress ?? null,
+          ceremonyCity: ceremonyCity ?? null,
+          ceremonyState: ceremonyState ?? null,
+          ceremonyZip: ceremonyZip ?? null,
+        };
     const hasVendorBccEmail = Object.prototype.hasOwnProperty.call(req.body, "vendorBccEmail");
     const normalizedVendorBcc =
       typeof vendorBccEmail === "string" ? (vendorBccEmail.trim() || null) : null;
@@ -54,6 +73,7 @@ router.post("/profile", requireAuth, async (req, res) => {
           partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
           venue, location, venueCity: venueCity ?? null, venueState: venueState ?? null,
           venueZip: venueZip ?? null,
+          ...ceremonyFields,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           preferredLanguage: preferredLanguage ?? "English",
           ...(hasVendorBccEmail ? { vendorBccEmail: normalizedVendorBcc } : {}),
@@ -75,6 +95,7 @@ router.post("/profile", requireAuth, async (req, res) => {
           partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
           venue, location, venueCity: venueCity ?? null, venueState: venueState ?? null,
           venueZip: venueZip ?? null,
+          ...ceremonyFields,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           preferredLanguage: preferredLanguage ?? "English",
         })

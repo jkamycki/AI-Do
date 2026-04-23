@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CalendarIcon, Save, RotateCcw } from "lucide-react";
 
 const LANGUAGES = [
@@ -30,6 +31,12 @@ const profileSchema = z.object({
   venueCity: z.string().optional().default(""),
   venueState: z.string().optional().default(""),
   venueZip: z.string().optional().default(""),
+  ceremonyAtVenue: z.boolean().default(true),
+  ceremonyVenueName: z.string().optional().default(""),
+  ceremonyAddress: z.string().optional().default(""),
+  ceremonyCity: z.string().optional().default(""),
+  ceremonyState: z.string().optional().default(""),
+  ceremonyZip: z.string().optional().default(""),
   guestCount: z.coerce.number().min(1, "Must be at least 1"),
   totalBudget: z.coerce.number().min(1, "Must be at least 1"),
   weddingVibe: z.string().min(1, "Vibe is required"),
@@ -57,6 +64,12 @@ export default function Profile() {
       venueCity: "",
       venueState: "",
       venueZip: "",
+      ceremonyAtVenue: true,
+      ceremonyVenueName: "",
+      ceremonyAddress: "",
+      ceremonyCity: "",
+      ceremonyState: "",
+      ceremonyZip: "",
       guestCount: 100,
       totalBudget: 30000,
       weddingVibe: "Romantic & Elegant",
@@ -77,6 +90,12 @@ export default function Profile() {
         venueCity: profile.venueCity ?? "",
         venueState: profile.venueState ?? "",
         venueZip: (profile as any).venueZip ?? "",
+        ceremonyAtVenue: (profile as any).ceremonyAtVenue ?? true,
+        ceremonyVenueName: (profile as any).ceremonyVenueName ?? "",
+        ceremonyAddress: (profile as any).ceremonyAddress ?? "",
+        ceremonyCity: (profile as any).ceremonyCity ?? "",
+        ceremonyState: (profile as any).ceremonyState ?? "",
+        ceremonyZip: (profile as any).ceremonyZip ?? "",
         guestCount: profile.guestCount,
         totalBudget: profile.totalBudget,
         weddingVibe: profile.weddingVibe,
@@ -280,6 +299,103 @@ export default function Profile() {
                 />
               </div>
 
+              <div className="rounded-lg border border-primary/10 bg-primary/5 p-5 space-y-5">
+                <FormField
+                  control={form.control}
+                  name="ceremonyAtVenue"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start gap-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-ceremony-at-venue"
+                          className="mt-0.5"
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-tight">
+                        <FormLabel className="cursor-pointer">Ceremony will be held at the reception venue</FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Uncheck if your ceremony is at a separate location (church, garden, etc.).
+                        </p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                {!form.watch("ceremonyAtVenue") && (
+                  <div className="space-y-4 pt-2 border-t border-primary/10">
+                    <FormField
+                      control={form.control}
+                      name="ceremonyVenueName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ceremony Location Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="St. Mary's Cathedral" {...field} data-testid="input-ceremony-venue-name" className="bg-background" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="ceremonyAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Street Address</FormLabel>
+                          <FormControl>
+                            <Input placeholder="200 Broad Street" {...field} data-testid="input-ceremony-address" className="bg-background" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="ceremonyCity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>City</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Charleston" {...field} data-testid="input-ceremony-city" className="bg-background" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="ceremonyState"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State</FormLabel>
+                            <FormControl>
+                              <Input placeholder="SC" {...field} data-testid="input-ceremony-state" className="bg-background" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="ceremonyZip"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ZIP Code</FormLabel>
+                            <FormControl>
+                              <Input placeholder="29401" {...field} data-testid="input-ceremony-zip" className="bg-background" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="grid md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -376,6 +492,12 @@ export default function Profile() {
                     venueCity: "",
                     venueState: "",
                     venueZip: "",
+                    ceremonyAtVenue: true,
+                    ceremonyVenueName: "",
+                    ceremonyAddress: "",
+                    ceremonyCity: "",
+                    ceremonyState: "",
+                    ceremonyZip: "",
                     guestCount: 0,
                     totalBudget: 0,
                     weddingVibe: "",
