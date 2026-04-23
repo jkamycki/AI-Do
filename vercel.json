@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install --frozen-lockfile=false",
+  "buildCommand": "pnpm --filter @workspace/aido... run build",
+  "outputDirectory": "artifacts/aido/dist/public",
+  "framework": null,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
