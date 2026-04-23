@@ -33,37 +33,57 @@ function useTimerPlayer() {
   return currentScene;
 }
 
-// Warm, cinematic ambient progression in C major.
-// Each chord is held for CHORD_BEATS * BEAT_MS (= 8s by default) so one loop
-// is roughly 64s — matches the total video length without obvious looping.
-const BEAT_MS = 1000;
-const CHORD_BEATS = 8;
+// ────────────────────────────────────────────────────────────────────────────
+// Catchy in-browser instrumental: piano + bass + soft beat over Am–F–C–G.
+// 110 BPM, 16-bar loop (~35s) repeats seamlessly under the video.
+// ────────────────────────────────────────────────────────────────────────────
+const BPM = 110;
+const BEAT_SEC = 60 / BPM;          // 0.545s
+const STEP_SEC = BEAT_SEC / 4;      // 16th note = 0.136s
+const BAR_STEPS = 16;
+const LOOP_BARS = 16;
 
-// MIDI note numbers
-const PROGRESSION: number[][] = [
-  [60, 64, 67, 71, 74], // Cmaj9
-  [57, 60, 64, 67, 71], // Am9
-  [53, 57, 60, 64, 67], // Fmaj9
-  [55, 59, 62, 65, 69], // G13
-  [52, 55, 59, 62, 65], // Em11
-  [57, 60, 64, 67, 71], // Am9
-  [50, 53, 57, 60, 64], // Dm9
-  [55, 59, 62, 65, 69], // G13 → resolves back to Cmaj9
+// One chord per bar, 4-bar progression repeats 4× across the loop.
+const CHORDS: { root: number; voicing: number[] }[] = [
+  { root: 45, voicing: [57, 60, 64, 67] }, // Am  (A2 bass, A3 C4 E4 G4)
+  { root: 41, voicing: [53, 57, 60, 64] }, // F
+  { root: 36, voicing: [52, 55, 60, 64] }, // C   (C2 bass, E3 G3 C4 E4)
+  { root: 43, voicing: [55, 59, 62, 65] }, // G7
+];
+
+// 4-bar melody hook in 16th-note grid. [stepInBar, midi, durationSteps, vel]
+type MelStep = [number, number, number, number];
+const HOOK: MelStep[][] = [
+  // Bar 1 — Am
+  [
+    [0, 72, 2, 0.55], [2, 76, 2, 0.55], [4, 79, 3, 0.7],
+    [8, 77, 2, 0.5], [10, 76, 2, 0.55], [12, 72, 4, 0.55],
+  ],
+  // Bar 2 — F
+  [
+    [0, 72, 2, 0.55], [2, 77, 2, 0.6], [4, 81, 4, 0.7],
+    [10, 79, 2, 0.55], [12, 77, 4, 0.55],
+  ],
+  // Bar 3 — C
+  [
+    [0, 79, 2, 0.6], [2, 76, 2, 0.55], [4, 72, 3, 0.55],
+    [8, 76, 2, 0.55], [10, 79, 2, 0.6], [12, 84, 4, 0.75],
+  ],
+  // Bar 4 — G (descending resolve)
+  [
+    [0, 81, 2, 0.6], [2, 79, 2, 0.55], [4, 77, 2, 0.5],
+    [6, 76, 2, 0.5], [8, 74, 2, 0.5], [10, 72, 6, 0.55],
+  ],
 ];
 
 const midiToFreq = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 
-function useAmbientMusic(enabled: boolean) {
-  const ctxRef = useRef<AudioContext | null>(null);
-  const masterRef = useRef<GainNode | null>(null);
+function useCatchyMusic(enabled: boolean) {
   const stopRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!enabled) {
-      if (stopRef.current) {
-        stopRef.current();
-        stopRef.current = null;
-      }
+      if (stopRef.current) { stopRef.current(); stopRef.current = null; }
       return;
     }
 
@@ -71,139 +91,184 @@ function useAmbientMusic(enabled: boolean) {
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const ctx = new AC();
-    ctxRef.current = ctx;
 
-    // Master + gentle compressor + lowpass for warmth
+    // ── Master chain ──────────────────────────────────────────────
     const master = ctx.createGain();
     master.gain.value = 0;
-    master.gain.linearRampToValueAtTime(0.42, ctx.currentTime + 1.2);
+    master.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 0.6);
 
-    const lowpass = ctx.createBiquadFilter();
-    lowpass.type = "lowpass";
-    lowpass.frequency.value = 2400;
-    lowpass.Q.value = 0.4;
-
-    // Lush stereo delay for ambience
-    const delayL = ctx.createDelay(1.5);
-    const delayR = ctx.createDelay(1.5);
-    delayL.delayTime.value = 0.43;
-    delayR.delayTime.value = 0.61;
-    const fbL = ctx.createGain();
-    const fbR = ctx.createGain();
-    fbL.gain.value = 0.32;
-    fbR.gain.value = 0.32;
-    const wetGain = ctx.createGain();
-    wetGain.gain.value = 0.35;
-    const merger = ctx.createChannelMerger(2);
-
-    delayL.connect(fbL).connect(delayR);
-    delayR.connect(fbR).connect(delayL);
-    delayL.connect(merger, 0, 0);
-    delayR.connect(merger, 0, 1);
-    merger.connect(wetGain).connect(master);
-
-    lowpass.connect(master);
-    lowpass.connect(delayL);
+    const masterLP = ctx.createBiquadFilter();
+    masterLP.type = "lowpass";
+    masterLP.frequency.value = 7000;
+    masterLP.Q.value = 0.3;
+    masterLP.connect(master);
     master.connect(ctx.destination);
-    masterRef.current = master;
 
-    const sources: { stop: (t: number) => void }[] = [];
+    // Stereo delay send for sparkle
+    const delaySend = ctx.createGain();
+    delaySend.gain.value = 0.18;
+    const delayL = ctx.createDelay(1);
+    const delayR = ctx.createDelay(1);
+    delayL.delayTime.value = BEAT_SEC * 0.75;
+    delayR.delayTime.value = BEAT_SEC * 1.5;
+    const fb = ctx.createGain();
+    fb.gain.value = 0.25;
+    const merger = ctx.createChannelMerger(2);
+    delaySend.connect(delayL); delaySend.connect(delayR);
+    delayL.connect(fb); fb.connect(delayR); delayR.connect(delayL);
+    delayL.connect(merger, 0, 0); delayR.connect(merger, 0, 1);
+    merger.connect(masterLP);
 
-    // Schedule one chord at time `t` (seconds, AudioContext time).
-    const playChord = (notes: number[], t: number, durationSec: number) => {
-      const attack = 1.6;
-      const release = 2.4;
-      const sustain = Math.max(0.5, durationSec - attack - release);
-
-      // Soft sub-bass: root one octave down on a sine
-      const bassFreq = midiToFreq(notes[0] - 12);
-      const bassOsc = ctx.createOscillator();
-      bassOsc.type = "sine";
-      bassOsc.frequency.value = bassFreq;
-      const bassGain = ctx.createGain();
-      bassGain.gain.setValueAtTime(0.0001, t);
-      bassGain.gain.exponentialRampToValueAtTime(0.18, t + attack);
-      bassGain.gain.setValueAtTime(0.18, t + attack + sustain);
-      bassGain.gain.exponentialRampToValueAtTime(0.0001, t + attack + sustain + release);
-      bassOsc.connect(bassGain).connect(lowpass);
-      bassOsc.start(t);
-      bassOsc.stop(t + attack + sustain + release + 0.1);
-      sources.push({ stop: (s) => { try { bassOsc.stop(s); } catch {} } });
-
-      // Pad voices: triangle + detuned sine pair per note for chorus
-      notes.forEach((midi, i) => {
-        const freq = midiToFreq(midi);
-        const detunes = [0, 6, -6];
-        const types: OscillatorType[] = ["triangle", "sine", "sine"];
-        detunes.forEach((det, k) => {
-          const osc = ctx.createOscillator();
-          osc.type = types[k];
-          osc.frequency.value = freq;
-          osc.detune.value = det;
-
-          const g = ctx.createGain();
-          const peak = (k === 0 ? 0.07 : 0.045) / Math.max(1, notes.length / 4);
-          g.gain.setValueAtTime(0.0001, t);
-          g.gain.exponentialRampToValueAtTime(peak, t + attack + i * 0.08);
-          g.gain.setValueAtTime(peak, t + attack + sustain);
-          g.gain.exponentialRampToValueAtTime(0.0001, t + attack + sustain + release);
-
-          osc.connect(g).connect(lowpass);
-          osc.start(t);
-          osc.stop(t + attack + sustain + release + 0.1);
-          sources.push({ stop: (s) => { try { osc.stop(s); } catch {} } });
-        });
-      });
-
-      // Sparkle: top note an octave up, plucked-ish, very quiet
-      const sparkleFreq = midiToFreq(notes[notes.length - 1] + 12);
-      const spOsc = ctx.createOscillator();
-      spOsc.type = "sine";
-      spOsc.frequency.value = sparkleFreq;
-      const spGain = ctx.createGain();
-      const spStart = t + 0.6;
-      spGain.gain.setValueAtTime(0.0001, spStart);
-      spGain.gain.exponentialRampToValueAtTime(0.04, spStart + 0.05);
-      spGain.gain.exponentialRampToValueAtTime(0.0001, spStart + 2.2);
-      spOsc.connect(spGain).connect(lowpass);
-      spOsc.start(spStart);
-      spOsc.stop(spStart + 2.4);
-      sources.push({ stop: (s) => { try { spOsc.stop(s); } catch {} } });
+    // ── Voices ────────────────────────────────────────────────────
+    // Piano-ish pluck (triangle + sine, fast attack, exp decay)
+    const playPiano = (midi: number, t: number, durSec: number, vel: number, sendDelay = false) => {
+      const f = midiToFreq(midi);
+      const g = ctx.createGain();
+      const peak = 0.16 * vel;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(peak * 0.45, t + 0.08);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.15, durSec));
+      const o1 = ctx.createOscillator(); o1.type = "triangle"; o1.frequency.value = f;
+      const o2 = ctx.createOscillator(); o2.type = "sine"; o2.frequency.value = f * 2;
+      const o2g = ctx.createGain(); o2g.gain.value = 0.25;
+      o1.connect(g); o2.connect(o2g).connect(g);
+      g.connect(masterLP);
+      if (sendDelay) g.connect(delaySend);
+      const end = t + durSec + 0.05;
+      o1.start(t); o2.start(t); o1.stop(end); o2.stop(end);
     };
 
-    // Schedule the entire progression and loop indefinitely.
-    const chordSec = (CHORD_BEATS * BEAT_MS) / 1000;
-    let scheduled = 0;
-    const scheduleAhead = () => {
-      const ahead = ctx.currentTime + 4; // schedule ~4s ahead
-      while (scheduled < ahead) {
-        const idx = Math.round(scheduled / chordSec) % PROGRESSION.length;
-        playChord(PROGRESSION[idx], ctx.currentTime + (scheduled - ctx.currentTime), chordSec);
-        scheduled += chordSec;
+    // Soft round bass (sine + saturated harmonic)
+    const playBass = (midi: number, t: number, durSec: number, vel = 0.7) => {
+      const f = midiToFreq(midi);
+      const g = ctx.createGain();
+      const peak = 0.32 * vel;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(peak * 0.6, t + durSec * 0.4);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + durSec);
+      const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = f;
+      const o2 = ctx.createOscillator(); o2.type = "triangle"; o2.frequency.value = f;
+      const o2g = ctx.createGain(); o2g.gain.value = 0.18;
+      o.connect(g); o2.connect(o2g).connect(g);
+      g.connect(masterLP);
+      o.start(t); o2.start(t); o.stop(t + durSec + 0.05); o2.stop(t + durSec + 0.05);
+    };
+
+    // Sustained chord pad (very quiet bed)
+    const playPad = (notes: number[], t: number, durSec: number) => {
+      notes.forEach((midi) => {
+        const f = midiToFreq(midi);
+        const g = ctx.createGain();
+        const peak = 0.025;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(peak, t + 0.4);
+        g.gain.setValueAtTime(peak, t + durSec - 0.3);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + durSec);
+        const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = f;
+        o.detune.value = (Math.random() - 0.5) * 8;
+        o.connect(g).connect(masterLP);
+        o.start(t); o.stop(t + durSec + 0.05);
+      });
+    };
+
+    // Soft kick (low sine thump)
+    const playKick = (t: number, vel = 0.7) => {
+      const o = ctx.createOscillator(); o.type = "sine";
+      const g = ctx.createGain();
+      o.frequency.setValueAtTime(120, t);
+      o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.55 * vel, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+      o.connect(g).connect(masterLP);
+      o.start(t); o.stop(t + 0.25);
+    };
+
+    // Hi-hat / shaker (filtered noise burst)
+    const noiseBuffer = (() => {
+      const b = ctx.createBuffer(1, ctx.sampleRate * 0.2, ctx.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      return b;
+    })();
+    const playHat = (t: number, vel = 0.4, length = 0.05) => {
+      const src = ctx.createBufferSource(); src.buffer = noiseBuffer;
+      const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 7000;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.07 * vel, t + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + length);
+      src.connect(hp).connect(g).connect(masterLP);
+      src.start(t); src.stop(t + length + 0.02);
+    };
+
+    // ── Schedule one full 16-bar loop starting at time `t0` ────────
+    const scheduleLoop = (t0: number) => {
+      const barSec = BAR_STEPS * STEP_SEC;
+      for (let bar = 0; bar < LOOP_BARS; bar++) {
+        const chord = CHORDS[bar % 4];
+        const barStart = t0 + bar * barSec;
+
+        // Pad bed (whole bar)
+        playPad(chord.voicing, barStart, barSec);
+
+        // Bass: root on beat 1, 5th on beat 3 (root +7), root again on offbeat 4
+        playBass(chord.root, barStart + 0 * BEAT_SEC, BEAT_SEC * 1.8, 0.75);
+        playBass(chord.root + 7, barStart + 2 * BEAT_SEC, BEAT_SEC * 1.5, 0.6);
+        playBass(chord.root, barStart + 3.5 * BEAT_SEC, BEAT_SEC * 0.5, 0.5);
+
+        // Drums: kick on 1 & 3, hat on every offbeat 8th
+        playKick(barStart + 0 * BEAT_SEC, 0.8);
+        playKick(barStart + 2 * BEAT_SEC, 0.7);
+        for (let i = 0; i < 8; i++) {
+          const t = barStart + i * BEAT_SEC * 0.5;
+          playHat(t, i % 2 === 0 ? 0.35 : 0.55);
+        }
+
+        // Piano chord stab on beats 2 & 4 (off-beat groove)
+        [1, 3].forEach((beat) => {
+          chord.voicing.forEach((n) => {
+            playPiano(n, barStart + beat * BEAT_SEC, 0.35, 0.4);
+          });
+        });
+
+        // Melody — main hook on bars 0-3, 8-11; variation (octave down) on 4-7, 12-15
+        const hookBar = bar % 4;
+        const transposeOctave = (bar >= 4 && bar < 8) || (bar >= 12) ? -12 : 0;
+        const velScale = transposeOctave ? 0.7 : 1;
+        HOOK[hookBar].forEach(([step, midi, durSteps, vel]) => {
+          const t = barStart + step * STEP_SEC;
+          playPiano(midi + transposeOctave, t, durSteps * STEP_SEC, vel * velScale, true);
+        });
       }
     };
-    // Start a bit ahead of "now" so the first chord doesn't click in.
-    scheduled = ctx.currentTime + 0.05;
-    scheduleAhead();
-    const interval = window.setInterval(scheduleAhead, 1000);
+
+    // Start scheduling slightly ahead, then re-schedule each loop cycle
+    const loopSec = LOOP_BARS * BAR_STEPS * STEP_SEC;
+    let nextLoopAt = ctx.currentTime + 0.1;
+    scheduleLoop(nextLoopAt);
+    nextLoopAt += loopSec;
+    const interval = window.setInterval(() => {
+      // Stay 2 loops ahead of currentTime so we never run dry
+      while (nextLoopAt < ctx.currentTime + loopSec) {
+        scheduleLoop(nextLoopAt);
+        nextLoopAt += loopSec;
+      }
+    }, 2000);
 
     stopRef.current = () => {
       clearInterval(interval);
       try {
         master.gain.cancelScheduledValues(ctx.currentTime);
-        master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.6);
+        master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
       } catch {}
-      window.setTimeout(() => {
-        sources.forEach((s) => s.stop(ctx.currentTime));
-        try { ctx.close(); } catch {}
-      }, 700);
+      window.setTimeout(() => { try { ctx.close(); } catch {} }, 600);
     };
 
     return () => {
-      if (stopRef.current) {
-        stopRef.current();
-        stopRef.current = null;
-      }
+      if (stopRef.current) { stopRef.current(); stopRef.current = null; }
     };
   }, [enabled]);
 }
@@ -211,7 +276,7 @@ function useAmbientMusic(enabled: boolean) {
 export default function VideoTemplate() {
   const [audioEnabled, setAudioEnabled] = useState(false);
   const currentScene = useTimerPlayer();
-  useAmbientMusic(audioEnabled);
+  useCatchyMusic(audioEnabled);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#07030d] text-white">
