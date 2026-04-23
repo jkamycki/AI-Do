@@ -9,6 +9,35 @@ import { Heart, CheckCircle2, XCircle, Crown, Briefcase, Eye, AlertCircle } from
 
 type CollabRole = "partner" | "planner" | "vendor";
 
+const inviteClerkAppearance = {
+  variables: {
+    colorBackground: "#ffffff",
+    colorInputBackground: "#ffffff",
+    colorForeground: "#1f1535",
+    colorMutedForeground: "#6b6385",
+    colorInput: "#ffffff",
+    colorInputForeground: "#1f1535",
+    colorNeutral: "#1f1535",
+    colorPrimary: "#D4A017",
+  },
+  elements: {
+    rootBox: "w-full",
+    cardBox: "shadow-none border-0 p-0 bg-transparent",
+    card: "!shadow-none !border-0 !bg-transparent !p-0",
+    footer: "!shadow-none !border-0 !bg-transparent",
+    headerTitle: { color: "#1f1535" },
+    headerSubtitle: { color: "#6b6385" },
+    formFieldLabel: { color: "#1f1535" },
+    formFieldInput: { color: "#1f1535", backgroundColor: "#ffffff" },
+    socialButtonsBlockButtonText: { color: "#1f1535" },
+    socialButtonsBlockButtonArrow: { color: "#1f1535" },
+    dividerText: { color: "#6b6385" },
+    formFieldHintText: { color: "#6b6385" },
+    identityPreviewText: { color: "#1f1535" },
+    formResendCodeLink: { color: "#D4A017" },
+  },
+};
+
 const ROLE_CONFIG: Record<CollabRole, { label: string; description: string; icon: React.ElementType; color: string }> = {
   partner: {
     label: "Partner",
@@ -249,7 +278,7 @@ export default function InviteAcceptPage() {
                   <SignUp
                     forceRedirectUrl={inviteUrl}
                     signInUrl={`/sign-in`}
-                    appearance={{ elements: { rootBox: "w-full", card: "shadow-none border-0 p-0" } }}
+                    appearance={inviteClerkAppearance}
                   />
                   <p className="text-xs text-center text-muted-foreground">
                     Already have an account?{" "}
@@ -261,7 +290,7 @@ export default function InviteAcceptPage() {
                   <SignIn
                     forceRedirectUrl={inviteUrl}
                     signUpUrl={`/sign-up`}
-                    appearance={{ elements: { rootBox: "w-full", card: "shadow-none border-0 p-0" } }}
+                    appearance={inviteClerkAppearance}
                   />
                   <p className="text-xs text-center text-muted-foreground">
                     Don't have an account?{" "}
