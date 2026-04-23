@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useAuth, SignIn, SignUp } from "@clerk/react";
+import { useAuth, useUser, SignIn, SignUp } from "@clerk/react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,7 @@ export default function InviteAcceptPage() {
   const token = params?.token ?? "";
   const [, setLocation] = useLocation();
   const { isSignedIn, getToken } = useAuth();
+  const { user } = useUser();
   const { setActiveWorkspace } = useWorkspace();
   const [accepted, setAccepted] = useState(false);
   const [declined, setDeclined] = useState(false);
@@ -270,6 +271,22 @@ export default function InviteAcceptPage() {
               This invitation has already been {invite.status}.
             </div>
           )}
+
+          {isSignedIn && invite.status === "pending" && (() => {
+            const userEmail = user?.primaryEmailAddress?.emailAddress ?? "";
+            const inviteDomain = invite.inviteeEmail.split("@")[1] ?? "";
+            const userDomain = userEmail.split("@")[1] ?? "";
+            const likelyMismatch = inviteDomain && userDomain && inviteDomain !== userDomain;
+            if (likelyMismatch) {
+              return (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+                  <strong>Wrong account?</strong> This invite was sent to <strong>{invite.inviteeEmail}</strong>.
+                  You're signed in as <strong>{userEmail}</strong>. Please sign in with the correct email to accept.
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           {error && (
             <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-sm text-destructive text-center">

@@ -23,6 +23,13 @@ async function getUserPrimaryEmail(userId: string): Promise<string | null> {
   }
 }
 
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain) return email;
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}***@${domain}`;
+}
+
 const router = Router();
 
 router.get("/invites/pending", requireAuth, async (req, res) => {
@@ -280,8 +287,11 @@ router.get("/invite/:token", async (req, res) => {
       return res.status(404).json({ error: "Invite not found or has expired." });
     }
 
+    const maskedEmail = maskEmail(collab.inviteeEmail);
+
     res.json({
       ...collab,
+      inviteeEmail: maskedEmail,
       invitedAt: collab.invitedAt.toISOString(),
     });
   } catch (err) {
@@ -302,6 +312,13 @@ router.post("/invite/:token/accept", requireAuth, async (req, res) => {
     if (!collab) return res.status(404).json({ error: "Invite not found." });
     if (collab.status !== "pending") {
       return res.status(400).json({ error: `Invite is already ${collab.status}.` });
+    }
+
+    const userEmail = await getUserPrimaryEmail(req.userId!);
+    if (!userEmail || userEmail !== collab.inviteeEmail.toLowerCase()) {
+      return res.status(403).json({
+        error: "This invitation was sent to a different email address. Please sign in with the correct account.",
+      });
     }
 
     const [updated] = await db
@@ -358,6 +375,13 @@ router.post("/invite/:token/decline", requireAuth, async (req, res) => {
       .limit(1);
 
     if (!collab) return res.status(404).json({ error: "Invite not found." });
+
+    const userEmail = await getUserPrimaryEmail(req.userId!);
+    if (!userEmail || userEmail !== collab.inviteeEmail.toLowerCase()) {
+      return res.status(403).json({
+        error: "This invitation was sent to a different email address.",
+      });
+    }
 
     await db
       .update(workspaceCollaborators)
