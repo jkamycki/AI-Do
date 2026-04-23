@@ -673,15 +673,6 @@ export default function Dashboard() {
           />
 
           <FeatureCard
-            icon={Mail}
-            title="Vendor Emails"
-            description="Write professional inquiry, quote, and follow-up emails to any vendor in seconds with AI."
-            cta="/vendor-email"
-            ctaLabel="Draft an Email"
-            testId="btn-goto-vendor-email"
-          />
-
-          <FeatureCard
             icon={UsersRound}
             title="Guest List"
             description="Track every guest's RSVP, meal choice, plus one, and table assignment all in one place."

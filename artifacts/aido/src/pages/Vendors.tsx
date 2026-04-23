@@ -777,15 +777,6 @@ function VendorDetailDialog({
                 </div>
               )}
 
-              <div className="pt-2">
-                <Link href={`/vendor-email?vendor=${encodeURIComponent(vendor.name)}&category=${encodeURIComponent(vendor.category)}`}>
-                  <Button variant="outline" size="sm" className="w-full">
-                    <Mail className="h-3.5 w-3.5 mr-2" />
-                    Draft Email to {vendor.name}
-                    <ChevronRight className="h-3.5 w-3.5 ml-auto" />
-                  </Button>
-                </Link>
-              </div>
             </TabsContent>
 
             <TabsContent value="payments" className="space-y-4 mt-4">
