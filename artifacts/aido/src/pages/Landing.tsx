@@ -253,9 +253,8 @@ export default function Landing() {
               {testimonials.map((item) => (
                 <div
                   key={item.name}
-                  className="rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow flex flex-col gap-4"
+                  className="rounded-2xl p-6 bg-background shadow-lg hover:shadow-xl transition-shadow flex flex-col gap-4"
                   style={{
-                    background: "linear-gradient(135deg, #2A1248 0%, #3D1A6B 50%, #2A1248 100%)",
                     border: "2px solid",
                     borderImage: "linear-gradient(135deg, #B8860B 0%, #D4A017 50%, #F5C842 100%) 1",
                   }}
