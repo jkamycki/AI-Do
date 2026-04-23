@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { db, vendors, checklistItems, weddingProfiles, timelines } from "@workspace/db";
-import { eq, desc, and } from "drizzle-orm";
+import { db, vendors, vendorPayments, checklistItems, weddingProfiles, timelines } from "@workspace/db";
+import { eq, desc, and, asc, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveScopeUserId, resolveWorkspaceRole, hasMinRole, logActivity } from "../lib/workspaceAccess";
 import type { Request } from "express";
@@ -13,6 +13,7 @@ You are warm, confident, and act like a trusted, experienced friend who has help
 
 You can BOTH chat AND take real actions inside the user's A.IDO portal:
 - Add vendors to the vendor list
+- Add payment milestones to a vendor (e.g. "deposit due May 1", "second payment $2000 due Aug 15")
 - Add tasks to the checklist
 - Add events to the day-of timeline
 - Update wedding profile details (date, venue, budget, guest count, etc.)
@@ -21,6 +22,7 @@ You can BOTH chat AND take real actions inside the user's A.IDO portal:
 ## How to use tools
 - When the user provides ANY information that maps to a portal action (e.g. "add my florist Sarah Bloom, sarahbloom@email.com, $4000"), CALL THE TOOL IMMEDIATELY. Do not ask for clarification on optional fields — only the required ones.
 - For vendors: required = name + category. Pick a sensible category from: Photography, Videography, Catering, Florist, DJ/Band, Venue, Officiant, Hair & Makeup, Transportation, Cake/Desserts, Stationery, Rentals, Planner, Other. Use Other if unsure.
+- For vendor payment milestones: required = vendorName (or vendorId), label, amount, dueDate (YYYY-MM-DD). The vendor must already exist — if it doesn't, add the vendor FIRST, then add the milestone. Convert relative dates ("next Friday", "May 1") into ISO YYYY-MM-DD using the current year, or next year if the date has already passed. If the user gives multiple milestones, call this tool once per milestone.
 - For checklist items: required = task + month (use a label like "12 months out", "6 months out", "1 month out", "Week of", "Day of").
 - For timeline events: required = time (e.g. "3:00 PM"), title, description, category (preparation|ceremony|cocktail|reception|dancing|other).
 - For profile updates: only update the specific fields the user mentions; leave others untouched.
@@ -56,6 +58,25 @@ const TOOLS = [
           depositAmount: { type: "number" },
         },
         required: ["name", "category"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "add_vendor_payment",
+      description: "Add a payment milestone to an existing vendor (e.g. deposit, second installment, final balance). Provide either vendorId (preferred if known) or vendorName (case-insensitive match against the user's vendor list).",
+      parameters: {
+        type: "object",
+        properties: {
+          vendorId: { type: "number", description: "ID of the vendor — preferred when known" },
+          vendorName: { type: "string", description: "Name of the vendor (used if vendorId is not provided). Case-insensitive partial match." },
+          label: { type: "string", description: "Short label, e.g. 'Deposit', 'Second payment', 'Final balance'" },
+          amount: { type: "number", description: "Payment amount in dollars" },
+          dueDate: { type: "string", description: "Due date in ISO YYYY-MM-DD format" },
+          isPaid: { type: "boolean", description: "True if already paid; defaults to false" },
+        },
+        required: ["label", "amount", "dueDate"],
       },
     },
   },
@@ -169,6 +190,65 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         files: [],
       }).returning();
       return { ok: true, data: { id: created.id, name: created.name, category: created.category } };
+    }
+
+    if (name === "add_vendor_payment") {
+      const userId = await resolveScopeUserId(req);
+      const label = String(args.label ?? "").trim();
+      const amountNum = Number(args.amount);
+      const dueDate = String(args.dueDate ?? "").trim();
+      if (!label) return { ok: false, error: "Payment label is required (e.g. 'Deposit')" };
+      if (!Number.isFinite(amountNum) || amountNum <= 0) return { ok: false, error: "Amount must be a positive number" };
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return { ok: false, error: "dueDate must be ISO YYYY-MM-DD" };
+
+      let vendorId: number | null = null;
+      if (args.vendorId !== undefined && args.vendorId !== null) {
+        const idNum = Number(args.vendorId);
+        if (Number.isFinite(idNum)) {
+          const [v] = await db.select({ id: vendors.id }).from(vendors)
+            .where(and(eq(vendors.id, idNum), eq(vendors.userId, userId))).limit(1);
+          if (v) vendorId = v.id;
+        }
+      }
+      if (vendorId === null && args.vendorName) {
+        const search = String(args.vendorName).trim();
+        const matches = await db.select({ id: vendors.id, name: vendors.name }).from(vendors)
+          .where(and(eq(vendors.userId, userId), ilike(vendors.name, `%${search}%`)));
+        if (matches.length === 0) {
+          return { ok: false, error: `No vendor found matching "${search}". Add the vendor first using add_vendor.` };
+        }
+        if (matches.length > 1) {
+          const exact = matches.find(m => m.name.toLowerCase() === search.toLowerCase());
+          if (exact) vendorId = exact.id;
+          else return { ok: false, error: `Multiple vendors match "${search}": ${matches.map(m => m.name).join(", ")}. Be more specific.` };
+        } else {
+          vendorId = matches[0].id;
+        }
+      }
+      if (vendorId === null) {
+        return { ok: false, error: "Either vendorId or vendorName is required to attach a payment milestone." };
+      }
+
+      const isPaid = Boolean(args.isPaid);
+      const [payment] = await db.insert(vendorPayments).values({
+        vendorId,
+        label,
+        amount: String(amountNum),
+        dueDate,
+        isPaid,
+        paidAt: isPaid ? new Date() : null,
+      }).returning();
+
+      // Sync vendor.nextPaymentDue to the earliest unpaid milestone
+      const unpaid = await db
+        .select({ dueDate: vendorPayments.dueDate })
+        .from(vendorPayments)
+        .where(and(eq(vendorPayments.vendorId, vendorId), eq(vendorPayments.isPaid, false)))
+        .orderBy(asc(vendorPayments.dueDate));
+      const nextDate = unpaid.length > 0 ? unpaid[0].dueDate : null;
+      await db.update(vendors).set({ nextPaymentDue: nextDate }).where(eq(vendors.id, vendorId));
+
+      return { ok: true, data: { id: payment.id, vendorId, label: payment.label, amount: Number(payment.amount), dueDate: payment.dueDate, isPaid: payment.isPaid } };
     }
 
     if (name === "add_checklist_item") {
