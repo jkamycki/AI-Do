@@ -1,122 +1,124 @@
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { DollarSign, TrendingDown, PieChart } from "lucide-react";
 
-const timelineItems = [
-  { time: "10:00 AM", label: "Ceremony Begins", dot: "#E91E8C" },
-  { time: "11:15 AM", label: "Ring Exchange", dot: "#7B2FBE" },
-  { time: "12:30 PM", label: "Cocktail Hour", dot: "#D4A017" },
-  { time: "7:00 PM", label: "First Dance", dot: "#4F8EF7" },
+const CATEGORIES = [
+  { name: "Venue", spent: 18500, total: 22000, color: "#E91E8C" },
+  { name: "Catering", spent: 12400, total: 15000, color: "#7B2FBE" },
+  { name: "Photography", spent: 5200, total: 6000, color: "#D4A017" },
+  { name: "Florals", spent: 2800, total: 4500, color: "#4F8EF7" },
+  { name: "Music & DJ", spent: 1900, total: 3000, color: "#22C55E" },
 ];
 
+const TOTAL_BUDGET = CATEGORIES.reduce((s, c) => s + c.total, 0);
+const TOTAL_SPENT = CATEGORIES.reduce((s, c) => s + c.spent, 0);
+
 export function Scene2() {
-  const [phase, setPhase] = useState(0);
-
-  useEffect(() => {
-    const timers = [
-      setTimeout(() => setPhase(1), 300),
-      setTimeout(() => setPhase(2), 800),
-      setTimeout(() => setPhase(3), 1600),
-      setTimeout(() => setPhase(4), 2600),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, []);
-
   return (
     <motion.div
-      className="absolute inset-0 flex items-center justify-between px-[8vw]"
-      initial={{ opacity: 0, x: 80 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -80, filter: "blur(10px)" }}
-      transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+      className="absolute inset-0 flex flex-col items-center justify-center px-12"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, scale: 0.96, filter: "blur(10px)" }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
     >
-      {/* Left: Feature copy */}
-      <div className="w-[42%] flex flex-col gap-10">
-        <motion.div
-          initial={{ opacity: 0, y: 28 }}
-          animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 28 }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <div className="text-[1vw] font-bold tracking-[0.22em] uppercase mb-2" style={{ color: "#D4A017" }}>
-            01 — AI Timeline
-          </div>
-          <h2 className="font-serif text-[3.8vw] leading-tight text-white mb-3">
-            Your perfect day,<br />
-            <span style={{ background: "linear-gradient(135deg, #E91E8C 0%, #7B2FBE 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-              planned to the minute.
-            </span>
-          </h2>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 28 }}
-          animate={phase >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 28 }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <div className="text-[1vw] font-bold tracking-[0.22em] uppercase mb-2" style={{ color: "#D4A017" }}>
-            02 — Budget Manager
-          </div>
-          <h2 className="font-serif text-[2.6vw] leading-tight text-white/80">
-            Track every dollar. Predict costs with AI.
-          </h2>
-        </motion.div>
-      </div>
-
-      {/* Right: Animated Timeline card */}
+      {/* Heading */}
       <motion.div
-        className="w-[44%] rounded-2xl p-5 border"
-        style={{
-          background: "rgba(255,255,255,0.04)",
-          borderColor: "rgba(212,160,23,0.25)",
-          backdropFilter: "blur(12px)",
-          boxShadow: "0 0 60px rgba(212,160,23,0.1), inset 0 1px 0 rgba(255,255,255,0.06)",
-        }}
-        initial={{ opacity: 0, scale: 0.88, y: 30 }}
-        animate={phase >= 1 ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.88, y: 30 }}
-        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+        className="text-center mb-6"
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, delay: 0.1 }}
       >
-        <div className="text-[0.9vw] font-semibold tracking-widest uppercase text-white/40 mb-4">Wedding Day Timeline</div>
-        <div className="flex flex-col gap-0">
-          {timelineItems.map((item, i) => (
-            <motion.div
-              key={item.time}
-              className="flex items-start gap-3 py-3"
-              style={{ borderBottom: i < timelineItems.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none" }}
-              initial={{ opacity: 0, x: 20 }}
-              animate={phase >= 3 ? { opacity: 1, x: 0 } : { opacity: 0, x: 20 }}
-              transition={{ duration: 0.6, delay: i * 0.12, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: item.dot, boxShadow: `0 0 8px ${item.dot}` }} />
-              <div>
-                <div className="text-[1vw] font-medium text-white/90">{item.label}</div>
-                <div className="text-[0.8vw] text-white/40">{item.time}</div>
-              </div>
-            </motion.div>
-          ))}
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400/10 border border-amber-400/30 mb-3">
+          <PieChart className="h-4 w-4 text-amber-300" />
+          <span className="text-xs uppercase tracking-[0.25em] text-amber-200">Budget Tracker</span>
+        </div>
+        <h2 className="text-[3.2vw] font-serif font-bold leading-tight"
+          style={{ background: "linear-gradient(135deg, #fff 0%, #F5C842 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
+        >
+          Every dollar, perfectly tracked
+        </h2>
+      </motion.div>
+
+      {/* Budget Card */}
+      <motion.div
+        className="w-full max-w-3xl rounded-3xl p-7 backdrop-blur-xl"
+        style={{
+          background: "linear-gradient(145deg, rgba(40,18,72,0.85) 0%, rgba(20,8,40,0.85) 100%)",
+          border: "1.5px solid",
+          borderImage: "linear-gradient(135deg, #B8860B 0%, #D4A017 50%, #F5C842 100%) 1",
+          boxShadow: "0 20px 60px -10px rgba(212,160,23,0.25)",
+        }}
+        initial={{ opacity: 0, y: 30, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.9, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      >
+        {/* Total summary */}
+        <div className="flex items-end justify-between mb-6 pb-5 border-b border-white/10">
+          <div>
+            <div className="text-xs uppercase tracking-widest text-white/50 mb-1">Total spent</div>
+            <div className="flex items-baseline gap-2">
+              <DollarSign className="h-6 w-6 text-amber-300" />
+              <motion.span
+                className="text-4xl font-bold text-white"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7, duration: 0.5 }}
+              >
+                {TOTAL_SPENT.toLocaleString()}
+              </motion.span>
+              <span className="text-base text-white/50">/ ${TOTAL_BUDGET.toLocaleString()}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-400/10 border border-emerald-400/30">
+            <TrendingDown className="h-4 w-4 text-emerald-300" />
+            <span className="text-sm text-emerald-200 font-medium">${(TOTAL_BUDGET - TOTAL_SPENT).toLocaleString()} under</span>
+          </div>
         </div>
 
-        {/* Budget mini bar */}
-        <motion.div
-          className="mt-5 pt-4"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}
-          initial={{ opacity: 0 }}
-          animate={phase >= 4 ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <div className="flex justify-between text-[0.85vw] text-white/50 mb-2">
-            <span>Budget used</span>
-            <span style={{ color: "#D4A017" }}>$24,800 / $35,000</span>
-          </div>
-          <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-            <motion.div
-              className="h-full rounded-full"
-              style={{ background: "linear-gradient(90deg, #D4A017, #F5C842)" }}
-              initial={{ width: "0%" }}
-              animate={phase >= 4 ? { width: "71%" } : { width: "0%" }}
-              transition={{ duration: 1.2, ease: "easeOut" }}
-            />
-          </div>
-        </motion.div>
+        {/* Category bars */}
+        <div className="space-y-3.5">
+          {CATEGORIES.map((cat, i) => {
+            const pct = (cat.spent / cat.total) * 100;
+            return (
+              <motion.div
+                key={cat.name}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 + i * 0.12, duration: 0.5 }}
+              >
+                <div className="flex items-center justify-between text-sm mb-1.5">
+                  <span className="font-medium text-white/90">{cat.name}</span>
+                  <span className="text-white/60 tabular-nums">
+                    ${cat.spent.toLocaleString()} <span className="text-white/30">/ ${cat.total.toLocaleString()}</span>
+                  </span>
+                </div>
+                <div className="h-2.5 w-full rounded-full bg-white/5 overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full"
+                    style={{
+                      background: `linear-gradient(90deg, ${cat.color}, ${cat.color}cc)`,
+                      boxShadow: `0 0 12px ${cat.color}80`,
+                    }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ delay: 0.7 + i * 0.12, duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+                  />
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
       </motion.div>
+
+      {/* Caption */}
+      <motion.p
+        className="mt-5 text-white/65 text-base text-center max-w-xl"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.6, duration: 0.7 }}
+      >
+        Smart categories, instant alerts, real-time totals — never wonder where the money went.
+      </motion.p>
     </motion.div>
   );
 }
