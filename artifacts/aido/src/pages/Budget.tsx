@@ -1,25 +1,20 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { 
-  useGetBudget, 
-  useSaveBudget, 
-  useAddBudgetItem, 
-  usePredictBudget, 
-  useGetProfile,
+import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import {
+  useGetBudget,
+  useSaveBudget,
   getGetBudgetQueryKey,
-  useUpdateBudgetItem,
-  useDeleteBudgetItem,
-  useGetBudgetItemPayments,
-  useAddBudgetItemPayment,
-  getGetBudgetItemPaymentsQueryKey,
+  useListManualExpenses,
+  useCreateManualExpense,
+  useUpdateManualExpense,
+  useDeleteManualExpense,
+  getListManualExpensesQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useUpload } from "@workspace/object-storage-web";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,1185 +23,662 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DollarSign, Plus, Wand2, Calculator, Trash2, Edit2, Sparkles, CheckCircle2, CreditCard, History, AlertTriangle, Clock, RotateCcw, Pencil, X, Check, RefreshCcw, ArrowUpRight } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Lock, Paperclip, X } from "lucide-react";
 
-const itemSchema = z.object({
-  category: z.string().min(1, "Category is required"),
-  customCategory: z.string().optional(),
-  vendor: z.string().min(1, "Vendor is required"),
-  estimatedCost: z.coerce.number().min(0).default(0),
-  actualCost: z.coerce.number().min(0, "Must be >= 0"),
-  amountPaid: z.coerce.number().min(0, "Must be >= 0").default(0),
-  isPaid: z.boolean().default(false),
-  notes: z.string().optional(),
-  nextPaymentDue: z.string().optional(),
-}).superRefine((data, ctx) => {
-  if (data.category === "Other" && !data.customCategory?.trim()) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter an expense name", path: ["customCategory"] });
-  }
-});
+const MANUAL_CATEGORIES = [
+  "Attire",
+  "Rings",
+  "Décor",
+  "Gifts",
+  "Tips",
+  "Hotel",
+  "Travel",
+  "DIY",
+  "Beauty",
+  "Stationery",
+  "Honeymoon",
+  "Other",
+];
 
-type ItemFormValues = z.infer<typeof itemSchema>;
-
-function PaymentProgressCell({
-  item,
-  onUpdate,
-}: {
-  item: { actualCost: number; amountPaid?: number };
-  onUpdate: (paid: number) => void;
-}) {
-  const total = item.actualCost;
-  const paid = item.amountPaid ?? 0;
-  const pct = total > 0 ? Math.min((paid / total) * 100, 100) : 0;
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(paid));
-
-  const commit = () => {
-    const val = parseFloat(draft);
-    if (!isNaN(val) && val >= 0) onUpdate(val);
-    setEditing(false);
-  };
-
-  return (
-    <div className="space-y-1 py-0.5">
-      {editing ? (
-        <div className="flex items-center gap-1">
-          <div className="w-28">
-            <MoneyInput
-              value={draft}
-              onChange={setDraft}
-              onBlur={commit}
-              onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
-              autoFocus
-              className="h-7 text-sm"
-            />
-          </div>
-          <span className="text-xs text-muted-foreground">of ${total.toLocaleString()}</span>
-        </div>
-      ) : (
-        <button
-          onClick={() => { setDraft(String(paid)); setEditing(true); }}
-          className="text-xs text-left hover:text-primary transition-colors group/pay"
-          title="Click to update payment"
-        >
-          <span className="font-medium">${paid.toLocaleString()}</span>
-          <span className="text-muted-foreground"> / ${total.toLocaleString()}</span>
-          <span className="ml-1 text-primary opacity-0 group-hover/pay:opacity-100 transition-opacity text-[10px]">edit</span>
-        </button>
-      )}
-      <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all ${pct >= 100 ? "bg-emerald-500" : pct > 50 ? "bg-primary" : "bg-amber-400"}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <p className="text-[10px] text-muted-foreground">{pct.toFixed(0)}% paid</p>
-    </div>
-  );
+interface VendorRow {
+  id: number;
+  name: string;
+  category: string;
+  totalCost: number;
+  depositAmount: number;
+  totalPaid: number;
+  isPaidOff: boolean;
+  nextPaymentDue: string | null;
+}
+interface VendorFinancials {
+  vendorCount: number;
+  totalCommitted: number;
+  totalPaid: number;
+  vendors: VendorRow[];
 }
 
-function LogPaymentContent({
-  item,
-  onDone,
-}: {
-  item: { id: number; vendor: string; actualCost: number; amountPaid: number };
-  onDone: () => void;
-}) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { data: payments, isLoading } = useGetBudgetItemPayments(item.id);
-  const addPayment = useAddBudgetItemPayment();
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("");
-  const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editAmount, setEditAmount] = useState("");
-  const [editNote, setEditNote] = useState("");
-  const [editPaidAt, setEditPaidAt] = useState("");
+interface ManualExpenseFormState {
+  name: string;
+  category: string;
+  cost: string;
+  amountPaid: string;
+  notes: string;
+  receiptUrl: string | null;
+  receiptName: string | null;
+}
 
-  const deletePayment = useMutation({
-    mutationFn: async (paymentId: number) => {
-      const res = await authFetch(`/api/budget/items/${item.id}/payments/${paymentId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-    },
-    onSuccess: () => {
-      toast({ title: "Payment deleted" });
-      queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetBudgetItemPaymentsQueryKey(item.id) });
-    },
-    onError: () => toast({ variant: "destructive", title: "Could not delete payment" }),
-  });
+const emptyManualForm = (): ManualExpenseFormState => ({
+  name: "",
+  category: "Other",
+  cost: "",
+  amountPaid: "",
+  notes: "",
+  receiptUrl: null,
+  receiptName: null,
+});
 
-  const updatePayment = useMutation({
-    mutationFn: async ({ paymentId, data }: { paymentId: number; data: { amount: number; note: string; paidAt: string } }) => {
-      const res = await authFetch(`/api/budget/items/${item.id}/payments/${paymentId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to update");
-    },
-    onSuccess: () => {
-      toast({ title: "Payment updated" });
-      setEditingId(null);
-      queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetBudgetItemPaymentsQueryKey(item.id) });
-    },
-    onError: () => toast({ variant: "destructive", title: "Could not update payment" }),
-  });
+function formatMoney(n: number) {
+  return `$${Math.round(n).toLocaleString()}`;
+}
+function safeReceiptHref(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return (u.protocol === "https:" || u.protocol === "http:") ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
-  const totalLogged = payments ? payments.reduce((s, p) => s + p.amount, 0) : item.amountPaid;
-  const pct = item.actualCost > 0 ? Math.min((totalLogged / item.actualCost) * 100, 100) : 0;
-  const amountNum = parseFloat(amount);
-  const projectedTotal = !isNaN(amountNum) ? totalLogged + amountNum : totalLogged;
-  const willComplete = projectedTotal >= item.actualCost;
-
-  const handleSubmit = () => {
-    if (isNaN(amountNum) || amountNum <= 0) return;
-    addPayment.mutate(
-      { id: item.id, data: { amount: amountNum, ...(note.trim() ? { note: note.trim() } : {}), ...(paidAt ? { paidAt } : {}) } },
-      {
-        onSuccess: () => {
-          toast({ title: "Payment logged", description: `$${amountNum.toLocaleString()} recorded for ${item.vendor}.` });
-          queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
-          setAmount("");
-          setNote("");
-          onDone();
-        },
-        onError: () => {
-          toast({ variant: "destructive", title: "Error", description: "Could not log payment." });
-        },
-      }
-    );
-  };
-
-  return (
-    <div className="space-y-5 py-1">
-      {/* Progress bar */}
-      <div className="space-y-1.5">
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>Total paid</span>
-          <span className="font-medium text-foreground">${totalLogged.toLocaleString()} of ${item.actualCost.toLocaleString()}</span>
-        </div>
-        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${pct >= 100 ? "bg-emerald-500" : pct > 50 ? "bg-primary" : "bg-amber-400"}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <p className="text-[10px] text-muted-foreground text-right">{pct.toFixed(0)}% paid</p>
-      </div>
-
-      {/* Payment history */}
-      {isLoading ? (
-        <div className="text-xs text-muted-foreground text-center py-2">Loading history…</div>
-      ) : payments && payments.length > 0 ? (
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <History className="h-3 w-3" /> Payment history
-          </p>
-          <div className="max-h-52 overflow-y-auto rounded-lg border border-border/50 divide-y divide-border/40">
-            {payments.map(p => (
-              <div key={p.id}>
-                {editingId === p.id ? (
-                  <div className="px-3 py-2 space-y-2 bg-muted/30">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] text-muted-foreground">Amount</label>
-                        <MoneyInput
-                          value={editAmount}
-                          onChange={setEditAmount}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-muted-foreground">Date</label>
-                        <input
-                          type="date"
-                          value={editPaidAt}
-                          onChange={e => setEditPaidAt(e.target.value)}
-                          className="w-full px-2 py-1 border border-input rounded text-sm bg-background"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-muted-foreground">Note</label>
-                      <input
-                        type="text"
-                        value={editNote}
-                        onChange={e => setEditNote(e.target.value)}
-                        placeholder="e.g. deposit, final…"
-                        className="w-full px-2 py-1 border border-input rounded text-sm bg-background"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" className="flex-1 h-7 text-xs" disabled={updatePayment.isPending}
-                        onClick={() => updatePayment.mutate({ paymentId: p.id, data: { amount: parseFloat(editAmount) || p.amount, note: editNote, paidAt: editPaidAt } })}>
-                        <Check className="h-3 w-3 mr-1" /> Save
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingId(null)}>
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between px-3 py-2 text-sm group">
-                    <div className="min-w-0">
-                      <span className="font-medium text-foreground">${p.amount.toLocaleString()}</span>
-                      {p.note && <span className="ml-2 text-muted-foreground text-xs italic">{p.note}</span>}
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {new Date(p.paidAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-                      </span>
-                    </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">
-                      <button
-                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                        title="Edit"
-                        onClick={() => { setEditingId(p.id); setEditAmount(String(p.amount)); setEditNote(p.note ?? ""); setEditPaidAt(p.paidAt.slice(0, 10)); }}
-                      ><Pencil className="h-3 w-3" /></button>
-                      <button
-                        className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                        title="Delete"
-                        disabled={deletePayment.isPending}
-                        onClick={() => deletePayment.mutate(p.id)}
-                      ><Trash2 className="h-3 w-3" /></button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground text-center py-1">No payments recorded yet.</p>
-      )}
-
-      {/* Add payment */}
-      <div className="space-y-3 pt-1 border-t border-border/40">
-        <p className="text-sm font-medium">Log a new payment</p>
-        <div>
-          <MoneyInput
-            value={amount}
-            onChange={setAmount}
-            onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
-            placeholder="Amount paid today"
-            autoFocus
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Date paid</label>
-            <input
-              type="date"
-              value={paidAt}
-              onChange={e => setPaidAt(e.target.value)}
-              className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-background"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Note (optional)</label>
-            <input
-              type="text"
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              placeholder="e.g. deposit, final…"
-              className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-background"
-            />
-          </div>
-        </div>
-        {amount && !isNaN(amountNum) && amountNum > 0 && (
-          <p className="text-xs text-muted-foreground">
-            New total: <span className="font-semibold text-foreground">${projectedTotal.toLocaleString()}</span> of ${item.actualCost.toLocaleString()}
-            {willComplete && <span className="ml-1 text-emerald-600 font-medium">· Fully paid! ✓</span>}
-          </p>
-        )}
-        <Button
-          className="w-full"
-          onClick={handleSubmit}
-          disabled={addPayment.isPending || !amount || isNaN(amountNum) || amountNum <= 0}
-        >
-          {addPayment.isPending ? "Saving…" : "Record Payment"}
-        </Button>
-      </div>
-    </div>
-  );
+function formatDate(d: string | null) {
+  if (!d) return "—";
+  try {
+    const dt = new Date(d.length <= 10 ? `${d}T00:00:00` : d);
+    return dt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  } catch {
+    return d;
+  }
 }
 
 export default function Budget() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+
   const { data: budget, isLoading: isLoadingBudget } = useGetBudget();
-  const { data: profile, isLoading: isLoadingProfile } = useGetProfile();
-  
   const saveBudget = useSaveBudget();
-  const addBudgetItem = useAddBudgetItem();
-  const predictBudget = usePredictBudget();
-  const updateItem = useUpdateBudgetItem();
-  const deleteItem = useDeleteBudgetItem();
+  const [budgetDraft, setBudgetDraft] = useState<string>("");
+  const [editingBudget, setEditingBudget] = useState(false);
 
-  interface VendorFinancialRow {
-    id: number;
-    name: string;
-    category: string;
-    totalCost: number;
-    depositAmount: number;
-    totalPaid: number;
-    isPaidOff: boolean;
-    nextPaymentDue: string | null;
-  }
-  interface VendorFinancials {
-    vendorCount: number;
-    totalCommitted: number;
-    totalDeposits: number;
-    totalPaidMilestones: number;
-    totalPaid: number;
-    vendors: VendorFinancialRow[];
-  }
-
-  const { data: vendorFinancials } = useQuery({
+  const { data: vendorFinancials, isLoading: isLoadingVendors } = useQuery({
     queryKey: ["vendor-financials"],
     queryFn: async () => {
       const res = await authFetch("/api/vendors/financials");
       if (!res.ok) throw new Error("Failed to fetch vendor financials");
-      return res.json() as Promise<VendorFinancials>;
+      return (await res.json()) as VendorFinancials;
     },
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
 
-  const vfCommitted = vendorFinancials?.totalCommitted ?? 0;
-  const vfPaid = vendorFinancials?.totalPaid ?? 0;
-  const combinedCommitted = (budget?.spent ?? 0) + vfCommitted;
-  const combinedPaid = ((budget as any)?.totalPaid ?? 0) + vfPaid;
-  const combinedOwed = Math.max(0, combinedCommitted - combinedPaid);
+  const { data: manualExpenses = [], isLoading: isLoadingManual } = useListManualExpenses();
+  const createManual = useCreateManualExpense();
+  const updateManual = useUpdateManualExpense();
+  const deleteManual = useDeleteManualExpense();
 
-  const [isAddingItem, setIsAddingItem] = useState(false);
-  const [isPredicting, setIsPredicting] = useState(false);
-  const [editingItem, setEditingItem] = useState<{ id: number; category: string; vendor: string; estimatedCost: number; actualCost: number; amountPaid: number; isPaid: boolean; notes?: string | null } | null>(null);
-  const [logPaymentItem, setLogPaymentItem] = useState<{ id: number; vendor: string; actualCost: number; amountPaid: number } | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<ManualExpenseFormState>(emptyManualForm());
 
-  const CATEGORIES = ["Venue", "Catering", "Photography", "Florist", "Attire", "Music", "Decor", "Other"];
-
-  const form = useForm<ItemFormValues>({
-    resolver: zodResolver(itemSchema),
-    defaultValues: {
-      category: "",
-      customCategory: "",
-      vendor: "",
-      estimatedCost: 0,
-      actualCost: 0,
-      amountPaid: 0,
-      isPaid: false,
-      notes: "",
-      nextPaymentDue: "",
-    },
+  const upload = useUpload({
+    onError: (e) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
   });
 
-  const editForm = useForm<ItemFormValues>({
-    resolver: zodResolver(itemSchema),
-    defaultValues: {
-      category: "",
-      customCategory: "",
-      vendor: "",
-      estimatedCost: 0,
-      actualCost: 0,
-      amountPaid: 0,
-      isPaid: false,
-      notes: "",
-      nextPaymentDue: "",
-    },
-  });
+  // ── Totals ────────────────────────────────────────────────────────
+  const totalBudget = budget?.totalBudget ?? 0;
+  const vendorCommitted = vendorFinancials?.totalCommitted ?? 0;
+  const vendorPaid = vendorFinancials?.totalPaid ?? 0;
+  const manualCommitted = useMemo(
+    () => manualExpenses.reduce((s, m) => s + (m.cost ?? 0), 0),
+    [manualExpenses],
+  );
+  const manualPaid = useMemo(
+    () => manualExpenses.reduce((s, m) => s + (m.amountPaid ?? 0), 0),
+    [manualExpenses],
+  );
+  const combinedSpend = vendorCommitted + manualCommitted;
+  const combinedPaid = vendorPaid + manualPaid;
+  const remaining = totalBudget - combinedSpend;
+  const overBudget = combinedSpend > totalBudget && totalBudget > 0;
+  const usedPct = totalBudget > 0 ? Math.min((combinedSpend / totalBudget) * 100, 100) : 0;
 
-  const watchedCategory = form.watch("category");
-  const watchedEditCategory = editForm.watch("category");
-
-  // Populate edit form whenever a different item is selected for editing
-  const openEdit = (item: typeof editingItem) => {
-    if (!item) return;
-    const isKnown = CATEGORIES.slice(0, -1).includes(item.category);
-    editForm.reset({
-      category: isKnown ? item.category : "Other",
-      customCategory: isKnown ? "" : item.category,
-      vendor: item.vendor,
-      estimatedCost: item.estimatedCost,
-      actualCost: item.actualCost,
-      amountPaid: item.amountPaid,
-      isPaid: item.isPaid,
-      notes: item.notes ?? "",
-      nextPaymentDue: (item as Record<string, unknown>).nextPaymentDue as string ?? "",
-    });
-    setEditingItem(item);
+  // ── Handlers ──────────────────────────────────────────────────────
+  const startEditBudget = () => {
+    setBudgetDraft(String(totalBudget || ""));
+    setEditingBudget(true);
   };
-
-  const onSubmitItem = (data: ItemFormValues) => {
-    const resolvedCategory = data.category === "Other" && data.customCategory?.trim()
-      ? data.customCategory.trim()
-      : data.category;
-    const { customCategory: _omit, ...rest } = data;
-    addBudgetItem.mutate({ data: { ...rest, category: resolvedCategory, nextPaymentDue: data.nextPaymentDue || null } as never }, {
-      onSuccess: () => {
-        toast({ title: "Item added", description: "Budget item saved." });
-        queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
-        setIsAddingItem(false);
-        form.reset();
+  const commitBudget = () => {
+    const n = parseFloat(budgetDraft);
+    if (isNaN(n) || n < 0) {
+      setEditingBudget(false);
+      return;
+    }
+    saveBudget.mutate(
+      { data: { totalBudget: n } },
+      {
+        onSuccess: () => {
+          toast({ title: "Budget updated" });
+          queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
+          setEditingBudget(false);
+        },
+        onError: () => toast({ variant: "destructive", title: "Could not update budget" }),
       },
-      onError: () => {
-        toast({ variant: "destructive", title: "Error", description: "Could not add item." });
-      }
+    );
+  };
+
+  const openAdd = () => {
+    setForm(emptyManualForm());
+    setEditingId(null);
+    setIsAdding(true);
+  };
+  const openEdit = (m: typeof manualExpenses[number]) => {
+    setForm({
+      name: m.name,
+      category: m.category || "Other",
+      cost: String(m.cost ?? 0),
+      amountPaid: String(m.amountPaid ?? 0),
+      notes: m.notes ?? "",
+      receiptUrl: m.receiptUrl ?? null,
+      receiptName: m.receiptName ?? null,
     });
+    setEditingId(m.id);
+    setIsAdding(true);
   };
 
-  const onSubmitEdit = (data: ItemFormValues) => {
-    if (!editingItem) return;
-    const resolvedCategory = data.category === "Other" && data.customCategory?.trim()
-      ? data.customCategory.trim()
-      : data.category;
-    const { customCategory: _omit, ...rest } = data;
-    updateItem.mutate(
-      { id: editingItem.id, data: { ...rest, category: resolvedCategory, nextPaymentDue: data.nextPaymentDue || null } as never },
-      {
-        onSuccess: () => {
-          toast({ title: "Expense updated" });
-          queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
-          setEditingItem(null);
-        },
-        onError: () => {
-          toast({ variant: "destructive", title: "Error", description: "Could not update item." });
-        },
-      }
-    );
+  const handleReceiptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const result = await upload.uploadFile(file);
+    if (result?.url) {
+      setForm((f) => ({ ...f, receiptUrl: result.url, receiptName: file.name }));
+      toast({ title: "Receipt uploaded" });
+    }
+    e.target.value = "";
   };
 
-  const togglePaid = (id: number, currentPaid: boolean) => {
-    updateItem.mutate(
-      { id, data: { isPaid: !currentPaid } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
-        }
-      }
-    );
+  const submitForm = () => {
+    if (!form.name.trim()) {
+      toast({ variant: "destructive", title: "Name is required" });
+      return;
+    }
+    const payload = {
+      name: form.name.trim(),
+      category: form.category || "Other",
+      cost: parseFloat(form.cost) || 0,
+      amountPaid: parseFloat(form.amountPaid) || 0,
+      notes: form.notes.trim() || null,
+      receiptUrl: form.receiptUrl,
+      receiptName: form.receiptName,
+    };
+    const onDone = () => {
+      queryClient.invalidateQueries({ queryKey: getListManualExpensesQueryKey() });
+      setIsAdding(false);
+      setEditingId(null);
+      setForm(emptyManualForm());
+    };
+    if (editingId != null) {
+      updateManual.mutate(
+        { id: editingId, data: payload as never },
+        {
+          onSuccess: () => {
+            toast({ title: "Expense updated" });
+            onDone();
+          },
+          onError: () => toast({ variant: "destructive", title: "Could not update expense" }),
+        },
+      );
+    } else {
+      createManual.mutate(
+        { data: payload as never },
+        {
+          onSuccess: () => {
+            toast({ title: "Expense added" });
+            onDone();
+          },
+          onError: () => toast({ variant: "destructive", title: "Could not add expense" }),
+        },
+      );
+    }
   };
 
   const handleDelete = (id: number) => {
-    deleteItem.mutate({ id }, {
-      onSuccess: () => {
-        toast({ title: "Item deleted" });
-        queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
-      }
-    });
-  };
-
-  const handlePredict = () => {
-    if (!profile) {
-      toast({ variant: "destructive", title: "Profile Required", description: "Complete your profile first." });
-      return;
-    }
-    
-    setIsPredicting(true);
-    predictBudget.mutate(
-      { data: { location: profile.location, guestCount: profile.guestCount, weddingVibe: profile.weddingVibe } },
+    if (!confirm("Delete this expense?")) return;
+    deleteManual.mutate(
+      { id },
       {
-        onSuccess: (data) => {
-          toast({ title: "Prediction Complete", description: "AI has estimated your costs." });
+        onSuccess: () => {
+          toast({ title: "Expense deleted" });
+          queryClient.invalidateQueries({ queryKey: getListManualExpensesQueryKey() });
         },
-        onError: () => {
-          toast({ variant: "destructive", title: "Error", description: "Prediction failed." });
-        },
-        onSettled: () => {
-          setIsPredicting(false);
-        }
-      }
+        onError: () => toast({ variant: "destructive", title: "Could not delete expense" }),
+      },
     );
   };
 
-  if (isLoadingBudget || isLoadingProfile) {
+  if (isLoadingBudget) {
     return (
-      <div className="space-y-8 max-w-5xl mx-auto">
-        <Skeleton className="h-12 w-64" />
-        <div className="grid md:grid-cols-3 gap-6">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-32" />)}
-        </div>
+      <div className="space-y-8 max-w-6xl mx-auto">
+        <Skeleton className="h-32" />
         <Skeleton className="h-96" />
+        <Skeleton className="h-64" />
       </div>
     );
   }
 
-  const spentPercentage = budget && budget.totalBudget > 0 ? (combinedCommitted / budget.totalBudget) * 100 : 0;
-  const isOverBudget = budget ? combinedCommitted > budget.totalBudget : false;
-
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
-      {/* ── Log Payment Dialog ── */}
-      <Dialog open={!!logPaymentItem} onOpenChange={open => { if (!open) setLogPaymentItem(null); }}>
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-2xl text-primary flex items-center gap-2">
-              <CreditCard className="h-5 w-5" /> Payment Tracker
-            </DialogTitle>
-            <DialogDescription>
-              {logPaymentItem && <>Payments for <strong>{logPaymentItem.vendor}</strong></>}
-            </DialogDescription>
-          </DialogHeader>
-          {logPaymentItem && (
-            <LogPaymentContent item={logPaymentItem} onDone={() => setLogPaymentItem(null)} />
-          )}
-        </DialogContent>
-      </Dialog>
+    <div className="space-y-8 max-w-6xl mx-auto pb-12">
+      {/* ── Header & Total Budget ─────────────────────────────────── */}
+      <div className="space-y-2">
+        <h1 className="font-serif text-4xl text-primary">Budget Tracker</h1>
+        <p className="text-muted-foreground">
+          Track every dollar of your wedding spend. Vendor expenses are pulled in automatically; everything else lives in Manual Expenses below.
+        </p>
+      </div>
 
-      {/* ── Edit Expense Dialog ── */}
-      <Dialog open={!!editingItem} onOpenChange={open => { if (!open) setEditingItem(null); }}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-2xl text-primary">Edit Expense</DialogTitle>
-            <DialogDescription>Update the details for this expense.</DialogDescription>
-          </DialogHeader>
-          <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4 py-4">
-              <FormField
-                control={editForm.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {CATEGORIES.map(c => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {watchedEditCategory === "Other" && (
-                <FormField
-                  control={editForm.control}
-                  name="customCategory"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Expense Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="E.g. Hair & Makeup, Rehearsal Dinner…" {...field} autoFocus />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-              <FormField
-                control={editForm.control}
-                name="vendor"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vendor Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="E.g. Sweet Magnolia Florals" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="actualCost"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cost</FormLabel>
-                    <FormControl>
-                      <MoneyInput
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        onBlur={field.onBlur}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="amountPaid"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Amount Paid So Far</FormLabel>
-                    <FormControl>
-                      <MoneyInput
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        onBlur={field.onBlur}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="isPaid"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>Fully Paid</FormLabel>
-                      <CardDescription>Has this been completely paid off?</CardDescription>
-                    </div>
-                    <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="e.g. contract signed, deposit due June 1…"
-                        className="resize-none"
-                        rows={3}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="flex gap-3 mt-4">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => editForm.reset()}>
-                  <RotateCcw className="h-4 w-4 mr-2" /> Reset
-                </Button>
-                <Button type="submit" className="flex-1" disabled={updateItem.isPending}>
-                  {updateItem.isPending ? "Saving…" : "Save Changes"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
-            <DollarSign className="h-8 w-8" /> 
-            Budget Manager
-          </h1>
-          <p className="text-lg text-muted-foreground mt-2">Track every penny, stress-free.</p>
-        </div>
-        <Dialog open={isAddingItem} onOpenChange={setIsAddingItem}>
-          <DialogTrigger asChild>
-            <Button size="lg" className="shadow-md" data-testid="btn-add-item">
-              <Plus className="mr-2 h-4 w-4" /> Add Expense
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle className="font-serif text-2xl text-primary">New Expense</DialogTitle>
-              <DialogDescription>Log a new quote or paid invoice.</DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmitItem)} className="space-y-4 py-4">
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-category">
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {CATEGORIES.map(c => (
-                            <SelectItem key={c} value={c}>{c}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {watchedCategory === "Other" && (
-                  <FormField
-                    control={form.control}
-                    name="customCategory"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Expense Name</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="E.g. Hair & Makeup, Rehearsal Dinner…"
-                            {...field}
-                            data-testid="input-custom-category"
-                            autoFocus
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+      <Card className="border-primary/30 shadow-sm">
+        <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Total wedding budget</p>
+            {editingBudget ? (
+              <div className="flex items-center gap-2">
+                <div className="w-44">
+                  <MoneyInput
+                    value={budgetDraft}
+                    onChange={setBudgetDraft}
+                    onBlur={commitBudget}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitBudget();
+                      if (e.key === "Escape") setEditingBudget(false);
+                    }}
+                    autoFocus
+                    className="h-11 text-2xl font-serif"
                   />
-                )}
-                <FormField
-                  control={form.control}
-                  name="vendor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Vendor Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="E.g. Sweet Magnolia Florals" {...field} data-testid="input-vendor" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="actualCost"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cost</FormLabel>
-                      <FormControl>
-                        <MoneyInput
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          onBlur={field.onBlur}
-                          data-testid="input-actual"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="amountPaid"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Amount Paid So Far</FormLabel>
-                      <FormControl>
-                        <MoneyInput
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          onBlur={field.onBlur}
-                          data-testid="input-amount-paid"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="isPaid"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                      <div className="space-y-0.5">
-                        <FormLabel>Fully Paid</FormLabel>
-                        <CardDescription>Has this been completely paid off?</CardDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-paid"
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="e.g. contract signed, deposit due June 1…"
-                          className="resize-none"
-                          rows={3}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="flex gap-3 mt-4">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset()}>
-                    <RotateCcw className="h-4 w-4 mr-2" /> Reset
-                  </Button>
-                  <Button type="submit" className="flex-1" disabled={addBudgetItem.isPending} data-testid="btn-submit-item">
-                    {addBudgetItem.isPending ? "Saving..." : "Save Expense"}
-                  </Button>
                 </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {budget && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-primary/5 border-none shadow-sm">
-            <CardHeader className="pb-1 pt-4 px-4">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Budget</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="text-3xl font-serif text-primary">${budget.totalBudget.toLocaleString()}</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-card border-none shadow-sm">
-            <CardHeader className="pb-1 pt-4 px-4">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Committed</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="text-3xl font-serif">${combinedCommitted.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground mt-0.5">Budget + vendor total</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-emerald-50 border-none shadow-sm">
-            <CardHeader className="pb-1 pt-4 px-4">
-              <CardTitle className="text-xs font-medium text-emerald-700 uppercase tracking-wider">Paid Out</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="text-3xl font-serif text-emerald-700">${combinedPaid.toLocaleString()}</div>
-              <p className="text-xs text-emerald-600 mt-0.5">
-                {combinedCommitted > 0 ? Math.round((combinedPaid / combinedCommitted) * 100) : 0}% of committed
-              </p>
-            </CardContent>
-          </Card>
-          <Card className={`${combinedOwed > 0 ? 'bg-amber-50' : 'bg-secondary/20'} border-none shadow-sm`}>
-            <CardHeader className="pb-1 pt-4 px-4">
-              <CardTitle className={`text-xs font-medium uppercase tracking-wider ${combinedOwed > 0 ? 'text-amber-700' : 'text-muted-foreground'}`}>
-                Still Owed
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className={`text-3xl font-serif ${combinedOwed > 0 ? 'text-amber-700' : 'text-foreground'}`}>
-                ${combinedOwed.toLocaleString()}
+                <Button size="sm" onClick={commitBudget} disabled={saveBudget.isPending}>
+                  Save
+                </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">Remaining payments</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {budget && false && (() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const upcoming = (budget.items as Array<{ id: number; vendor: string; category: string; actualCost: number; amountPaid: number; isPaid: boolean; nextPaymentDue?: string | null }>)
-          .filter(item => item.nextPaymentDue && !item.isPaid)
-          .map(item => {
-            const due = new Date(item.nextPaymentDue! + "T12:00:00");
-            const diff = Math.ceil((due.getTime() - today.getTime()) / 86400000);
-            return { ...item, due, diff };
-          })
-          .sort((a, b) => a.diff - b.diff);
-
-        if (upcoming.length === 0) return null;
-
-        const overdue = upcoming.filter(i => i.diff < 0);
-        const urgent = upcoming.filter(i => i.diff >= 0 && i.diff <= 7);
-        const later = upcoming.filter(i => i.diff > 7);
-
-        return (
-          <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
-            <div className="px-4 py-3 flex items-center gap-2 border-b border-border/50 bg-muted/30">
-              <Bell className="h-4 w-4 text-primary" />
-              <span className="font-semibold text-sm text-foreground">Upcoming Payment Reminders</span>
-              <span className="ml-auto text-xs text-muted-foreground">{upcoming.length} payment{upcoming.length !== 1 ? "s" : ""} scheduled</span>
-            </div>
-            <div className="divide-y divide-border/40">
-              {overdue.map(item => (
-                <div key={item.id} className="flex items-center gap-3 px-4 py-3 bg-red-50/60">
-                  <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-red-800 truncate">{item.vendor}</p>
-                    <p className="text-xs text-red-600">
-                      {item.category} · ${(item.actualCost - item.amountPaid).toLocaleString()} remaining
-                    </p>
-                  </div>
-                  <span className="text-xs font-semibold text-red-600 shrink-0 bg-red-100 px-2 py-0.5 rounded-full border border-red-200">
-                    {Math.abs(item.diff)}d overdue
-                  </span>
-                </div>
-              ))}
-              {urgent.map(item => (
-                <div key={item.id} className="flex items-center gap-3 px-4 py-3 bg-amber-50/60">
-                  <Clock className="h-4 w-4 text-amber-500 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-amber-900 truncate">{item.vendor}</p>
-                    <p className="text-xs text-amber-700">
-                      {item.category} · ${(item.actualCost - item.amountPaid).toLocaleString()} remaining
-                    </p>
-                  </div>
-                  <span className="text-xs font-semibold text-amber-700 shrink-0 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
-                    {item.diff === 0 ? "Due today" : item.diff === 1 ? "Due tomorrow" : `${item.diff}d left`}
-                  </span>
-                </div>
-              ))}
-              {later.map(item => (
-                <div key={item.id} className="flex items-center gap-3 px-4 py-3">
-                  <Bell className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{item.vendor}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.category} · ${(item.actualCost - item.amountPaid).toLocaleString()} remaining
-                    </p>
-                  </div>
-                  <span className="text-xs text-muted-foreground shrink-0">
-                    {item.due.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </span>
-                </div>
-              ))}
-            </div>
+            ) : (
+              <button
+                onClick={startEditBudget}
+                className="font-serif text-4xl text-primary hover:opacity-80 transition flex items-center gap-2 group"
+                title="Click to edit"
+              >
+                {formatMoney(totalBudget)}
+                <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100" />
+              </button>
+            )}
           </div>
-        );
-      })()}
-
-      {budget && (
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>{spentPercentage.toFixed(1)}% utilized</span>
-            <span>{isOverBudget ? "Over budget" : "On track"}</span>
+          <div className="flex-1 max-w-md w-full">
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>Spent so far</span>
+              <span className="font-medium text-foreground">{formatMoney(combinedSpend)}</span>
+            </div>
+            <Progress value={usedPct} className={overBudget ? "[&>div]:bg-destructive" : ""} />
+            <p className={`text-xs mt-1 ${overBudget ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+              {overBudget
+                ? `${formatMoney(combinedSpend - totalBudget)} over budget`
+                : `${formatMoney(remaining)} remaining`}
+            </p>
           </div>
-          <Progress value={spentPercentage > 100 ? 100 : spentPercentage} className={`h-3 ${isOverBudget ? '[&>div]:bg-destructive' : ''}`} />
-        </div>
-      )}
+        </CardContent>
+      </Card>
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <Card className="border-none shadow-md overflow-hidden">
-            <CardHeader className="bg-muted/30 border-b pb-4">
-              <CardTitle className="font-serif text-xl">Expenses</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Payments recorded in your <a href="/vendors" className="text-primary hover:underline font-medium">Vendor List</a> — deposits and milestone payments — appear here automatically as read-only rows. No need to enter them twice.
-              </p>
-            </CardHeader>
-            <CardContent className="p-0">
-              {budget && (budget.items.length > 0 || (vendorFinancials?.vendors ?? []).length > 0) ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader className="bg-muted/10">
-                      <TableRow>
-                        <TableHead>Vendor / Category</TableHead>
-                        <TableHead className="text-right">Cost</TableHead>
-                        <TableHead>Payment Progress</TableHead>
-                        <TableHead className="text-center">Paid</TableHead>
-                        <TableHead></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {budget.items.map((item) => (
-                        <TableRow key={item.id} className="group transition-colors">
-                          <TableCell>
-                            <div className="font-medium text-foreground">{item.vendor}</div>
-                            <div className="text-xs text-muted-foreground">{item.category}</div>
-                            {item.notes && (
-                              <div className="text-xs text-muted-foreground/70 italic mt-0.5 max-w-[220px] truncate" title={item.notes}>
-                                {item.notes}
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            ${item.actualCost.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="min-w-[160px]">
-                            <PaymentProgressCell item={item} onUpdate={(paid) => {
-                              updateItem.mutate({ id: item.id, data: { amountPaid: paid } }, {
-                                onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() }),
-                              });
-                            }} />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <button 
-                              onClick={() => togglePaid(item.id, item.isPaid)}
-                              className={`inline-flex items-center justify-center w-8 h-8 rounded-full transition-colors ${item.isPaid ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
-                              data-testid={`btn-toggle-paid-${item.id}`}
-                              title={item.isPaid ? "Mark unpaid" : "Mark paid"}
-                            >
-                              <CheckCircle2 className="h-5 w-5" />
-                            </button>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 px-2 text-xs gap-1 border-primary/20 text-primary hover:bg-primary/5 hidden sm:flex"
-                                onClick={() => setLogPaymentItem({ id: item.id, vendor: item.vendor, actualCost: item.actualCost, amountPaid: item.amountPaid ?? 0 })}
-                                data-testid={`btn-log-payment-${item.id}`}
-                                title="Log a payment"
-                              >
-                                <CreditCard className="h-3 w-3" /> Pay
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-primary hover:text-primary/80 sm:hidden"
-                                onClick={() => setLogPaymentItem({ id: item.id, vendor: item.vendor, actualCost: item.actualCost, amountPaid: item.amountPaid ?? 0 })}
-                                title="Log a payment"
-                              >
-                                <CreditCard className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-muted-foreground hover:text-primary"
-                                onClick={() => openEdit(item)}
-                                data-testid={`btn-edit-item-${item.id}`}
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="text-muted-foreground hover:text-destructive"
-                                onClick={() => handleDelete(item.id)}
-                                data-testid={`btn-delete-item-${item.id}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-
-                      {/* ── Vendor List rows (auto-synced, read-only) ── */}
-                      {(vendorFinancials?.vendors ?? []).map((v) => {
-                        const pct = v.totalCost > 0 ? Math.min((v.totalPaid / v.totalCost) * 100, 100) : 0;
-                        return (
-                          <TableRow key={`vendor-${v.id}`} className="bg-primary/[0.025] hover:bg-primary/[0.04] transition-colors">
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="font-medium text-foreground">{v.name}</div>
-                                <span className="text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                                  Vendor List
-                                </span>
-                              </div>
-                              <div className="text-xs text-muted-foreground">{v.category}</div>
-                              {v.nextPaymentDue && !v.isPaidOff && (
-                                <div className="text-xs text-amber-600 mt-0.5">
-                                  Next due: {new Date(v.nextPaymentDue + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right font-medium">
-                              ${v.totalCost.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="min-w-[160px]">
-                              <div className="space-y-1 py-0.5">
-                                <div className="text-xs text-left">
-                                  <span className="font-medium">${v.totalPaid.toLocaleString()}</span>
-                                  <span className="text-muted-foreground"> / ${v.totalCost.toLocaleString()}</span>
-                                </div>
-                                <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all ${v.isPaidOff ? "bg-green-500" : "bg-primary"}`}
-                                    style={{ width: `${pct}%` }}
-                                  />
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${v.isPaidOff ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground"}`}>
-                                <CheckCircle2 className="h-5 w-5" />
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <a
-                                href="/vendors"
-                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium px-2 py-1"
-                              >
-                                View <ArrowUpRight className="h-3 w-3" />
-                              </a>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="p-12 text-center text-muted-foreground">
-                  <Calculator className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                  <p>No expenses logged yet.</p>
-                  <Button variant="link" onClick={() => setIsAddingItem(true)} className="mt-2 text-primary">
-                    Add your first expense
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div>
-          <Card className="border-none shadow-md bg-gradient-to-br from-primary/5 to-secondary/10 relative overflow-hidden">
-            <CardHeader>
-              <CardTitle className="font-serif text-xl flex items-center gap-2 text-primary">
-                <Sparkles className="h-5 w-5" /> AI Prediction
+      {/* ── Vendor-Synced Expenses ───────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2 font-serif text-2xl text-primary">
+                <Sparkles className="h-5 w-5" />
+                Vendor-Synced Expenses
               </CardTitle>
-              <CardDescription>Based on {profile?.location || "your location"} and {profile?.guestCount || "guest"} guests.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {predictBudget.data ? (
-                <div className="space-y-4 animate-in fade-in">
-                  <div className="text-center p-4 bg-background rounded-xl border border-primary/10 shadow-sm">
-                    <p className="text-sm text-muted-foreground mb-1">Estimated Total Need</p>
-                    <div className="text-3xl font-serif font-bold text-primary">
-                      ${predictBudget.data.totalEstimate.toLocaleString()}
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3 mt-6">
-                    <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">Predicted Breakdown</h4>
-                    {predictBudget.data.breakdown.map((b, i) => (
-                      <div key={i} className="flex justify-between items-center text-sm border-b border-border/50 pb-2 last:border-0">
-                        <span>{b.category}</span>
-                        <span className="font-medium">${b.estimatedCost.toLocaleString()}</span>
-                      </div>
-                    ))}
-                  </div>
+              <CardDescription>
+                Pulled automatically from your Vendor List. Edit these by opening the vendor — they're read-only here.
+              </CardDescription>
+            </div>
+            <Badge variant="secondary" className="gap-1 shrink-0">
+              <Lock className="h-3 w-3" /> Read-only
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingVendors ? (
+            <Skeleton className="h-40" />
+          ) : !vendorFinancials || vendorFinancials.vendors.length === 0 ? (
+            <div className="text-center py-10 border-2 border-dashed border-border rounded-lg">
+              <p className="text-muted-foreground mb-3">No vendors added yet.</p>
+              <Button variant="outline" onClick={() => setLocation("/vendors")}>
+                Go to Vendor List
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Total cost</TableHead>
+                    <TableHead className="text-right">Paid</TableHead>
+                    <TableHead className="text-right">Remaining</TableHead>
+                    <TableHead>Next payment</TableHead>
+                    <TableHead className="min-w-[180px]">Progress</TableHead>
+                    <TableHead className="text-right">View</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {vendorFinancials.vendors.map((v) => {
+                    const remaining = Math.max(0, v.totalCost - v.totalPaid);
+                    const pct = v.totalCost > 0 ? Math.min((v.totalPaid / v.totalCost) * 100, 100) : 0;
+                    return (
+                      <TableRow key={v.id}>
+                        <TableCell className="font-medium">{v.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{v.category}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{formatMoney(v.totalCost)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatMoney(v.totalPaid)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatMoney(remaining)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{formatDate(v.nextPaymentDue)}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  pct >= 100 ? "bg-emerald-500" : pct > 50 ? "bg-primary" : "bg-amber-400"
+                                }`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">{pct.toFixed(0)}% paid</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setLocation(`/vendors?vendorId=${v.id}`)}
+                            className="gap-1"
+                          >
+                            View <ArrowUpRight className="h-3 w-3" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-                  <div className="mt-6 p-4 bg-primary/10 rounded-xl text-sm leading-relaxed text-primary-foreground/90 text-foreground">
-                    <p className="italic text-muted-foreground">"{predictBudget.data.aiSuggestions}"</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                    <Wand2 className="h-8 w-8 text-primary opacity-50" />
-                  </div>
-                  <p className="text-muted-foreground text-sm mb-6">Let AI analyze market rates for your specific wedding vibe and location to predict realistic costs.</p>
-                  <Button 
-                    onClick={handlePredict} 
-                    disabled={isPredicting || predictBudget.isPending} 
-                    className="w-full"
-                    data-testid="btn-predict-budget"
+      {/* ── Manual Expenses ──────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2 font-serif text-2xl text-primary">
+                <DollarSign className="h-5 w-5" />
+                Manual Expenses
+              </CardTitle>
+              <CardDescription>
+                Anything outside your vendor list — dress, rings, décor, tips, hotel, DIY, gifts, etc.
+              </CardDescription>
+            </div>
+            <Button onClick={openAdd} className="gap-2 shrink-0">
+              <Plus className="h-4 w-4" /> Add Expense
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingManual ? (
+            <Skeleton className="h-32" />
+          ) : manualExpenses.length === 0 ? (
+            <div className="text-center py-10 border-2 border-dashed border-border rounded-lg">
+              <p className="text-muted-foreground mb-3">No manual expenses yet.</p>
+              <Button variant="outline" onClick={openAdd} className="gap-2">
+                <Plus className="h-4 w-4" /> Add your first expense
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Expense</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Cost</TableHead>
+                    <TableHead className="text-right">Paid</TableHead>
+                    <TableHead className="text-right">Remaining</TableHead>
+                    <TableHead>Receipt</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {manualExpenses.map((m) => {
+                    const remaining = Math.max(0, m.cost - m.amountPaid);
+                    return (
+                      <TableRow key={m.id}>
+                        <TableCell>
+                          <div className="font-medium">{m.name}</div>
+                          {m.notes && <div className="text-xs text-muted-foreground line-clamp-1">{m.notes}</div>}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{m.category}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{formatMoney(m.cost)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatMoney(m.amountPaid)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatMoney(remaining)}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            const href = safeReceiptHref(m.receiptUrl);
+                            return href ? (
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline text-xs flex items-center gap-1"
+                              >
+                                <Paperclip className="h-3 w-3" />
+                                {m.receiptName ?? "View"}
+                              </a>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => openEdit(m)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDelete(m.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Totals Summary ───────────────────────────────────────── */}
+      <Card className="bg-muted/30">
+        <CardHeader>
+          <CardTitle className="font-serif text-2xl text-primary">Budget Summary</CardTitle>
+          <CardDescription>Combined totals across vendor and manual expenses.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <SummaryStat label="Total vendor spend" value={vendorCommitted} sub={`${formatMoney(vendorPaid)} paid`} />
+            <SummaryStat label="Total manual spend" value={manualCommitted} sub={`${formatMoney(manualPaid)} paid`} />
+            <SummaryStat label="Combined total spend" value={combinedSpend} highlight />
+            <SummaryStat
+              label={overBudget ? "Over budget" : "Remaining budget"}
+              value={Math.abs(remaining)}
+              danger={overBudget}
+              good={!overBudget && totalBudget > 0}
+            />
+            <SummaryStat
+              label="Total budget"
+              value={totalBudget}
+              sub={`${usedPct.toFixed(0)}% used`}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Add/Edit Manual Expense Dialog ──────────────────────── */}
+      <Dialog open={isAdding} onOpenChange={(open) => { if (!open) { setIsAdding(false); setEditingId(null); } }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl text-primary">
+              {editingId != null ? "Edit Expense" : "Add Expense"}
+            </DialogTitle>
+            <DialogDescription>Track a non-vendor cost like rings, décor, or tips.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Expense name</label>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Wedding bands, Honeymoon flights"
+                autoFocus
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Category</label>
+                <Select value={form.category} onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MANUAL_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Cost</label>
+                <MoneyInput value={form.cost} onChange={(v) => setForm((f) => ({ ...f, cost: v }))} placeholder="0" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Amount paid</label>
+              <MoneyInput
+                value={form.amountPaid}
+                onChange={(v) => setForm((f) => ({ ...f, amountPaid: v }))}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Notes</label>
+              <Textarea
+                value={form.notes}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                placeholder="Optional details…"
+                rows={3}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Receipt (optional)</label>
+              {form.receiptUrl ? (
+                <div className="flex items-center justify-between gap-2 p-2 border rounded-md text-sm">
+                  <a href={safeReceiptHref(form.receiptUrl) ?? "#"} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate flex items-center gap-1">
+                    <Paperclip className="h-3 w-3" />
+                    {form.receiptName ?? "Receipt"}
+                  </a>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setForm((f) => ({ ...f, receiptUrl: null, receiptName: null }))}
                   >
-                    {isPredicting || predictBudget.isPending ? "Analyzing market..." : "Predict Costs"}
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
+              ) : (
+                <label className="block">
+                  <input type="file" className="hidden" onChange={handleReceiptFile} disabled={upload.isUploading} />
+                  <Button type="button" variant="outline" size="sm" asChild disabled={upload.isUploading}>
+                    <span className="cursor-pointer gap-2">
+                      <Paperclip className="h-4 w-4" />
+                      {upload.isUploading ? "Uploading…" : "Upload receipt"}
+                    </span>
+                  </Button>
+                </label>
               )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsAdding(false); setEditingId(null); }}>
+              Cancel
+            </Button>
+            <Button onClick={submitForm} disabled={createManual.isPending || updateManual.isPending}>
+              {editingId != null ? "Save changes" : "Add expense"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  sub,
+  highlight,
+  danger,
+  good,
+}: {
+  label: string;
+  value: number;
+  sub?: string;
+  highlight?: boolean;
+  danger?: boolean;
+  good?: boolean;
+}) {
+  const color = danger
+    ? "text-destructive"
+    : good
+    ? "text-emerald-600"
+    : highlight
+    ? "text-primary"
+    : "text-foreground";
+  return (
+    <div className="space-y-1">
+      <p className="text-xs uppercase tracking-widest text-muted-foreground">{label}</p>
+      <p className={`font-serif text-2xl tabular-nums ${color}`}>{formatMoney(value)}</p>
+      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
     </div>
   );
 }

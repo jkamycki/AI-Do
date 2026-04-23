@@ -133,6 +133,22 @@ export const insertVendorPaymentSchema = createInsertSchema(vendorPayments).omit
 export type InsertVendorPayment = z.infer<typeof insertVendorPaymentSchema>;
 export type VendorPayment = typeof vendorPayments.$inferSelect;
 
+export const manualExpenses = pgTable("manual_expenses", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  name: text("name").notNull(),
+  category: text("category").notNull().default("Other"),
+  cost: numeric("cost", { precision: 12, scale: 2 }).notNull().default("0"),
+  amountPaid: numeric("amount_paid", { precision: 12, scale: 2 }).notNull().default("0"),
+  notes: text("notes"),
+  receiptUrl: text("receipt_url"),
+  receiptName: text("receipt_name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type ManualExpense = typeof manualExpenses.$inferSelect;
+
 export const vendorConversations = pgTable("vendor_conversations", {
   id: serial("id").primaryKey(),
   vendorId: integer("vendor_id").notNull(),

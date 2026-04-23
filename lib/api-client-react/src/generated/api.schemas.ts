@@ -5,6 +5,29 @@
  * API specification for A.IDO Wedding Planning OS
  * OpenAPI spec version: 0.1.0
  */
+export interface ManualExpense {
+  id: number;
+  name: string;
+  category: string;
+  cost: number;
+  amountPaid: number;
+  notes?: string | null;
+  receiptUrl?: string | null;
+  receiptName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ManualExpenseInput {
+  name?: string;
+  category?: string;
+  cost?: number;
+  amountPaid?: number;
+  notes?: string | null;
+  receiptUrl?: string | null;
+  receiptName?: string | null;
+}
+
 export interface HealthStatus {
   status: string;
 }

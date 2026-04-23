@@ -882,3 +882,76 @@ export const DeleteGuestParams = zod.object({
 export const DeleteGuestResponse = zod.object({
   success: zod.boolean(),
 });
+
+/**
+ * @summary List manual (non-vendor) expenses
+ */
+export const ListManualExpensesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  category: zod.string(),
+  cost: zod.number(),
+  amountPaid: zod.number(),
+  notes: zod.string().nullish(),
+  receiptUrl: zod.string().nullish(),
+  receiptName: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListManualExpensesResponse = zod.array(
+  ListManualExpensesResponseItem,
+);
+
+/**
+ * @summary Create a manual expense
+ */
+export const CreateManualExpenseBody = zod.object({
+  name: zod.string().optional(),
+  category: zod.string().optional(),
+  cost: zod.number().optional(),
+  amountPaid: zod.number().optional(),
+  notes: zod.string().nullish(),
+  receiptUrl: zod.string().nullish(),
+  receiptName: zod.string().nullish(),
+});
+
+/**
+ * @summary Update a manual expense
+ */
+export const UpdateManualExpenseParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateManualExpenseBody = zod.object({
+  name: zod.string().optional(),
+  category: zod.string().optional(),
+  cost: zod.number().optional(),
+  amountPaid: zod.number().optional(),
+  notes: zod.string().nullish(),
+  receiptUrl: zod.string().nullish(),
+  receiptName: zod.string().nullish(),
+});
+
+export const UpdateManualExpenseResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  category: zod.string(),
+  cost: zod.number(),
+  amountPaid: zod.number(),
+  notes: zod.string().nullish(),
+  receiptUrl: zod.string().nullish(),
+  receiptName: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a manual expense
+ */
+export const DeleteManualExpenseParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteManualExpenseResponse = zod.object({
+  success: zod.boolean(),
+});

@@ -826,8 +826,131 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
 
+  /manual-expenses:
+    get:
+      operationId: listManualExpenses
+      summary: List manual (non-vendor) expenses
+      tags: [Budget]
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ManualExpense"
+    post:
+      operationId: createManualExpense
+      summary: Create a manual expense
+      tags: [Budget]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualExpenseInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManualExpense"
+
+  /manual-expenses/{id}:
+    put:
+      operationId: updateManualExpense
+      summary: Update a manual expense
+      tags: [Budget]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualExpenseInput"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManualExpense"
+    delete:
+      operationId: deleteManualExpense
+      summary: Delete a manual expense
+      tags: [Budget]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
 components:
   schemas:
+    ManualExpense:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+        cost:
+          type: number
+        amountPaid:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        receiptUrl:
+          type: string
+          nullable: true
+        receiptName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, name, category, cost, amountPaid, createdAt, updatedAt]
+
+    ManualExpenseInput:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        cost:
+          type: number
+        amountPaid:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        receiptUrl:
+          type: string
+          nullable: true
+        receiptName:
+          type: string
+          nullable: true
+
     HealthStatus:
       type: object
       properties:

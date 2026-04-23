@@ -40,6 +40,8 @@ import type {
   Guest,
   GuestList,
   HealthStatus,
+  ManualExpense,
+  ManualExpenseInput,
   Message,
   PaymentLogEntry,
   PredictBudgetBody,
@@ -3409,4 +3411,336 @@ export const useDeleteGuest = <
   TContext
 > => {
   return useMutation(getDeleteGuestMutationOptions(options));
+};
+
+/**
+ * @summary List manual (non-vendor) expenses
+ */
+export const getListManualExpensesUrl = () => {
+  return `/api/manual-expenses`;
+};
+
+export const listManualExpenses = async (
+  options?: RequestInit,
+): Promise<ManualExpense[]> => {
+  return customFetch<ManualExpense[]>(getListManualExpensesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListManualExpensesQueryKey = () => {
+  return [`/api/manual-expenses`] as const;
+};
+
+export const getListManualExpensesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listManualExpenses>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listManualExpenses>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListManualExpensesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listManualExpenses>>
+  > = ({ signal }) => listManualExpenses({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listManualExpenses>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListManualExpensesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listManualExpenses>>
+>;
+export type ListManualExpensesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List manual (non-vendor) expenses
+ */
+
+export function useListManualExpenses<
+  TData = Awaited<ReturnType<typeof listManualExpenses>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listManualExpenses>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListManualExpensesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a manual expense
+ */
+export const getCreateManualExpenseUrl = () => {
+  return `/api/manual-expenses`;
+};
+
+export const createManualExpense = async (
+  manualExpenseInput: ManualExpenseInput,
+  options?: RequestInit,
+): Promise<ManualExpense> => {
+  return customFetch<ManualExpense>(getCreateManualExpenseUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(manualExpenseInput),
+  });
+};
+
+export const getCreateManualExpenseMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createManualExpense>>,
+    TError,
+    { data: BodyType<ManualExpenseInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createManualExpense>>,
+  TError,
+  { data: BodyType<ManualExpenseInput> },
+  TContext
+> => {
+  const mutationKey = ["createManualExpense"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createManualExpense>>,
+    { data: BodyType<ManualExpenseInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createManualExpense(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateManualExpenseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createManualExpense>>
+>;
+export type CreateManualExpenseMutationBody = BodyType<ManualExpenseInput>;
+export type CreateManualExpenseMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a manual expense
+ */
+export const useCreateManualExpense = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createManualExpense>>,
+    TError,
+    { data: BodyType<ManualExpenseInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createManualExpense>>,
+  TError,
+  { data: BodyType<ManualExpenseInput> },
+  TContext
+> => {
+  return useMutation(getCreateManualExpenseMutationOptions(options));
+};
+
+/**
+ * @summary Update a manual expense
+ */
+export const getUpdateManualExpenseUrl = (id: number) => {
+  return `/api/manual-expenses/${id}`;
+};
+
+export const updateManualExpense = async (
+  id: number,
+  manualExpenseInput: ManualExpenseInput,
+  options?: RequestInit,
+): Promise<ManualExpense> => {
+  return customFetch<ManualExpense>(getUpdateManualExpenseUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(manualExpenseInput),
+  });
+};
+
+export const getUpdateManualExpenseMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateManualExpense>>,
+    TError,
+    { id: number; data: BodyType<ManualExpenseInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateManualExpense>>,
+  TError,
+  { id: number; data: BodyType<ManualExpenseInput> },
+  TContext
+> => {
+  const mutationKey = ["updateManualExpense"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateManualExpense>>,
+    { id: number; data: BodyType<ManualExpenseInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateManualExpense(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateManualExpenseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateManualExpense>>
+>;
+export type UpdateManualExpenseMutationBody = BodyType<ManualExpenseInput>;
+export type UpdateManualExpenseMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a manual expense
+ */
+export const useUpdateManualExpense = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateManualExpense>>,
+    TError,
+    { id: number; data: BodyType<ManualExpenseInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateManualExpense>>,
+  TError,
+  { id: number; data: BodyType<ManualExpenseInput> },
+  TContext
+> => {
+  return useMutation(getUpdateManualExpenseMutationOptions(options));
+};
+
+/**
+ * @summary Delete a manual expense
+ */
+export const getDeleteManualExpenseUrl = (id: number) => {
+  return `/api/manual-expenses/${id}`;
+};
+
+export const deleteManualExpense = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getDeleteManualExpenseUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteManualExpenseMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteManualExpense>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteManualExpense>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteManualExpense"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteManualExpense>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteManualExpense(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteManualExpenseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteManualExpense>>
+>;
+
+export type DeleteManualExpenseMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a manual expense
+ */
+export const useDeleteManualExpense = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteManualExpense>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteManualExpense>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteManualExpenseMutationOptions(options));
 };
