@@ -62,6 +62,7 @@ import {
   Phone,
   Globe,
   Link2,
+  StickyNote,
   FileText,
   DollarSign,
   CheckCircle2,
@@ -1033,6 +1034,36 @@ function VendorCard({
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Phone className="h-3 w-3 flex-shrink-0" />
             <span>{vendor.phone}</span>
+          </div>
+        )}
+        {vendor.website && (
+          <a
+            href={vendor.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Globe className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">{vendor.website}</span>
+          </a>
+        )}
+        {vendor.portalLink && (
+          <a
+            href={vendor.portalLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Link2 className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">Vendor Portal</span>
+          </a>
+        )}
+        {vendor.notes && (
+          <div className="flex items-start gap-2 text-xs text-muted-foreground">
+            <StickyNote className="h-3 w-3 flex-shrink-0 mt-0.5" />
+            <span className="line-clamp-2 whitespace-pre-line">{vendor.notes}</span>
           </div>
         )}
       </div>
