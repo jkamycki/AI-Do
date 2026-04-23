@@ -11,7 +11,7 @@ import {
   randomToken,
   sendEmail,
 } from "../../lib/resend";
-import { resolveProfile } from "../../lib/workspaceAccess";
+import { resolveProfile, resolveScopeUserId } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -36,6 +36,7 @@ async function getOrCreateConversation(userId: string, vendorId: number) {
 
 router.get("/messaging/conversations", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const rows = await db
       .select({
         id: vendorConversations.id,
@@ -49,7 +50,7 @@ router.get("/messaging/conversations", requireAuth, async (req, res) => {
       })
       .from(vendorConversations)
       .innerJoin(vendors, eq(vendorConversations.vendorId, vendors.id))
-      .where(eq(vendorConversations.userId, req.userId!))
+      .where(eq(vendorConversations.userId, userId))
       .orderBy(desc(vendorConversations.lastMessageAt));
     res.json(rows.map((r) => ({ ...r, lastMessagePreview: r.lastMessagePreview ?? "", lastMessageAt: r.lastMessageAt.toISOString() })));
   } catch (err) {
@@ -60,8 +61,9 @@ router.get("/messaging/conversations", requireAuth, async (req, res) => {
 
 router.get("/messaging/conversations/by-vendor/:vendorId", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const vendorId = Number(req.params.vendorId);
-    const r = await getOrCreateConversation(req.userId!, vendorId);
+    const r = await getOrCreateConversation(userId, vendorId);
     if (!r) return res.status(404).json({ error: "Vendor not found" });
     const { vendor, conversation } = r;
     res.json({
@@ -88,8 +90,9 @@ async function ownConversation(userId: string, conversationId: number) {
 
 router.get("/messaging/conversations/:id/messages", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
-    const conv = await ownConversation(req.userId!, id);
+    const conv = await ownConversation(userId, id);
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
 
     const rows = await db.select().from(vendorMessages)
@@ -116,8 +119,9 @@ router.get("/messaging/conversations/:id/messages", requireAuth, async (req, res
 
 router.post("/messaging/conversations/:id/messages", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
-    const conv = await ownConversation(req.userId!, id);
+    const conv = await ownConversation(userId, id);
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
 
     const { body, subject, attachments } = (req.body ?? {}) as {
@@ -239,8 +243,9 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
 
 router.post("/messaging/conversations/:id/suggest-reply", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
-    const conv = await ownConversation(req.userId!, id);
+    const conv = await ownConversation(userId, id);
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
 
     const [vendor] = await db.select().from(vendors).where(eq(vendors.id, conv.vendorId)).limit(1);
@@ -284,8 +289,9 @@ Write a friendly, professional reply the couple can send. Keep it concise (2-4 s
 
 router.post("/messaging/conversations/:id/read", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
-    const conv = await ownConversation(req.userId!, id);
+    const conv = await ownConversation(userId, id);
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
     await db.update(vendorConversations).set({ unreadCount: 0 }).where(eq(vendorConversations.id, id));
     res.json({ success: true });

@@ -6,6 +6,7 @@ import { resolveProfile } from "../lib/workspaceAccess";
 
 const router = Router();
 
+// Kept for backwards-compat; new code paths use resolveProfile(req)
 async function getProfileId(userId: string): Promise<number | null> {
   const profiles = await db
     .select()
@@ -14,6 +15,7 @@ async function getProfileId(userId: string): Promise<number | null> {
     .limit(1);
   return profiles.length > 0 ? profiles[0].id : null;
 }
+void getProfileId;
 
 router.get("/guests", requireAuth, async (req, res) => {
   try {
@@ -49,7 +51,8 @@ router.get("/guests", requireAuth, async (req, res) => {
 
 router.post("/guests", requireAuth, async (req, res) => {
   try {
-    const profileId = await getProfileId(req.userId!);
+    const profile = await resolveProfile(req);
+    const profileId = profile?.id ?? null;
     if (!profileId) {
       return res.status(400).json({ error: "No wedding profile found. Create a profile first." });
     }
@@ -96,7 +99,8 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid guest ID" });
 
-    const profileId = await getProfileId(req.userId!);
+    const profile = await resolveProfile(req);
+    const profileId = profile?.id ?? null;
     if (!profileId) return res.status(400).json({ error: "No wedding profile found." });
 
     const { name, email, invitationStatus, rsvpStatus, mealChoice, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, guestCity, guestState, guestZip } = req.body;

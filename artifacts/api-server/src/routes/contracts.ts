@@ -119,10 +119,11 @@ Be thorough, specific, and couple-friendly. Focus on clauses that could financia
 
     const displayName = (req.body?.displayName as string | undefined)?.trim() || originalname;
 
+    const scopeUserId = await resolveScopeUserId(req);
     const [saved] = await db
       .insert(vendorContracts)
       .values({
-        userId: req.userId!,
+        userId: scopeUserId,
         fileName: displayName,
         fileSize: size,
         mimeType: mimetype,
@@ -152,7 +153,8 @@ router.post("/contracts/:id/negotiate", requireAuth, async (req, res) => {
       .where(eq(vendorContracts.id, id))
       .limit(1);
 
-    if (!contract || contract.userId !== req.userId) {
+    const scopeUserId = await resolveScopeUserId(req);
+    if (!contract || contract.userId !== scopeUserId) {
       return res.status(404).json({ error: "Contract not found." });
     }
 
