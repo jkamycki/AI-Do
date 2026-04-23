@@ -61,6 +61,8 @@ export function VendorMessagesTab({ vendorId }: Props) {
   // AI Draft (first-contact / standalone email) — embedded so users don't bounce to /vendor-email
   const [showDraftDialog, setShowDraftDialog] = useState(false);
   const [draftPurpose, setDraftPurpose] = useState("");
+  const [draftVendorType, setDraftVendorType] = useState("");
+  const [draftOtherVendorType, setDraftOtherVendorType] = useState("");
   const [draftNotes, setDraftNotes] = useState("");
   const generateEmail = useGenerateVendorEmail();
 
@@ -321,7 +323,23 @@ export function VendorMessagesTab({ vendorId }: Props) {
             size="sm"
             variant="outline"
             type="button"
-            onClick={() => { setDraftPurpose(""); setDraftNotes(""); setShowDraftDialog(true); }}
+            onClick={() => {
+              setDraftPurpose("");
+              setDraftNotes("");
+              const knownTypes = ["Venue","Hotel","Photographer","Videographer","Florist","Caterer","DJ/Band","Hair & Makeup","Planner/Coordinator"];
+              const cat = vendor?.category ?? "";
+              if (knownTypes.includes(cat)) {
+                setDraftVendorType(cat);
+                setDraftOtherVendorType("");
+              } else if (cat) {
+                setDraftVendorType("Other");
+                setDraftOtherVendorType(cat);
+              } else {
+                setDraftVendorType("");
+                setDraftOtherVendorType("");
+              }
+              setShowDraftDialog(true);
+            }}
           >
             <Mail className="h-3.5 w-3.5 mr-1.5" />
             AI Draft Email
@@ -349,6 +367,27 @@ export function VendorMessagesTab({ vendorId }: Props) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Vendor Type</Label>
+              <Select value={draftVendorType} onValueChange={setDraftVendorType}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Select vendor type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {["Venue","Hotel","Photographer","Videographer","Florist","Caterer","DJ/Band","Hair & Makeup","Planner/Coordinator","Other"].map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {draftVendorType === "Other" && (
+                <Input
+                  placeholder="e.g. Officiant, Transportation, Photo Booth…"
+                  value={draftOtherVendorType}
+                  onChange={(e) => setDraftOtherVendorType(e.target.value)}
+                  className="bg-background mt-1.5"
+                />
+              )}
+            </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Purpose</Label>
               <Select value={draftPurpose} onValueChange={setDraftPurpose}>
@@ -383,13 +422,23 @@ export function VendorMessagesTab({ vendorId }: Props) {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDraftDialog(false)}>Cancel</Button>
             <Button
-              disabled={!draftPurpose || generateEmail.isPending || !vendor}
+              disabled={
+                !draftPurpose ||
+                !draftVendorType ||
+                (draftVendorType === "Other" && !draftOtherVendorType.trim()) ||
+                generateEmail.isPending ||
+                !vendor
+              }
               onClick={() => {
                 if (!vendor) return;
+                const resolvedVendorType =
+                  draftVendorType === "Other"
+                    ? (draftOtherVendorType.trim() || "Vendor")
+                    : (draftVendorType || vendor.category || "Vendor");
                 generateEmail.mutate(
                   {
                     data: {
-                      vendorType: vendor.category || "Vendor",
+                      vendorType: resolvedVendorType,
                       emailType: draftPurpose,
                       vendorName: vendor.name,
                       weddingDate: profile?.weddingDate ?? "",
