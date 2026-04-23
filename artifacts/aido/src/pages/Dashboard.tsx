@@ -419,11 +419,8 @@ function DraggableStatsRow({ chips }: { chips: Record<StatKey, StatChipDef> }) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between px-1">
-        <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1.5">
-          <GripVertical className="h-3 w-3" /> Drag any card to rearrange your dashboard
-        </p>
-        {isCustomized && (
+      {isCustomized && (
+        <div className="flex items-center justify-end px-1">
           <button
             onClick={reset}
             className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
@@ -431,8 +428,8 @@ function DraggableStatsRow({ chips }: { chips: Record<StatKey, StatChipDef> }) {
           >
             <RotateCcw className="h-3 w-3" /> Reset
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {order.map((key) => {
           const def = chips[key];
@@ -565,6 +562,9 @@ export default function Dashboard() {
       <div>
         <p className="text-sm text-muted-foreground font-medium">{getGreeting()},</p>
         <h1 className="text-3xl md:text-4xl font-serif text-foreground mt-0.5 capitalize">{firstName} 🤍</h1>
+        <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1.5 mt-2">
+          <GripVertical className="h-3 w-3" /> Drag any card to rearrange your dashboard
+        </p>
       </div>
 
       {/* Profile setup prompt */}
