@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGetTimeline, useGenerateTimeline, useGetProfile, getGetTimelineQueryKey } from "@workspace/api-client-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
@@ -68,10 +68,46 @@ export default function Timeline() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
       setIsDirty(false);
-      toast({ title: "Timeline saved." });
     },
     onError: () => toast({ title: "Could not save timeline", variant: "destructive" }),
   });
+
+  // Refs for autosave-on-unmount
+  const eventsRef = useRef<TimelineEvent[]>(localEvents);
+  const dirtyRef = useRef(false);
+  const timelineIdRef = useRef<number | null>(null);
+  useEffect(() => { eventsRef.current = localEvents; }, [localEvents]);
+  useEffect(() => { dirtyRef.current = isDirty; }, [isDirty]);
+  useEffect(() => { timelineIdRef.current = timeline?.id ?? null; }, [timeline?.id]);
+
+  // Debounced autosave: save 700ms after edits stop
+  useEffect(() => {
+    if (!isDirty || !timeline?.id) return;
+    const t = setTimeout(() => {
+      saveTimeline.mutate(localEvents);
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDirty, localEvents, timeline?.id]);
+
+  // Save on unmount (navigating to another tab) and on full page unload
+  useEffect(() => {
+    const flush = () => {
+      if (!dirtyRef.current || !timelineIdRef.current) return;
+      authFetch(`${API}/api/timeline/${timelineIdRef.current}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ events: eventsRef.current }),
+        keepalive: true,
+      }).catch(() => {});
+      dirtyRef.current = false;
+    };
+    window.addEventListener("beforeunload", flush);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      flush();
+    };
+  }, []);
 
   function updateLocal(events: TimelineEvent[]) {
     setLocalEvents(events);
