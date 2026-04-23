@@ -198,6 +198,52 @@ function ClerkTokenSetup() {
   return null;
 }
 
+function PendingInviteRedirector() {
+  const { isSignedIn, getToken } = useAuth();
+  const [location, setLocation] = useLocation();
+  const checkedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      checkedRef.current = false;
+      return;
+    }
+    if (checkedRef.current) return;
+    if (location.startsWith("/invite/") || location.startsWith("/sign-in") || location.startsWith("/sign-up")) {
+      return;
+    }
+    checkedRef.current = true;
+
+    (async () => {
+      try {
+        const token = await getToken();
+        const [profileRes, invitesRes] = await Promise.all([
+          fetch(`${basePath}/api/profile`, {
+            credentials: "include",
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }),
+          fetch(`${basePath}/api/invites/pending`, {
+            credentials: "include",
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }),
+        ]);
+        const hasOwnProfile = profileRes.ok;
+        if (hasOwnProfile) return;
+        if (!invitesRes.ok) return;
+        const data = (await invitesRes.json()) as { pending?: Array<{ inviteToken: string }> };
+        const first = data.pending?.[0];
+        if (first?.inviteToken) {
+          setLocation(`/invite/${first.inviteToken}`);
+        }
+      } catch {
+        // Silent — non-blocking redirector.
+      }
+    })();
+  }, [isSignedIn, location, getToken, setLocation]);
+
+  return null;
+}
+
 function LanguageSyncProvider() {
   const { data: profile } = useGetProfile();
   useEffect(() => {
@@ -291,6 +337,7 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkTokenSetup />
         <ClerkQueryClientCacheInvalidator />
+        <PendingInviteRedirector />
         <LanguageSyncProvider />
         <WorkspaceProvider>
           <ThemeProvider>

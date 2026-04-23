@@ -25,6 +25,45 @@ async function getUserPrimaryEmail(userId: string): Promise<string | null> {
 
 const router = Router();
 
+router.get("/invites/pending", requireAuth, async (req, res) => {
+  try {
+    const myEmail = await getUserPrimaryEmail(req.userId!);
+    if (!myEmail) return res.json({ pending: [] });
+
+    const pending = await db
+      .select({
+        id: workspaceCollaborators.id,
+        role: workspaceCollaborators.role,
+        status: workspaceCollaborators.status,
+        inviteToken: workspaceCollaborators.inviteToken,
+        invitedAt: workspaceCollaborators.invitedAt,
+        profileId: workspaceCollaborators.profileId,
+        partner1Name: weddingProfiles.partner1Name,
+        partner2Name: weddingProfiles.partner2Name,
+        weddingDate: weddingProfiles.weddingDate,
+      })
+      .from(workspaceCollaborators)
+      .innerJoin(weddingProfiles, eq(workspaceCollaborators.profileId, weddingProfiles.id))
+      .where(
+        and(
+          eq(workspaceCollaborators.inviteeEmail, myEmail),
+          eq(workspaceCollaborators.status, "pending"),
+        ),
+      )
+      .orderBy(workspaceCollaborators.invitedAt);
+
+    res.json({
+      pending: pending.map((p) => ({
+        ...p,
+        invitedAt: p.invitedAt.toISOString(),
+      })),
+    });
+  } catch (err) {
+    req.log.error(err, "Failed to fetch pending invites");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/collaborators", requireAuth, async (req, res) => {
   try {
     const workspaceIdParam = req.query.workspaceId ? parseInt(String(req.query.workspaceId)) : null;
