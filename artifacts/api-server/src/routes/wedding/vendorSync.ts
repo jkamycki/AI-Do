@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { db, vendors, vendorPayments } from "@workspace/db";
+import { db, vendors, vendorPayments, budgetItems, budgets } from "@workspace/db";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
-import { resolveScopeUserId } from "../../lib/workspaceAccess";
+import { resolveScopeUserId, resolveProfile } from "../../lib/workspaceAccess";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
@@ -12,6 +12,7 @@ function formatVendor(v: typeof vendors.$inferSelect) {
     ...v,
     totalCost: Number(v.totalCost),
     depositAmount: Number(v.depositAmount),
+    budgetItemId: v.budgetItemId ?? null,
   };
 }
 
@@ -22,6 +23,19 @@ function formatPayment(p: typeof vendorPayments.$inferSelect) {
     paidAt: p.paidAt ? p.paidAt.toISOString() : null,
     createdAt: p.createdAt.toISOString(),
   };
+}
+
+async function validateBudgetItemOwnership(req: any, budgetItemId: number | null | undefined): Promise<number | null> {
+  if (budgetItemId == null) return null;
+  const profile = await resolveProfile(req);
+  if (!profile) return null;
+  const found = await db
+    .select({ id: budgetItems.id })
+    .from(budgetItems)
+    .innerJoin(budgets, eq(budgetItems.budgetId, budgets.id))
+    .where(and(eq(budgetItems.id, Number(budgetItemId)), eq(budgets.profileId, profile.id)))
+    .limit(1);
+  return found.length ? Number(budgetItemId) : null;
 }
 
 async function syncNextPaymentDue(vendorId: number) {
@@ -116,7 +130,7 @@ router.post("/vendors", requireAuth, async (req, res) => {
     const userId = await resolveScopeUserId(req);
     const {
       name, category, email, phone, website, portalLink,
-      notes, totalCost, depositAmount, contractSigned, nextPaymentDue,
+      notes, totalCost, depositAmount, contractSigned, nextPaymentDue, budgetItemId,
     } = req.body;
     const [created] = await db.insert(vendors).values({
       userId,
@@ -131,6 +145,7 @@ router.post("/vendors", requireAuth, async (req, res) => {
       depositAmount: String(depositAmount ?? 0),
       contractSigned: contractSigned ?? false,
       nextPaymentDue: nextPaymentDue || null,
+      budgetItemId: await validateBudgetItemOwnership(req, budgetItemId),
       files: [],
     }).returning();
     res.status(201).json(formatVendor(created));
@@ -170,7 +185,7 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
     const vendorId = parseInt(req.params.id, 10);
     const {
       name, category, email, phone, website, portalLink,
-      notes, totalCost, depositAmount, contractSigned, files, nextPaymentDue,
+      notes, totalCost, depositAmount, contractSigned, files, nextPaymentDue, budgetItemId,
     } = req.body;
     const updates: Partial<typeof vendors.$inferInsert> = {};
     if (name !== undefined) updates.name = name;
@@ -184,6 +199,7 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
     if (depositAmount !== undefined) updates.depositAmount = String(depositAmount);
     if (contractSigned !== undefined) updates.contractSigned = contractSigned;
     if (nextPaymentDue !== undefined) updates.nextPaymentDue = nextPaymentDue || null;
+    if (budgetItemId !== undefined) updates.budgetItemId = await validateBudgetItemOwnership(req, budgetItemId);
     if (files !== undefined) updates.files = files;
     updates.updatedAt = new Date();
     const [updated] = await db

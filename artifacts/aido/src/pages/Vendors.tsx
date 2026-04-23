@@ -7,6 +7,7 @@ import {
   useUpdateVendor,
   useDeleteVendor,
   useGetVendor,
+  useGetBudget,
   useCreateVendorPayment,
   useUpdateVendorPayment,
   useDeleteVendorPayment,
@@ -138,6 +139,7 @@ type VendorFormData = {
   totalCost: string;
   depositAmount: string;
   contractSigned: boolean;
+  budgetItemId: string;
 };
 
 const defaultFormData: VendorFormData = {
@@ -151,6 +153,7 @@ const defaultFormData: VendorFormData = {
   totalCost: "",
   depositAmount: "",
   contractSigned: false,
+  budgetItemId: "",
 };
 
 function AddEditVendorDialog({
@@ -177,9 +180,13 @@ function AddEditVendorDialog({
           totalCost: vendor.totalCost > 0 ? String(vendor.totalCost) : "",
           depositAmount: vendor.depositAmount > 0 ? String(vendor.depositAmount) : "",
           contractSigned: vendor.contractSigned,
+          budgetItemId: vendor.budgetItemId != null ? String(vendor.budgetItemId) : "",
         }
       : defaultFormData
   );
+
+  const { data: budget } = useGetBudget();
+  const budgetItemOptions = (budget?.items ?? []) as Array<{ id: number; category: string; vendor: string }>;
 
   const createMutation = useCreateVendor({
     mutation: {
@@ -225,6 +232,7 @@ function AddEditVendorDialog({
       totalCost: form.totalCost ? Number(form.totalCost) : 0,
       depositAmount: form.depositAmount ? Number(form.depositAmount) : 0,
       contractSigned: form.contractSigned,
+      budgetItemId: form.budgetItemId ? Number(form.budgetItemId) : null,
     };
     if (vendor) {
       updateMutation.mutate({ id: vendor.id, data: payload });
@@ -308,6 +316,28 @@ function AddEditVendorDialog({
                 onChange={(v) => setForm({ ...form, depositAmount: v })}
                 placeholder="0.00"
               />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Linked Budget Line</Label>
+              <Select
+                value={form.budgetItemId || "none"}
+                onValueChange={(v) => setForm({ ...form, budgetItemId: v === "none" ? "" : v })}
+              >
+                <SelectTrigger data-testid="select-vendor-budget-item">
+                  <SelectValue placeholder="Not linked to a budget line" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Not linked —</SelectItem>
+                  {budgetItemOptions.map((bi) => (
+                    <SelectItem key={bi.id} value={String(bi.id)}>
+                      {bi.category}{bi.vendor ? ` — ${bi.vendor}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Linking rolls this vendor's cost & payments into the chosen budget category automatically.
+              </p>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Vendor Portal / Booking Link</Label>

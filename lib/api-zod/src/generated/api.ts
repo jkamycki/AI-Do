@@ -154,6 +154,39 @@ export const GetBudgetResponse = zod.object({
       estimatedCost: zod.number(),
       actualCost: zod.number(),
       amountPaid: zod.number().optional(),
+      baseActualCost: zod
+        .number()
+        .optional()
+        .describe(
+          "Manually entered actual cost (excludes linked vendor totals)",
+        ),
+      baseAmountPaid: zod
+        .number()
+        .optional()
+        .describe(
+          "Manually entered amount paid (excludes linked vendor payments)",
+        ),
+      linkedActualCost: zod
+        .number()
+        .optional()
+        .describe("Sum of totalCost from vendors linked to this budget item"),
+      linkedPaid: zod
+        .number()
+        .optional()
+        .describe(
+          "Sum of paid amounts (deposit + paid milestones) from linked vendors",
+        ),
+      linkedVendors: zod
+        .array(
+          zod.object({
+            id: zod.number(),
+            name: zod.string(),
+            category: zod.string(),
+            totalCost: zod.number(),
+            totalPaid: zod.number(),
+          }),
+        )
+        .optional(),
       isPaid: zod.boolean(),
       notes: zod.string().optional(),
       nextPaymentDue: zod
@@ -185,6 +218,39 @@ export const SaveBudgetResponse = zod.object({
       estimatedCost: zod.number(),
       actualCost: zod.number(),
       amountPaid: zod.number().optional(),
+      baseActualCost: zod
+        .number()
+        .optional()
+        .describe(
+          "Manually entered actual cost (excludes linked vendor totals)",
+        ),
+      baseAmountPaid: zod
+        .number()
+        .optional()
+        .describe(
+          "Manually entered amount paid (excludes linked vendor payments)",
+        ),
+      linkedActualCost: zod
+        .number()
+        .optional()
+        .describe("Sum of totalCost from vendors linked to this budget item"),
+      linkedPaid: zod
+        .number()
+        .optional()
+        .describe(
+          "Sum of paid amounts (deposit + paid milestones) from linked vendors",
+        ),
+      linkedVendors: zod
+        .array(
+          zod.object({
+            id: zod.number(),
+            name: zod.string(),
+            category: zod.string(),
+            totalCost: zod.number(),
+            totalPaid: zod.number(),
+          }),
+        )
+        .optional(),
       isPaid: zod.boolean(),
       notes: zod.string().optional(),
       nextPaymentDue: zod
@@ -238,6 +304,35 @@ export const AddBudgetItemResponse = zod.object({
   estimatedCost: zod.number(),
   actualCost: zod.number(),
   amountPaid: zod.number().optional(),
+  baseActualCost: zod
+    .number()
+    .optional()
+    .describe("Manually entered actual cost (excludes linked vendor totals)"),
+  baseAmountPaid: zod
+    .number()
+    .optional()
+    .describe("Manually entered amount paid (excludes linked vendor payments)"),
+  linkedActualCost: zod
+    .number()
+    .optional()
+    .describe("Sum of totalCost from vendors linked to this budget item"),
+  linkedPaid: zod
+    .number()
+    .optional()
+    .describe(
+      "Sum of paid amounts (deposit + paid milestones) from linked vendors",
+    ),
+  linkedVendors: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        category: zod.string(),
+        totalCost: zod.number(),
+        totalPaid: zod.number(),
+      }),
+    )
+    .optional(),
   isPaid: zod.boolean(),
   notes: zod.string().optional(),
   nextPaymentDue: zod
@@ -271,6 +366,35 @@ export const UpdateBudgetItemResponse = zod.object({
   estimatedCost: zod.number(),
   actualCost: zod.number(),
   amountPaid: zod.number().optional(),
+  baseActualCost: zod
+    .number()
+    .optional()
+    .describe("Manually entered actual cost (excludes linked vendor totals)"),
+  baseAmountPaid: zod
+    .number()
+    .optional()
+    .describe("Manually entered amount paid (excludes linked vendor payments)"),
+  linkedActualCost: zod
+    .number()
+    .optional()
+    .describe("Sum of totalCost from vendors linked to this budget item"),
+  linkedPaid: zod
+    .number()
+    .optional()
+    .describe(
+      "Sum of paid amounts (deposit + paid milestones) from linked vendors",
+    ),
+  linkedVendors: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        category: zod.string(),
+        totalCost: zod.number(),
+        totalPaid: zod.number(),
+      }),
+    )
+    .optional(),
   isPaid: zod.boolean(),
   notes: zod.string().optional(),
   nextPaymentDue: zod
@@ -417,6 +541,12 @@ export const ListVendorsResponseItem = zod.object({
   totalCost: zod.number(),
   depositAmount: zod.number(),
   contractSigned: zod.boolean(),
+  budgetItemId: zod
+    .number()
+    .nullish()
+    .describe(
+      "Optional link to a budget line item; payments and costs roll into that budget category",
+    ),
   files: zod.array(
     zod.object({
       name: zod.string(),
@@ -443,6 +573,7 @@ export const CreateVendorBody = zod.object({
   totalCost: zod.number().optional(),
   depositAmount: zod.number().optional(),
   contractSigned: zod.boolean().optional(),
+  budgetItemId: zod.number().nullish(),
 });
 
 /**
@@ -466,6 +597,12 @@ export const GetVendorResponse = zod
     totalCost: zod.number(),
     depositAmount: zod.number(),
     contractSigned: zod.boolean(),
+    budgetItemId: zod
+      .number()
+      .nullish()
+      .describe(
+        "Optional link to a budget line item; payments and costs roll into that budget category",
+      ),
     files: zod.array(
       zod.object({
         name: zod.string(),
@@ -511,6 +648,7 @@ export const UpdateVendorBody = zod.object({
   totalCost: zod.number().optional(),
   depositAmount: zod.number().optional(),
   contractSigned: zod.boolean().optional(),
+  budgetItemId: zod.number().nullish(),
   files: zod
     .array(
       zod.object({
@@ -535,6 +673,12 @@ export const UpdateVendorResponse = zod.object({
   totalCost: zod.number(),
   depositAmount: zod.number(),
   contractSigned: zod.boolean(),
+  budgetItemId: zod
+    .number()
+    .nullish()
+    .describe(
+      "Optional link to a budget line item; payments and costs roll into that budget category",
+    ),
   files: zod.array(
     zod.object({
       name: zod.string(),

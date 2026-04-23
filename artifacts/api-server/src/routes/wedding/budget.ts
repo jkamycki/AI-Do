@@ -1,22 +1,82 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { budgets, budgetItems, weddingProfiles, budgetPaymentLogs } from "@workspace/db";
-import { eq, desc, asc } from "drizzle-orm";
+import { budgets, budgetItems, weddingProfiles, budgetPaymentLogs, vendors, vendorPayments } from "@workspace/db";
+import { eq, desc, asc, and, inArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 import { logActivity, resolveProfile } from "../../lib/workspaceAccess";
 
 const router = Router();
-async function getBudgetWithItems(budgetId: number) {
+async function getBudgetWithItems(budgetId: number, profileUserId?: string) {
   const budget = await db.select().from(budgets).where(eq(budgets.id, budgetId)).limit(1);
   if (!budget.length) return null;
 
   const items = await db.select().from(budgetItems).where(eq(budgetItems.budgetId, budgetId));
+  const itemIds = items.map(i => i.id);
+
+  // Fetch vendors linked to any of these budget items, plus their paid milestones
+  type LinkedVendor = { id: number; name: string; category: string; totalCost: number; totalPaid: number };
+  const linkedByItem = new Map<number, LinkedVendor[]>();
+
+  if (profileUserId && itemIds.length > 0) {
+    const linkedVendorRows = await db
+      .select()
+      .from(vendors)
+      .where(and(eq(vendors.userId, profileUserId), inArray(vendors.budgetItemId, itemIds)));
+
+    const vendorIds = linkedVendorRows.map(v => v.id);
+    const paidByVendor: Record<number, number> = {};
+    if (vendorIds.length > 0) {
+      const paidPayments = await db
+        .select()
+        .from(vendorPayments)
+        .where(and(inArray(vendorPayments.vendorId, vendorIds), eq(vendorPayments.isPaid, true)));
+      for (const p of paidPayments) {
+        paidByVendor[p.vendorId] = (paidByVendor[p.vendorId] ?? 0) + Number(p.amount);
+      }
+    }
+
+    for (const v of linkedVendorRows) {
+      if (v.budgetItemId == null) continue;
+      const totalCost = Number(v.totalCost);
+      const deposit = Number(v.depositAmount);
+      const milestones = paidByVendor[v.id] ?? 0;
+      const totalPaid = deposit + milestones;
+      const arr = linkedByItem.get(v.budgetItemId) ?? [];
+      arr.push({ id: v.id, name: v.name, category: v.category, totalCost, totalPaid });
+      linkedByItem.set(v.budgetItemId, arr);
+    }
+  }
 
   const totalBudget = parseFloat(budget[0].totalBudget as string);
-  const committed = items.reduce((sum, item) => sum + parseFloat(item.actualCost as string), 0);
-  const totalPaid = items.reduce((sum, item) => sum + parseFloat((item.amountPaid ?? "0") as string), 0);
+
+  const itemsOut = items.map(item => {
+    const linkedVendors = linkedByItem.get(item.id) ?? [];
+    const linkedActualCost = linkedVendors.reduce((s, v) => s + v.totalCost, 0);
+    const linkedPaid = linkedVendors.reduce((s, v) => s + v.totalPaid, 0);
+    const baseActual = parseFloat(item.actualCost as string);
+    const basePaid = parseFloat((item.amountPaid ?? "0") as string);
+    return {
+      id: item.id,
+      category: item.category,
+      vendor: item.vendor,
+      estimatedCost: parseFloat(item.estimatedCost as string),
+      actualCost: baseActual + linkedActualCost,
+      amountPaid: basePaid + linkedPaid,
+      baseActualCost: baseActual,
+      baseAmountPaid: basePaid,
+      linkedActualCost,
+      linkedPaid,
+      linkedVendors,
+      isPaid: item.isPaid,
+      notes: item.notes ?? undefined,
+      nextPaymentDue: (item as Record<string, unknown>).nextPaymentDue as string ?? null,
+    };
+  });
+
+  const committed = itemsOut.reduce((sum, item) => sum + item.actualCost, 0);
+  const totalPaid = itemsOut.reduce((sum, item) => sum + item.amountPaid, 0);
   const remaining = totalBudget - committed;
   const stillOwed = committed - totalPaid;
 
@@ -28,17 +88,7 @@ async function getBudgetWithItems(budgetId: number) {
     stillOwed,
     remaining,
     updatedAt: budget[0].updatedAt.toISOString(),
-    items: items.map(item => ({
-      id: item.id,
-      category: item.category,
-      vendor: item.vendor,
-      estimatedCost: parseFloat(item.estimatedCost as string),
-      actualCost: parseFloat(item.actualCost as string),
-      amountPaid: parseFloat((item.amountPaid ?? "0") as string),
-      isPaid: item.isPaid,
-      notes: item.notes ?? undefined,
-      nextPaymentDue: (item as Record<string, unknown>).nextPaymentDue as string ?? null,
-    })),
+    items: itemsOut,
   };
 }
 
@@ -63,7 +113,7 @@ router.get("/budget", requireAuth, async (req, res) => {
         .insert(budgets)
         .values({ profileId: profile.id, totalBudget: profileBudget })
         .returning();
-      const result = await getBudgetWithItems(created.id);
+      const result = await getBudgetWithItems(created.id, profile?.userId);
       res.json(result);
       return;
     }
@@ -74,7 +124,7 @@ router.get("/budget", requireAuth, async (req, res) => {
         .set({ totalBudget: String(profile.totalBudget), updatedAt: new Date() })
         .where(eq(budgets.id, rows[0].id));
     }
-    const result = await getBudgetWithItems(rows[0].id);
+    const result = await getBudgetWithItems(rows[0].id, profile?.userId);
     res.json(result);
   } catch (err) {
     req.log.error(err, "Failed to get budget");
@@ -100,7 +150,7 @@ router.post("/budget", requireAuth, async (req, res) => {
         .update(budgets)
         .set({ totalBudget: String(totalBudget), updatedAt: new Date() })
         .where(eq(budgets.id, existing[0].id));
-      const result = await getBudgetWithItems(existing[0].id);
+      const result = await getBudgetWithItems(existing[0].id, profile?.userId);
       trackEvent(req.userId!, "budget_updated", { action: "update_total" });
       res.json(result);
     } else {
@@ -108,7 +158,7 @@ router.post("/budget", requireAuth, async (req, res) => {
         .insert(budgets)
         .values({ profileId, totalBudget: String(totalBudget) })
         .returning();
-      const result = await getBudgetWithItems(created.id);
+      const result = await getBudgetWithItems(created.id, profile?.userId);
       trackEvent(req.userId!, "budget_updated", { action: "create" });
       res.json(result);
     }
