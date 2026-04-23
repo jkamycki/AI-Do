@@ -602,8 +602,13 @@ function MessageBubble({ message }: { message: Message }) {
               : "bg-background border rounded-bl-sm"
           }`}
         >
-          {!isCouple && message.senderName && (
-            <div className="text-xs font-semibold opacity-80 mb-1">{message.senderName}</div>
+          {!isCouple && (message.senderName || message.senderEmail) && (
+            <div className="text-xs font-semibold opacity-80 mb-1">
+              {message.senderName ?? message.senderEmail}
+              {message.senderName && message.senderEmail && (
+                <span className="font-normal ml-1 opacity-70">&lt;{message.senderEmail}&gt;</span>
+              )}
+            </div>
           )}
           {message.body}
           {message.attachments && message.attachments.length > 0 && (
