@@ -103,8 +103,37 @@ function useNarration(currentScene: number, enabled: boolean) {
 
 export default function VideoTemplate() {
   const { currentScene } = useVideoPlayer({ durations: SCENE_DURATIONS });
-  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
   useNarration(currentScene, audioEnabled);
+
+  // Browsers block speech until the user has interacted with the page.
+  // The video lives in an iframe on the landing page, so we listen for the
+  // very first interaction anywhere in this document and "wake up" the
+  // speech engine so the narration starts on its own from then on.
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    let woken = false;
+    const wake = () => {
+      if (woken) return;
+      woken = true;
+      try {
+        const u = new SpeechSynthesisUtterance(" ");
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+      } catch {}
+      window.removeEventListener("pointerdown", wake);
+      window.removeEventListener("keydown", wake);
+      window.removeEventListener("touchstart", wake);
+    };
+    window.addEventListener("pointerdown", wake, { once: true });
+    window.addEventListener("keydown", wake, { once: true });
+    window.addEventListener("touchstart", wake, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", wake);
+      window.removeEventListener("keydown", wake);
+      window.removeEventListener("touchstart", wake);
+    };
+  }, []);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#07030d] text-white">
