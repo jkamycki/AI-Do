@@ -11,13 +11,13 @@ import { Scene7 } from "./video_scenes/Scene7";
 import { Volume2, VolumeX } from "lucide-react";
 
 const SCENE_DURATIONS = {
-  hero: 7500,
-  budget: 10500,
-  vendors: 10500,
-  contracts: 10500,
-  guests: 10000,
-  seating: 10500,
-  ariaOutro: 12000,
+  hero: 5500,
+  budget: 9000,
+  vendors: 9200,
+  contracts: 9000,
+  guests: 9000,
+  seating: 9000,
+  ariaOutro: 11000,
 };
 
 // Maps the playback index (0-6) to the narration script index on the server,
