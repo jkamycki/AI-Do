@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { db, vendors, vendorPayments, checklistItems, weddingProfiles, timelines } from "@workspace/db";
+import {
+  db, vendors, vendorPayments, checklistItems, weddingProfiles, timelines,
+  guests, weddingParty, hotelBlocks, manualExpenses, budgets, budgetItems, budgetPaymentLogs,
+} from "@workspace/db";
 import { eq, desc, and, asc, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveScopeUserId, resolveWorkspaceRole, hasMinRole, logActivity } from "../lib/workspaceAccess";
@@ -11,13 +14,17 @@ const router = Router();
 const SYSTEM_PROMPT = `You are Aria, an expert AI wedding planning assistant built into A.IDO.
 You are warm, confident, and act like a trusted, experienced friend who has helped hundreds of couples plan their weddings.
 
-You can BOTH chat AND take real actions inside the user's A.IDO portal:
-- Add vendors to the vendor list
-- Add payment milestones to a vendor (e.g. "deposit due May 1", "second payment $2000 due Aug 15")
-- Add tasks to the checklist
-- Add events to the day-of timeline
-- Update wedding profile details (date, venue, budget, guest count, etc.)
-- List existing vendors / checklist items / timeline / profile when needed
+You can BOTH chat AND take real actions inside the user's A.IDO portal. You can do anything the user can do from the UI:
+
+VENDORS — add_vendor, update_vendor, delete_vendor, list_vendors, add_vendor_payment, update_vendor_payment, mark_vendor_payment_paid, delete_vendor_payment
+CHECKLIST — add_checklist_item, update_checklist_item, toggle_checklist_item, delete_checklist_item, list_checklist
+TIMELINE — add_timeline_event, update_timeline_event, delete_timeline_event, list_timeline
+GUESTS — add_guest, update_guest, delete_guest, list_guests
+WEDDING PARTY — add_party_member, update_party_member, delete_party_member, list_party
+HOTELS — add_hotel, update_hotel, delete_hotel, list_hotels
+BUDGET — add_budget_item, update_budget_item, delete_budget_item, log_budget_payment, list_budget
+EXPENSES — add_expense, update_expense, delete_expense, list_expenses
+PROFILE — update_profile, get_profile
 
 ## How to use tools
 - When the user provides ANY information that maps to a portal action (e.g. "add my florist Sarah Bloom, sarahbloom@email.com, $4000"), CALL THE TOOL IMMEDIATELY. Do not ask for clarification on optional fields — only the required ones.
@@ -26,6 +33,13 @@ You can BOTH chat AND take real actions inside the user's A.IDO portal:
 - For checklist items: required = task + month (use a label like "12 months out", "6 months out", "1 month out", "Week of", "Day of").
 - For timeline events: required = time (e.g. "3:00 PM"), title, description, category (preparation|ceremony|cocktail|reception|dancing|other).
 - For profile updates: only update the specific fields the user mentions; leave others untouched.
+- For guests: required = name. RSVP status is one of: pending, attending, declined, maybe.
+- For wedding party: required = name + role + side (bride|groom|both). Roles include Maid of Honor, Best Man, Bridesmaid, Groomsman, Flower Girl, Ring Bearer, Officiant, etc.
+- For hotels: required = hotelName.
+- For budget items: required = category + vendor + estimatedCost. Categories include Venue, Catering, Photography, Florist, Music, Attire, Beauty, Stationery, Rings, Transportation, Decor, Cake, Other.
+- For expenses: required = name + category + cost. These are one-off purchases not tied to a vendor (e.g. ring polish, marriage license fee).
+- For UPDATE / DELETE / TOGGLE / MARK-PAID actions: prefer passing the record id when known. If you don't know the id, pass a name/title/match field — the tool will look it up case-insensitively. If multiple records match, the tool will return an error asking you to be more specific. When in doubt, call the corresponding list_* tool first to get ids.
+- For destructive operations (delete_*), double-check that the user actually meant to delete before calling. If unclear, ask one short clarifying question.
 - After successfully running a tool, briefly confirm what you did in plain language ("Added Sarah Bloom to your florists ✓"). Don't dump JSON.
 - If a tool fails, explain the error simply and suggest a fix.
 - You CAN run multiple tools in one turn (e.g. add a vendor AND add a related checklist item).
@@ -83,6 +97,74 @@ const TOOLS = [
   {
     type: "function" as const,
     function: {
+      name: "update_vendor",
+      description: "Update fields on an existing vendor. Provide either vendorId or vendorName plus the fields to change.",
+      parameters: {
+        type: "object",
+        properties: {
+          vendorId: { type: "number" },
+          vendorName: { type: "string" },
+          name: { type: "string" }, category: { type: "string" }, email: { type: "string" }, phone: { type: "string" },
+          website: { type: "string" }, portalLink: { type: "string" }, notes: { type: "string" },
+          totalCost: { type: "number" }, depositAmount: { type: "number" }, contractSigned: { type: "boolean" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "delete_vendor",
+      description: "Delete a vendor and all their payment milestones. Provide vendorId or vendorName.",
+      parameters: {
+        type: "object",
+        properties: { vendorId: { type: "number" }, vendorName: { type: "string" } },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "update_vendor_payment",
+      description: "Update an existing vendor payment milestone. Pass paymentId (preferred) or vendorName + matchLabel.",
+      parameters: {
+        type: "object",
+        properties: {
+          paymentId: { type: "number" },
+          vendorName: { type: "string" }, matchLabel: { type: "string", description: "Existing milestone label to match" },
+          label: { type: "string" }, amount: { type: "number" }, dueDate: { type: "string" }, isPaid: { type: "boolean" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "mark_vendor_payment_paid",
+      description: "Mark a vendor payment milestone as paid. Pass paymentId or vendorName + matchLabel. Pass isPaid=false to undo.",
+      parameters: {
+        type: "object",
+        properties: {
+          paymentId: { type: "number" }, vendorName: { type: "string" }, matchLabel: { type: "string" },
+          isPaid: { type: "boolean", description: "Defaults to true" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "delete_vendor_payment",
+      description: "Delete a vendor payment milestone. Pass paymentId or vendorName + matchLabel.",
+      parameters: {
+        type: "object",
+        properties: { paymentId: { type: "number" }, vendorName: { type: "string" }, matchLabel: { type: "string" } },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "add_checklist_item",
       description: "Add a task to the user's wedding checklist.",
       parameters: {
@@ -94,6 +176,52 @@ const TOOLS = [
         },
         required: ["task", "month"],
       },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "update_checklist_item",
+      description: "Update a checklist task's title, description, or month bucket. Pass itemId or matchTask.",
+      parameters: {
+        type: "object",
+        properties: {
+          itemId: { type: "number" }, matchTask: { type: "string" },
+          task: { type: "string" }, description: { type: "string" }, month: { type: "string" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "toggle_checklist_item",
+      description: "Mark a checklist item complete or incomplete. Pass itemId or matchTask, plus isCompleted (defaults true).",
+      parameters: {
+        type: "object",
+        properties: {
+          itemId: { type: "number" }, matchTask: { type: "string" }, isCompleted: { type: "boolean" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "delete_checklist_item",
+      description: "Delete a checklist item. Pass itemId or matchTask.",
+      parameters: {
+        type: "object",
+        properties: { itemId: { type: "number" }, matchTask: { type: "string" } },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "list_checklist",
+      description: "List all checklist items grouped by month bucket.",
+      parameters: { type: "object", properties: {} },
     },
   },
   {
@@ -111,6 +239,323 @@ const TOOLS = [
         },
         required: ["time", "title", "description", "category"],
       },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "update_timeline_event",
+      description: "Update an existing day-of timeline event. Match by matchTitle (case-insensitive substring) or matchTime.",
+      parameters: {
+        type: "object",
+        properties: {
+          matchTitle: { type: "string" }, matchTime: { type: "string" },
+          time: { type: "string" }, title: { type: "string" }, description: { type: "string" },
+          category: { type: "string", enum: ["preparation", "ceremony", "cocktail", "reception", "dancing", "other"] },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "delete_timeline_event",
+      description: "Delete a timeline event by matching title (case-insensitive substring) or exact time.",
+      parameters: {
+        type: "object",
+        properties: { matchTitle: { type: "string" }, matchTime: { type: "string" } },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "list_timeline",
+      description: "List all day-of timeline events in order.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "add_guest",
+      description: "Add a guest to the wedding guest list.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string" }, email: { type: "string" }, phone: { type: "string" },
+          rsvpStatus: { type: "string", enum: ["pending", "attending", "declined", "maybe"] },
+          mealChoice: { type: "string" }, dietaryNotes: { type: "string" },
+          guestGroup: { type: "string", description: "e.g. Family, Friends, Work, Plus One" },
+          plusOne: { type: "boolean" }, plusOneName: { type: "string" },
+          tableAssignment: { type: "string" }, notes: { type: "string" },
+          address: { type: "string" }, guestCity: { type: "string" }, guestState: { type: "string" }, guestZip: { type: "string" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "update_guest",
+      description: "Update fields on a guest. Pass guestId or matchName.",
+      parameters: {
+        type: "object",
+        properties: {
+          guestId: { type: "number" }, matchName: { type: "string" },
+          name: { type: "string" }, email: { type: "string" }, phone: { type: "string" },
+          rsvpStatus: { type: "string", enum: ["pending", "attending", "declined", "maybe"] },
+          mealChoice: { type: "string" }, dietaryNotes: { type: "string" },
+          guestGroup: { type: "string" }, plusOne: { type: "boolean" }, plusOneName: { type: "string" },
+          tableAssignment: { type: "string" }, notes: { type: "string" },
+          address: { type: "string" }, guestCity: { type: "string" }, guestState: { type: "string" }, guestZip: { type: "string" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "delete_guest",
+      description: "Remove a guest. Pass guestId or matchName.",
+      parameters: {
+        type: "object",
+        properties: { guestId: { type: "number" }, matchName: { type: "string" } },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "list_guests",
+      description: "List all guests with id, name, RSVP, meal, plus-one info.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "add_party_member",
+      description: "Add a wedding party member (bridesmaid, groomsman, etc.).",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string" }, role: { type: "string" },
+          side: { type: "string", enum: ["bride", "groom", "both"] },
+          phone: { type: "string" }, email: { type: "string" },
+          outfitDetails: { type: "string" }, shoeSize: { type: "string" }, outfitStore: { type: "string" },
+          fittingDate: { type: "string", description: "YYYY-MM-DD" }, notes: { type: "string" },
+        },
+        required: ["name", "role", "side"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "update_party_member",
+      description: "Update a wedding party member. Pass memberId or matchName.",
+      parameters: {
+        type: "object",
+        properties: {
+          memberId: { type: "number" }, matchName: { type: "string" },
+          name: { type: "string" }, role: { type: "string" }, side: { type: "string" },
+          phone: { type: "string" }, email: { type: "string" },
+          outfitDetails: { type: "string" }, shoeSize: { type: "string" }, outfitStore: { type: "string" },
+          fittingDate: { type: "string" }, notes: { type: "string" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "delete_party_member",
+      description: "Remove a wedding party member. Pass memberId or matchName.",
+      parameters: {
+        type: "object",
+        properties: { memberId: { type: "number" }, matchName: { type: "string" } },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "list_party",
+      description: "List wedding party members.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "add_hotel",
+      description: "Add a hotel block for out-of-town guests.",
+      parameters: {
+        type: "object",
+        properties: {
+          hotelName: { type: "string" }, address: { type: "string" }, city: { type: "string" },
+          state: { type: "string" }, zip: { type: "string" }, phone: { type: "string" }, email: { type: "string" },
+          bookingLink: { type: "string" }, discountCode: { type: "string" }, groupName: { type: "string" },
+          cutoffDate: { type: "string", description: "YYYY-MM-DD" },
+          roomsReserved: { type: "number" }, pricePerNight: { type: "number" },
+          distanceFromVenue: { type: "string" }, notes: { type: "string" },
+        },
+        required: ["hotelName"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "update_hotel",
+      description: "Update a hotel block. Pass hotelId or matchName.",
+      parameters: {
+        type: "object",
+        properties: {
+          hotelId: { type: "number" }, matchName: { type: "string" },
+          hotelName: { type: "string" }, address: { type: "string" }, city: { type: "string" },
+          state: { type: "string" }, zip: { type: "string" }, phone: { type: "string" }, email: { type: "string" },
+          bookingLink: { type: "string" }, discountCode: { type: "string" }, groupName: { type: "string" },
+          cutoffDate: { type: "string" }, roomsReserved: { type: "number" }, roomsBooked: { type: "number" },
+          pricePerNight: { type: "number" }, distanceFromVenue: { type: "string" }, notes: { type: "string" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "delete_hotel",
+      description: "Delete a hotel block. Pass hotelId or matchName.",
+      parameters: {
+        type: "object",
+        properties: { hotelId: { type: "number" }, matchName: { type: "string" } },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "list_hotels",
+      description: "List all hotel blocks.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "add_budget_item",
+      description: "Add a budget line item (estimated cost for a category, optionally tied to a vendor name).",
+      parameters: {
+        type: "object",
+        properties: {
+          category: { type: "string" }, vendor: { type: "string" },
+          estimatedCost: { type: "number" }, actualCost: { type: "number" },
+          notes: { type: "string" },
+        },
+        required: ["category", "vendor", "estimatedCost"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "update_budget_item",
+      description: "Update a budget item. Pass itemId or matchVendor (matches vendor name).",
+      parameters: {
+        type: "object",
+        properties: {
+          itemId: { type: "number" }, matchVendor: { type: "string" },
+          category: { type: "string" }, vendor: { type: "string" },
+          estimatedCost: { type: "number" }, actualCost: { type: "number" },
+          notes: { type: "string" }, isPaid: { type: "boolean" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "delete_budget_item",
+      description: "Delete a budget item. Pass itemId or matchVendor.",
+      parameters: {
+        type: "object",
+        properties: { itemId: { type: "number" }, matchVendor: { type: "string" } },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "log_budget_payment",
+      description: "Record a payment against a budget item (adds to amountPaid). Pass itemId or matchVendor.",
+      parameters: {
+        type: "object",
+        properties: {
+          itemId: { type: "number" }, matchVendor: { type: "string" },
+          amount: { type: "number" }, note: { type: "string" },
+        },
+        required: ["amount"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "list_budget",
+      description: "List all budget items with category, vendor, estimated/actual/paid amounts.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "add_expense",
+      description: "Add a one-off expense (not tied to a vendor) — e.g. marriage license, gifts, supplies.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string" }, category: { type: "string" },
+          cost: { type: "number" }, amountPaid: { type: "number" }, notes: { type: "string" },
+        },
+        required: ["name", "category", "cost"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "update_expense",
+      description: "Update an expense. Pass expenseId or matchName.",
+      parameters: {
+        type: "object",
+        properties: {
+          expenseId: { type: "number" }, matchName: { type: "string" },
+          name: { type: "string" }, category: { type: "string" },
+          cost: { type: "number" }, amountPaid: { type: "number" }, notes: { type: "string" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "delete_expense",
+      description: "Delete an expense. Pass expenseId or matchName.",
+      parameters: {
+        type: "object",
+        properties: { expenseId: { type: "number" }, matchName: { type: "string" } },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "list_expenses",
+      description: "List all manual expenses.",
+      parameters: { type: "object", properties: {} },
     },
   },
   {
@@ -166,6 +611,226 @@ function normalizeCategory(c: string): string {
 
 type ActionResult = { ok: true; data: unknown } | { ok: false; error: string };
 type ActionRecord = { name: string; args: Record<string, unknown>; result: ActionResult };
+
+type FoundVendor = { ok: true; id: number; name: string } | { ok: false; error: string };
+type FoundVendorPayment = { ok: true; id: number; vendorId: number; label: string } | { ok: false; error: string };
+type FoundChecklistItem = { ok: true; id: number; task: string } | { ok: false; error: string };
+type FoundGuest = { ok: true; id: number; name: string } | { ok: false; error: string };
+type FoundPartyMember = { ok: true; id: number; name: string } | { ok: false; error: string };
+type FoundHotel = { ok: true; id: number; hotelName: string } | { ok: false; error: string };
+type FoundBudgetItem = { ok: true; id: number; vendor: string; amountPaid: number; estimatedCost: number; actualCost: number } | { ok: false; error: string };
+type FoundExpense = { ok: true; id: number; name: string } | { ok: false; error: string };
+
+async function findVendor(userId: string, idArg: unknown, nameArg: unknown): Promise<FoundVendor> {
+  if (idArg !== undefined && idArg !== null) {
+    const idNum = Number(idArg);
+    if (Number.isFinite(idNum)) {
+      const [v] = await db.select({ id: vendors.id, name: vendors.name }).from(vendors)
+        .where(and(eq(vendors.id, idNum), eq(vendors.userId, userId))).limit(1);
+      if (v) return { ok: true, id: v.id, name: v.name };
+    }
+  }
+  if (nameArg) {
+    const search = String(nameArg).trim();
+    const matches = await db.select({ id: vendors.id, name: vendors.name }).from(vendors)
+      .where(and(eq(vendors.userId, userId), ilike(vendors.name, `%${search}%`)));
+    if (matches.length === 0) return { ok: false, error: `No vendor found matching "${search}".` };
+    if (matches.length > 1) {
+      const exact = matches.find(m => m.name.toLowerCase() === search.toLowerCase());
+      if (exact) return { ok: true, id: exact.id, name: exact.name };
+      return { ok: false, error: `Multiple vendors match "${search}": ${matches.map(m => m.name).join(", ")}. Be more specific.` };
+    }
+    return { ok: true, id: matches[0].id, name: matches[0].name };
+  }
+  return { ok: false, error: "Either vendorId or vendorName is required." };
+}
+
+async function findVendorPayment(userId: string, paymentIdArg: unknown, vendorNameArg: unknown, matchLabelArg: unknown): Promise<FoundVendorPayment> {
+  if (paymentIdArg !== undefined && paymentIdArg !== null) {
+    const idNum = Number(paymentIdArg);
+    if (Number.isFinite(idNum)) {
+      const [p] = await db.select({ id: vendorPayments.id, vendorId: vendorPayments.vendorId, label: vendorPayments.label, ownerId: vendors.userId })
+        .from(vendorPayments).innerJoin(vendors, eq(vendors.id, vendorPayments.vendorId))
+        .where(and(eq(vendorPayments.id, idNum), eq(vendors.userId, userId))).limit(1);
+      if (p) return { ok: true, id: p.id, vendorId: p.vendorId, label: p.label };
+    }
+    return { ok: false, error: "Payment not found or not yours." };
+  }
+  const v = await findVendor(userId, undefined, vendorNameArg);
+  if (!v.ok) return v;
+  if (!matchLabelArg) return { ok: false, error: "matchLabel is required when looking up by vendorName." };
+  const search = String(matchLabelArg).trim();
+  const matches = await db.select({ id: vendorPayments.id, vendorId: vendorPayments.vendorId, label: vendorPayments.label })
+    .from(vendorPayments).where(and(eq(vendorPayments.vendorId, v.id), ilike(vendorPayments.label, `%${search}%`)));
+  if (matches.length === 0) return { ok: false, error: `No payment matching "${search}" on vendor "${v.name}".` };
+  if (matches.length > 1) {
+    const exact = matches.find(m => m.label.toLowerCase() === search.toLowerCase());
+    if (exact) return { ok: true, id: exact.id, vendorId: exact.vendorId, label: exact.label };
+    return { ok: false, error: `Multiple payments match "${search}": ${matches.map(m => m.label).join(", ")}. Be more specific.` };
+  }
+  return { ok: true, id: matches[0].id, vendorId: matches[0].vendorId, label: matches[0].label };
+}
+
+async function syncVendorNextPaymentDue(vendorId: number): Promise<void> {
+  const unpaid = await db.select({ dueDate: vendorPayments.dueDate }).from(vendorPayments)
+    .where(and(eq(vendorPayments.vendorId, vendorId), eq(vendorPayments.isPaid, false)))
+    .orderBy(asc(vendorPayments.dueDate));
+  await db.update(vendors).set({ nextPaymentDue: unpaid.length > 0 ? unpaid[0].dueDate : null }).where(eq(vendors.id, vendorId));
+}
+
+async function findChecklistItem(profileId: number, idArg: unknown, taskArg: unknown): Promise<FoundChecklistItem> {
+  if (idArg !== undefined && idArg !== null) {
+    const idNum = Number(idArg);
+    if (Number.isFinite(idNum)) {
+      const [r] = await db.select({ id: checklistItems.id, task: checklistItems.task }).from(checklistItems)
+        .where(and(eq(checklistItems.id, idNum), eq(checklistItems.profileId, profileId))).limit(1);
+      if (r) return { ok: true, id: r.id, task: r.task };
+    }
+  }
+  if (taskArg) {
+    const search = String(taskArg).trim();
+    const matches = await db.select({ id: checklistItems.id, task: checklistItems.task }).from(checklistItems)
+      .where(and(eq(checklistItems.profileId, profileId), ilike(checklistItems.task, `%${search}%`)));
+    if (matches.length === 0) return { ok: false, error: `No checklist item matching "${search}".` };
+    if (matches.length > 1) {
+      const exact = matches.find(m => m.task.toLowerCase() === search.toLowerCase());
+      if (exact) return { ok: true, id: exact.id, task: exact.task };
+      return { ok: false, error: `Multiple items match "${search}": ${matches.map(m => m.task).join(", ")}. Be more specific.` };
+    }
+    return { ok: true, id: matches[0].id, task: matches[0].task };
+  }
+  return { ok: false, error: "Either itemId or matchTask is required." };
+}
+
+async function findGuest(profileId: number, idArg: unknown, nameArg: unknown): Promise<FoundGuest> {
+  if (idArg !== undefined && idArg !== null) {
+    const idNum = Number(idArg);
+    if (Number.isFinite(idNum)) {
+      const [r] = await db.select({ id: guests.id, name: guests.name }).from(guests)
+        .where(and(eq(guests.id, idNum), eq(guests.profileId, profileId))).limit(1);
+      if (r) return { ok: true, id: r.id, name: r.name };
+    }
+  }
+  if (nameArg) {
+    const search = String(nameArg).trim();
+    const matches = await db.select({ id: guests.id, name: guests.name }).from(guests)
+      .where(and(eq(guests.profileId, profileId), ilike(guests.name, `%${search}%`)));
+    if (matches.length === 0) return { ok: false, error: `No guest matching "${search}".` };
+    if (matches.length > 1) {
+      const exact = matches.find(m => m.name.toLowerCase() === search.toLowerCase());
+      if (exact) return { ok: true, id: exact.id, name: exact.name };
+      return { ok: false, error: `Multiple guests match "${search}": ${matches.map(m => m.name).join(", ")}. Be more specific.` };
+    }
+    return { ok: true, id: matches[0].id, name: matches[0].name };
+  }
+  return { ok: false, error: "Either guestId or matchName is required." };
+}
+
+async function findPartyMember(userId: string, idArg: unknown, nameArg: unknown): Promise<FoundPartyMember> {
+  if (idArg !== undefined && idArg !== null) {
+    const idNum = Number(idArg);
+    if (Number.isFinite(idNum)) {
+      const [r] = await db.select({ id: weddingParty.id, name: weddingParty.name }).from(weddingParty)
+        .where(and(eq(weddingParty.id, idNum), eq(weddingParty.userId, userId))).limit(1);
+      if (r) return { ok: true, id: r.id, name: r.name };
+    }
+  }
+  if (nameArg) {
+    const search = String(nameArg).trim();
+    const matches = await db.select({ id: weddingParty.id, name: weddingParty.name }).from(weddingParty)
+      .where(and(eq(weddingParty.userId, userId), ilike(weddingParty.name, `%${search}%`)));
+    if (matches.length === 0) return { ok: false, error: `No wedding party member matching "${search}".` };
+    if (matches.length > 1) {
+      const exact = matches.find(m => m.name.toLowerCase() === search.toLowerCase());
+      if (exact) return { ok: true, id: exact.id, name: exact.name };
+      return { ok: false, error: `Multiple members match "${search}": ${matches.map(m => m.name).join(", ")}. Be more specific.` };
+    }
+    return { ok: true, id: matches[0].id, name: matches[0].name };
+  }
+  return { ok: false, error: "Either memberId or matchName is required." };
+}
+
+async function findHotel(userId: string, idArg: unknown, nameArg: unknown): Promise<FoundHotel> {
+  if (idArg !== undefined && idArg !== null) {
+    const idNum = Number(idArg);
+    if (Number.isFinite(idNum)) {
+      const [r] = await db.select({ id: hotelBlocks.id, hotelName: hotelBlocks.hotelName }).from(hotelBlocks)
+        .where(and(eq(hotelBlocks.id, idNum), eq(hotelBlocks.userId, userId))).limit(1);
+      if (r) return { ok: true, id: r.id, hotelName: r.hotelName };
+    }
+  }
+  if (nameArg) {
+    const search = String(nameArg).trim();
+    const matches = await db.select({ id: hotelBlocks.id, hotelName: hotelBlocks.hotelName }).from(hotelBlocks)
+      .where(and(eq(hotelBlocks.userId, userId), ilike(hotelBlocks.hotelName, `%${search}%`)));
+    if (matches.length === 0) return { ok: false, error: `No hotel matching "${search}".` };
+    if (matches.length > 1) {
+      const exact = matches.find(m => m.hotelName.toLowerCase() === search.toLowerCase());
+      if (exact) return { ok: true, id: exact.id, hotelName: exact.hotelName };
+      return { ok: false, error: `Multiple hotels match "${search}": ${matches.map(m => m.hotelName).join(", ")}. Be more specific.` };
+    }
+    return { ok: true, id: matches[0].id, hotelName: matches[0].hotelName };
+  }
+  return { ok: false, error: "Either hotelId or matchName is required." };
+}
+
+async function ensureBudget(profileId: number, profileTotalBudget: string | number) {
+  const [existing] = await db.select().from(budgets).where(eq(budgets.profileId, profileId)).limit(1);
+  if (existing) return existing;
+  await db.insert(budgets)
+    .values({ profileId, totalBudget: String(profileTotalBudget ?? 0) })
+    .onConflictDoNothing({ target: budgets.profileId });
+  const [row] = await db.select().from(budgets).where(eq(budgets.profileId, profileId)).limit(1);
+  return row;
+}
+
+async function findBudgetItem(budgetId: number, idArg: unknown, vendorArg: unknown): Promise<FoundBudgetItem> {
+  if (idArg !== undefined && idArg !== null) {
+    const idNum = Number(idArg);
+    if (Number.isFinite(idNum)) {
+      const [r] = await db.select().from(budgetItems)
+        .where(and(eq(budgetItems.id, idNum), eq(budgetItems.budgetId, budgetId))).limit(1);
+      if (r) return { ok: true, id: r.id, vendor: r.vendor, amountPaid: Number(r.amountPaid), estimatedCost: Number(r.estimatedCost), actualCost: Number(r.actualCost) };
+    }
+  }
+  if (vendorArg) {
+    const search = String(vendorArg).trim();
+    const matches = await db.select().from(budgetItems)
+      .where(and(eq(budgetItems.budgetId, budgetId), ilike(budgetItems.vendor, `%${search}%`)));
+    if (matches.length === 0) return { ok: false, error: `No budget item matching vendor "${search}".` };
+    if (matches.length > 1) {
+      const exact = matches.find(m => m.vendor.toLowerCase() === search.toLowerCase());
+      if (exact) return { ok: true, id: exact.id, vendor: exact.vendor, amountPaid: Number(exact.amountPaid), estimatedCost: Number(exact.estimatedCost), actualCost: Number(exact.actualCost) };
+      return { ok: false, error: `Multiple items match "${search}": ${matches.map(m => m.vendor).join(", ")}. Be more specific.` };
+    }
+    return { ok: true, id: matches[0].id, vendor: matches[0].vendor, amountPaid: Number(matches[0].amountPaid), estimatedCost: Number(matches[0].estimatedCost), actualCost: Number(matches[0].actualCost) };
+  }
+  return { ok: false, error: "Either itemId or matchVendor is required." };
+}
+
+async function findExpense(userId: string, idArg: unknown, nameArg: unknown): Promise<FoundExpense> {
+  if (idArg !== undefined && idArg !== null) {
+    const idNum = Number(idArg);
+    if (Number.isFinite(idNum)) {
+      const [r] = await db.select({ id: manualExpenses.id, name: manualExpenses.name }).from(manualExpenses)
+        .where(and(eq(manualExpenses.id, idNum), eq(manualExpenses.userId, userId))).limit(1);
+      if (r) return { ok: true, id: r.id, name: r.name };
+    }
+  }
+  if (nameArg) {
+    const search = String(nameArg).trim();
+    const matches = await db.select({ id: manualExpenses.id, name: manualExpenses.name }).from(manualExpenses)
+      .where(and(eq(manualExpenses.userId, userId), ilike(manualExpenses.name, `%${search}%`)));
+    if (matches.length === 0) return { ok: false, error: `No expense matching "${search}".` };
+    if (matches.length > 1) {
+      const exact = matches.find(m => m.name.toLowerCase() === search.toLowerCase());
+      if (exact) return { ok: true, id: exact.id, name: exact.name };
+      return { ok: false, error: `Multiple expenses match "${search}": ${matches.map(m => m.name).join(", ")}. Be more specific.` };
+    }
+    return { ok: true, id: matches[0].id, name: matches[0].name };
+  }
+  return { ok: false, error: "Either expenseId or matchName is required." };
+}
 
 async function executeTool(name: string, args: Record<string, unknown>, req: Request): Promise<ActionResult> {
   try {
@@ -284,6 +949,423 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         await db.insert(timelines).values({ profileId: profile.id, events: [event] });
         return { ok: true, data: { added: event, totalEvents: 1 } };
       }
+    }
+
+    // ===== VENDORS update/delete =====
+    if (name === "update_vendor") {
+      const userId = await resolveScopeUserId(req);
+      const vendor = await findVendor(userId, args.vendorId, args.vendorName);
+      if (!vendor.ok) return vendor;
+      const updates: Partial<typeof vendors.$inferInsert> = {};
+      if (args.name !== undefined) updates.name = String(args.name);
+      if (args.category !== undefined) updates.category = normalizeCategory(String(args.category));
+      if (args.email !== undefined) updates.email = args.email ? String(args.email) : null;
+      if (args.phone !== undefined) updates.phone = args.phone ? String(args.phone) : null;
+      if (args.website !== undefined) updates.website = args.website ? String(args.website) : null;
+      if (args.portalLink !== undefined) updates.portalLink = args.portalLink ? String(args.portalLink) : null;
+      if (args.notes !== undefined) updates.notes = args.notes ? String(args.notes) : null;
+      if (args.totalCost !== undefined) updates.totalCost = String(Number(args.totalCost));
+      if (args.depositAmount !== undefined) updates.depositAmount = String(Number(args.depositAmount));
+      if (args.contractSigned !== undefined) updates.contractSigned = Boolean(args.contractSigned);
+      if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
+      updates.updatedAt = new Date();
+      const [updated] = await db.update(vendors).set(updates)
+        .where(and(eq(vendors.id, vendor.id), eq(vendors.userId, userId))).returning();
+      return { ok: true, data: { id: updated.id, name: updated.name, updated: Object.keys(updates).filter(k=>k!=="updatedAt") } };
+    }
+
+    if (name === "delete_vendor") {
+      const userId = await resolveScopeUserId(req);
+      const vendor = await findVendor(userId, args.vendorId, args.vendorName);
+      if (!vendor.ok) return vendor;
+      await db.delete(vendorPayments).where(eq(vendorPayments.vendorId, vendor.id));
+      await db.delete(vendors).where(and(eq(vendors.id, vendor.id), eq(vendors.userId, userId)));
+      return { ok: true, data: { deleted: vendor.name } };
+    }
+
+    // ===== VENDOR PAYMENTS update/mark/delete =====
+    if (name === "update_vendor_payment" || name === "mark_vendor_payment_paid" || name === "delete_vendor_payment") {
+      const userId = await resolveScopeUserId(req);
+      const payment = await findVendorPayment(userId, args.paymentId, args.vendorName, args.matchLabel);
+      if (!payment.ok) return payment;
+      if (name === "delete_vendor_payment") {
+        await db.delete(vendorPayments).where(eq(vendorPayments.id, payment.id));
+        await syncVendorNextPaymentDue(payment.vendorId);
+        return { ok: true, data: { deleted: payment.label } };
+      }
+      const updates: Partial<typeof vendorPayments.$inferInsert> = {};
+      if (name === "mark_vendor_payment_paid") {
+        const isPaid = args.isPaid === undefined ? true : Boolean(args.isPaid);
+        updates.isPaid = isPaid;
+        updates.paidAt = isPaid ? new Date() : null;
+      } else {
+        if (args.label !== undefined) updates.label = String(args.label);
+        if (args.amount !== undefined) updates.amount = String(Number(args.amount));
+        if (args.dueDate !== undefined) {
+          const d = String(args.dueDate);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return { ok: false, error: "dueDate must be ISO YYYY-MM-DD" };
+          updates.dueDate = d;
+        }
+        if (args.isPaid !== undefined) {
+          updates.isPaid = Boolean(args.isPaid);
+          updates.paidAt = updates.isPaid ? new Date() : null;
+        }
+      }
+      if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
+      const [updated] = await db.update(vendorPayments).set(updates).where(eq(vendorPayments.id, payment.id)).returning();
+      await syncVendorNextPaymentDue(payment.vendorId);
+      return { ok: true, data: { id: updated.id, label: updated.label, isPaid: updated.isPaid, amount: Number(updated.amount), dueDate: updated.dueDate } };
+    }
+
+    // ===== CHECKLIST =====
+    if (name === "update_checklist_item" || name === "toggle_checklist_item" || name === "delete_checklist_item") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const item = await findChecklistItem(profile.id, args.itemId, args.matchTask);
+      if (!item.ok) return item;
+      if (name === "delete_checklist_item") {
+        await db.delete(checklistItems).where(and(eq(checklistItems.id, item.id), eq(checklistItems.profileId, profile.id)));
+        return { ok: true, data: { deleted: item.task } };
+      }
+      const updates: Partial<typeof checklistItems.$inferInsert> = {};
+      if (name === "toggle_checklist_item") {
+        const isCompleted = args.isCompleted === undefined ? true : Boolean(args.isCompleted);
+        updates.isCompleted = isCompleted;
+        updates.completedAt = isCompleted ? new Date() : null;
+      } else {
+        if (args.task !== undefined) updates.task = String(args.task);
+        if (args.description !== undefined) updates.description = String(args.description);
+        if (args.month !== undefined) updates.month = String(args.month);
+      }
+      if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
+      const [updated] = await db.update(checklistItems).set(updates)
+        .where(and(eq(checklistItems.id, item.id), eq(checklistItems.profileId, profile.id))).returning();
+      return { ok: true, data: { id: updated.id, task: updated.task, isCompleted: updated.isCompleted } };
+    }
+
+    if (name === "list_checklist") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const items = await db.select({ id: checklistItems.id, task: checklistItems.task, month: checklistItems.month, isCompleted: checklistItems.isCompleted })
+        .from(checklistItems).where(eq(checklistItems.profileId, profile.id));
+      return { ok: true, data: { items } };
+    }
+
+    // ===== TIMELINE update/delete/list =====
+    if (name === "update_timeline_event" || name === "delete_timeline_event") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const [latest] = await db.select().from(timelines).where(eq(timelines.profileId, profile.id)).orderBy(desc(timelines.id)).limit(1);
+      if (!latest || !Array.isArray(latest.events) || latest.events.length === 0) {
+        return { ok: false, error: "No timeline events found." };
+      }
+      const events = [...latest.events];
+      const matchTitle = args.matchTitle ? String(args.matchTitle).toLowerCase() : null;
+      const matchTime = args.matchTime ? String(args.matchTime).toLowerCase() : null;
+      const indices = events
+        .map((e, i) => ({ e, i }))
+        .filter(({ e }) =>
+          (matchTitle && e.title.toLowerCase().includes(matchTitle)) ||
+          (matchTime && e.time.toLowerCase() === matchTime),
+        );
+      if (indices.length === 0) return { ok: false, error: "No matching event found." };
+      if (indices.length > 1) return { ok: false, error: `Multiple events match: ${indices.map(x => `"${x.e.title}" @ ${x.e.time}`).join(", ")}. Be more specific.` };
+      const idx = indices[0].i;
+      if (name === "delete_timeline_event") {
+        const removed = events[idx];
+        events.splice(idx, 1);
+        await db.update(timelines).set({ events }).where(eq(timelines.id, latest.id));
+        return { ok: true, data: { deleted: removed, totalEvents: events.length } };
+      }
+      const updated = { ...events[idx] };
+      if (args.time !== undefined) updated.time = String(args.time);
+      if (args.title !== undefined) updated.title = String(args.title);
+      if (args.description !== undefined) updated.description = String(args.description);
+      if (args.category !== undefined) updated.category = String(args.category);
+      events[idx] = updated;
+      await db.update(timelines).set({ events }).where(eq(timelines.id, latest.id));
+      return { ok: true, data: { updated, totalEvents: events.length } };
+    }
+
+    if (name === "list_timeline") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const [latest] = await db.select().from(timelines).where(eq(timelines.profileId, profile.id)).orderBy(desc(timelines.id)).limit(1);
+      return { ok: true, data: { events: latest?.events ?? [] } };
+    }
+
+    // ===== GUESTS =====
+    if (name === "add_guest") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const guestName = String(args.name ?? "").trim();
+      if (!guestName) return { ok: false, error: "Guest name is required" };
+      const [created] = await db.insert(guests).values({
+        profileId: profile.id,
+        name: guestName,
+        email: args.email ? String(args.email) : null,
+        phone: args.phone ? String(args.phone) : null,
+        rsvpStatus: args.rsvpStatus ? String(args.rsvpStatus) : "pending",
+        mealChoice: args.mealChoice ? String(args.mealChoice) : null,
+        dietaryNotes: args.dietaryNotes ? String(args.dietaryNotes) : null,
+        guestGroup: args.guestGroup ? String(args.guestGroup) : null,
+        plusOne: Boolean(args.plusOne),
+        plusOneName: args.plusOneName ? String(args.plusOneName) : null,
+        tableAssignment: args.tableAssignment ? String(args.tableAssignment) : null,
+        notes: args.notes ? String(args.notes) : null,
+        address: args.address ? String(args.address) : null,
+        guestCity: args.guestCity ? String(args.guestCity) : null,
+        guestState: args.guestState ? String(args.guestState) : null,
+        guestZip: args.guestZip ? String(args.guestZip) : null,
+      }).returning();
+      return { ok: true, data: { id: created.id, name: created.name } };
+    }
+
+    if (name === "update_guest" || name === "delete_guest") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const guest = await findGuest(profile.id, args.guestId, args.matchName);
+      if (!guest.ok) return guest;
+      if (name === "delete_guest") {
+        await db.delete(guests).where(and(eq(guests.id, guest.id), eq(guests.profileId, profile.id)));
+        return { ok: true, data: { deleted: guest.name } };
+      }
+      const updates: Partial<typeof guests.$inferInsert> = {};
+      const stringFields = ["name","email","phone","rsvpStatus","mealChoice","dietaryNotes","guestGroup","plusOneName","tableAssignment","notes","address","guestCity","guestState","guestZip"] as const;
+      for (const f of stringFields) {
+        if (args[f] !== undefined) (updates as Record<string, unknown>)[f] = args[f] === null || args[f] === "" ? null : String(args[f]);
+      }
+      if (args.plusOne !== undefined) updates.plusOne = Boolean(args.plusOne);
+      if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
+      const [updated] = await db.update(guests).set(updates)
+        .where(and(eq(guests.id, guest.id), eq(guests.profileId, profile.id))).returning();
+      return { ok: true, data: { id: updated.id, name: updated.name, rsvpStatus: updated.rsvpStatus } };
+    }
+
+    if (name === "list_guests") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const rows = await db.select({ id: guests.id, name: guests.name, rsvpStatus: guests.rsvpStatus, mealChoice: guests.mealChoice, plusOne: guests.plusOne, plusOneName: guests.plusOneName, tableAssignment: guests.tableAssignment })
+        .from(guests).where(eq(guests.profileId, profile.id));
+      return { ok: true, data: { guests: rows } };
+    }
+
+    // ===== WEDDING PARTY =====
+    if (name === "add_party_member") {
+      const userId = await resolveScopeUserId(req);
+      const memberName = String(args.name ?? "").trim();
+      const role = String(args.role ?? "").trim();
+      const side = String(args.side ?? "").trim();
+      if (!memberName || !role || !side) return { ok: false, error: "name, role, and side are required" };
+      const [created] = await db.insert(weddingParty).values({
+        userId, name: memberName, role, side,
+        phone: args.phone ? String(args.phone) : null,
+        email: args.email ? String(args.email) : null,
+        outfitDetails: args.outfitDetails ? String(args.outfitDetails) : null,
+        shoeSize: args.shoeSize ? String(args.shoeSize) : null,
+        outfitStore: args.outfitStore ? String(args.outfitStore) : null,
+        fittingDate: args.fittingDate ? String(args.fittingDate) : null,
+        notes: args.notes ? String(args.notes) : null,
+      }).returning();
+      return { ok: true, data: { id: created.id, name: created.name, role: created.role } };
+    }
+
+    if (name === "update_party_member" || name === "delete_party_member") {
+      const userId = await resolveScopeUserId(req);
+      const member = await findPartyMember(userId, args.memberId, args.matchName);
+      if (!member.ok) return member;
+      if (name === "delete_party_member") {
+        await db.delete(weddingParty).where(and(eq(weddingParty.id, member.id), eq(weddingParty.userId, userId)));
+        return { ok: true, data: { deleted: member.name } };
+      }
+      const updates: Partial<typeof weddingParty.$inferInsert> = {};
+      const fields = ["name","role","side","phone","email","outfitDetails","shoeSize","outfitStore","fittingDate","notes"] as const;
+      for (const f of fields) {
+        if (args[f] !== undefined) (updates as Record<string, unknown>)[f] = args[f] === null || args[f] === "" ? null : String(args[f]);
+      }
+      if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
+      const [updated] = await db.update(weddingParty).set(updates)
+        .where(and(eq(weddingParty.id, member.id), eq(weddingParty.userId, userId))).returning();
+      return { ok: true, data: { id: updated.id, name: updated.name } };
+    }
+
+    if (name === "list_party") {
+      const userId = await resolveScopeUserId(req);
+      const rows = await db.select({ id: weddingParty.id, name: weddingParty.name, role: weddingParty.role, side: weddingParty.side })
+        .from(weddingParty).where(eq(weddingParty.userId, userId));
+      return { ok: true, data: { members: rows } };
+    }
+
+    // ===== HOTELS =====
+    if (name === "add_hotel") {
+      const userId = await resolveScopeUserId(req);
+      const hotelName = String(args.hotelName ?? "").trim();
+      if (!hotelName) return { ok: false, error: "hotelName is required" };
+      const [created] = await db.insert(hotelBlocks).values({
+        userId, hotelName,
+        address: args.address ? String(args.address) : null,
+        city: args.city ? String(args.city) : null,
+        state: args.state ? String(args.state) : null,
+        zip: args.zip ? String(args.zip) : null,
+        phone: args.phone ? String(args.phone) : null,
+        email: args.email ? String(args.email) : null,
+        bookingLink: args.bookingLink ? String(args.bookingLink) : null,
+        discountCode: args.discountCode ? String(args.discountCode) : null,
+        groupName: args.groupName ? String(args.groupName) : null,
+        cutoffDate: args.cutoffDate ? String(args.cutoffDate) : null,
+        roomsReserved: args.roomsReserved !== undefined ? Number(args.roomsReserved) : null,
+        pricePerNight: args.pricePerNight !== undefined ? String(Number(args.pricePerNight)) : null,
+        distanceFromVenue: args.distanceFromVenue ? String(args.distanceFromVenue) : null,
+        notes: args.notes ? String(args.notes) : null,
+      }).returning();
+      return { ok: true, data: { id: created.id, hotelName: created.hotelName } };
+    }
+
+    if (name === "update_hotel" || name === "delete_hotel") {
+      const userId = await resolveScopeUserId(req);
+      const hotel = await findHotel(userId, args.hotelId, args.matchName);
+      if (!hotel.ok) return hotel;
+      if (name === "delete_hotel") {
+        await db.delete(hotelBlocks).where(and(eq(hotelBlocks.id, hotel.id), eq(hotelBlocks.userId, userId)));
+        return { ok: true, data: { deleted: hotel.hotelName } };
+      }
+      const updates: Partial<typeof hotelBlocks.$inferInsert> = {};
+      const stringFields = ["hotelName","address","city","state","zip","phone","email","bookingLink","discountCode","groupName","cutoffDate","distanceFromVenue","notes"] as const;
+      for (const f of stringFields) {
+        if (args[f] !== undefined) (updates as Record<string, unknown>)[f] = args[f] === null || args[f] === "" ? null : String(args[f]);
+      }
+      if (args.roomsReserved !== undefined) updates.roomsReserved = Number(args.roomsReserved);
+      if (args.roomsBooked !== undefined) updates.roomsBooked = Number(args.roomsBooked);
+      if (args.pricePerNight !== undefined) updates.pricePerNight = String(Number(args.pricePerNight));
+      if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
+      const [updated] = await db.update(hotelBlocks).set(updates)
+        .where(and(eq(hotelBlocks.id, hotel.id), eq(hotelBlocks.userId, userId))).returning();
+      return { ok: true, data: { id: updated.id, hotelName: updated.hotelName } };
+    }
+
+    if (name === "list_hotels") {
+      const userId = await resolveScopeUserId(req);
+      const rows = await db.select({ id: hotelBlocks.id, hotelName: hotelBlocks.hotelName, city: hotelBlocks.city, pricePerNight: hotelBlocks.pricePerNight, roomsReserved: hotelBlocks.roomsReserved, roomsBooked: hotelBlocks.roomsBooked })
+        .from(hotelBlocks).where(eq(hotelBlocks.userId, userId));
+      return { ok: true, data: { hotels: rows } };
+    }
+
+    // ===== BUDGET ITEMS =====
+    if (name === "add_budget_item") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const budget = await ensureBudget(profile.id, profile.totalBudget);
+      const category = String(args.category ?? "").trim();
+      const vendor = String(args.vendor ?? "").trim();
+      const estimatedCost = Number(args.estimatedCost);
+      if (!category || !vendor) return { ok: false, error: "category and vendor are required" };
+      if (!Number.isFinite(estimatedCost)) return { ok: false, error: "estimatedCost must be a number" };
+      const [created] = await db.insert(budgetItems).values({
+        budgetId: budget.id,
+        category, vendor,
+        estimatedCost: String(estimatedCost),
+        actualCost: args.actualCost !== undefined ? String(Number(args.actualCost)) : "0",
+        amountPaid: "0",
+        isPaid: false,
+        notes: args.notes ? String(args.notes) : null,
+        nextPaymentDue: null,
+      }).returning();
+      return { ok: true, data: { id: created.id, category: created.category, vendor: created.vendor } };
+    }
+
+    if (name === "update_budget_item" || name === "delete_budget_item" || name === "log_budget_payment") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const budget = await ensureBudget(profile.id, profile.totalBudget);
+      const item = await findBudgetItem(budget.id, args.itemId, args.matchVendor);
+      if (!item.ok) return item;
+      if (name === "delete_budget_item") {
+        await db.delete(budgetPaymentLogs).where(eq(budgetPaymentLogs.budgetItemId, item.id));
+        await db.delete(budgetItems).where(and(eq(budgetItems.id, item.id), eq(budgetItems.budgetId, budget.id)));
+        return { ok: true, data: { deleted: item.vendor } };
+      }
+      if (name === "log_budget_payment") {
+        const amt = Number(args.amount);
+        if (!Number.isFinite(amt) || amt <= 0) return { ok: false, error: "amount must be a positive number" };
+        await db.insert(budgetPaymentLogs).values({
+          budgetItemId: item.id,
+          amount: String(amt),
+          note: args.note ? String(args.note) : null,
+        });
+        const newPaid = Number(item.amountPaid) + amt;
+        const isPaid = item.actualCost > 0 ? newPaid >= item.actualCost : newPaid >= item.estimatedCost;
+        await db.update(budgetItems)
+          .set({ amountPaid: String(newPaid), isPaid })
+          .where(eq(budgetItems.id, item.id));
+        return { ok: true, data: { itemId: item.id, vendor: item.vendor, paid: amt, totalPaid: newPaid, isPaid } };
+      }
+      const updates: Partial<typeof budgetItems.$inferInsert> = {};
+      if (args.category !== undefined) updates.category = String(args.category);
+      if (args.vendor !== undefined) updates.vendor = String(args.vendor);
+      if (args.estimatedCost !== undefined) updates.estimatedCost = String(Number(args.estimatedCost));
+      if (args.actualCost !== undefined) updates.actualCost = String(Number(args.actualCost));
+      if (args.notes !== undefined) updates.notes = args.notes ? String(args.notes) : null;
+      if (args.isPaid !== undefined) updates.isPaid = Boolean(args.isPaid);
+      if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
+      const [updated] = await db.update(budgetItems).set(updates)
+        .where(and(eq(budgetItems.id, item.id), eq(budgetItems.budgetId, budget.id))).returning();
+      return { ok: true, data: { id: updated.id, vendor: updated.vendor } };
+    }
+
+    if (name === "list_budget") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const [budget] = await db.select().from(budgets).where(eq(budgets.profileId, profile.id)).limit(1);
+      if (!budget) return { ok: true, data: { items: [] } };
+      const rows = await db.select({ id: budgetItems.id, category: budgetItems.category, vendor: budgetItems.vendor, estimatedCost: budgetItems.estimatedCost, actualCost: budgetItems.actualCost, amountPaid: budgetItems.amountPaid, isPaid: budgetItems.isPaid })
+        .from(budgetItems).where(eq(budgetItems.budgetId, budget.id));
+      const items = rows.map(r => ({ ...r, estimatedCost: Number(r.estimatedCost), actualCost: Number(r.actualCost), amountPaid: Number(r.amountPaid) }));
+      return { ok: true, data: { items } };
+    }
+
+    // ===== EXPENSES =====
+    if (name === "add_expense") {
+      const userId = await resolveScopeUserId(req);
+      const expName = String(args.name ?? "").trim();
+      const category = String(args.category ?? "").trim() || "Other";
+      const cost = Number(args.cost);
+      if (!expName) return { ok: false, error: "name is required" };
+      if (!Number.isFinite(cost)) return { ok: false, error: "cost must be a number" };
+      const [created] = await db.insert(manualExpenses).values({
+        userId, name: expName, category,
+        cost: String(cost),
+        amountPaid: args.amountPaid !== undefined ? String(Number(args.amountPaid)) : "0",
+        notes: args.notes ? String(args.notes) : null,
+      }).returning();
+      return { ok: true, data: { id: created.id, name: created.name } };
+    }
+
+    if (name === "update_expense" || name === "delete_expense") {
+      const userId = await resolveScopeUserId(req);
+      const exp = await findExpense(userId, args.expenseId, args.matchName);
+      if (!exp.ok) return exp;
+      if (name === "delete_expense") {
+        await db.delete(manualExpenses).where(and(eq(manualExpenses.id, exp.id), eq(manualExpenses.userId, userId)));
+        return { ok: true, data: { deleted: exp.name } };
+      }
+      const updates: Partial<typeof manualExpenses.$inferInsert> = {};
+      if (args.name !== undefined) updates.name = String(args.name);
+      if (args.category !== undefined) updates.category = String(args.category);
+      if (args.cost !== undefined) updates.cost = String(Number(args.cost));
+      if (args.amountPaid !== undefined) updates.amountPaid = String(Number(args.amountPaid));
+      if (args.notes !== undefined) updates.notes = args.notes ? String(args.notes) : null;
+      if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
+      updates.updatedAt = new Date();
+      const [updated] = await db.update(manualExpenses).set(updates)
+        .where(and(eq(manualExpenses.id, exp.id), eq(manualExpenses.userId, userId))).returning();
+      return { ok: true, data: { id: updated.id, name: updated.name } };
+    }
+
+    if (name === "list_expenses") {
+      const userId = await resolveScopeUserId(req);
+      const rows = await db.select({ id: manualExpenses.id, name: manualExpenses.name, category: manualExpenses.category, cost: manualExpenses.cost, amountPaid: manualExpenses.amountPaid })
+        .from(manualExpenses).where(eq(manualExpenses.userId, userId));
+      return { ok: true, data: { expenses: rows.map(r => ({ ...r, cost: Number(r.cost), amountPaid: Number(r.amountPaid) })) } };
     }
 
     if (name === "update_profile") {

@@ -50,7 +50,7 @@ export type Timeline = typeof timelines.$inferSelect;
 
 export const budgets = pgTable("budgets", {
   id: serial("id").primaryKey(),
-  profileId: integer("profile_id").notNull(),
+  profileId: integer("profile_id").notNull().unique(),
   totalBudget: numeric("total_budget", { precision: 12, scale: 2 }).notNull().default("0"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
