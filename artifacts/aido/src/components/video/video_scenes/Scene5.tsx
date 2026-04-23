@@ -115,20 +115,6 @@ export function Scene5() {
         </motion.div>
       </motion.div>
 
-      {/* CTA */}
-      <motion.div
-        className="mt-6 text-center"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 4.5, duration: 0.7 }}
-      >
-        <p className="text-white/70 text-base mb-2">Start planning today —</p>
-        <div className="text-2xl font-serif italic"
-          style={{ background: "linear-gradient(135deg, #F5C842 0%, #E91E8C 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
-        >
-          a.ido.app
-        </div>
-      </motion.div>
     </motion.div>
   );
 }
