@@ -122,7 +122,12 @@ if (process.env.NODE_ENV === "production") {
       };
     };
 
-    // ─── SIGN-UP interceptor ──────────────────────────────────────
+    // ─── SIGN-UP: forward directly to FAPI ───────────────────────
+    // Sign-up requests are forwarded to Clerk's normal FAPI endpoint so
+    // that Clerk's standard email verification flow is preserved.  Using
+    // the Backend API to create users with skip_password_checks/auto-
+    // verified emails would let an attacker register any email address
+    // without proving ownership, breaking the application's identity model.
     app.post(
       `${CLERK_PROXY_PATH}/v1/client/sign_ups`,
       express.raw({ type: "*/*", limit: "4mb" }),
@@ -131,106 +136,19 @@ if (process.env.NODE_ENV === "production") {
         const rawBody: string =
           (req.body as Buffer)?.toString("utf8") ?? "";
 
-        const params = new URLSearchParams(rawBody);
-        const email =
-          params.get("email_address") ?? params.get("emailAddress") ?? "";
-        const password = params.get("password") ?? "";
-
-        // If this isn't an email+password sign-up (e.g. OAuth), pass through
-        if (!email || !password) {
-          const passRes = await fapiFetch(
-            "/v1/client/sign_ups",
-            "POST",
-            commonHdrs,
-            rawBody || undefined,
-          );
-          return forwardResponse(passRes, await passRes.text(), res);
-        }
-
-        // ALWAYS use BAPI for email+password sign-up.  This:
-        //  - bypasses Clerk's HIBP password-breach check
-        //  - auto-verifies the email (no verification code email needed)
-        //  - is the only reliable path on Clerk dev instances
-        console.log("[sign_up] email+password → BAPI direct");
-
-        // Create user (or accept already-exists)
-        const bapiRes = await bapiFetch("/v1/users", "POST", {
-          email_address: [email],
-          password,
-          skip_password_checks: true,
-          first_name: params.get("first_name") ?? undefined,
-          last_name: params.get("last_name") ?? undefined,
-        });
-        const bapiBody = await bapiRes.text();
-
-        if (!bapiRes.ok) {
-          const bapiErr = JSON.parse(bapiBody || "{}");
-          const exists = (
-            (bapiErr.errors ?? []) as Array<{ code: string }>
-          ).some((e) => e.code === "form_identifier_exists");
-          if (!exists) {
-            console.error("[sign_up] BAPI failed:", bapiRes.status, bapiBody.substring(0, 300));
-            return forwardResponse(fapiRes, fapiBody, res);
-          }
-          console.log("[sign_up] User already exists — proceeding to sign-in");
-        } else {
-          const u = JSON.parse(bapiBody);
-          console.log("[sign_up] BAPI created user:", u.id);
-        }
-
-        // Sign in via FAPI to establish session + cookies properly
-        const signInParams = new URLSearchParams();
-        signInParams.set("strategy", "password");
-        signInParams.set("identifier", email);
-        signInParams.set("password", password);
-
-        const signInRes = await fapiFetch(
-          "/v1/client/sign_ins",
+        const passRes = await fapiFetch(
+          "/v1/client/sign_ups",
           "POST",
-          { ...commonHdrs, "Content-Type": "application/x-www-form-urlencoded" },
-          signInParams.toString(),
+          commonHdrs,
+          rawBody || undefined,
         );
-        const signInBody = await signInRes.text();
-
-        if (signInRes.ok) {
-          try {
-            const signInJson = JSON.parse(signInBody);
-            const synthetic = {
-              response: {
-                id: `sua_bapi_${Date.now()}`,
-                object: "sign_up_attempt",
-                status: "complete",
-                created_session_id:
-                  signInJson.response?.created_session_id ?? null,
-                missing_fields: [],
-                unverified_fields: [],
-                verifications: {},
-              },
-              client: signInJson.client,
-            };
-            // Forward Set-Cookie from sign-in response
-            const setCookies =
-              (signInRes.headers as unknown as {
-                getSetCookie?: () => string[];
-              }).getSetCookie?.() ?? [];
-            if (setCookies.length > 0) {
-              res.setHeader("Set-Cookie", setCookies);
-            }
-            res.setHeader("Content-Type", "application/json");
-            return res.status(200).json(synthetic);
-          } catch {
-            return forwardResponse(signInRes, signInBody, res);
-          }
-        }
-
-        // sign-in didn't return ok — might still need verification step
-        console.log("[sign_up] sign-in status:", signInRes.status);
-        return forwardResponse(signInRes, signInBody, res);
+        return forwardResponse(passRes, await passRes.text(), res);
       },
     );
 
     // Shared helper: complete a sign-in via admin sign-in ticket.
-    // Bypasses HIBP, "new device" reverification, AND 2FA challenges.
+    // Used only as a fallback when Clerk's HIBP check blocks a valid password.
+    // Must NOT be called without first verifying the user's password via BAPI.
     const completeViaTicket = async (
       userId: string,
       origSiaId: string,
@@ -294,37 +212,11 @@ if (process.env.NODE_ENV === "production") {
       return true;
     };
 
-    // Shared helper: look up a user id from a sign-in attempt id
-    const findUserIdFromSia = async (
-      siaId: string,
-      commonHdrs: FetchHeaders,
-    ): Promise<string | null> => {
-      const siaRes = await fapiFetch(
-        `/v1/client/sign_ins/${siaId}`,
-        "GET",
-        commonHdrs,
-      );
-      const siaJson = JSON.parse(await siaRes.text());
-      const identifier =
-        siaJson.response?.identifier ??
-        siaJson.identifier ??
-        siaJson.response?.user_data?.email_address;
-      if (!identifier) return null;
-
-      const usersRes = await bapiFetch(
-        `/v1/users?email_address=${encodeURIComponent(identifier)}`,
-        "GET",
-      );
-      const users = JSON.parse(await usersRes.text());
-      const user = Array.isArray(users) ? users[0] : null;
-      return user?.id ?? null;
-    };
-
     // ─── SIGN-IN attempt_first_factor interceptor ─────────────────
-    // Handles two cases:
-    //  (a) 422 password-breach error → BAPI verify + ticket bypass
-    //  (b) 200 with status="needs_second_factor" → ticket bypass
-    //      (skips 2FA email codes that don't get delivered)
+    // Handles HIBP password-breach errors only:
+    //  (a) 422 password-breach error → BAPI verify_password + ticket bypass
+    // When Clerk returns 200 (including needs_second_factor), the response is
+    // forwarded as-is so that Clerk's normal 2FA flow proceeds.
     app.post(
       new RegExp(
         `^${CLERK_PROXY_PATH.replace(/\//g, "\\/")}\\/v1\\/client\\/sign_ins\\/([^\\/]+)\\/attempt_first_factor$`,
@@ -348,30 +240,9 @@ if (process.env.NODE_ENV === "production") {
         );
         const fapiBody = await fapiRes.text();
 
-        if (!siaId) return forwardResponse(fapiRes, fapiBody, res);
-
-        // Case (b): 200 with needs_second_factor → ticket-bypass 2FA
-        if (fapiRes.status === 200) {
-          try {
-            const j = JSON.parse(fapiBody);
-            if (j.response?.status === "needs_second_factor") {
-              console.log("[sign_in] needs_second_factor → ticket bypass");
-              const userId = await findUserIdFromSia(siaId, commonHdrs);
-              if (userId) {
-                const ok = await completeViaTicket(
-                  userId,
-                  siaId,
-                  commonHdrs,
-                  res,
-                );
-                if (ok) return;
-              }
-            }
-          } catch {}
-          return forwardResponse(fapiRes, fapiBody, res);
-        }
-
-        if (fapiRes.status !== 422) {
+        // Any non-422 response (including 200/needs_second_factor) is forwarded
+        // unchanged so Clerk's normal second-factor flow is preserved.
+        if (!siaId || fapiRes.status !== 422) {
           return forwardResponse(fapiRes, fapiBody, res);
         }
 
@@ -425,6 +296,14 @@ if (process.env.NODE_ENV === "production") {
           return forwardResponse(fapiRes, fapiBody, res);
         }
 
+        // Do not use the ticket bypass if the user has MFA enabled.
+        // The ticket strategy is an admin token that bypasses all second-factor
+        // requirements; using it for MFA users would silently skip their 2FA.
+        if (user.two_factor_enabled) {
+          console.log("[sign_in] user has 2FA enabled — not using ticket bypass for HIBP case");
+          return forwardResponse(fapiRes, fapiBody, res);
+        }
+
         const ok = await completeViaTicket(user.id, siaId, commonHdrs, res);
         if (!ok) {
           return forwardResponse(fapiRes, fapiBody, res);
@@ -432,58 +311,6 @@ if (process.env.NODE_ENV === "production") {
       },
     );
 
-    // ─── SIGN-IN second-factor interceptors ───────────────────────
-    // Bypass any 2FA challenge (email/SMS code) using ticket strategy.
-    // Clerk dev-instance email delivery is unreliable; the ticket
-    // strategy completes the sign-in without any code.
-    const secondFactorBypass = async (
-      req: express.Request,
-      res: express.Response,
-    ) => {
-      const commonHdrs = buildCommonHeaders(req);
-      const rawBody: string =
-        (req.body as Buffer)?.toString("utf8") ?? "";
-
-      const match = req.path.match(
-        /\/sign_ins\/([^\/]+)\/(prepare|attempt)_second_factor/,
-      );
-      const siaId = match?.[1];
-
-      if (siaId) {
-        const userId = await findUserIdFromSia(siaId, commonHdrs);
-        if (userId) {
-          console.log("[2fa] ticket-bypass for", siaId);
-          const ok = await completeViaTicket(userId, siaId, commonHdrs, res);
-          if (ok) return;
-        }
-      }
-
-      // Fallback: forward to FAPI as normal
-      const upstreamPath = req.path.replace(CLERK_PROXY_PATH, "");
-      const fapiRes = await fapiFetch(
-        upstreamPath,
-        "POST",
-        commonHdrs,
-        rawBody || undefined,
-      );
-      forwardResponse(fapiRes, await fapiRes.text(), res);
-    };
-
-    app.post(
-      new RegExp(
-        `^${CLERK_PROXY_PATH.replace(/\//g, "\\/")}\\/v1\\/client\\/sign_ins\\/([^\\/]+)\\/prepare_second_factor$`,
-      ),
-      express.raw({ type: "*/*", limit: "4mb" }),
-      secondFactorBypass,
-    );
-
-    app.post(
-      new RegExp(
-        `^${CLERK_PROXY_PATH.replace(/\//g, "\\/")}\\/v1\\/client\\/sign_ins\\/([^\\/]+)\\/attempt_second_factor$`,
-      ),
-      express.raw({ type: "*/*", limit: "4mb" }),
-      secondFactorBypass,
-    );
   }
 }
 
