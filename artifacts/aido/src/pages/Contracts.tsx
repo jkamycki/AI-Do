@@ -145,7 +145,7 @@ function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; re
               value={email}
               onChange={e => setEmail(e.target.value)}
               rows={14}
-              className="text-sm font-mono leading-relaxed resize-y bg-white border-rose-200 focus:ring-rose-300"
+              className="text-sm font-mono leading-relaxed resize-y bg-white text-slate-900 placeholder:text-slate-400 border-rose-200 focus:ring-rose-300"
             />
             <p className="text-[11px] text-rose-600">Edit as needed — replace <strong>[Your Names]</strong> and <strong>[Vendor Name]</strong> before sending.</p>
             <div className="flex gap-2">
