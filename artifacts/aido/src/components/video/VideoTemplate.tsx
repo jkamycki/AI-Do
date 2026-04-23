@@ -25,92 +25,86 @@ const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
   duration: Math.random() * 3 + 2,
 }));
 
-// Soft chord progression (one chord per scene) — gentle, romantic, ambient pad.
-// Frequencies in Hz. Each chord = root + third + fifth + soft octave color tone.
-const SCENE_CHORDS: number[][] = [
-  [130.81, 164.81, 196.00, 261.63], // Scene 1 — C major (warm welcome)
-  [110.00, 130.81, 164.81, 220.00], // Scene 2 — A minor (planning, contemplative)
-  [174.61, 220.00, 261.63, 349.23], // Scene 3 — F major (uplift, features)
-  [146.83, 196.00, 246.94, 293.66], // Scene 4 — G major (Aria — bright)
-  [130.81, 164.81, 196.00, 392.00], // Scene 5 — C major (resolution, with high color)
+// Narration script — one short line per scene, sized to fit each scene's duration.
+const SCENE_NARRATION: string[] = [
+  "Meet A.I.Do — your AI wedding planning operating system.",
+  "Build your timeline and budget in minutes, not months.",
+  "Vendor emails, checklists, contracts, seating charts, guests, and collaboration — all in one place.",
+  "And meet Aria, your A.I planner — ready around the clock to answer anything.",
+  "Plan smarter. Stress less. Start your wedding journey with A.I.Do today.",
 ];
 
-function useAmbientSoundtrack(currentScene: number, enabled: boolean) {
-  const ctxRef = useRef<AudioContext | null>(null);
-  const masterGainRef = useRef<GainNode | null>(null);
-  const voicesRef = useRef<{ osc: OscillatorNode; gain: GainNode }[]>([]);
+function useNarration(currentScene: number, enabled: boolean) {
+  const lastSpokenRef = useRef<number>(-1);
 
-  // Initialize / teardown the audio graph when toggled.
+  // Pick a pleasant voice once available (browsers load voices async).
+  const pickVoice = (): SpeechSynthesisVoice | null => {
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length === 0) return null;
+    // Prefer a natural English female voice if available.
+    const preferred =
+      voices.find(v => /Samantha|Google US English|Microsoft Aria|Jenny|Zira|Karen/i.test(v.name)) ||
+      voices.find(v => v.lang?.toLowerCase().startsWith("en") && /female/i.test(v.name)) ||
+      voices.find(v => v.lang?.toLowerCase().startsWith("en")) ||
+      voices[0];
+    return preferred ?? null;
+  };
+
+  // Speak whenever the scene changes (and audio is enabled).
   useEffect(() => {
     if (!enabled) return;
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const master = ctx.createGain();
-    master.gain.value = 0;
-    master.connect(ctx.destination);
-    // Fade in master volume to a gentle level
-    master.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 1.5);
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    if (lastSpokenRef.current === currentScene) return;
+    lastSpokenRef.current = currentScene;
 
-    // Start 4 sine voices (one per chord tone) + 1 soft sub for warmth.
-    const voices = Array.from({ length: 4 }).map(() => {
-      const osc = ctx.createOscillator();
-      osc.type = "sine";
-      const gain = ctx.createGain();
-      gain.gain.value = 0.22;
-      osc.connect(gain).connect(master);
-      osc.start();
-      return { osc, gain };
-    });
+    const text = SCENE_NARRATION[currentScene];
+    if (!text) return;
 
-    // Add a slow, breathing tremolo on master for organic motion
-    const lfo = ctx.createOscillator();
-    lfo.frequency.value = 0.18;
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 0.04;
-    lfo.connect(lfoGain).connect(master.gain);
-    lfo.start();
-
-    ctxRef.current = ctx;
-    masterGainRef.current = master;
-    voicesRef.current = voices;
-
-    return () => {
-      try {
-        master.gain.cancelScheduledValues(ctx.currentTime);
-        master.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
-        setTimeout(() => {
-          voices.forEach(v => { try { v.osc.stop(); } catch {} });
-          try { lfo.stop(); } catch {}
-          try { ctx.close(); } catch {}
-        }, 700);
-      } catch {}
-      ctxRef.current = null;
-      masterGainRef.current = null;
-      voicesRef.current = [];
+    const speakNow = () => {
+      const utter = new SpeechSynthesisUtterance(text);
+      const voice = pickVoice();
+      if (voice) utter.voice = voice;
+      utter.rate = 0.98;
+      utter.pitch = 1.05;
+      utter.volume = 0.95;
+      window.speechSynthesis.cancel(); // clear any leftover queue from prior scene
+      window.speechSynthesis.speak(utter);
     };
-  }, [enabled]);
 
-  // Smoothly transition voice frequencies whenever the scene changes.
+    // If voices haven't loaded yet, wait for them.
+    if (window.speechSynthesis.getVoices().length === 0) {
+      const handler = () => {
+        speakNow();
+        window.speechSynthesis.removeEventListener("voiceschanged", handler);
+      };
+      window.speechSynthesis.addEventListener("voiceschanged", handler);
+      // Fallback in case the event never fires
+      setTimeout(speakNow, 400);
+    } else {
+      speakNow();
+    }
+  }, [currentScene, enabled]);
+
+  // When narration is turned off (or component unmounts), stop speaking immediately.
   useEffect(() => {
-    const ctx = ctxRef.current;
-    const voices = voicesRef.current;
-    if (!ctx || voices.length === 0) return;
-    const chord = SCENE_CHORDS[currentScene] ?? SCENE_CHORDS[0];
-    const now = ctx.currentTime;
-    voices.forEach((v, i) => {
-      const target = chord[i] ?? chord[chord.length - 1];
-      v.osc.frequency.cancelScheduledValues(now);
-      v.osc.frequency.setValueAtTime(v.osc.frequency.value, now);
-      v.osc.frequency.exponentialRampToValueAtTime(target, now + 1.8);
-    });
-  }, [currentScene]);
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+  useEffect(() => {
+    if (!enabled && typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      lastSpokenRef.current = -1;
+    }
+  }, [enabled]);
 }
 
 export default function VideoTemplate() {
   const { currentScene } = useVideoPlayer({ durations: SCENE_DURATIONS });
   const [audioEnabled, setAudioEnabled] = useState(false);
-  useAmbientSoundtrack(currentScene, audioEnabled);
+  useNarration(currentScene, audioEnabled);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#07030d] text-white">
