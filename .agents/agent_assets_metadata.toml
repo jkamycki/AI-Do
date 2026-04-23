@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "_Ga-87pC8_BSEtBY9RMtq"
@@ -12,3 +11,39 @@ id = "EE7nlj_-ZGPM4AvDdEorE"
 uri = "file://artifacts/aido/public/images/bokeh-bg.png"
 type = "image"
 title = "soft bokeh wedding atmosphere"
+
+[[generated]]
+id = "z0u215PGYIlIUc7kAFJbI"
+uri = "file://attached_assets/autolink-step1.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "XrljroUBIE8lYYBRlG9Dr"
+uri = "file://attached_assets/autolink-step2.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "CHV6m8scMg0Wjo4cfn9dR"
+uri = "file://attached_assets/autolink-step3.png"
+type = "image"
+title = "generated_image"
+
+[[outputs]]
+id = "AJ2n3udhWHIDU07paNJbg"
+uri = "file://attached_assets/autolink-step1.png"
+type = "image"
+title = "Step 1 — Add a vendor with a category"
+
+[[outputs]]
+id = "yHGJ9XkrNAjatiF3HK19R"
+uri = "file://attached_assets/autolink-step2.png"
+type = "image"
+title = "Step 2 — Open the Budget page"
+
+[[outputs]]
+id = "BVVvoydA_MOdWP8HFKSGf"
+uri = "file://attached_assets/autolink-step3.png"
+type = "image"
+title = "How auto-link works (concept)"
