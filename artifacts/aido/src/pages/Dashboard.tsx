@@ -210,6 +210,145 @@ function FeatureCard({
   );
 }
 
+// ─── Generic draggable row used for any tile group on the dashboard ────────
+function DraggableRow({
+  storageKey,
+  items,
+  gridClassName,
+  hint = "Drag any card to reorder",
+}: {
+  storageKey: string;
+  items: { id: string; node: React.ReactNode }[];
+  gridClassName: string;
+  hint?: string;
+}) {
+  const defaultIds = useMemo(() => items.map((i) => i.id), [items]);
+
+  const loadOrder = (): string[] => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return defaultIds;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return defaultIds;
+      const filtered = parsed.filter((k: unknown): k is string => typeof k === "string" && defaultIds.includes(k));
+      for (const id of defaultIds) if (!filtered.includes(id)) filtered.push(id);
+      return filtered;
+    } catch {
+      return defaultIds;
+    }
+  };
+
+  const [order, setOrder] = useState<string[]>(loadOrder);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+
+  // Reconcile if the set of available items changes (e.g. card added/removed)
+  useEffect(() => {
+    setOrder((prev) => {
+      const filtered = prev.filter((id) => defaultIds.includes(id));
+      for (const id of defaultIds) if (!filtered.includes(id)) filtered.push(id);
+      return filtered;
+    });
+  }, [defaultIds]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(order));
+    } catch {
+      /* ignore */
+    }
+  }, [order, storageKey]);
+
+  const move = (from: string, to: string) => {
+    if (from === to) return;
+    setOrder((prev) => {
+      const next = [...prev];
+      const fromIdx = next.indexOf(from);
+      const toIdx = next.indexOf(to);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, from);
+      return next;
+    });
+  };
+
+  const reset = () => setOrder(defaultIds);
+  const isCustomized = order.join(",") !== defaultIds.join(",");
+  const byId = new Map(items.map((i) => [i.id, i.node] as const));
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between px-1">
+        <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1.5">
+          <GripVertical className="h-3 w-3" /> {hint}
+        </p>
+        {isCustomized && (
+          <button
+            onClick={reset}
+            className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+            data-testid={`btn-reset-${storageKey}`}
+          >
+            <RotateCcw className="h-3 w-3" /> Reset
+          </button>
+        )}
+      </div>
+      <div className={gridClassName}>
+        {order.map((id) => {
+          const node = byId.get(id);
+          if (!node) return null;
+          const isDragging = draggingId === id;
+          const isOver = overId === id && draggingId && draggingId !== id;
+          return (
+            <div
+              key={id}
+              draggable
+              onDragStart={(e) => {
+                setDraggingId(id);
+                e.dataTransfer.effectAllowed = "move";
+                try {
+                  e.dataTransfer.setData("text/plain", id);
+                } catch {
+                  /* noop */
+                }
+              }}
+              onDragOver={(e) => {
+                if (!draggingId || draggingId === id) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setOverId(id);
+              }}
+              onDragEnter={(e) => {
+                if (!draggingId || draggingId === id) return;
+                e.preventDefault();
+                setOverId(id);
+              }}
+              onDragLeave={(e) => {
+                if (e.currentTarget === e.target) setOverId(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (draggingId) move(draggingId, id);
+                setDraggingId(null);
+                setOverId(null);
+              }}
+              onDragEnd={() => {
+                setDraggingId(null);
+                setOverId(null);
+              }}
+              className={`relative transition-all cursor-grab active:cursor-grabbing ${
+                isDragging ? "opacity-40 scale-[0.98]" : ""
+              } ${isOver ? "ring-2 ring-primary/60 rounded-2xl" : ""}`}
+              data-testid={`draggable-${storageKey}-${id}`}
+            >
+              {node}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 type StatChipDef = {
   icon: React.ElementType;
   label: string;
@@ -464,15 +603,24 @@ export default function Dashboard() {
               </Link>
             </div>
 
-            {/* Details grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Countdown */}
-              <div className="flex items-center gap-3 rounded-xl bg-primary/5 border border-primary/10 p-4">
-                <CountdownRing days={summary.daysUntilWedding} />
-              </div>
-
-              {/* Date & Time */}
-              <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5">
+            {/* Details grid — drag to reorder */}
+            <DraggableRow
+              storageKey="aido:dashboard:weddingDetailsOrder"
+              gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+              hint="Drag any card to rearrange your wedding details"
+              items={[
+                {
+                  id: "countdown",
+                  node: (
+                    <div className="flex items-center gap-3 rounded-xl bg-primary/5 border border-primary/10 p-4 h-full">
+                      <CountdownRing days={summary.daysUntilWedding} />
+                    </div>
+                  ),
+                },
+                {
+                  id: "dateTime",
+                  node: (
+              <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5 h-full">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Date &amp; Time</p>
                 <div className="flex items-start gap-2">
                   <CalendarDays className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
@@ -499,8 +647,12 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Venue */}
-              <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5">
+                  ),
+                },
+                {
+                  id: "venue",
+                  node: (
+              <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5 h-full">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Venue &amp; Location</p>
                 <div className="flex items-start gap-2">
                   <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
@@ -540,8 +692,12 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* Guests & Vibe */}
-              <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5">
+                  ),
+                },
+                {
+                  id: "details",
+                  node: (
+              <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5 h-full">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Details</p>
                 <div className="flex items-center gap-2">
                   <UsersRound className="h-4 w-4 text-primary flex-shrink-0" />
@@ -560,7 +716,10 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
-            </div>
+                  ),
+                },
+              ]}
+            />
           </div>
         </div>
       ) : (
@@ -618,10 +777,15 @@ export default function Dashboard() {
       />
 
 
-      {/* Overview row: Guest RSVPs + Vendors + Wedding Party */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-
-        {/* Guest RSVP breakdown */}
+      {/* Overview row: Guest RSVPs + Vendors + Wedding Party — drag to reorder */}
+      <DraggableRow
+        storageKey="aido:dashboard:overviewOrder"
+        gridClassName="grid grid-cols-1 sm:grid-cols-3 gap-3"
+        hint="Drag any card to rearrange this row"
+        items={[
+          {
+            id: "rsvps",
+            node: (
         <Link href="/guests">
           <div className="bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer h-full">
             <div className="flex items-center justify-between mb-3">
@@ -660,7 +824,11 @@ export default function Dashboard() {
           </div>
         </Link>
 
-        {/* Vendor overview */}
+            ),
+          },
+          {
+            id: "vendors",
+            node: (
         <Link href="/vendors">
           <div className="bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer h-full">
             <div className="flex items-center justify-between mb-3">
@@ -694,7 +862,11 @@ export default function Dashboard() {
           </div>
         </Link>
 
-        {/* Wedding party */}
+            ),
+          },
+          {
+            id: "weddingParty",
+            node: (
         <Link href="/wedding-party">
           <div className="bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer h-full">
             <div className="flex items-center justify-between mb-3">
@@ -728,8 +900,10 @@ export default function Dashboard() {
             )}
           </div>
         </Link>
-
-      </div>
+            ),
+          },
+        ]}
+      />
 
       {/* Upcoming tasks alert */}
       {summary.upcomingTasks && summary.upcomingTasks.length > 0 && (
