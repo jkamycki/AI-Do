@@ -121,7 +121,7 @@ function useAudioDrivenPlayer(audioEnabled: boolean) {
 }
 
 export default function VideoTemplate() {
-  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(false);
   const { currentScene } = useAudioDrivenPlayer(audioEnabled);
 
   return (
