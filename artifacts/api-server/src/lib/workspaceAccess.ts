@@ -42,6 +42,22 @@ export async function resolveWorkspaceRole(
   return collab[0].role as CollaboratorRole;
 }
 
+/**
+ * Returns the userId that data should be SCOPED to for the current request.
+ *
+ * For owners, this is their own userId. For collaborators, this is the
+ * workspace owner's userId — so partners/planners see all the workspace's
+ * data (and writes go into the same shared bucket) instead of being trapped
+ * in their own empty user scope.
+ *
+ * Returns the caller's own userId as a safe fallback if no workspace context
+ * is set or no profile exists yet.
+ */
+export async function resolveScopeUserId(req: Request): Promise<string> {
+  const profile = await resolveProfile(req);
+  return profile?.userId || req.userId!;
+}
+
 export async function resolveProfile(req: Request) {
   // Check header first (sent by customFetch when activeWorkspace is set), then query param
   const headerVal = req.headers["x-workspace-profile-id"];

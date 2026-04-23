@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, weddingParty } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
+import { resolveScopeUserId } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -11,10 +12,11 @@ function fmt(m: typeof weddingParty.$inferSelect) {
 
 router.get("/wedding-party", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const rows = await db
       .select()
       .from(weddingParty)
-      .where(eq(weddingParty.userId, req.userId!))
+      .where(eq(weddingParty.userId, userId))
       .orderBy(asc(weddingParty.sortOrder), asc(weddingParty.createdAt));
     res.json(rows.map(fmt));
   } catch (err) {
@@ -25,13 +27,14 @@ router.get("/wedding-party", requireAuth, async (req, res) => {
 
 router.post("/wedding-party", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const {
       name, role, side, phone, email,
       outfitDetails, shoeSize, outfitStore, fittingDate, notes, sortOrder,
     } = req.body;
     if (!name || !role) return res.status(400).json({ error: "name and role are required" });
     const [created] = await db.insert(weddingParty).values({
-      userId: req.userId!,
+      userId,
       name,
       role,
       side: side ?? "bride",
@@ -53,6 +56,7 @@ router.post("/wedding-party", requireAuth, async (req, res) => {
 
 router.patch("/wedding-party/:id", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
     const {
       name, role, side, phone, email,
@@ -61,7 +65,7 @@ router.patch("/wedding-party/:id", requireAuth, async (req, res) => {
     const [updated] = await db
       .update(weddingParty)
       .set({ name, role, side, phone, email, outfitDetails, shoeSize, outfitStore, fittingDate, notes, sortOrder })
-      .where(and(eq(weddingParty.id, id), eq(weddingParty.userId, req.userId!)))
+      .where(and(eq(weddingParty.id, id), eq(weddingParty.userId, userId)))
       .returning();
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.json(fmt(updated));
@@ -73,8 +77,9 @@ router.patch("/wedding-party/:id", requireAuth, async (req, res) => {
 
 router.delete("/wedding-party/:id", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
-    await db.delete(weddingParty).where(and(eq(weddingParty.id, id), eq(weddingParty.userId, req.userId!)));
+    await db.delete(weddingParty).where(and(eq(weddingParty.id, id), eq(weddingParty.userId, userId)));
     res.json({ success: true });
   } catch (err) {
     req.log.error(err, "Failed to delete wedding party member");

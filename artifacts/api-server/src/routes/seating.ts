@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, seatingCharts } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { resolveScopeUserId } from "../lib/workspaceAccess";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
@@ -105,11 +106,12 @@ Use only the exact guest names from the list. Only create tables that have guest
 
 router.post("/seating/charts", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const { name, guests, tables, tableCount, seatsPerTable, profileId } = req.body;
     const [saved] = await db
       .insert(seatingCharts)
       .values({
-        userId: req.userId!,
+        userId,
         profileId: profileId ?? null,
         name: name ?? "My Seating Chart",
         guests: guests ?? [],
@@ -126,10 +128,11 @@ router.post("/seating/charts", requireAuth, async (req, res) => {
 
 router.get("/seating/charts", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const rows = await db
       .select()
       .from(seatingCharts)
-      .where(eq(seatingCharts.userId, req.userId!))
+      .where(eq(seatingCharts.userId, userId))
       .orderBy(desc(seatingCharts.createdAt));
     res.json(rows.map(r => ({ ...r, createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString() })));
   } catch {

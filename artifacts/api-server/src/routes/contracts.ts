@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { db, vendorContracts } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { resolveScopeUserId } from "../lib/workspaceAccess";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const require = createRequire(import.meta.url);
@@ -199,6 +200,7 @@ Return ONLY the email body text, no subject line, no extra explanation.`;
 
 router.get("/contracts", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const rows = await db
       .select({
         id: vendorContracts.id,
@@ -208,7 +210,7 @@ router.get("/contracts", requireAuth, async (req, res) => {
         createdAt: vendorContracts.createdAt,
       })
       .from(vendorContracts)
-      .where(eq(vendorContracts.userId, req.userId!))
+      .where(eq(vendorContracts.userId, userId))
       .orderBy(desc(vendorContracts.createdAt))
       .limit(50);
 

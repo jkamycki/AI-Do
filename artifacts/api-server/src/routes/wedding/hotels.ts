@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, hotelBlocks } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
+import { resolveScopeUserId } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -15,10 +16,11 @@ function fmt(h: typeof hotelBlocks.$inferSelect) {
 
 router.get("/hotels", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const rows = await db
       .select()
       .from(hotelBlocks)
-      .where(eq(hotelBlocks.userId, req.userId!))
+      .where(eq(hotelBlocks.userId, userId))
       .orderBy(hotelBlocks.createdAt);
     res.json(rows.map(fmt));
   } catch (err) {
@@ -29,13 +31,14 @@ router.get("/hotels", requireAuth, async (req, res) => {
 
 router.post("/hotels", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const {
       hotelName, address, city, state, zip, phone, email, bookingLink, discountCode,
       groupName, cutoffDate, roomsReserved, roomsBooked, pricePerNight,
       distanceFromVenue, notes,
     } = req.body;
     const [created] = await db.insert(hotelBlocks).values({
-      userId: req.userId!,
+      userId,
       hotelName: hotelName ?? "",
       address: address ?? null,
       city: city ?? null,
@@ -62,6 +65,7 @@ router.post("/hotels", requireAuth, async (req, res) => {
 
 router.patch("/hotels/:id", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
     const {
       hotelName, address, city, state, zip, phone, email, bookingLink, discountCode,
@@ -77,7 +81,7 @@ router.patch("/hotels/:id", requireAuth, async (req, res) => {
         pricePerNight: pricePerNight != null ? String(pricePerNight) : null,
         distanceFromVenue, notes,
       })
-      .where(and(eq(hotelBlocks.id, id), eq(hotelBlocks.userId, req.userId!)))
+      .where(and(eq(hotelBlocks.id, id), eq(hotelBlocks.userId, userId)))
       .returning();
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.json(fmt(updated));
@@ -89,10 +93,11 @@ router.patch("/hotels/:id", requireAuth, async (req, res) => {
 
 router.delete("/hotels/:id", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
     await db
       .delete(hotelBlocks)
-      .where(and(eq(hotelBlocks.id, id), eq(hotelBlocks.userId, req.userId!)));
+      .where(and(eq(hotelBlocks.id, id), eq(hotelBlocks.userId, userId)));
     res.json({ success: true });
   } catch (err) {
     req.log.error(err, "Failed to delete hotel block");

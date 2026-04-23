@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, vendors, vendorPayments } from "@workspace/db";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
+import { resolveScopeUserId } from "../../lib/workspaceAccess";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
@@ -35,10 +36,11 @@ async function syncNextPaymentDue(vendorId: number) {
 
 router.get("/vendors", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const rows = await db
       .select()
       .from(vendors)
-      .where(eq(vendors.userId, req.userId!))
+      .where(eq(vendors.userId, userId))
       .orderBy(vendors.createdAt);
     res.json(rows.map(formatVendor));
   } catch (err) {
@@ -49,10 +51,11 @@ router.get("/vendors", requireAuth, async (req, res) => {
 
 router.get("/vendors/financials", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const userVendors = await db
       .select()
       .from(vendors)
-      .where(eq(vendors.userId, req.userId!));
+      .where(eq(vendors.userId, userId));
 
     const totalCommitted = userVendors.reduce((s, v) => s + Number(v.totalCost), 0);
     const totalDeposits = userVendors.reduce((s, v) => s + Number(v.depositAmount), 0);
@@ -110,12 +113,13 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
 
 router.post("/vendors", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const {
       name, category, email, phone, website, portalLink,
       notes, totalCost, depositAmount, contractSigned, nextPaymentDue,
     } = req.body;
     const [created] = await db.insert(vendors).values({
-      userId: req.userId!,
+      userId,
       name,
       category,
       email: email ?? null,
@@ -138,11 +142,12 @@ router.post("/vendors", requireAuth, async (req, res) => {
 
 router.get("/vendors/:id", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const vendorId = parseInt(req.params.id, 10);
     const [vendor] = await db
       .select()
       .from(vendors)
-      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, req.userId!)))
+      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)))
       .limit(1);
     if (!vendor) {
       return res.status(404).json({ error: "Vendor not found" });
@@ -161,6 +166,7 @@ router.get("/vendors/:id", requireAuth, async (req, res) => {
 
 router.put("/vendors/:id", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const vendorId = parseInt(req.params.id, 10);
     const {
       name, category, email, phone, website, portalLink,
@@ -183,7 +189,7 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
     const [updated] = await db
       .update(vendors)
       .set(updates)
-      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, req.userId!)))
+      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)))
       .returning();
     if (!updated) {
       return res.status(404).json({ error: "Vendor not found" });
@@ -197,11 +203,12 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
 
 router.delete("/vendors/:id", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const vendorId = parseInt(req.params.id, 10);
     await db.delete(vendorPayments).where(eq(vendorPayments.vendorId, vendorId));
     const [deleted] = await db
       .delete(vendors)
-      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, req.userId!)))
+      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)))
       .returning();
     if (!deleted) {
       return res.status(404).json({ error: "Vendor not found" });
@@ -215,11 +222,12 @@ router.delete("/vendors/:id", requireAuth, async (req, res) => {
 
 router.post("/vendors/:id/payments", requireAuth, async (req, res) => {
   try {
+    const userId = await resolveScopeUserId(req);
     const vendorId = parseInt(req.params.id, 10);
     const [vendor] = await db
       .select({ id: vendors.id })
       .from(vendors)
-      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, req.userId!)))
+      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)))
       .limit(1);
     if (!vendor) {
       return res.status(404).json({ error: "Vendor not found" });
