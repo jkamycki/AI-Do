@@ -113,10 +113,6 @@ function HotelForm({
           <Input placeholder="07101" value={form.zip ?? ""} onChange={e => set("zip", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label>Distance from Venue</Label>
-          <Input placeholder="e.g. 0.5 miles" value={form.distanceFromVenue ?? ""} onChange={e => set("distanceFromVenue", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
           <Label>Phone</Label>
           <Input type="tel" placeholder="(555) 000-0000" value={form.phone ?? ""} onChange={e => set("phone", e.target.value)} />
         </div>
@@ -188,7 +184,6 @@ function HotelCard({ hotel, onEdit, onDelete }: { hotel: HotelBlock; onEdit: () 
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                   <MapPin className="h-3 w-3" />
                   {[hotel.address, [hotel.city, hotel.state, hotel.zip].filter(Boolean).join(", ")].filter(Boolean).join(", ")}
-                  {hotel.distanceFromVenue && <span className="ml-1 text-primary font-medium">· {hotel.distanceFromVenue}</span>}
                 </p>
               )}
             </div>
