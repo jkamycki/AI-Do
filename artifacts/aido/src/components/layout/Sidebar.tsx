@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk, useUser, useAuth } from "@clerk/react";
 import { useQuery } from "@tanstack/react-query";
@@ -220,6 +220,23 @@ export function Sidebar() {
 
   const isAdmin = adminCheck?.isAdmin === true;
 
+  const sidebarScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Restore sidebar scroll position whenever the route changes,
+  // so clicking a nav link doesn't snap the menu back to the top.
+  useEffect(() => {
+    const el = sidebarScrollRef.current;
+    if (!el) return;
+    const saved = sessionStorage.getItem("aido_sidebar_scroll");
+    const top = saved ? parseInt(saved, 10) : 0;
+    if (!isNaN(top)) {
+      // Use rAF so we set scrollTop after layout is committed.
+      requestAnimationFrame(() => {
+        el.scrollTop = top;
+      });
+    }
+  }, [location]);
+
   const handleSignOut = () => {
     signOut({ redirectUrl: "/" });
   };
@@ -296,6 +313,10 @@ export function Sidebar() {
       </div>
 
       <div
+        ref={sidebarScrollRef}
+        onScroll={(e) => {
+          sessionStorage.setItem("aido_sidebar_scroll", String((e.target as HTMLDivElement).scrollTop));
+        }}
         className={`
           fixed top-0 left-0 h-full w-64 bg-card border-r z-40 transform transition-transform duration-300 ease-in-out pt-20 md:pt-0
           flex flex-col overflow-y-auto
