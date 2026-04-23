@@ -23,7 +23,7 @@ function RotatingTagline() {
     return () => clearInterval(id);
   }, []);
   return (
-    <div className="relative h-9 flex items-center justify-center overflow-hidden min-w-[280px] sm:min-w-[480px]">
+    <div className="relative h-12 flex items-center justify-start overflow-hidden w-full">
       <AnimatePresence mode="wait">
         <motion.span
           key={index}
@@ -31,7 +31,7 @@ function RotatingTagline() {
           animate={{ clipPath: "inset(0 0% 0 0)" }}
           exit={{ clipPath: "inset(0 0 0 100%)" }}
           transition={{ duration: 1.1, ease: [0.65, 0, 0.35, 1] }}
-          className="font-serif italic text-lg sm:text-xl tracking-wide whitespace-nowrap text-center"
+          className="font-serif italic text-2xl sm:text-3xl md:text-4xl font-semibold tracking-wide whitespace-nowrap text-left"
           style={{
             background: "linear-gradient(135deg, #FFFFFF 0%, #F8E1F0 50%, #E91E8C 100%)",
             WebkitBackgroundClip: "text",
@@ -174,11 +174,10 @@ export default function Landing() {
           borderImage: "linear-gradient(90deg, #B8860B 0%, #D4A017 35%, #F5C842 50%, #D4A017 65%, #B8860B 100%) 1",
         }}
       >
-        <div className="hidden md:block w-1 flex-shrink-0" />
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+        <div className="flex-1 min-w-0 pr-6">
           <RotatingTagline />
         </div>
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <LandingLanguagePicker />
           <Link href="/sign-in">
             <Button variant="ghost" className="text-primary hover:bg-primary/5 font-medium">{t("landing.cta_signin")}</Button>
