@@ -113,6 +113,11 @@ function DeleteAccountCard() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Failed to delete account");
       }
+      try {
+        // Wipe any cached workspace so a fresh sign-up in the same browser
+        // doesn't inherit the now-deleted account's shared workspace.
+        localStorage.removeItem("aido_active_workspace");
+      } catch {}
       await signOut({ redirectUrl: "/" });
     } catch (err: unknown) {
       setDeleting(false);

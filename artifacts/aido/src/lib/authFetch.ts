@@ -12,12 +12,18 @@ export function setAuthFetchWorkspaceProfileId(id: number | null): void {
 function getActiveWorkspaceProfileId(): number | null {
   if (_workspaceProfileId != null) return _workspaceProfileId;
   // Fallback: read directly from localStorage so requests fired before
-  // the WorkspaceContext mounts still hit the right workspace.
+  // the WorkspaceContext mounts still hit the right workspace. The cache
+  // is the new {userId, workspace} shape — anything else (legacy bare
+  // workspace, missing/corrupt) is ignored so a previous user's stale
+  // workspace can never leak into the current request.
   try {
     const stored = localStorage.getItem("aido_active_workspace");
     if (!stored) return null;
-    const w = JSON.parse(stored) as { profileId?: number; role?: string } | null;
-    if (!w || w.role === "owner") return null;
+    const parsed = JSON.parse(stored) as
+      | { userId?: string; workspace?: { profileId?: number; role?: string } }
+      | null;
+    const w = parsed?.workspace;
+    if (!parsed?.userId || !w || w.role === "owner") return null;
     return typeof w.profileId === "number" ? w.profileId : null;
   } catch {
     return null;
