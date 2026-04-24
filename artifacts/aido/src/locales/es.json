@@ -416,6 +416,9 @@
     "toast_could_not_delete_expense": "No se pudo eliminar el gasto",
     "confirm_delete_expense": "¿Eliminar este gasto?",
     "pct_paid": "{{pct}}% pagado",
+    "total_paid_out": "Total Pagado",
+    "remaining_to_pay": "Pendiente de Pago",
+    "of_total": "de {{amount}} total",
     "date_time_label": "Fecha y Hora",
     "ceremony_at": "Ceremonia {{time}}",
     "reception_at": "Recepción {{time}}"

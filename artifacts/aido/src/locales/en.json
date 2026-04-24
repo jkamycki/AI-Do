@@ -429,6 +429,9 @@
     "toast_could_not_delete_expense": "Could not delete expense",
     "confirm_delete_expense": "Delete this expense?",
     "pct_paid": "{{pct}}% paid",
+    "total_paid_out": "Total Paid Out",
+    "remaining_to_pay": "Remaining to Pay",
+    "of_total": "of {{amount}} total",
     "date_time_label": "Date & Time",
     "ceremony_at": "Ceremony {{time}}",
     "reception_at": "Reception {{time}}"

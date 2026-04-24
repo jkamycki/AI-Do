@@ -157,6 +157,7 @@ export default function Budget() {
   const combinedSpend = vendorCommitted + manualCommitted;
   const combinedPaid = vendorPaid + manualPaid;
   const remaining = totalBudget - combinedSpend;
+  const remainingToPay = Math.max(0, combinedSpend - combinedPaid);
   const overBudget = combinedSpend > totalBudget && totalBudget > 0;
   const usedPct = totalBudget > 0 ? Math.min((combinedSpend / totalBudget) * 100, 100) : 0;
 
@@ -539,10 +540,22 @@ export default function Budget() {
           <CardDescription>{t("budget.summary_desc")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
             <SummaryStat label={t("budget.total_vendor_spend")} value={vendorCommitted} sub={t("budget.amount_paid", { amount: formatMoney(vendorPaid) })} />
             <SummaryStat label={t("budget.total_manual_spend")} value={manualCommitted} sub={t("budget.amount_paid", { amount: formatMoney(manualPaid) })} />
             <SummaryStat label={t("budget.combined_total_spend")} value={combinedSpend} highlight />
+            <SummaryStat
+              label={t("budget.total_paid_out")}
+              value={combinedPaid}
+              good={combinedPaid > 0}
+              sub={combinedSpend > 0 ? t("budget.percent_used", { pct: ((combinedPaid / combinedSpend) * 100).toFixed(0) }) : undefined}
+            />
+            <SummaryStat
+              label={t("budget.remaining_to_pay")}
+              value={remainingToPay}
+              danger={remainingToPay > 0}
+              sub={combinedSpend > 0 ? t("budget.of_total", { amount: formatMoney(combinedSpend) }) : undefined}
+            />
             <SummaryStat
               label={overBudget ? t("budget.over_budget") : t("budget.remaining_budget")}
               value={Math.abs(remaining)}
