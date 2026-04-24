@@ -198,13 +198,11 @@ function TableCard({
   index: number;
   allTables: SeatingTable[];
   onMoveGuest: (fromTableNumber: number, toTableNumber: number, guestName: string) => void;
-  onUpdateTable: (tableNumber: number, updates: { tableName?: string; theme?: string }) => void;
+  onUpdateTable: (tableNumber: number, updates: { theme?: string }) => void;
 }) {
   const { t } = useTranslation();
   const accent = TABLE_ACCENTS[index % TABLE_ACCENTS.length];
   const [dragOver, setDragOver] = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [nameDraft, setNameDraft] = useState(table.tableName);
   const [editingTheme, setEditingTheme] = useState(false);
   const [themeDraft, setThemeDraft] = useState(table.theme ?? "");
 
@@ -221,16 +219,6 @@ function TableCard({
     } catch {
       // ignore malformed payloads
     }
-  };
-
-  const commitName = () => {
-    const next = nameDraft.trim();
-    if (next && next !== table.tableName) {
-      onUpdateTable(table.tableNumber, { tableName: next });
-    } else {
-      setNameDraft(table.tableName);
-    }
-    setEditingName(false);
   };
 
   const commitTheme = () => {
@@ -251,33 +239,9 @@ function TableCard({
       <div className={`h-1.5 ${accent.bar}`} aria-hidden="true" />
       <CardHeader className="pb-2 pt-3 px-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            {editingName ? (
-              <Input
-                autoFocus
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onBlur={commitName}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); commitName(); }
-                  if (e.key === "Escape") { setNameDraft(table.tableName); setEditingName(false); }
-                }}
-                className="h-8 text-base font-bold font-serif"
-                data-testid={`input-table-name-${table.tableNumber}`}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => { setNameDraft(table.tableName); setEditingName(true); }}
-                className="group/n inline-flex items-center gap-1.5 text-base font-bold font-serif text-foreground hover:text-primary transition-colors text-left"
-                title={t("seating.rename_table")}
-                data-testid={`btn-edit-table-name-${table.tableNumber}`}
-              >
-                <span className="truncate">{table.tableName}</span>
-                <Pencil className="h-3 w-3 opacity-50 md:opacity-30 group-hover/n:opacity-100 transition-opacity" />
-              </button>
-            )}
-          </div>
+          <h3 className="text-base font-bold font-serif text-foreground">
+            Table {table.tableNumber}
+          </h3>
           <Badge className={`text-xs font-medium border-0 ${accent.chip} flex-shrink-0`}>
             <Armchair className="h-3 w-3 mr-1" />
             {table.guests.length}
@@ -293,7 +257,7 @@ function TableCard({
               if (e.key === "Enter") { e.preventDefault(); commitTheme(); }
               if (e.key === "Escape") { setThemeDraft(table.theme ?? ""); setEditingTheme(false); }
             }}
-            placeholder={t("seating.theme_placeholder")}
+            placeholder="Add a description…"
             className="h-7 text-xs mt-1"
             data-testid={`input-table-theme-${table.tableNumber}`}
           />
@@ -302,11 +266,11 @@ function TableCard({
             type="button"
             onClick={() => { setThemeDraft(table.theme ?? ""); setEditingTheme(true); }}
             className="group/t inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors text-left mt-0.5"
-            title={t("seating.edit_theme_title")}
+            title="Edit description"
             data-testid={`btn-edit-table-theme-${table.tableNumber}`}
           >
             <span className="truncate">
-              {table.theme || <span className="italic opacity-70">{t("seating.add_theme")}</span>}
+              {table.theme || <span className="italic opacity-70">Add a description…</span>}
             </span>
             <Pencil className="h-3 w-3 opacity-50 md:opacity-30 group-hover/t:opacity-100 transition-opacity flex-shrink-0" />
           </button>
@@ -350,7 +314,7 @@ function TableCard({
                   .filter(t => t.tableNumber !== table.tableNumber)
                   .map(t => (
                     <option key={t.tableNumber} value={t.tableNumber}>
-                      → {t.tableName}
+                      → Table {t.tableNumber}
                     </option>
                   ))}
               </select>
@@ -441,7 +405,7 @@ export default function SeatingChartPage() {
     setChartDirty(true);
   };
 
-  const updateTable = (tableNumber: number, updates: { tableName?: string; theme?: string }) => {
+  const updateTable = (tableNumber: number, updates: { theme?: string }) => {
     if (!result) return;
     const tables = result.tables.map(t =>
       t.tableNumber === tableNumber ? { ...t, ...updates } : t

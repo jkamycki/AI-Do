@@ -16,7 +16,7 @@ async function syncTableAssignments(
       if (!guestName?.trim()) continue;
       await db
         .update(guestRecords)
-        .set({ tableAssignment: table.tableName })
+        .set({ tableAssignment: `Table ${table.tableNumber}` })
         .where(and(
           eq(guestRecords.profileId, profileId),
           eq(guestRecords.name, guestName),
@@ -81,14 +81,13 @@ Rules:
 3. Group family members and friend groups together
 4. Keep plus-ones with their partners
 5. Consider placing potential conflict groups at opposite sides of the room (note table order matters)
-6. Give each table a creative name relevant to the couple's day (e.g., "Champagne Table", "Garden Table", "Vintage Table")
 
 Return ONLY valid JSON:
 {
   "tables": [
     {
       "tableNumber": 1,
-      "tableName": "string",
+      "tableName": "Table 1",
       "guests": ["Guest Name", ...],
       "theme": "brief note about why these guests are together"
     }
