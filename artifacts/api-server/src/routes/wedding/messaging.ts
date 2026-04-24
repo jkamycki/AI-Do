@@ -124,10 +124,11 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
     const conv = await ownConversation(userId, id);
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
 
-    const { body, subject, attachments } = (req.body ?? {}) as {
+    const { body, subject, attachments, cc: ccOverride } = (req.body ?? {}) as {
       body?: string;
       subject?: string;
       attachments?: Array<{ name: string; url: string; type: string; size?: number }>;
+      cc?: string[];
     };
     if (!body || !body.trim()) return res.status(400).json({ error: "Body required" });
 
@@ -189,19 +190,20 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
       // Personalize From name with the couple — feels like a real person, not a robot.
       const fromName = coupleNames || undefined;
 
-      // CC the user's personal email(s) if they configured any in Settings.
-      // Stored in `vendorBccEmail` (legacy name) as a comma/semicolon/whitespace
-      // separated list. Semantics are now CC, with no recipient limit.
+      // CC the user's personal email(s). Two sources merged:
+      // 1. The live CC list sent with this request (ccOverride) — used even if not yet saved to profile.
+      // 2. The profile's saved vendorBccEmail (legacy field name) as fallback / supplement.
+      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const ccRaw = profile?.vendorBccEmail?.trim() ?? "";
-      const ccList = Array.from(
-        new Set(
-          ccRaw
-            .split(/[,;\s]+/)
-            .map((e) => e.trim())
-            .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
-            .map((e) => e.toLowerCase())
-        )
-      );
+      const savedCcList = ccRaw
+        .split(/[,;\s]+/)
+        .map((e) => e.trim())
+        .filter((e) => EMAIL_RE.test(e))
+        .map((e) => e.toLowerCase());
+      const requestCcList = Array.isArray(ccOverride)
+        ? ccOverride.map((e) => e.trim().toLowerCase()).filter((e) => EMAIL_RE.test(e))
+        : [];
+      const ccList = Array.from(new Set([...requestCcList, ...savedCcList]));
       const cc = ccList.length > 0 ? ccList : undefined;
 
       result = await sendEmail({

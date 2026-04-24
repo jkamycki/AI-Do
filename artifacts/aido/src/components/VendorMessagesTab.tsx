@@ -254,7 +254,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
     if (!conversationId || !draft.trim()) return;
     sendMutation.mutate({
       id: conversationId,
-      data: { body: draft.trim(), subject: subject.trim() || undefined, attachments },
+      data: { body: draft.trim(), subject: subject.trim() || undefined, attachments, cc: ccList.length > 0 ? ccList : undefined } as never,
     });
   };
 
