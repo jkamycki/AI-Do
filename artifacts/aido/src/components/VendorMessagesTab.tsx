@@ -576,8 +576,8 @@ export function VendorMessagesTab({ vendorId }: Props) {
                   },
                   {
                     onSuccess: (result) => {
-                      const composed = `Subject: ${result.subject}\n\n${result.body}`;
-                      setDraft((d) => (d ? `${d}\n\n${composed}` : composed));
+                      if (result.subject) setSubject(result.subject);
+                      setDraft((d) => (d ? `${d}\n\n${result.body}` : result.body));
                       setShowDraftDialog(false);
                       toast({ title: "Draft ready", description: "Inserted into your message box — edit and send when ready." });
                     },
