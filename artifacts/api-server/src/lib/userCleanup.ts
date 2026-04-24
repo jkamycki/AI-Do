@@ -121,12 +121,9 @@ export async function purgeUserData(
     await db.delete(weddingProfiles).where(eq(weddingProfiles.userId, userId));
   }
 
-  const emailList = Array.isArray(userEmail)
-    ? userEmail
-    : userEmail
-      ? [userEmail]
-      : [];
-  if (emailList.length > 0) {
-    await blockEmailsForUser(emailList, userId);
-  }
+  // Note: deletion intentionally does NOT add the email to a permanent
+  // blocklist. After deletion the email is fully released — the user must
+  // explicitly sign up again to come back. The "no account" experience on
+  // sign-in is handled by Clerk for password and by the post-OAuth check
+  // in the frontend for Google.
 }

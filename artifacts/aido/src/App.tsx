@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
-import { ClerkProvider, SignIn, SignUp, useClerk, useAuth, useSignIn, useSignUp, Show, AuthenticateWithRedirectCallback } from "@clerk/react";
+import { ClerkProvider, useClerk, useAuth, useSignIn, useSignUp, Show, AuthenticateWithRedirectCallback } from "@clerk/react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -127,44 +127,244 @@ function AuthPageWrapper({ children }: { children: React.ReactNode }) {
 }
 
 function SignInPage() {
-  // To update login providers, app branding, or OAuth settings use the Auth
-  // pane in the workspace toolbar. More information can be found in the Replit docs.
-  const [blockedMsg, setBlockedMsg] = useState<string | null>(null);
+  return (
+    <AuthPageWrapper>
+      <CustomSignInForm />
+    </AuthPageWrapper>
+  );
+}
+
+function CustomSignInForm() {
+  const clerk = useClerk();
+  const { signIn, isLoaded: signInLoaded } = useSignIn();
+  const [, setLocation] = useLocation();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [oauthLoading, setOauthLoading] = useState<"oauth_google" | null>(null);
+
   useEffect(() => {
     try {
-      const msg = sessionStorage.getItem("aido_blocked_signin_error");
+      const msg = sessionStorage.getItem("aido_signin_no_account_msg");
       if (msg) {
-        setBlockedMsg(msg);
-        sessionStorage.removeItem("aido_blocked_signin_error");
+        setInfo(msg);
+        sessionStorage.removeItem("aido_signin_no_account_msg");
       }
     } catch {}
   }, []);
+
+  function extractError(err: unknown, fallback: string): string {
+    const e = err as { errors?: Array<{ longMessage?: string; message?: string; code?: string }> };
+    const first = e?.errors?.[0];
+    if (first?.code === "form_identifier_not_found" || first?.code === "form_password_incorrect") {
+      return "We couldn't find an account with those credentials. If you previously deleted your account, please sign up again.";
+    }
+    return first?.longMessage || first?.message || (err as Error)?.message || fallback;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!signIn || !signInLoaded) return;
+    if (!email.trim() || !password) {
+      setError("Email and password are required.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const attempt = await signIn.create({ identifier: email.trim(), password });
+      if (attempt.status === "complete" && attempt.createdSessionId) {
+        await clerk.setActive({ session: attempt.createdSessionId });
+        setLocation("/dashboard");
+      } else {
+        setError("Sign in incomplete. Please try again.");
+        setSubmitting(false);
+      }
+    } catch (err) {
+      setError(extractError(err, "Sign in failed."));
+      setSubmitting(false);
+    }
+  }
+
+  async function handleGoogle() {
+    setError(null);
+    if (!signIn || !signInLoaded) {
+      setError("Auth is still loading. Please try again in a moment.");
+      return;
+    }
+    try {
+      setOauthLoading("oauth_google");
+      // Mark this OAuth flow as a sign-IN attempt (not a sign-up). After the
+      // callback we use this flag to detect the case where Clerk silently
+      // auto-created a brand new account because the email had no prior
+      // account — in that case we delete the new account and bounce the
+      // user to the sign-up page with a clear message.
+      sessionStorage.setItem("aido_oauth_intent", "signin");
+      const origin = window.location.origin;
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: `${origin}${basePath}/sso-callback`,
+        redirectUrlComplete: `${origin}${basePath}/dashboard`,
+      });
+    } catch (err) {
+      setOauthLoading(null);
+      try { sessionStorage.removeItem("aido_oauth_intent"); } catch {}
+      setError(extractError(err, "Could not start Google sign-in."));
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "0.65rem 0.85rem",
+    borderRadius: "0.5rem",
+    border: "1px solid rgba(255,255,255,0.15)",
+    background: "rgba(255,255,255,0.05)",
+    color: "#ffffff",
+    fontSize: "0.9rem",
+    outline: "none",
+  };
+  const labelStyle: React.CSSProperties = {
+    color: "#b8a9cc",
+    fontSize: "0.78rem",
+    fontWeight: 500,
+    marginBottom: "0.35rem",
+    display: "block",
+  };
+  const oauthBtn: React.CSSProperties = {
+    width: "100%",
+    padding: "0.65rem",
+    borderRadius: "0.5rem",
+    border: "1px solid rgba(255,255,255,0.15)",
+    background: "rgba(255,255,255,0.05)",
+    color: "#ffffff",
+    fontSize: "0.9rem",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.5rem",
+  };
+
   return (
-    <AuthPageWrapper>
-      {blockedMsg && (
+    <div
+      style={{
+        background: "rgba(20,12,35,0.7)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "0.85rem",
+        padding: "1.5rem",
+        backdropFilter: "blur(10px)",
+      }}
+    >
+      <h2 style={{ color: "#ffffff", fontSize: "1.4rem", fontWeight: 600, marginBottom: "0.35rem" }}>
+        Sign in
+      </h2>
+      <p style={{ color: "#b8a9cc", fontSize: "0.85rem", marginBottom: "1.25rem" }}>
+        Welcome back to A.IDO.
+      </p>
+
+      {info && (
         <div
-          role="alert"
+          role="status"
           style={{
-            background: "rgba(220, 38, 38, 0.18)",
-            border: "1px solid rgba(252, 165, 165, 0.6)",
-            color: "#fecaca",
-            padding: "0.85rem 1rem",
-            borderRadius: "0.65rem",
+            color: "#fde68a",
+            background: "rgba(245, 158, 11, 0.10)",
+            border: "1px solid rgba(245, 158, 11, 0.35)",
+            borderRadius: "0.5rem",
+            padding: "0.55rem 0.75rem",
+            fontSize: "0.82rem",
             marginBottom: "0.85rem",
-            fontSize: "0.9rem",
-            lineHeight: 1.4,
           }}
         >
-          {blockedMsg}
+          {info}
         </div>
       )}
-      <SignIn
-        routing="path"
-        path={`${basePath}/sign-in`}
-        signUpUrl={`${basePath}/sign-up`}
-        fallbackRedirectUrl={`${basePath}/dashboard`}
-      />
-    </AuthPageWrapper>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
+        <button
+          type="button"
+          onClick={handleGoogle}
+          disabled={oauthLoading !== null}
+          style={{ ...oauthBtn, opacity: oauthLoading ? 0.7 : 1, cursor: oauthLoading ? "wait" : "pointer" }}
+        >
+          {oauthLoading === "oauth_google" ? "Redirecting to Google…" : "Continue with Google"}
+        </button>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", margin: "1rem 0" }}>
+        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
+        <span style={{ color: "#b8a9cc", fontSize: "0.75rem" }}>or</span>
+        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
+      </div>
+
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+        <div>
+          <label style={labelStyle}>Email address</label>
+          <input
+            type="email"
+            required
+            style={inputStyle}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>Password</label>
+          <input
+            type="password"
+            required
+            style={inputStyle}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+          />
+        </div>
+
+        {error && (
+          <div
+            style={{
+              color: "#ff8a8a",
+              background: "rgba(255,80,80,0.08)",
+              border: "1px solid rgba(255,80,80,0.25)",
+              borderRadius: "0.5rem",
+              padding: "0.55rem 0.75rem",
+              fontSize: "0.82rem",
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          style={{
+            width: "100%",
+            padding: "0.7rem",
+            borderRadius: "0.5rem",
+            border: "none",
+            background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
+            color: "#ffffff",
+            fontSize: "0.95rem",
+            fontWeight: 600,
+            cursor: submitting ? "not-allowed" : "pointer",
+            opacity: submitting ? 0.7 : 1,
+            marginTop: "0.25rem",
+          }}
+        >
+          {submitting ? "Signing in..." : "Sign in"}
+        </button>
+      </form>
+
+      <p style={{ color: "#b8a9cc", fontSize: "0.82rem", marginTop: "1rem", textAlign: "center" }}>
+        Don't have an account?{" "}
+        <a href={`${basePath}/sign-up`} style={{ color: "#F5C842", fontWeight: 500 }}>
+          Sign up
+        </a>
+      </p>
+    </div>
   );
 }
 
@@ -692,12 +892,19 @@ function LanguageSyncProvider() {
   return null;
 }
 
-function BlockedAccountChecker() {
-  // After any sign-in (email/pw OR Google OAuth), verify the account isn't on
-  // the deleted-emails blocklist. If it is — typically because someone deleted
-  // their account and clicked "Continue with Google" again, which silently
-  // creates a brand new Clerk user — we delete the new account and sign them
-  // out with an explanation.
+function NoAccountFromSignInDetector() {
+  // When a user clicks "Continue with Google" on the SIGN-IN page and their
+  // Google email has no existing A.IDO account, Clerk's OAuth flow silently
+  // creates a brand new account and signs them in. From the user's perspective
+  // this looks like "it just let me in" — which is wrong: they should have
+  // been told to sign up.
+  //
+  // To enforce that, the sign-in page sets sessionStorage.aido_oauth_intent
+  // = "signin" before redirecting to Google. After Clerk completes the OAuth
+  // and signs them in, we check: if the Clerk user was created in the last
+  // ~2 minutes AND the intent was "signin", that means the account didn't
+  // exist — Clerk auto-created it. We delete the just-created account, sign
+  // out, and bounce them to the sign-up page with a friendly message.
   const { isSignedIn, isLoaded } = useAuth();
   const clerk = useClerk();
   const [, setLocation] = useLocation();
@@ -709,18 +916,30 @@ function BlockedAccountChecker() {
     if (!userId || checkedForUserRef.current === userId) return;
     checkedForUserRef.current = userId;
 
+    let intent: string | null = null;
+    try { intent = sessionStorage.getItem("aido_oauth_intent"); } catch {}
+    if (intent !== "signin") return;
+    try { sessionStorage.removeItem("aido_oauth_intent"); } catch {}
+
+    const createdAt = clerk.user?.createdAt
+      ? new Date(clerk.user.createdAt).getTime()
+      : 0;
+    const isFreshlyCreated = createdAt > 0 && Date.now() - createdAt < 2 * 60 * 1000;
+    if (!isFreshlyCreated) return;
+
     (async () => {
       try {
-        const r = await authFetch(`${basePath}/api/auth/check-blocked`);
-        if (r.status === 403) {
-          const data = await r.json().catch(() => ({}));
-          const msg = (data && data.error) || "This email address was previously deleted from A.IDO and cannot be used to create a new account.";
-          try { sessionStorage.setItem("aido_blocked_signin_error", msg); } catch {}
-          await clerk.signOut().catch(() => {});
-          setLocation("/sign-in?blocked=1");
-        }
-      } catch {
-        // Network errors are non-fatal; allow the session to proceed.
+        // Delete the just-created Clerk user + any (empty) DB rows.
+        await authFetch(`${basePath}/api/account`, { method: "DELETE" }).catch(() => {});
+      } finally {
+        try {
+          sessionStorage.setItem(
+            "aido_signin_no_account_msg",
+            "We couldn't find an A.IDO account for that Google email. If you previously deleted your account, please sign up again to create a fresh one.",
+          );
+        } catch {}
+        await clerk.signOut().catch(() => {});
+        setLocation("/sign-in");
       }
     })();
   }, [isLoaded, isSignedIn, clerk, setLocation]);
@@ -808,7 +1027,7 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkTokenSetup />
         <ClerkQueryClientCacheInvalidator />
-        <BlockedAccountChecker />
+        <NoAccountFromSignInDetector />
         <PendingInviteRedirector />
         <LanguageSyncProvider />
         <WorkspaceProvider>
