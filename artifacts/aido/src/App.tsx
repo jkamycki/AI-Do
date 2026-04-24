@@ -490,9 +490,6 @@ function CustomSignUpForm() {
         <button type="button" onClick={() => handleOAuth("oauth_google")} style={oauthBtn}>
           Continue with Google
         </button>
-        <button type="button" onClick={() => handleOAuth("oauth_apple")} style={oauthBtn}>
-          Continue with Apple
-        </button>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", margin: "1rem 0" }}>
