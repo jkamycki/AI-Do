@@ -53,6 +53,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
   const { getToken } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState("");
+  const [subject, setSubject] = useState("");
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
 
@@ -214,6 +215,13 @@ export function VendorMessagesTab({ vendorId }: Props) {
   };
 
   useEffect(() => {
+    if (conv?.subject && !subject) {
+      setSubject(conv.subject);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conv?.subject]);
+
+  useEffect(() => {
     if (conversationId && messages && messages.length > 0) {
       markReadMutation.mutate({ id: conversationId });
       qc.invalidateQueries({ queryKey: getGetOrCreateConversationByVendorQueryKey(vendorId) });
@@ -246,7 +254,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
     if (!conversationId || !draft.trim()) return;
     sendMutation.mutate({
       id: conversationId,
-      data: { body: draft.trim(), attachments },
+      data: { body: draft.trim(), subject: subject.trim() || undefined, attachments },
     });
   };
 
@@ -311,6 +319,20 @@ export function VendorMessagesTab({ vendorId }: Props) {
         <span className="text-amber-800 dark:text-amber-200">
           <strong>Heads up:</strong> First-time emails to vendors may land in their <strong>spam or promotions</strong> folder. If you don't hear back in 1–2 days, give them a quick text or call to check, and ask them to mark this address as "not spam" so future messages reach their inbox.
         </span>
+      </div>
+
+      <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+        <label htmlFor="message-subject-input" className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+          Subject:
+        </label>
+        <Input
+          id="message-subject-input"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder="e.g. Wedding inquiry — florist availability"
+          className="flex-1 h-8 text-sm bg-background"
+          data-testid="input-message-subject"
+        />
       </div>
 
       <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 px-3 py-2">
