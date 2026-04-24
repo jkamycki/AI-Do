@@ -115,6 +115,7 @@ function GuestForm({
   isPending: boolean;
   submitLabel: string;
 }) {
+  const { t } = useTranslation();
   const form = useForm<GuestFormValues>({
     resolver: zodResolver(guestSchema),
     defaultValues: {
@@ -148,14 +149,14 @@ function GuestForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField control={form.control} name="name" render={({ field }) => (
             <FormItem>
-              <FormLabel>Full Name *</FormLabel>
+              <FormLabel>{t("guests.full_name")} *</FormLabel>
               <FormControl><Input placeholder="Jane Smith" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="email" render={({ field }) => (
             <FormItem>
-              <FormLabel>Email (optional)</FormLabel>
+              <FormLabel>{t("guests.email_optional")}</FormLabel>
               <FormControl><Input type="email" placeholder="jane@example.com" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
@@ -164,13 +165,13 @@ function GuestForm({
 
         <FormField control={form.control} name="invitationStatus" render={({ field }) => (
           <FormItem>
-            <FormLabel>Invitation Status</FormLabel>
+            <FormLabel>{t("guests.invitation_status")}</FormLabel>
             <Select onValueChange={field.onChange} defaultValue={field.value}>
               <FormControl>
                 <SelectTrigger><SelectValue /></SelectTrigger>
               </FormControl>
               <SelectContent>
-                {INVITATION_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                {INVITATION_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.invitation_${o.value}`)}</SelectItem>)}
               </SelectContent>
             </Select>
             <FormMessage />
@@ -180,13 +181,13 @@ function GuestForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField control={form.control} name="rsvpStatus" render={({ field }) => (
             <FormItem>
-              <FormLabel>RSVP Status</FormLabel>
+              <FormLabel>{t("guests.rsvp_status")}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {RSVP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  {RSVP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.rsvp_${o.value}`)}</SelectItem>)}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -194,14 +195,14 @@ function GuestForm({
           )} />
           <FormField control={form.control} name="guestGroup" render={({ field }) => (
             <FormItem>
-              <FormLabel>Group / Category</FormLabel>
+              <FormLabel>{t("guests.group_category")}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <SelectTrigger><SelectValue placeholder="Select group" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("guests.select_group")} /></SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="none">No group</SelectItem>
-                  {GROUP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  <SelectItem value="none">{t("guests.no_group")}</SelectItem>
+                  {GROUP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.group_${o.value}`)}</SelectItem>)}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -212,14 +213,14 @@ function GuestForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField control={form.control} name="mealChoice" render={({ field }) => (
             <FormItem>
-              <FormLabel>Meal Choice</FormLabel>
+              <FormLabel>{t("guests.meal_choice")}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <SelectTrigger><SelectValue placeholder="Select meal" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("guests.select_meal")} /></SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="none">None selected</SelectItem>
-                  {MEAL_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  <SelectItem value="none">{t("guests.none_selected")}</SelectItem>
+                  {MEAL_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.meal_${o.value}`)}</SelectItem>)}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -227,8 +228,8 @@ function GuestForm({
           )} />
           <FormField control={form.control} name="tableAssignment" render={({ field }) => (
             <FormItem>
-              <FormLabel>Table Assignment</FormLabel>
-              <FormControl><Input placeholder="e.g. Table 5" {...field} /></FormControl>
+              <FormLabel>{t("guests.table_assignment")}</FormLabel>
+              <FormControl><Input placeholder={t("guests.table_placeholder")} {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
@@ -237,9 +238,9 @@ function GuestForm({
         {meal === "other" && (
           <FormField control={form.control} name="dietaryNotes" render={({ field }) => (
             <FormItem>
-              <FormLabel>Dietary Needs / Custom Preference</FormLabel>
+              <FormLabel>{t("guests.dietary_notes")}</FormLabel>
               <FormControl>
-                <Textarea placeholder="e.g. Gluten-free, nut allergy, halal, kosher…" rows={2} maxLength={500} {...field} />
+                <Textarea placeholder={t("guests.dietary_placeholder")} rows={2} maxLength={500} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -249,35 +250,35 @@ function GuestForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField control={form.control} name="phone" render={({ field }) => (
             <FormItem>
-              <FormLabel>Phone</FormLabel>
+              <FormLabel>{t("guests.phone_label")}</FormLabel>
               <FormControl><Input type="tel" placeholder="(555) 000-0000" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="address" render={({ field }) => (
             <FormItem>
-              <FormLabel>Street Address</FormLabel>
+              <FormLabel>{t("guests.street_address")}</FormLabel>
               <FormControl><Input placeholder="123 Main St" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="guestCity" render={({ field }) => (
             <FormItem>
-              <FormLabel>City</FormLabel>
+              <FormLabel>{t("guests.city")}</FormLabel>
               <FormControl><Input placeholder="Boston" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="guestState" render={({ field }) => (
             <FormItem>
-              <FormLabel>State</FormLabel>
+              <FormLabel>{t("guests.state")}</FormLabel>
               <FormControl><Input placeholder="MA" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="guestZip" render={({ field }) => (
             <FormItem>
-              <FormLabel>ZIP Code</FormLabel>
+              <FormLabel>{t("guests.zip")}</FormLabel>
               <FormControl><Input placeholder="02101" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
@@ -287,7 +288,7 @@ function GuestForm({
         <FormField control={form.control} name="plusOne" render={({ field }) => (
           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
             <div className="space-y-0.5">
-              <FormLabel>Plus One</FormLabel>
+              <FormLabel>{t("guests.plus_one")}</FormLabel>
             </div>
             <FormControl>
               <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -299,14 +300,14 @@ function GuestForm({
           <div className="grid grid-cols-2 gap-3">
             <FormField control={form.control} name="plusOneFirstName" render={({ field }) => (
               <FormItem>
-                <FormLabel>Plus One First Name</FormLabel>
+                <FormLabel>{t("guests.plus_one_first")}</FormLabel>
                 <FormControl><Input placeholder="Alex" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
             <FormField control={form.control} name="plusOneLastName" render={({ field }) => (
               <FormItem>
-                <FormLabel>Last Name</FormLabel>
+                <FormLabel>{t("guests.plus_one_last")}</FormLabel>
                 <FormControl><Input placeholder="Smith" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
@@ -316,9 +317,9 @@ function GuestForm({
 
         <FormField control={form.control} name="notes" render={({ field }) => (
           <FormItem>
-            <FormLabel>Notes</FormLabel>
+            <FormLabel>{t("guests.notes_label")}</FormLabel>
             <FormControl>
-              <Textarea placeholder="Dietary restrictions, accessibility needs, VIP…" className="resize-none" rows={2} {...field} />
+              <Textarea placeholder={t("guests.notes_placeholder")} className="resize-none" rows={2} {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -326,10 +327,10 @@ function GuestForm({
 
         <div className="flex gap-3 mt-2">
           <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset({ name: "", email: "", invitationStatus: "pending", rsvpStatus: "pending", mealChoice: "", guestGroup: "", plusOne: false, plusOneFirstName: "", plusOneLastName: "", tableAssignment: "", phone: "", address: "", guestCity: "", guestState: "", guestZip: "", notes: "" })}>
-            <RotateCcw className="h-4 w-4 mr-2" /> Reset
+            <RotateCcw className="h-4 w-4 mr-2" /> {t("guests.reset")}
           </Button>
           <Button type="submit" className="flex-1" disabled={isPending}>
-            {isPending ? "Saving…" : submitLabel}
+            {isPending ? t("guests.saving") : submitLabel}
           </Button>
         </div>
       </form>
@@ -362,6 +363,7 @@ function exportCSV(guestList: Guest[]) {
 }
 
 function GuestCollectorCard() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -386,7 +388,7 @@ function GuestCollectorCard() {
       return res.json() as Promise<{ token: string }>;
     },
     onSuccess: (data) => setToken(data.token),
-    onError: () => toast({ title: "Error", description: "Could not generate link.", variant: "destructive" }),
+    onError: () => toast({ title: t("guests.error"), description: t("guests.could_not_generate"), variant: "destructive" }),
   });
 
   const regenerate = useMutation({
@@ -397,9 +399,9 @@ function GuestCollectorCard() {
     },
     onSuccess: (data) => {
       setToken(data.token);
-      toast({ title: "New link generated", description: "The old link is now inactive." });
+      toast({ title: t("guests.new_link_generated"), description: t("guests.old_link_inactive") });
     },
-    onError: () => toast({ title: "Error", description: "Could not regenerate link.", variant: "destructive" }),
+    onError: () => toast({ title: t("guests.error"), description: t("guests.could_not_regenerate"), variant: "destructive" }),
   });
 
   const copyLink = () => {
@@ -415,10 +417,10 @@ function GuestCollectorCard() {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <Link2 className="h-4 w-4 text-rose-500" />
-          Guest Collector Link
+          {t("guests.collector_title")}
         </CardTitle>
         <CardDescription>
-          Generate a shareable link so guests can submit their mailing address and contact info for invitations. RSVP is managed separately by you.
+          {t("guests.collector_desc")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -429,9 +431,9 @@ function GuestCollectorCard() {
             className="bg-rose-500 hover:bg-rose-600 text-white"
           >
             {generate.isPending ? (
-              <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Generating...</>
+              <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> {t("guests.generating")}</>
             ) : (
-              <><Link2 className="h-4 w-4 mr-2" /> Generate Collection Link</>
+              <><Link2 className="h-4 w-4 mr-2" /> {t("guests.generate_link")}</>
             )}
           </Button>
         ) : (
@@ -448,7 +450,7 @@ function GuestCollectorCard() {
                 size="icon"
                 onClick={copyLink}
                 className="shrink-0 border-rose-200 hover:bg-rose-100"
-                title="Copy link"
+                title={t("guests.copy_link_title")}
               >
                 {copied ? <CheckCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
               </Button>
@@ -456,7 +458,7 @@ function GuestCollectorCard() {
 
             {/* Link preview — shows guests what they'll see before clicking */}
             <div>
-              <p className="text-[11px] text-muted-foreground mb-1.5 font-medium">Preview — what guests see when you share this link:</p>
+              <p className="text-[11px] text-muted-foreground mb-1.5 font-medium">{t("guests.link_preview_label")}</p>
             <div className="rounded-xl border border-rose-100 bg-white overflow-hidden shadow-sm">
               <div className="h-1 w-full" style={{ background: "linear-gradient(90deg, #f43f5e, #a855f7)" }} />
               <div className="flex items-start gap-3 p-3">
@@ -464,9 +466,9 @@ function GuestCollectorCard() {
                   <Heart className="h-5 w-5 fill-rose-400 text-rose-400" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "#a855f7" }}>Contact Info Request</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "#a855f7" }}>{t("guests.contact_info_request")}</p>
                   <p className="text-sm font-bold text-gray-900 leading-tight truncate" style={{ fontFamily: "Georgia, serif" }}>{coupleNames}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">are collecting addresses for their wedding invitations</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{t("guests.collecting_addresses")}</p>
                   <p className="text-[10px] text-muted-foreground mt-1 truncate">{formUrl}</p>
                 </div>
               </div>
@@ -480,36 +482,36 @@ function GuestCollectorCard() {
                 size="sm"
                 className="border-rose-200 hover:bg-rose-50 text-rose-700 gap-2"
                 onClick={() => {
-                  const subject = encodeURIComponent("Please share your contact info with us!");
+                  const subject = encodeURIComponent(t("guests.email_subject_line") || "Please share your contact info with us!");
                   const body = encodeURIComponent(
                     `Hi!\n\nWe'd love to have your contact details for our wedding guest list. Please take a moment to fill out this quick form below:\n\n${collectorUrl}\n\nThank you!`
                   );
                   window.location.href = `mailto:?subject=${subject}&body=${body}`;
                 }}
               >
-                <Mail className="h-3.5 w-3.5" /> Email Link
+                <Mail className="h-3.5 w-3.5" /> {t("guests.email_link")}
               </Button>
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-rose-600 gap-1 ml-auto">
-                    <RefreshCw className="h-3 w-3" /> Regenerate
+                    <RefreshCw className="h-3 w-3" /> {t("guests.regenerate")}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Regenerate link?</AlertDialogTitle>
+                    <AlertDialogTitle>{t("guests.regenerate_title")}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      The current link will stop working immediately. Anyone who has the old link won't be able to use it anymore.
+                      {t("guests.regenerate_desc")}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>{t("guests.cancel")}</AlertDialogCancel>
                     <AlertDialogAction
                       className="bg-rose-500 hover:bg-rose-600"
                       onClick={() => regenerate.mutate()}
                     >
-                      Yes, Regenerate
+                      {t("guests.yes_regenerate")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -517,7 +519,7 @@ function GuestCollectorCard() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Their info will appear in your guest list automatically once submitted.
+              {t("guests.link_auto_appears")}
             </p>
           </div>
         )}
@@ -743,9 +745,9 @@ export default function Guests() {
       {summary.total > 0 && (
         <div className="bg-card border border-border/60 rounded-xl p-4 space-y-2 shadow-sm">
           <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-foreground">RSVP Response Rate</span>
+            <span className="font-medium text-foreground">{t("guests.rsvp_response_rate")}</span>
             <span className="text-muted-foreground">
-              {summary.attending + summary.declined} of {summary.total} responded
+              {summary.attending + summary.declined} {t("guests.responded")} {summary.total}
               {summary.total > 0 && (
                 <span className="ml-1 text-primary font-semibold">
                   ({Math.round(((summary.attending + summary.declined) / summary.total) * 100)}%)
@@ -768,9 +770,9 @@ export default function Guests() {
             )}
           </div>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> Attending ({summary.attending})</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" /> Declined ({summary.declined})</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30 inline-block" /> Awaiting ({summary.pending})</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> {t("guests.stat_attending")} ({summary.attending})</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" /> {t("guests.stat_declined")} ({summary.declined})</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30 inline-block" /> {t("guests.stat_pending")} ({summary.pending})</span>
           </div>
         </div>
       )}
@@ -778,17 +780,17 @@ export default function Guests() {
       {/* Summary chips */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { icon: Users, label: "Total", value: summary.total, color: "text-primary" },
-          { icon: UserCheck, label: "Attending", value: summary.attending, color: "text-emerald-600" },
-          { icon: UserX, label: "Declined", value: summary.declined, color: "text-red-500" },
-          { icon: Clock, label: "Pending", value: summary.pending, color: "text-amber-600" },
-          { icon: Heart, label: "Plus Ones", value: summary.plusOnes, color: "text-rose-500" },
-        ].map(({ icon: Icon, label, value, color }) => (
-          <Card key={label} className="border-border/60 shadow-sm">
+          { icon: Users, labelKey: "stat_total", value: summary.total, color: "text-primary" },
+          { icon: UserCheck, labelKey: "stat_attending", value: summary.attending, color: "text-emerald-600" },
+          { icon: UserX, labelKey: "stat_declined", value: summary.declined, color: "text-red-500" },
+          { icon: Clock, labelKey: "stat_pending", value: summary.pending, color: "text-amber-600" },
+          { icon: Heart, labelKey: "stat_plus_ones", value: summary.plusOnes, color: "text-rose-500" },
+        ].map(({ icon: Icon, labelKey, value, color }) => (
+          <Card key={labelKey} className="border-border/60 shadow-sm">
             <CardContent className="p-4 flex flex-col items-center text-center">
               <Icon className={`h-5 w-5 mb-1 ${color}`} />
               <div className={`text-2xl font-serif font-bold ${color}`}>{value}</div>
-              <div className="text-xs text-muted-foreground">{label}</div>
+              <div className="text-xs text-muted-foreground">{t(`guests.${labelKey}`)}</div>
             </CardContent>
           </Card>
         ))}
@@ -816,7 +818,7 @@ export default function Guests() {
               onClick={() => setGroupFilter("all")}
               className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border border-dashed border-muted-foreground/40 text-muted-foreground hover:text-foreground transition-colors"
             >
-              Clear filter ×
+              {t("guests.clear_filter")}
             </button>
           )}
         </div>
@@ -827,7 +829,7 @@ export default function Guests() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name or email…"
+            placeholder={t("guests.search_placeholder")}
             className="pl-9"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -838,17 +840,17 @@ export default function Guests() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All RSVPs</SelectItem>
-            {RSVP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            <SelectItem value="all">{t("guests.all_rsvps")}</SelectItem>
+            {RSVP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.rsvp_${o.value}`)}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={groupFilter} onValueChange={setGroupFilter}>
           <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="All Groups" />
+            <SelectValue placeholder={t("guests.all_groups")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Groups</SelectItem>
-            {GROUP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            <SelectItem value="all">{t("guests.all_groups")}</SelectItem>
+            {GROUP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.group_${o.value}`)}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -860,24 +862,24 @@ export default function Guests() {
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <Users className="h-8 w-8 text-primary" />
             </div>
-            <h3 className="text-xl font-serif text-foreground mb-2">Your guest list is empty</h3>
-            <p className="text-muted-foreground mb-6 max-w-sm">Start adding guests to track RSVPs, meal choices, and seating assignments.</p>
+            <h3 className="text-xl font-serif text-foreground mb-2">{t("guests.empty_title")}</h3>
+            <p className="text-muted-foreground mb-6 max-w-sm">{t("guests.empty_desc")}</p>
             <Button onClick={() => setIsAdding(true)}>
-              <Plus className="h-4 w-4 mr-2" /> Add Your First Guest
+              <Plus className="h-4 w-4 mr-2" /> {t("guests.add_first_guest")}
             </Button>
           </CardContent>
         </Card>
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No guests match your search or filter.
+            {t("guests.no_match")}
           </CardContent>
         </Card>
       ) : (
         <Card className="border-border/60 shadow-sm">
           <CardHeader className="pb-0">
             <CardTitle className="text-base font-medium text-muted-foreground">
-              {filtered.length} {filtered.length === 1 ? "guest" : "guests"} {rsvpFilter !== "all" || groupFilter !== "all" || search ? "(filtered)" : ""}
+              {filtered.length === 1 ? t("guests.guest_count", { count: filtered.length }) : t("guests.guests_count", { count: filtered.length })} {rsvpFilter !== "all" || groupFilter !== "all" || search ? t("guests.filtered") : ""}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -885,20 +887,20 @@ export default function Guests() {
               <Table>
                 <TableHeader className="bg-muted/10">
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="hidden sm:table-cell">Invitation</TableHead>
-                    <TableHead className="hidden sm:table-cell">Group</TableHead>
-                    <TableHead>RSVP</TableHead>
-                    <TableHead className="hidden md:table-cell">Meal</TableHead>
-                    <TableHead className="hidden md:table-cell">Table</TableHead>
-                    <TableHead className="hidden lg:table-cell">+1</TableHead>
+                    <TableHead>{t("guests.col_name")}</TableHead>
+                    <TableHead className="hidden sm:table-cell">{t("guests.col_invitation")}</TableHead>
+                    <TableHead className="hidden sm:table-cell">{t("guests.col_group")}</TableHead>
+                    <TableHead>{t("guests.col_rsvp")}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t("guests.col_meal")}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t("guests.col_table")}</TableHead>
+                    <TableHead className="hidden lg:table-cell">{t("guests.col_plus_one")}</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.map(g => {
                     const badge = getRsvpBadge(g.rsvpStatus);
-                    const grpLabel = getGroupLabel(g.guestGroup);
+                    const grpLabel = g.guestGroup ? t(`guests.group_${g.guestGroup}`, getGroupLabel(g.guestGroup)) : "";
                     const grpColor = g.guestGroup ? (GROUP_COLORS[g.guestGroup] ?? "bg-gray-100 text-gray-700 border-gray-200") : "";
                     return (
                       <TableRow key={g.id} className="group">
@@ -938,7 +940,7 @@ export default function Guests() {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${INVITATION_OPTIONS.find(o => o.value === g.invitationStatus)?.color ?? INVITATION_OPTIONS[0].color}`}>
-                                {INVITATION_OPTIONS.find(o => o.value === g.invitationStatus)?.label ?? "Pending"}
+                                {t(`guests.invitation_${g.invitationStatus}`)}
                                 <ChevronDown className="h-2.5 w-2.5 opacity-60" />
                               </button>
                             </DropdownMenuTrigger>
@@ -949,7 +951,7 @@ export default function Guests() {
                                   className={`text-xs font-medium cursor-pointer ${g.invitationStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
                                   onClick={() => handleInvitationChange(g, opt.value)}
                                 >
-                                  {opt.label}
+                                  {t(`guests.invitation_${opt.value}`)}
                                 </DropdownMenuItem>
                               ))}
                             </DropdownMenuContent>
@@ -968,7 +970,7 @@ export default function Guests() {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${badge.color} hover:opacity-80 transition-opacity cursor-pointer`}>
-                                {badge.label}
+                                {t(`guests.rsvp_${g.rsvpStatus}`)}
                                 <ChevronDown className="h-2.5 w-2.5 opacity-60" />
                               </button>
                             </DropdownMenuTrigger>
@@ -980,7 +982,7 @@ export default function Guests() {
                                   onClick={() => handleRsvpChange(g, opt.value)}
                                 >
                                   <span className={`w-2 h-2 rounded-full mr-2 ${opt.value === "attending" ? "bg-emerald-500" : opt.value === "declined" ? "bg-red-400" : "bg-amber-400"}`} />
-                                  {opt.label}
+                                  {t(`guests.rsvp_${opt.value}`)}
                                 </DropdownMenuItem>
                               ))}
                             </DropdownMenuContent>
@@ -995,7 +997,7 @@ export default function Guests() {
                         <TableCell className="hidden lg:table-cell text-sm">
                           {g.plusOne ? (
                             <span className="font-bold text-primary">
-                              ♥ {g.plusOneName || "Yes"}
+                              ♥ {g.plusOneName || t("guests.plus_one_yes")}
                             </span>
                           ) : "—"}
                         </TableCell>
@@ -1015,13 +1017,13 @@ export default function Guests() {
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Remove {g.name}?</AlertDialogTitle>
-                                  <AlertDialogDescription>This will permanently remove them from your guest list.</AlertDialogDescription>
+                                  <AlertDialogTitle>{t("guests.remove_title", { name: g.name })}</AlertDialogTitle>
+                                  <AlertDialogDescription>{t("guests.remove_desc")}</AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogCancel>{t("guests.cancel")}</AlertDialogCancel>
                                   <AlertDialogAction onClick={() => handleDelete(g.id)} className="bg-destructive hover:bg-destructive/90">
-                                    Remove
+                                    {t("guests.remove_btn")}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
