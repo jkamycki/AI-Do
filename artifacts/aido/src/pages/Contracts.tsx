@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslation } from "react-i18next";
+import { useGetProfile } from "@workspace/api-client-react";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -93,11 +94,16 @@ function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; re
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { data: profile } = useGetProfile();
 
   async function generate() {
     setLoading(true);
     try {
-      const res = await authFetch(`${API}/api/contracts/${contractId}/negotiate`, { method: "POST" });
+      const res = await authFetch(`${API}/api/contracts/${contractId}/negotiate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferredLanguage: profile?.preferredLanguage ?? "English" }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to generate");
       setEmail(data.negotiationEmail);

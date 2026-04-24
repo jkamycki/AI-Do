@@ -379,6 +379,7 @@ export interface UpdatePaymentBody {
 
 export interface SummarizeEmailBody {
   emailText: string;
+  preferredLanguage?: string;
 }
 
 export interface SummarizeEmailResponse {

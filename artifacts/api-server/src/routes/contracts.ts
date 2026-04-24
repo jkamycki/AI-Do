@@ -175,6 +175,11 @@ router.post("/contracts/:id/negotiate", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "No red flags found — no negotiation needed." });
     }
 
+    const { preferredLanguage } = req.body as { preferredLanguage?: string };
+    const langInstruction = preferredLanguage && preferredLanguage !== "English"
+      ? `\n\nIMPORTANT: Write the entire email in ${preferredLanguage}.`
+      : "";
+
     const vendorType = (analysis?.vendorType as string) ?? "vendor";
     const flagsSummary = redFlags
       .map((f, i) => `${i + 1}. [${f.severity.toUpperCase()}] ${f.title}: ${f.detail}. Recommendation: ${f.recommendation}`)
@@ -194,7 +199,7 @@ Write a professional, polite, and firm negotiation email from the couple to the 
 - Sound like a real person wrote it, not a legal document
 - Be ready to copy and paste — use [Your Names] and [Vendor Name] as placeholders
 
-Return ONLY the email body text, no subject line, no extra explanation.`;
+Return ONLY the email body text, no subject line, no extra explanation.${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",

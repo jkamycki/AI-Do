@@ -12,6 +12,7 @@ import {
   useUpdateVendorPayment,
   useDeleteVendorPayment,
   useSummarizeVendorEmail,
+  useGetProfile,
   getListVendorsQueryKey,
   getGetVendorQueryKey,
 } from "@workspace/api-client-react";
@@ -908,7 +909,7 @@ function VendorDetailDialog({
   );
 }
 
-function SummarizeEmailDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function SummarizeEmailDialog({ open, onClose, preferredLanguage }: { open: boolean; onClose: () => void; preferredLanguage?: string }) {
   const { toast } = useToast();
   const [emailText, setEmailText] = useState("");
   const mutation = useSummarizeVendorEmail({
@@ -920,7 +921,7 @@ function SummarizeEmailDialog({ open, onClose }: { open: boolean; onClose: () =>
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!emailText.trim()) return;
-    mutation.mutate({ data: { emailText } });
+    mutation.mutate({ data: { emailText, preferredLanguage } });
   }
 
   const result = mutation.data;
@@ -1144,6 +1145,7 @@ export default function Vendors() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: vendors = [], isLoading } = useListVendors();
+  const { data: profile } = useGetProfile();
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
@@ -1328,7 +1330,7 @@ export default function Vendors() {
       </AlertDialog>
 
       {showSummarize && (
-        <SummarizeEmailDialog open onClose={() => setShowSummarize(false)} />
+        <SummarizeEmailDialog open onClose={() => setShowSummarize(false)} preferredLanguage={profile?.preferredLanguage ?? "English"} />
       )}
     </div>
   );

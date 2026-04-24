@@ -363,10 +363,13 @@ router.delete("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) 
 
 router.post("/vendor/email/summarize", requireAuth, async (req, res) => {
   try {
-    const { emailText } = req.body;
+    const { emailText, preferredLanguage } = req.body;
     if (!emailText) {
       return res.status(400).json({ error: "emailText is required" });
     }
+    const langInstruction = preferredLanguage && preferredLanguage !== "English"
+      ? `\n\nIMPORTANT: Write your entire response (all summary text, key points, and action items) in ${preferredLanguage}.`
+      : "";
     const prompt = `You are a wedding planning assistant. A couple has received an email from a vendor and needs help understanding it.
 
 Summarize the following vendor email clearly and concisely. Extract key information like pricing, availability, terms, and next steps.
@@ -379,7 +382,7 @@ Return ONLY valid JSON (no markdown) with this structure:
   "summary": "A 2-3 sentence plain English summary of what this email says",
   "keyPoints": ["Key point 1", "Key point 2", "Key point 3"],
   "actionItems": ["Action item 1", "Action item 2"]
-}`;
+}${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",
