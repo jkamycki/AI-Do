@@ -137,13 +137,10 @@ function SignInPage() {
 function CustomSignInForm() {
   const clerk = useClerk();
   const [, setLocation] = useLocation();
-  const [mode, setMode] = useState<
-    "signin" | "reset_request" | "reset_verify" | "code_request" | "code_verify"
-  >("signin");
+  const [mode, setMode] = useState<"code_request" | "code_verify">(
+    "code_request",
+  );
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [resetCode, setResetCode] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [loginCode, setLoginCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -163,82 +160,10 @@ function CustomSignInForm() {
   function extractError(err: unknown, fallback: string): string {
     const e = err as { errors?: Array<{ longMessage?: string; message?: string; code?: string }> };
     const first = e?.errors?.[0];
-    if (first?.code === "form_identifier_not_found" || first?.code === "form_password_incorrect") {
-      return "We couldn't find an account with those credentials. If you previously deleted your account, please sign up again.";
-    }
-    if (first?.code === "form_password_pwned") {
-      return "Your password was found in a known data breach. For your safety, please use \"Forgot password\" below to set a new one.";
+    if (first?.code === "form_identifier_not_found") {
+      return "We couldn't find an account with that email. If you previously deleted your account, please sign up again.";
     }
     return first?.longMessage || first?.message || (err as Error)?.message || fallback;
-  }
-
-  async function handleSendResetCode(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setInfo(null);
-    if (!email.trim()) {
-      setError("Please enter your email address.");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const signInClient = await waitForSignInClient();
-      if (!signInClient) {
-        setError("Auth is still loading. Please try again in a moment.");
-        setSubmitting(false);
-        return;
-      }
-      await signInClient.create({
-        strategy: "reset_password_email_code",
-        identifier: email.trim(),
-      });
-      setMode("reset_verify");
-      setInfo(`We sent a 6-digit code to ${email.trim()}. Enter it below along with your new password.`);
-    } catch (err) {
-      setError(extractError(err, "Could not send reset code. Please check the email and try again."));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleVerifyReset(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (!resetCode.trim() || !newPassword) {
-      setError("Code and new password are required.");
-      return;
-    }
-    if (newPassword.length < 8) {
-      setError("New password must be at least 8 characters.");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const signInClient = await waitForSignInClient();
-      if (!signInClient || !clerk.setActive) {
-        setError("Auth is still loading. Please try again in a moment.");
-        setSubmitting(false);
-        return;
-      }
-      const attempt = await signInClient.attemptFirstFactor({
-        strategy: "reset_password_email_code",
-        code: resetCode.trim(),
-        password: newPassword,
-      });
-      if (attempt.status === "complete" && attempt.createdSessionId) {
-        await clerk.setActive({ session: attempt.createdSessionId });
-        setLocation("/dashboard");
-      } else if (attempt.status === "needs_new_password") {
-        setError("Code accepted but the password could not be set. Please try a different password.");
-        setSubmitting(false);
-      } else {
-        setError("Could not complete the password reset. Please try again.");
-        setSubmitting(false);
-      }
-    } catch (err) {
-      setError(extractError(err, "Password reset failed."));
-      setSubmitting(false);
-    }
   }
 
   async function handleSendLoginCode(e: React.FormEvent) {
@@ -270,7 +195,7 @@ function CustomSignInForm() {
       const emailFactor = factors.find((f) => f.strategy === "email_code");
       if (!emailFactor?.emailAddressId) {
         setError(
-          "This account doesn't have an email-code option. Try signing in with your password or with Google.",
+          "We couldn't send a code to this email. Try signing in with Google instead.",
         );
         setSubmitting(false);
         return;
@@ -328,41 +253,6 @@ function CustomSignInForm() {
       await new Promise((res) => setTimeout(res, 80));
     }
     return clerk.client?.signIn ?? null;
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    // Clear any stale OAuth-intent flags from a previously abandoned Google
-    // flow so they can't trigger the "no-account" detector on this sign-in.
-    try {
-      sessionStorage.removeItem("aido_oauth_intent");
-      sessionStorage.removeItem("aido_oauth_intent_at");
-    } catch {}
-    if (!email.trim() || !password) {
-      setError("Email and password are required.");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const signInClient = await waitForSignInClient();
-      if (!signInClient || !clerk.setActive) {
-        setError("Auth is still loading. Please try again in a moment.");
-        setSubmitting(false);
-        return;
-      }
-      const attempt = await signInClient.create({ identifier: email.trim(), password });
-      if (attempt.status === "complete" && attempt.createdSessionId) {
-        await clerk.setActive({ session: attempt.createdSessionId });
-        setLocation("/dashboard");
-      } else {
-        setError("Sign in incomplete. Please try again.");
-        setSubmitting(false);
-      }
-    } catch (err) {
-      setError(extractError(err, "Sign in failed."));
-      setSubmitting(false);
-    }
   }
 
   async function handleGoogle() {
@@ -482,128 +372,27 @@ function CustomSignInForm() {
         </div>
       )}
 
-      {mode === "signin" && (
-        <>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
-            <button
-              type="button"
-              onClick={handleGoogle}
-              disabled={oauthLoading !== null}
-              style={{ ...oauthBtn, opacity: oauthLoading ? 0.7 : 1, cursor: oauthLoading ? "wait" : "pointer" }}
-            >
-              {oauthLoading === "oauth_google" ? "Redirecting to Google…" : "Continue with Google"}
-            </button>
-          </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
+        <button
+          type="button"
+          onClick={handleGoogle}
+          disabled={oauthLoading !== null}
+          style={{ ...oauthBtn, opacity: oauthLoading ? 0.7 : 1, cursor: oauthLoading ? "wait" : "pointer" }}
+        >
+          {oauthLoading === "oauth_google" ? "Redirecting to Google…" : "Continue with Google"}
+        </button>
+      </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", margin: "1rem 0" }}>
-            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
-            <span style={{ color: "#b8a9cc", fontSize: "0.75rem" }}>or</span>
-            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
-          </div>
-
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-            <div>
-              <label style={labelStyle}>Email address</label>
-              <input
-                type="email"
-                required
-                style={inputStyle}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-              />
-            </div>
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.35rem" }}>
-                <label style={{ ...labelStyle, marginBottom: 0 }}>Password</label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setError(null);
-                    setInfo(null);
-                    setPassword("");
-                    setMode("reset_request");
-                  }}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    color: "#F5C842",
-                    fontSize: "0.75rem",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                >
-                  Forgot password?
-                </button>
-              </div>
-              <input
-                type="password"
-                required
-                style={inputStyle}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              style={{
-                width: "100%",
-                padding: "0.7rem",
-                borderRadius: "0.5rem",
-                border: "none",
-                background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
-                color: "#ffffff",
-                fontSize: "0.95rem",
-                fontWeight: 600,
-                cursor: submitting ? "not-allowed" : "pointer",
-                opacity: submitting ? 0.7 : 1,
-                marginTop: "0.25rem",
-              }}
-            >
-              {submitting ? "Signing in..." : "Sign in"}
-            </button>
-          </form>
-
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              setInfo(null);
-              setPassword("");
-              setMode("code_request");
-            }}
-            style={{
-              width: "100%",
-              marginTop: "0.75rem",
-              padding: "0.65rem",
-              borderRadius: "0.5rem",
-              border: "1px solid rgba(245, 200, 66, 0.35)",
-              background: "rgba(245, 200, 66, 0.08)",
-              color: "#F5C842",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-              cursor: "pointer",
-            }}
-          >
-            Email me a sign-in code instead
-          </button>
-
-          <p style={{ color: "#b8a9cc", fontSize: "0.82rem", marginTop: "1rem", textAlign: "center" }}>
-            Don't have an account?{" "}
-            <a href={`${basePath}/sign-up`} style={{ color: "#F5C842", fontWeight: 500 }}>
-              Sign up
-            </a>
-          </p>
-        </>
-      )}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", margin: "1rem 0" }}>
+        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
+        <span style={{ color: "#b8a9cc", fontSize: "0.75rem" }}>or</span>
+        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
+      </div>
 
       {mode === "code_request" && (
         <form onSubmit={handleSendLoginCode} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
           <p style={{ color: "#b8a9cc", fontSize: "0.85rem", margin: 0 }}>
-            Enter the email address for your A.IDO account. We'll send you a 6-digit code to sign in — no password needed.
+            Enter the email address for your A.IDO account. We'll send you a 6-digit code to sign in.
           </p>
           <div>
             <label style={labelStyle}>Email address</label>
@@ -634,24 +423,13 @@ function CustomSignInForm() {
           >
             {submitting ? "Sending code..." : "Send sign-in code"}
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              setInfo(null);
-              setMode("signin");
-            }}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#b8a9cc",
-              fontSize: "0.82rem",
-              cursor: "pointer",
-              textAlign: "center",
-            }}
-          >
-            ← Back to sign in
-          </button>
+
+          <p style={{ color: "#b8a9cc", fontSize: "0.82rem", marginTop: "0.5rem", textAlign: "center" }}>
+            Don't have an account?{" "}
+            <a href={`${basePath}/sign-up`} style={{ color: "#F5C842", fontWeight: 500 }}>
+              Sign up
+            </a>
+          </p>
         </form>
       )}
 
@@ -713,131 +491,6 @@ function CustomSignInForm() {
           </button>
         </form>
       )}
-
-      {mode === "reset_request" && (
-        <form onSubmit={handleSendResetCode} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-          <p style={{ color: "#b8a9cc", fontSize: "0.85rem", margin: 0 }}>
-            Enter the email address for your A.IDO account. We'll send you a 6-digit code to set a new password.
-          </p>
-          <div>
-            <label style={labelStyle}>Email address</label>
-            <input
-              type="email"
-              required
-              style={inputStyle}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              width: "100%",
-              padding: "0.7rem",
-              borderRadius: "0.5rem",
-              border: "none",
-              background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
-              color: "#ffffff",
-              fontSize: "0.95rem",
-              fontWeight: 600,
-              cursor: submitting ? "not-allowed" : "pointer",
-              opacity: submitting ? 0.7 : 1,
-            }}
-          >
-            {submitting ? "Sending code..." : "Send reset code"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              setInfo(null);
-              setMode("signin");
-            }}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#b8a9cc",
-              fontSize: "0.82rem",
-              cursor: "pointer",
-              textAlign: "center",
-            }}
-          >
-            ← Back to sign in
-          </button>
-        </form>
-      )}
-
-      {mode === "reset_verify" && (
-        <form onSubmit={handleVerifyReset} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-          <div>
-            <label style={labelStyle}>6-digit code</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              required
-              style={inputStyle}
-              value={resetCode}
-              onChange={(e) => setResetCode(e.target.value)}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>New password (at least 8 characters)</label>
-            <input
-              type="password"
-              required
-              minLength={8}
-              style={inputStyle}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-            />
-            <p style={{ color: "#8a7ba8", fontSize: "0.72rem", marginTop: "0.35rem", lineHeight: 1.4 }}>
-              Tip: avoid common words. Try a mix of letters, numbers, and symbols, or use a password manager.
-            </p>
-          </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              width: "100%",
-              padding: "0.7rem",
-              borderRadius: "0.5rem",
-              border: "none",
-              background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
-              color: "#ffffff",
-              fontSize: "0.95rem",
-              fontWeight: 600,
-              cursor: submitting ? "not-allowed" : "pointer",
-              opacity: submitting ? 0.7 : 1,
-            }}
-          >
-            {submitting ? "Updating password..." : "Set new password & sign in"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              setInfo(null);
-              setResetCode("");
-              setNewPassword("");
-              setMode("signin");
-            }}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#b8a9cc",
-              fontSize: "0.82rem",
-              cursor: "pointer",
-              textAlign: "center",
-            }}
-          >
-            ← Back to sign in
-          </button>
-        </form>
-      )}
     </div>
   );
 }
@@ -879,18 +532,49 @@ function CustomSignUpForm() {
   const { signUp, isLoaded: signUpLoaded } = useSignUp();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"form" | "verify">("form");
-  const [emailAddressId, setEmailAddressId] = useState<string | null>(null);
+  const [, setEmailAddressId] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [resendInfo, setResendInfo] = useState<string | null>(null);
   const [oauthLoading, setOauthLoading] = useState<"oauth_google" | "oauth_apple" | null>(null);
 
-  const apiBase = `${basePath}/api`;
+  // Generate a strong, random password under the hood. The user never sees or
+  // uses it — sign-in is via email code or Google. Clerk requires a password
+  // at sign-up on this instance, so we satisfy that requirement with random
+  // entropy that won't appear in any breach database. We guarantee at least
+  // one character from each class (upper/lower/digit/symbol) so the password
+  // satisfies Clerk's complexity policy regardless of what's enforced.
+  function generateRandomPassword(): string {
+    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lower = "abcdefghijklmnopqrstuvwxyz";
+    const digits = "0123456789";
+    const symbols = "!@#$%^&*-_=+";
+    const all = upper + lower + digits + symbols;
+    function pick(set: string): string {
+      const buf = new Uint32Array(1);
+      crypto.getRandomValues(buf);
+      return set[buf[0] % set.length];
+    }
+    const required = [pick(upper), pick(lower), pick(digits), pick(symbols)];
+    const fillCount = 32 - required.length;
+    const fill = new Uint32Array(fillCount);
+    crypto.getRandomValues(fill);
+    const chars = required.concat(
+      Array.from(fill, (n) => all[n % all.length]),
+    );
+    // Fisher–Yates shuffle so required-class chars aren't always at the front.
+    const shuffleBuf = new Uint32Array(chars.length);
+    crypto.getRandomValues(shuffleBuf);
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = shuffleBuf[i] % (i + 1);
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join("");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -905,21 +589,20 @@ function CustomSignUpForm() {
       setError("Auth is still loading. Please try again in a moment.");
       return;
     }
-    if (!email.trim() || !password) {
-      setError("Email and password are required.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (!email.trim()) {
+      setError("Please enter your email address.");
       return;
     }
     setSubmitting(true);
     try {
       // Use Clerk's frontend SDK so the email-verification code is the proof
       // of ownership before any session is issued. This is the secure flow.
+      // The password is generated under the hood with strong entropy and
+      // never shown to the user — sign-in is exclusively via email code or
+      // Google. We satisfy Clerk's password requirement without exposing one.
       await signUp.create({
         emailAddress: email.trim(),
-        password,
+        password: generateRandomPassword(),
         firstName: firstName.trim() || undefined,
         lastName: lastName.trim() || undefined,
       });
@@ -1210,18 +893,9 @@ function CustomSignUpForm() {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
           />
-        </div>
-        <div>
-          <label style={labelStyle}>Password</label>
-          <input
-            type="password"
-            required
-            style={inputStyle}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-            minLength={8}
-          />
+          <p style={{ color: "#8a7ba8", fontSize: "0.72rem", marginTop: "0.4rem", lineHeight: 1.4 }}>
+            We'll email you a 6-digit code to verify your account. No password needed — you'll sign in with a code each time, or use Google.
+          </p>
         </div>
 
         {error && (
