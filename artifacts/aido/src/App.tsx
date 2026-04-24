@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/reac
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
-import { setFetchTokenGetter } from "@/lib/authFetch";
+import { setFetchTokenGetter, authFetch } from "@/lib/authFetch";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -129,8 +129,35 @@ function AuthPageWrapper({ children }: { children: React.ReactNode }) {
 function SignInPage() {
   // To update login providers, app branding, or OAuth settings use the Auth
   // pane in the workspace toolbar. More information can be found in the Replit docs.
+  const [blockedMsg, setBlockedMsg] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const msg = sessionStorage.getItem("aido_blocked_signin_error");
+      if (msg) {
+        setBlockedMsg(msg);
+        sessionStorage.removeItem("aido_blocked_signin_error");
+      }
+    } catch {}
+  }, []);
   return (
     <AuthPageWrapper>
+      {blockedMsg && (
+        <div
+          role="alert"
+          style={{
+            background: "rgba(220, 38, 38, 0.18)",
+            border: "1px solid rgba(252, 165, 165, 0.6)",
+            color: "#fecaca",
+            padding: "0.85rem 1rem",
+            borderRadius: "0.65rem",
+            marginBottom: "0.85rem",
+            fontSize: "0.9rem",
+            lineHeight: 1.4,
+          }}
+        >
+          {blockedMsg}
+        </div>
+      )}
       <SignIn
         routing="path"
         path={`${basePath}/sign-in`}
@@ -665,6 +692,42 @@ function LanguageSyncProvider() {
   return null;
 }
 
+function BlockedAccountChecker() {
+  // After any sign-in (email/pw OR Google OAuth), verify the account isn't on
+  // the deleted-emails blocklist. If it is — typically because someone deleted
+  // their account and clicked "Continue with Google" again, which silently
+  // creates a brand new Clerk user — we delete the new account and sign them
+  // out with an explanation.
+  const { isSignedIn, isLoaded } = useAuth();
+  const clerk = useClerk();
+  const [, setLocation] = useLocation();
+  const checkedForUserRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+    const userId = clerk.user?.id;
+    if (!userId || checkedForUserRef.current === userId) return;
+    checkedForUserRef.current = userId;
+
+    (async () => {
+      try {
+        const r = await authFetch(`${basePath}/api/auth/check-blocked`);
+        if (r.status === 403) {
+          const data = await r.json().catch(() => ({}));
+          const msg = (data && data.error) || "This email address was previously deleted from A.IDO and cannot be used to create a new account.";
+          try { sessionStorage.setItem("aido_blocked_signin_error", msg); } catch {}
+          await clerk.signOut().catch(() => {});
+          setLocation("/sign-in?blocked=1");
+        }
+      } catch {
+        // Network errors are non-fatal; allow the session to proceed.
+      }
+    })();
+  }, [isLoaded, isSignedIn, clerk, setLocation]);
+
+  return null;
+}
+
 function ClerkQueryClientCacheInvalidator() {
   const { addListener } = useClerk();
   const qc = useQueryClient();
@@ -745,6 +808,7 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkTokenSetup />
         <ClerkQueryClientCacheInvalidator />
+        <BlockedAccountChecker />
         <PendingInviteRedirector />
         <LanguageSyncProvider />
         <WorkspaceProvider>

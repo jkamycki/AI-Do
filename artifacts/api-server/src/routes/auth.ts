@@ -1,8 +1,24 @@
 import { Router, type IRouter } from "express";
+import { clerkClient } from "@clerk/express";
+import { db, deletedAccountEmails } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { requireAuth } from "../middlewares/requireAuth";
+import { purgeUserData } from "../lib/userCleanup";
 
 const router: IRouter = Router();
 
 const CLERK_API = "https://api.clerk.com/v1";
+
+async function isEmailBlocked(email: string): Promise<boolean> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return false;
+  const [row] = await db
+    .select()
+    .from(deletedAccountEmails)
+    .where(eq(deletedAccountEmails.email, normalized))
+    .limit(1);
+  return !!row;
+}
 
 function getSecret(res: import("express").Response): string | null {
   const secretKey = process.env.CLERK_SECRET_KEY;
@@ -18,6 +34,9 @@ router.post("/auth/signup", async (req, res) => {
     const { email, password, firstName, lastName } = req.body ?? {};
     if (typeof email !== "string" || typeof password !== "string" || !email.trim() || !password) {
       return res.status(400).json({ error: "Email and password are required" });
+    }
+    if (await isEmailBlocked(email)) {
+      return res.status(409).json({ error: "This email address was previously deleted from A.IDO and cannot be used to create a new account. Please contact support if you believe this is in error." });
     }
     const secretKey = getSecret(res);
     if (!secretKey) return;
@@ -129,6 +148,36 @@ router.post("/auth/resend", async (req, res) => {
     return res.json({ ok: true });
   } catch (err) {
     req.log?.error(err, "resend failed");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/auth/check-blocked", requireAuth, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const user = await clerkClient.users.getUser(userId);
+    const emails = (user.emailAddresses ?? []).map(e => e.emailAddress).filter(Boolean) as string[];
+    if (user.primaryEmailAddressId) {
+      const primary = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId);
+      if (primary?.emailAddress) emails.unshift(primary.emailAddress);
+    }
+    let blocked = false;
+    for (const e of emails) {
+      if (await isEmailBlocked(e)) { blocked = true; break; }
+    }
+    if (blocked) {
+      const primaryEmail = emails[0] ?? null;
+      await purgeUserData(userId, primaryEmail).catch((err) => {
+        req.log?.error(err, "purge after blocked re-signup failed");
+      });
+      await clerkClient.users.deleteUser(userId).catch((err) => {
+        req.log?.error(err, "clerk delete after blocked re-signup failed");
+      });
+      return res.status(403).json({ blocked: true, error: "This email address was previously deleted from A.IDO and cannot be used to create a new account." });
+    }
+    return res.json({ blocked: false });
+  } catch (err) {
+    req.log?.error(err, "check-blocked failed");
     return res.status(500).json({ error: "Internal server error" });
   }
 });

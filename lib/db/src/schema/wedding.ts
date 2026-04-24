@@ -350,3 +350,11 @@ export const weddingParty = pgTable("wedding_party", {
 });
 
 export type WeddingPartyMember = typeof weddingParty.$inferSelect;
+
+export const deletedAccountEmails = pgTable("deleted_account_emails", {
+  email: text("email").primaryKey(),
+  deletedAt: timestamp("deleted_at").defaultNow().notNull(),
+  deletedUserId: text("deleted_user_id"),
+});
+
+export type DeletedAccountEmail = typeof deletedAccountEmails.$inferSelect;

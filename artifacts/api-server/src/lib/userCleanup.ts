@@ -6,10 +6,33 @@ import {
   seatingCharts, guests, hotelBlocks, weddingParty,
   manualExpenses, vendorConversations, vendorMessages,
   contactMessages, feedbackSubmissions, adminUsers,
+  deletedAccountEmails,
 } from "@workspace/db";
-import { eq, inArray, or } from "drizzle-orm";
+import { eq, inArray, or, sql } from "drizzle-orm";
 
-export async function purgeUserData(userId: string, userEmail?: string | null) {
+export async function blockEmailsForUser(emails: string[], userId: string): Promise<void> {
+  const normalized = Array.from(
+    new Set(
+      emails
+        .map((e) => (typeof e === "string" ? e.trim().toLowerCase() : ""))
+        .filter((e) => e.length > 0),
+    ),
+  );
+  for (const email of normalized) {
+    await db
+      .insert(deletedAccountEmails)
+      .values({ email, deletedUserId: userId })
+      .onConflictDoUpdate({
+        target: deletedAccountEmails.email,
+        set: { deletedAt: sql`NOW()`, deletedUserId: userId },
+      });
+  }
+}
+
+export async function purgeUserData(
+  userId: string,
+  userEmail?: string | string[] | null,
+) {
   const [profile] = await db
     .select()
     .from(weddingProfiles)
@@ -93,5 +116,14 @@ export async function purgeUserData(userId: string, userEmail?: string | null) {
 
   if (profile) {
     await db.delete(weddingProfiles).where(eq(weddingProfiles.userId, userId));
+  }
+
+  const emailList = Array.isArray(userEmail)
+    ? userEmail
+    : userEmail
+      ? [userEmail]
+      : [];
+  if (emailList.length > 0) {
+    await blockEmailsForUser(emailList, userId);
   }
 }

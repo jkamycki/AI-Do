@@ -5,15 +5,14 @@ import { purgeUserData } from "../lib/userCleanup";
 
 const router = Router();
 
-async function getUserEmailLower(userId: string): Promise<string | null> {
+async function getAllUserEmailsLower(userId: string): Promise<string[]> {
   try {
     const u = await clerkClient.users.getUser(userId);
-    const primaryId = u.primaryEmailAddressId;
-    const primary =
-      u.emailAddresses.find((e) => e.id === primaryId) ?? u.emailAddresses[0];
-    return primary?.emailAddress?.toLowerCase() ?? null;
+    return (u.emailAddresses ?? [])
+      .map((e) => e.emailAddress?.toLowerCase().trim())
+      .filter((e): e is string => !!e);
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -21,8 +20,8 @@ router.delete("/account", requireAuth, async (req, res) => {
   const userId = req.userId!;
 
   try {
-    const userEmail = await getUserEmailLower(userId);
-    await purgeUserData(userId, userEmail);
+    const userEmails = await getAllUserEmailsLower(userId);
+    await purgeUserData(userId, userEmails);
     await clerkClient.users.deleteUser(userId);
     res.json({ success: true });
   } catch (err) {

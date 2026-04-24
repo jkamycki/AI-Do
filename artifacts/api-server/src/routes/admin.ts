@@ -335,16 +335,17 @@ router.delete("/admin/users/:userId", requireAuth, requireAdmin, async (req, res
     return;
   }
   try {
-    let userEmail: string | null = null;
+    let userEmails: string[] = [];
     try {
       const u = await clerkClient.users.getUser(targetUserId);
-      const primary = u.emailAddresses.find(e => e.id === u.primaryEmailAddressId) ?? u.emailAddresses[0];
-      userEmail = primary?.emailAddress?.toLowerCase() ?? null;
+      userEmails = (u.emailAddresses ?? [])
+        .map((e) => e.emailAddress?.toLowerCase().trim())
+        .filter((e): e is string => !!e);
     } catch {
-      userEmail = null;
+      userEmails = [];
     }
 
-    await purgeUserData(targetUserId, userEmail);
+    await purgeUserData(targetUserId, userEmails);
 
     try {
       await clerkClient.users.deleteUser(targetUserId);
