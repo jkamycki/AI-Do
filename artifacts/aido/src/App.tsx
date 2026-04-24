@@ -136,7 +136,6 @@ function SignInPage() {
 
 function CustomSignInForm() {
   const clerk = useClerk();
-  const { signIn, isLoaded: signInLoaded } = useSignIn();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -164,17 +163,31 @@ function CustomSignInForm() {
     return first?.longMessage || first?.message || (err as Error)?.message || fallback;
   }
 
+  async function waitForSignInClient() {
+    const start = Date.now();
+    while (Date.now() - start < 8000) {
+      if (clerk.loaded && clerk.client?.signIn) return clerk.client.signIn;
+      await new Promise((res) => setTimeout(res, 80));
+    }
+    return clerk.client?.signIn ?? null;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!signIn || !signInLoaded) return;
     if (!email.trim() || !password) {
       setError("Email and password are required.");
       return;
     }
     setSubmitting(true);
     try {
-      const attempt = await signIn.create({ identifier: email.trim(), password });
+      const signInClient = await waitForSignInClient();
+      if (!signInClient || !clerk.setActive) {
+        setError("Auth is still loading. Please try again in a moment.");
+        setSubmitting(false);
+        return;
+      }
+      const attempt = await signInClient.create({ identifier: email.trim(), password });
       if (attempt.status === "complete" && attempt.createdSessionId) {
         await clerk.setActive({ session: attempt.createdSessionId });
         setLocation("/dashboard");
@@ -190,12 +203,14 @@ function CustomSignInForm() {
 
   async function handleGoogle() {
     setError(null);
-    if (!signIn || !signInLoaded) {
-      setError("Auth is still loading. Please try again in a moment.");
-      return;
-    }
+    setOauthLoading("oauth_google");
     try {
-      setOauthLoading("oauth_google");
+      const signInClient = await waitForSignInClient();
+      if (!signInClient) {
+        setOauthLoading(null);
+        setError("Auth is still loading. Please try again in a moment.");
+        return;
+      }
       // Mark this OAuth flow as a sign-IN attempt (not a sign-up). After the
       // callback we use this flag to detect the case where Clerk silently
       // auto-created a brand new account because the email had no prior
@@ -203,7 +218,7 @@ function CustomSignInForm() {
       // user to the sign-up page with a clear message.
       sessionStorage.setItem("aido_oauth_intent", "signin");
       const origin = window.location.origin;
-      await signIn.authenticateWithRedirect({
+      await signInClient.authenticateWithRedirect({
         strategy: "oauth_google",
         redirectUrl: `${origin}${basePath}/sso-callback`,
         redirectUrlComplete: `${origin}${basePath}/dashboard`,
