@@ -1,6 +1,8 @@
 import { useEffect, useState, useId } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
+import { useGetGuests } from "@workspace/api-client-react";
+import type { Guest as GuestListGuest } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import {
   Users, Plus, Trash2, Wand2, Heart, AlertTriangle, UserPlus,
   ChevronDown, ChevronUp, RefreshCw, Info, Armchair, Save,
-  Clock, ChevronRight,
+  Clock, ChevronRight, Download,
 } from "lucide-react";
 
 type RelType = "prefer" | "avoid";
@@ -260,6 +262,103 @@ export default function SeatingChartPage() {
   const [showGuests, setShowGuests] = useState(true);
   const [showSaved, setShowSaved] = useState(false);
 
+  const { data: guestListData, isLoading: guestListLoading, isError: guestListError } = useGetGuests();
+  const guestListGuests: GuestListGuest[] = guestListData?.guests ?? [];
+  const importableCount = guestListGuests.filter(
+    g => g.rsvpStatus !== "declined" && g.name.trim()
+  ).length;
+
+  const mapGuestGroup = (g?: string | null): string => {
+    switch (g) {
+      case "brides_family": return "Bride's Family";
+      case "grooms_family": return "Groom's Family";
+      case "brides_friends": return "Bride's Friends";
+      case "grooms_friends": return "Groom's Friends";
+      case "brides_coworkers":
+      case "grooms_coworkers":
+        return "Colleagues";
+      case "other": return "Other";
+      default: return "Other";
+    }
+  };
+
+  const importFromGuestList = () => {
+    if (guestListError) {
+      toast({
+        title: "Couldn't load guest list",
+        description: "We weren't able to fetch your saved guests just now. Please try again in a moment.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (guestListGuests.length === 0) {
+      toast({
+        title: "Guest list is empty",
+        description: "Add guests in the Guest List page first, then come back to import them here.",
+      });
+      return;
+    }
+
+    // Only seat guests who are attending or pending — skip declined.
+    const eligible = guestListGuests.filter(g => g.rsvpStatus !== "declined");
+
+    // Build a name set of guests already on the seating chart (case-insensitive, trimmed).
+    const existingNames = new Set(
+      guests
+        .map(g => g.name.trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    const additions: Guest[] = [];
+    let skipped = 0;
+
+    eligible.forEach((src, idx) => {
+      const cleanName = src.name.trim();
+      if (!cleanName) return;
+      const key = cleanName.toLowerCase();
+      if (existingNames.has(key)) {
+        skipped++;
+        return;
+      }
+      existingNames.add(key);
+      const noteParts: string[] = [];
+      if (src.dietaryNotes) noteParts.push(src.dietaryNotes);
+      if (src.mealChoice) noteParts.push(`meal: ${src.mealChoice}`);
+      if (src.notes) noteParts.push(src.notes);
+      if (src.plusOne) noteParts.push(src.plusOneName ? `+1: ${src.plusOneName}` : "+1");
+      additions.push({
+        id: `${uid}-import-${Date.now()}-${idx}`,
+        name: cleanName,
+        group: mapGuestGroup(src.guestGroup),
+        plusOne: !!src.plusOne,
+        notes: noteParts.join(" · "),
+        relations: [],
+      });
+    });
+
+    // Replace any empty starter rows so we don't leave blank cards behind.
+    setGuests(prev => {
+      const nonEmpty = prev.filter(g => g.name.trim());
+      return [...nonEmpty, ...additions];
+    });
+
+    if (additions.length === 0) {
+      toast({
+        title: "Already in sync",
+        description: skipped > 0
+          ? `All ${skipped} guests from your guest list are already on the chart.`
+          : "No eligible guests to import.",
+      });
+    } else {
+      toast({
+        title: `Imported ${additions.length} guest${additions.length === 1 ? "" : "s"}`,
+        description: skipped > 0
+          ? `Skipped ${skipped} already on the chart.`
+          : "Synced from your Guest List — no need to re-enter them.",
+      });
+    }
+  };
+
   const addGuest = () => {
     setGuests(prev => [
       ...prev,
@@ -503,6 +602,19 @@ export default function SeatingChartPage() {
             {showGuests ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
           <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={importFromGuestList}
+              disabled={guestListLoading}
+              className="gap-1"
+              title="Pull attending and pending guests from your Guest List page"
+            >
+              <Download className="h-3.5 w-3.5" />
+              {guestListLoading
+                ? "Loading…"
+                : `Import from Guest List${importableCount > 0 ? ` (${importableCount})` : ""}`}
+            </Button>
             <Button size="sm" variant="outline" onClick={addGuest} className="gap-1">
               <UserPlus className="h-3.5 w-3.5" />
               Add Guest
@@ -515,7 +627,7 @@ export default function SeatingChartPage() {
             <div className="flex items-start gap-2 p-3 bg-primary/5 rounded-xl text-sm text-primary">
               <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <span>
-                <strong>Tip:</strong> Click the expand arrow on each guest to add relationships. Use ♥ to seat people together and ⚡ to keep them apart (divorces, feuds, etc.)
+                <strong>Tip:</strong> Use <em>Import from Guest List</em> to pull in everyone you've already added on the Guest List page — no double entry. Click the expand arrow on each guest to add relationships: ♥ seats people together, ⚡ keeps them apart.
               </span>
             </div>
 
