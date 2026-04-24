@@ -281,6 +281,7 @@
     "save_error": "No se pudo guardar el perfil. Por favor, inténtalo de nuevo.",
     "ceremony_at_venue_desc": "Marca esta casilla si tu ceremonia no es en el lugar de la recepción",
     "ceremony_venue_name": "Nombre del Lugar",
+    "street_address": "Dirección",
     "ceremony_street_address": "Dirección"
   },
   "aria": {

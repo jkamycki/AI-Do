@@ -251,7 +251,7 @@ export default function Profile() {
                 name="location"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Street Address</FormLabel>
+                    <FormLabel>{t("profile.street_address")}</FormLabel>
                     <FormControl>
                       <Input placeholder="123 Magnolia Lane" {...field} data-testid="input-location" className="bg-background" />
                     </FormControl>

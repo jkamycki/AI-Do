@@ -294,6 +294,7 @@
     "save_error": "Failed to save profile. Please try again.",
     "ceremony_at_venue_desc": "Tick this if your ceremony is not at your reception venue",
     "ceremony_venue_name": "Venue Name",
+    "street_address": "Street Address",
     "ceremony_street_address": "Street Address"
   },
   "aria": {
