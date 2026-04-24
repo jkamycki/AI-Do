@@ -207,6 +207,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 }
 
 export default function Aria() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { userId } = useAuth();
   const { data: profile } = useGetProfile();
