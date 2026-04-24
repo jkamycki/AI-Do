@@ -308,19 +308,19 @@ function UserDetailModal({ user, onClose, onDeleted }: { user: AdminUser; onClos
           </div>
 
           <div className="pt-2">
-            <div className="border border-red-200 bg-red-50/50 rounded-xl p-4 space-y-3">
+            <div className="border border-red-200 dark:border-red-900/60 bg-red-50/50 dark:bg-red-950/30 rounded-xl p-4 space-y-3">
               <div className="flex items-start gap-3">
-                <Trash2 className="h-5 w-5 flex-shrink-0 text-red-600 mt-0.5" />
+                <Trash2 className="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400 mt-0.5" />
                 <div>
-                  <h3 className="text-sm font-semibold text-red-900">Danger zone — delete this user</h3>
-                  <p className="text-xs text-red-800/80 mt-1">
+                  <h3 className="text-sm font-semibold text-red-900 dark:text-red-200">Danger zone — delete this user</h3>
+                  <p className="text-xs text-red-800/80 dark:text-red-300/90 mt-1">
                     Permanently removes the user's Clerk account and wipes every wedding profile,
                     vendor, budget, guest, checklist, message, and contract they created. This cannot be undone.
                   </p>
                 </div>
               </div>
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-red-900">
+                <label className="text-[11px] font-semibold uppercase tracking-wide text-red-900 dark:text-red-200">
                   To confirm, type: <span className="font-mono text-foreground">{expected}</span>
                 </label>
                 <input
@@ -328,12 +328,12 @@ function UserDetailModal({ user, onClose, onDeleted }: { user: AdminUser; onClos
                   value={confirmText}
                   onChange={e => setConfirmText(e.target.value)}
                   placeholder={expected}
-                  className="mt-1 w-full px-3 py-2 text-sm border border-red-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-400"
+                  className="mt-1 w-full px-3 py-2 text-sm border border-red-300 dark:border-red-800 rounded-lg bg-white dark:bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-400"
                   disabled={deleting}
                 />
               </div>
               {deleteError && (
-                <p className="text-xs text-red-700 bg-red-100 rounded p-2">{deleteError}</p>
+                <p className="text-xs text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-950/60 rounded p-2">{deleteError}</p>
               )}
               <Button
                 variant="destructive"
