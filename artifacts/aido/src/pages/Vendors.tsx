@@ -1008,18 +1008,24 @@ function VendorCard({
             {vendor.category}
           </Badge>
         </div>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex gap-1 opacity-100 md:opacity-60 md:group-hover:opacity-100 transition-opacity">
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+            className="p-1.5 rounded-lg border border-border/40 hover:bg-muted hover:border-border transition-colors"
+            title="Edit vendor"
+            aria-label="Edit vendor"
+            data-testid={`btn-vendor-edit-${vendor.id}`}
           >
             <Edit className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+            className="p-1.5 rounded-lg border border-border/40 hover:bg-destructive/10 hover:border-destructive/40 transition-colors"
+            title="Delete vendor"
+            aria-label="Delete vendor"
+            data-testid={`btn-vendor-delete-${vendor.id}`}
           >
-            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
           </button>
         </div>
       </div>
