@@ -28,6 +28,7 @@ import {
   Loader2,
   X,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -545,8 +546,8 @@ export default function Aria() {
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="font-serif text-lg text-primary leading-tight">Aria</h1>
-              <p className="text-xs text-muted-foreground">AI Wedding Planning Assistant · Can take actions</p>
+              <h1 className="font-serif text-lg text-primary leading-tight">{t("aria.name")}</h1>
+              <p className="text-xs text-muted-foreground">{t("aria.subtitle")}</p>
             </div>
           </div>
           <Button
@@ -556,7 +557,7 @@ export default function Aria() {
             onClick={startNewChat}
             data-testid="btn-aria-new-chat-header"
           >
-            <Plus className="h-3.5 w-3.5" /> New chat
+            <Plus className="h-3.5 w-3.5" /> {t("aria.new_chat")}
           </Button>
         </div>
 
@@ -572,7 +573,7 @@ export default function Aria() {
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mx-auto mb-4 border border-primary/15">
                   <Sparkles className="h-8 w-8 text-primary" />
                 </div>
-                <h2 className="font-serif text-2xl text-primary">Hi, I'm Aria</h2>
+                <h2 className="font-serif text-2xl text-primary">{t("aria.title")}</h2>
                 <p className="text-muted-foreground text-sm max-w-md">
                   Your personal wedding planning assistant. I can answer questions <em>and</em> take real actions in your portal — add vendors, create checklist items, update your timeline, and more.
                 </p>
@@ -613,7 +614,7 @@ export default function Aria() {
           <div className="flex gap-2 items-end">
             <Textarea
               ref={textareaRef}
-              placeholder="Ask Aria anything, or tell her to add a vendor, task, etc…"
+              placeholder={t("aria.input_placeholder")}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}

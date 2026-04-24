@@ -39,6 +39,15 @@ export const LANG_CODE_TO_NAME: Record<string, string> = Object.fromEntries(
 
 const savedLang = localStorage.getItem("aido_language") ?? "en";
 
+const RTL_LANGS = new Set(["ar", "he", "fa", "ur"]);
+
+function applyDocumentDirection(lng: string) {
+  if (typeof document === "undefined") return;
+  const dir = RTL_LANGS.has(lng) ? "rtl" : "ltr";
+  document.documentElement.setAttribute("lang", lng);
+  document.documentElement.setAttribute("dir", dir);
+}
+
 i18n
   .use(initReactI18next)
   .init({
@@ -62,5 +71,8 @@ i18n
     fallbackLng: "en",
     interpolation: { escapeValue: false },
   });
+
+applyDocumentDirection(savedLang);
+i18n.on("languageChanged", (lng) => applyDocumentDirection(lng));
 
 export default i18n;

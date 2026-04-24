@@ -37,7 +37,7 @@ import { Button } from "@/components/ui/button";
 
 const navSections = [
   {
-    labelKey: "Planning",
+    labelKey: "nav.planning",
     items: [
       { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
       { href: "/profile", labelKey: "nav.profile", icon: User },
@@ -94,6 +94,7 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
   const { activeWorkspace, setActiveWorkspace } = useWorkspace();
   const [, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
 
   const { data } = useQuery<WorkspacesData>({
     queryKey: ["my-workspaces"],
@@ -116,7 +117,7 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
 
   const currentLabel = activeWorkspace
     ? `${activeWorkspace.partner1Name} & ${activeWorkspace.partner2Name}`
-    : "My Workspace";
+    : t("sidebar.my_workspace");
 
   const handleSelectOwn = () => {
     setActiveWorkspace(null);
@@ -158,15 +159,15 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
 
       {open && (
         <div className="absolute left-4 right-4 top-full mt-1 z-50 bg-card border border-border rounded-xl shadow-lg py-1.5 overflow-hidden">
-          <p className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">Workspaces</p>
+          <p className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">{t("sidebar.workspaces_label")}</p>
           <button
             onClick={handleSelectOwn}
             className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/60 transition-colors text-left
               ${!activeWorkspace ? "text-primary font-medium" : "text-foreground"}`}
           >
             <Heart className="h-4 w-4 text-primary flex-shrink-0" />
-            <span className="truncate">My Workspace</span>
-            {!activeWorkspace && <span className="ml-auto text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Active</span>}
+            <span className="truncate">{t("sidebar.my_workspace")}</span>
+            {!activeWorkspace && <span className="ml-auto text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{t("sidebar.active")}</span>}
           </button>
           {sharedWorkspaces.map(ws => (
             <button
@@ -181,7 +182,7 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
                 <div className="text-[10px] text-muted-foreground capitalize">{ws.role}</div>
               </div>
               {activeWorkspace?.profileId === ws.profileId && (
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full shrink-0">Active</span>
+                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full shrink-0">{t("sidebar.active")}</span>
               )}
             </button>
           ))}
@@ -294,7 +295,7 @@ export function Sidebar() {
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            title={theme === "dark" ? t("sidebar.switch_to_light") : t("sidebar.switch_to_dark")}
           >
             {theme === "dark"
               ? <Sun className="h-5 w-5 text-amber-400" />
@@ -332,7 +333,7 @@ export function Sidebar() {
 
         {activeWorkspace && (
           <div className="mx-4 mb-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
-            <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Viewing shared workspace</p>
+            <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">{t("sidebar.viewing_shared")}</p>
             <p className="text-xs text-amber-800 font-medium truncate mt-0.5">
               {activeWorkspace.partner1Name} & {activeWorkspace.partner2Name}
             </p>
@@ -355,7 +356,7 @@ export function Sidebar() {
 
           <div className="border-t border-primary/10 pt-4">
             <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Workspace
+              {t("sidebar.workspace_section")}
             </p>
             <div className="space-y-0.5">
               <NavLink href="/settings" label={t("nav.settings")} icon={Settings} />
@@ -366,7 +367,7 @@ export function Sidebar() {
           {isAdmin && (
             <div className="border-t border-primary/10 pt-4">
               <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Admin
+                {t("sidebar.admin_section")}
               </p>
               <div className="space-y-0.5">
                 <NavLink href="/admin" label={t("nav.admin")} icon={Shield} special />
@@ -414,12 +415,12 @@ export function Sidebar() {
             size="sm"
             onClick={toggleTheme}
             className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            title={theme === "dark" ? t("sidebar.switch_to_light") : t("sidebar.switch_to_dark")}
           >
             {theme === "dark"
               ? <Sun className="h-4 w-4 text-amber-400" />
               : <Moon className="h-4 w-4" />}
-            <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+            <span>{theme === "dark" ? t("sidebar.light_mode") : t("sidebar.dark_mode")}</span>
           </Button>
           <Button
             variant="ghost"
@@ -428,7 +429,7 @@ export function Sidebar() {
             className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/5"
           >
             <LogOut className="h-4 w-4" />
-            <span>Sign Out</span>
+            <span>{t("sidebar.sign_out")}</span>
           </Button>
         </div>
       </div>

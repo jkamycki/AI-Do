@@ -28,6 +28,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, Phone, MapPin } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
+import { useTranslation } from "react-i18next";
 
 const RSVP_OPTIONS = [
   { value: "pending", label: "Pending", color: "bg-amber-100 text-amber-800 border-amber-200" },
@@ -526,6 +527,7 @@ function GuestCollectorCard() {
 }
 
 export default function Guests() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -707,28 +709,28 @@ export default function Guests() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
-            <Users className="h-8 w-8" /> Guest List
+            <Users className="h-8 w-8" /> {t("guests.title")}
           </h1>
-          <p className="text-lg text-muted-foreground mt-2">Track RSVPs, meals, and seating for everyone.</p>
+          <p className="text-lg text-muted-foreground mt-2">{t("guests.subtitle")}</p>
         </div>
         <div className="flex gap-2">
           {allGuests.length > 0 && (
             <Button variant="outline" onClick={() => exportCSV(allGuests)}>
-              <Download className="h-4 w-4 mr-2" /> Export CSV
+              <Download className="h-4 w-4 mr-2" /> {t("guests.export_csv")}
             </Button>
           )}
           <Dialog open={isAdding} onOpenChange={setIsAdding}>
             <DialogTrigger asChild>
               <Button size="lg" className="shadow-md">
-                <Plus className="mr-2 h-4 w-4" /> Add Guest
+                <Plus className="mr-2 h-4 w-4" /> {t("guests.add_guest")}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="font-serif text-2xl text-primary">New Guest</DialogTitle>
-                <DialogDescription>Add someone to your guest list.</DialogDescription>
+                <DialogTitle className="font-serif text-2xl text-primary">{t("guests.new_guest")}</DialogTitle>
+                <DialogDescription>{t("guests.new_guest_desc")}</DialogDescription>
               </DialogHeader>
-              <GuestForm onSubmit={handleAdd} isPending={addGuest.isPending} submitLabel="Add Guest" />
+              <GuestForm onSubmit={handleAdd} isPending={addGuest.isPending} submitLabel={t("guests.add_guest")} />
             </DialogContent>
           </Dialog>
         </div>

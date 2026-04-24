@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import {
   Users, Plus, Trash2, Wand2, Heart, AlertTriangle, UserPlus,
   ChevronDown, ChevronUp, RefreshCw, Info, Armchair, Save,
@@ -216,6 +217,7 @@ function TableCard({ table, index }: { table: SeatingTable; index: number }) {
 }
 
 export default function SeatingChartPage() {
+  const { t } = useTranslation();
   const { getToken } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -398,10 +400,10 @@ export default function SeatingChartPage() {
       <div>
         <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
           <Users className="h-8 w-8" />
-          AI Seating Chart Generator
+          {t("seating.title")}
         </h1>
         <p className="text-lg text-muted-foreground mt-1">
-          Add your guests, flag any tricky dynamics, and let AI arrange everyone harmoniously.
+          {t("seating.subtitle")}
         </p>
       </div>
 

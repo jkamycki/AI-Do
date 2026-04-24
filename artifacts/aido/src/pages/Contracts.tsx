@@ -30,6 +30,7 @@ import {
   X,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { useTranslation } from "react-i18next";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -420,6 +421,7 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
 }
 
 export default function Contracts() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -511,8 +513,8 @@ export default function Contracts() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-serif text-3xl text-primary">Contracts</h1>
-          <p className="text-muted-foreground mt-1">Upload vendor contracts. AI highlights red flags and extracts key payment dates.</p>
+          <h1 className="font-serif text-3xl text-primary">{t("contracts.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("contracts.subtitle")}</p>
         </div>
       </div>
 

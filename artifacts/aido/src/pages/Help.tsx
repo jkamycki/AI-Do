@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import {
   HelpCircle, MessageSquare, Star, Send, CheckCircle2,
   ChevronDown, ChevronUp, Mail, Lightbulb, Bug, Heart,
@@ -97,6 +98,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 export default function HelpPage() {
+  const { t } = useTranslation();
   const { getToken } = useAuth();
   const { user } = useUser();
   const { toast } = useToast();
@@ -177,18 +179,18 @@ export default function HelpPage() {
       <div>
         <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
           <HelpCircle className="h-8 w-8" />
-          Help & Support
+          {t("help.title")}
         </h1>
         <p className="text-lg text-muted-foreground mt-1">
-          We're here to help you plan the perfect day.
+          {t("help.subtitle")}
         </p>
       </div>
 
       <div className="flex gap-1 p-1 bg-muted/40 rounded-xl w-fit">
         {([
-          ["contact", "Contact Us", Mail],
-          ["feedback", "Feedback", Star],
-          ["faq", "FAQ", BookOpen],
+          ["contact", t("help.contact_us"), Mail],
+          ["feedback", t("help.feedback"), Star],
+          ["faq", t("help.faq"), BookOpen],
         ] as const).map(([key, label, Icon]) => (
           <button
             key={key}

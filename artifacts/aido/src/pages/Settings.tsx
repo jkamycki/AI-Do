@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGetProfile, useSaveProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
+import { useTranslation } from "react-i18next";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -93,6 +94,7 @@ function StatusBadge({ status }: { status: CollabStatus }) {
 }
 
 function DeleteAccountCard() {
+  const { t } = useTranslation();
   const { getToken, signOut } = useAuth();
   const { toast } = useToast();
   const [deleting, setDeleting] = useState(false);
@@ -137,53 +139,53 @@ function DeleteAccountCard() {
             <TriangleAlert className="h-5 w-5 text-destructive" />
           </div>
           <div>
-            <CardTitle className="font-serif text-lg text-destructive">Danger Zone</CardTitle>
-            <CardDescription>Permanent and irreversible actions.</CardDescription>
+            <CardTitle className="font-serif text-lg text-destructive">{t("settings.danger_zone")}</CardTitle>
+            <CardDescription>{t("settings.danger_desc")}</CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="flex items-center justify-between gap-4 rounded-lg border border-destructive/20 bg-destructive/5 p-4">
           <div>
-            <p className="font-medium text-sm">Delete my account</p>
+            <p className="font-medium text-sm">{t("settings.delete_account")}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Permanently removes all your wedding data and cancels your account. This cannot be undone.
+              {t("settings.delete_account_desc")}
             </p>
           </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm" disabled={deleting}>
                 <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                Delete Account
+                {t("settings.delete_account_button")}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle className="font-serif text-xl text-destructive">
-                  Delete your account?
+                  {t("settings.delete_account_confirm_title")}
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-sm space-y-2">
-                  <span className="block">This will permanently delete:</span>
+                  <span className="block">{t("settings.delete_account_will_delete")}</span>
                   <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>Your wedding profile and all settings</li>
-                    <li>Budget, checklist, timeline, and vendor data</li>
-                    <li>Guest list, seating chart, and wedding party</li>
-                    <li>All contracts and uploaded files</li>
-                    <li>Your collaborator access and invitations</li>
+                    <li>{t("settings.delete_account_item_1")}</li>
+                    <li>{t("settings.delete_account_item_2")}</li>
+                    <li>{t("settings.delete_account_item_3")}</li>
+                    <li>{t("settings.delete_account_item_4")}</li>
+                    <li>{t("settings.delete_account_item_5")}</li>
                   </ul>
                   <span className="block font-medium text-foreground mt-2">
-                    This action is permanent and cannot be reversed.
+                    {t("settings.delete_account_warning")}
                   </span>
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Keep My Account</AlertDialogCancel>
+                <AlertDialogCancel>{t("settings.delete_account_keep")}</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={handleDelete}
                   disabled={deleting}
                 >
-                  {deleting ? "Deleting…" : "Yes, Delete Everything"}
+                  {deleting ? t("settings.deleting") : t("settings.delete_account_yes")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -195,6 +197,7 @@ function DeleteAccountCard() {
 }
 
 function LanguageSwitcherCard() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: profile, isLoading } = useGetProfile();
@@ -260,8 +263,8 @@ function LanguageSwitcherCard() {
             <Globe className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <CardTitle className="font-serif text-lg">Preferred Language</CardTitle>
-            <CardDescription>Sets the display language for the entire platform, including all menus and pages.</CardDescription>
+            <CardTitle className="font-serif text-lg">{t("settings.language_title")}</CardTitle>
+            <CardDescription>{t("settings.language_desc")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -291,9 +294,9 @@ function LanguageSwitcherCard() {
               {saveProfile.isPending ? (
                 <div className="h-3.5 w-3.5 rounded-full border-2 border-white/20 border-t-white animate-spin" />
               ) : hasChange ? (
-                <>Save</>
+                <>{t("settings.save")}</>
               ) : (
-                <><Check className="h-3.5 w-3.5 mr-1" /> Saved</>
+                <><Check className="h-3.5 w-3.5 mr-1" /> {t("settings.saved")}</>
               )}
             </Button>
           </div>

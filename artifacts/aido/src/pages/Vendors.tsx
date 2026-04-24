@@ -76,6 +76,7 @@ import {
   Bell,
 } from "lucide-react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 
 const VENDOR_CATEGORIES = [
   "Venue",
@@ -1127,6 +1128,7 @@ function VendorCard({
 }
 
 export default function Vendors() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: vendors = [], isLoading } = useListVendors();
@@ -1181,8 +1183,8 @@ export default function Vendors() {
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-serif text-foreground">Vendors</h1>
-          <p className="text-muted-foreground mt-0.5">{vendors.length} vendor{vendors.length !== 1 ? "s" : ""} tracked</p>
+          <h1 className="text-3xl font-serif text-foreground">{t("vendors.title")}</h1>
+          <p className="text-muted-foreground mt-0.5">{vendors.length} {t("vendors.tracked", { count: vendors.length })}</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -1192,7 +1194,7 @@ export default function Vendors() {
             data-testid="btn-summarize-email-open"
           >
             <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-            Summarize Reply
+            {t("vendors.summarize_reply")}
           </Button>
           <Button
             size="sm"
@@ -1200,7 +1202,7 @@ export default function Vendors() {
             data-testid="btn-add-vendor"
           >
             <Plus className="h-4 w-4 mr-1.5" />
-            Add Vendor
+            {t("vendors.add_vendor")}
           </Button>
         </div>
       </div>
@@ -1236,13 +1238,13 @@ export default function Vendors() {
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             <Store className="h-8 w-8 text-primary" />
           </div>
-          <h2 className="text-2xl font-serif text-foreground mb-2">No vendors yet</h2>
+          <h2 className="text-2xl font-serif text-foreground mb-2">{t("vendors.no_vendors")}</h2>
           <p className="text-muted-foreground max-w-sm mb-6">
-            Add all your wedding vendors in one place — venue, caterer, photographer, florist, and more. Track costs, contracts, and payment schedules.
+            {t("vendors.no_vendors_desc")}
           </p>
           <Button onClick={() => setShowAddDialog(true)} data-testid="btn-add-first-vendor">
             <Plus className="h-4 w-4 mr-2" />
-            Add Your First Vendor
+            {t("vendors.add_first_vendor")}
           </Button>
         </div>
       ) : (

@@ -11,6 +11,7 @@ import { AlertCircle, Clock, CheckCircle2, Siren, Pencil, Save, X, RotateCcw } f
 import { format } from "date-fns";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 interface TimelineEvent {
   time: string;
@@ -31,6 +32,7 @@ async function patchTimeline(id: number, events: TimelineEvent[]) {
 }
 
 export default function DayOf() {
+  const { t } = useTranslation();
   const { data: timeline, isLoading: isLoadingTimeline } = useGetTimeline();
   const { data: profile } = useGetProfile();
   const { activeWorkspace } = useWorkspace();
@@ -146,7 +148,7 @@ export default function DayOf() {
   return (
     <div className="max-w-md mx-auto pb-24 animate-in fade-in">
       <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b px-4 py-4 mb-6 text-center shadow-sm">
-        <h1 className="font-serif text-2xl text-primary font-bold">The Big Day</h1>
+        <h1 className="font-serif text-2xl text-primary font-bold">{t("dayof.title")}</h1>
         <p className="text-sm text-muted-foreground font-medium">{dateStr}</p>
         {activeWorkspace && activeWorkspace.role !== "owner" && (
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -163,8 +165,8 @@ export default function DayOf() {
           <Card className="border-none shadow-sm text-center py-12">
             <CardContent className="space-y-4">
               <Clock className="h-12 w-12 text-primary/40 mx-auto" />
-              <p className="text-muted-foreground">No timeline generated yet.</p>
-              <Button variant="outline" onClick={() => window.location.href = '/timeline'}>Go to Timeline</Button>
+              <p className="text-muted-foreground">{t("dayof.no_timeline")}</p>
+              <Button variant="outline" onClick={() => window.location.href = '/timeline'}>{t("dayof.go_to_timeline")}</Button>
             </CardContent>
           </Card>
         ) : (

@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CheckSquare, Wand2, ClipboardList, Pencil, Trash2, Plus, Check, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Progress } from "@/components/ui/progress";
 
 const API = import.meta.env.VITE_API_URL ?? "";
@@ -30,6 +31,7 @@ type ChecklistItem = {
 };
 
 export default function Checklist() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: checklist, isLoading: isLoadingChecklist } = useGetChecklist();
@@ -55,15 +57,15 @@ export default function Checklist() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       }),
-    onSuccess: () => { invalidate(); toast({ title: "Task updated." }); },
-    onError: () => toast({ title: "Could not update task", variant: "destructive" }),
+    onSuccess: () => { invalidate(); toast({ title: t("checklist.task_updated") }); },
+    onError: () => toast({ title: t("checklist.could_not_update"), variant: "destructive" }),
   });
 
   const deleteItem = useMutation({
     mutationFn: (id: number) =>
       authFetch(`${API}/api/checklist/items/${id}`, { method: "DELETE" }),
-    onSuccess: () => { invalidate(); toast({ title: "Task removed." }); },
-    onError: () => toast({ title: "Could not delete task", variant: "destructive" }),
+    onSuccess: () => { invalidate(); toast({ title: t("checklist.task_removed") }); },
+    onError: () => toast({ title: t("checklist.could_not_delete"), variant: "destructive" }),
   });
 
   const addItem = useMutation({
@@ -75,27 +77,27 @@ export default function Checklist() {
       }),
     onSuccess: () => {
       invalidate();
-      toast({ title: "Task added." });
+      toast({ title: t("checklist.task_added") });
       setAddingToMonth(null);
       setNewTask("");
       setNewDescription("");
     },
-    onError: () => toast({ title: "Could not add task", variant: "destructive" }),
+    onError: () => toast({ title: t("checklist.could_not_add"), variant: "destructive" }),
   });
 
   const handleGenerate = () => {
     if (!profile) {
-      toast({ variant: "destructive", title: "Profile Required", description: "Please complete your wedding profile first." });
+      toast({ variant: "destructive", title: t("checklist.profile_required"), description: t("checklist.profile_required_desc") });
       return;
     }
     generateChecklist.mutate(
       { data: { weddingDate: profile.weddingDate, weddingVibe: profile.weddingVibe, guestCount: profile.guestCount } },
       {
         onSuccess: () => {
-          toast({ title: "Checklist Generated", description: "Your month-by-month plan is ready." });
+          toast({ title: t("checklist.checklist_generated"), description: t("checklist.checklist_generated_desc") });
           invalidate();
         },
-        onError: () => toast({ variant: "destructive", title: "Generation Failed", description: "Could not generate checklist." }),
+        onError: () => toast({ variant: "destructive", title: t("checklist.generation_failed"), description: t("checklist.generation_failed_desc") }),
       }
     );
   };
@@ -177,9 +179,9 @@ export default function Checklist() {
         <div>
           <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
             <CheckSquare className="h-8 w-8" />
-            Planning Checklist
+            {t("checklist.title")}
           </h1>
-          <p className="text-lg text-muted-foreground mt-2">Bite-sized tasks to keep you on track.</p>
+          <p className="text-lg text-muted-foreground mt-2">{t("checklist.subtitle")}</p>
         </div>
         <Button
           onClick={handleGenerate}
@@ -191,12 +193,12 @@ export default function Checklist() {
           {generateChecklist.isPending ? (
             <span className="flex items-center gap-2">
               <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-              Generating...
+              {t("checklist.generating")}
             </span>
           ) : (
             <span className="flex items-center gap-2">
               <Wand2 className="h-4 w-4" />
-              {hasChecklist ? "Regenerate Plan" : "Generate Checklist"}
+              {hasChecklist ? t("checklist.regenerate") : t("checklist.generate_button")}
             </span>
           )}
         </Button>
@@ -208,12 +210,12 @@ export default function Checklist() {
             <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
               <ClipboardList className="h-10 w-10 text-primary" />
             </div>
-            <h3 className="font-serif text-2xl text-primary">Your Master Plan Awaits</h3>
+            <h3 className="font-serif text-2xl text-primary">{t("checklist.no_checklist_title")}</h3>
             <p className="text-muted-foreground">
-              Let AI create a customized month-by-month checklist based on your wedding date and vibe.
+              {t("checklist.no_checklist_desc")}
             </p>
             <Button onClick={handleGenerate} disabled={generateChecklist.isPending} size="lg" className="px-8 shadow-md">
-              Create My Checklist
+              {t("checklist.generate_button")}
             </Button>
           </div>
         </Card>
@@ -222,8 +224,8 @@ export default function Checklist() {
           <Card className="border-none shadow-sm bg-primary/5">
             <CardContent className="p-6">
               <div className="flex justify-between text-sm font-medium text-primary mb-2">
-                <span>Overall Progress</span>
-                <span>{completedItems} of {totalItems} tasks completed</span>
+                <span>{t("checklist.overall_progress")}</span>
+                <span>{t("checklist.tasks_completed_count", { completed: completedItems, total: totalItems })}</span>
               </div>
               <Progress value={progress} className="h-3" />
             </CardContent>
@@ -253,28 +255,28 @@ export default function Checklist() {
                               <Input
                                 value={editTask}
                                 onChange={e => setEditTask(e.target.value)}
-                                placeholder="Task name"
+                                placeholder={t("checklist.task_name_placeholder")}
                                 className="font-medium"
                                 autoFocus
                               />
                               <Textarea
                                 value={editDescription}
                                 onChange={e => setEditDescription(e.target.value)}
-                                placeholder="Description (optional)"
+                                placeholder={t("checklist.description_optional")}
                                 className="text-sm resize-none min-h-[72px]"
                               />
                               <Input
                                 value={editMonth}
                                 onChange={e => setEditMonth(e.target.value)}
-                                placeholder="Time period (e.g. 6-9 Months Before)"
+                                placeholder={t("checklist.time_period_placeholder")}
                                 className="text-sm"
                               />
                               <div className="flex gap-2">
                                 <Button size="sm" onClick={submitEdit} disabled={!editTask.trim()}>
-                                  <Check className="h-3.5 w-3.5 mr-1.5" /> Save
+                                  <Check className="h-3.5 w-3.5 mr-1.5" /> {t("common.save")}
                                 </Button>
                                 <Button size="sm" variant="ghost" onClick={cancelEdit}>
-                                  <X className="h-3.5 w-3.5 mr-1.5" /> Cancel
+                                  <X className="h-3.5 w-3.5 mr-1.5" /> {t("common.cancel")}
                                 </Button>
                               </div>
                             </div>
@@ -300,14 +302,14 @@ export default function Checklist() {
                                 <button
                                   onClick={() => startEdit(item)}
                                   className="p-1.5 rounded hover:bg-muted text-muted-foreground"
-                                  title="Edit task"
+                                  title={t("checklist.edit_task")}
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                   onClick={() => deleteItem.mutate(item.id)}
                                   className="p-1.5 rounded hover:bg-destructive/10 text-destructive"
-                                  title="Delete task"
+                                  title={t("checklist.delete_task")}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
@@ -322,7 +324,7 @@ export default function Checklist() {
                           <Input
                             value={newTask}
                             onChange={e => setNewTask(e.target.value)}
-                            placeholder="New task name"
+                            placeholder={t("checklist.new_task_placeholder")}
                             className="font-medium"
                             autoFocus
                             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) submitAdd(); if (e.key === "Escape") cancelAdd(); }}
@@ -330,15 +332,15 @@ export default function Checklist() {
                           <Textarea
                             value={newDescription}
                             onChange={e => setNewDescription(e.target.value)}
-                            placeholder="Description (optional)"
+                            placeholder={t("checklist.description_optional")}
                             className="text-sm resize-none min-h-[60px]"
                           />
                           <div className="flex gap-2">
                             <Button size="sm" onClick={submitAdd} disabled={!newTask.trim() || addItem.isPending}>
-                              <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Task
+                              <Plus className="h-3.5 w-3.5 mr-1.5" /> {t("checklist.add_task_button")}
                             </Button>
                             <Button size="sm" variant="ghost" onClick={cancelAdd}>
-                              Cancel
+                              {t("common.cancel")}
                             </Button>
                           </div>
                         </div>
@@ -347,7 +349,7 @@ export default function Checklist() {
                           onClick={() => startAdd(month)}
                           className="w-full p-3 text-sm text-muted-foreground hover:text-primary hover:bg-primary/5 flex items-center justify-center gap-2 transition-colors"
                         >
-                          <Plus className="h-4 w-4" /> Add task to {month}
+                          <Plus className="h-4 w-4" /> {t("checklist.add_task_to", { month })}
                         </button>
                       )}
                     </div>

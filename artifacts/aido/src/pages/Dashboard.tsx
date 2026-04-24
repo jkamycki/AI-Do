@@ -34,6 +34,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslation } from "react-i18next";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -69,11 +70,11 @@ interface WeddingPartyMember {
 }
 
 
-function getGreeting() {
+function getGreetingKey() {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
+  if (h < 12) return "dashboard.good_morning";
+  if (h < 18) return "dashboard.good_afternoon";
+  return "dashboard.good_evening";
 }
 
 function formatDate(dateStr: string) {
@@ -492,6 +493,7 @@ function DraggableStatsRow({ chips }: { chips: Record<StatKey, StatChipDef> }) {
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { data: summary, isLoading, isError } = useGetDashboardSummary();
   const { user } = useUser();
   const { activeWorkspace } = useWorkspace();
@@ -543,9 +545,9 @@ export default function Dashboard() {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
         <AlertCircle className="h-12 w-12 text-destructive" />
-        <h2 className="text-2xl font-serif">Something went wrong</h2>
-        <p className="text-muted-foreground">We couldn't load your dashboard.</p>
-        <Button onClick={() => window.location.reload()} data-testid="btn-retry">Retry</Button>
+        <h2 className="text-2xl font-serif">{t("dashboard.something_went_wrong")}</h2>
+        <p className="text-muted-foreground">{t("common.error")}</p>
+        <Button onClick={() => window.location.reload()} data-testid="btn-retry">{t("dashboard.try_again")}</Button>
       </div>
     );
   }
@@ -560,10 +562,10 @@ export default function Dashboard() {
 
       {/* Greeting */}
       <div>
-        <p className="text-sm text-muted-foreground font-medium">{getGreeting()},</p>
+        <p className="text-sm text-muted-foreground font-medium">{t(getGreetingKey())},</p>
         <h1 className="text-3xl md:text-4xl font-serif text-foreground mt-0.5 capitalize">{firstName} 🤍</h1>
         <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1.5 mt-2">
-          <GripVertical className="h-3 w-3" /> Drag any card to rearrange your dashboard
+          <GripVertical className="h-3 w-3" /> {t("dashboard.drag_to_rearrange")}
         </p>
       </div>
 
@@ -575,13 +577,13 @@ export default function Dashboard() {
               <Sparkles className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground">Set up your wedding profile</h3>
-              <p className="text-sm text-muted-foreground mt-0.5">Add your date, venue, and details to unlock all AI features.</p>
+              <h3 className="font-semibold text-foreground">{t("profile.title")}</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">{t("profile.subtitle")}</p>
             </div>
           </div>
           <Link href="/profile" className="shrink-0">
             <Button size="sm" className="whitespace-nowrap" data-testid="btn-complete-profile">
-              Complete Profile <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+              {t("dashboard.complete_profile")} <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
             </Button>
           </Link>
         </div>
@@ -598,7 +600,7 @@ export default function Dashboard() {
               <div>
                 <div className="flex items-center gap-2 text-primary mb-1">
                   <Heart className="h-4 w-4 fill-primary" />
-                  <span className="text-xs font-semibold uppercase tracking-widest">Your Wedding</span>
+                  <span className="text-xs font-semibold uppercase tracking-widest">{t("dashboard.your_wedding")}</span>
                 </div>
                 <h2 className="text-2xl md:text-3xl font-serif text-foreground">
                   {summary.profile.partner1Name} &amp; {summary.profile.partner2Name}
@@ -606,7 +608,7 @@ export default function Dashboard() {
               </div>
               <Link href="/profile" className="shrink-0">
                 <Button variant="outline" size="sm" className="gap-1.5 border-primary/20 text-primary hover:bg-primary/5">
-                  <Pencil className="h-3.5 w-3.5" /> Edit
+                  <Pencil className="h-3.5 w-3.5" /> {t("common.edit")}
                 </Button>
               </Link>
             </div>
@@ -705,10 +707,10 @@ export default function Dashboard() {
                   id: "details",
                   node: (
               <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5 h-full">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Details</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{t("dashboard.details")}</p>
                 <div className="flex items-center gap-2">
                   <UsersRound className="h-4 w-4 text-primary flex-shrink-0" />
-                  <span className="text-sm text-foreground"><strong>{summary.profile.guestCount}</strong> expected guests</span>
+                  <span className="text-sm text-foreground"><strong>{summary.profile.guestCount}</strong> {t("dashboard.expected_guests")}</span>
                 </div>
                 {summary.profile.weddingVibe && (
                   <div className="flex items-center gap-2">
@@ -719,7 +721,7 @@ export default function Dashboard() {
                 {summary.profile.totalBudget > 0 && (
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-primary flex-shrink-0" />
-                    <span className="text-sm text-foreground">${summary.profile.totalBudget.toLocaleString()} budget</span>
+                    <span className="text-sm text-foreground">${summary.profile.totalBudget.toLocaleString()} {t("dashboard.budget").toLowerCase()}</span>
                   </div>
                 )}
               </div>
@@ -737,10 +739,10 @@ export default function Dashboard() {
             <div className="text-center sm:text-left">
               <div className="flex items-center justify-center sm:justify-start gap-2 text-primary mb-1">
                 <Heart className="h-4 w-4 fill-primary" />
-                <span className="text-sm font-medium uppercase tracking-wider">Until your wedding</span>
+                <span className="text-sm font-medium uppercase tracking-wider">{t("dashboard.until_wedding")}</span>
               </div>
-              <h2 className="text-2xl md:text-3xl font-serif text-foreground">Your journey begins here</h2>
-              <p className="text-sm text-muted-foreground mt-1">Complete your profile to start the countdown</p>
+              <h2 className="text-2xl md:text-3xl font-serif text-foreground">{t("dashboard.your_journey")}</h2>
+              <p className="text-sm text-muted-foreground mt-1">{t("profile.subtitle")}</p>
             </div>
           </div>
           <div className="h-1 bg-gradient-to-r from-primary/20 via-primary to-primary/20" />
@@ -752,32 +754,32 @@ export default function Dashboard() {
         chips={{
           budget: {
             icon: DollarSign,
-            label: "Budget",
+            label: t("dashboard.tile_budget"),
             value: `$${summary.budgetSpent.toLocaleString()}`,
-            sub: `of $${summary.budgetTotal.toLocaleString()} spent`,
+            sub: `${t("dashboard.spent_of")} $${summary.budgetTotal.toLocaleString()}`,
             progress: budgetPct,
             href: "/budget",
           },
           checklist: {
             icon: CheckSquare,
-            label: "Checklist",
+            label: t("dashboard.tile_checklist"),
             value: `${summary.checklistCompleted}/${summary.checklistTotal}`,
-            sub: `${Math.round(summary.checklistProgress)}% done`,
+            sub: `${Math.round(summary.checklistProgress)}% ${t("dashboard.completed")}`,
             progress: summary.checklistProgress,
             href: "/checklist",
           },
           timeline: {
             icon: Clock,
-            label: "Timeline",
+            label: t("dashboard.tile_timeline"),
             value: `${summary.timelineEventCount}`,
-            sub: "events scheduled",
+            sub: t("timeline.title"),
             href: "/timeline",
           },
           guests: {
             icon: UsersRound,
-            label: "Guests",
+            label: t("dashboard.tile_guests"),
             value: `${summary.guestCount ?? 0}`,
-            sub: `incl. plus-ones · ${(summary as any).guestRsvpSummary?.attending ?? 0} attending`,
+            sub: `${(summary as any).guestRsvpSummary?.attending ?? 0} ${t("dashboard.rsvp_attending").toLowerCase()}`,
             href: "/guests",
           },
         }}
@@ -797,22 +799,22 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Users className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">Guest RSVPs</span>
+                <span className="text-xs font-medium uppercase tracking-wider">{t("dashboard.guest_rsvps")}</span>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
             </div>
             {summary.guestCount > 0 ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /><span className="text-xs text-muted-foreground">Attending</span></div>
+                  <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /><span className="text-xs text-muted-foreground">{t("dashboard.rsvp_attending")}</span></div>
                   <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{(summary as any).guestRsvpSummary?.attending ?? 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" /><span className="text-xs text-muted-foreground">Declined</span></div>
+                  <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" /><span className="text-xs text-muted-foreground">{t("dashboard.rsvp_declined")}</span></div>
                   <span className="text-sm font-semibold text-red-500 dark:text-red-400">{(summary as any).guestRsvpSummary?.declined ?? 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /><span className="text-xs text-muted-foreground">Awaiting</span></div>
+                  <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /><span className="text-xs text-muted-foreground">{t("dashboard.rsvp_awaiting")}</span></div>
                   <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{(summary as any).guestRsvpSummary?.pending ?? 0}</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-muted overflow-hidden flex mt-1">
@@ -825,7 +827,7 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">No guests added yet</p>
+              <p className="text-xs text-muted-foreground">{t("dashboard.no_guests_added")}</p>
             )}
           </div>
         </Link>
@@ -840,7 +842,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Building2 className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">Vendors</span>
+                <span className="text-xs font-medium uppercase tracking-wider">{t("dashboard.vendors")}</span>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
             </div>
@@ -849,7 +851,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-2xl font-serif font-semibold text-foreground">{vendors.length}</span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-medium">
-                    {vendors.filter(v => v.booked).length} booked
+                    {vendors.filter(v => v.booked).length} {t("dashboard.booked")}
                   </span>
                 </div>
                 {vendors.slice(0, 3).map(v => (
@@ -863,7 +865,7 @@ export default function Dashboard() {
                 )}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">No vendors added yet</p>
+              <p className="text-xs text-muted-foreground">{t("dashboard.no_vendors_added")}</p>
             )}
           </div>
         </Link>
@@ -878,7 +880,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <LayoutGrid className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">Wedding Party</span>
+                <span className="text-xs font-medium uppercase tracking-wider">{t("dashboard.wedding_party_label")}</span>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
             </div>
@@ -902,7 +904,7 @@ export default function Dashboard() {
                 )}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">No members added yet</p>
+              <p className="text-xs text-muted-foreground">{t("dashboard.no_members_added")}</p>
             )}
           </div>
         </Link>
@@ -916,7 +918,7 @@ export default function Dashboard() {
         <div className="rounded-2xl border border-amber-200 dark:border-amber-700/50 bg-amber-50/60 dark:bg-amber-900/20 p-5">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-            <span className="text-sm font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Needs Attention</span>
+            <span className="text-sm font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-wider">{t("dashboard.needs_attention")}</span>
           </div>
           <div className="space-y-2">
             {summary.upcomingTasks.map(task => (
@@ -931,7 +933,7 @@ export default function Dashboard() {
           </div>
           <Link href="/checklist" className="mt-3 inline-block">
             <Button variant="outline" size="sm" className="border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 mt-2">
-              View Checklist <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+              {t("dashboard.continue_checklist")} <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
             </Button>
           </Link>
         </div>
@@ -939,7 +941,7 @@ export default function Dashboard() {
 
       {/* Feature Cards — drag to reorder */}
       <div>
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">Planning Tools</h2>
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("dashboard.planning_tools")}</h2>
         <DraggableRow
           storageKey="aido:dashboard:planningToolsOrder"
           gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
@@ -949,13 +951,13 @@ export default function Dashboard() {
               node: (
                 <FeatureCard
                   icon={Clock}
-                  title="Timeline"
-                  description="A minute-by-minute schedule for your entire wedding day, built by AI from your profile."
+                  title={t("dashboard.tile_timeline")}
+                  description={t("features.timeline_desc")}
                   cta="/timeline"
-                  ctaLabel={summary.hasTimeline ? "View Timeline" : "Generate Timeline"}
+                  ctaLabel={summary.hasTimeline ? t("dashboard.view_timeline") : t("dashboard.generate_timeline")}
                   stat={summary.hasTimeline
-                    ? <div className="text-sm font-medium text-primary">{summary.timelineEventCount} events planned</div>
-                    : <div className="text-xs text-muted-foreground">No timeline yet — let AI build one</div>
+                    ? <div className="text-sm font-medium text-primary">{summary.timelineEventCount}</div>
+                    : <div className="text-xs text-muted-foreground">{t("timeline.no_timeline_desc")}</div>
                   }
                   testId="btn-goto-timeline"
                 />
@@ -966,14 +968,14 @@ export default function Dashboard() {
               node: (
                 <FeatureCard
                   icon={DollarSign}
-                  title="Budget Manager"
-                  description="Track every expense and get AI-powered cost predictions based on your location and guest count."
+                  title={t("nav.budget")}
+                  description={t("features.budget_desc")}
                   cta="/budget"
-                  ctaLabel="Manage Budget"
+                  ctaLabel={t("dashboard.manage_budget")}
                   stat={
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>${summary.budgetSpent.toLocaleString()} spent</span>
+                        <span>${summary.budgetSpent.toLocaleString()}</span>
                         <span>{budgetPct}%</span>
                       </div>
                       <Progress value={budgetPct} className="h-1.5" />
@@ -988,21 +990,21 @@ export default function Dashboard() {
               node: (
                 <FeatureCard
                   icon={CheckSquare}
-                  title="Checklist"
-                  description="Month-by-month planning tasks tailored to your wedding date, guest count, and vibe."
+                  title={t("dashboard.tile_checklist")}
+                  description={t("features.checklist_desc")}
                   cta="/checklist"
-                  ctaLabel={summary.hasChecklist ? "Continue Checklist" : "Create Checklist"}
+                  ctaLabel={summary.hasChecklist ? t("dashboard.continue_checklist") : t("dashboard.create_checklist")}
                   stat={
                     summary.hasChecklist ? (
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>{summary.checklistCompleted} of {summary.checklistTotal} done</span>
+                          <span>{t("checklist.completed_count", { done: summary.checklistCompleted, total: summary.checklistTotal })}</span>
                           <span>{Math.round(summary.checklistProgress)}%</span>
                         </div>
                         <Progress value={summary.checklistProgress} className="h-1.5" />
                       </div>
                     ) : (
-                      <div className="text-xs text-muted-foreground">Generate your personalized task list</div>
+                      <div className="text-xs text-muted-foreground">{t("dashboard.generate_personalized")}</div>
                     )
                   }
                   testId="btn-goto-checklist"
@@ -1014,14 +1016,14 @@ export default function Dashboard() {
               node: (
                 <FeatureCard
                   icon={UsersRound}
-                  title="Guest List"
-                  description="Track every guest's RSVP, meal choice, plus one, and table assignment all in one place."
+                  title={t("dashboard.guest_list_title")}
+                  description={t("guests.subtitle")}
                   cta="/guests"
-                  ctaLabel="Manage Guests"
+                  ctaLabel={t("dashboard.manage_guests")}
                   stat={
                     summary.guestCount != null && summary.guestCount > 0
-                      ? <div className="text-sm font-medium text-primary">{summary.guestCount} guests added</div>
-                      : <div className="text-xs text-muted-foreground">No guests added yet</div>
+                      ? <div className="text-sm font-medium text-primary">{summary.guestCount}</div>
+                      : <div className="text-xs text-muted-foreground">{t("dashboard.no_guests_added")}</div>
                   }
                   testId="btn-goto-guests"
                 />
@@ -1032,10 +1034,10 @@ export default function Dashboard() {
               node: (
                 <FeatureCard
                   icon={Smartphone}
-                  title="Day-Of Mode"
-                  description="On your wedding day, get a clean mobile view of your timeline and instant AI help for any emergency."
+                  title={t("nav.dayof")}
+                  description={t("dayof.subtitle")}
                   cta="/day-of"
-                  ctaLabel="Open Day-Of Mode"
+                  ctaLabel={t("nav.dayof")}
                   accent
                   testId="btn-day-of-mode"
                 />

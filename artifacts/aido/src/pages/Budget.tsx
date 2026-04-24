@@ -27,6 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Lock, Paperclip, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const MANUAL_CATEGORIES = [
   "Attire",
@@ -104,6 +105,7 @@ function formatDate(d: string | null) {
 }
 
 export default function Budget() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
@@ -285,16 +287,16 @@ export default function Budget() {
     <div className="space-y-8 max-w-6xl mx-auto pb-12">
       {/* ── Header & Total Budget ─────────────────────────────────── */}
       <div className="space-y-2">
-        <h1 className="font-serif text-4xl text-primary">Budget Tracker</h1>
+        <h1 className="font-serif text-4xl text-primary">{t("budget.title")}</h1>
         <p className="text-muted-foreground">
-          Track every dollar of your wedding spend. Vendor expenses are pulled in automatically; everything else lives in Manual Expenses below.
+          {t("budget.subtitle")}
         </p>
       </div>
 
       <Card className="border-primary/30 shadow-sm">
         <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Total wedding budget</p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">{t("budget.total_budget_label")}</p>
             {editingBudget ? (
               <div className="flex items-center gap-2">
                 <div className="w-44">
@@ -311,14 +313,14 @@ export default function Budget() {
                   />
                 </div>
                 <Button size="sm" onClick={commitBudget} disabled={saveBudget.isPending}>
-                  Save
+                  {t("common.save")}
                 </Button>
               </div>
             ) : (
               <button
                 onClick={startEditBudget}
                 className="font-serif text-4xl text-primary hover:opacity-80 transition flex items-center gap-2 group"
-                title="Click to edit"
+                title={t("budget.click_to_edit")}
               >
                 {formatMoney(totalBudget)}
                 <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100" />
@@ -327,14 +329,14 @@ export default function Budget() {
           </div>
           <div className="flex-1 max-w-md w-full">
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>Spent so far</span>
+              <span>{t("budget.spent_so_far")}</span>
               <span className="font-medium text-foreground">{formatMoney(combinedSpend)}</span>
             </div>
             <Progress value={usedPct} className={overBudget ? "[&>div]:bg-destructive" : ""} />
             <p className={`text-xs mt-1 ${overBudget ? "text-destructive font-medium" : "text-muted-foreground"}`}>
               {overBudget
-                ? `${formatMoney(combinedSpend - totalBudget)} over budget`
-                : `${formatMoney(remaining)} remaining`}
+                ? t("budget.over_budget_by", { amount: formatMoney(combinedSpend - totalBudget) })
+                : t("budget.amount_remaining", { amount: formatMoney(remaining) })}
             </p>
           </div>
         </CardContent>
@@ -347,14 +349,14 @@ export default function Budget() {
             <div>
               <CardTitle className="flex items-center gap-2 font-serif text-2xl text-primary">
                 <Sparkles className="h-5 w-5" />
-                Vendor-Synced Expenses
+                {t("budget.vendor_synced_title")}
               </CardTitle>
               <CardDescription>
-                Pulled automatically from your Vendor List. Edit these by opening the vendor — they're read-only here.
+                {t("budget.vendor_synced_desc")}
               </CardDescription>
             </div>
             <Badge variant="secondary" className="gap-1 shrink-0">
-              <Lock className="h-3 w-3" /> Read-only
+              <Lock className="h-3 w-3" /> {t("budget.read_only")}
             </Badge>
           </div>
         </CardHeader>
@@ -363,9 +365,9 @@ export default function Budget() {
             <Skeleton className="h-40" />
           ) : !vendorFinancials || vendorFinancials.vendors.length === 0 ? (
             <div className="text-center py-10 border-2 border-dashed border-border rounded-lg">
-              <p className="text-muted-foreground mb-3">No vendors added yet.</p>
+              <p className="text-muted-foreground mb-3">{t("budget.no_vendors")}</p>
               <Button variant="outline" onClick={() => setLocation("/vendors")}>
-                Go to Vendor List
+                {t("budget.go_to_vendors")}
               </Button>
             </div>
           ) : (
@@ -373,14 +375,14 @@ export default function Budget() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Total cost</TableHead>
-                    <TableHead className="text-right">Paid</TableHead>
-                    <TableHead className="text-right">Remaining</TableHead>
-                    <TableHead>Next payment</TableHead>
-                    <TableHead className="min-w-[180px]">Progress</TableHead>
-                    <TableHead className="text-right">View</TableHead>
+                    <TableHead>{t("budget.col_vendor")}</TableHead>
+                    <TableHead>{t("budget.col_category")}</TableHead>
+                    <TableHead className="text-right">{t("budget.col_total_cost")}</TableHead>
+                    <TableHead className="text-right">{t("budget.col_paid")}</TableHead>
+                    <TableHead className="text-right">{t("budget.col_remaining")}</TableHead>
+                    <TableHead>{t("budget.col_next_payment")}</TableHead>
+                    <TableHead className="min-w-[180px]">{t("budget.col_progress")}</TableHead>
+                    <TableHead className="text-right">{t("budget.col_view")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -417,7 +419,7 @@ export default function Budget() {
                             onClick={() => setLocation(`/vendors?vendorId=${v.id}`)}
                             className="gap-1"
                           >
-                            View <ArrowUpRight className="h-3 w-3" />
+                            {t("budget.col_view")} <ArrowUpRight className="h-3 w-3" />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -437,14 +439,14 @@ export default function Budget() {
             <div>
               <CardTitle className="flex items-center gap-2 font-serif text-2xl text-primary">
                 <DollarSign className="h-5 w-5" />
-                Manual Expenses
+                {t("budget.manual_expenses")}
               </CardTitle>
               <CardDescription>
-                Anything outside your vendor list — dress, rings, décor, tips, hotel, DIY, gifts, etc.
+                {t("budget.manual_expenses_desc")}
               </CardDescription>
             </div>
             <Button onClick={openAdd} className="gap-2 shrink-0">
-              <Plus className="h-4 w-4" /> Add Expense
+              <Plus className="h-4 w-4" /> {t("budget.add_expense_label")}
             </Button>
           </div>
         </CardHeader>
@@ -453,9 +455,9 @@ export default function Budget() {
             <Skeleton className="h-32" />
           ) : manualExpenses.length === 0 ? (
             <div className="text-center py-10 border-2 border-dashed border-border rounded-lg">
-              <p className="text-muted-foreground mb-3">No manual expenses yet.</p>
+              <p className="text-muted-foreground mb-3">{t("budget.no_expenses")}</p>
               <Button variant="outline" onClick={openAdd} className="gap-2">
-                <Plus className="h-4 w-4" /> Add your first expense
+                <Plus className="h-4 w-4" /> {t("budget.add_first_expense")}
               </Button>
             </div>
           ) : (
@@ -463,13 +465,13 @@ export default function Budget() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Expense</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Cost</TableHead>
-                    <TableHead className="text-right">Paid</TableHead>
-                    <TableHead className="text-right">Remaining</TableHead>
-                    <TableHead>Receipt</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("budget.col_expense")}</TableHead>
+                    <TableHead>{t("budget.col_category")}</TableHead>
+                    <TableHead className="text-right">{t("budget.col_cost")}</TableHead>
+                    <TableHead className="text-right">{t("budget.col_paid")}</TableHead>
+                    <TableHead className="text-right">{t("budget.col_remaining")}</TableHead>
+                    <TableHead>{t("budget.receipt_label")}</TableHead>
+                    <TableHead className="text-right">{t("budget.col_actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -533,24 +535,24 @@ export default function Budget() {
       {/* ── Totals Summary ───────────────────────────────────────── */}
       <Card className="bg-muted/30">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl text-primary">Budget Summary</CardTitle>
-          <CardDescription>Combined totals across vendor and manual expenses.</CardDescription>
+          <CardTitle className="font-serif text-2xl text-primary">{t("budget.summary_title")}</CardTitle>
+          <CardDescription>{t("budget.summary_desc")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <SummaryStat label="Total vendor spend" value={vendorCommitted} sub={`${formatMoney(vendorPaid)} paid`} />
-            <SummaryStat label="Total manual spend" value={manualCommitted} sub={`${formatMoney(manualPaid)} paid`} />
-            <SummaryStat label="Combined total spend" value={combinedSpend} highlight />
+            <SummaryStat label={t("budget.total_vendor_spend")} value={vendorCommitted} sub={t("budget.amount_paid", { amount: formatMoney(vendorPaid) })} />
+            <SummaryStat label={t("budget.total_manual_spend")} value={manualCommitted} sub={t("budget.amount_paid", { amount: formatMoney(manualPaid) })} />
+            <SummaryStat label={t("budget.combined_total_spend")} value={combinedSpend} highlight />
             <SummaryStat
-              label={overBudget ? "Over budget" : "Remaining budget"}
+              label={overBudget ? t("budget.over_budget") : t("budget.remaining_budget")}
               value={Math.abs(remaining)}
               danger={overBudget}
               good={!overBudget && totalBudget > 0}
             />
             <SummaryStat
-              label="Total budget"
+              label={t("budget.total_budget_label")}
               value={totalBudget}
-              sub={`${usedPct.toFixed(0)}% used`}
+              sub={t("budget.percent_used", { pct: usedPct.toFixed(0) })}
             />
           </div>
         </CardContent>
@@ -561,23 +563,23 @@ export default function Budget() {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="font-serif text-2xl text-primary">
-              {editingId != null ? "Edit Expense" : "Add Expense"}
+              {editingId != null ? t("budget.edit_expense_label") : t("budget.add_expense_label")}
             </DialogTitle>
-            <DialogDescription>Track a non-vendor cost like rings, décor, or tips.</DialogDescription>
+            <DialogDescription>{t("budget.dialog_description")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Expense name</label>
+              <label className="text-sm font-medium">{t("budget.expense_name")}</label>
               <Input
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="e.g. Wedding bands, Honeymoon flights"
+                placeholder={t("budget.expense_name_placeholder")}
                 autoFocus
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Category</label>
+                <label className="text-sm font-medium">{t("budget.col_category")}</label>
                 <Select value={form.category} onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}>
                   <SelectTrigger>
                     <SelectValue />
@@ -590,12 +592,12 @@ export default function Budget() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Cost</label>
+                <label className="text-sm font-medium">{t("budget.col_cost")}</label>
                 <MoneyInput value={form.cost} onChange={(v) => setForm((f) => ({ ...f, cost: v }))} placeholder="0" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Amount paid</label>
+              <label className="text-sm font-medium">{t("budget.amount_paid_label")}</label>
               <MoneyInput
                 value={form.amountPaid}
                 onChange={(v) => setForm((f) => ({ ...f, amountPaid: v }))}
@@ -603,21 +605,21 @@ export default function Budget() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Notes</label>
+              <label className="text-sm font-medium">{t("budget.notes_label")}</label>
               <Textarea
                 value={form.notes}
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                placeholder="Optional details…"
+                placeholder={t("budget.notes_placeholder")}
                 rows={3}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Receipt (optional)</label>
+              <label className="text-sm font-medium">{t("budget.receipt_optional")}</label>
               {form.receiptUrl ? (
                 <div className="flex items-center justify-between gap-2 p-2 border rounded-md text-sm">
                   <a href={safeReceiptHref(form.receiptUrl) ?? "#"} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate flex items-center gap-1">
                     <Paperclip className="h-3 w-3" />
-                    {form.receiptName ?? "Receipt"}
+                    {form.receiptName ?? t("budget.receipt_label")}
                   </a>
                   <Button
                     type="button"
@@ -634,7 +636,7 @@ export default function Budget() {
                   <Button type="button" variant="outline" size="sm" asChild disabled={upload.isUploading}>
                     <span className="cursor-pointer gap-2">
                       <Paperclip className="h-4 w-4" />
-                      {upload.isUploading ? "Uploading…" : "Upload receipt"}
+                      {upload.isUploading ? t("budget.uploading") : t("budget.upload_receipt")}
                     </span>
                   </Button>
                 </label>
@@ -643,10 +645,10 @@ export default function Budget() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setIsAdding(false); setEditingId(null); }}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button onClick={submitForm} disabled={createManual.isPending || updateManual.isPending}>
-              {editingId != null ? "Save changes" : "Add expense"}
+              {editingId != null ? t("budget.save_changes") : t("budget.add_expense_label")}
             </Button>
           </DialogFooter>
         </DialogContent>

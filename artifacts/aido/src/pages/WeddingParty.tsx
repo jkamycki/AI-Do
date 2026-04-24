@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, Plus, Phone, Mail, Trash2, Edit2, Crown, Heart, RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -226,6 +227,7 @@ function PartyGroup({ title, members, icon: Icon, color, onEdit, onDelete }: {
 }
 
 export default function WeddingParty() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
@@ -296,23 +298,23 @@ export default function WeddingParty() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
-            <Users className="h-8 w-8" /> Wedding Party
+            <Users className="h-8 w-8" /> {t("party.title")}
           </h1>
           <p className="text-lg text-muted-foreground mt-2">
-            Bridesmaids, groomsmen, and your entire wedding party — all in one place.
+            {t("party.subtitle")}
           </p>
         </div>
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
           <DialogTrigger asChild>
             <Button size="lg" className="shadow-md shrink-0">
-              <Plus className="mr-2 h-4 w-4" /> Add Member
+              <Plus className="mr-2 h-4 w-4" /> {t("party.add_member")}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="font-serif text-2xl text-primary">Add Wedding Party Member</DialogTitle>
+              <DialogTitle className="font-serif text-2xl text-primary">{t("party.add_party_member")}</DialogTitle>
             </DialogHeader>
-            <MemberForm onSubmit={d => addMutation.mutate(d)} isPending={addMutation.isPending} submitLabel="Add Member" />
+            <MemberForm onSubmit={d => addMutation.mutate(d)} isPending={addMutation.isPending} submitLabel={t("party.add_member")} />
           </DialogContent>
         </Dialog>
       </div>

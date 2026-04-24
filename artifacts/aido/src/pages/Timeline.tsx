@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslation } from "react-i18next";
 import {
   CalendarClock, Wand2, Clock, FileDown, Sparkles,
   Pencil, Trash2, Plus, Check, X, Save,
@@ -34,6 +35,7 @@ function categoryColor(cat: string) {
 }
 
 export default function Timeline() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: timeline, isLoading: isLoadingTimeline } = useGetTimeline();
@@ -216,9 +218,9 @@ export default function Timeline() {
         <div>
           <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
             <CalendarClock className="h-8 w-8" />
-            Day-Of Timeline
+            {t("timeline.title")}
           </h1>
-          <p className="text-lg text-muted-foreground mt-2">A beautiful orchestration of your special day.</p>
+          <p className="text-lg text-muted-foreground mt-2">{t("timeline.subtitle")}</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {isDirty && (

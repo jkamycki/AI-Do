@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslation } from "react-i18next";
 import {
   Hotel, Plus, ExternalLink, Phone, Mail, Copy, Check,
   Trash2, Edit2, BedDouble, Calendar, DollarSign, MapPin, Tag, RotateCcw,
@@ -280,6 +281,7 @@ function HotelCard({ hotel, onEdit, onDelete }: { hotel: HotelBlock; onEdit: () 
 }
 
 export default function Hotels() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
@@ -341,23 +343,23 @@ export default function Hotels() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
-            <Hotel className="h-8 w-8" /> Hotel Blocks
+            <Hotel className="h-8 w-8" /> {t("hotels.title")}
           </h1>
           <p className="text-lg text-muted-foreground mt-2">
-            Manage hotel room blocks and discount codes for your guests.
+            {t("hotels.subtitle")}
           </p>
         </div>
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
           <DialogTrigger asChild>
             <Button size="lg" className="shadow-md shrink-0">
-              <Plus className="mr-2 h-4 w-4" /> Add Hotel
+              <Plus className="mr-2 h-4 w-4" /> {t("hotels.add_hotel")}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="font-serif text-2xl text-primary">Add Hotel Block</DialogTitle>
+              <DialogTitle className="font-serif text-2xl text-primary">{t("hotels.add_hotel_block")}</DialogTitle>
             </DialogHeader>
-            <HotelForm onSubmit={d => addMutation.mutate(d)} isPending={addMutation.isPending} submitLabel="Add Hotel Block" />
+            <HotelForm onSubmit={d => addMutation.mutate(d)} isPending={addMutation.isPending} submitLabel={t("hotels.add_hotel_block")} />
           </DialogContent>
         </Dialog>
       </div>
@@ -387,12 +389,12 @@ export default function Hotels() {
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <BedDouble className="h-8 w-8 text-primary" />
             </div>
-            <h3 className="text-xl font-serif text-foreground mb-2">No hotel blocks yet</h3>
+            <h3 className="text-xl font-serif text-foreground mb-2">{t("hotels.no_hotels")}</h3>
             <p className="text-muted-foreground mb-6 max-w-sm text-sm">
-              Add hotels where you've negotiated room blocks for your guests. Track discount codes, cutoff dates, and booking progress all in one place.
+              {t("hotels.no_hotels_desc")}
             </p>
             <Button onClick={() => setIsAdding(true)}>
-              <Plus className="h-4 w-4 mr-2" /> Add Your First Hotel
+              <Plus className="h-4 w-4 mr-2" /> {t("hotels.add_first_hotel")}
             </Button>
           </CardContent>
         </Card>
