@@ -81,6 +81,7 @@ function GuestCard({
   onChange: (g: Guest) => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const others = guests.filter(g => g.id !== guest.id);
 
@@ -104,7 +105,7 @@ function GuestCard({
           <Input
             value={guest.name}
             onChange={e => onChange({ ...guest, name: e.target.value })}
-            placeholder="Guest name"
+            placeholder={t("seating.guest_name_placeholder")}
             className="border-0 bg-transparent p-0 h-auto text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0"
           />
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -146,13 +147,13 @@ function GuestCard({
           <Input
             value={guest.notes}
             onChange={e => onChange({ ...guest, notes: e.target.value })}
-            placeholder="Notes (e.g., vegetarian, wheelchair access, speech giver…)"
+            placeholder={t("seating.guest_notes_placeholder")}
             className="text-xs h-7"
           />
           {others.length > 0 && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                Relationships
+                {t("seating.relationships")}
               </p>
               <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
                 {others.map(other => {
@@ -162,14 +163,14 @@ function GuestCard({
                       <span className="text-xs px-2 py-0.5">{other.name || "?"}</span>
                       <button
                         onClick={() => toggleRelation(other.id, "prefer")}
-                        title="Seat together"
+                        title={t("seating.seat_together")}
                         className={`px-1.5 py-0.5 text-xs transition-colors ${rel?.type === "prefer" ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300" : "hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-muted-foreground"}`}
                       >
                         ♥
                       </button>
                       <button
                         onClick={() => toggleRelation(other.id, "avoid")}
-                        title="Keep apart"
+                        title={t("seating.keep_apart")}
                         className={`px-1.5 py-0.5 text-xs transition-colors ${rel?.type === "avoid" ? "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300" : "hover:bg-red-50 dark:hover:bg-red-900/30 text-muted-foreground"}`}
                       >
                         ⚡
@@ -199,6 +200,7 @@ function TableCard({
   onMoveGuest: (fromTableNumber: number, toTableNumber: number, guestName: string) => void;
   onUpdateTable: (tableNumber: number, updates: { tableName?: string; theme?: string }) => void;
 }) {
+  const { t } = useTranslation();
   const accent = TABLE_ACCENTS[index % TABLE_ACCENTS.length];
   const [dragOver, setDragOver] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -268,7 +270,7 @@ function TableCard({
                 type="button"
                 onClick={() => { setNameDraft(table.tableName); setEditingName(true); }}
                 className="group/n inline-flex items-center gap-1.5 text-base font-bold font-serif text-foreground hover:text-primary transition-colors text-left"
-                title="Click to rename table"
+                title={t("seating.rename_table")}
                 data-testid={`btn-edit-table-name-${table.tableNumber}`}
               >
                 <span className="truncate">{table.tableName}</span>
@@ -291,7 +293,7 @@ function TableCard({
               if (e.key === "Enter") { e.preventDefault(); commitTheme(); }
               if (e.key === "Escape") { setThemeDraft(table.theme ?? ""); setEditingTheme(false); }
             }}
-            placeholder="Add a theme or note (optional)"
+            placeholder={t("seating.theme_placeholder")}
             className="h-7 text-xs mt-1"
             data-testid={`input-table-theme-${table.tableNumber}`}
           />
@@ -300,11 +302,11 @@ function TableCard({
             type="button"
             onClick={() => { setThemeDraft(table.theme ?? ""); setEditingTheme(true); }}
             className="group/t inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors text-left mt-0.5"
-            title="Click to edit theme or note"
+            title={t("seating.edit_theme_title")}
             data-testid={`btn-edit-table-theme-${table.tableNumber}`}
           >
             <span className="truncate">
-              {table.theme || <span className="italic opacity-70">+ Add theme or note</span>}
+              {table.theme || <span className="italic opacity-70">{t("seating.add_theme")}</span>}
             </span>
             <Pencil className="h-3 w-3 opacity-50 md:opacity-30 group-hover/t:opacity-100 transition-opacity flex-shrink-0" />
           </button>
@@ -324,7 +326,7 @@ function TableCard({
                 e.dataTransfer.effectAllowed = "move";
               }}
               className="group/g flex items-center gap-2 text-sm font-medium text-foreground rounded-md px-2 py-1.5 hover:bg-muted cursor-grab active:cursor-grabbing"
-              title="Drag to another table, or use the dropdown to move"
+              title={t("seating.drag_to_move")}
             >
               <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 group-hover/g:text-foreground flex-shrink-0" />
               <div className={`w-5 h-5 rounded-full ${accent.chip} text-[10px] flex items-center justify-center font-bold flex-shrink-0`}>
@@ -343,7 +345,7 @@ function TableCard({
                 onClick={(e) => e.stopPropagation()}
                 className="text-xs bg-background text-foreground border border-border rounded px-1.5 py-0.5 cursor-pointer opacity-100 md:opacity-70 group-hover/g:opacity-100 focus:opacity-100 hover:border-primary focus:outline-none focus:border-primary"
               >
-                <option value="">Move…</option>
+                <option value="">{t("seating.move_option")}</option>
                 {allTables
                   .filter(t => t.tableNumber !== table.tableNumber)
                   .map(t => (
@@ -356,7 +358,7 @@ function TableCard({
           ))}
           {table.guests.length === 0 && (
             <li className="text-xs text-muted-foreground italic px-2 py-3 text-center border border-dashed border-border rounded-md">
-              Drop a guest here
+              {t("seating.drop_guest_here")}
             </li>
           )}
         </ul>
@@ -471,16 +473,16 @@ export default function SeatingChartPage() {
   const importFromGuestList = () => {
     if (guestListError) {
       toast({
-        title: "Couldn't load guest list",
-        description: "We weren't able to fetch your saved guests just now. Please try again in a moment.",
+        title: t("seating.toast_cant_load_list"),
+        description: t("seating.toast_cant_load_list_desc"),
         variant: "destructive",
       });
       return;
     }
     if (guestListGuests.length === 0) {
       toast({
-        title: "Guest list is empty",
-        description: "Add guests in the Guest List page first, then come back to import them here.",
+        title: t("seating.toast_list_empty"),
+        description: t("seating.toast_list_empty_desc"),
       });
       return;
     }
@@ -530,17 +532,17 @@ export default function SeatingChartPage() {
 
     if (additions.length === 0) {
       toast({
-        title: "Already in sync",
+        title: t("seating.toast_in_sync"),
         description: skipped > 0
-          ? `All ${skipped} guests from your guest list are already on the chart.`
-          : "No eligible guests to import.",
+          ? t("seating.toast_in_sync_skipped", { count: skipped })
+          : t("seating.toast_no_eligible"),
       });
     } else {
       toast({
-        title: `Imported ${additions.length} guest${additions.length === 1 ? "" : "s"}`,
+        title: t("seating.toast_imported", { count: additions.length }),
         description: skipped > 0
-          ? `Skipped ${skipped} already on the chart.`
-          : "Synced from your Guest List — no need to re-enter them.",
+          ? t("seating.toast_skipped", { count: skipped })
+          : t("seating.toast_synced"),
       });
     }
   };
@@ -638,7 +640,7 @@ export default function SeatingChartPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
-      toast({ title: "Chart deleted" });
+      toast({ title: t("seating.chart_deleted") });
     },
   });
 
@@ -675,11 +677,11 @@ export default function SeatingChartPage() {
       setResult(data);
       setChartDirty(false);
       setShowGuests(false);
-      toast({ title: "Seating chart ready!", description: `${data.totalSeated} guests assigned across ${data.tables.length} tables. Drag any guest to move them between tables.` });
+      toast({ title: t("seating.toast_chart_ready"), description: t("seating.toast_chart_ready_desc", { guests: data.totalSeated, tables: data.tables.length }) });
       saveChartMutation.mutate(data);
     },
     onError: (err: Error) => {
-      toast({ title: "Generation failed", description: err.message, variant: "destructive" });
+      toast({ title: t("seating.toast_generation_failed"), description: err.message, variant: "destructive" });
     },
   });
 
@@ -727,14 +729,14 @@ export default function SeatingChartPage() {
           >
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <Clock className="h-4 w-4 text-primary" />
-              Saved Charts ({savedCharts.length})
+              {t("seating.saved_charts", { count: savedCharts.length })}
             </div>
             <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${showSaved ? "rotate-90" : ""}`} />
           </button>
           {showSaved && (
             <div className="border-t border-border/50 divide-y divide-border/40">
               {chartsLoading ? (
-                <p className="text-sm text-muted-foreground px-5 py-4">Loading…</p>
+                <p className="text-sm text-muted-foreground px-5 py-4">{t("seating.loading")}</p>
               ) : savedCharts.map(chart => {
                 const seated = chart.tables?.reduce((s, t) => s + t.guests.length, 0) ?? 0;
                 const tables = chart.tables?.length ?? 0;
@@ -743,12 +745,12 @@ export default function SeatingChartPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{chart.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {tables > 0 ? `${tables} tables · ${seated} guests` : "No layout yet"}
+                        {tables > 0 ? t("seating.tables_guests_summary", { tables, seated }) : t("seating.no_layout")}
                         {" · "}{new Date(chart.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </p>
                     </div>
                     <Button size="sm" variant="outline" onClick={() => loadChart(chart)} className="text-xs h-7 px-3">
-                      Load
+                      {t("seating.load_btn")}
                     </Button>
                     <button
                       onClick={() => deleteChartMutation.mutate(chart.id)}
@@ -768,7 +770,7 @@ export default function SeatingChartPage() {
         <Card className="border-none shadow-sm">
           <CardContent className="p-4">
             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
-              Number of Tables
+              {t("seating.number_of_tables")}
             </label>
             <div className="flex items-center gap-2">
               <button onClick={() => setTableCount(t => Math.max(1, t - 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors">−</button>
@@ -781,7 +783,7 @@ export default function SeatingChartPage() {
         <Card className="border-none shadow-sm">
           <CardContent className="p-4">
             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
-              Seats Per Table
+              {t("seating.seats_per_table")}
             </label>
             <div className="flex items-center gap-2">
               <button onClick={() => setSeatsPerTable(s => Math.max(2, s - 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors">−</button>
@@ -793,11 +795,11 @@ export default function SeatingChartPage() {
 
         <Card className="border-none shadow-sm bg-primary/5">
           <CardContent className="p-4 flex flex-col justify-center h-full">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Capacity Summary</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("seating.capacity_summary")}</p>
             <p className="text-2xl font-bold text-primary mt-1">{filledCount} / {totalCapacity}</p>
-            <p className="text-xs text-muted-foreground">guests · seats</p>
+            <p className="text-xs text-muted-foreground">{t("seating.guests_seats")}</p>
             {filledCount > totalCapacity && (
-              <p className="text-xs text-red-500 mt-1 font-medium">⚠ More guests than seats!</p>
+              <p className="text-xs text-red-500 mt-1 font-medium">⚠ {t("seating.over_capacity")}</p>
             )}
           </CardContent>
         </Card>
@@ -810,7 +812,7 @@ export default function SeatingChartPage() {
             className="flex items-center gap-2 font-serif text-xl font-semibold text-foreground hover:text-primary transition-colors"
           >
             <Users className="h-5 w-5" />
-            Guest List ({filledCount})
+            {t("seating.guest_list_header", { count: filledCount })}
             {showGuests ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
           <div className="flex items-center gap-2">
@@ -820,16 +822,16 @@ export default function SeatingChartPage() {
               onClick={importFromGuestList}
               disabled={guestListLoading}
               className="gap-1"
-              title="Pull attending and pending guests from your Guest List page"
+              title={t("seating.import_title")}
             >
               <Download className="h-3.5 w-3.5" />
               {guestListLoading
-                ? "Loading…"
-                : `Import from Guest List${importableCount > 0 ? ` (${importableCount})` : ""}`}
+                ? t("seating.loading")
+                : t("seating.import_btn") + (importableCount > 0 ? ` (${importableCount})` : "")}
             </Button>
             <Button size="sm" variant="outline" onClick={addGuest} className="gap-1">
               <UserPlus className="h-3.5 w-3.5" />
-              Add Guest
+              {t("seating.add_guest_btn")}
             </Button>
           </div>
         </div>
@@ -839,7 +841,7 @@ export default function SeatingChartPage() {
             <div className="flex items-start gap-2 p-3 bg-primary/5 rounded-xl text-sm text-primary">
               <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <span>
-                <strong>Tip:</strong> Use <em>Import from Guest List</em> to pull in everyone you've already added on the Guest List page — no double entry. Click the expand arrow on each guest to add relationships: ♥ seats people together, ⚡ keeps them apart.
+                {t("seating.tip_text")}
               </span>
             </div>
 
@@ -858,7 +860,7 @@ export default function SeatingChartPage() {
                 className="border-2 border-dashed border-primary/30 rounded-xl p-4 text-primary/60 hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2 text-sm"
               >
                 <Plus className="h-4 w-4" />
-                Add another guest
+                {t("seating.add_another_guest")}
               </button>
             </div>
           </>
@@ -866,11 +868,11 @@ export default function SeatingChartPage() {
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-semibold block">Additional Notes for AI</label>
+        <label className="text-sm font-semibold block">{t("seating.additional_notes_label")}</label>
         <Input
           value={additionalNotes}
           onChange={e => setAdditionalNotes(e.target.value)}
-          placeholder="E.g., 'Keep the speeches table near the front', 'Couple's parents at Table 1', 'College friends like to party — seat near dance floor'"
+          placeholder={t("seating.additional_notes_placeholder")}
           className="border-primary/20 focus:border-primary"
         />
       </div>
@@ -884,12 +886,12 @@ export default function SeatingChartPage() {
         {generateMutation.isPending ? (
           <>
             <RefreshCw className="h-5 w-5 animate-spin" />
-            Generating seating chart…
+            {t("seating.generating")}
           </>
         ) : (
           <>
             <Wand2 className="h-5 w-5" />
-            Generate Seating Chart with AI
+            {t("seating.generate_btn")}
           </>
         )}
       </Button>
@@ -899,7 +901,7 @@ export default function SeatingChartPage() {
           <div className="flex items-center justify-between flex-wrap gap-3">
             <h2 className="font-serif text-2xl font-semibold text-foreground flex items-center gap-2">
               <Heart className="h-6 w-6 text-primary fill-primary" />
-              Your Seating Chart
+              {t("seating.your_seating_chart")}
             </h2>
             <div className="flex gap-2">
               <Button
@@ -915,14 +917,14 @@ export default function SeatingChartPage() {
                         onSuccess: () => {
                           setChartDirty(false);
                           toast({
-                            title: "Changes saved!",
-                            description: "Your custom seating arrangement has been updated.",
+                            title: t("seating.save_changes_success"),
+                            description: t("seating.save_changes_success_desc"),
                           });
                         },
                         onError: () => {
                           toast({
-                            title: "Couldn't save changes",
-                            description: "We couldn't update the saved chart. Please try again.",
+                            title: t("seating.could_not_save"),
+                            description: t("seating.could_not_save_desc"),
                             variant: "destructive",
                           });
                         },
@@ -933,8 +935,8 @@ export default function SeatingChartPage() {
                       onSuccess: () => {
                         setChartDirty(false);
                         toast({
-                          title: "Saved!",
-                          description: "This chart has been saved to your collection.",
+                          title: t("seating.save_success"),
+                          description: t("seating.save_success_desc"),
                         });
                       },
                     });
@@ -946,9 +948,9 @@ export default function SeatingChartPage() {
                 <Save className="h-3.5 w-3.5" />
                 {chartDirty
                   ? activeChartId !== null
-                    ? "Save Changes"
-                    : "Save Chart"
-                  : "Save Copy"}
+                    ? t("seating.save_changes")
+                    : t("seating.save_chart")
+                  : t("seating.save_copy")}
               </Button>
               <Button
                 variant="outline"
@@ -958,7 +960,7 @@ export default function SeatingChartPage() {
                 className="gap-1"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
-                Regenerate
+                {t("seating.regenerate")}
               </Button>
             </div>
           </div>
@@ -966,14 +968,14 @@ export default function SeatingChartPage() {
           <div className="flex items-start gap-2 p-3 bg-primary/5 rounded-xl text-sm text-primary">
             <MoveRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
             <span>
-              <strong>Make it yours:</strong> Drag any guest to a different table, or hover a name and pick a destination from the <em>Move…</em> dropdown. Hit <em>{chartDirty ? "Save Changes" : "Save Copy"}</em> when you're happy with the layout.
+              <strong>{t("seating.make_it_yours_title")}</strong> {t("seating.drag_instruction")}
             </span>
           </div>
 
           {chartDirty && (
             <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-sm text-amber-900 dark:text-amber-200">
               <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-              <span>You've moved guests around — click <strong>Save Changes</strong> to keep this arrangement.</span>
+              <span>{t("seating.unsaved_changes")}</span>
             </div>
           )}
 
@@ -981,7 +983,7 @@ export default function SeatingChartPage() {
             <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-amber-800 dark:text-amber-200">
               <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <p className="font-medium text-sm">Potential Conflicts</p>
+                <p className="font-medium text-sm">{t("seating.potential_conflicts")}</p>
                 <ul className="space-y-0.5">
                   {result.warnings.map((w, i) => (
                     <li key={i} className="text-sm">{w}</li>
@@ -1016,15 +1018,15 @@ export default function SeatingChartPage() {
           </div>
 
           <div className="flex items-center justify-center gap-6 pt-2 text-sm text-muted-foreground border-t border-border/50">
-            <span>{result.totalSeated} guests seated</span>
+            <span>{t("seating.guests_seated", { n: result.totalSeated })}</span>
             <span>·</span>
-            <span>{result.tables.length} tables</span>
+            <span>{t("seating.tables_count", { n: result.tables.length })}</span>
             <span>·</span>
-            <span>Generated by A.IDO AI</span>
+            <span>{t("seating.generated_by")}</span>
             {saveChartMutation.isSuccess && (
               <>
                 <span>·</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium">Auto-saved ✓</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">{t("seating.auto_saved")}</span>
               </>
             )}
           </div>

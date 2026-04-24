@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -48,6 +49,7 @@ interface PendingAttachment {
 }
 
 export function VendorMessagesTab({ vendorId }: Props) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { toast } = useToast();
   const { getToken } = useAuth();
@@ -85,7 +87,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
         setDraft("");
         setAttachments([]);
       },
-      onError: (e) => toast({ title: "Send failed", description: String(e), variant: "destructive" }),
+      onError: (e) => toast({ title: t("vendors.msg_send_failed"), description: String(e), variant: "destructive" }),
     },
   });
 
@@ -97,7 +99,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
       },
       onError: (e) => {
         setIsSuggesting(false);
-        toast({ title: "AI suggestion failed", description: String(e), variant: "destructive" });
+        toast({ title: t("vendors.msg_ai_suggest_failed"), description: String(e), variant: "destructive" });
       },
     },
   });
@@ -174,14 +176,16 @@ export function VendorMessagesTab({ vendorId }: Props) {
         qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
         setCcDraftList(null);
         toast({
-          title: ccList.length > 0 ? "CC list saved" : "CC list cleared",
+          title: ccList.length > 0 ? t("vendors.msg_cc_saved_toast") : t("vendors.msg_cc_cleared_toast"),
           description:
             ccList.length > 0
-              ? `Vendor messages will also go to ${ccList.length} recipient${ccList.length === 1 ? "" : "s"}.`
+              ? ccList.length === 1
+                ? t("vendors.msg_cc_recipients_one", { n: ccList.length })
+                : t("vendors.msg_cc_recipients_other", { n: ccList.length })
               : undefined,
         });
       },
-      onError: () => toast({ title: "Could not save CC list", variant: "destructive" }),
+      onError: () => toast({ title: t("vendors.msg_cc_save_error"), variant: "destructive" }),
     },
   });
   const saveCc = () => {
@@ -237,7 +241,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
 
   const upload = useUpload({
     getToken,
-    onError: (e) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: t("vendors.msg_upload_failed"), description: e.message, variant: "destructive" }),
   });
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -281,7 +285,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
         <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 text-sm flex items-start gap-2">
           <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
           <span className="text-amber-800 dark:text-amber-200">
-            This vendor has no email address. Add one in the Edit dialog so messages can be delivered.
+            {t("vendors.msg_no_email_warning")}
           </span>
         </div>
       )}
@@ -300,8 +304,8 @@ export function VendorMessagesTab({ vendorId }: Props) {
         {!msgsLoading && messages && messages.length === 0 && (
           <div className="flex flex-col items-center justify-center text-center py-12 text-muted-foreground">
             <Inbox className="h-10 w-10 mb-2 opacity-50" />
-            <p className="text-sm">No messages yet. Start the conversation below.</p>
-            <p className="text-xs mt-1">Vendor replies arrive here automatically when they reply to your email.</p>
+            <p className="text-sm">{t("vendors.msg_no_messages")}</p>
+            <p className="text-xs mt-1">{t("vendors.msg_replies_arrive_hint")}</p>
           </div>
         )}
         {messages?.map((m) => (
@@ -311,25 +315,25 @@ export function VendorMessagesTab({ vendorId }: Props) {
 
       <div className="flex flex-wrap gap-2 items-center text-xs text-muted-foreground">
         <Mail className="h-3.5 w-3.5" />
-        <span>Replies from {conv.vendorEmail ?? "the vendor"} land here automatically.</span>
+        <span>{t("vendors.msg_replies_from", { email: conv.vendorEmail ?? conv.vendorEmail })}</span>
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-3 py-2 text-xs flex items-start gap-2">
         <AlertCircle className="h-3.5 w-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
         <span className="text-amber-800 dark:text-amber-200">
-          <strong>Heads up:</strong> First-time emails to vendors may land in their <strong>spam or promotions</strong> folder. If you don't hear back in 1–2 days, give them a quick text or call to check, and ask them to mark this address as "not spam" so future messages reach their inbox.
+          <strong>{t("vendors.msg_spam_warning_bold")}</strong> {t("vendors.msg_spam_warning")}
         </span>
       </div>
 
       <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
         <label htmlFor="message-subject-input" className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-          Subject:
+          {t("vendors.msg_subject_label")}
         </label>
         <Input
           id="message-subject-input"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          placeholder="e.g. Wedding inquiry — florist availability"
+          placeholder={t("vendors.msg_subject_placeholder")}
           className="flex-1 h-8 text-sm bg-background"
           data-testid="input-message-subject"
         />
@@ -338,7 +342,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
       <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 px-3 py-2">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <label htmlFor="cc-emails-input" className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-            CC recipients{ccList.length > 0 ? ` (${ccList.length})` : ""}:
+            {t("vendors.msg_cc_label")}{ccList.length > 0 ? ` (${ccList.length})` : ""}:
           </label>
           <Button
             size="sm"
@@ -347,7 +351,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
             disabled={(!ccDirty && !(ccInput.trim() && !ccInputInvalid)) || ccInputInvalid || saveProfile.isPending}
             data-testid="btn-save-cc"
           >
-            {saveProfile.isPending ? "Saving…" : ccDirty || (ccInput.trim() && !ccInputInvalid) ? "Save" : (<><Check className="h-3.5 w-3.5 mr-1" />Saved</>)}
+            {saveProfile.isPending ? t("vendors.msg_cc_saving") : ccDirty || (ccInput.trim() && !ccInputInvalid) ? t("vendors.msg_cc_save") : (<><Check className="h-3.5 w-3.5 mr-1" />{t("vendors.msg_cc_saved")}</>)}
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 rounded-md border bg-background px-2 py-1.5 min-h-[36px]">
@@ -363,7 +367,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
                 type="button"
                 onClick={() => removeCcEmail(email)}
                 className="ml-0.5 rounded-sm hover:bg-muted-foreground/20 p-0.5"
-                aria-label={`Remove ${email}`}
+                aria-label={t("vendors.msg_cc_label") + " " + email}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -373,7 +377,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
             id="cc-emails-input"
             type="email"
             aria-describedby="cc-emails-help"
-            placeholder={ccList.length === 0 ? "your@email.com — press Enter to add (no limit)" : "Add another email…"}
+            placeholder={ccList.length === 0 ? t("vendors.msg_cc_placeholder_empty") : t("vendors.msg_cc_placeholder_more")}
             value={ccInput}
             onChange={(e) => setCcInput(e.target.value)}
             onKeyDown={handleCcKeyDown}
@@ -384,10 +388,10 @@ export function VendorMessagesTab({ vendorId }: Props) {
           />
         </div>
         {ccInputInvalid && (
-          <p className="text-xs text-destructive">Enter a valid email address.</p>
+          <p className="text-xs text-destructive">{t("vendors.msg_cc_invalid")}</p>
         )}
         <p className="text-[11px] text-muted-foreground">
-          Add as many CC recipients as you like — press Enter, comma, space, or paste a list. They'll be CC'd on every message you send to vendors and can reply-all to include you directly.
+          {t("vendors.msg_cc_hint")}
         </p>
       </div>
 
@@ -400,7 +404,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
               <button
                 onClick={() => setAttachments((arr) => arr.filter((_, idx) => idx !== i))}
                 className="ml-1 hover:text-destructive"
-                aria-label="Remove attachment"
+                aria-label={t("vendors.msg_remove_attachment")}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -420,7 +424,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
             }
           }
         }}
-        placeholder={hasVendorEmail ? "Write a message to the vendor... (Enter to send, Shift+Enter for new line)" : "Add an email address for this vendor first."}
+        placeholder={hasVendorEmail ? t("vendors.msg_placeholder") : t("vendors.msg_placeholder_no_email")}
         className="min-h-[100px] resize-none"
         disabled={!hasVendorEmail}
       />
@@ -432,7 +436,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
             <Button size="sm" variant="outline" type="button" asChild disabled={upload.isUploading}>
               <span>
                 <Paperclip className="h-3.5 w-3.5 mr-1.5" />
-                {upload.isUploading ? "Uploading..." : "Attach"}
+                {upload.isUploading ? t("vendors.msg_uploading") : t("vendors.msg_attach")}
               </span>
             </Button>
           </label>
@@ -443,7 +447,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
             disabled={isSuggesting || !conversationId}
           >
             <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-            {isSuggesting ? "Drafting..." : "AI Suggest Reply"}
+            {isSuggesting ? t("vendors.msg_ai_suggesting") : t("vendors.msg_ai_suggest")}
           </Button>
           <Button
             size="sm"
@@ -468,7 +472,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
             }}
           >
             <Mail className="h-3.5 w-3.5 mr-1.5" />
-            AI Draft Email
+            {t("vendors.msg_ai_draft")}
           </Button>
         </div>
         <Button
@@ -477,7 +481,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
           disabled={!draft.trim() || !hasVendorEmail || sendMutation.isPending}
         >
           <Send className="h-3.5 w-3.5 mr-1.5" />
-          {sendMutation.isPending ? "Sending..." : "Send"}
+          {sendMutation.isPending ? t("vendors.msg_sending") : t("vendors.msg_send")}
         </Button>
       </div>
 
@@ -486,22 +490,22 @@ export function VendorMessagesTab({ vendorId }: Props) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              AI Draft Email{vendor?.name ? ` to ${vendor.name}` : ""}
+              {vendor?.name ? t("vendors.draft_to_vendor", { name: vendor.name }) : t("vendors.draft_dialog_title")}
             </DialogTitle>
             <DialogDescription>
-              The draft will appear in your message box below — review and edit before sending.
+              {t("vendors.draft_dialog_desc")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label className="text-xs">Vendor Type</Label>
+              <Label className="text-xs">{t("vendors.draft_vendor_type")}</Label>
               <Select value={draftVendorType} onValueChange={setDraftVendorType}>
                 <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Select vendor type" />
+                  <SelectValue placeholder={t("vendors.draft_vendor_type_placeholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {["Venue","Hotel","Photographer","Videographer","Florist","Caterer","DJ/Band","Hair & Makeup","Planner/Coordinator","Other"].map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  {(["Venue","Hotel","Photographer","Videographer","Florist","Caterer","DJ/Band","Hair & Makeup","Planner/Coordinator","Other"] as const).map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -515,38 +519,38 @@ export function VendorMessagesTab({ vendorId }: Props) {
               )}
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Purpose</Label>
+              <Label className="text-xs">{t("vendors.draft_purpose")}</Label>
               <Select value={draftPurpose} onValueChange={setDraftPurpose}>
                 <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="What's this email about?" />
+                  <SelectValue placeholder={t("vendors.draft_purpose_placeholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Initial Inquiry / Availability">Initial Inquiry / Availability</SelectItem>
-                  <SelectItem value="Quote Request">Request a Quote</SelectItem>
-                  <SelectItem value="Follow-up">Follow-up on Previous Email</SelectItem>
-                  <SelectItem value="Negotiation / Budget Discussion">Negotiate Budget / Package</SelectItem>
-                  <SelectItem value="Contract Confirmation">Confirm Contract / Booking</SelectItem>
-                  <SelectItem value="Polite Decline">Polite Decline</SelectItem>
+                  <SelectItem value="Initial Inquiry / Availability">{t("vendors.purpose_initial_inquiry")}</SelectItem>
+                  <SelectItem value="Quote Request">{t("vendors.purpose_quote")}</SelectItem>
+                  <SelectItem value="Follow-up">{t("vendors.purpose_followup")}</SelectItem>
+                  <SelectItem value="Negotiation / Budget Discussion">{t("vendors.purpose_negotiate")}</SelectItem>
+                  <SelectItem value="Contract Confirmation">{t("vendors.purpose_confirm")}</SelectItem>
+                  <SelectItem value="Polite Decline">{t("vendors.purpose_decline")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Specific details <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Label className="text-xs">{t("vendors.draft_details_label")} <span className="text-muted-foreground font-normal">{t("vendors.draft_details_optional")}</span></Label>
               <Textarea
                 value={draftNotes}
                 onChange={(e) => setDraftNotes(e.target.value)}
-                placeholder="e.g. We love your dark and moody style, want an 8-hour package…"
+                placeholder={t("vendors.draft_details_placeholder")}
                 className="resize-none h-24 bg-background"
               />
             </div>
             {vendor && (
               <p className="text-[11px] text-muted-foreground">
-                Vendor: <strong>{vendor.name}</strong> · {vendor.category}
+                {t("vendors.draft_vendor_label")} <strong>{vendor.name}</strong> · {vendor.category}
               </p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDraftDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowDraftDialog(false)}>{t("vendors.draft_cancel")}</Button>
             <Button
               disabled={
                 !draftPurpose ||
@@ -579,9 +583,9 @@ export function VendorMessagesTab({ vendorId }: Props) {
                       if (result.subject) setSubject(result.subject);
                       setDraft((d) => (d ? `${d}\n\n${result.body}` : result.body));
                       setShowDraftDialog(false);
-                      toast({ title: "Draft ready", description: "Inserted into your message box — edit and send when ready." });
+                      toast({ title: t("vendors.draft_ready"), description: t("vendors.draft_ready_desc") });
                     },
-                    onError: () => toast({ title: "Could not generate draft", variant: "destructive" }),
+                    onError: () => toast({ title: t("vendors.draft_failed"), variant: "destructive" }),
                   }
                 );
               }}
@@ -589,10 +593,10 @@ export function VendorMessagesTab({ vendorId }: Props) {
               {generateEmail.isPending ? (
                 <span className="flex items-center gap-2">
                   <div className="h-3.5 w-3.5 rounded-full border-2 border-current/30 border-t-current animate-spin" />
-                  Drafting…
+                  {t("vendors.draft_generating")}
                 </span>
               ) : (
-                <span className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" />Generate</span>
+                <span className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" />{t("vendors.draft_generate")}</span>
               )}
             </Button>
           </DialogFooter>
@@ -603,6 +607,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
 }
 
 function MessageBubble({ message }: { message: Message }) {
+  const { t } = useTranslation();
   const isCouple = message.senderType === "couple";
   const isSystem = message.senderType === "system";
   const time = new Date(message.createdAt).toLocaleString(undefined, {
@@ -660,17 +665,17 @@ function MessageBubble({ message }: { message: Message }) {
           <span>{time}</span>
           {isCouple && message.deliveryStatus === "sent" && (
             <span className="flex items-center gap-0.5">
-              <CheckCircle2 className="h-3 w-3 text-green-600" /> Delivered to vendor via email
+              <CheckCircle2 className="h-3 w-3 text-green-600" /> {t("vendors.msg_delivered")}
             </span>
           )}
-          {isCouple && message.deliveryStatus === "queued" && <span>Sending…</span>}
+          {isCouple && message.deliveryStatus === "queued" && <span>{t("vendors.msg_sending_status")}</span>}
           {isCouple && message.deliveryStatus === "failed" && (
             <span className="flex items-center gap-0.5 text-destructive">
-              <AlertCircle className="h-3 w-3" /> {message.errorMessage ?? "Failed"}
+              <AlertCircle className="h-3 w-3" /> {message.errorMessage ?? t("vendors.msg_send_failed")}
             </span>
           )}
           {!isCouple && message.deliveryStatus === "received" && (
-            <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4">Vendor replied by email</Badge>
+            <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4">{t("vendors.msg_vendor_replied")}</Badge>
           )}
         </div>
       </div>

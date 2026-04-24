@@ -166,6 +166,7 @@ function AddEditVendorDialog({
   vendor?: Vendor;
 }) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const initialForm = useMemo<VendorFormData>(
     () =>
@@ -192,10 +193,10 @@ function AddEditVendorDialog({
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
-        toast({ title: "Vendor added" });
+        toast({ title: t("vendors.vendor_added") });
         onClose();
       },
-      onError: () => toast({ title: "Failed to save vendor", variant: "destructive" }),
+      onError: () => toast({ title: t("vendors.failed_save"), variant: "destructive" }),
     },
   });
 
@@ -213,10 +214,10 @@ function AddEditVendorDialog({
         }
         await qc.refetchQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
-        toast({ title: "Vendor updated" });
+        toast({ title: t("vendors.vendor_updated") });
         onClose();
       },
-      onError: () => toast({ title: "Failed to update vendor", variant: "destructive" }),
+      onError: () => toast({ title: t("vendors.failed_update"), variant: "destructive" }),
     },
   });
 
@@ -240,7 +241,7 @@ function AddEditVendorDialog({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim() || !form.category) {
-      toast({ title: "Name and category are required", variant: "destructive" });
+      toast({ title: t("vendors.name_category_required"), variant: "destructive" });
       return;
     }
     if (vendor) {
@@ -268,28 +269,28 @@ function AddEditVendorDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-serif text-2xl">
-            {vendor ? "Edit Vendor" : "Add Vendor"}
+            {vendor ? t("vendors.edit_vendor") : t("vendors.add_vendor_title")}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Vendor Name *</Label>
+              <Label>{t("vendors.vendor_name")}</Label>
               <Input
-                placeholder="e.g. The Grand Venue"
+                placeholder={t("vendors.vendor_name_placeholder")}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 data-testid="input-vendor-name"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Category *</Label>
+              <Label>{t("vendors.category")}</Label>
               <Select
                 value={form.category}
                 onValueChange={(v) => setForm({ ...form, category: v })}
               >
                 <SelectTrigger data-testid="select-vendor-category">
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder={t("vendors.select_category")} />
                 </SelectTrigger>
                 <SelectContent>
                   {VENDOR_CATEGORIES.map((cat) => (
@@ -299,32 +300,32 @@ function AddEditVendorDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Email</Label>
+              <Label>{t("vendors.email")}</Label>
               <Input
                 type="email"
-                placeholder="contact@vendor.com"
+                placeholder={t("vendors.email_placeholder")}
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Phone</Label>
+              <Label>{t("vendors.phone")}</Label>
               <Input
-                placeholder="+1 (555) 000-0000"
+                placeholder={t("vendors.phone_placeholder")}
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Website</Label>
+              <Label>{t("vendors.website")}</Label>
               <Input
-                placeholder="https://vendor.com"
+                placeholder={t("vendors.website_placeholder")}
                 value={form.website}
                 onChange={(e) => setForm({ ...form, website: e.target.value })}
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Total Cost</Label>
+              <Label>{t("vendors.total_cost")}</Label>
               <MoneyInput
                 value={form.totalCost}
                 onChange={(v) => setForm({ ...form, totalCost: v })}
@@ -332,7 +333,7 @@ function AddEditVendorDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Deposit Amount</Label>
+              <Label>{t("vendors.deposit")}</Label>
               <MoneyInput
                 value={form.depositAmount}
                 onChange={(v) => setForm({ ...form, depositAmount: v })}
@@ -340,17 +341,17 @@ function AddEditVendorDialog({
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Vendor Portal / Booking Link</Label>
+              <Label>{t("vendors.vendor_portal")}</Label>
               <Input
-                placeholder="https://portal.vendor.com"
+                placeholder={t("vendors.vendor_portal_placeholder")}
                 value={form.portalLink}
                 onChange={(e) => setForm({ ...form, portalLink: e.target.value })}
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Notes</Label>
+              <Label>{t("vendors.notes")}</Label>
               <Textarea
-                placeholder="Any notes about this vendor..."
+                placeholder={t("vendors.notes_placeholder")}
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 rows={3}
@@ -362,13 +363,13 @@ function AddEditVendorDialog({
                 checked={form.contractSigned}
                 onCheckedChange={(checked) => setForm({ ...form, contractSigned: !!checked })}
               />
-              <Label htmlFor="contractSigned" className="cursor-pointer">Contract signed</Label>
+              <Label htmlFor="contractSigned" className="cursor-pointer">{t("vendors.contract_signed")}</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{t("vendors.cancel")}</Button>
             <Button type="submit" disabled={isLoading} data-testid="btn-save-vendor">
-              {isLoading ? "Saving..." : vendor ? "Save Changes" : "Add Vendor"}
+              {isLoading ? t("vendors.saving") : vendor ? t("vendors.save_changes") : t("vendors.add_vendor")}
             </Button>
           </DialogFooter>
         </form>
@@ -387,6 +388,7 @@ function PaymentRow({
   onDelete: () => void;
 }) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const toggleMutation = useUpdateVendorPayment({
     mutation: {
@@ -395,7 +397,7 @@ function PaymentRow({
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
       },
-      onError: () => toast({ title: "Failed to update payment", variant: "destructive" }),
+      onError: () => toast({ title: t("vendors.failed_update_payment"), variant: "destructive" }),
     },
   });
 
@@ -410,7 +412,7 @@ function PaymentRow({
     }`}>
       <button
         className="flex-shrink-0"
-        title={payment.isPaid ? "Mark as unpaid" : "Mark as paid"}
+        title={payment.isPaid ? t("vendors.mark_as_unpaid") : t("vendors.mark_as_paid")}
         onClick={() => toggleMutation.mutate({ id: vendorId, paymentId: payment.id, data: { isPaid: !payment.isPaid } })}
         disabled={toggleMutation.isPending}
       >
@@ -428,12 +430,12 @@ function PaymentRow({
         </p>
         <p className={`text-xs ${payment.isPaid ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
           {payment.isPaid
-            ? `Paid${payment.paidAt ? " · " + formatDate(payment.paidAt.slice(0, 10)) : ""}`
+            ? t("vendors.paid_date", { date: payment.paidAt ? formatDate(payment.paidAt.slice(0, 10)) : "" }).replace(" · ", payment.paidAt ? " · " : "")
             : isOverdue
-              ? `${Math.abs(days)} day${Math.abs(days) !== 1 ? "s" : ""} overdue`
+              ? t("vendors.overdue_days_other", { n: Math.abs(days) })
               : days === 0
-                ? "Due today"
-                : `Due ${formatDate(payment.dueDate)}`}
+                ? t("vendors.due_today")
+                : t("vendors.due_on", { date: formatDate(payment.dueDate) })}
         </p>
       </div>
       <div className={`text-sm font-bold text-right shrink-0 ${payment.isPaid ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"}`}>
@@ -454,6 +456,7 @@ function AddPaymentForm({
   onDone: () => void;
 }) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [label, setLabel] = useState("");
   const [amount, setAmount] = useState("");
@@ -466,17 +469,17 @@ function AddPaymentForm({
         qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
-        toast({ title: "Payment added" });
+        toast({ title: t("vendors.payment_added") });
         onDone();
       },
-      onError: () => toast({ title: "Failed to add payment", variant: "destructive" }),
+      onError: () => toast({ title: t("vendors.failed_add_payment"), variant: "destructive" }),
     },
   });
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!label || !amount || !dueDate) {
-      toast({ title: "All payment fields are required", variant: "destructive" });
+      toast({ title: t("vendors.all_fields_required"), variant: "destructive" });
       return;
     }
     mutation.mutate({ id: vendorId, data: { label, amount: Number(amount), dueDate, isPaid } });
@@ -484,18 +487,18 @@ function AddPaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="rounded-xl p-4 space-y-4 border bg-muted/20">
-      <p className="text-sm font-semibold">Add Payment</p>
+      <p className="text-sm font-semibold">{t("vendors.add_payment")}</p>
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1.5">
-          <Label className="text-xs">Payment Label</Label>
+          <Label className="text-xs">{t("vendors.payment_label")}</Label>
           <Input
-            placeholder="e.g. Deposit, Final Payment…"
+            placeholder={t("vendors.payment_label_placeholder")}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Amount</Label>
+          <Label className="text-xs">{t("vendors.payment_amount")}</Label>
           <MoneyInput
             value={amount}
             onChange={setAmount}
@@ -503,7 +506,7 @@ function AddPaymentForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Due Date</Label>
+          <Label className="text-xs">{t("vendors.payment_due_date")}</Label>
           <Input
             type="date"
             value={dueDate}
@@ -512,7 +515,7 @@ function AddPaymentForm({
           />
         </div>
         <div className="col-span-2">
-          <Label className="text-xs mb-2 block">Payment Status</Label>
+          <Label className="text-xs mb-2 block">{t("vendors.payment_status")}</Label>
           <div className="flex rounded-lg overflow-hidden border">
             <button
               type="button"
@@ -523,7 +526,7 @@ function AddPaymentForm({
                   : "bg-background text-muted-foreground hover:bg-muted"
               }`}
             >
-              Not Paid
+              {t("vendors.not_paid")}
             </button>
             <button
               type="button"
@@ -534,16 +537,16 @@ function AddPaymentForm({
                   : "bg-background text-muted-foreground hover:bg-muted"
               }`}
             >
-              Paid
+              {t("vendors.paid")}
             </button>
           </div>
         </div>
       </div>
       <div className="flex gap-2 pt-1">
         <Button type="submit" size="sm" disabled={mutation.isPending} className="flex-1">
-          {mutation.isPending ? "Adding..." : "Add Payment"}
+          {mutation.isPending ? t("vendors.adding_payment") : t("vendors.add_payment")}
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onDone}>Cancel</Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onDone}>{t("vendors.cancel")}</Button>
       </div>
     </form>
   );
@@ -555,6 +558,7 @@ function FileUploadSection({
   vendor: { id: number; files: Array<{ name: string; url: string; type: string }> };
 }) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { getToken } = useAuth();
   const qc = useQueryClient();
   const pendingFileRef = useRef<File | null>(null);
@@ -566,7 +570,7 @@ function FileUploadSection({
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
       },
-      onError: () => toast({ title: "Failed to save file", variant: "destructive" }),
+      onError: () => toast({ title: t("vendors.failed_save_file"), variant: "destructive" }),
     },
   });
 
@@ -583,11 +587,11 @@ function FileUploadSection({
         data: { files: [...vendor.files, newFile] },
       });
       pendingFileRef.current = null;
-      toast({ title: "File uploaded" });
+      toast({ title: t("vendors.file_uploaded") });
     },
     onError: () => {
       pendingFileRef.current = null;
-      toast({ title: "Upload failed", variant: "destructive" });
+      toast({ title: t("vendors.upload_failed"), variant: "destructive" });
     },
   });
 
@@ -607,15 +611,15 @@ function FileUploadSection({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Files</p>
+        <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t("vendors.files_label")}</p>
         <label className={`cursor-pointer flex items-center gap-1.5 text-xs font-medium text-primary hover:underline ${isUploading ? "opacity-50 pointer-events-none" : ""}`}>
           <Upload className="h-3.5 w-3.5" />
-          {isUploading ? "Uploading..." : "Upload File"}
+          {isUploading ? t("vendors.uploading_file") : t("vendors.upload_file")}
           <input type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
         </label>
       </div>
       {vendor.files.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic">No files uploaded yet. Add contracts, invoices, or receipts.</p>
+        <p className="text-sm text-muted-foreground italic">{t("vendors.no_files_desc")}</p>
       ) : (
         <div className="space-y-2">
           {vendor.files.map((file, idx) => (
@@ -655,6 +659,7 @@ function VendorDetailDialog({
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = useState<number | null>(null);
 
+  const { t } = useTranslation();
   const deletePaymentMutation = useDeleteVendorPayment({
     mutation: {
       onSuccess: () => {
@@ -662,9 +667,9 @@ function VendorDetailDialog({
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
         setDeletingPaymentId(null);
-        toast({ title: "Payment removed" });
+        toast({ title: t("vendors.payment_removed") });
       },
-      onError: () => toast({ title: "Failed to remove payment", variant: "destructive" }),
+      onError: () => toast({ title: t("vendors.failed_remove_payment"), variant: "destructive" }),
     },
   });
 
@@ -702,31 +707,31 @@ function VendorDetailDialog({
                   </Badge>
                   {vendor.contractSigned && (
                     <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                      <CheckCircle2 className="h-3 w-3 mr-1" /> Contract signed
+                      <CheckCircle2 className="h-3 w-3 mr-1" /> {t("vendors.contract_signed_badge")}
                     </Badge>
                   )}
                   {overdue.length > 0 && (
                     <Badge variant="destructive" className="text-xs">
-                      <AlertCircle className="h-3 w-3 mr-1" /> {overdue.length} overdue
+                      <AlertCircle className="h-3 w-3 mr-1" /> {t("vendors.overdue_badge", { n: overdue.length })}
                     </Badge>
                   )}
                 </div>
               </div>
               <Button size="sm" variant="outline" onClick={onEdit}>
-                <Edit className="h-3.5 w-3.5 mr-1.5" /> Edit
+                <Edit className="h-3.5 w-3.5 mr-1.5" /> {t("vendors.edit_btn")}
               </Button>
             </div>
           </DialogHeader>
 
           <Tabs defaultValue="overview">
             <TabsList className="w-full">
-              <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
-              <TabsTrigger value="messages" className="flex-1">Messages</TabsTrigger>
+              <TabsTrigger value="overview" className="flex-1">{t("vendors.tab_overview")}</TabsTrigger>
+              <TabsTrigger value="messages" className="flex-1">{t("vendors.tab_messages")}</TabsTrigger>
               <TabsTrigger value="payments" className="flex-1">
-                Payments {vendor.payments.length > 0 && `(${vendor.payments.length})`}
+                {t("vendors.tab_payments")} {vendor.payments.length > 0 && `(${vendor.payments.length})`}
               </TabsTrigger>
               <TabsTrigger value="files" className="flex-1">
-                Files {vendor.files.length > 0 && `(${vendor.files.length})`}
+                {t("vendors.tab_files")} {vendor.files.length > 0 && `(${vendor.files.length})`}
               </TabsTrigger>
             </TabsList>
 
@@ -737,13 +742,13 @@ function VendorDetailDialog({
             <TabsContent value="overview" className="space-y-5 mt-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-muted/30 rounded-xl p-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Cost</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t("vendors.overview_tab_total_cost")}</p>
                   <p className="text-2xl font-serif font-semibold text-foreground">{formatCurrency(vendor.totalCost)}</p>
                 </div>
                 <div className="bg-muted/30 rounded-xl p-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Deposit</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t("vendors.overview_tab_deposit")}</p>
                   <p className="text-2xl font-serif font-semibold text-foreground">{formatCurrency(vendor.depositAmount)}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{vendor.contractSigned ? "Contract signed" : "Contract pending"}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{vendor.contractSigned ? t("vendors.overview_tab_contract_signed") : t("vendors.overview_tab_contract_pending")}</p>
                 </div>
               </div>
 
@@ -751,7 +756,7 @@ function VendorDetailDialog({
                 <div className={`space-y-2 rounded-xl p-3 transition-colors ${paidAmount >= totalForProgress ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50" : "bg-muted/20"}`}>
                   <div className="flex justify-between text-sm items-center">
                     <span className={`font-medium ${paidAmount >= totalForProgress ? "text-green-700 dark:text-green-300" : "text-muted-foreground"}`}>
-                      {paidAmount >= totalForProgress ? "Fully Paid!" : "Paid so far"}
+                      {paidAmount >= totalForProgress ? t("vendors.fully_paid") : t("vendors.paid_so_far")}
                     </span>
                     <span className={`font-bold tabular-nums ${paidAmount >= totalForProgress ? "text-green-700 dark:text-green-300" : "text-foreground"}`}>
                       {formatCurrency(paidAmount)}
@@ -796,7 +801,7 @@ function VendorDetailDialog({
                     <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                       <Link2 className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <span className="group-hover:underline">Vendor Portal</span>
+                    <span className="group-hover:underline">{t("vendors.vendor_portal_label")}</span>
                     <ExternalLink className="h-3 w-3 ml-auto text-muted-foreground" />
                   </a>
                 )}
@@ -804,7 +809,7 @@ function VendorDetailDialog({
 
               {vendor.notes && (
                 <div className="bg-muted/30 rounded-lg p-3">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Notes</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">{t("vendors.notes_label")}</p>
                   <p className="text-sm text-foreground whitespace-pre-line">{vendor.notes}</p>
                 </div>
               )}
@@ -813,13 +818,13 @@ function VendorDetailDialog({
 
             <TabsContent value="payments" className="space-y-4 mt-4">
               {vendor.payments.length === 0 && !showAddPayment && (
-                <p className="text-sm text-muted-foreground text-center py-4">No payments scheduled yet. Add your deposit and final payment milestones.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t("vendors.no_payments_yet")}</p>
               )}
 
               {(vendor.payments.length > 0 || vendor.depositAmount > 0) && (
                 <div className="rounded-xl border bg-muted/20 p-4 space-y-2.5">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground font-medium">Total Paid</span>
+                    <span className="text-muted-foreground font-medium">{t("vendors.total_paid_label")}</span>
                     <span className={`font-bold tabular-nums ${totalForProgress > 0 && paidAmount >= totalForProgress ? "text-green-600 dark:text-green-400" : "text-foreground"}`}>
                       {formatCurrency(paidAmount)}
                       <span className="font-normal text-muted-foreground"> / {formatCurrency(totalForProgress)}</span>
@@ -832,15 +837,15 @@ function VendorDetailDialog({
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>
                       {vendor.depositAmount > 0 && (
-                        <span>Deposit {formatCurrency(vendor.depositAmount)} included · </span>
+                        <span>{t("vendors.deposit_included", { amount: formatCurrency(vendor.depositAmount) })}</span>
                       )}
-                      {vendor.payments.filter(p => p.isPaid).length} of {vendor.payments.length} milestone{vendor.payments.length !== 1 ? "s" : ""} paid
+                      {t("vendors.milestones_paid", { paid: vendor.payments.filter(p => p.isPaid).length, total: vendor.payments.length })}
                     </span>
                     {totalForProgress > 0 && paidAmount < totalForProgress && (
-                      <span>{formatCurrency(totalForProgress - paidAmount)} remaining</span>
+                      <span>{t("vendors.remaining_label", { amount: formatCurrency(totalForProgress - paidAmount) })}</span>
                     )}
                     {totalForProgress > 0 && paidAmount >= totalForProgress && (
-                      <span className="text-green-600 dark:text-green-400 font-medium">All paid!</span>
+                      <span className="text-green-600 dark:text-green-400 font-medium">{t("vendors.all_paid")}</span>
                     )}
                   </div>
                 </div>
@@ -866,7 +871,7 @@ function VendorDetailDialog({
                   className="w-full"
                   data-testid="btn-add-payment"
                 >
-                  <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Payment Milestone
+                  <Plus className="h-3.5 w-3.5 mr-1.5" /> {t("vendors.add_payment_milestone")}
                 </Button>
               )}
             </TabsContent>
@@ -881,11 +886,11 @@ function VendorDetailDialog({
       <AlertDialog open={deletingPaymentId !== null} onOpenChange={() => setDeletingPaymentId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove payment?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently delete this payment milestone.</AlertDialogDescription>
+            <AlertDialogTitle>{t("vendors.remove_payment_title")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("vendors.remove_payment_desc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("vendors.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -894,7 +899,7 @@ function VendorDetailDialog({
                 }
               }}
             >
-              Remove
+              {t("vendors.payment_removed")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -995,6 +1000,7 @@ function VendorCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       className="bg-card border border-border/60 rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer group relative"
@@ -1064,7 +1070,7 @@ function VendorCard({
             className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors"
           >
             <Link2 className="h-3 w-3 flex-shrink-0" />
-            <span className="truncate">Vendor Portal</span>
+            <span className="truncate">{t("vendors.vendor_portal_label")}</span>
           </a>
         )}
         {vendor.notes && (
@@ -1084,7 +1090,7 @@ function VendorCard({
             <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-lg">
               <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
               <span className="text-xs font-medium text-red-700 dark:text-red-300">
-                Payment overdue by {Math.abs(days)} day{Math.abs(days) !== 1 ? "s" : ""}
+                {t("vendors.payment_overdue_banner", { n: Math.abs(days) })}
               </span>
             </div>
           );
@@ -1094,7 +1100,7 @@ function VendorCard({
             <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-lg">
               <Bell className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
               <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
-                {days === 0 ? "Payment due today" : `Payment due in ${days} day${days !== 1 ? "s" : ""}`}
+                {days === 0 ? t("vendors.payment_due_today_banner") : t("vendors.payment_due_in_banner", { n: days })}
               </span>
             </div>
           );
@@ -1102,7 +1108,7 @@ function VendorCard({
         return (
           <div className="flex items-center gap-1.5 mb-3 text-xs text-muted-foreground">
             <Bell className="h-3 w-3 flex-shrink-0" />
-            <span>Next payment: {formatDate(vendor.nextPaymentDue)}</span>
+            <span>{t("vendors.next_payment_label", { date: formatDate(vendor.nextPaymentDue) })}</span>
           </div>
         );
       })()}
@@ -1111,20 +1117,20 @@ function VendorCard({
         <div>
           <p className="text-lg font-serif font-semibold text-foreground">{formatCurrency(vendor.totalCost)}</p>
           {vendor.depositAmount > 0 && (
-            <p className="text-xs text-muted-foreground">Deposit: {formatCurrency(vendor.depositAmount)}</p>
+            <p className="text-xs text-muted-foreground">{t("vendors.deposit_label", { amount: formatCurrency(vendor.depositAmount) })}</p>
           )}
         </div>
         <div className="flex items-center gap-1.5">
           {vendor.contractSigned && (
             <div className="flex items-center gap-1 text-xs text-green-700 bg-green-50 dark:bg-green-900/30 dark:text-green-300 px-2 py-0.5 rounded-full">
               <CheckCircle2 className="h-3 w-3" />
-              <span>Signed</span>
+              <span>{t("vendors.signed_badge")}</span>
             </div>
           )}
           {!vendor.contractSigned && (
             <div className="flex items-center gap-1 text-xs text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-0.5 rounded-full">
               <Clock className="h-3 w-3" />
-              <span>Pending</span>
+              <span>{t("vendors.pending_badge")}</span>
             </div>
           )}
         </div>
@@ -1151,9 +1157,9 @@ export default function Vendors() {
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
         setDeletingVendorId(null);
-        toast({ title: "Vendor removed" });
+        toast({ title: t("vendors.vendor_removed") });
       },
-      onError: () => toast({ title: "Failed to delete vendor", variant: "destructive" }),
+      onError: () => toast({ title: t("vendors.failed_delete"), variant: "destructive" }),
     },
   });
 
@@ -1218,21 +1224,21 @@ export default function Vendors() {
           <div className="bg-card border border-border/60 rounded-2xl p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <DollarSign className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wider">Total Committed</span>
+              <span className="text-xs font-medium uppercase tracking-wider">{t("vendors.total_committed")}</span>
             </div>
             <p className="text-2xl font-serif font-semibold">{formatCurrency(totalCost)}</p>
           </div>
           <div className="bg-card border border-border/60 rounded-2xl p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <DollarSign className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wider">Paid Out</span>
+              <span className="text-xs font-medium uppercase tracking-wider">{t("vendors.paid_out")}</span>
             </div>
             <p className="text-2xl font-serif font-semibold">{formatCurrency(paidOut)}</p>
           </div>
           <div className="bg-card border border-border/60 rounded-2xl p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <CheckCircle2 className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wider">Contracts Signed</span>
+              <span className="text-xs font-medium uppercase tracking-wider">{t("vendors.contracts_signed")}</span>
             </div>
             <p className="text-2xl font-serif font-semibold">{signedCount}<span className="text-base text-muted-foreground font-sans font-normal"> / {vendors.length}</span></p>
           </div>
@@ -1270,7 +1276,7 @@ export default function Vendors() {
             data-testid="btn-add-vendor-card"
           >
             <Plus className="h-6 w-6" />
-            <span className="text-sm font-medium">Add Vendor</span>
+            <span className="text-sm font-medium">{t("vendors.add_vendor_card")}</span>
           </button>
         </div>
       )}
@@ -1303,19 +1309,19 @@ export default function Vendors() {
       <AlertDialog open={deletingVendorId !== null} onOpenChange={() => setDeletingVendorId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove this vendor?</AlertDialogTitle>
+            <AlertDialogTitle>{t("vendors.remove_vendor_title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the vendor and all associated payments. This action cannot be undone.
+              {t("vendors.remove_vendor_desc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("vendors.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => { if (deletingVendorId) deleteMutation.mutate({ id: deletingVendorId }); }}
               data-testid="btn-confirm-delete-vendor"
             >
-              Remove Vendor
+              {t("vendors.remove_vendor_action")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

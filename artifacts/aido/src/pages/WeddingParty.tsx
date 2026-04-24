@@ -73,6 +73,7 @@ function MemberForm({
   isPending: boolean;
   submitLabel: string;
 }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState<Partial<Member>>({ ...EMPTY, ...defaultValues });
   const set = (k: keyof Member, v: string | number | null) => setForm(f => ({ ...f, [k]: v }));
 
@@ -80,11 +81,11 @@ function MemberForm({
     <form onSubmit={e => { e.preventDefault(); onSubmit(form); }} className="space-y-4 py-1">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5 sm:col-span-2">
-          <Label>Full Name *</Label>
+          <Label>{t("party.full_name")}</Label>
           <Input placeholder="Jane Smith" value={form.name ?? ""} onChange={e => set("name", e.target.value)} required />
         </div>
         <div className="space-y-1.5">
-          <Label>Role *</Label>
+          <Label>{t("party.role_label")}</Label>
           <Select value={form.role ?? "Bridesmaid"} onValueChange={v => set("role", v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -93,33 +94,34 @@ function MemberForm({
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>Side</Label>
+          <Label>{t("party.side_label")}</Label>
           <Select value={form.side ?? "bride"} onValueChange={v => set("side", v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {SIDES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+              <SelectItem value="bride">{t("party.side_bridal")}</SelectItem>
+              <SelectItem value="groom">{t("party.side_groomsmen")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>Phone</Label>
+          <Label>{t("party.phone_label")}</Label>
           <Input type="tel" placeholder="(555) 000-0000" value={form.phone ?? ""} onChange={e => set("phone", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label>Email</Label>
+          <Label>{t("party.email_label")}</Label>
           <Input type="email" placeholder="jane@email.com" value={form.email ?? ""} onChange={e => set("email", e.target.value)} />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label>Notes</Label>
-          <Textarea placeholder="Allergies, accessibility needs, hotel info…" rows={2} className="resize-none" value={form.notes ?? ""} onChange={e => set("notes", e.target.value)} />
+          <Label>{t("party.notes_label")}</Label>
+          <Textarea placeholder={t("party.notes_placeholder")} rows={2} className="resize-none" value={form.notes ?? ""} onChange={e => set("notes", e.target.value)} />
         </div>
       </div>
       <div className="flex gap-3">
         <Button type="button" variant="outline" className="flex-1" onClick={() => setForm({ ...EMPTY })}>
-          <RotateCcw className="h-4 w-4 mr-2" /> Reset
+          <RotateCcw className="h-4 w-4 mr-2" /> {t("party.reset")}
         </Button>
         <Button type="submit" className="flex-1" disabled={isPending || !form.name || !form.role}>
-          {isPending ? "Saving…" : submitLabel}
+          {isPending ? t("party.saving") : submitLabel}
         </Button>
       </div>
     </form>
@@ -127,8 +129,9 @@ function MemberForm({
 }
 
 function MemberCard({ member, onEdit, onDelete }: { member: Member; onEdit: () => void; onDelete: () => void }) {
+  const { t } = useTranslation();
   const sideColor = SIDE_COLORS[member.side] ?? SIDE_COLORS.bride;
-  const sideLabel = SIDES.find(s => s.value === member.side)?.label ?? member.side;
+  const sideLabel = member.side === "bride" ? t("party.side_bridal") : member.side === "groom" ? t("party.side_groomsmen") : member.side;
 
   return (
     <Card className="border-border/60 shadow-sm hover:shadow-md transition-shadow">
@@ -165,12 +168,12 @@ function MemberCard({ member, onEdit, onDelete }: { member: Member; onEdit: () =
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Remove {member.name}?</AlertDialogTitle>
-                  <AlertDialogDescription>This will permanently remove them from your wedding party.</AlertDialogDescription>
+                  <AlertDialogTitle>{t("party.remove_member_title", { name: member.name })}</AlertDialogTitle>
+                  <AlertDialogDescription>{t("party.remove_member_desc")}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={onDelete} className="bg-destructive hover:bg-destructive/90">Remove</AlertDialogAction>
+                  <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDelete} className="bg-destructive hover:bg-destructive/90">{t("party.remove_btn")}</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -243,31 +246,31 @@ export default function WeddingParty() {
   const addMutation = useMutation({
     mutationFn: (data: Partial<Member>) =>
       authFetch(`${API}/api/wedding-party`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
-    onSuccess: () => { toast({ title: "Member added" }); setIsAdding(false); invalidate(); },
-    onError: () => toast({ title: "Failed to add member", variant: "destructive" }),
+    onSuccess: () => { toast({ title: t("party.member_added") }); setIsAdding(false); invalidate(); },
+    onError: () => toast({ title: t("party.member_add_failed"), variant: "destructive" }),
   });
 
   const editMutation = useMutation({
     mutationFn: (data: Partial<Member>) =>
       authFetch(`${API}/api/wedding-party/${editMember?.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
-    onSuccess: () => { toast({ title: "Member updated" }); setEditMember(null); invalidate(); },
-    onError: () => toast({ title: "Failed to update member", variant: "destructive" }),
+    onSuccess: () => { toast({ title: t("party.member_updated") }); setEditMember(null); invalidate(); },
+    onError: () => toast({ title: t("party.member_update_failed"), variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) =>
       authFetch(`${API}/api/wedding-party/${id}`, { method: "DELETE" }),
-    onSuccess: () => { toast({ title: "Member removed" }); invalidate(); },
-    onError: () => toast({ title: "Failed to remove member", variant: "destructive" }),
+    onSuccess: () => { toast({ title: t("party.member_removed") }); invalidate(); },
+    onError: () => toast({ title: t("party.member_remove_failed"), variant: "destructive" }),
   });
 
   const bridesSide = members.filter(m => m.side === "bride");
   const groomsSide = members.filter(m => m.side === "groom");
 
   const stats = [
-    { label: "Total Members", value: members.length, color: "text-primary" },
-    { label: "Bridal Party", value: bridesSide.length, color: "text-rose-600" },
-    { label: "Groomsmen", value: groomsSide.length, color: "text-sky-600" },
+    { label: t("party.stat_total"), value: members.length, color: "text-primary" },
+    { label: t("party.stat_bridal"), value: bridesSide.length, color: "text-rose-600" },
+    { label: t("party.stat_groomsmen"), value: groomsSide.length, color: "text-sky-600" },
   ];
 
   if (isLoading) {
@@ -287,7 +290,7 @@ export default function WeddingParty() {
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] text-center">
-        <p className="text-muted-foreground">Failed to load wedding party. Please refresh.</p>
+        <p className="text-muted-foreground">{t("party.load_error")}</p>
       </div>
     );
   }
@@ -340,19 +343,19 @@ export default function WeddingParty() {
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <Heart className="h-8 w-8 text-primary" />
             </div>
-            <h3 className="text-xl font-serif text-foreground mb-2">No wedding party yet</h3>
+            <h3 className="text-xl font-serif text-foreground mb-2">{t("party.empty_title")}</h3>
             <p className="text-muted-foreground mb-6 max-w-sm text-sm">
-              Add your bridesmaids, groomsmen, flower girls, and more. Keep all their contact info and notes in one place.
+              {t("party.empty_desc")}
             </p>
             <Button onClick={() => setIsAdding(true)}>
-              <Plus className="h-4 w-4 mr-2" /> Add First Member
+              <Plus className="h-4 w-4 mr-2" /> {t("party.add_first_member")}
             </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-8">
           <PartyGroup
-            title="Bridal Party"
+            title={t("party.bridal_party")}
             members={bridesSide}
             icon={Heart}
             color="bg-rose-50 text-rose-700 border-rose-200"
@@ -360,7 +363,7 @@ export default function WeddingParty() {
             onDelete={id => deleteMutation.mutate(id)}
           />
           <PartyGroup
-            title="Groomsmen"
+            title={t("party.groomsmen")}
             members={groomsSide}
             icon={Users}
             color="bg-sky-50 text-sky-700 border-sky-200"
@@ -374,14 +377,14 @@ export default function WeddingParty() {
       <Dialog open={!!editMember} onOpenChange={open => !open && setEditMember(null)}>
         <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-serif text-2xl text-primary">Edit Member</DialogTitle>
+            <DialogTitle className="font-serif text-2xl text-primary">{t("party.edit_member")}</DialogTitle>
           </DialogHeader>
           {editMember && (
             <MemberForm
               defaultValues={editMember}
               onSubmit={d => editMutation.mutate(d)}
               isPending={editMutation.isPending}
-              submitLabel="Save Changes"
+              submitLabel={t("party.save_changes")}
             />
           )}
         </DialogContent>

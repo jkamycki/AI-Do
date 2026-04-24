@@ -72,23 +72,27 @@ const STATUS_CONFIG: Record<CollabStatus, { label: string; icon: React.ElementTy
 };
 
 function RoleBadge({ role }: { role: CollabRole }) {
+  const { t } = useTranslation();
   const cfg = ROLE_CONFIG[role];
   const Icon = cfg.icon;
+  const labelKey = `settings.role_${role}` as const;
   return (
     <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full border ${cfg.color}`}>
       <Icon className="h-3 w-3" />
-      {cfg.label}
+      {t(labelKey)}
     </span>
   );
 }
 
 function StatusBadge({ status }: { status: CollabStatus }) {
+  const { t } = useTranslation();
   const cfg = STATUS_CONFIG[status];
   const Icon = cfg.icon;
+  const labelKey = `settings.status_${status}` as const;
   return (
     <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${cfg.color}`}>
       <Icon className="h-3 w-3" />
-      {cfg.label}
+      {t(labelKey)}
     </span>
   );
 }
@@ -307,6 +311,7 @@ function LanguageSwitcherCard() {
 }
 
 function VendorBccEmailCard() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: profile, isLoading } = useGetProfile();
@@ -343,9 +348,9 @@ function VendorBccEmailCard() {
         onSuccess: () => {
           qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
           setDraft(null);
-          toast({ title: "Saved", description: current ? `Vendor messages will also BCC ${current}.` : "Removed personal BCC." });
+          toast({ title: t("settings.cc_email_saved_toast"), description: current ? t("settings.cc_email_saved_desc", { email: current }) : t("settings.cc_removed") });
         },
-        onError: () => toast({ variant: "destructive", title: "Error", description: "Could not save." }),
+        onError: () => toast({ variant: "destructive", title: t("common.error"), description: t("settings.cc_email_invalid") }),
       }
     );
   }
@@ -358,9 +363,9 @@ function VendorBccEmailCard() {
             <Mail className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <CardTitle className="font-serif text-lg">CC My Personal Email</CardTitle>
+            <CardTitle className="font-serif text-lg">{t("settings.cc_email_title")}</CardTitle>
             <CardDescription>
-              Get a copy of every vendor message in your personal inbox. The vendor will see this address and can reply-all to include you directly.
+              {t("settings.cc_email_desc")}
             </CardDescription>
           </div>
         </div>
@@ -369,13 +374,13 @@ function VendorBccEmailCard() {
         {isLoading ? (
           <div className="h-10 bg-muted animate-pulse rounded-md" />
         ) : !profile ? (
-          <p className="text-sm text-muted-foreground">Complete your wedding profile first.</p>
+          <p className="text-sm text-muted-foreground">{t("settings.complete_profile_first")}</p>
         ) : (
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <Input
                 type="email"
-                placeholder="you@youremail.com"
+                placeholder={t("settings.cc_email_placeholder")}
                 value={current}
                 onChange={(e) => setDraft(e.target.value)}
                 className="max-w-sm bg-background"
@@ -389,16 +394,16 @@ function VendorBccEmailCard() {
                 {saveProfile.isPending ? (
                   <div className="h-3.5 w-3.5 rounded-full border-2 border-white/20 border-t-white animate-spin" />
                 ) : hasChange ? (
-                  <>Save</>
+                  <>{t("settings.cc_email_save")}</>
                 ) : (
-                  <><Check className="h-3.5 w-3.5 mr-1" /> Saved</>
+                  <><Check className="h-3.5 w-3.5 mr-1" /> {t("settings.cc_email_saved")}</>
                 )}
               </Button>
             </div>
             {!isValid && current && (
-              <p className="text-xs text-destructive">Enter a valid email address.</p>
+              <p className="text-xs text-destructive">{t("settings.cc_email_invalid")}</p>
             )}
-            <p className="text-xs text-muted-foreground">Leave empty to disable. The vendor will not see this address.</p>
+            <p className="text-xs text-muted-foreground">{t("settings.cc_email_hint")}</p>
           </div>
         )}
       </CardContent>
@@ -407,6 +412,7 @@ function VendorBccEmailCard() {
 }
 
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const { getToken } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -484,10 +490,10 @@ export default function SettingsPage() {
       window.location.href = `mailto:${inviteEmail}?subject=${subject}&body=${body}`;
 
       setInviteEmail("");
-      toast({ title: "Invite ready!", description: "Your email app should open with the invite pre-filled." });
+      toast({ title: t("settings.invite_ready"), description: t("settings.invite_ready_desc") });
     },
     onError: (err: Error) => {
-      toast({ title: "Failed to invite", description: err.message, variant: "destructive" });
+      toast({ title: t("settings.invite_failed"), description: err.message, variant: "destructive" });
     },
   });
 
@@ -503,7 +509,7 @@ export default function SettingsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
       setEditingRoleId(null);
-      toast({ title: "Role updated" });
+      toast({ title: t("settings.role_change_saved") });
     },
   });
 
@@ -518,11 +524,11 @@ export default function SettingsPage() {
     onSuccess: () => {
       setConfirmRemoveId(null);
       qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
-      toast({ title: "Collaborator removed" });
+      toast({ title: t("settings.collab_removed") });
     },
     onError: (err: Error) => {
       setConfirmRemoveId(null);
-      toast({ title: "Could not remove collaborator", description: err.message, variant: "destructive" });
+      toast({ title: t("settings.could_not_remove"), description: err.message, variant: "destructive" });
     },
   });
 
@@ -536,13 +542,13 @@ export default function SettingsPage() {
       qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
       const link = `${window.location.origin}/invite/${collab.inviteToken}`;
       setNewInviteLink(link);
-      toast({ title: "New invite link generated" });
+      toast({ title: t("settings.new_invite_link") });
     },
   });
 
   const copyLink = (link: string) => {
     navigator.clipboard.writeText(link);
-    toast({ title: "Link copied to clipboard!" });
+    toast({ title: t("settings.link_copied") });
   };
 
   const getInviteLink = (token: string) =>
@@ -553,13 +559,13 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
           <SettingsIcon className="h-8 w-8" />
-          Settings
+          {t("settings.title")}
         </h1>
-        <p className="text-lg text-muted-foreground mt-1">Manage your workspace and collaborators.</p>
+        <p className="text-lg text-muted-foreground mt-1">{t("settings.subtitle")}</p>
       </div>
 
       <div className="flex gap-1 p-1 bg-muted/40 rounded-xl w-fit">
-        {([["collaborators", "Collaborators", Users], ["account", "Account", SettingsIcon]] as const).map(([key, label, Icon]) => (
+        {([["collaborators", t("settings.collab_tab"), Users], ["account", t("settings.account_tab"), SettingsIcon]] as const).map(([key, label, Icon]) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
@@ -579,26 +585,26 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-serif text-xl flex items-center gap-2">
                 <UserPlus className="h-5 w-5 text-primary" />
-                Invite a Collaborator
+                {t("settings.invite_collaborator")}
               </CardTitle>
               <CardDescription>
-                Invite your partner, wedding planner, or vendors to collaborate on your wedding workspace.
+                {t("settings.invite_collaborator_desc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Email Address</label>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">{t("settings.email_address_label")}</label>
                   <Input
                     type="email"
-                    placeholder="collaborator@email.com"
+                    placeholder={t("settings.email_placeholder")}
                     value={inviteEmail}
                     onChange={e => setInviteEmail(e.target.value)}
                     className="border-primary/20 focus:border-primary"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Role</label>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">{t("settings.invite_role")}</label>
                   <div className="grid grid-cols-3 gap-2">
                     {(Object.entries(ROLE_CONFIG) as [CollabRole, typeof ROLE_CONFIG[CollabRole]][]).map(([role, cfg]) => {
                       const Icon = cfg.icon;
@@ -613,8 +619,8 @@ export default function SettingsPage() {
                             }`}
                         >
                           <Icon className="h-4 w-4 mb-1" />
-                          <div className="font-semibold">{cfg.label}</div>
-                          <div className="text-muted-foreground mt-0.5 leading-tight">{cfg.description}</div>
+                          <div className="font-semibold">{t(`settings.role_${role}`)}</div>
+                          <div className="text-muted-foreground mt-0.5 leading-tight">{t(`settings.role_${role}_desc`)}</div>
                         </button>
                       );
                     })}
@@ -627,14 +633,14 @@ export default function SettingsPage() {
                 className="gap-2"
               >
                 <Mail className="h-4 w-4" />
-                {inviteMutation.isPending ? "Creating Invite…" : "Create Invite Link"}
+                {inviteMutation.isPending ? t("settings.creating_invite") : t("settings.create_invite")}
               </Button>
 
               {newInviteLink && (
                 <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-medium text-primary">Invite link created — your email app should be opening.</p>
+                    <p className="text-sm font-medium text-primary">{t("settings.invite_link_created_msg")}</p>
                   </div>
                   <div className="flex gap-2 items-center">
                     <a
@@ -647,7 +653,7 @@ export default function SettingsPage() {
                     </a>
                     <Button size="sm" variant="outline" onClick={() => copyLink(newInviteLink)} className="gap-1.5 shrink-0">
                       <Copy className="h-3.5 w-3.5" />
-                      Copy
+                      {t("settings.copy_btn")}
                     </Button>
                   </div>
                   <div className="flex items-center gap-2">
@@ -665,9 +671,9 @@ export default function SettingsPage() {
                       }}
                     >
                       <Mail className="h-3.5 w-3.5" />
-                      Open Email Again
+                      {t("settings.open_email_again")}
                     </Button>
-                    <p className="text-xs text-muted-foreground">Or copy the link above if your email app didn't open.</p>
+                    <p className="text-xs text-muted-foreground">{t("settings.email_didnt_open")}</p>
                   </div>
                 </div>
               )}
@@ -679,10 +685,10 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-serif text-xl flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
-                Your Collaborators
+                {t("settings.your_collaborators")}
               </CardTitle>
               <CardDescription>
-                People who have been invited to your wedding workspace.
+                {t("settings.collab_section_desc")}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -695,7 +701,7 @@ export default function SettingsPage() {
                   <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
                     <Users className="h-8 w-8 text-primary/50" />
                   </div>
-                  <p className="text-muted-foreground">No collaborators yet. Invite someone above to get started.</p>
+                  <p className="text-muted-foreground">{t("settings.no_collabs_invite")}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -710,8 +716,8 @@ export default function SettingsPage() {
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-foreground truncate">{collab.inviteeEmail}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            Invited {new Date(collab.invitedAt).toLocaleDateString()}
-                            {collab.acceptedAt && ` · Accepted ${new Date(collab.acceptedAt).toLocaleDateString()}`}
+                            {t("settings.invited_on", { date: new Date(collab.invitedAt).toLocaleDateString() })}
+                            {collab.acceptedAt && t("settings.accepted_on", { date: new Date(collab.acceptedAt).toLocaleDateString() })}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
@@ -725,7 +731,7 @@ export default function SettingsPage() {
                               <button
                                 className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors text-xs"
                                 onClick={() => setEditingRoleId(editingRoleId === collab.id ? null : collab.id)}
-                                title="Change role"
+                                title={t("settings.change_role")}
                               >
                                 <Shield className="h-4 w-4" />
                               </button>
@@ -738,7 +744,7 @@ export default function SettingsPage() {
                                       className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-muted transition-colors
                                         ${collab.role === r ? "text-primary font-medium" : "text-foreground"}`}
                                     >
-                                      {ROLE_CONFIG[r].label}
+                                      {t(`settings.role_${r}`)}
                                     </button>
                                   ))}
                                 </div>
@@ -750,14 +756,14 @@ export default function SettingsPage() {
                               <button
                                 className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                                 onClick={() => copyLink(getInviteLink(collab.inviteToken))}
-                                title="Copy invite link"
+                                title={t("settings.copy_invite_link")}
                               >
                                 <Copy className="h-4 w-4" />
                               </button>
                               <button
                                 className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                                 onClick={() => resendMutation.mutate(collab.id)}
-                                title="Regenerate invite link"
+                                title={t("settings.regen_invite_link")}
                               >
                                 <RefreshCw className="h-4 w-4" />
                               </button>
@@ -765,20 +771,20 @@ export default function SettingsPage() {
                           )}
                           {confirmRemoveId === collab.id ? (
                             <div className="flex items-center gap-1.5 bg-destructive/5 border border-destructive/20 rounded-lg px-2.5 py-1.5">
-                              <span className="text-xs text-destructive font-medium whitespace-nowrap" title="Removes access only — no wedding data is deleted">Remove access?</span>
+                              <span className="text-xs text-destructive font-medium whitespace-nowrap">{t("settings.remove_access")}</span>
                               <button
                                 className="text-xs font-semibold text-destructive hover:underline"
                                 onClick={() => removeMutation.mutate(collab.id)}
                                 disabled={removeMutation.isPending}
                               >
-                                {removeMutation.isPending ? "…" : "Yes"}
+                                {removeMutation.isPending ? "…" : t("common.yes")}
                               </button>
                               <span className="text-muted-foreground text-xs">·</span>
                               <button
                                 className="text-xs text-muted-foreground hover:text-foreground"
                                 onClick={() => setConfirmRemoveId(null)}
                               >
-                                No
+                                {t("common.no")}
                               </button>
                             </div>
                           ) : (
@@ -802,29 +808,29 @@ export default function SettingsPage() {
 
           <Card className="border-none shadow-sm">
             <CardHeader>
-              <CardTitle className="font-serif text-lg">Permission Reference</CardTitle>
+              <CardTitle className="font-serif text-lg">{t("settings.permission_ref")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border/50">
-                      <th className="text-left py-2 pr-4 text-muted-foreground font-medium">Feature</th>
-                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">Partner</th>
-                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">Planner</th>
-                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">Vendor</th>
+                      <th className="text-left py-2 pr-4 text-muted-foreground font-medium">{t("settings.col_feature")}</th>
+                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">{t("settings.role_partner")}</th>
+                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">{t("settings.role_planner")}</th>
+                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">{t("settings.role_vendor")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/30">
                     {[
-                      ["View Timeline", true, true, true],
-                      ["Download PDFs", true, true, true],
-                      ["View Budget & Checklist", true, true, false],
-                      ["Edit Timeline & Checklist", true, true, false],
-                      ["Edit Budget", true, true, false],
-                      ["Manage Vendors & Emails", true, true, false],
-                      ["Manage Collaborators", true, false, false],
-                      ["Delete Workspace", false, false, false],
+                      [t("settings.feat_view_timeline"), true, true, true],
+                      [t("settings.feat_download_pdfs"), true, true, true],
+                      [t("settings.feat_view_budget"), true, true, false],
+                      [t("settings.feat_edit_timeline"), true, true, false],
+                      [t("settings.feat_edit_budget"), true, true, false],
+                      [t("settings.feat_manage_vendors"), true, true, false],
+                      [t("settings.feat_manage_collabs"), true, false, false],
+                      [t("settings.feat_delete_workspace"), false, false, false],
                     ].map(([feature, partner, planner, vendor]) => (
                       <tr key={String(feature)}>
                         <td className="py-2.5 pr-4 text-foreground">{feature}</td>
@@ -855,12 +861,12 @@ export default function SettingsPage() {
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
                 <SettingsIcon className="h-8 w-8 text-primary/60" />
               </div>
-              <h3 className="font-serif text-xl text-foreground">Account Settings</h3>
+              <h3 className="font-serif text-xl text-foreground">{t("settings.account_settings")}</h3>
               <p className="text-muted-foreground max-w-sm mx-auto">
-                Manage your name, email, password, and connected accounts through your Clerk profile.
+                {t("settings.account_settings_desc")}
               </p>
               <Button variant="outline" onClick={() => window.open("https://accounts.clerk.dev", "_blank")}>
-                Manage Account
+                {t("settings.manage_account")}
               </Button>
             </CardContent>
           </Card>

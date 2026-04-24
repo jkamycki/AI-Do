@@ -71,7 +71,7 @@ export default function Timeline() {
       queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
       setIsDirty(false);
     },
-    onError: () => toast({ title: "Could not save timeline", variant: "destructive" }),
+    onError: () => toast({ title: t("timeline.could_not_save"), variant: "destructive" }),
   });
 
   // Refs for autosave-on-unmount
@@ -154,20 +154,20 @@ export default function Timeline() {
 
   const handleGenerate = () => {
     if (!profile?.id) {
-      toast({ variant: "destructive", title: "Profile Required", description: "Please complete your wedding profile first." });
+      toast({ variant: "destructive", title: t("timeline.profile_required_title"), description: t("timeline.profile_required_desc") });
       return;
     }
     generateTimeline.mutate(
       { data: { profileId: profile.id, dayVision: dayVision.trim() || undefined } },
       {
         onSuccess: () => {
-          toast({ title: "Timeline Generated", description: "Your personalized wedding day timeline is ready." });
+          toast({ title: t("timeline.generated_title"), description: t("timeline.generated_desc") });
           queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
           setIsDirty(false);
           setEditingIndex(null);
           setAddingEvent(false);
         },
-        onError: () => toast({ variant: "destructive", title: "Generation Failed", description: "Could not generate timeline. Please try again." }),
+        onError: () => toast({ variant: "destructive", title: t("timeline.generation_failed_title"), description: t("timeline.generation_failed_desc") }),
       }
     );
   };
@@ -191,9 +191,9 @@ export default function Timeline() {
       document.body.appendChild(a); a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast({ title: "PDF Downloaded", description: "Your timeline has been saved as a PDF." });
+      toast({ title: t("timeline.pdf_downloaded"), description: t("timeline.pdf_downloaded_desc") });
     } catch {
-      toast({ variant: "destructive", title: "Download Failed", description: "Could not generate PDF. Please try again." });
+      toast({ variant: "destructive", title: t("timeline.pdf_failed_title"), description: t("timeline.pdf_failed_desc") });
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -236,13 +236,13 @@ export default function Timeline() {
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              Save Changes
+              {t("timeline.save_btn")}
             </Button>
           )}
           {hasTimeline && (
             <Button variant="outline" size="lg" onClick={handleDownloadPdf} disabled={isDownloadingPdf} data-testid="btn-download-timeline-pdf" className="gap-2">
               {isDownloadingPdf ? <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" /> : <FileDown className="h-4 w-4" />}
-              {isDownloadingPdf ? "Exporting…" : "Download PDF"}
+              {isDownloadingPdf ? t("timeline.exporting_pdf") : t("timeline.download_pdf")}
             </Button>
           )}
           <Button
@@ -255,12 +255,12 @@ export default function Timeline() {
             {generateTimeline.isPending ? (
               <span className="flex items-center gap-2">
                 <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                Crafting Magic...
+                {t("timeline.crafting_magic")}
               </span>
             ) : (
               <span className="flex items-center gap-2">
                 <Wand2 className="h-4 w-4" />
-                {hasTimeline ? "Regenerate Timeline" : "Generate with AI"}
+                {hasTimeline ? t("timeline.regenerate_timeline") : t("timeline.generate_with_ai")}
               </span>
             )}
           </Button>
@@ -271,22 +271,22 @@ export default function Timeline() {
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-serif text-primary flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
-            Your Vision for the Day
+            {t("timeline.vision_card_title")}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Describe the feel, tone, and moments that matter most — the AI will use this to craft a timeline that truly reflects your day.
+            {t("timeline.vision_card_desc")}
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
           <Textarea
-            placeholder="e.g. We want a relaxed, intimate morning with just close family before the ceremony. The afternoon should feel celebratory and high-energy with lots of dancing..."
+            placeholder={t("timeline.vision_placeholder")}
             value={dayVision}
             onChange={e => handleVisionChange(e.target.value)}
             className="min-h-[120px] resize-none text-sm leading-relaxed"
             data-testid="input-day-vision"
           />
           <p className="text-[11px] text-muted-foreground text-right">
-            {dayVision.length > 0 ? `${dayVision.length} characters · saved automatically` : "Saved automatically as you type"}
+            {dayVision.length > 0 ? t("timeline.vision_chars", { n: dayVision.length }) : t("timeline.vision_autosave")}
           </p>
         </CardContent>
       </Card>
@@ -297,12 +297,12 @@ export default function Timeline() {
             <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
               <Clock className="h-10 w-10 text-primary" />
             </div>
-            <h3 className="font-serif text-2xl text-primary">No Timeline Yet</h3>
+            <h3 className="font-serif text-2xl text-primary">{t("timeline.no_timeline_yet")}</h3>
             <p className="text-muted-foreground">
-              Fill in your vision above, then let our AI craft a seamless flow for your wedding day.
+              {t("timeline.no_timeline_generate_desc")}
             </p>
             <Button onClick={handleGenerate} disabled={generateTimeline.isPending} size="lg" className="px-8 shadow-md">
-              Generate Timeline Now
+              {t("timeline.generate_now")}
             </Button>
           </div>
         </Card>
@@ -327,7 +327,7 @@ export default function Timeline() {
                             <Input
                               value={editDraft.time}
                               onChange={e => setEditDraft(d => ({ ...d, time: e.target.value }))}
-                              placeholder="Time (e.g. 10:00 AM)"
+                              placeholder={t("timeline.time_placeholder")}
                               className="w-36 font-serif text-primary"
                             />
                             <Select value={editDraft.category} onValueChange={v => setEditDraft(d => ({ ...d, category: v }))}>
@@ -342,21 +342,21 @@ export default function Timeline() {
                           <Input
                             value={editDraft.title}
                             onChange={e => setEditDraft(d => ({ ...d, title: e.target.value }))}
-                            placeholder="Event title"
+                            placeholder={t("timeline.event_title_placeholder")}
                             className="font-medium"
                           />
                           <Textarea
                             value={editDraft.description}
                             onChange={e => setEditDraft(d => ({ ...d, description: e.target.value }))}
-                            placeholder="Description"
+                            placeholder={t("timeline.description_placeholder")}
                             className="text-sm resize-none min-h-[72px]"
                           />
                           <div className="flex gap-2">
                             <Button size="sm" onClick={submitEdit} disabled={!editDraft.time.trim() || !editDraft.title.trim()}>
-                              <Check className="h-3.5 w-3.5 mr-1.5" /> Save
+                              <Check className="h-3.5 w-3.5 mr-1.5" /> {t("timeline.save_btn")}
                             </Button>
                             <Button size="sm" variant="ghost" onClick={cancelEdit}>
-                              <X className="h-3.5 w-3.5 mr-1.5" /> Cancel
+                              <X className="h-3.5 w-3.5 mr-1.5" /> {t("timeline.cancel_btn")}
                             </Button>
                           </div>
                         </CardContent>
@@ -392,22 +392,22 @@ export default function Timeline() {
                           <button
                             onClick={() => startEdit(index)}
                             className="p-1.5 rounded border border-border/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 text-xs"
-                            title="Edit event"
-                            aria-label="Edit event"
+                            title={t("timeline.edit_event_title")}
+                            aria-label={t("timeline.edit_event_title")}
                             data-testid={`btn-timeline-edit-${index}`}
                           >
                             <Pencil className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Edit</span>
+                            <span className="hidden sm:inline">{t("timeline.edit_btn")}</span>
                           </button>
                           <button
                             onClick={() => deleteEvent(index)}
                             className="p-1.5 rounded border border-border/40 hover:bg-destructive/10 hover:border-destructive/40 text-destructive transition-colors flex items-center gap-1 text-xs"
-                            title="Delete event"
-                            aria-label="Delete event"
+                            title={t("timeline.delete_event_title")}
+                            aria-label={t("timeline.delete_event_title")}
                             data-testid={`btn-timeline-delete-${index}`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Delete</span>
+                            <span className="hidden sm:inline">{t("timeline.delete_btn")}</span>
                           </button>
                         </div>
                       </CardContent>
@@ -423,12 +423,12 @@ export default function Timeline() {
                 <div className="w-full md:w-1/2 md:order-last md:pl-12">
                   <Card className="border-primary/30 shadow-md">
                     <CardContent className="p-5 space-y-3">
-                      <p className="text-sm font-medium text-primary">New Event</p>
+                      <p className="text-sm font-medium text-primary">{t("timeline.new_event_label")}</p>
                       <div className="flex gap-2">
                         <Input
                           value={newEvent.time}
                           onChange={e => setNewEvent(d => ({ ...d, time: e.target.value }))}
-                          placeholder="Time (e.g. 3:00 PM)"
+                          placeholder={t("timeline.time_placeholder_new")}
                           className="w-36 font-serif text-primary"
                           autoFocus
                         />
@@ -442,20 +442,20 @@ export default function Timeline() {
                       <Input
                         value={newEvent.title}
                         onChange={e => setNewEvent(d => ({ ...d, title: e.target.value }))}
-                        placeholder="Event title"
+                        placeholder={t("timeline.event_title_placeholder")}
                         className="font-medium"
                       />
                       <Textarea
                         value={newEvent.description}
                         onChange={e => setNewEvent(d => ({ ...d, description: e.target.value }))}
-                        placeholder="Description (optional)"
+                        placeholder={t("timeline.description_optional")}
                         className="text-sm resize-none min-h-[60px]"
                       />
                       <div className="flex gap-2">
                         <Button size="sm" onClick={submitAdd} disabled={!newEvent.time.trim() || !newEvent.title.trim()}>
-                          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Event
+                          <Plus className="h-3.5 w-3.5 mr-1.5" /> {t("timeline.add_event_btn")}
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setAddingEvent(false)}>Cancel</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setAddingEvent(false)}>{t("timeline.cancel_btn")}</Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -464,7 +464,7 @@ export default function Timeline() {
             ) : (
               <div className="flex justify-center pt-4">
                 <Button variant="outline" onClick={startAdd} className="gap-2">
-                  <Plus className="h-4 w-4" /> Add Event
+                  <Plus className="h-4 w-4" /> {t("timeline.add_event_btn")}
                 </Button>
               </div>
             )}

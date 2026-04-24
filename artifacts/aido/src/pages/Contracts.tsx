@@ -88,6 +88,7 @@ function formatSize(bytes: number | null) {
 }
 
 function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; redFlagCount: number }) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -101,7 +102,7 @@ function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; re
       if (!res.ok) throw new Error(data.error ?? "Failed to generate");
       setEmail(data.negotiationEmail);
     } catch (err) {
-      toast({ title: "Couldn't generate response", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" });
+      toast({ title: t("contracts.couldnt_generate"), description: err instanceof Error ? err.message : "", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -111,7 +112,7 @@ function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; re
     if (!email) return;
     navigator.clipboard.writeText(email).then(() => {
       setCopied(true);
-      toast({ title: "Copied to clipboard!" });
+      toast({ title: t("contracts.copied_toast") });
       setTimeout(() => setCopied(false), 2000);
     });
   }
@@ -120,14 +121,14 @@ function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; re
     <div className="rounded-xl border border-border/40 bg-muted/20 overflow-hidden">
       <div className="px-4 py-3 flex items-center gap-2 border-b border-border/40 bg-muted/30">
         <MessageSquareDiff className="h-4 w-4 text-primary" />
-        <span className="text-sm font-semibold text-foreground">Negotiation Response</span>
-        <span className="ml-1 text-xs text-muted-foreground">({redFlagCount} flag{redFlagCount !== 1 ? "s" : ""} to address)</span>
+        <span className="text-sm font-semibold text-foreground">{t("contracts.negotiation_response")}</span>
+        <span className="ml-1 text-xs text-muted-foreground">({t("contracts.flags_count", { n: redFlagCount })})</span>
       </div>
       <div className="p-4 space-y-3">
         {!email ? (
           <>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              AI will draft a professional email you can send directly to the vendor — addressing each red flag diplomatically and requesting specific contract changes.
+              {t("contracts.ai_draft_desc")}
             </p>
             <Button
               size="sm"
@@ -136,8 +137,8 @@ function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; re
               disabled={loading}
             >
               {loading
-                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Drafting response…</>
-                : <><MessageSquareDiff className="h-3.5 w-3.5" /> Draft Negotiation Email</>}
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("contracts.drafting")}</>
+                : <><MessageSquareDiff className="h-3.5 w-3.5" /> {t("contracts.draft_negotiation_email")}</>}
             </Button>
           </>
         ) : (
@@ -148,13 +149,13 @@ function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; re
               rows={14}
               className="text-sm font-mono leading-relaxed resize-y bg-background text-foreground placeholder:text-muted-foreground border-border/60 focus:ring-primary/40"
             />
-            <p className="text-[11px] text-muted-foreground">Edit as needed — replace <strong className="text-foreground">[Your Names]</strong> and <strong className="text-foreground">[Vendor Name]</strong> before sending.</p>
+            <p className="text-[11px] text-muted-foreground">{t("contracts.edit_note")}</p>
             <div className="flex gap-2">
               <Button size="sm" className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={copy}>
-                {copied ? <><Check className="h-3.5 w-3.5" /> Copied!</> : <><Copy className="h-3.5 w-3.5" /> Copy to Clipboard</>}
+                {copied ? <><Check className="h-3.5 w-3.5" /> {t("contracts.copied")}</> : <><Copy className="h-3.5 w-3.5" /> {t("contracts.copy_to_clipboard")}</>}
               </Button>
               <Button size="sm" variant="outline" className="border-border/60 text-foreground hover:bg-muted/50" onClick={generate} disabled={loading}>
-                {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Regenerate"}
+                {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("contracts.regenerate")}
               </Button>
             </div>
           </div>
@@ -165,6 +166,7 @@ function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; re
 }
 
 function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; contractId: number }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-5 pt-2">
       {/* Summary */}
@@ -180,7 +182,7 @@ function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; c
           </span>
         )}
         <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${riskColor(analysis.overallRiskLevel)}`}>
-          {analysis.overallRiskLevel.toUpperCase()} RISK
+          {t("contracts.risk_level", { level: analysis.overallRiskLevel.toUpperCase() })}
         </span>
       </div>
 
@@ -188,7 +190,7 @@ function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; c
       {analysis.redFlags?.length > 0 && (
         <div>
           <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-            <AlertTriangle className="h-4 w-4 text-amber-500" /> Red Flags ({analysis.redFlags.length})
+            <AlertTriangle className="h-4 w-4 text-amber-500" /> {t("contracts.red_flags_title", { n: analysis.redFlags.length })}
           </h4>
           <div className="space-y-3">
             {analysis.redFlags.map((flag, i) => (
@@ -214,7 +216,7 @@ function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; c
       {analysis.paymentTerms && analysis.paymentTerms !== "Not specified" && (
         <div className="rounded-xl border border-border/40 p-4 bg-muted/20">
           <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
-            <DollarSign className="h-4 w-4 text-primary" /> Payment Terms
+            <DollarSign className="h-4 w-4 text-primary" /> {t("contracts.payment_terms")}
           </h4>
           <p className="text-sm text-muted-foreground leading-relaxed">{analysis.paymentTerms}</p>
         </div>
@@ -224,7 +226,7 @@ function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; c
       {analysis.cancellationPolicy && analysis.cancellationPolicy !== "Not specified" && (
         <div className="rounded-xl border border-border/40 p-4 bg-muted/20">
           <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
-            <Calendar className="h-4 w-4 text-primary" /> Cancellation Policy
+            <Calendar className="h-4 w-4 text-primary" /> {t("contracts.cancellation_policy")}
           </h4>
           <p className="text-sm text-muted-foreground leading-relaxed">{analysis.cancellationPolicy}</p>
         </div>
@@ -234,7 +236,7 @@ function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; c
       {analysis.liabilityNotes && analysis.liabilityNotes !== "Not specified" && (
         <div className="rounded-xl border border-border/40 p-4 bg-muted/20">
           <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
-            <Shield className="h-4 w-4 text-primary" /> Liability
+            <Shield className="h-4 w-4 text-primary" /> {t("contracts.liability")}
           </h4>
           <p className="text-sm text-muted-foreground leading-relaxed">{analysis.liabilityNotes}</p>
         </div>
@@ -244,13 +246,13 @@ function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; c
       {analysis.keyTerms?.length > 0 && (
         <div>
           <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-            <FileCheck className="h-4 w-4 text-primary" /> Key Terms
+            <FileCheck className="h-4 w-4 text-primary" /> {t("contracts.key_terms")}
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {analysis.keyTerms.map((t, i) => (
+            {analysis.keyTerms.map((term, i) => (
               <div key={i} className="rounded-lg bg-muted/30 border border-border/30 px-3 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t.label}</p>
-                <p className="text-sm font-medium text-foreground mt-0.5">{t.value}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{term.label}</p>
+                <p className="text-sm font-medium text-foreground mt-0.5">{term.value}</p>
               </div>
             ))}
           </div>
@@ -261,7 +263,7 @@ function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; c
       {analysis.positives?.length > 0 && (
         <div>
           <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" /> What Looks Good
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" /> {t("contracts.what_looks_good")}
           </h4>
           <ul className="space-y-1.5">
             {analysis.positives.map((p, i) => (
@@ -277,7 +279,7 @@ function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; c
       {analysis.missingClauses?.length > 0 && (
         <div>
           <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
-            <AlertCircle className="h-4 w-4 text-amber-500" /> Missing Clauses
+            <AlertCircle className="h-4 w-4 text-amber-500" /> {t("contracts.missing_clauses")}
           </h4>
           <ul className="space-y-1.5">
             {analysis.missingClauses.map((c, i) => (
@@ -293,7 +295,7 @@ function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; c
       {analysis.negotiationTips?.length > 0 && (
         <div className="rounded-xl bg-primary/5 border border-primary/15 p-4">
           <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
-            <Lightbulb className="h-4 w-4 text-primary" /> Negotiation Tips
+            <Lightbulb className="h-4 w-4 text-primary" /> {t("contracts.negotiation_tips")}
           </h4>
           <ul className="space-y-1.5">
             {analysis.negotiationTips.map((tip, i) => (
@@ -314,6 +316,7 @@ function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; c
 }
 
 function ContractCard({ contract, onDelete, onRename }: { contract: Contract; onDelete: () => void; onRename: (name: string) => void }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState(contract.fileName);
@@ -351,7 +354,7 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
                 <CardTitle className="text-base font-semibold truncate">{contract.fileName}</CardTitle>
                 <button
                   className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted text-muted-foreground shrink-0"
-                  title="Rename"
+                  title={t("contracts.rename")}
                   onClick={() => { setNameInput(contract.fileName); setRenaming(true); }}
                 ><Pencil className="h-3 w-3" /></button>
               </div>
@@ -377,7 +380,7 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
             )}
             {analysis?.redFlags?.length > 0 && (
               <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100">
-                {analysis.redFlags.length} flag{analysis.redFlags.length !== 1 ? "s" : ""}
+                {t("contracts.flags_count", { n: analysis.redFlags.length })}
               </span>
             )}
           </div>
@@ -392,7 +395,7 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
             onClick={() => setExpanded(e => !e)}
           >
             {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            {expanded ? "Hide Analysis" : "View AI Analysis"}
+            {expanded ? t("contracts.hide_analysis") : t("contracts.view_ai_analysis")}
           </Button>
           <Button
             variant="ghost"
@@ -412,7 +415,7 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
 
         {expanded && !analysis && (
           <div className="mt-4 border-t border-border/30 pt-4 text-sm text-muted-foreground text-center py-4">
-            No analysis available for this contract.
+            {t("contracts.no_analysis")}
           </div>
         )}
       </CardContent>
@@ -439,7 +442,7 @@ export default function Contracts() {
     mutationFn: (id: number) => authFetch(`${API}/api/contracts/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contracts"] });
-      toast({ title: "Contract removed." });
+      toast({ title: t("contracts.contract_removed") });
     },
   });
 
@@ -452,16 +455,16 @@ export default function Contracts() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contracts"] });
-      toast({ title: "Contract renamed." });
+      toast({ title: t("contracts.contract_renamed") });
     },
-    onError: () => toast({ title: "Could not rename contract", variant: "destructive" }),
+    onError: () => toast({ title: t("contracts.could_not_rename"), variant: "destructive" }),
   });
 
   function stageFile(file: File) {
     const allowed = ["application/pdf", "text/plain", "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
     if (!allowed.includes(file.type) && !file.name.endsWith(".txt")) {
-      toast({ title: "Unsupported file", description: "Please upload a PDF or .txt file.", variant: "destructive" });
+      toast({ title: t("contracts.unsupported_file"), description: t("contracts.unsupported_file_desc"), variant: "destructive" });
       return;
     }
     const baseName = file.name.replace(/\.[^.]+$/, "");
@@ -482,11 +485,11 @@ export default function Contracts() {
         throw new Error((err as { error?: string }).error ?? "Upload failed");
       }
       await qc.invalidateQueries({ queryKey: ["contracts"] });
-      toast({ title: "Contract analyzed!", description: "AI has reviewed your contract." });
+      toast({ title: t("contracts.contract_analyzed"), description: t("contracts.contract_analyzed_desc") });
       setPendingFile(null);
       setPendingName("");
     } catch (err) {
-      toast({ title: "Upload failed", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" });
+      toast({ title: t("contracts.upload_failed"), description: err instanceof Error ? err.message : "", variant: "destructive" });
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -523,15 +526,15 @@ export default function Contracts() {
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-xl border border-border/50 bg-card p-3 text-center">
             <p className="text-2xl font-bold text-primary">{contracts.length}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Contracts</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("contracts.stat_contracts")}</p>
           </div>
           <div className="rounded-xl border border-border/50 bg-card p-3 text-center">
             <p className="text-2xl font-bold text-red-600">{highRiskCount}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">High Risk</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("contracts.stat_high_risk")}</p>
           </div>
           <div className="rounded-xl border border-border/50 bg-card p-3 text-center">
             <p className="text-2xl font-bold text-amber-600">{totalFlags}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Total Flags</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("contracts.stat_total_flags")}</p>
           </div>
         </div>
       )}
@@ -544,27 +547,27 @@ export default function Contracts() {
               <FileText className="h-5 w-5 text-primary" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Selected file</p>
+              <p className="text-xs text-muted-foreground">{t("contracts.selected_file")}</p>
               <p className="text-sm font-medium truncate">{pendingFile.name}</p>
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Name this contract in the system</label>
+            <label className="text-sm font-medium">{t("contracts.name_contract")}</label>
             <Input
               autoFocus
               value={pendingName}
               onChange={e => setPendingName(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") confirmUpload(); if (e.key === "Escape") { setPendingFile(null); setPendingName(""); } }}
-              placeholder="e.g. Venue Contract, Photographer Agreement…"
+              placeholder={t("contracts.contract_name_placeholder")}
             />
-            <p className="text-xs text-muted-foreground">This is just the display name — you can rename it later too.</p>
+            <p className="text-xs text-muted-foreground">{t("contracts.display_name_hint")}</p>
           </div>
           <div className="flex gap-2">
             <Button className="flex-1" onClick={confirmUpload} disabled={!pendingName.trim()}>
-              <Upload className="h-4 w-4 mr-2" /> Upload & Analyze
+              <Upload className="h-4 w-4 mr-2" /> {t("contracts.analyze_and_save")}
             </Button>
             <Button variant="outline" onClick={() => { setPendingFile(null); setPendingName(""); if (fileRef.current) fileRef.current.value = ""; }}>
-              Cancel
+              {t("contracts.cancel")}
             </Button>
           </div>
         </div>
@@ -585,8 +588,8 @@ export default function Contracts() {
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
                   <FileText className="h-6 w-6 text-primary" />
                 </div>
-                <p className="text-sm font-medium text-primary">Analyzing contract with AI…</p>
-                <p className="text-xs text-muted-foreground">Extracting red flags and payment dates</p>
+                <p className="text-sm font-medium text-primary">{t("contracts.analyzing_ai")}</p>
+                <p className="text-xs text-muted-foreground">{t("contracts.extracting")}</p>
               </>
             ) : (
               <>
@@ -594,11 +597,11 @@ export default function Contracts() {
                   <Upload className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Drop your contract here</p>
-                  <p className="text-xs text-muted-foreground mt-1">or click to browse · PDF or TXT · max 10 MB</p>
+                  <p className="text-sm font-semibold text-foreground">{t("contracts.drop_here")}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("contracts.click_to_browse")}</p>
                 </div>
                 <Button size="sm" variant="outline" className="mt-1 border-primary/30 text-primary" onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}>
-                  Choose File
+                  {t("contracts.choose_file")}
                 </Button>
               </>
             )}
@@ -616,8 +619,8 @@ export default function Contracts() {
       ) : contracts.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <FileText className="h-12 w-12 mx-auto mb-4 opacity-25" />
-          <p className="font-medium">No contracts yet</p>
-          <p className="text-sm mt-1">Upload your first vendor contract above to get an AI review.</p>
+          <p className="font-medium">{t("contracts.no_contracts_title")}</p>
+          <p className="text-sm mt-1">{t("contracts.no_contracts_desc")}</p>
         </div>
       ) : (
         <div className="space-y-4">

@@ -93,9 +93,9 @@ export default function DayOf() {
       setEditableEvents(updated);
       setHasUnsavedChanges(false);
       qc.invalidateQueries({ queryKey: ["/api/timeline"] });
-      toast({ title: "Event updated" });
+      toast({ title: t("dayof.event_updated") });
     } catch {
-      toast({ title: "Couldn't save changes", variant: "destructive" });
+      toast({ title: t("dayof.save_failed"), variant: "destructive" });
     } finally {
       setIsSaving(false);
       setEditingIndex(null);
@@ -105,7 +105,7 @@ export default function DayOf() {
 
   const resetAll = async () => {
     if (!timeline?.id) return;
-    if (!confirm("Reset all edits to the original AI-generated timeline?")) return;
+    if (!confirm(t("dayof.reset_confirm"))) return;
     const original = timeline.events as TimelineEvent[];
     setIsSaving(true);
     try {
@@ -113,9 +113,9 @@ export default function DayOf() {
       setEditableEvents(original);
       setHasUnsavedChanges(false);
       qc.invalidateQueries({ queryKey: ["/api/timeline"] });
-      toast({ title: "Timeline reset" });
+      toast({ title: t("dayof.timeline_reset") });
     } catch {
-      toast({ title: "Couldn't reset timeline", variant: "destructive" });
+      toast({ title: t("dayof.reset_failed"), variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
@@ -156,7 +156,7 @@ export default function DayOf() {
           </p>
         )}
         {hasUnsavedChanges && (
-          <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">Unsaved changes</p>
+          <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">{t("dayof.unsaved_changes")}</p>
         )}
       </div>
 
@@ -180,7 +180,7 @@ export default function DayOf() {
                 disabled={isSaving}
               >
                 <RotateCcw className="h-3 w-3" />
-                Reset to original
+                {t("dayof.reset_original")}
               </Button>
             </div>
 
@@ -234,7 +234,7 @@ export default function DayOf() {
                               value={editDraft?.title ?? ""}
                               onChange={(e) => setEditDraft(d => d ? { ...d, title: e.target.value } : d)}
                               className="font-serif text-base h-8 border-primary/40 flex-1"
-                              placeholder="Event title"
+                              placeholder={t("dayof.event_title_placeholder")}
                             />
                           ) : (
                             <h4
@@ -248,7 +248,7 @@ export default function DayOf() {
                           {!editing && (
                             <button
                               className="flex-shrink-0 p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                              title="Edit this event"
+                              title={t("dayof.edit_event_title")}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveIndex(i);
@@ -265,7 +265,7 @@ export default function DayOf() {
                             value={editDraft?.description ?? ""}
                             onChange={(e) => setEditDraft(d => d ? { ...d, description: e.target.value } : d)}
                             className="mt-2 text-sm resize-none border-primary/40 bg-background/80 min-h-[80px]"
-                            placeholder="Describe what happens..."
+                            placeholder={t("dayof.description_placeholder")}
                             rows={3}
                           />
                         ) : (
@@ -289,7 +289,7 @@ export default function DayOf() {
                                 disabled={isSaving}
                               >
                                 <X className="h-3.5 w-3.5" />
-                                Cancel
+                                {t("dayof.cancel_btn")}
                               </Button>
                               <Button
                                 size="sm"
@@ -298,7 +298,7 @@ export default function DayOf() {
                                 disabled={isSaving}
                               >
                                 <Save className="h-3.5 w-3.5" />
-                                {isSaving ? "Saving…" : "Save"}
+                                {isSaving ? t("dayof.saving") : t("dayof.save_btn")}
                               </Button>
                             </>
                           ) : isActive ? (
@@ -312,7 +312,7 @@ export default function DayOf() {
                               }}
                             >
                               <CheckCircle2 className="h-4 w-4" />
-                              {isDone ? "Mark Undone" : "Mark Done"}
+                              {isDone ? t("dayof.mark_undone") : t("dayof.mark_done")}
                             </Button>
                           ) : null}
                         </div>
@@ -339,16 +339,16 @@ export default function DayOf() {
               data-testid="btn-emergency-trigger"
             >
               <Siren className="h-6 w-6" />
-              EMERGENCY HELP
+              {t("dayof.emergency_btn")}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl">
             <DialogHeader>
               <DialogTitle className="text-destructive font-serif text-2xl flex items-center gap-2">
-                <AlertCircle className="h-6 w-6" /> Stay Calm
+                <AlertCircle className="h-6 w-6" /> {t("dayof.stay_calm")}
               </DialogTitle>
               <DialogDescription className="text-base">
-                What's going wrong right now? Be specific.
+                {t("dayof.whats_wrong")}
               </DialogDescription>
             </DialogHeader>
 
@@ -356,7 +356,7 @@ export default function DayOf() {
               {!getAdvice.data ? (
                 <>
                   <Textarea
-                    placeholder="e.g. The florist forgot the bridal bouquet, ceremony is in 45 mins!"
+                    placeholder={t("dayof.emergency_placeholder")}
                     value={emergencyText}
                     onChange={(e) => setEmergencyText(e.target.value)}
                     className="min-h-[120px] text-lg p-4 resize-none bg-muted/50 border-destructive/20 focus-visible:ring-destructive"
@@ -368,18 +368,18 @@ export default function DayOf() {
                     className="w-full h-14 text-lg bg-destructive hover:bg-destructive/90"
                     data-testid="btn-emergency-submit"
                   >
-                    {getAdvice.isPending ? "Analyzing crisis..." : "Get Immediate Advice"}
+                    {getAdvice.isPending ? t("dayof.analyzing") : t("dayof.get_advice")}
                   </Button>
                 </>
               ) : (
                 <div className="space-y-6 animate-in zoom-in-95 duration-300">
                   <div className="bg-secondary/20 p-4 rounded-xl border border-secondary/30">
-                    <h4 className="font-serif text-lg font-medium text-foreground mb-2">Instant Advice:</h4>
+                    <h4 className="font-serif text-lg font-medium text-foreground mb-2">{t("dayof.instant_advice")}</h4>
                     <p className="text-foreground leading-relaxed">{getAdvice.data.advice}</p>
                   </div>
 
                   <div>
-                    <h4 className="font-serif text-lg font-medium text-destructive mb-3">Action Steps:</h4>
+                    <h4 className="font-serif text-lg font-medium text-destructive mb-3">{t("dayof.action_steps")}</h4>
                     <ul className="space-y-3">
                       {getAdvice.data.steps.map((step, idx) => (
                         <li key={idx} className="flex gap-3 bg-muted p-3 rounded-lg">
@@ -393,7 +393,7 @@ export default function DayOf() {
                   </div>
 
                   <Button variant="outline" className="w-full h-12" onClick={resetEmergency}>
-                    Ask another question
+                    {t("dayof.ask_another")}
                   </Button>
                 </div>
               )}
