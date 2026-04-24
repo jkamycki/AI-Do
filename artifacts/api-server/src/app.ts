@@ -322,6 +322,8 @@ import resendInboundRouter from "./routes/webhooks/resendInbound";
 app.use("/api", resendInboundRouter);
 import cloudflareInboundRouter from "./routes/webhooks/cloudflareInbound";
 app.use("/api", cloudflareInboundRouter);
+import clerkWebhookRouter from "./routes/webhooks/clerkWebhook";
+app.use("/api", clerkWebhookRouter);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
