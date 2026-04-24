@@ -368,7 +368,7 @@ function TableCard({
 }
 
 export default function SeatingChartPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -664,6 +664,7 @@ export default function SeatingChartPage() {
         tableCount,
         seatsPerTable,
         additionalNotes: additionalNotes.trim() || undefined,
+        language: i18n.language,
       };
 
       const r = await authedFetch("/api/seating/generate", { method: "POST", body: JSON.stringify(payload) });

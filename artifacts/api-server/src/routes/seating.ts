@@ -26,12 +26,17 @@ interface Table {
 
 router.post("/seating/generate", requireAuth, async (req, res) => {
   try {
-    const { guests, tableCount, seatsPerTable, additionalNotes } = req.body as {
+    const { guests, tableCount, seatsPerTable, additionalNotes, language } = req.body as {
       guests: Guest[];
       tableCount: number;
       seatsPerTable: number;
       additionalNotes?: string;
+      language?: string;
     };
+
+    const langInstruction = language && language !== "en"
+      ? `IMPORTANT: You must write ALL text in your response (table names, themes, insights, warnings) in the language with code "${language}". Do not use English for any of these fields.`
+      : "";
 
     if (!guests?.length) {
       return res.status(400).json({ error: "Please add at least one guest." });
@@ -44,6 +49,7 @@ router.post("/seating/generate", requireAuth, async (req, res) => {
     }).join("\n");
 
     const prompt = `You are an expert wedding planner creating a harmonious seating chart. Your goal is to minimize conflict and maximize happiness.
+${langInstruction}
 
 GUESTS (${guests.length} total):
 ${guestList}
