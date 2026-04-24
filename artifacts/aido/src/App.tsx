@@ -137,8 +137,11 @@ function SignInPage() {
 function CustomSignInForm() {
   const clerk = useClerk();
   const [, setLocation] = useLocation();
+  const [mode, setMode] = useState<"signin" | "reset_request" | "reset_verify">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -160,7 +163,79 @@ function CustomSignInForm() {
     if (first?.code === "form_identifier_not_found" || first?.code === "form_password_incorrect") {
       return "We couldn't find an account with those credentials. If you previously deleted your account, please sign up again.";
     }
+    if (first?.code === "form_password_pwned") {
+      return "Your password was found in a known data breach. For your safety, please use \"Forgot password\" below to set a new one.";
+    }
     return first?.longMessage || first?.message || (err as Error)?.message || fallback;
+  }
+
+  async function handleSendResetCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setInfo(null);
+    if (!email.trim()) {
+      setError("Please enter your email address.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const signInClient = await waitForSignInClient();
+      if (!signInClient) {
+        setError("Auth is still loading. Please try again in a moment.");
+        setSubmitting(false);
+        return;
+      }
+      await signInClient.create({
+        strategy: "reset_password_email_code",
+        identifier: email.trim(),
+      });
+      setMode("reset_verify");
+      setInfo(`We sent a 6-digit code to ${email.trim()}. Enter it below along with your new password.`);
+    } catch (err) {
+      setError(extractError(err, "Could not send reset code. Please check the email and try again."));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleVerifyReset(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!resetCode.trim() || !newPassword) {
+      setError("Code and new password are required.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError("New password must be at least 8 characters.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const signInClient = await waitForSignInClient();
+      if (!signInClient || !clerk.setActive) {
+        setError("Auth is still loading. Please try again in a moment.");
+        setSubmitting(false);
+        return;
+      }
+      const attempt = await signInClient.attemptFirstFactor({
+        strategy: "reset_password_email_code",
+        code: resetCode.trim(),
+        password: newPassword,
+      });
+      if (attempt.status === "complete" && attempt.createdSessionId) {
+        await clerk.setActive({ session: attempt.createdSessionId });
+        setLocation("/dashboard");
+      } else if (attempt.status === "needs_new_password") {
+        setError("Code accepted but the password could not be set. Please try a different password.");
+        setSubmitting(false);
+      } else {
+        setError("Could not complete the password reset. Please try again.");
+        setSubmitting(false);
+      }
+    } catch (err) {
+      setError(extractError(err, "Password reset failed."));
+      setSubmitting(false);
+    }
   }
 
   async function waitForSignInClient() {
@@ -296,89 +371,240 @@ function CustomSignInForm() {
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
-        <button
-          type="button"
-          onClick={handleGoogle}
-          disabled={oauthLoading !== null}
-          style={{ ...oauthBtn, opacity: oauthLoading ? 0.7 : 1, cursor: oauthLoading ? "wait" : "pointer" }}
-        >
-          {oauthLoading === "oauth_google" ? "Redirecting to Google…" : "Continue with Google"}
-        </button>
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", margin: "1rem 0" }}>
-        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
-        <span style={{ color: "#b8a9cc", fontSize: "0.75rem" }}>or</span>
-        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
-      </div>
-
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-        <div>
-          <label style={labelStyle}>Email address</label>
-          <input
-            type="email"
-            required
-            style={inputStyle}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Password</label>
-          <input
-            type="password"
-            required
-            style={inputStyle}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-          />
-        </div>
-
-        {error && (
-          <div
-            style={{
-              color: "#ff8a8a",
-              background: "rgba(255,80,80,0.08)",
-              border: "1px solid rgba(255,80,80,0.25)",
-              borderRadius: "0.5rem",
-              padding: "0.55rem 0.75rem",
-              fontSize: "0.82rem",
-            }}
-          >
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={submitting}
+      {error && (
+        <div
           style={{
-            width: "100%",
-            padding: "0.7rem",
+            color: "#ff8a8a",
+            background: "rgba(255,80,80,0.08)",
+            border: "1px solid rgba(255,80,80,0.25)",
             borderRadius: "0.5rem",
-            border: "none",
-            background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
-            color: "#ffffff",
-            fontSize: "0.95rem",
-            fontWeight: 600,
-            cursor: submitting ? "not-allowed" : "pointer",
-            opacity: submitting ? 0.7 : 1,
-            marginTop: "0.25rem",
+            padding: "0.55rem 0.75rem",
+            fontSize: "0.82rem",
+            marginBottom: "0.85rem",
           }}
         >
-          {submitting ? "Signing in..." : "Sign in"}
-        </button>
-      </form>
+          {error}
+        </div>
+      )}
 
-      <p style={{ color: "#b8a9cc", fontSize: "0.82rem", marginTop: "1rem", textAlign: "center" }}>
-        Don't have an account?{" "}
-        <a href={`${basePath}/sign-up`} style={{ color: "#F5C842", fontWeight: 500 }}>
-          Sign up
-        </a>
-      </p>
+      {mode === "signin" && (
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
+            <button
+              type="button"
+              onClick={handleGoogle}
+              disabled={oauthLoading !== null}
+              style={{ ...oauthBtn, opacity: oauthLoading ? 0.7 : 1, cursor: oauthLoading ? "wait" : "pointer" }}
+            >
+              {oauthLoading === "oauth_google" ? "Redirecting to Google…" : "Continue with Google"}
+            </button>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", margin: "1rem 0" }}>
+            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
+            <span style={{ color: "#b8a9cc", fontSize: "0.75rem" }}>or</span>
+            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
+          </div>
+
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+            <div>
+              <label style={labelStyle}>Email address</label>
+              <input
+                type="email"
+                required
+                style={inputStyle}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+              />
+            </div>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.35rem" }}>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>Password</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setInfo(null);
+                    setPassword("");
+                    setMode("reset_request");
+                  }}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#F5C842",
+                    fontSize: "0.75rem",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <input
+                type="password"
+                required
+                style={inputStyle}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{
+                width: "100%",
+                padding: "0.7rem",
+                borderRadius: "0.5rem",
+                border: "none",
+                background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
+                color: "#ffffff",
+                fontSize: "0.95rem",
+                fontWeight: 600,
+                cursor: submitting ? "not-allowed" : "pointer",
+                opacity: submitting ? 0.7 : 1,
+                marginTop: "0.25rem",
+              }}
+            >
+              {submitting ? "Signing in..." : "Sign in"}
+            </button>
+          </form>
+
+          <p style={{ color: "#b8a9cc", fontSize: "0.82rem", marginTop: "1rem", textAlign: "center" }}>
+            Don't have an account?{" "}
+            <a href={`${basePath}/sign-up`} style={{ color: "#F5C842", fontWeight: 500 }}>
+              Sign up
+            </a>
+          </p>
+        </>
+      )}
+
+      {mode === "reset_request" && (
+        <form onSubmit={handleSendResetCode} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+          <p style={{ color: "#b8a9cc", fontSize: "0.85rem", margin: 0 }}>
+            Enter the email address for your A.IDO account. We'll send you a 6-digit code to set a new password.
+          </p>
+          <div>
+            <label style={labelStyle}>Email address</label>
+            <input
+              type="email"
+              required
+              style={inputStyle}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            style={{
+              width: "100%",
+              padding: "0.7rem",
+              borderRadius: "0.5rem",
+              border: "none",
+              background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
+              color: "#ffffff",
+              fontSize: "0.95rem",
+              fontWeight: 600,
+              cursor: submitting ? "not-allowed" : "pointer",
+              opacity: submitting ? 0.7 : 1,
+            }}
+          >
+            {submitting ? "Sending code..." : "Send reset code"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setInfo(null);
+              setMode("signin");
+            }}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#b8a9cc",
+              fontSize: "0.82rem",
+              cursor: "pointer",
+              textAlign: "center",
+            }}
+          >
+            ← Back to sign in
+          </button>
+        </form>
+      )}
+
+      {mode === "reset_verify" && (
+        <form onSubmit={handleVerifyReset} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+          <div>
+            <label style={labelStyle}>6-digit code</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+              style={inputStyle}
+              value={resetCode}
+              onChange={(e) => setResetCode(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>New password (at least 8 characters)</label>
+            <input
+              type="password"
+              required
+              minLength={8}
+              style={inputStyle}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+            />
+            <p style={{ color: "#8a7ba8", fontSize: "0.72rem", marginTop: "0.35rem", lineHeight: 1.4 }}>
+              Tip: avoid common words. Try a mix of letters, numbers, and symbols, or use a password manager.
+            </p>
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            style={{
+              width: "100%",
+              padding: "0.7rem",
+              borderRadius: "0.5rem",
+              border: "none",
+              background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
+              color: "#ffffff",
+              fontSize: "0.95rem",
+              fontWeight: 600,
+              cursor: submitting ? "not-allowed" : "pointer",
+              opacity: submitting ? 0.7 : 1,
+            }}
+          >
+            {submitting ? "Updating password..." : "Set new password & sign in"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setInfo(null);
+              setResetCode("");
+              setNewPassword("");
+              setMode("signin");
+            }}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#b8a9cc",
+              fontSize: "0.82rem",
+              cursor: "pointer",
+              textAlign: "center",
+            }}
+          >
+            ← Back to sign in
+          </button>
+        </form>
+      )}
     </div>
   );
 }
