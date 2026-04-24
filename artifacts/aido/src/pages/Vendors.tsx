@@ -1002,9 +1002,10 @@ function VendorCard({
   onDelete: () => void;
 }) {
   const { t } = useTranslation();
-  const paidFromPayments = vendor.payments.filter((p) => p.isPaid).reduce((s, p) => s + p.amount, 0);
+  const payments = vendor.payments ?? [];
+  const paidFromPayments = payments.filter((p) => p.isPaid).reduce((s, p) => s + p.amount, 0);
   const paidAmount = vendor.depositAmount + paidFromPayments;
-  const totalScheduled = vendor.payments.reduce((s, p) => s + p.amount, 0);
+  const totalScheduled = payments.reduce((s, p) => s + p.amount, 0);
   const totalForProgress = vendor.totalCost > 0 ? vendor.totalCost : totalScheduled;
   const isFullyPaid = totalForProgress > 0 && paidAmount >= totalForProgress;
   return (
