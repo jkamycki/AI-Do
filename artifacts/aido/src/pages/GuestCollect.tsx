@@ -146,8 +146,8 @@ export default function GuestCollect() {
       style={{ backgroundImage: "radial-gradient(hsl(40 82% 42% / 0.07) 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
 
       {/* Top brand bar */}
-      <div className="w-full py-3 px-6 flex items-center justify-center border-b border-white/10 bg-black/20 backdrop-blur-sm">
-        <Logo className="h-14 w-auto object-contain" />
+      <div className="w-full py-4 px-6 flex items-center justify-center border-b border-white/10 bg-black/20 backdrop-blur-sm">
+        <Logo className="h-24 w-auto object-contain" />
       </div>
 
       <div className="flex-1 flex flex-col items-center py-10 px-4">
