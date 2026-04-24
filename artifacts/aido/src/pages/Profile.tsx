@@ -438,7 +438,11 @@ export default function Profile() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Wedding Vibe / Style</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                    <Select
+                      key={field.value || "empty"}
+                      value={field.value || undefined}
+                      onValueChange={field.onChange}
+                    >
                       <FormControl>
                         <SelectTrigger className="bg-background" data-testid="select-vibe">
                           <SelectValue placeholder="Select a vibe" />
