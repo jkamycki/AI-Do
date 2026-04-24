@@ -315,11 +315,19 @@ function CustomSignUpForm() {
   }
 
   async function handleOAuth(strategy: "oauth_google" | "oauth_apple") {
-    if (!signUpLoaded) return;
     setError(null);
     try {
+      const start = Date.now();
+      while (!clerk.loaded && Date.now() - start < 8000) {
+        await new Promise((res) => setTimeout(res, 150));
+      }
+      const signUpClient = clerk.client?.signUp;
+      if (!signUpClient) {
+        setError("Auth is still loading. Please try again in a moment.");
+        return;
+      }
       const origin = window.location.origin;
-      await signUp.authenticateWithRedirect({
+      await signUpClient.authenticateWithRedirect({
         strategy,
         redirectUrl: `${origin}${basePath}/sso-callback`,
         redirectUrlComplete: `${origin}${basePath}/dashboard`,
