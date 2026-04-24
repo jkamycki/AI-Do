@@ -12,10 +12,24 @@ import { requireAuth } from "../middlewares/requireAuth";
 
 const router = Router();
 
+async function getUserEmailLower(userId: string): Promise<string | null> {
+  try {
+    const u = await clerkClient.users.getUser(userId);
+    const primaryId = u.primaryEmailAddressId;
+    const primary =
+      u.emailAddresses.find((e) => e.id === primaryId) ?? u.emailAddresses[0];
+    return primary?.emailAddress?.toLowerCase() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 router.delete("/account", requireAuth, async (req, res) => {
   const userId = req.userId!;
 
   try {
+    const userEmail = await getUserEmailLower(userId);
+
     const [profile] = await db
       .select()
       .from(weddingProfiles)
@@ -68,6 +82,11 @@ router.delete("/account", requireAuth, async (req, res) => {
     }
 
     await db.delete(workspaceCollaborators).where(eq(workspaceCollaborators.inviteeUserId, userId));
+    if (userEmail) {
+      await db
+        .delete(workspaceCollaborators)
+        .where(eq(workspaceCollaborators.inviteeEmail, userEmail));
+    }
     await db.delete(workspaceActivity).where(eq(workspaceActivity.userId, userId));
     await db.delete(vendors).where(eq(vendors.userId, userId));
     await db.delete(weddingParty).where(eq(weddingParty.userId, userId));
