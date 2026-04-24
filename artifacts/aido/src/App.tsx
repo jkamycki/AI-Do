@@ -609,8 +609,6 @@ function CustomSignUpForm() {
   const { signUp, isLoaded: signUpLoaded } = useSignUp();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"form" | "verify">("form");
@@ -689,8 +687,6 @@ function CustomSignUpForm() {
       await liveSignUp.create({
         emailAddress: email.trim(),
         password: generateRandomPassword(),
-        firstName: firstName.trim() || undefined,
-        lastName: lastName.trim() || undefined,
       });
       await liveSignUp.prepareEmailAddressVerification({ strategy: "email_code" });
       const eaId =
@@ -965,16 +961,6 @@ function CustomSignUpForm() {
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem" }}>
-          <div>
-            <label style={labelStyle}>First name</label>
-            <input style={inputStyle} value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" />
-          </div>
-          <div>
-            <label style={labelStyle}>Last name</label>
-            <input style={inputStyle} value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" />
-          </div>
-        </div>
         <div>
           <label style={labelStyle}>Email address</label>
           <input
