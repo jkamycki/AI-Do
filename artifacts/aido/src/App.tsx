@@ -164,7 +164,7 @@ function CustomSignUpForm() {
   const [code, setCode] = useState("");
   const [resendInfo, setResendInfo] = useState<string | null>(null);
 
-  const apiBase = `${basePath}api`.replace(/\/+/g, "/");
+  const apiBase = `${basePath}/api`;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
