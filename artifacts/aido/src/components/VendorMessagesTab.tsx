@@ -64,6 +64,8 @@ export function VendorMessagesTab({ vendorId }: Props) {
   const conversationId = conv?.id;
   const { data: vendor } = useGetVendor(vendorId);
 
+  const subjectStorageKey = conversationId ? `aido_subject_v1_${conversationId}` : null;
+
   // AI Draft (first-contact / standalone email) — embedded so users don't bounce to /vendor-email
   const [showDraftDialog, setShowDraftDialog] = useState(false);
   const [draftPurpose, setDraftPurpose] = useState("");
@@ -220,11 +222,19 @@ export function VendorMessagesTab({ vendorId }: Props) {
   };
 
   useEffect(() => {
-    if (conv?.subject && !subject && !subjectCleared) {
+    if (!conversationId) return;
+    const key = `aido_subject_v1_${conversationId}`;
+    const stored = localStorage.getItem(key);
+    if (stored !== null) {
+      // User previously set or cleared the subject — respect that value
+      setSubject(stored);
+      if (!stored) setSubjectCleared(true);
+    } else if (conv?.subject) {
+      // Nothing stored yet — seed from server value
       setSubject(conv.subject);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conv?.subject]);
+  }, [conversationId, conv?.subject]);
 
   useEffect(() => {
     if (conversationId && messages && messages.length > 0) {
@@ -333,7 +343,12 @@ export function VendorMessagesTab({ vendorId }: Props) {
         <Input
           id="message-subject-input"
           value={subject}
-          onChange={(e) => { setSubject(e.target.value); if (!e.target.value) setSubjectCleared(true); }}
+          onChange={(e) => {
+            const val = e.target.value;
+            setSubject(val);
+            if (subjectStorageKey) localStorage.setItem(subjectStorageKey, val);
+            if (!val) setSubjectCleared(true);
+          }}
           placeholder={t("vendors.msg_subject_placeholder")}
           className="flex-1 h-8 text-sm bg-background"
           data-testid="input-message-subject"
@@ -341,7 +356,11 @@ export function VendorMessagesTab({ vendorId }: Props) {
         {subject && (
           <button
             type="button"
-            onClick={() => { setSubject(""); setSubjectCleared(true); }}
+            onClick={() => {
+              setSubject("");
+              setSubjectCleared(true);
+              if (subjectStorageKey) localStorage.setItem(subjectStorageKey, "");
+            }}
             className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
             title={t("vendors.msg_clear_subject")}
             aria-label={t("vendors.msg_clear_subject")}
