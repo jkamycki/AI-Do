@@ -48,25 +48,15 @@ router.post("/auth/signup", async (req, res) => {
     const emailObj = emailAddresses.find((e) => e.email_address?.toLowerCase() === email.trim().toLowerCase()) || emailAddresses[0];
     const emailAddressId = emailObj?.id;
 
-    if (!userId || !emailAddressId) {
-      return res.status(500).json({ error: "Account created but verification could not be initialized" });
+    if (emailAddressId) {
+      await fetch(`${CLERK_API}/email_addresses/${emailAddressId}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ verified: true }),
+      }).catch(() => {});
     }
 
-    const prepRes = await fetch(`${CLERK_API}/email_addresses/${emailAddressId}/prepare_verification`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ strategy: "email_code" }),
-    });
-    if (!prepRes.ok) {
-      const prepData = await prepRes.json().catch(() => ({}));
-      const msg =
-        (prepData?.errors?.[0]?.long_message as string) ||
-        (prepData?.errors?.[0]?.message as string) ||
-        "Could not send verification email";
-      return res.status(prepRes.status).json({ error: msg });
-    }
-
-    return res.json({ ok: true, userId, emailAddressId });
+    return res.json({ ok: true, userId });
   } catch (err) {
     req.log?.error(err, "signup failed");
     return res.status(500).json({ error: "Internal server error" });

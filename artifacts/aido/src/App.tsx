@@ -201,6 +201,10 @@ function CustomSignUpForm() {
       setError("Password must be at least 8 characters.");
       return;
     }
+    if (!signInLoaded || !setActive) {
+      setError("Auth is still loading. Please try again in a moment.");
+      return;
+    }
     setSubmitting(true);
     try {
       const r = await fetch(apiBase + "/auth/signup", {
@@ -214,11 +218,19 @@ function CustomSignUpForm() {
         setSubmitting(false);
         return;
       }
-      setEmailAddressId(data?.emailAddressId ?? null);
-      setStep("verify");
-      setSubmitting(false);
+      const attempt = await signIn.create({ identifier: email.trim(), password });
+      if (attempt.status === "complete") {
+        await setActive({ session: attempt.createdSessionId });
+        setLocation("/dashboard");
+      } else {
+        setLocation("/sign-in");
+      }
     } catch (err: unknown) {
-      const msg = (err as Error)?.message || "Something went wrong. Please try again.";
+      const msg =
+        (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0]?.longMessage ||
+        (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0]?.message ||
+        (err as Error)?.message ||
+        "Something went wrong. Please try again.";
       setError(msg);
       setSubmitting(false);
     }
