@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import {
   Users, Plus, Trash2, Wand2, Heart, AlertTriangle, UserPlus,
   ChevronDown, ChevronUp, RefreshCw, Info, Armchair, Save,
-  Clock, ChevronRight, Download,
+  Clock, ChevronRight, Download, GripVertical, MoveRight,
 } from "lucide-react";
 
 type RelType = "prefer" | "avoid";
@@ -186,10 +186,42 @@ function GuestCard({
   );
 }
 
-function TableCard({ table, index }: { table: SeatingTable; index: number }) {
+function TableCard({
+  table,
+  index,
+  allTables,
+  onMoveGuest,
+}: {
+  table: SeatingTable;
+  index: number;
+  allTables: SeatingTable[];
+  onMoveGuest: (fromTableNumber: number, toTableNumber: number, guestName: string) => void;
+}) {
   const colorClass = TABLE_COLORS[index % TABLE_COLORS.length];
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const raw = e.dataTransfer.getData("application/x-aido-guest");
+    if (!raw) return;
+    try {
+      const { fromTable, name } = JSON.parse(raw) as { fromTable: number; name: string };
+      if (fromTable !== table.tableNumber) {
+        onMoveGuest(fromTable, table.tableNumber, name);
+      }
+    } catch {
+      // ignore malformed payloads
+    }
+  };
+
   return (
-    <Card className={`border ${colorClass.split(" ").filter(c => c.startsWith("bg-") || c.startsWith("border-")).join(" ")} shadow-sm`}>
+    <Card
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+      className={`border ${colorClass.split(" ").filter(c => c.startsWith("bg-") || c.startsWith("border-")).join(" ")} shadow-sm transition-all ${dragOver ? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-[1.01]" : ""}`}
+    >
       <CardHeader className="pb-2 pt-4 px-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-bold font-serif text-foreground">{table.tableName}</CardTitle>
@@ -205,13 +237,52 @@ function TableCard({ table, index }: { table: SeatingTable; index: number }) {
       <CardContent className="px-4 pb-4 pt-0">
         <ul className="space-y-1">
           {table.guests.map((g, i) => (
-            <li key={i} className="flex items-center gap-2 text-sm text-foreground">
+            <li
+              key={`${g}-${i}`}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData(
+                  "application/x-aido-guest",
+                  JSON.stringify({ fromTable: table.tableNumber, name: g }),
+                );
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              className="group/g flex items-center gap-2 text-sm text-foreground rounded-md px-1 py-0.5 -mx-1 hover:bg-background/60 cursor-grab active:cursor-grabbing"
+              title="Drag to another table, or use the dropdown to move"
+            >
+              <GripVertical className="h-3 w-3 text-muted-foreground/40 group-hover/g:text-muted-foreground flex-shrink-0" />
               <div className="w-5 h-5 rounded-full bg-primary/15 text-primary text-[10px] flex items-center justify-center font-bold flex-shrink-0">
                 {i + 1}
               </div>
-              {g}
+              <span className="flex-1 truncate">{g}</span>
+              <select
+                aria-label={`Move ${g} to another table`}
+                value=""
+                onChange={(e) => {
+                  const target = parseInt(e.target.value, 10);
+                  if (!Number.isNaN(target) && target !== table.tableNumber) {
+                    onMoveGuest(table.tableNumber, target, g);
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[10px] bg-transparent text-muted-foreground border border-transparent rounded cursor-pointer opacity-100 md:opacity-0 group-hover/g:opacity-100 focus:opacity-100 hover:border-border focus:outline-none focus:border-primary"
+              >
+                <option value="">Move…</option>
+                {allTables
+                  .filter(t => t.tableNumber !== table.tableNumber)
+                  .map(t => (
+                    <option key={t.tableNumber} value={t.tableNumber}>
+                      → {t.tableName}
+                    </option>
+                  ))}
+              </select>
             </li>
           ))}
+          {table.guests.length === 0 && (
+            <li className="text-xs text-muted-foreground italic px-1 py-2">
+              Drop a guest here
+            </li>
+          )}
         </ul>
       </CardContent>
     </Card>
@@ -259,8 +330,38 @@ export default function SeatingChartPage() {
     }
   }, [guests, tableCount, seatsPerTable, additionalNotes]);
   const [result, setResult] = useState<SeatingResult | null>(null);
+  const [chartDirty, setChartDirty] = useState(false);
+  const [activeChartId, setActiveChartId] = useState<number | null>(null);
   const [showGuests, setShowGuests] = useState(true);
   const [showSaved, setShowSaved] = useState(false);
+
+  const moveGuest = (fromTableNumber: number, toTableNumber: number, guestName: string) => {
+    if (fromTableNumber === toTableNumber || !result) return;
+
+    const fromTable = result.tables.find(t => t.tableNumber === fromTableNumber);
+    if (!fromTable) return;
+    const fromIdx = fromTable.guests.indexOf(guestName);
+    if (fromIdx === -1) return;
+
+    const toTable = result.tables.find(t => t.tableNumber === toTableNumber);
+    if (!toTable) return;
+    if (toTable.guests.includes(guestName)) return; // already at destination, no-op
+
+    const tables = result.tables.map(t => {
+      if (t.tableNumber === fromTableNumber) {
+        const next = t.guests.slice();
+        next.splice(fromIdx, 1);
+        return { ...t, guests: next };
+      }
+      if (t.tableNumber === toTableNumber) {
+        return { ...t, guests: [...t.guests, guestName] };
+      }
+      return t;
+    });
+
+    setResult({ ...result, tables });
+    setChartDirty(true);
+  };
 
   const { data: guestListData, isLoading: guestListLoading, isError: guestListError } = useGetGuests();
   const guestListGuests: GuestListGuest[] = guestListData?.guests ?? [];
@@ -414,11 +515,34 @@ export default function SeatingChartPage() {
         }),
       });
       if (!r.ok) throw new Error("Save failed");
-      return r.json();
+      return r.json() as Promise<SavedChart>;
+    },
+    onSuccess: (saved) => {
+      queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
+      if (saved && typeof saved.id === "number") {
+        setActiveChartId(saved.id);
+      }
+      try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    },
+  });
+
+  const updateChartMutation = useMutation({
+    mutationFn: async ({ id, chartResult }: { id: number; chartResult: SeatingResult }) => {
+      const filledGuests = guests.filter(g => g.name.trim());
+      const r = await authedFetch(`/api/seating/charts/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          guests: filledGuests,
+          tables: chartResult.tables,
+          tableCount,
+          seatsPerTable,
+        }),
+      });
+      if (!r.ok) throw new Error("Update failed");
+      return r.json() as Promise<SavedChart>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
-      try { localStorage.removeItem(STORAGE_KEY); } catch {}
     },
   });
 
@@ -464,8 +588,9 @@ export default function SeatingChartPage() {
     },
     onSuccess: (data) => {
       setResult(data);
+      setChartDirty(false);
       setShowGuests(false);
-      toast({ title: "Seating chart ready!", description: `${data.totalSeated} guests assigned across ${data.tables.length} tables.` });
+      toast({ title: "Seating chart ready!", description: `${data.totalSeated} guests assigned across ${data.tables.length} tables. Drag any guest to move them between tables.` });
       saveChartMutation.mutate(data);
     },
     onError: (err: Error) => {
@@ -481,6 +606,8 @@ export default function SeatingChartPage() {
         warnings: [],
         totalSeated: chart.tables.reduce((sum, t) => sum + t.guests.length, 0),
       });
+      setChartDirty(false);
+      setActiveChartId(chart.id);
       setShowGuests(false);
       setShowSaved(false);
     }
@@ -691,17 +818,52 @@ export default function SeatingChartPage() {
             </h2>
             <div className="flex gap-2">
               <Button
-                variant="outline"
+                variant={chartDirty ? "default" : "outline"}
                 size="sm"
                 onClick={() => {
-                  saveChartMutation.mutate(result);
-                  toast({ title: "Saved!", description: "This chart has been saved to your collection." });
+                  // If we have an active chart and there are unsaved changes,
+                  // update it in place. Otherwise create a new saved copy.
+                  if (chartDirty && activeChartId !== null) {
+                    updateChartMutation.mutate(
+                      { id: activeChartId, chartResult: result },
+                      {
+                        onSuccess: () => {
+                          setChartDirty(false);
+                          toast({
+                            title: "Changes saved!",
+                            description: "Your custom seating arrangement has been updated.",
+                          });
+                        },
+                        onError: () => {
+                          toast({
+                            title: "Couldn't save changes",
+                            description: "We couldn't update the saved chart. Please try again.",
+                            variant: "destructive",
+                          });
+                        },
+                      },
+                    );
+                  } else {
+                    saveChartMutation.mutate(result, {
+                      onSuccess: () => {
+                        setChartDirty(false);
+                        toast({
+                          title: "Saved!",
+                          description: "This chart has been saved to your collection.",
+                        });
+                      },
+                    });
+                  }
                 }}
-                disabled={saveChartMutation.isPending}
+                disabled={saveChartMutation.isPending || updateChartMutation.isPending}
                 className="gap-1"
               >
                 <Save className="h-3.5 w-3.5" />
-                Save Copy
+                {chartDirty
+                  ? activeChartId !== null
+                    ? "Save Changes"
+                    : "Save Chart"
+                  : "Save Copy"}
               </Button>
               <Button
                 variant="outline"
@@ -715,6 +877,20 @@ export default function SeatingChartPage() {
               </Button>
             </div>
           </div>
+
+          <div className="flex items-start gap-2 p-3 bg-primary/5 rounded-xl text-sm text-primary">
+            <MoveRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span>
+              <strong>Make it yours:</strong> Drag any guest to a different table, or hover a name and pick a destination from the <em>Move…</em> dropdown. Hit <em>{chartDirty ? "Save Changes" : "Save Copy"}</em> when you're happy with the layout.
+            </span>
+          </div>
+
+          {chartDirty && (
+            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-sm text-amber-900 dark:text-amber-200">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              <span>You've moved guests around — click <strong>Save Changes</strong> to keep this arrangement.</span>
+            </div>
+          )}
 
           {result.warnings?.length > 0 && (
             <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-amber-800 dark:text-amber-200">
@@ -743,7 +919,13 @@ export default function SeatingChartPage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {result.tables.map((table, i) => (
-              <TableCard key={table.tableNumber} table={table} index={i} />
+              <TableCard
+                key={table.tableNumber}
+                table={table}
+                index={i}
+                allTables={result.tables}
+                onMoveGuest={moveGuest}
+              />
             ))}
           </div>
 
