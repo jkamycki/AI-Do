@@ -4,6 +4,7 @@ import { clerkClient } from "@clerk/express";
 import { db, analyticsEvents, adminUsers, weddingProfiles } from "@workspace/db";
 import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { purgeUserData } from "../lib/userCleanup";
 
 const router = Router();
 
@@ -320,6 +321,41 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
   } catch (err) {
     console.error("Admin users error:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/admin/users/:userId", requireAuth, requireAdmin, async (req, res) => {
+  const targetUserId = req.params.userId;
+  if (!targetUserId) {
+    res.status(400).json({ error: "Missing userId" });
+    return;
+  }
+  if (targetUserId === req.userId) {
+    res.status(400).json({ error: "You cannot delete your own admin account from here." });
+    return;
+  }
+  try {
+    let userEmail: string | null = null;
+    try {
+      const u = await clerkClient.users.getUser(targetUserId);
+      const primary = u.emailAddresses.find(e => e.id === u.primaryEmailAddressId) ?? u.emailAddresses[0];
+      userEmail = primary?.emailAddress?.toLowerCase() ?? null;
+    } catch {
+      userEmail = null;
+    }
+
+    await purgeUserData(targetUserId, userEmail);
+
+    try {
+      await clerkClient.users.deleteUser(targetUserId);
+    } catch (err) {
+      req.log.warn({ err, targetUserId }, "Clerk user delete failed (may already be gone)");
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err, targetUserId }, "Admin user delete failed");
+    res.status(500).json({ error: "Failed to delete user" });
   }
 });
 

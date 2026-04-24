@@ -15,7 +15,7 @@ import {
   Smartphone, FileDown, DollarSign as BudgetIcon, Activity,
   ChevronRight, Inbox, Star, MessageSquare, Bug, Lightbulb, Heart, ThumbsUp,
   MailOpen, Circle, CheckCircle2, Search, Calendar, Clock, ExternalLink,
-  ChevronDown as ChevronDownIcon, ChevronUp as ChevronUpIcon,
+  ChevronDown as ChevronDownIcon, ChevronUp as ChevronUpIcon, Trash2, Loader2,
 } from "lucide-react";
 
 interface AdminMetrics {
@@ -188,7 +188,36 @@ function timeAgo(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
-function UserDetailModal({ user, onClose }: { user: AdminUser; onClose: () => void }) {
+function UserDetailModal({ user, onClose, onDeleted }: { user: AdminUser; onClose: () => void; onDeleted: () => void }) {
+  const { getToken } = useAuth();
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const expected = user.email ?? user.id;
+  const canDelete = confirmText.trim().toLowerCase() === expected.toLowerCase() && !deleting;
+
+  const handleDelete = async () => {
+    if (!canDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const token = await getToken();
+      const r = await fetch(`/api/admin/users/${user.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(body.error ?? `Delete failed (${r.status})`);
+      }
+      onDeleted();
+      onClose();
+    } catch (e: unknown) {
+      setDeleteError(e instanceof Error ? e.message : "Delete failed");
+      setDeleting(false);
+    }
+  };
+
   const fullName = `${user.firstName} ${user.lastName}`.trim() || "Unknown";
   const sections = [
     {
@@ -277,6 +306,50 @@ function UserDetailModal({ user, onClose }: { user: AdminUser; onClose: () => vo
               <span>Joined <strong className="text-foreground">{new Date(user.joinedAt).toLocaleDateString()}</strong></span>
             </div>
           </div>
+
+          <div className="pt-2">
+            <div className="border border-red-200 bg-red-50/50 rounded-xl p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <Trash2 className="h-5 w-5 flex-shrink-0 text-red-600 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-red-900">Danger zone — delete this user</h3>
+                  <p className="text-xs text-red-800/80 mt-1">
+                    Permanently removes the user's Clerk account and wipes every wedding profile,
+                    vendor, budget, guest, checklist, message, and contract they created. This cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold uppercase tracking-wide text-red-900">
+                  To confirm, type: <span className="font-mono text-foreground">{expected}</span>
+                </label>
+                <input
+                  type="text"
+                  value={confirmText}
+                  onChange={e => setConfirmText(e.target.value)}
+                  placeholder={expected}
+                  className="mt-1 w-full px-3 py-2 text-sm border border-red-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-400"
+                  disabled={deleting}
+                />
+              </div>
+              {deleteError && (
+                <p className="text-xs text-red-700 bg-red-100 rounded p-2">{deleteError}</p>
+              )}
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={!canDelete}
+                onClick={handleDelete}
+                className="w-full"
+              >
+                {deleting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Deleting…</>
+                ) : (
+                  <><Trash2 className="h-4 w-4 mr-2" /> Permanently delete user</>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -289,6 +362,7 @@ function UserDirectory() {
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [exporting, setExporting] = useState(false);
+  const queryClient = useQueryClient();
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -364,7 +438,14 @@ function UserDirectory() {
   return (
     <>
       {selectedUser && (
-        <UserDetailModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+        <UserDetailModal
+          user={selectedUser}
+          onClose={() => setSelectedUser(null)}
+          onDeleted={() => {
+            queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+            queryClient.invalidateQueries({ queryKey: ["admin-metrics"] });
+          }}
+        />
       )}
       <Card className="border-none shadow-sm">
         <CardHeader className="pb-3">
