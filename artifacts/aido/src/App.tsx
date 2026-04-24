@@ -250,6 +250,12 @@ function CustomSignInForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    // Clear any stale OAuth-intent flags from a previously abandoned Google
+    // flow so they can't trigger the "no-account" detector on this sign-in.
+    try {
+      sessionStorage.removeItem("aido_oauth_intent");
+      sessionStorage.removeItem("aido_oauth_intent_at");
+    } catch {}
     if (!email.trim() || !password) {
       setError("Email and password are required.");
       return;
@@ -290,8 +296,11 @@ function CustomSignInForm() {
       // callback we use this flag to detect the case where Clerk silently
       // auto-created a brand new account because the email had no prior
       // account — in that case we delete the new account and bounce the
-      // user to the sign-up page with a clear message.
+      // user to the sign-up page with a clear message. The timestamp lets
+      // the detector tell apart "account created by THIS flow" (must delete)
+      // from "user already had an account from before" (must keep).
       sessionStorage.setItem("aido_oauth_intent", "signin");
+      sessionStorage.setItem("aido_oauth_intent_at", String(Date.now()));
       const origin = window.location.origin;
       await signInClient.authenticateWithRedirect({
         strategy: "oauth_google",
@@ -300,7 +309,10 @@ function CustomSignInForm() {
       });
     } catch (err) {
       setOauthLoading(null);
-      try { sessionStorage.removeItem("aido_oauth_intent"); } catch {}
+      try {
+        sessionStorage.removeItem("aido_oauth_intent");
+        sessionStorage.removeItem("aido_oauth_intent_at");
+      } catch {}
       setError(extractError(err, "Could not start Google sign-in."));
     }
   }
@@ -662,6 +674,16 @@ function CustomSignUpForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    // Clear any stale OAuth-intent flags from a previously abandoned Google
+    // flow so they can't trigger the "no-account" detector on this signup.
+    try {
+      sessionStorage.removeItem("aido_oauth_intent");
+      sessionStorage.removeItem("aido_oauth_intent_at");
+    } catch {}
+    if (!signUpLoaded || !signUp) {
+      setError("Auth is still loading. Please try again in a moment.");
+      return;
+    }
     if (!email.trim() || !password) {
       setError("Email and password are required.");
       return;
@@ -672,37 +694,20 @@ function CustomSignUpForm() {
     }
     setSubmitting(true);
     try {
-      const r = await fetch(apiBase + "/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password, firstName, lastName }),
+      // Use Clerk's frontend SDK so the email-verification code is the proof
+      // of ownership before any session is issued. This is the secure flow.
+      await signUp.create({
+        emailAddress: email.trim(),
+        password,
+        firstName: firstName.trim() || undefined,
+        lastName: lastName.trim() || undefined,
       });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        setError(data?.error || "Could not create account. Try a different email.");
-        setSubmitting(false);
-        return;
-      }
-      // Wait for Clerk to finish loading before signing in
-      const start = Date.now();
-      while (!clerk.loaded && Date.now() - start < 8000) {
-        await new Promise((res) => setTimeout(res, 150));
-      }
-      const signInClient = clerk.client?.signIn;
-      const ticket: string | undefined = data?.signInToken;
-      if (!signInClient || !clerk.setActive || !ticket) {
-        setError("Account created. Please sign in to continue.");
-        setLocation("/sign-in");
-        return;
-      }
-      const attempt = await signInClient.create({ strategy: "ticket", ticket });
-      if (attempt.status === "complete" && attempt.createdSessionId) {
-        await clerk.setActive({ session: attempt.createdSessionId });
-        setLocation("/dashboard");
-      } else {
-        setError("Account created. Please sign in to continue.");
-        setLocation("/sign-in");
-      }
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      const eaId =
+        (signUp as unknown as { emailAddressId?: string }).emailAddressId ?? null;
+      setEmailAddressId(eaId);
+      setStep("verify");
+      setSubmitting(false);
     } catch (err: unknown) {
       const msg =
         (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0]?.longMessage ||
@@ -718,37 +723,24 @@ function CustomSignUpForm() {
     e.preventDefault();
     setError(null);
     setResendInfo(null);
+    if (!signUpLoaded || !signUp) {
+      setError("Auth is still loading. Please try again in a moment.");
+      return;
+    }
     if (!code.trim()) {
       setError("Enter the code from your email.");
       return;
     }
-    if (!emailAddressId) {
-      setError("Verification session expired. Please sign up again.");
-      return;
-    }
     setSubmitting(true);
     try {
-      const r = await fetch(apiBase + "/auth/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emailAddressId, code: code.trim() }),
+      const result = await signUp.attemptEmailAddressVerification({
+        code: code.trim(),
       });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        setError(data?.error || "Invalid or expired code.");
-        setSubmitting(false);
-        return;
-      }
-      const signInClient = clerk.client?.signIn;
-      if (!signInClient || !clerk.setActive) {
-        setLocation("/sign-in");
-        return;
-      }
-      const attempt = await signInClient.create({ identifier: email.trim(), password });
-      if (attempt.status === "complete") {
-        await clerk.setActive({ session: attempt.createdSessionId });
+      if (result.status === "complete" && result.createdSessionId && clerk.setActive) {
+        await clerk.setActive({ session: result.createdSessionId });
         setLocation("/dashboard");
       } else {
+        setError("Account created. Please sign in to continue.");
         setLocation("/sign-in");
       }
     } catch (err: unknown) {
@@ -756,7 +748,7 @@ function CustomSignUpForm() {
         (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0]?.longMessage ||
         (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0]?.message ||
         (err as Error)?.message ||
-        "Something went wrong. Please try again.";
+        "Invalid or expired code.";
       setError(msg);
       setSubmitting(false);
     }
@@ -765,26 +757,28 @@ function CustomSignUpForm() {
   async function handleResend() {
     setError(null);
     setResendInfo(null);
-    if (!emailAddressId) return;
+    if (!signUpLoaded || !signUp) return;
     try {
-      const r = await fetch(apiBase + "/auth/resend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emailAddressId }),
-      });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        setError(data?.error || "Could not resend code.");
-        return;
-      }
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setResendInfo("A new code has been sent. Check your inbox and spam folder.");
     } catch (err: unknown) {
-      setError((err as Error)?.message || "Could not resend code.");
+      const msg =
+        (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0]?.longMessage ||
+        (err as Error)?.message ||
+        "Could not resend code.";
+      setError(msg);
     }
   }
 
   async function handleOAuth(strategy: "oauth_google" | "oauth_apple") {
     setError(null);
+    // Clear any stale sign-IN OAuth intent from a previously abandoned flow,
+    // so the no-account detector can never mistake this fresh sign-UP for an
+    // auto-created sign-in account.
+    try {
+      sessionStorage.removeItem("aido_oauth_intent");
+      sessionStorage.removeItem("aido_oauth_intent_at");
+    } catch {}
     try {
       setOauthLoading(strategy);
       const start = Date.now();
@@ -1158,15 +1152,36 @@ function NoAccountFromSignInDetector() {
     checkedForUserRef.current = userId;
 
     let intent: string | null = null;
-    try { intent = sessionStorage.getItem("aido_oauth_intent"); } catch {}
+    let intentAtRaw: string | null = null;
+    try {
+      intent = sessionStorage.getItem("aido_oauth_intent");
+      intentAtRaw = sessionStorage.getItem("aido_oauth_intent_at");
+    } catch {}
     if (intent !== "signin") return;
-    try { sessionStorage.removeItem("aido_oauth_intent"); } catch {}
+    try {
+      sessionStorage.removeItem("aido_oauth_intent");
+      sessionStorage.removeItem("aido_oauth_intent_at");
+    } catch {}
+
+    const intentAt = intentAtRaw ? Number(intentAtRaw) : 0;
+    // The intent must be from a recent OAuth attempt, not stale state from a
+    // prior abandoned flow. Anything older than 10 minutes is ignored.
+    const INTENT_TTL_MS = 10 * 60 * 1000;
+    if (!intentAt || Date.now() - intentAt > INTENT_TTL_MS) return;
 
     const createdAt = clerk.user?.createdAt
       ? new Date(clerk.user.createdAt).getTime()
       : 0;
-    const isFreshlyCreated = createdAt > 0 && Date.now() - createdAt < 2 * 60 * 1000;
-    if (!isFreshlyCreated) return;
+    // Only treat as "auto-created by this OAuth flow" if the account was
+    // created AFTER we kicked off the flow (with a small clock-skew buffer)
+    // AND within a reasonable upper bound for an OAuth round-trip.
+    const SKEW_MS = 5_000;
+    const MAX_FLOW_MS = 10 * 60 * 1000;
+    const wasCreatedDuringThisFlow =
+      createdAt > 0 &&
+      createdAt > intentAt - SKEW_MS &&
+      createdAt < intentAt + MAX_FLOW_MS;
+    if (!wasCreatedDuringThisFlow) return;
 
     (async () => {
       try {
