@@ -137,11 +137,14 @@ function SignInPage() {
 function CustomSignInForm() {
   const clerk = useClerk();
   const [, setLocation] = useLocation();
-  const [mode, setMode] = useState<"signin" | "reset_request" | "reset_verify">("signin");
+  const [mode, setMode] = useState<
+    "signin" | "reset_request" | "reset_verify" | "code_request" | "code_verify"
+  >("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [resetCode, setResetCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [loginCode, setLoginCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -234,6 +237,86 @@ function CustomSignInForm() {
       }
     } catch (err) {
       setError(extractError(err, "Password reset failed."));
+      setSubmitting(false);
+    }
+  }
+
+  async function handleSendLoginCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setInfo(null);
+    if (!email.trim()) {
+      setError("Please enter your email address.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const signInClient = await waitForSignInClient();
+      if (!signInClient) {
+        setError("Auth is still loading. Please try again in a moment.");
+        setSubmitting(false);
+        return;
+      }
+      // Step 1: create the sign-in attempt by identifier alone (no password).
+      const attempt = await signInClient.create({ identifier: email.trim() });
+      // Step 2: locate the email_code first-factor on this account.
+      const factors =
+        (attempt as unknown as {
+          supportedFirstFactors?: Array<{
+            strategy?: string;
+            emailAddressId?: string;
+          }>;
+        }).supportedFirstFactors ?? [];
+      const emailFactor = factors.find((f) => f.strategy === "email_code");
+      if (!emailFactor?.emailAddressId) {
+        setError(
+          "This account doesn't have an email-code option. Try signing in with your password or with Google.",
+        );
+        setSubmitting(false);
+        return;
+      }
+      // Step 3: ask Clerk to email the 6-digit code.
+      await signInClient.prepareFirstFactor({
+        strategy: "email_code",
+        emailAddressId: emailFactor.emailAddressId,
+      });
+      setMode("code_verify");
+      setInfo(`We sent a 6-digit sign-in code to ${email.trim()}. Enter it below.`);
+    } catch (err) {
+      setError(extractError(err, "Could not send sign-in code. Please try again."));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleVerifyLoginCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!loginCode.trim()) {
+      setError("Enter the 6-digit code from your email.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const signInClient = await waitForSignInClient();
+      if (!signInClient || !clerk.setActive) {
+        setError("Auth is still loading. Please try again in a moment.");
+        setSubmitting(false);
+        return;
+      }
+      const result = await signInClient.attemptFirstFactor({
+        strategy: "email_code",
+        code: loginCode.trim(),
+      });
+      if (result.status === "complete" && result.createdSessionId) {
+        await clerk.setActive({ session: result.createdSessionId });
+        setLocation("/dashboard");
+      } else {
+        setError("Sign in incomplete. Please try again.");
+        setSubmitting(false);
+      }
+    } catch (err) {
+      setError(extractError(err, "Invalid or expired code. Please try again."));
       setSubmitting(false);
     }
   }
@@ -484,6 +567,30 @@ function CustomSignInForm() {
             </button>
           </form>
 
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setInfo(null);
+              setPassword("");
+              setMode("code_request");
+            }}
+            style={{
+              width: "100%",
+              marginTop: "0.75rem",
+              padding: "0.65rem",
+              borderRadius: "0.5rem",
+              border: "1px solid rgba(245, 200, 66, 0.35)",
+              background: "rgba(245, 200, 66, 0.08)",
+              color: "#F5C842",
+              fontSize: "0.85rem",
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            Email me a sign-in code instead
+          </button>
+
           <p style={{ color: "#b8a9cc", fontSize: "0.82rem", marginTop: "1rem", textAlign: "center" }}>
             Don't have an account?{" "}
             <a href={`${basePath}/sign-up`} style={{ color: "#F5C842", fontWeight: 500 }}>
@@ -491,6 +598,120 @@ function CustomSignInForm() {
             </a>
           </p>
         </>
+      )}
+
+      {mode === "code_request" && (
+        <form onSubmit={handleSendLoginCode} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+          <p style={{ color: "#b8a9cc", fontSize: "0.85rem", margin: 0 }}>
+            Enter the email address for your A.IDO account. We'll send you a 6-digit code to sign in — no password needed.
+          </p>
+          <div>
+            <label style={labelStyle}>Email address</label>
+            <input
+              type="email"
+              required
+              style={inputStyle}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            style={{
+              width: "100%",
+              padding: "0.7rem",
+              borderRadius: "0.5rem",
+              border: "none",
+              background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
+              color: "#ffffff",
+              fontSize: "0.95rem",
+              fontWeight: 600,
+              cursor: submitting ? "not-allowed" : "pointer",
+              opacity: submitting ? 0.7 : 1,
+            }}
+          >
+            {submitting ? "Sending code..." : "Send sign-in code"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setInfo(null);
+              setMode("signin");
+            }}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#b8a9cc",
+              fontSize: "0.82rem",
+              cursor: "pointer",
+              textAlign: "center",
+            }}
+          >
+            ← Back to sign in
+          </button>
+        </form>
+      )}
+
+      {mode === "code_verify" && (
+        <form onSubmit={handleVerifyLoginCode} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+          <p style={{ color: "#F5C842", fontSize: "0.78rem", margin: 0, fontWeight: 500 }}>
+            Don't see it? Please check your spam or junk folder.
+          </p>
+          <div>
+            <label style={labelStyle}>6-digit sign-in code</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+              maxLength={6}
+              style={{ ...inputStyle, letterSpacing: "0.4em", textAlign: "center", fontSize: "1.1rem" }}
+              value={loginCode}
+              onChange={(e) => setLoginCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+              placeholder="123456"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            style={{
+              width: "100%",
+              padding: "0.7rem",
+              borderRadius: "0.5rem",
+              border: "none",
+              background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
+              color: "#ffffff",
+              fontSize: "0.95rem",
+              fontWeight: 600,
+              cursor: submitting ? "not-allowed" : "pointer",
+              opacity: submitting ? 0.7 : 1,
+            }}
+          >
+            {submitting ? "Signing in..." : "Sign in"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setInfo(null);
+              setLoginCode("");
+              setMode("code_request");
+            }}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#b8a9cc",
+              fontSize: "0.82rem",
+              cursor: "pointer",
+              textAlign: "center",
+            }}
+          >
+            ← Use a different email
+          </button>
+        </form>
       )}
 
       {mode === "reset_request" && (
