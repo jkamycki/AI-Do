@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, seatingCharts, guests as guestRecords } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
+import { resolveScopeUserId, resolveCallerRole, hasMinRole, resolveProfile } from "../lib/workspaceAccess";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
@@ -136,12 +136,15 @@ router.post("/seating/charts", requireAuth, async (req, res) => {
       return;
     }
     const userId = await resolveScopeUserId(req);
-    const { name, guests, tables, tableCount, seatsPerTable, profileId } = req.body;
+    const { name, guests, tables, tableCount, seatsPerTable } = req.body;
+    const profile = await resolveProfile(req);
+    const resolvedProfileId = profile?.id ?? null;
+
     const [saved] = await db
       .insert(seatingCharts)
       .values({
         userId,
-        profileId: profileId ?? null,
+        profileId: resolvedProfileId,
         name: name ?? "My Seating Chart",
         guests: guests ?? [],
         tables: tables ?? null,
@@ -150,9 +153,8 @@ router.post("/seating/charts", requireAuth, async (req, res) => {
       })
       .returning();
 
-    const effectiveProfileId = profileId ?? saved.profileId;
-    if (effectiveProfileId && Array.isArray(tables) && tables.length > 0) {
-      await syncTableAssignments(effectiveProfileId, tables).catch(() => {});
+    if (resolvedProfileId && Array.isArray(tables) && tables.length > 0) {
+      await syncTableAssignments(resolvedProfileId, tables).catch(() => {});
     }
 
     res.json({ ...saved, createdAt: saved.createdAt.toISOString(), updatedAt: saved.updatedAt.toISOString() });
@@ -206,8 +208,9 @@ router.put("/seating/charts/:id", requireAuth, async (req, res) => {
       return;
     }
 
-    if (updated.profileId && Array.isArray(tables) && tables.length > 0) {
-      await syncTableAssignments(updated.profileId, tables).catch(() => {});
+    const putProfileId = updated.profileId ?? (await resolveProfile(req))?.id ?? null;
+    if (putProfileId && Array.isArray(tables) && tables.length > 0) {
+      await syncTableAssignments(putProfileId, tables).catch(() => {});
     }
 
     res.json({ ...updated, createdAt: updated.createdAt.toISOString(), updatedAt: updated.updatedAt.toISOString() });

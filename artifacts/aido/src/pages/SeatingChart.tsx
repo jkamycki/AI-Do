@@ -1,7 +1,7 @@
 import { useEffect, useState, useId } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
-import { useGetGuests } from "@workspace/api-client-react";
+import { useGetGuests, getGetGuestsQueryKey } from "@workspace/api-client-react";
 import type { Guest as GuestListGuest } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -606,6 +606,7 @@ export default function SeatingChartPage() {
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
+      queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
       if (saved && typeof saved.id === "number") {
         setActiveChartId(saved.id);
       }
@@ -630,6 +631,7 @@ export default function SeatingChartPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
+      queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
     },
   });
 
