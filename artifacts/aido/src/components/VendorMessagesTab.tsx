@@ -56,6 +56,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState("");
   const [subject, setSubject] = useState("");
+  const [subjectCleared, setSubjectCleared] = useState(false);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
 
@@ -219,7 +220,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
   };
 
   useEffect(() => {
-    if (conv?.subject && !subject) {
+    if (conv?.subject && !subject && !subjectCleared) {
       setSubject(conv.subject);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -332,11 +333,23 @@ export function VendorMessagesTab({ vendorId }: Props) {
         <Input
           id="message-subject-input"
           value={subject}
-          onChange={(e) => setSubject(e.target.value)}
+          onChange={(e) => { setSubject(e.target.value); if (!e.target.value) setSubjectCleared(true); }}
           placeholder={t("vendors.msg_subject_placeholder")}
           className="flex-1 h-8 text-sm bg-background"
           data-testid="input-message-subject"
         />
+        {subject && (
+          <button
+            type="button"
+            onClick={() => { setSubject(""); setSubjectCleared(true); }}
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+            title={t("vendors.msg_clear_subject")}
+            aria-label={t("vendors.msg_clear_subject")}
+            data-testid="btn-clear-subject"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 px-3 py-2">

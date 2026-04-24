@@ -631,6 +631,7 @@
     "draft_type_hair_makeup": "Peluquería y Maquillaje",
     "draft_type_planner": "Organizador / Coordinador",
     "draft_type_other": "Otro",
+    "msg_clear_subject": "Limpiar asunto",
     "msg_send_failed": "Error al enviar",
     "msg_ai_suggest_failed": "Error al sugerir con IA",
     "msg_cc_saved_toast": "Lista CC guardada",

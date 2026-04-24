@@ -606,6 +606,7 @@
     "msg_vendor_replied": "Vendor replied by email",
     "msg_upload_failed": "Upload failed",
     "msg_remove_attachment": "Remove attachment",
+    "msg_clear_subject": "Clear subject",
     "msg_send_failed": "Send failed",
     "msg_cc_saved_toast": "CC list saved",
     "msg_cc_cleared_toast": "CC list cleared",
