@@ -939,6 +939,11 @@ export default function SeatingChartPage() {
             </span>
           </div>
 
+          <div className="flex items-start gap-2 p-3 bg-muted/40 rounded-xl text-sm text-muted-foreground">
+            <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span>Saving this chart automatically updates the <strong className="text-foreground">Table Assignment</strong> column on your Guest List.</span>
+          </div>
+
           {chartDirty && (
             <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-sm text-amber-900 dark:text-amber-200">
               <AlertTriangle className="h-4 w-4 flex-shrink-0" />
