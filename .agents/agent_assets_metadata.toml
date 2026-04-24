@@ -47,3 +47,9 @@ id = "BVVvoydA_MOdWP8HFKSGf"
 uri = "file://attached_assets/autolink-step3.png"
 type = "image"
 title = "How auto-link works (concept)"
+
+[[outputs]]
+id = "meBG0XdwLIZBAwFkGHo6b"
+uri = "file://attached_assets/screenshots/aidowedding_net_sign-in.png"
+type = "image"
+title = "Your live sign-in page (look for 'Forgot password?' in yellow)"
