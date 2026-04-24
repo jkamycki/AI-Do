@@ -290,6 +290,55 @@ function CustomSignInForm() {
     }
   }
 
+  // One-click sign-in to a fixed test account so the owner can repeatedly
+  // sign in without going through email-code verification on every visit.
+  // The backend mints a Clerk sign-in token; we consume it via the "ticket"
+  // strategy. The endpoint returns 404 unless ENABLE_TEST_ACCOUNT=true is
+  // set on the server.
+  async function handleTestAccount() {
+    setError(null);
+    setInfo(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${basePath}/api/auth/test-signin`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data?.error || "Could not start the test session.");
+      }
+      const { token } = (await res.json()) as { token?: string };
+      if (!token) throw new Error("No test session token was returned.");
+      const signInClient = await waitForSignInClient();
+      if (!signInClient || !clerk.setActive) {
+        throw new Error("Auth is still loading. Please try again in a moment.");
+      }
+      // Clear any stale OAuth-intent flags from a previously abandoned Google
+      // flow so the no-account detector can't misfire on the test account.
+      try {
+        sessionStorage.removeItem("aido_oauth_intent");
+        sessionStorage.removeItem("aido_oauth_intent_at");
+      } catch {}
+      const attempt = await (
+        signInClient as unknown as {
+          create: (p: { strategy: string; ticket: string }) => Promise<{
+            status?: string;
+            createdSessionId?: string;
+          }>;
+        }
+      ).create({ strategy: "ticket", ticket: token });
+      if (attempt.status === "complete" && attempt.createdSessionId) {
+        await clerk.setActive({ session: attempt.createdSessionId });
+        setLocation("/dashboard");
+      } else {
+        throw new Error("Test sign-in did not complete. Please try again.");
+      }
+    } catch (err) {
+      setError(extractError(err, "Could not sign in to the test account."));
+      setSubmitting(false);
+    }
+  }
+
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "0.65rem 0.85rem",
@@ -491,6 +540,34 @@ function CustomSignInForm() {
           </button>
         </form>
       )}
+
+      <div
+        style={{
+          marginTop: "1.25rem",
+          paddingTop: "0.85rem",
+          borderTop: "1px dashed rgba(255,255,255,0.08)",
+          textAlign: "center",
+        }}
+      >
+        <button
+          type="button"
+          onClick={handleTestAccount}
+          disabled={submitting}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#8a7ba8",
+            fontSize: "0.78rem",
+            cursor: submitting ? "not-allowed" : "pointer",
+            textDecoration: "underline",
+            textUnderlineOffset: "2px",
+            padding: 0,
+            opacity: submitting ? 0.6 : 1,
+          }}
+        >
+          {submitting ? "Signing in…" : "Sign in to test account"}
+        </button>
+      </div>
     </div>
   );
 }
