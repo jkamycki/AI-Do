@@ -174,7 +174,7 @@ function SsoCallbackPage() {
 }
 
 function CustomSignUpForm() {
-  const { signIn, isLoaded: signInLoaded, setActive } = useSignIn();
+  const clerk = useClerk();
   const { signUp, isLoaded: signUpLoaded } = useSignUp();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
@@ -201,10 +201,6 @@ function CustomSignUpForm() {
       setError("Password must be at least 8 characters.");
       return;
     }
-    if (!signInLoaded || !setActive) {
-      setError("Auth is still loading. Please try again in a moment.");
-      return;
-    }
     setSubmitting(true);
     try {
       const r = await fetch(apiBase + "/auth/signup", {
@@ -218,11 +214,24 @@ function CustomSignUpForm() {
         setSubmitting(false);
         return;
       }
-      const attempt = await signIn.create({ identifier: email.trim(), password });
-      if (attempt.status === "complete") {
-        await setActive({ session: attempt.createdSessionId });
+      // Wait for Clerk to finish loading before signing in
+      const start = Date.now();
+      while (!clerk.loaded && Date.now() - start < 8000) {
+        await new Promise((res) => setTimeout(res, 150));
+      }
+      const signInClient = clerk.client?.signIn;
+      const ticket: string | undefined = data?.signInToken;
+      if (!signInClient || !clerk.setActive || !ticket) {
+        setError("Account created. Please sign in to continue.");
+        setLocation("/sign-in");
+        return;
+      }
+      const attempt = await signInClient.create({ strategy: "ticket", ticket });
+      if (attempt.status === "complete" && attempt.createdSessionId) {
+        await clerk.setActive({ session: attempt.createdSessionId });
         setLocation("/dashboard");
       } else {
+        setError("Account created. Please sign in to continue.");
         setLocation("/sign-in");
       }
     } catch (err: unknown) {
@@ -248,10 +257,6 @@ function CustomSignUpForm() {
       setError("Verification session expired. Please sign up again.");
       return;
     }
-    if (!signInLoaded || !setActive) {
-      setError("Auth is still loading. Please try again in a moment.");
-      return;
-    }
     setSubmitting(true);
     try {
       const r = await fetch(apiBase + "/auth/verify", {
@@ -265,9 +270,14 @@ function CustomSignUpForm() {
         setSubmitting(false);
         return;
       }
-      const attempt = await signIn.create({ identifier: email.trim(), password });
+      const signInClient = clerk.client?.signIn;
+      if (!signInClient || !clerk.setActive) {
+        setLocation("/sign-in");
+        return;
+      }
+      const attempt = await signInClient.create({ identifier: email.trim(), password });
       if (attempt.status === "complete") {
-        await setActive({ session: attempt.createdSessionId });
+        await clerk.setActive({ session: attempt.createdSessionId });
         setLocation("/dashboard");
       } else {
         setLocation("/sign-in");

@@ -56,7 +56,22 @@ router.post("/auth/signup", async (req, res) => {
       }).catch(() => {});
     }
 
-    return res.json({ ok: true, userId });
+    let signInToken: string | null = null;
+    if (userId) {
+      const tokenRes = await fetch(`${CLERK_API}/sign_in_tokens`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, expires_in_seconds: 600 }),
+      });
+      const tokenData = await tokenRes.json().catch(() => ({}));
+      if (tokenRes.ok && typeof tokenData?.token === "string") {
+        signInToken = tokenData.token;
+      } else {
+        req.log?.warn({ tokenData }, "sign_in_token creation failed");
+      }
+    }
+
+    return res.json({ ok: true, userId, signInToken });
   } catch (err) {
     req.log?.error(err, "signup failed");
     return res.status(500).json({ error: "Internal server error" });
