@@ -287,6 +287,14 @@ export default function Aria() {
     });
   }
 
+  function clearAllConversations() {
+    if (!window.confirm("Delete all past conversations? This can't be undone.")) {
+      return;
+    }
+    setConversations([]);
+    setActiveId(null);
+  }
+
   function selectConversation(id: string) {
     setActiveId(id);
     setHistoryOpen(false);
@@ -477,6 +485,21 @@ export default function Aria() {
             <Plus className="h-4 w-4" /> New chat
           </Button>
         </div>
+        {sortedConversations.length > 0 && (
+          <div className="px-3 py-2 border-b border-border/40 flex items-center justify-between">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Past chats
+            </p>
+            <button
+              onClick={clearAllConversations}
+              className="text-[11px] font-medium text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
+              title="Delete all conversations"
+              data-testid="btn-aria-clear-all"
+            >
+              <Trash2 className="h-3 w-3" /> Clear all
+            </button>
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {sortedConversations.length === 0 && (
             <p className="text-xs text-muted-foreground px-2 py-3">
@@ -513,6 +536,20 @@ export default function Aria() {
                 <Plus className="h-4 w-4" /> New chat
               </Button>
             </div>
+            {sortedConversations.length > 0 && (
+              <div className="px-3 py-2 border-b border-border/40 flex items-center justify-between">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Past chats
+                </p>
+                <button
+                  onClick={clearAllConversations}
+                  className="text-[11px] font-medium text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
+                  title="Delete all conversations"
+                >
+                  <Trash2 className="h-3 w-3" /> Clear all
+                </button>
+              </div>
+            )}
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {sortedConversations.length === 0 && (
                 <p className="text-xs text-muted-foreground px-2 py-3">No conversations yet.</p>
@@ -666,12 +703,18 @@ function ConversationRow({
         <p className="text-[10px] text-muted-foreground">{formatRelative(convo.updatedAt)}</p>
       </div>
       <button
-        onClick={e => { e.stopPropagation(); onDelete(); }}
-        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-background text-muted-foreground hover:text-destructive transition-all"
+        onClick={e => {
+          e.stopPropagation();
+          if (window.confirm("Delete this conversation? This can't be undone.")) {
+            onDelete();
+          }
+        }}
+        className="p-1.5 rounded text-muted-foreground hover:bg-background hover:text-destructive opacity-70 md:opacity-50 md:group-hover:opacity-100 transition-all"
         title="Delete conversation"
         aria-label="Delete conversation"
+        data-testid={`btn-aria-delete-${convo.id}`}
       >
-        <Trash2 className="h-3 w-3" />
+        <Trash2 className="h-3.5 w-3.5" />
       </button>
     </div>
   );
