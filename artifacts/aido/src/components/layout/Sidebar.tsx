@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { useClerk, useUser, useAuth } from "@clerk/react";
 import { useQuery } from "@tanstack/react-query";
 import { useWorkspace, type WorkspaceInfo } from "@/contexts/WorkspaceContext";
-import { useTheme } from "@/contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
 import {
   Heart,
@@ -30,8 +29,6 @@ import {
   Flower2,
   FileText,
   Sparkles,
-  Sun,
-  Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -199,7 +196,6 @@ export function Sidebar() {
   const { user } = useUser();
   const { getToken, isSignedIn } = useAuth();
   const { activeWorkspace } = useWorkspace();
-  const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation();
 
   const { data: adminCheck } = useQuery({
@@ -291,16 +287,6 @@ export function Sidebar() {
           <img src="/logo.png" alt="A.I Do Logo" className="h-16 w-auto object-contain" />
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            title={theme === "dark" ? t("sidebar.switch_to_light") : t("sidebar.switch_to_dark")}
-          >
-            {theme === "dark"
-              ? <Sun className="h-5 w-5 text-amber-400" />
-              : <Moon className="h-5 w-5 text-primary" />}
-          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -410,18 +396,6 @@ export function Sidebar() {
               </div>
             </div>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleTheme}
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
-            title={theme === "dark" ? t("sidebar.switch_to_light") : t("sidebar.switch_to_dark")}
-          >
-            {theme === "dark"
-              ? <Sun className="h-4 w-4 text-amber-400" />
-              : <Moon className="h-4 w-4" />}
-            <span>{theme === "dark" ? t("sidebar.light_mode") : t("sidebar.dark_mode")}</span>
-          </Button>
           <Button
             variant="ghost"
             size="sm"
