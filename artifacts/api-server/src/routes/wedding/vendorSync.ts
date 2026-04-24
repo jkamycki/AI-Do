@@ -47,7 +47,19 @@ router.get("/vendors", requireAuth, async (req, res) => {
       .from(vendors)
       .where(eq(vendors.userId, userId))
       .orderBy(vendors.createdAt);
-    res.json(rows.map(formatVendor));
+
+    const vendorIds = rows.map((v) => v.id);
+    const allPayments = vendorIds.length > 0
+      ? await db.select().from(vendorPayments).where(inArray(vendorPayments.vendorId, vendorIds))
+      : [];
+
+    const paymentsByVendor: Record<number, ReturnType<typeof formatPayment>[]> = {};
+    for (const p of allPayments) {
+      if (!paymentsByVendor[p.vendorId]) paymentsByVendor[p.vendorId] = [];
+      paymentsByVendor[p.vendorId].push(formatPayment(p));
+    }
+
+    res.json(rows.map((v) => ({ ...formatVendor(v), payments: paymentsByVendor[v.id] ?? [] })));
   } catch (err) {
     req.log.error(err, "Failed to list vendors");
     res.status(500).json({ error: "Internal server error" });
