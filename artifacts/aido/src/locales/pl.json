@@ -192,7 +192,7 @@
     "city": "Miasto",
     "state": "Województwo",
     "zip": "Kod Pocztowy",
-    "ceremony_at_venue": "Ceremonia odbywa się w tym samym miejscu",
+    "ceremony_at_venue": "Ceremonia odbędzie się w innym miejscu",
     "ceremony_venue": "Miejsce Ceremonii",
     "ceremony_address": "Adres Ceremonii",
     "guest_count": "Szacowana Liczba Gości",
@@ -211,7 +211,8 @@
     "reset": "Resetuj",
     "saved_toast": "Profil zapisany",
     "saved_toast_desc": "Twoje dane weselne zostały zaktualizowane.",
-    "save_error": "Nie udało się zapisać profilu. Spróbuj ponownie."
+    "save_error": "Nie udało się zapisać profilu. Spróbuj ponownie.",
+    "ceremony_at_venue_desc": "Zaznacz, jeśli ceremonia nie odbywa się w miejscu wesela"
   },
   "aria": {
     "name": "Aria",

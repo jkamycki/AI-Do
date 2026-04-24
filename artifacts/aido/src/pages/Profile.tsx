@@ -319,7 +319,7 @@ export default function Profile() {
                       <div className="space-y-1 leading-tight">
                         <FormLabel className="cursor-pointer">{t("profile.ceremony_at_venue")}</FormLabel>
                         <p className="text-xs text-muted-foreground">
-                          {t("profile.ceremony_address")}
+                          {t("profile.ceremony_at_venue_desc")}
                         </p>
                       </div>
                     </FormItem>

@@ -192,7 +192,7 @@
     "city": "Ville",
     "state": "Région",
     "zip": "Code Postal",
-    "ceremony_at_venue": "La cérémonie a lieu dans le même endroit",
+    "ceremony_at_venue": "La cérémonie aura lieu dans un lieu différent",
     "ceremony_venue": "Lieu de la Cérémonie",
     "ceremony_address": "Adresse de la Cérémonie",
     "guest_count": "Nombre Estimé d'Invités",
@@ -211,7 +211,8 @@
     "reset": "Réinitialiser",
     "saved_toast": "Profil enregistré",
     "saved_toast_desc": "Vos informations de mariage ont été mises à jour.",
-    "save_error": "Échec de l'enregistrement du profil. Veuillez réessayer."
+    "save_error": "Échec de l'enregistrement du profil. Veuillez réessayer.",
+    "ceremony_at_venue_desc": "Cochez cette case si votre cérémonie n'a pas lieu sur le site de la réception"
   },
   "aria": {
     "name": "Aria",

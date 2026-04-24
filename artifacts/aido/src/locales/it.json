@@ -192,7 +192,7 @@
     "city": "Città",
     "state": "Provincia",
     "zip": "CAP",
-    "ceremony_at_venue": "La cerimonia si svolge nella stessa location",
+    "ceremony_at_venue": "La cerimonia si svolgerà in un luogo diverso",
     "ceremony_venue": "Location della Cerimonia",
     "ceremony_address": "Indirizzo della Cerimonia",
     "guest_count": "Numero Stimato di Ospiti",
@@ -211,7 +211,8 @@
     "reset": "Ripristina",
     "saved_toast": "Profilo salvato",
     "saved_toast_desc": "I tuoi dettagli del matrimonio sono stati aggiornati.",
-    "save_error": "Impossibile salvare il profilo. Riprova."
+    "save_error": "Impossibile salvare il profilo. Riprova.",
+    "ceremony_at_venue_desc": "Spunta questa casella se la tua cerimonia non si svolge nel luogo del ricevimento"
   },
   "aria": {
     "name": "Aria",

@@ -192,7 +192,7 @@
     "city": "市区町村",
     "state": "都道府県",
     "zip": "郵便番号",
-    "ceremony_at_venue": "挙式は同じ会場で行う",
+    "ceremony_at_venue": "挙式は別の会場で行います",
     "ceremony_venue": "挙式会場",
     "ceremony_address": "挙式会場の住所",
     "guest_count": "ゲスト人数（予定）",
@@ -211,7 +211,8 @@
     "reset": "リセット",
     "saved_toast": "プロフィールを保存しました",
     "saved_toast_desc": "結婚式の詳細が更新されました。",
-    "save_error": "プロフィールの保存に失敗しました。もう一度お試しください。"
+    "save_error": "プロフィールの保存に失敗しました。もう一度お試しください。",
+    "ceremony_at_venue_desc": "挙式が披露宴会場と異なる場合はチェックしてください"
   },
   "aria": {
     "name": "Aria",

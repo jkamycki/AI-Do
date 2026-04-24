@@ -192,7 +192,7 @@
     "city": "Cidade",
     "state": "Distrito",
     "zip": "Código Postal",
-    "ceremony_at_venue": "A cerimónia realiza-se no mesmo local",
+    "ceremony_at_venue": "A cerimônia será realizada em um local diferente",
     "ceremony_venue": "Local da Cerimónia",
     "ceremony_address": "Morada da Cerimónia",
     "guest_count": "Número Estimado de Convidados",
@@ -211,7 +211,8 @@
     "reset": "Repor",
     "saved_toast": "Perfil guardado",
     "saved_toast_desc": "Os detalhes do seu casamento foram atualizados.",
-    "save_error": "Não foi possível guardar o perfil. Por favor, tente novamente."
+    "save_error": "Não foi possível guardar o perfil. Por favor, tente novamente.",
+    "ceremony_at_venue_desc": "Marque esta opção se a cerimônia não for no local da recepção"
   },
   "aria": {
     "name": "Aria",

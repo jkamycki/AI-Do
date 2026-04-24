@@ -206,7 +206,7 @@
     "city": "City",
     "state": "State",
     "zip": "Zip",
-    "ceremony_at_venue": "Ceremony is at the same venue",
+    "ceremony_at_venue": "Ceremony will take place at a separate location",
     "ceremony_venue": "Ceremony Venue",
     "ceremony_address": "Ceremony Address",
     "guest_count": "Estimated Guest Count",
@@ -225,7 +225,8 @@
     "reset": "Reset",
     "saved_toast": "Profile saved",
     "saved_toast_desc": "Your wedding details have been updated.",
-    "save_error": "Failed to save profile. Please try again."
+    "save_error": "Failed to save profile. Please try again.",
+    "ceremony_at_venue_desc": "Tick this if your ceremony is not at your reception venue"
   },
   "aria": {
     "name": "Aria",

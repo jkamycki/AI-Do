@@ -192,7 +192,7 @@
     "city": "Ciudad",
     "state": "Provincia",
     "zip": "Código Postal",
-    "ceremony_at_venue": "La ceremonia es en el mismo lugar",
+    "ceremony_at_venue": "La ceremonia se celebrará en un lugar diferente",
     "ceremony_venue": "Lugar de la Ceremonia",
     "ceremony_address": "Dirección de la Ceremonia",
     "guest_count": "Número Estimado de Invitados",
@@ -211,7 +211,8 @@
     "reset": "Restablecer",
     "saved_toast": "Perfil guardado",
     "saved_toast_desc": "Los datos de tu boda han sido actualizados.",
-    "save_error": "No se pudo guardar el perfil. Por favor, inténtalo de nuevo."
+    "save_error": "No se pudo guardar el perfil. Por favor, inténtalo de nuevo.",
+    "ceremony_at_venue_desc": "Marca esta casilla si tu ceremonia no es en el lugar de la recepción"
   },
   "aria": {
     "name": "Aria",

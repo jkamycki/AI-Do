@@ -192,7 +192,7 @@
     "city": "Stadt",
     "state": "Bundesland",
     "zip": "Postleitzahl",
-    "ceremony_at_venue": "Zeremonie findet am selben Veranstaltungsort statt",
+    "ceremony_at_venue": "Die Trauung findet an einem anderen Ort statt",
     "ceremony_venue": "Zeremonienort",
     "ceremony_address": "Adresse der Zeremonie",
     "guest_count": "Geschätzte Gästezahl",
@@ -211,7 +211,8 @@
     "reset": "Zurücksetzen",
     "saved_toast": "Profil gespeichert",
     "saved_toast_desc": "Eure Hochzeitsdetails wurden aktualisiert.",
-    "save_error": "Profil konnte nicht gespeichert werden. Bitte erneut versuchen."
+    "save_error": "Profil konnte nicht gespeichert werden. Bitte erneut versuchen.",
+    "ceremony_at_venue_desc": "Aktivieren Sie diese Option, wenn die Trauung nicht am Empfangsort stattfindet"
   },
   "aria": {
     "name": "Aria",

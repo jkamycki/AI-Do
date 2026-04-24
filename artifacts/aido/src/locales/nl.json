@@ -192,7 +192,7 @@
     "city": "Stad",
     "state": "Provincie",
     "zip": "Postcode",
-    "ceremony_at_venue": "Ceremonie is op dezelfde locatie",
+    "ceremony_at_venue": "De ceremonie vindt plaats op een andere locatie",
     "ceremony_venue": "Ceremonielocatie",
     "ceremony_address": "Adres Ceremonie",
     "guest_count": "Geschat Aantal Gasten",
@@ -211,7 +211,8 @@
     "reset": "Resetten",
     "saved_toast": "Profiel opgeslagen",
     "saved_toast_desc": "Uw huwelijksgegevens zijn bijgewerkt.",
-    "save_error": "Profiel opslaan mislukt. Probeer het opnieuw."
+    "save_error": "Profiel opslaan mislukt. Probeer het opnieuw.",
+    "ceremony_at_venue_desc": "Vink dit aan als uw ceremonie niet op de receptielocatie plaatsvindt"
   },
   "aria": {
     "name": "Aria",

@@ -192,7 +192,7 @@
     "city": "城市",
     "state": "省/州",
     "zip": "邮政编码",
-    "ceremony_at_venue": "仪式在同一场地举行",
+    "ceremony_at_venue": "婚礼仪式将在另一场地举行",
     "ceremony_venue": "仪式场地",
     "ceremony_address": "仪式地址",
     "guest_count": "预计宾客人数",
@@ -211,7 +211,8 @@
     "reset": "重置",
     "saved_toast": "档案已保存",
     "saved_toast_desc": "您的婚礼详情已更新。",
-    "save_error": "保存档案失败，请重试。"
+    "save_error": "保存档案失败，请重试。",
+    "ceremony_at_venue_desc": "如果仪式不在宴会场地举行，请勾选此项"
   },
   "aria": {
     "name": "Aria",
