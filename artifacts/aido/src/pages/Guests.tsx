@@ -413,10 +413,10 @@ function GuestCollectorCard() {
   };
 
   return (
-    <Card className="border-rose-200 bg-rose-50/30 shadow-sm">
+    <Card className="border-primary/20 bg-primary/5 shadow-sm">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
-          <Link2 className="h-4 w-4 text-rose-500" />
+          <Link2 className="h-4 w-4 text-primary" />
           {t("guests.collector_title")}
         </CardTitle>
         <CardDescription>
@@ -428,7 +428,6 @@ function GuestCollectorCard() {
           <Button
             onClick={() => generate.mutate()}
             disabled={generate.isPending}
-            className="bg-rose-500 hover:bg-rose-600 text-white"
           >
             {generate.isPending ? (
               <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> {t("guests.generating")}</>
@@ -443,13 +442,13 @@ function GuestCollectorCard() {
               <Input
                 readOnly
                 value={collectorUrl ?? ""}
-                className="text-xs font-mono bg-white border-rose-200 text-rose-700"
+                className="text-xs font-mono bg-background/50 border-primary/20 text-primary"
               />
               <Button
                 variant="outline"
                 size="icon"
                 onClick={copyLink}
-                className="shrink-0 border-rose-200 hover:bg-rose-100"
+                className="shrink-0 border-primary/20 hover:bg-primary/10"
                 title={t("guests.copy_link_title")}
               >
                 {copied ? <CheckCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
@@ -459,17 +458,17 @@ function GuestCollectorCard() {
             {/* Link preview — shows guests what they'll see before clicking */}
             <div>
               <p className="text-[11px] text-muted-foreground mb-1.5 font-medium">{t("guests.link_preview_label")}</p>
-            <div className="rounded-xl border border-rose-100 bg-white overflow-hidden shadow-sm">
-              <div className="h-1 w-full" style={{ background: "linear-gradient(90deg, #f43f5e, #a855f7)" }} />
+            <div className="rounded-xl border border-primary/20 bg-background/60 overflow-hidden shadow-sm">
+              <div className="h-1 w-full" style={{ background: "linear-gradient(90deg, #E91E8C, #7B2FBE)" }} />
               <div className="flex items-start gap-3 p-3">
-                <div className="shrink-0 h-11 w-11 rounded-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, #fecdd3, #f9a8d4)" }}>
-                  <Heart className="h-5 w-5 fill-rose-400 text-rose-400" />
+                <div className="shrink-0 h-11 w-11 rounded-full flex items-center justify-center bg-primary/15 ring-1 ring-primary/30">
+                  <Heart className="h-5 w-5 fill-primary text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "#a855f7" }}>{t("guests.contact_info_request")}</p>
-                  <p className="text-sm font-bold text-gray-900 leading-tight truncate" style={{ fontFamily: "Georgia, serif" }}>{coupleNames}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{t("guests.collecting_addresses")}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1 truncate">{formUrl}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5 text-primary">{t("guests.contact_info_request")}</p>
+                  <p className="text-sm font-bold text-foreground leading-tight truncate" style={{ fontFamily: "Georgia, serif" }}>{coupleNames}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("guests.collecting_addresses")}</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1 truncate">{formUrl}</p>
                 </div>
               </div>
             </div>
@@ -480,7 +479,7 @@ function GuestCollectorCard() {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-rose-200 hover:bg-rose-50 text-rose-700 gap-2"
+                className="border-primary/20 hover:bg-primary/10 text-primary gap-2"
                 onClick={() => {
                   const subject = encodeURIComponent(t("guests.email_subject_line") || "Please share your contact info with us!");
                   const body = encodeURIComponent(
@@ -494,7 +493,7 @@ function GuestCollectorCard() {
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-rose-600 gap-1 ml-auto">
+                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-primary gap-1 ml-auto">
                     <RefreshCw className="h-3 w-3" /> {t("guests.regenerate")}
                   </Button>
                 </AlertDialogTrigger>
