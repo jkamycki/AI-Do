@@ -57,14 +57,6 @@ interface Conversation {
   updatedAt: number;
 }
 
-const STARTERS = [
-  "Add my florist Sarah Bloom (sarahbloom@email.com, $4000) to my vendors",
-  "Add 'Book hair & makeup trial' to my 6 months out checklist",
-  "What should I prioritize 6 months before my wedding?",
-  "What's typically included in a wedding planner contract?",
-  "How do I create a seating chart that avoids drama?",
-  "What questions should I ask a photographer before booking?",
-];
 
 const STORAGE_PREFIX = "aido:aria:conversations:";
 const MAX_STORED = 30;
@@ -101,21 +93,9 @@ function newId() {
 
 function deriveTitle(messages: Message[]): string {
   const firstUser = messages.find(m => m.role === "user");
-  if (!firstUser) return "New chat";
-  const t = firstUser.content.trim().replace(/\s+/g, " ");
-  return t.length > 60 ? t.slice(0, 57) + "…" : t;
-}
-
-function formatRelative(ts: number) {
-  const diff = Date.now() - ts;
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d}d ago`;
-  return new Date(ts).toLocaleDateString();
+  if (!firstUser) return "";
+  const text = firstUser.content.trim().replace(/\s+/g, " ");
+  return text.length > 60 ? text.slice(0, 57) + "…" : text;
 }
 
 function AriaAvatar() {
@@ -266,7 +246,7 @@ export default function Aria() {
   function startNewChat() {
     const c: Conversation = {
       id: newId(),
-      title: "New chat",
+      title: "",
       messages: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -288,7 +268,7 @@ export default function Aria() {
   }
 
   function clearAllConversations() {
-    if (!window.confirm("Delete all past conversations? This can't be undone.")) {
+    if (!window.confirm(t("aria.clear_all_confirm"))) {
       return;
     }
     setConversations([]);
@@ -309,7 +289,7 @@ export default function Aria() {
           ...c,
           messages: newMsgs,
           updatedAt: Date.now(),
-          title: c.title === "New chat" || !c.title ? deriveTitle(newMsgs) : c.title,
+          title: !c.title ? deriveTitle(newMsgs) : c.title,
         };
       })
     );
@@ -344,7 +324,7 @@ export default function Aria() {
     if (!convoId) {
       const c: Conversation = {
         id: newId(),
-        title: "New chat",
+        title: "",
         messages: [],
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -361,7 +341,7 @@ export default function Aria() {
       prev.map(c => {
         if (c.id !== convoId) return c;
         const newMsgs = [...c.messages, userMsg, placeholder];
-        return { ...c, messages: newMsgs, updatedAt: Date.now(), title: c.title === "New chat" || !c.title ? deriveTitle(newMsgs) : c.title };
+        return { ...c, messages: newMsgs, updatedAt: Date.now(), title: !c.title ? deriveTitle(newMsgs) : c.title };
       })
     );
 
@@ -482,28 +462,28 @@ export default function Aria() {
             variant="outline"
             data-testid="btn-aria-new-chat"
           >
-            <Plus className="h-4 w-4" /> New chat
+            <Plus className="h-4 w-4" /> {t("aria.new_chat")}
           </Button>
         </div>
         {sortedConversations.length > 0 && (
           <div className="px-3 py-2 border-b border-border/40 flex items-center justify-between">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Past chats
+              {t("aria.past_chats")}
             </p>
             <button
               onClick={clearAllConversations}
               className="text-[11px] font-medium text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
-              title="Delete all conversations"
+              title={t("aria.clear_all")}
               data-testid="btn-aria-clear-all"
             >
-              <Trash2 className="h-3 w-3" /> Clear all
+              <Trash2 className="h-3 w-3" /> {t("aria.clear_all")}
             </button>
           </div>
         )}
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {sortedConversations.length === 0 && (
             <p className="text-xs text-muted-foreground px-2 py-3">
-              Your conversations will appear here.
+              {t("aria.conversations_empty")}
             </p>
           )}
           {sortedConversations.map(c => (
@@ -526,33 +506,33 @@ export default function Aria() {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-3 border-b border-border/50">
-              <p className="font-medium text-sm">Conversations</p>
+              <p className="font-medium text-sm">{t("aria.conversations")}</p>
               <button onClick={() => setHistoryOpen(false)} className="p-1 rounded hover:bg-muted">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="p-3 border-b border-border/40">
               <Button onClick={startNewChat} className="w-full gap-2" variant="outline">
-                <Plus className="h-4 w-4" /> New chat
+                <Plus className="h-4 w-4" /> {t("aria.new_chat")}
               </Button>
             </div>
             {sortedConversations.length > 0 && (
               <div className="px-3 py-2 border-b border-border/40 flex items-center justify-between">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Past chats
+                  {t("aria.past_chats")}
                 </p>
                 <button
                   onClick={clearAllConversations}
                   className="text-[11px] font-medium text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
-                  title="Delete all conversations"
+                  title={t("aria.clear_all")}
                 >
-                  <Trash2 className="h-3 w-3" /> Clear all
+                  <Trash2 className="h-3 w-3" /> {t("aria.clear_all")}
                 </button>
               </div>
             )}
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {sortedConversations.length === 0 && (
-                <p className="text-xs text-muted-foreground px-2 py-3">No conversations yet.</p>
+                <p className="text-xs text-muted-foreground px-2 py-3">{t("aria.mobile_conversations_empty")}</p>
               )}
               {sortedConversations.map(c => (
                 <ConversationRow
@@ -613,18 +593,18 @@ export default function Aria() {
                 </div>
                 <h2 className="font-serif text-2xl text-primary">{t("aria.title")}</h2>
                 <p className="text-muted-foreground text-sm max-w-md">
-                  Your personal wedding planning assistant. I can answer questions <em>and</em> take real actions in your portal — add vendors, create checklist items, update your timeline, and more.
+                  {t("aria.welcome_body")}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-xl">
-                {STARTERS.map(q => (
+                {(["starter_1","starter_2","starter_3","starter_4","starter_5","starter_6"] as const).map(key => (
                   <button
-                    key={q}
-                    onClick={() => send(q)}
+                    key={key}
+                    onClick={() => send(t(`aria.${key}`))}
                     className="text-left px-4 py-3 rounded-xl border border-border/60 bg-card hover:border-primary/40 hover:bg-primary/5 transition-all text-sm text-foreground/80 hover:text-foreground leading-snug"
                   >
-                    {q}
+                    {t(`aria.${key}`)}
                   </button>
                 ))}
               </div>
@@ -642,7 +622,7 @@ export default function Aria() {
               onClick={() => scrollToBottom()}
               className="flex items-center gap-1.5 text-xs text-muted-foreground bg-card border border-border rounded-full px-3 py-1.5 shadow hover:shadow-md hover:text-foreground transition-all"
             >
-              <ChevronDown className="h-3.5 w-3.5" /> Scroll to bottom
+              <ChevronDown className="h-3.5 w-3.5" /> {t("aria.scroll_to_bottom")}
             </button>
           </div>
         )}
@@ -671,7 +651,7 @@ export default function Aria() {
             </Button>
           </div>
           <p className="text-[11px] text-muted-foreground mt-2 text-center">
-            Press <kbd className="font-mono bg-muted px-1 rounded text-[10px]">Enter</kbd> to send · <kbd className="font-mono bg-muted px-1 rounded text-[10px]">Shift+Enter</kbd> for new line · Conversation history saved automatically
+            {t("aria.keyboard_hint")}
           </p>
         </div>
       </div>
@@ -690,6 +670,20 @@ function ConversationRow({
   onSelect: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
+
+  function formatRelative(ts: number) {
+    const diff = Date.now() - ts;
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return t("aria.just_now");
+    if (m < 60) return t("aria.minutes_ago", { n: m });
+    const h = Math.floor(m / 60);
+    if (h < 24) return t("aria.hours_ago", { n: h });
+    const d = Math.floor(h / 24);
+    if (d < 7) return t("aria.days_ago", { n: d });
+    return new Date(ts).toLocaleDateString();
+  }
+
   return (
     <div
       className={`group flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-colors ${
@@ -699,19 +693,19 @@ function ConversationRow({
     >
       <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`} />
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium truncate" title={convo.title}>{convo.title || "New chat"}</p>
+        <p className="text-xs font-medium truncate" title={convo.title || t("aria.new_chat")}>{convo.title || t("aria.new_chat")}</p>
         <p className="text-[10px] text-muted-foreground">{formatRelative(convo.updatedAt)}</p>
       </div>
       <button
         onClick={e => {
           e.stopPropagation();
-          if (window.confirm("Delete this conversation? This can't be undone.")) {
+          if (window.confirm(t("aria.delete_confirm"))) {
             onDelete();
           }
         }}
         className="p-1.5 rounded text-muted-foreground hover:bg-background hover:text-destructive opacity-70 md:opacity-50 md:group-hover:opacity-100 transition-all"
-        title="Delete conversation"
-        aria-label="Delete conversation"
+        title={t("aria.delete_chat")}
+        aria-label={t("aria.delete_chat")}
         data-testid={`btn-aria-delete-${convo.id}`}
       >
         <Trash2 className="h-3.5 w-3.5" />
