@@ -391,19 +391,107 @@ function PaymentRow({
   const { toast } = useToast();
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [editLabel, setEditLabel] = useState(payment.label);
+  const [editAmount, setEditAmount] = useState(String(payment.amount));
+  const [editDueDate, setEditDueDate] = useState(payment.dueDate);
+  const [editIsPaid, setEditIsPaid] = useState(payment.isPaid);
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
+    qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+    qc.invalidateQueries({ queryKey: ["vendor-financials"] });
+  };
+
   const toggleMutation = useUpdateVendorPayment({
     mutation: {
-      onSuccess: () => {
-        qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
-        qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
-        qc.invalidateQueries({ queryKey: ["vendor-financials"] });
-      },
+      onSuccess: invalidate,
+      onError: () => toast({ title: t("vendors.failed_update_payment"), variant: "destructive" }),
+    },
+  });
+
+  const editMutation = useUpdateVendorPayment({
+    mutation: {
+      onSuccess: () => { invalidate(); setEditing(false); },
       onError: () => toast({ title: t("vendors.failed_update_payment"), variant: "destructive" }),
     },
   });
 
   const days = daysUntil(payment.dueDate);
   const isOverdue = !payment.isPaid && days < 0;
+
+  function openEdit() {
+    setEditLabel(payment.label);
+    setEditAmount(String(payment.amount));
+    setEditDueDate(payment.dueDate);
+    setEditIsPaid(payment.isPaid);
+    setEditing(true);
+  }
+
+  function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editLabel || !editAmount || !editDueDate) {
+      toast({ title: t("vendors.all_fields_required"), variant: "destructive" });
+      return;
+    }
+    editMutation.mutate({ id: vendorId, paymentId: payment.id, data: { label: editLabel, amount: Number(editAmount), dueDate: editDueDate, isPaid: editIsPaid } });
+  }
+
+  if (editing) {
+    return (
+      <form onSubmit={handleEditSubmit} className="rounded-xl p-4 space-y-4 border bg-muted/20">
+        <p className="text-sm font-semibold">Edit Payment</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2 space-y-1.5">
+            <Label className="text-xs">{t("vendors.payment_label")}</Label>
+            <Input
+              placeholder={t("vendors.payment_label_placeholder")}
+              value={editLabel}
+              onChange={(e) => setEditLabel(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t("vendors.payment_amount")}</Label>
+            <MoneyInput value={editAmount} onChange={setEditAmount} placeholder="0.00" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t("vendors.payment_due_date")}</Label>
+            <Input
+              type="date"
+              value={editDueDate}
+              onChange={(e) => setEditDueDate(e.target.value)}
+              className="[color-scheme:light] dark:[color-scheme:dark]"
+            />
+          </div>
+          <div className="col-span-2">
+            <Label className="text-xs mb-2 block">{t("vendors.payment_status")}</Label>
+            <div className="flex rounded-lg overflow-hidden border">
+              <button
+                type="button"
+                onClick={() => setEditIsPaid(false)}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${!editIsPaid ? "bg-red-500 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+              >
+                {t("vendors.not_paid")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditIsPaid(true)}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${editIsPaid ? "bg-green-500 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+              >
+                {t("vendors.paid")}
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <Button type="submit" size="sm" disabled={editMutation.isPending} className="flex-1">
+            {editMutation.isPending ? "Saving…" : "Save Changes"}
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>{t("vendors.cancel")}</Button>
+        </div>
+      </form>
+    );
+  }
 
   return (
     <div className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
@@ -442,7 +530,10 @@ function PaymentRow({
       <div className={`text-sm font-bold text-right shrink-0 ${payment.isPaid ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"}`}>
         {formatCurrency(payment.amount)}
       </div>
-      <button onClick={onDelete} className="text-muted-foreground hover:text-destructive transition-colors ml-1">
+      <button onClick={openEdit} title="Edit payment" className="text-muted-foreground hover:text-foreground transition-colors ml-1">
+        <Edit className="h-3.5 w-3.5" />
+      </button>
+      <button onClick={onDelete} className="text-muted-foreground hover:text-destructive transition-colors">
         <X className="h-4 w-4" />
       </button>
     </div>
