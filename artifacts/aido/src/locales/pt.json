@@ -212,7 +212,9 @@
     "saved_toast": "Perfil guardado",
     "saved_toast_desc": "Os detalhes do seu casamento foram atualizados.",
     "save_error": "Não foi possível guardar o perfil. Por favor, tente novamente.",
-    "ceremony_at_venue_desc": "Marque esta opção se a cerimônia não for no local da recepção"
+    "ceremony_at_venue_desc": "Marque esta opção se a cerimônia não for no local da recepção",
+    "ceremony_venue_name": "Nome do Local",
+    "ceremony_street_address": "Endereço"
   },
   "aria": {
     "name": "Aria",

@@ -212,7 +212,9 @@
     "saved_toast": "档案已保存",
     "saved_toast_desc": "您的婚礼详情已更新。",
     "save_error": "保存档案失败，请重试。",
-    "ceremony_at_venue_desc": "如果仪式不在宴会场地举行，请勾选此项"
+    "ceremony_at_venue_desc": "如果仪式不在宴会场地举行，请勾选此项",
+    "ceremony_venue_name": "场地名称",
+    "ceremony_street_address": "街道地址"
   },
   "aria": {
     "name": "Aria",

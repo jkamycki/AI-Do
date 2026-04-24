@@ -333,7 +333,7 @@ export default function Profile() {
                       name="ceremonyVenueName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t("profile.ceremony_venue")}</FormLabel>
+                          <FormLabel>{t("profile.ceremony_venue_name")}</FormLabel>
                           <FormControl>
                             <Input placeholder="St. Mary's Cathedral" {...field} data-testid="input-ceremony-venue-name" className="bg-background" />
                           </FormControl>
@@ -346,7 +346,7 @@ export default function Profile() {
                       name="ceremonyAddress"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t("profile.location")}</FormLabel>
+                          <FormLabel>{t("profile.ceremony_street_address")}</FormLabel>
                           <FormControl>
                             <Input placeholder="200 Broad Street" {...field} data-testid="input-ceremony-address" className="bg-background" />
                           </FormControl>

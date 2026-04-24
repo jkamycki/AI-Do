@@ -212,7 +212,9 @@
     "saved_toast": "تم حفظ الملف",
     "saved_toast_desc": "تم تحديث تفاصيل زفافك.",
     "save_error": "فشل حفظ الملف. يرجى المحاولة مرة أخرى.",
-    "ceremony_at_venue_desc": "حدد هذا الخيار إذا كانت مراسم الزفاف ليست في موقع الحفل"
+    "ceremony_at_venue_desc": "حدد هذا الخيار إذا كانت مراسم الزفاف ليست في موقع الحفل",
+    "ceremony_venue_name": "اسم المكان",
+    "ceremony_street_address": "العنوان"
   },
   "aria": {
     "name": "Aria",

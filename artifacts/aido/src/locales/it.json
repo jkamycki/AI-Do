@@ -212,7 +212,9 @@
     "saved_toast": "Profilo salvato",
     "saved_toast_desc": "I tuoi dettagli del matrimonio sono stati aggiornati.",
     "save_error": "Impossibile salvare il profilo. Riprova.",
-    "ceremony_at_venue_desc": "Spunta questa casella se la tua cerimonia non si svolge nel luogo del ricevimento"
+    "ceremony_at_venue_desc": "Spunta questa casella se la tua cerimonia non si svolge nel luogo del ricevimento",
+    "ceremony_venue_name": "Nome della Location",
+    "ceremony_street_address": "Indirizzo"
   },
   "aria": {
     "name": "Aria",

@@ -212,7 +212,9 @@
     "saved_toast": "プロフィールを保存しました",
     "saved_toast_desc": "結婚式の詳細が更新されました。",
     "save_error": "プロフィールの保存に失敗しました。もう一度お試しください。",
-    "ceremony_at_venue_desc": "挙式が披露宴会場と異なる場合はチェックしてください"
+    "ceremony_at_venue_desc": "挙式が披露宴会場と異なる場合はチェックしてください",
+    "ceremony_venue_name": "会場名",
+    "ceremony_street_address": "住所"
   },
   "aria": {
     "name": "Aria",

@@ -212,7 +212,9 @@
     "saved_toast": "Profil zapisany",
     "saved_toast_desc": "Twoje dane weselne zostały zaktualizowane.",
     "save_error": "Nie udało się zapisać profilu. Spróbuj ponownie.",
-    "ceremony_at_venue_desc": "Zaznacz, jeśli ceremonia nie odbywa się w miejscu wesela"
+    "ceremony_at_venue_desc": "Zaznacz, jeśli ceremonia nie odbywa się w miejscu wesela",
+    "ceremony_venue_name": "Nazwa Miejsca",
+    "ceremony_street_address": "Adres"
   },
   "aria": {
     "name": "Aria",

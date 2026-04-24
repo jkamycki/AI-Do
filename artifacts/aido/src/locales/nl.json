@@ -212,7 +212,9 @@
     "saved_toast": "Profiel opgeslagen",
     "saved_toast_desc": "Uw huwelijksgegevens zijn bijgewerkt.",
     "save_error": "Profiel opslaan mislukt. Probeer het opnieuw.",
-    "ceremony_at_venue_desc": "Vink dit aan als uw ceremonie niet op de receptielocatie plaatsvindt"
+    "ceremony_at_venue_desc": "Vink dit aan als uw ceremonie niet op de receptielocatie plaatsvindt",
+    "ceremony_venue_name": "Naam Locatie",
+    "ceremony_street_address": "Straatadres"
   },
   "aria": {
     "name": "Aria",

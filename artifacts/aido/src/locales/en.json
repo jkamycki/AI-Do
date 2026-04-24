@@ -226,7 +226,9 @@
     "saved_toast": "Profile saved",
     "saved_toast_desc": "Your wedding details have been updated.",
     "save_error": "Failed to save profile. Please try again.",
-    "ceremony_at_venue_desc": "Tick this if your ceremony is not at your reception venue"
+    "ceremony_at_venue_desc": "Tick this if your ceremony is not at your reception venue",
+    "ceremony_venue_name": "Venue Name",
+    "ceremony_street_address": "Street Address"
   },
   "aria": {
     "name": "Aria",
