@@ -932,16 +932,16 @@ export default function SeatingChartPage() {
             </div>
           </div>
 
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-primary/40 bg-primary/10 text-sm font-medium text-foreground">
+            <Info className="h-4 w-4 text-primary flex-shrink-0" />
+            <span>Saving this chart automatically updates the <strong className="text-primary">Table Assignment</strong> column in your Guest List.</span>
+          </div>
+
           <div className="flex items-start gap-2 p-3 bg-primary/5 rounded-xl text-sm text-primary">
             <MoveRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
             <span>
               <strong>{t("seating.make_it_yours_title")}</strong> {t("seating.drag_instruction")}
             </span>
-          </div>
-
-          <div className="flex items-start gap-2 p-3 bg-muted/40 rounded-xl text-sm text-muted-foreground">
-            <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
-            <span>Saving this chart automatically updates the <strong className="text-foreground">Table Assignment</strong> column on your Guest List.</span>
           </div>
 
           {chartDirty && (
