@@ -631,48 +631,19 @@ function ClerkTokenSetup() {
 }
 
 function PendingInviteRedirector() {
-  const { isSignedIn, getToken } = useAuth();
-  const [location, setLocation] = useLocation();
-  const checkedRef = useRef(false);
-
-  useEffect(() => {
-    if (!isSignedIn) {
-      checkedRef.current = false;
-      return;
-    }
-    if (checkedRef.current) return;
-    if (location.startsWith("/invite/") || location.startsWith("/sign-in") || location.startsWith("/sign-up")) {
-      return;
-    }
-    checkedRef.current = true;
-
-    (async () => {
-      try {
-        const token = await getToken();
-        const [profileRes, invitesRes] = await Promise.all([
-          fetch(`${basePath}/api/profile`, {
-            credentials: "include",
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          }),
-          fetch(`${basePath}/api/invites/pending`, {
-            credentials: "include",
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          }),
-        ]);
-        const hasOwnProfile = profileRes.ok;
-        if (hasOwnProfile) return;
-        if (!invitesRes.ok) return;
-        const data = (await invitesRes.json()) as { pending?: Array<{ inviteToken: string }> };
-        const first = data.pending?.[0];
-        if (first?.inviteToken) {
-          setLocation(`/invite/${first.inviteToken}`);
-        }
-      } catch {
-        // Silent — non-blocking redirector.
-      }
-    })();
-  }, [isSignedIn, location, getToken, setLocation]);
-
+  // Intentionally a no-op.
+  //
+  // Previously this component auto-redirected any signed-in user without their
+  // own profile to the first pending invite that matched their email address.
+  // That conflated "this email has a pending invite" with "this account is the
+  // intended recipient", which broke the security expectation that a deleted
+  // account followed by a fresh signup with the same email should NOT inherit
+  // any prior workspace access.
+  //
+  // Collaborators must now explicitly click the invite link from their email
+  // to accept (the /invite/:token route handles that flow with an explicit
+  // email match check). New accounts with previously-invited emails will not
+  // be silently linked into any workspace.
   return null;
 }
 
