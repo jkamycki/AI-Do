@@ -178,7 +178,17 @@
     "days_to_go": "days to go",
     "unnamed_hotel": "Unnamed Hotel",
     "hotel_blocks_label": "Hotel Block",
-    "hotel_blocks_label_plural": "Hotel Blocks"
+    "hotel_blocks_label_plural": "Hotel Blocks",
+    "days_unit": "days",
+    "bride_side_count": "{{n}} bride side",
+    "groom_side_count": "{{n}} groom side",
+    "hotel_label": "Hotel",
+    "hotels_label": "Hotels",
+    "date_time_label": "Date & Time",
+    "ceremony_at": "Ceremony {{time}}",
+    "reception_at": "Reception {{time}}",
+    "days_to_go_count": "{{n}} days to go",
+    "more_count": "+{{n}} more"
   },
   "profile": {
     "title": "Wedding Profile",
@@ -319,7 +329,23 @@
     "notes_label": "Notes",
     "notes_placeholder": "Optional details…",
     "receipt_optional": "Receipt (optional)",
-    "uploading": "Uploading…"
+    "uploading": "Uploading…",
+    "toast_upload_failed": "Upload failed",
+    "toast_budget_updated": "Budget updated",
+    "toast_could_not_update_budget": "Could not update budget",
+    "toast_receipt_uploaded": "Receipt uploaded",
+    "toast_name_required": "Name is required",
+    "toast_expense_updated": "Expense updated",
+    "toast_could_not_update_expense": "Could not update expense",
+    "toast_expense_added": "Expense added",
+    "toast_could_not_add_expense": "Could not add expense",
+    "toast_expense_deleted": "Expense deleted",
+    "toast_could_not_delete_expense": "Could not delete expense",
+    "confirm_delete_expense": "Delete this expense?",
+    "pct_paid": "{{pct}}% paid",
+    "date_time_label": "Date & Time",
+    "ceremony_at": "Ceremony {{time}}",
+    "reception_at": "Reception {{time}}"
   },
   "checklist": {
     "title": "Wedding Checklist",

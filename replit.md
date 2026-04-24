@@ -36,6 +36,7 @@ Full-stack AI-powered wedding planning application. pnpm workspace monorepo usin
 9. **Operations Center** — Admin analytics dashboard with User Metrics, Product Usage, Money Metrics, System Health, and Event Log
 10. **Collaboration System** — Invite-by-link system with Partner/Planner/Vendor roles, accept/decline flow, workspace switching, shared workspace view, and activity log
 11. **Virtual Support Assistant (Aria)** — Floating AI chat widget on all authenticated pages; GPT-powered, knows all A.IDO features and general wedding planning; streams responses in real time
+12. **Internationalization (i18n)** — 14 languages supported (en, es, fr, de, it, pt, zh, ja, ko, ar, hi, ru, nl, pl). Locales in `artifacts/aido/src/locales/<lang>.json`. RTL support in `i18n.ts` auto-applies `dir="rtl"` for ar/he/fa/ur on language change. Persists per-user via `useSaveProfile` + `localStorage["aido_language"]`. Use the chunked translator script at `/tmp/translate_chunked.mjs` (env: NS_FILTER) to regenerate locales when adding/changing keys in `en.json`.
 
 ## Authentication Architecture
 

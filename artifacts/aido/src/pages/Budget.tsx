@@ -139,7 +139,7 @@ export default function Budget() {
 
   const upload = useUpload({
     getToken,
-    onError: (e) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: t("budget.toast_upload_failed"), description: e.message, variant: "destructive" }),
   });
 
   // ── Totals ────────────────────────────────────────────────────────
@@ -175,11 +175,11 @@ export default function Budget() {
       { data: { totalBudget: n } },
       {
         onSuccess: () => {
-          toast({ title: "Budget updated" });
+          toast({ title: t("budget.toast_budget_updated") });
           queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
           setEditingBudget(false);
         },
-        onError: () => toast({ variant: "destructive", title: "Could not update budget" }),
+        onError: () => toast({ variant: "destructive", title: t("budget.toast_could_not_update_budget") }),
       },
     );
   };
@@ -209,14 +209,14 @@ export default function Budget() {
     const result = await upload.uploadFile(file);
     if (result?.url) {
       setForm((f) => ({ ...f, receiptUrl: result.url, receiptName: file.name }));
-      toast({ title: "Receipt uploaded" });
+      toast({ title: t("budget.toast_receipt_uploaded") });
     }
     e.target.value = "";
   };
 
   const submitForm = () => {
     if (!form.name.trim()) {
-      toast({ variant: "destructive", title: "Name is required" });
+      toast({ variant: "destructive", title: t("budget.toast_name_required") });
       return;
     }
     const payload = {
@@ -239,10 +239,10 @@ export default function Budget() {
         { id: editingId, data: payload as never },
         {
           onSuccess: () => {
-            toast({ title: "Expense updated" });
+            toast({ title: t("budget.toast_expense_updated") });
             onDone();
           },
-          onError: () => toast({ variant: "destructive", title: "Could not update expense" }),
+          onError: () => toast({ variant: "destructive", title: t("budget.toast_could_not_update_expense") }),
         },
       );
     } else {
@@ -250,25 +250,25 @@ export default function Budget() {
         { data: payload as never },
         {
           onSuccess: () => {
-            toast({ title: "Expense added" });
+            toast({ title: t("budget.toast_expense_added") });
             onDone();
           },
-          onError: () => toast({ variant: "destructive", title: "Could not add expense" }),
+          onError: () => toast({ variant: "destructive", title: t("budget.toast_could_not_add_expense") }),
         },
       );
     }
   };
 
   const handleDelete = (id: number) => {
-    if (!confirm("Delete this expense?")) return;
+    if (!confirm(t("budget.confirm_delete_expense"))) return;
     deleteManual.mutate(
       { id },
       {
         onSuccess: () => {
-          toast({ title: "Expense deleted" });
+          toast({ title: t("budget.toast_expense_deleted") });
           queryClient.invalidateQueries({ queryKey: getListManualExpensesQueryKey() });
         },
-        onError: () => toast({ variant: "destructive", title: "Could not delete expense" }),
+        onError: () => toast({ variant: "destructive", title: t("budget.toast_could_not_delete_expense") }),
       },
     );
   };
@@ -409,7 +409,7 @@ export default function Budget() {
                                 style={{ width: `${pct}%` }}
                               />
                             </div>
-                            <p className="text-[10px] text-muted-foreground">{pct.toFixed(0)}% paid</p>
+                            <p className="text-[10px] text-muted-foreground">{t("budget.pct_paid", { pct: pct.toFixed(0) })}</p>
                           </div>
                         </TableCell>
                         <TableCell className="text-right">

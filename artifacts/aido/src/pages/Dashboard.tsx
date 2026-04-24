@@ -91,6 +91,7 @@ function formatTime(timeStr: string | null | undefined) {
 }
 
 function CountdownRing({ days }: { days: number }) {
+  const { t } = useTranslation();
   const cap = 365;
   const pct = Math.max(0, Math.min(1, days / cap));
   const r = 52;
@@ -112,7 +113,7 @@ function CountdownRing({ days }: { days: number }) {
       </svg>
       <div className="text-center z-10">
         <div className="text-4xl font-serif font-bold text-primary leading-none">{days}</div>
-        <div className="text-xs text-muted-foreground mt-1 uppercase tracking-wider">days</div>
+        <div className="text-xs text-muted-foreground mt-1 uppercase tracking-wider">{t("dashboard.days_unit")}</div>
       </div>
     </div>
   );
@@ -630,15 +631,15 @@ export default function Dashboard() {
                   id: "dateTime",
                   node: (
               <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5 h-full">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Date &amp; Time</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{t("dashboard.date_time_label")}</p>
                 <div className="flex items-start gap-2">
                   <CalendarDays className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-foreground">{formatDate(summary.profile.weddingDate)}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {[
-                        summary.profile.ceremonyTime && `Ceremony ${formatTime(summary.profile.ceremonyTime)}`,
-                        summary.profile.receptionTime && `Reception ${formatTime(summary.profile.receptionTime)}`,
+                        summary.profile.ceremonyTime && t("dashboard.ceremony_at", { time: formatTime(summary.profile.ceremonyTime) }),
+                        summary.profile.receptionTime && t("dashboard.reception_at", { time: formatTime(summary.profile.receptionTime) }),
                       ].filter(Boolean).join(" · ")}
                     </p>
                   </div>
@@ -651,7 +652,7 @@ export default function Dashboard() {
                       ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
                       : "bg-primary/10 text-primary"
                   }`}>
-                    {summary.daysUntilWedding === 0 ? "Today!" : `${summary.daysUntilWedding} days to go`}
+                    {summary.daysUntilWedding === 0 ? t("dashboard.today") : t("dashboard.days_to_go_count", { n: summary.daysUntilWedding })}
                   </span>
                 </div>
               </div>
@@ -662,7 +663,7 @@ export default function Dashboard() {
                   id: "venue",
                   node: (
               <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5 h-full">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Venue &amp; Location</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{t("dashboard.venue_location")}</p>
                 <div className="flex items-start gap-2">
                   <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                   <div className="min-w-0">
@@ -685,11 +686,11 @@ export default function Dashboard() {
                   <div className="flex items-start gap-2 pt-1 border-t border-border/30">
                     <Hotel className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs text-muted-foreground mb-1.5">Hotel{hotels.length > 1 ? "s" : ""}</p>
+                      <p className="text-xs text-muted-foreground mb-1.5">{hotels.length > 1 ? t("dashboard.hotels_label") : t("dashboard.hotel_label")}</p>
                       <div className="flex flex-col gap-2">
                         {hotels.map(h => (
                           <div key={h.id}>
-                            <p className="text-sm font-medium text-foreground">{h.hotelName || "Unnamed Hotel"}</p>
+                            <p className="text-sm font-medium text-foreground">{h.hotelName || t("dashboard.unnamed_hotel")}</p>
                             {h.address && (
                               <p className="text-xs text-muted-foreground leading-snug break-words">{h.address}</p>
                             )}
@@ -889,8 +890,8 @@ export default function Dashboard() {
                 <div className="flex items-center gap-3 mb-2">
                   <span className="text-2xl font-serif font-semibold text-foreground">{weddingParty.length}</span>
                   <div className="text-xs text-muted-foreground leading-tight">
-                    <div>{weddingParty.filter(m => m.side === "bride").length} bride side</div>
-                    <div>{weddingParty.filter(m => m.side === "groom").length} groom side</div>
+                    <div>{t("dashboard.bride_side_count", { n: weddingParty.filter(m => m.side === "bride").length })}</div>
+                    <div>{t("dashboard.groom_side_count", { n: weddingParty.filter(m => m.side === "groom").length })}</div>
                   </div>
                 </div>
                 {weddingParty.slice(0, 3).map(m => (
