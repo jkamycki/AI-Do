@@ -1,11 +1,29 @@
 import { Router } from "express";
-import { db, seatingCharts } from "@workspace/db";
+import { db, seatingCharts, guests as guestRecords } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
+
+async function syncTableAssignments(
+  profileId: number,
+  tables: { tableNumber: number; tableName: string; guests: string[] }[],
+) {
+  for (const table of tables) {
+    for (const guestName of table.guests) {
+      if (!guestName?.trim()) continue;
+      await db
+        .update(guestRecords)
+        .set({ tableAssignment: table.tableName })
+        .where(and(
+          eq(guestRecords.profileId, profileId),
+          eq(guestRecords.name, guestName),
+        ));
+    }
+  }
+}
 
 interface Guest {
   id: string;
@@ -131,6 +149,12 @@ router.post("/seating/charts", requireAuth, async (req, res) => {
         seatsPerTable: seatsPerTable ?? 8,
       })
       .returning();
+
+    const effectiveProfileId = profileId ?? saved.profileId;
+    if (effectiveProfileId && Array.isArray(tables) && tables.length > 0) {
+      await syncTableAssignments(effectiveProfileId, tables).catch(() => {});
+    }
+
     res.json({ ...saved, createdAt: saved.createdAt.toISOString(), updatedAt: saved.updatedAt.toISOString() });
   } catch {
     res.status(500).json({ error: "Internal server error" });
@@ -181,6 +205,11 @@ router.put("/seating/charts/:id", requireAuth, async (req, res) => {
       res.status(404).json({ error: "Seating chart not found" });
       return;
     }
+
+    if (updated.profileId && Array.isArray(tables) && tables.length > 0) {
+      await syncTableAssignments(updated.profileId, tables).catch(() => {});
+    }
+
     res.json({ ...updated, createdAt: updated.createdAt.toISOString(), updatedAt: updated.updatedAt.toISOString() });
   } catch {
     res.status(500).json({ error: "Internal server error" });
