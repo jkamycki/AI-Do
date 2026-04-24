@@ -187,6 +187,7 @@ function CustomSignUpForm() {
   const [emailAddressId, setEmailAddressId] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [resendInfo, setResendInfo] = useState<string | null>(null);
+  const [oauthLoading, setOauthLoading] = useState<"oauth_google" | "oauth_apple" | null>(null);
 
   const apiBase = `${basePath}/api`;
 
@@ -317,12 +318,14 @@ function CustomSignUpForm() {
   async function handleOAuth(strategy: "oauth_google" | "oauth_apple") {
     setError(null);
     try {
+      setOauthLoading(strategy);
       const start = Date.now();
       while (!clerk.loaded && Date.now() - start < 8000) {
-        await new Promise((res) => setTimeout(res, 150));
+        await new Promise((res) => setTimeout(res, 50));
       }
       const signUpClient = clerk.client?.signUp;
       if (!signUpClient) {
+        setOauthLoading(null);
         setError("Auth is still loading. Please try again in a moment.");
         return;
       }
@@ -487,8 +490,13 @@ function CustomSignUpForm() {
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
-        <button type="button" onClick={() => handleOAuth("oauth_google")} style={oauthBtn}>
-          Continue with Google
+        <button
+          type="button"
+          onClick={() => handleOAuth("oauth_google")}
+          disabled={oauthLoading !== null}
+          style={{ ...oauthBtn, opacity: oauthLoading ? 0.7 : 1, cursor: oauthLoading ? "wait" : "pointer" }}
+        >
+          {oauthLoading === "oauth_google" ? "Redirecting to Google…" : "Continue with Google"}
         </button>
       </div>
 
