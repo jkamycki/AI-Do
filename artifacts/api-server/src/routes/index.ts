@@ -26,6 +26,7 @@ import accountRouter from "./account";
 import guestCollectRouter from "./guestCollect";
 import messagingRouter from "./wedding/messaging";
 import ttsRouter from "./tts";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use(accountRouter);
 router.use(guestCollectRouter);
 router.use(messagingRouter);
 router.use(ttsRouter);
+router.use(authRouter);
 
 export default router;

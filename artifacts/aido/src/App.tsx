@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
-import { ClerkProvider, SignIn, SignUp, useClerk, useAuth, Show } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, useClerk, useAuth, useSignIn, useSignUp, Show } from "@clerk/react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -142,17 +142,231 @@ function SignInPage() {
 }
 
 function SignUpPage() {
-  // To update login providers, app branding, or OAuth settings use the Auth
-  // pane in the workspace toolbar. More information can be found in the Replit docs.
   return (
     <AuthPageWrapper>
-      <SignUp
-        routing="path"
-        path={`${basePath}/sign-up`}
-        signInUrl={`${basePath}/sign-in`}
-        fallbackRedirectUrl={`${basePath}/dashboard`}
-      />
+      <CustomSignUpForm />
     </AuthPageWrapper>
+  );
+}
+
+function CustomSignUpForm() {
+  const { signIn, isLoaded: signInLoaded, setActive } = useSignIn();
+  const { signUp, isLoaded: signUpLoaded } = useSignUp();
+  const [, setLocation] = useLocation();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!email.trim() || !password) {
+      setError("Email and password are required.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (!signInLoaded || !setActive) {
+      setError("Auth is still loading. Please try again in a moment.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const apiBase = `${basePath}api`.replace(/\/+/g, "/");
+      const r = await fetch(apiBase + "/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password, firstName, lastName }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setError(data?.error || "Could not create account. Try a different email.");
+        setSubmitting(false);
+        return;
+      }
+      const attempt = await signIn.create({ identifier: email.trim(), password });
+      if (attempt.status === "complete") {
+        await setActive({ session: attempt.createdSessionId });
+        setLocation("/dashboard");
+      } else {
+        setLocation("/sign-in");
+      }
+    } catch (err: unknown) {
+      const msg =
+        (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0]?.longMessage ||
+        (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0]?.message ||
+        (err as Error)?.message ||
+        "Something went wrong. Please try again.";
+      setError(msg);
+      setSubmitting(false);
+    }
+  }
+
+  async function handleOAuth(strategy: "oauth_google" | "oauth_apple") {
+    if (!signUpLoaded) return;
+    setError(null);
+    try {
+      await signUp.authenticateWithRedirect({
+        strategy,
+        redirectUrl: `${basePath}/sign-up`,
+        redirectUrlComplete: `${basePath}/dashboard`,
+      });
+    } catch (err: unknown) {
+      const msg =
+        (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0]?.longMessage ||
+        (err as Error)?.message ||
+        "OAuth sign-up failed.";
+      setError(msg);
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "0.65rem 0.85rem",
+    borderRadius: "0.5rem",
+    border: "1px solid rgba(255,255,255,0.15)",
+    background: "rgba(255,255,255,0.05)",
+    color: "#ffffff",
+    fontSize: "0.9rem",
+    outline: "none",
+  };
+  const labelStyle: React.CSSProperties = {
+    color: "#b8a9cc",
+    fontSize: "0.78rem",
+    fontWeight: 500,
+    marginBottom: "0.35rem",
+    display: "block",
+  };
+  const oauthBtn: React.CSSProperties = {
+    width: "100%",
+    padding: "0.65rem",
+    borderRadius: "0.5rem",
+    border: "1px solid rgba(255,255,255,0.15)",
+    background: "rgba(255,255,255,0.05)",
+    color: "#ffffff",
+    fontSize: "0.9rem",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.5rem",
+  };
+
+  return (
+    <div
+      style={{
+        background: "rgba(20,12,35,0.7)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "0.85rem",
+        padding: "1.5rem",
+        backdropFilter: "blur(10px)",
+      }}
+    >
+      <h2 style={{ color: "#ffffff", fontSize: "1.4rem", fontWeight: 600, marginBottom: "0.35rem" }}>
+        Create your account
+      </h2>
+      <p style={{ color: "#b8a9cc", fontSize: "0.85rem", marginBottom: "1.25rem" }}>
+        Welcome! Let's get your wedding planning started.
+      </p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
+        <button type="button" onClick={() => handleOAuth("oauth_google")} style={oauthBtn}>
+          Continue with Google
+        </button>
+        <button type="button" onClick={() => handleOAuth("oauth_apple")} style={oauthBtn}>
+          Continue with Apple
+        </button>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", margin: "1rem 0" }}>
+        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
+        <span style={{ color: "#b8a9cc", fontSize: "0.75rem" }}>or</span>
+        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
+      </div>
+
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem" }}>
+          <div>
+            <label style={labelStyle}>First name</label>
+            <input style={inputStyle} value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" />
+          </div>
+          <div>
+            <label style={labelStyle}>Last name</label>
+            <input style={inputStyle} value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" />
+          </div>
+        </div>
+        <div>
+          <label style={labelStyle}>Email address</label>
+          <input
+            type="email"
+            required
+            style={inputStyle}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>Password</label>
+          <input
+            type="password"
+            required
+            style={inputStyle}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            minLength={8}
+          />
+        </div>
+
+        {error && (
+          <div
+            style={{
+              color: "#ff8a8a",
+              background: "rgba(255,80,80,0.08)",
+              border: "1px solid rgba(255,80,80,0.25)",
+              borderRadius: "0.5rem",
+              padding: "0.55rem 0.75rem",
+              fontSize: "0.82rem",
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          style={{
+            width: "100%",
+            padding: "0.7rem",
+            borderRadius: "0.5rem",
+            border: "none",
+            background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
+            color: "#ffffff",
+            fontSize: "0.95rem",
+            fontWeight: 600,
+            cursor: submitting ? "not-allowed" : "pointer",
+            opacity: submitting ? 0.7 : 1,
+            marginTop: "0.25rem",
+          }}
+        >
+          {submitting ? "Creating account..." : "Create account"}
+        </button>
+      </form>
+
+      <p style={{ color: "#b8a9cc", fontSize: "0.82rem", marginTop: "1rem", textAlign: "center" }}>
+        Already have an account?{" "}
+        <a href={`${basePath}/sign-in`} style={{ color: "#F5C842", fontWeight: 500 }}>
+          Sign in
+        </a>
+      </p>
+    </div>
   );
 }
 
