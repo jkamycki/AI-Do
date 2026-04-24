@@ -662,30 +662,39 @@ function CustomSignUpForm() {
       sessionStorage.removeItem("aido_oauth_intent");
       sessionStorage.removeItem("aido_oauth_intent_at");
     } catch {}
-    if (!signUpLoaded || !signUp) {
-      setError("Auth is still loading. Please try again in a moment.");
-      return;
-    }
     if (!email.trim()) {
       setError("Please enter your email address.");
       return;
     }
     setSubmitting(true);
+    // Wait for Clerk's live instance to finish loading. We poll `clerk.loaded`
+    // (a stable instance property) rather than the React hook value, because
+    // hook values are captured by closure and won't update inside this loop.
+    const start = Date.now();
+    while (!clerk.loaded && Date.now() - start < 8000) {
+      await new Promise((res) => setTimeout(res, 50));
+    }
+    const liveSignUp = clerk.client?.signUp;
+    if (!clerk.loaded || !liveSignUp) {
+      setSubmitting(false);
+      setError("Auth is still loading. Please try again in a moment.");
+      return;
+    }
     try {
       // Use Clerk's frontend SDK so the email-verification code is the proof
       // of ownership before any session is issued. This is the secure flow.
       // The password is generated under the hood with strong entropy and
       // never shown to the user — sign-in is exclusively via email code or
       // Google. We satisfy Clerk's password requirement without exposing one.
-      await signUp.create({
+      await liveSignUp.create({
         emailAddress: email.trim(),
         password: generateRandomPassword(),
         firstName: firstName.trim() || undefined,
         lastName: lastName.trim() || undefined,
       });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      await liveSignUp.prepareEmailAddressVerification({ strategy: "email_code" });
       const eaId =
-        (signUp as unknown as { emailAddressId?: string }).emailAddressId ?? null;
+        (liveSignUp as unknown as { emailAddressId?: string }).emailAddressId ?? null;
       setEmailAddressId(eaId);
       setStep("verify");
       setSubmitting(false);
@@ -704,17 +713,23 @@ function CustomSignUpForm() {
     e.preventDefault();
     setError(null);
     setResendInfo(null);
-    if (!signUpLoaded || !signUp) {
-      setError("Auth is still loading. Please try again in a moment.");
-      return;
-    }
     if (!code.trim()) {
       setError("Enter the code from your email.");
       return;
     }
     setSubmitting(true);
+    const start = Date.now();
+    while (!clerk.loaded && Date.now() - start < 8000) {
+      await new Promise((res) => setTimeout(res, 50));
+    }
+    const liveSignUp = clerk.client?.signUp;
+    if (!clerk.loaded || !liveSignUp) {
+      setSubmitting(false);
+      setError("Auth is still loading. Please try again in a moment.");
+      return;
+    }
     try {
-      const result = await signUp.attemptEmailAddressVerification({
+      const result = await liveSignUp.attemptEmailAddressVerification({
         code: code.trim(),
       });
       if (result.status === "complete" && result.createdSessionId && clerk.setActive) {
