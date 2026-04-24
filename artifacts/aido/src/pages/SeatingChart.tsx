@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import {
   Users, Plus, Trash2, Wand2, Heart, AlertTriangle, UserPlus,
   ChevronDown, ChevronUp, RefreshCw, Info, Armchair, Save,
-  Clock, ChevronRight, Download, GripVertical, MoveRight,
+  Clock, ChevronRight, Download, GripVertical, MoveRight, Pencil,
 } from "lucide-react";
 
 type RelType = "prefer" | "avoid";
@@ -57,17 +57,17 @@ interface SavedChart {
 
 const GROUPS = ["Bride's Family", "Groom's Family", "Bride's Friends", "Groom's Friends", "Colleagues", "Other"];
 
-const TABLE_COLORS = [
-  "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/50 text-rose-900 dark:text-rose-100",
-  "bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800/50 text-violet-900 dark:text-violet-100",
-  "bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800/50 text-sky-900 dark:text-sky-100",
-  "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-100",
-  "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50 text-amber-900 dark:text-amber-100",
-  "bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800/50 text-pink-900 dark:text-pink-100",
-  "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800/50 text-indigo-900 dark:text-indigo-100",
-  "bg-teal-50 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800/50 text-teal-900 dark:text-teal-100",
-  "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800/50 text-orange-900 dark:text-orange-100",
-  "bg-cyan-50 dark:bg-cyan-950/30 border-cyan-200 dark:border-cyan-800/50 text-cyan-900 dark:text-cyan-100",
+const TABLE_ACCENTS = [
+  { bar: "bg-rose-500", chip: "bg-rose-100 text-rose-900 dark:bg-rose-900/50 dark:text-rose-100" },
+  { bar: "bg-violet-500", chip: "bg-violet-100 text-violet-900 dark:bg-violet-900/50 dark:text-violet-100" },
+  { bar: "bg-sky-500", chip: "bg-sky-100 text-sky-900 dark:bg-sky-900/50 dark:text-sky-100" },
+  { bar: "bg-emerald-500", chip: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100" },
+  { bar: "bg-amber-500", chip: "bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100" },
+  { bar: "bg-pink-500", chip: "bg-pink-100 text-pink-900 dark:bg-pink-900/50 dark:text-pink-100" },
+  { bar: "bg-indigo-500", chip: "bg-indigo-100 text-indigo-900 dark:bg-indigo-900/50 dark:text-indigo-100" },
+  { bar: "bg-teal-500", chip: "bg-teal-100 text-teal-900 dark:bg-teal-900/50 dark:text-teal-100" },
+  { bar: "bg-orange-500", chip: "bg-orange-100 text-orange-900 dark:bg-orange-900/50 dark:text-orange-100" },
+  { bar: "bg-cyan-500", chip: "bg-cyan-100 text-cyan-900 dark:bg-cyan-900/50 dark:text-cyan-100" },
 ];
 
 function GuestCard({
@@ -191,14 +191,20 @@ function TableCard({
   index,
   allTables,
   onMoveGuest,
+  onUpdateTable,
 }: {
   table: SeatingTable;
   index: number;
   allTables: SeatingTable[];
   onMoveGuest: (fromTableNumber: number, toTableNumber: number, guestName: string) => void;
+  onUpdateTable: (tableNumber: number, updates: { tableName?: string; theme?: string }) => void;
 }) {
-  const colorClass = TABLE_COLORS[index % TABLE_COLORS.length];
+  const accent = TABLE_ACCENTS[index % TABLE_ACCENTS.length];
   const [dragOver, setDragOver] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(table.tableName);
+  const [editingTheme, setEditingTheme] = useState(false);
+  const [themeDraft, setThemeDraft] = useState(table.theme ?? "");
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -215,27 +221,97 @@ function TableCard({
     }
   };
 
+  const commitName = () => {
+    const next = nameDraft.trim();
+    if (next && next !== table.tableName) {
+      onUpdateTable(table.tableNumber, { tableName: next });
+    } else {
+      setNameDraft(table.tableName);
+    }
+    setEditingName(false);
+  };
+
+  const commitTheme = () => {
+    const next = themeDraft.trim();
+    if (next !== (table.theme ?? "")) {
+      onUpdateTable(table.tableNumber, { theme: next });
+    }
+    setEditingTheme(false);
+  };
+
   return (
     <Card
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
-      className={`border ${colorClass.split(" ").filter(c => c.startsWith("bg-") || c.startsWith("border-")).join(" ")} shadow-sm transition-all ${dragOver ? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-[1.01]" : ""}`}
+      className={`overflow-hidden border bg-card text-card-foreground shadow-sm transition-all ${dragOver ? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-[1.01]" : ""}`}
     >
-      <CardHeader className="pb-2 pt-4 px-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-bold font-serif text-foreground">{table.tableName}</CardTitle>
-          <Badge variant="outline" className="text-xs border-current text-muted-foreground">
+      <div className={`h-1.5 ${accent.bar}`} aria-hidden="true" />
+      <CardHeader className="pb-2 pt-3 px-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            {editingName ? (
+              <Input
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={commitName}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); commitName(); }
+                  if (e.key === "Escape") { setNameDraft(table.tableName); setEditingName(false); }
+                }}
+                className="h-8 text-base font-bold font-serif"
+                data-testid={`input-table-name-${table.tableNumber}`}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => { setNameDraft(table.tableName); setEditingName(true); }}
+                className="group/n inline-flex items-center gap-1.5 text-base font-bold font-serif text-foreground hover:text-primary transition-colors text-left"
+                title="Click to rename table"
+                data-testid={`btn-edit-table-name-${table.tableNumber}`}
+              >
+                <span className="truncate">{table.tableName}</span>
+                <Pencil className="h-3 w-3 opacity-50 md:opacity-30 group-hover/n:opacity-100 transition-opacity" />
+              </button>
+            )}
+          </div>
+          <Badge className={`text-xs font-medium border-0 ${accent.chip} flex-shrink-0`}>
             <Armchair className="h-3 w-3 mr-1" />
-            {table.guests.length} guests
+            {table.guests.length}
           </Badge>
         </div>
-        {table.theme && (
-          <p className="text-xs text-muted-foreground">{table.theme}</p>
+        {editingTheme ? (
+          <Input
+            autoFocus
+            value={themeDraft}
+            onChange={(e) => setThemeDraft(e.target.value)}
+            onBlur={commitTheme}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); commitTheme(); }
+              if (e.key === "Escape") { setThemeDraft(table.theme ?? ""); setEditingTheme(false); }
+            }}
+            placeholder="Add a theme or note (optional)"
+            className="h-7 text-xs mt-1"
+            data-testid={`input-table-theme-${table.tableNumber}`}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => { setThemeDraft(table.theme ?? ""); setEditingTheme(true); }}
+            className="group/t inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors text-left mt-0.5"
+            title="Click to edit theme or note"
+            data-testid={`btn-edit-table-theme-${table.tableNumber}`}
+          >
+            <span className="truncate">
+              {table.theme || <span className="italic opacity-70">+ Add theme or note</span>}
+            </span>
+            <Pencil className="h-3 w-3 opacity-50 md:opacity-30 group-hover/t:opacity-100 transition-opacity flex-shrink-0" />
+          </button>
         )}
       </CardHeader>
-      <CardContent className="px-4 pb-4 pt-0">
-        <ul className="space-y-1">
+      <CardContent className="px-3 pb-3 pt-0">
+        <ul className="space-y-0.5">
           {table.guests.map((g, i) => (
             <li
               key={`${g}-${i}`}
@@ -247,11 +323,11 @@ function TableCard({
                 );
                 e.dataTransfer.effectAllowed = "move";
               }}
-              className="group/g flex items-center gap-2 text-sm text-foreground rounded-md px-1 py-0.5 -mx-1 hover:bg-background/60 cursor-grab active:cursor-grabbing"
+              className="group/g flex items-center gap-2 text-sm font-medium text-foreground rounded-md px-2 py-1.5 hover:bg-muted cursor-grab active:cursor-grabbing"
               title="Drag to another table, or use the dropdown to move"
             >
-              <GripVertical className="h-3 w-3 text-muted-foreground/40 group-hover/g:text-muted-foreground flex-shrink-0" />
-              <div className="w-5 h-5 rounded-full bg-primary/15 text-primary text-[10px] flex items-center justify-center font-bold flex-shrink-0">
+              <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 group-hover/g:text-foreground flex-shrink-0" />
+              <div className={`w-5 h-5 rounded-full ${accent.chip} text-[10px] flex items-center justify-center font-bold flex-shrink-0`}>
                 {i + 1}
               </div>
               <span className="flex-1 truncate">{g}</span>
@@ -265,7 +341,7 @@ function TableCard({
                   }
                 }}
                 onClick={(e) => e.stopPropagation()}
-                className="text-[10px] bg-transparent text-muted-foreground border border-transparent rounded cursor-pointer opacity-100 md:opacity-0 group-hover/g:opacity-100 focus:opacity-100 hover:border-border focus:outline-none focus:border-primary"
+                className="text-xs bg-background text-foreground border border-border rounded px-1.5 py-0.5 cursor-pointer opacity-100 md:opacity-70 group-hover/g:opacity-100 focus:opacity-100 hover:border-primary focus:outline-none focus:border-primary"
               >
                 <option value="">Move…</option>
                 {allTables
@@ -279,7 +355,7 @@ function TableCard({
             </li>
           ))}
           {table.guests.length === 0 && (
-            <li className="text-xs text-muted-foreground italic px-1 py-2">
+            <li className="text-xs text-muted-foreground italic px-2 py-3 text-center border border-dashed border-border rounded-md">
               Drop a guest here
             </li>
           )}
@@ -359,6 +435,15 @@ export default function SeatingChartPage() {
       return t;
     });
 
+    setResult({ ...result, tables });
+    setChartDirty(true);
+  };
+
+  const updateTable = (tableNumber: number, updates: { tableName?: string; theme?: string }) => {
+    if (!result) return;
+    const tables = result.tables.map(t =>
+      t.tableNumber === tableNumber ? { ...t, ...updates } : t
+    );
     setResult({ ...result, tables });
     setChartDirty(true);
   };
@@ -925,6 +1010,7 @@ export default function SeatingChartPage() {
                 index={i}
                 allTables={result.tables}
                 onMoveGuest={moveGuest}
+                onUpdateTable={updateTable}
               />
             ))}
           </div>
