@@ -101,10 +101,13 @@ export async function purgeUserData(
   await db.delete(adminUsers).where(eq(adminUsers.userId, userId));
 
   await db.delete(workspaceCollaborators).where(eq(workspaceCollaborators.inviteeUserId, userId));
-  if (userEmail) {
+  const inviteEmails = (Array.isArray(userEmail) ? userEmail : userEmail ? [userEmail] : [])
+    .map((e) => (typeof e === "string" ? e.trim().toLowerCase() : ""))
+    .filter((e) => e.length > 0);
+  if (inviteEmails.length > 0) {
     await db
       .delete(workspaceCollaborators)
-      .where(eq(workspaceCollaborators.inviteeEmail, userEmail.toLowerCase()));
+      .where(inArray(workspaceCollaborators.inviteeEmail, inviteEmails));
   }
   await db.delete(workspaceActivity).where(eq(workspaceActivity.userId, userId));
   await db.delete(vendors).where(eq(vendors.userId, userId));
