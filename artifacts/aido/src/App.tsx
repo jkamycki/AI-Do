@@ -159,6 +159,12 @@ function CustomSignUpForm() {
   const [lastName, setLastName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState<"form" | "verify">("form");
+  const [emailAddressId, setEmailAddressId] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [resendInfo, setResendInfo] = useState<string | null>(null);
+
+  const apiBase = `${basePath}api`.replace(/\/+/g, "/");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -171,13 +177,8 @@ function CustomSignUpForm() {
       setError("Password must be at least 8 characters.");
       return;
     }
-    if (!signInLoaded || !setActive) {
-      setError("Auth is still loading. Please try again in a moment.");
-      return;
-    }
     setSubmitting(true);
     try {
-      const apiBase = `${basePath}api`.replace(/\/+/g, "/");
       const r = await fetch(apiBase + "/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -186,6 +187,45 @@ function CustomSignUpForm() {
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
         setError(data?.error || "Could not create account. Try a different email.");
+        setSubmitting(false);
+        return;
+      }
+      setEmailAddressId(data?.emailAddressId ?? null);
+      setStep("verify");
+      setSubmitting(false);
+    } catch (err: unknown) {
+      const msg = (err as Error)?.message || "Something went wrong. Please try again.";
+      setError(msg);
+      setSubmitting(false);
+    }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setResendInfo(null);
+    if (!code.trim()) {
+      setError("Enter the code from your email.");
+      return;
+    }
+    if (!emailAddressId) {
+      setError("Verification session expired. Please sign up again.");
+      return;
+    }
+    if (!signInLoaded || !setActive) {
+      setError("Auth is still loading. Please try again in a moment.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const r = await fetch(apiBase + "/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailAddressId, code: code.trim() }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setError(data?.error || "Invalid or expired code.");
         setSubmitting(false);
         return;
       }
@@ -204,6 +244,27 @@ function CustomSignUpForm() {
         "Something went wrong. Please try again.";
       setError(msg);
       setSubmitting(false);
+    }
+  }
+
+  async function handleResend() {
+    setError(null);
+    setResendInfo(null);
+    if (!emailAddressId) return;
+    try {
+      const r = await fetch(apiBase + "/auth/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailAddressId }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setError(data?.error || "Could not resend code.");
+        return;
+      }
+      setResendInfo("A new code has been sent. Check your inbox and spam folder.");
+    } catch (err: unknown) {
+      setError((err as Error)?.message || "Could not resend code.");
     }
   }
 
@@ -267,6 +328,102 @@ function CustomSignUpForm() {
         backdropFilter: "blur(10px)",
       }}
     >
+      {step === "verify" ? (
+        <>
+          <h2 style={{ color: "#ffffff", fontSize: "1.4rem", fontWeight: 600, marginBottom: "0.35rem" }}>
+            Check your email
+          </h2>
+          <p style={{ color: "#b8a9cc", fontSize: "0.85rem", marginBottom: "0.5rem" }}>
+            We sent a 6-digit verification code to <strong style={{ color: "#ffffff" }}>{email}</strong>.
+          </p>
+          <p style={{ color: "#F5C842", fontSize: "0.78rem", marginBottom: "1.25rem", fontWeight: 500 }}>
+            Don't see it? Please check your spam or junk folder.
+          </p>
+
+          <form onSubmit={handleVerify} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+            <div>
+              <label style={labelStyle}>Verification code</label>
+              <input
+                style={{ ...inputStyle, letterSpacing: "0.4em", textAlign: "center", fontSize: "1.1rem" }}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="123456"
+                maxLength={6}
+                required
+              />
+            </div>
+
+            {error && (
+              <div
+                style={{
+                  color: "#ff8a8a",
+                  background: "rgba(255,80,80,0.08)",
+                  border: "1px solid rgba(255,80,80,0.25)",
+                  borderRadius: "0.5rem",
+                  padding: "0.55rem 0.75rem",
+                  fontSize: "0.82rem",
+                }}
+              >
+                {error}
+              </div>
+            )}
+            {resendInfo && (
+              <div
+                style={{
+                  color: "#9ee69e",
+                  background: "rgba(80,255,120,0.06)",
+                  border: "1px solid rgba(80,255,120,0.2)",
+                  borderRadius: "0.5rem",
+                  padding: "0.55rem 0.75rem",
+                  fontSize: "0.82rem",
+                }}
+              >
+                {resendInfo}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{
+                width: "100%",
+                padding: "0.7rem",
+                borderRadius: "0.5rem",
+                border: "none",
+                background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
+                color: "#ffffff",
+                fontSize: "0.95rem",
+                fontWeight: 600,
+                cursor: submitting ? "not-allowed" : "pointer",
+                opacity: submitting ? 0.7 : 1,
+                marginTop: "0.25rem",
+              }}
+            >
+              {submitting ? "Verifying..." : "Verify and continue"}
+            </button>
+          </form>
+
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "1rem", fontSize: "0.82rem" }}>
+            <button
+              type="button"
+              onClick={() => { setStep("form"); setError(null); setResendInfo(null); setCode(""); }}
+              style={{ background: "none", border: "none", color: "#b8a9cc", cursor: "pointer", padding: 0 }}
+            >
+              ← Use a different email
+            </button>
+            <button
+              type="button"
+              onClick={handleResend}
+              style={{ background: "none", border: "none", color: "#F5C842", cursor: "pointer", padding: 0, fontWeight: 500 }}
+            >
+              Resend code
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
       <h2 style={{ color: "#ffffff", fontSize: "1.4rem", fontWeight: 600, marginBottom: "0.35rem" }}>
         Create your account
       </h2>
@@ -366,6 +523,8 @@ function CustomSignUpForm() {
           Sign in
         </a>
       </p>
+        </>
+      )}
     </div>
   );
 }
