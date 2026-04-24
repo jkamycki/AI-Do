@@ -1002,6 +1002,11 @@ function VendorCard({
   onDelete: () => void;
 }) {
   const { t } = useTranslation();
+  const paidFromPayments = vendor.payments.filter((p) => p.isPaid).reduce((s, p) => s + p.amount, 0);
+  const paidAmount = vendor.depositAmount + paidFromPayments;
+  const totalScheduled = vendor.payments.reduce((s, p) => s + p.amount, 0);
+  const totalForProgress = vendor.totalCost > 0 ? vendor.totalCost : totalScheduled;
+  const isFullyPaid = totalForProgress > 0 && paidAmount >= totalForProgress;
   return (
     <div
       className="bg-card border border-border/60 rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer group relative"
@@ -1121,7 +1126,13 @@ function VendorCard({
             <p className="text-xs text-muted-foreground">{t("vendors.deposit_label", { amount: formatCurrency(vendor.depositAmount) })}</p>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          {isFullyPaid && (
+            <div className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/50 px-2 py-0.5 rounded-full font-medium">
+              <CheckCircle2 className="h-3 w-3" />
+              <span>{t("vendors.fully_paid")}</span>
+            </div>
+          )}
           {vendor.contractSigned && (
             <div className="flex items-center gap-1 text-xs text-green-700 bg-green-50 dark:bg-green-900/30 dark:text-green-300 px-2 py-0.5 rounded-full">
               <CheckCircle2 className="h-3 w-3" />
