@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
-import { ClerkProvider, SignIn, SignUp, useClerk, useAuth, useSignIn, useSignUp, Show } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, useClerk, useAuth, useSignIn, useSignUp, Show, AuthenticateWithRedirectCallback } from "@clerk/react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -149,6 +149,30 @@ function SignUpPage() {
   );
 }
 
+function SsoCallbackPage() {
+  return (
+    <AuthPageWrapper>
+      <div
+        style={{
+          background: "rgba(20,12,35,0.7)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "0.85rem",
+          padding: "1.5rem",
+          textAlign: "center",
+          color: "#ffffff",
+        }}
+      >
+        <p style={{ marginBottom: "0.5rem", fontSize: "1rem", fontWeight: 500 }}>Finishing sign in...</p>
+        <p style={{ color: "#b8a9cc", fontSize: "0.85rem" }}>One moment while we get you into A.IDO.</p>
+        <AuthenticateWithRedirectCallback
+          signInFallbackRedirectUrl={`${basePath}/dashboard`}
+          signUpFallbackRedirectUrl={`${basePath}/dashboard`}
+        />
+      </div>
+    </AuthPageWrapper>
+  );
+}
+
 function CustomSignUpForm() {
   const { signIn, isLoaded: signInLoaded, setActive } = useSignIn();
   const { signUp, isLoaded: signUpLoaded } = useSignUp();
@@ -272,10 +296,11 @@ function CustomSignUpForm() {
     if (!signUpLoaded) return;
     setError(null);
     try {
+      const origin = window.location.origin;
       await signUp.authenticateWithRedirect({
         strategy,
-        redirectUrl: `${basePath}/sign-up`,
-        redirectUrlComplete: `${basePath}/dashboard`,
+        redirectUrl: `${origin}${basePath}/sso-callback`,
+        redirectUrlComplete: `${origin}${basePath}/dashboard`,
       });
     } catch (err: unknown) {
       const msg =
@@ -659,6 +684,7 @@ function Router() {
       <Route path="/" component={HomeRedirect} />
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />
+      <Route path="/sso-callback" component={SsoCallbackPage} />
       <Route path="/invite/:token" component={InviteAccept} />
       <Route path="/collect/:token" component={GuestCollect} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
