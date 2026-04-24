@@ -298,18 +298,22 @@ export default function Checklist() {
                                   {item.description}
                                 </p>
                               </div>
-                              <div className="flex items-start gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 pt-1">
+                              <div className="flex items-start gap-1 opacity-100 md:opacity-60 md:group-hover:opacity-100 transition-opacity shrink-0 pt-1">
                                 <button
                                   onClick={() => startEdit(item)}
-                                  className="p-1.5 rounded hover:bg-muted text-muted-foreground"
+                                  className="p-1.5 rounded border border-border/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                                   title={t("checklist.edit_task")}
+                                  aria-label={t("checklist.edit_task")}
+                                  data-testid={`btn-checklist-edit-${item.id}`}
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                   onClick={() => deleteItem.mutate(item.id)}
-                                  className="p-1.5 rounded hover:bg-destructive/10 text-destructive"
+                                  className="p-1.5 rounded border border-border/40 hover:bg-destructive/10 hover:border-destructive/40 text-destructive transition-colors"
                                   title={t("checklist.delete_task")}
+                                  aria-label={t("checklist.delete_task")}
+                                  data-testid={`btn-checklist-delete-${item.id}`}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>

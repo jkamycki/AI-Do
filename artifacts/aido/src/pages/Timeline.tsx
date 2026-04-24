@@ -388,12 +388,26 @@ export default function Timeline() {
                         </div>
                         <h4 className="text-lg font-medium text-foreground">{event.title}</h4>
                         <p className="text-muted-foreground text-sm leading-relaxed">{event.description}</p>
-                        <div className="flex gap-1 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => startEdit(index)} className="p-1.5 rounded hover:bg-muted text-muted-foreground" title="Edit event">
+                        <div className="flex gap-1 pt-2 opacity-100 md:opacity-60 md:group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => startEdit(index)}
+                            className="p-1.5 rounded border border-border/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 text-xs"
+                            title="Edit event"
+                            aria-label="Edit event"
+                            data-testid={`btn-timeline-edit-${index}`}
+                          >
                             <Pencil className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Edit</span>
                           </button>
-                          <button onClick={() => deleteEvent(index)} className="p-1.5 rounded hover:bg-destructive/10 text-destructive" title="Delete event">
+                          <button
+                            onClick={() => deleteEvent(index)}
+                            className="p-1.5 rounded border border-border/40 hover:bg-destructive/10 hover:border-destructive/40 text-destructive transition-colors flex items-center gap-1 text-xs"
+                            title="Delete event"
+                            aria-label="Delete event"
+                            data-testid={`btn-timeline-delete-${index}`}
+                          >
                             <Trash2 className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Delete</span>
                           </button>
                         </div>
                       </CardContent>
