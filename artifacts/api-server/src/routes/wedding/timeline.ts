@@ -59,6 +59,9 @@ router.post("/timeline", requireAuth, async (req, res) => {
 
     const { dayVision } = req.body as { dayVision?: string };
 
+    const lang = profile.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
+    const langInstruction = lang ? `\n\nIMPORTANT: Write all event titles and descriptions in ${lang}.` : "";
+
     const prompt = `Create a detailed wedding day timeline for the following wedding:
 - Couple: ${profile.partner1Name} & ${profile.partner2Name}
 - Date: ${profile.weddingDate}
@@ -79,7 +82,7 @@ Return ONLY a valid JSON array (no markdown, no explanation) with this exact str
     "description": "Detailed description of what happens",
     "category": "preparation|ceremony|cocktail|reception|dancing|other"
   }
-]`;
+]${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",

@@ -61,6 +61,9 @@ router.post("/checklist", requireAuth, async (req, res) => {
     const wedding = new Date(weddingDate);
     const monthsUntil = Math.max(1, Math.ceil((wedding.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30)));
 
+    const lang = profile.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
+    const langInstruction = lang ? `\n\nIMPORTANT: Write all task names, descriptions, and time period labels in ${lang}.` : "";
+
     const prompt = `Create a comprehensive month-by-month wedding planning checklist for a ${weddingVibe} wedding with ${guestCount} guests, happening in approximately ${monthsUntil} months from today (date: ${weddingDate}).
 
 Generate tasks organized by time period (e.g., "12+ Months Before", "9-12 Months Before", "6-9 Months Before", "3-6 Months Before", "1-3 Months Before", "1 Month Before", "1 Week Before", "Day Before", "Wedding Day"). Only include time periods that are relevant given the ${monthsUntil} months available.
@@ -74,7 +77,7 @@ Return ONLY a valid JSON array (no markdown, no explanation) with this structure
   }
 ]
 
-Include 5-8 tasks per relevant time period. Be specific and actionable. Make tasks appropriate for the style: ${weddingVibe}.`;
+Include 5-8 tasks per relevant time period. Be specific and actionable. Make tasks appropriate for the style: ${weddingVibe}.${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",
