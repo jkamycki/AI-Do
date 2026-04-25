@@ -852,7 +852,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-2xl font-serif font-semibold text-foreground">{vendors.length}</span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-medium">
-                    {vendors.filter(v => v.isPaidOff).length}/{vendors.length} paid off
+                    {vendors.filter(v => v.isPaidOff).length}/{vendors.length} paid
                   </span>
                 </div>
                 {vendors.slice(0, 3).map(v => (
