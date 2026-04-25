@@ -5,7 +5,7 @@ import {
   guests, weddingParty, hotelBlocks, manualExpenses, budgets, budgetItems, budgetPaymentLogs,
   vendorContracts,
 } from "@workspace/db";
-import { eq, desc, and, asc, ilike } from "drizzle-orm";
+import { eq, desc, and, asc, ilike, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveScopeUserId, resolveWorkspaceRole, hasMinRole, logActivity } from "../lib/workspaceAccess";
 import type { Request } from "express";
@@ -1417,8 +1417,48 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
 
     if (name === "list_vendors") {
       const userId = await resolveScopeUserId(req);
-      const rows = await db.select({ id: vendors.id, name: vendors.name, category: vendors.category }).from(vendors).where(eq(vendors.userId, userId));
-      return { ok: true, data: { vendors: rows } };
+      const rows = await db
+        .select({
+          id: vendors.id,
+          name: vendors.name,
+          category: vendors.category,
+          email: vendors.email,
+          phone: vendors.phone,
+          notes: vendors.notes,
+          totalCost: vendors.totalCost,
+          depositAmount: vendors.depositAmount,
+          contractSigned: vendors.contractSigned,
+          nextPaymentDue: vendors.nextPaymentDue,
+        })
+        .from(vendors)
+        .where(eq(vendors.userId, userId));
+
+      const vendorIds = rows.map(v => v.id);
+      const paymentsByVendor: Record<number, Array<{ id: number; label: string; amount: string; dueDate: string; isPaid: boolean }>> = {};
+      if (vendorIds.length > 0) {
+        const payments = await db
+          .select({
+            id: vendorPayments.id,
+            vendorId: vendorPayments.vendorId,
+            label: vendorPayments.label,
+            amount: vendorPayments.amount,
+            dueDate: vendorPayments.dueDate,
+            isPaid: vendorPayments.isPaid,
+          })
+          .from(vendorPayments)
+          .where(inArray(vendorPayments.vendorId, vendorIds))
+          .orderBy(asc(vendorPayments.dueDate));
+        for (const p of payments) {
+          if (!paymentsByVendor[p.vendorId]) paymentsByVendor[p.vendorId] = [];
+          paymentsByVendor[p.vendorId].push({ id: p.id, label: p.label, amount: p.amount, dueDate: p.dueDate, isPaid: p.isPaid });
+        }
+      }
+
+      const result = rows.map(v => ({
+        ...v,
+        payments: paymentsByVendor[v.id] ?? [],
+      }));
+      return { ok: true, data: { vendors: result } };
     }
 
     if (name === "get_profile") {
