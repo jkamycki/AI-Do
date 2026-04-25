@@ -30,7 +30,7 @@ CONTRACTS — list_contracts, get_contract
 
 ## How to use tools
 - When the user provides ANY information that maps to a portal action (e.g. "add my florist Sarah Bloom, sarahbloom@email.com, $4000"), CALL THE TOOL IMMEDIATELY. Do not ask for clarification on optional fields — only the required ones.
-- For vendors: required = name + category. Pick a sensible category from: Photography, Videography, Catering, Florist, DJ/Band, Venue, Officiant, Hair & Makeup, Transportation, Cake/Desserts, Stationery, Rentals, Planner, Other. Use Other if unsure.
+- For vendors: required = name + category. Pick a sensible category from: Photography, Videography, Catering, Florist, DJ/Band, Venue, Officiant, Hair & Makeup, Transportation, Cake/Desserts, Stationery, Rentals, Planner, Other. Use Other if unsure. If the user provides a depositAmount, a Deposit payment milestone is created automatically — do NOT add a separate add_vendor_payment call for the same deposit. Pass depositPaid: true if the user says they've already paid the deposit.
 - For vendor payment milestones: required = vendorName (or vendorId), label, amount, dueDate (YYYY-MM-DD). The vendor must already exist — if it doesn't, add the vendor FIRST, then add the milestone. Convert relative dates ("next Friday", "May 1") into ISO YYYY-MM-DD using the current year, or next year if the date has already passed. If the user gives multiple milestones, call this tool once per milestone.
 - For checklist items: required = task + month (use a label like "12 months out", "6 months out", "1 month out", "Week of", "Day of").
 - For timeline events: required = time (e.g. "3:00 PM"), title, description, category (preparation|ceremony|cocktail|reception|dancing|other).
@@ -72,7 +72,8 @@ const TOOLS = [
           website: { type: "string" },
           notes: { type: "string" },
           totalCost: { type: "number", description: "Estimated or quoted cost in dollars" },
-          depositAmount: { type: "number" },
+          depositAmount: { type: "number", description: "Deposit amount already agreed or paid. A Deposit payment milestone will be auto-created." },
+          depositPaid: { type: "boolean", description: "Set true if the deposit has already been paid. Defaults to false." },
         },
         required: ["name", "category"],
       },
@@ -864,6 +865,8 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       const vendorName = String(args.name ?? "").trim();
       const category = normalizeCategory(String(args.category ?? "Other").trim());
       if (!vendorName) return { ok: false, error: "Vendor name is required" };
+      const depositAmt = Number(args.depositAmount ?? 0);
+      const todayISO = new Date().toISOString().slice(0, 10);
       const [created] = await db.insert(vendors).values({
         userId,
         name: vendorName,
@@ -874,12 +877,29 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         portalLink: null,
         notes: args.notes ? String(args.notes) : null,
         totalCost: String(Number(args.totalCost ?? 0)),
-        depositAmount: String(Number(args.depositAmount ?? 0)),
+        depositAmount: String(depositAmt),
         contractSigned: false,
         nextPaymentDue: null,
         files: [],
       }).returning();
-      return { ok: true, data: { id: created.id, name: created.name, category: created.category } };
+
+      // Auto-create a Deposit payment milestone when a deposit amount is provided
+      if (depositAmt > 0) {
+        const depositPaid = args.depositPaid === true;
+        await db.insert(vendorPayments).values({
+          vendorId: created.id,
+          label: "Deposit",
+          amount: String(depositAmt),
+          dueDate: todayISO,
+          isPaid: depositPaid,
+          paidAt: depositPaid ? new Date() : null,
+        });
+        if (!depositPaid) {
+          await db.update(vendors).set({ nextPaymentDue: todayISO }).where(eq(vendors.id, created.id));
+        }
+      }
+
+      return { ok: true, data: { id: created.id, name: created.name, category: created.category, depositMilestoneCreated: depositAmt > 0 } };
     }
 
     if (name === "add_vendor_payment") {
