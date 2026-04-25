@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@clerk/react";
+import { useAuth, useUser } from "@clerk/react";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -203,13 +203,12 @@ function DeleteAccountCard() {
 function LanguageSwitcherCard() {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const qc = useQueryClient();
-  const { data: profile, isLoading } = useGetProfile();
-  const saveProfile = useSaveProfile();
+  const { user } = useUser();
   const [selected, setSelected] = useState<string | null>(null);
 
-  const current = selected ?? profile?.preferredLanguage ?? "English";
-  const original = profile?.preferredLanguage ?? "English";
+  const storedCode = user?.id ? localStorage.getItem(`aido_language_${user.id}`) : null;
+  const storedName = storedCode ? (Object.entries(LANG_NAME_TO_CODE).find(([, c]) => c === storedCode)?.[0] ?? "English") : "English";
+  const current = selected ?? storedName;
   const hasChange = selected !== null;
   const currentCode = LANG_NAME_TO_CODE[current] ?? "en";
   const languageOptions = [
@@ -219,44 +218,14 @@ function LanguageSwitcherCard() {
   ];
 
   function save() {
-    if (!hasChange || !profile) return;
+    if (!hasChange) return;
     const code = LANG_NAME_TO_CODE[current] ?? "en";
     i18n.changeLanguage(code);
-    localStorage.setItem("aido_language", code);
-    saveProfile.mutate(
-      {
-        data: {
-          partner1Name: profile.partner1Name,
-          partner2Name: profile.partner2Name,
-          weddingDate: profile.weddingDate,
-          ceremonyTime: profile.ceremonyTime,
-          receptionTime: profile.receptionTime,
-          venue: profile.venue,
-          location: profile.location,
-          venueCity: profile.venueCity ?? undefined,
-          venueState: profile.venueState ?? undefined,
-          guestCount: profile.guestCount,
-          totalBudget: profile.totalBudget,
-          weddingVibe: profile.weddingVibe,
-          preferredLanguage: current,
-          vendorBccEmail: (profile as { vendorBccEmail?: string | null }).vendorBccEmail ?? null,
-        } as never,
-      },
-      {
-        onSuccess: () => {
-          qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
-          setSelected(null);
-          toast({ title: "Language updated", description: `Switched to ${current}.` });
-        },
-        onError: (err: unknown) => {
-          toast({
-            variant: "destructive",
-            title: "Could not save language",
-            description: err instanceof Error ? err.message : "Please try again.",
-          });
-        },
-      }
-    );
+    // Store under a per-user key so collaborators never overwrite each other.
+    const key = user?.id ? `aido_language_${user.id}` : "aido_language";
+    localStorage.setItem(key, code);
+    setSelected(null);
+    toast({ title: "Language updated", description: `Switched to ${current}.` });
   }
 
   return (
@@ -273,38 +242,30 @@ function LanguageSwitcherCard() {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        {isLoading ? (
-          <div className="h-10 bg-muted animate-pulse rounded-md" />
-        ) : !profile ? (
-          <p className="text-sm text-muted-foreground">Complete your wedding profile first to set a language.</p>
-        ) : (
-          <div className="flex items-center gap-3">
-            <Select value={currentCode} onValueChange={value => setSelected(languageOptions.find(name => LANG_NAME_TO_CODE[name] === value) ?? "English")}>
-              <SelectTrigger className="w-56 bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {languageOptions.map(lang => (
-                  <SelectItem key={lang} value={LANG_NAME_TO_CODE[lang] ?? "en"}>{lang}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={save}
-              disabled={!hasChange || saveProfile.isPending}
-              size="sm"
-              variant={hasChange ? "default" : "outline"}
-            >
-              {saveProfile.isPending ? (
-                <div className="h-3.5 w-3.5 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-              ) : hasChange ? (
-                <>{t("settings.save")}</>
-              ) : (
-                <><Check className="h-3.5 w-3.5 mr-1" /> {t("settings.saved")}</>
-              )}
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <Select value={currentCode} onValueChange={value => setSelected(languageOptions.find(name => LANG_NAME_TO_CODE[name] === value) ?? "English")}>
+            <SelectTrigger className="w-56 bg-background">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {languageOptions.map(lang => (
+                <SelectItem key={lang} value={LANG_NAME_TO_CODE[lang] ?? "en"}>{lang}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={save}
+            disabled={!hasChange}
+            size="sm"
+            variant={hasChange ? "default" : "outline"}
+          >
+            {hasChange ? (
+              <>{t("settings.save")}</>
+            ) : (
+              <><Check className="h-3.5 w-3.5 mr-1" /> {t("settings.saved")}</>
+            )}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

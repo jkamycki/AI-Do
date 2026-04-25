@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
-import { ClerkProvider, useClerk, useAuth, useSignIn, useSignUp, Show, AuthenticateWithRedirectCallback } from "@clerk/react";
+import { ClerkProvider, useClerk, useAuth, useUser, useSignIn, useSignUp, Show, AuthenticateWithRedirectCallback } from "@clerk/react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -1083,20 +1083,27 @@ function PendingInviteRedirector() {
 }
 
 function LanguageSyncProvider() {
+  const { user, isLoaded } = useUser();
   const { data: profile } = useGetProfile();
+
   useEffect(() => {
-    if (!profile?.preferredLanguage) return;
-    // Only seed the UI language from the workspace profile if THIS user has
-    // never picked one themselves. Otherwise each collaborator's choice would
-    // overwrite the others. The shared profile.preferredLanguage continues to
-    // drive AI/vendor-email language at the workspace level.
-    if (localStorage.getItem("aido_language")) return;
-    const code = LANG_NAME_TO_CODE[profile.preferredLanguage] ?? "en";
-    if (i18n.language !== code) {
-      i18n.changeLanguage(code);
-      localStorage.setItem("aido_language", code);
+    if (!isLoaded || !user) return;
+    const key = `aido_language_${user.id}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      // This user already has a personal language choice — honour it.
+      if (i18n.language !== saved) i18n.changeLanguage(saved);
+      return;
     }
-  }, [profile?.preferredLanguage]);
+    // First visit for this user: seed from the workspace profile once so new
+    // collaborators don't always start in English when the couple chose another
+    // language during onboarding.
+    if (!profile?.preferredLanguage) return;
+    const code = LANG_NAME_TO_CODE[profile.preferredLanguage] ?? "en";
+    i18n.changeLanguage(code);
+    localStorage.setItem(key, code);
+  }, [isLoaded, user?.id, profile?.preferredLanguage]);
+
   return null;
 }
 
