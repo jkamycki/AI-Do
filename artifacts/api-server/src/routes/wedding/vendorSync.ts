@@ -59,7 +59,15 @@ router.get("/vendors", requireAuth, async (req, res) => {
       paymentsByVendor[p.vendorId].push(formatPayment(p));
     }
 
-    res.json(rows.map((v) => ({ ...formatVendor(v), payments: paymentsByVendor[v.id] ?? [] })));
+    res.json(rows.map((v) => {
+      const fv = formatVendor(v);
+      const payments = paymentsByVendor[v.id] ?? [];
+      const hasDepositMilestone = payments.some(p => p.label.toLowerCase() === "deposit");
+      const totalPaid = (hasDepositMilestone ? 0 : fv.depositAmount) +
+        payments.filter(p => p.isPaid).reduce((s, p) => s + p.amount, 0);
+      const isPaidOff = fv.totalCost > 0 && totalPaid >= fv.totalCost;
+      return { ...fv, payments, totalPaid, isPaidOff };
+    }));
   } catch (err) {
     req.log.error(err, "Failed to list vendors");
     res.status(500).json({ error: "Internal server error" });
