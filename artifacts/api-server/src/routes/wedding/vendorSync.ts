@@ -85,21 +85,30 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
     const vendorIds = userVendors.map((v) => v.id);
 
     // Fetch all paid milestone payments grouped by vendorId
+    // Also track whether each vendor has an explicit "Deposit" milestone so we
+    // don't double-count the vendor.depositAmount field alongside the milestone.
     const paidByVendor: Record<number, number> = {};
+    const vendorsWithDepositMilestone = new Set<number>();
     if (vendorIds.length > 0) {
-      const paidPayments = await db
+      const allPayments = await db
         .select()
         .from(vendorPayments)
-        .where(and(inArray(vendorPayments.vendorId, vendorIds), eq(vendorPayments.isPaid, true)));
-      for (const p of paidPayments) {
-        paidByVendor[p.vendorId] = (paidByVendor[p.vendorId] ?? 0) + Number(p.amount);
+        .where(inArray(vendorPayments.vendorId, vendorIds));
+      for (const p of allPayments) {
+        if (p.label.toLowerCase() === "deposit") {
+          vendorsWithDepositMilestone.add(p.vendorId);
+        }
+        if (p.isPaid) {
+          paidByVendor[p.vendorId] = (paidByVendor[p.vendorId] ?? 0) + Number(p.amount);
+        }
       }
     }
 
     const vendorDetails = userVendors.map((v) => {
       const deposit = Number(v.depositAmount);
       const milestones = paidByVendor[v.id] ?? 0;
-      const totalPaid = deposit + milestones;
+      // Only add depositAmount if there is no "Deposit" milestone already tracking it
+      const totalPaid = (vendorsWithDepositMilestone.has(v.id) ? 0 : deposit) + milestones;
       const totalCost = Number(v.totalCost);
       return {
         id: v.id,

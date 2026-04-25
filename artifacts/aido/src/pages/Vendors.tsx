@@ -779,8 +779,9 @@ function VendorDetailDialog({
     );
   }
 
+  const hasDepositMilestone = vendor.payments.some((p) => p.label.toLowerCase() === "deposit");
   const paidFromPayments = vendor.payments.filter((p) => p.isPaid).reduce((s, p) => s + p.amount, 0);
-  const paidAmount = vendor.depositAmount + paidFromPayments;
+  const paidAmount = (hasDepositMilestone ? 0 : vendor.depositAmount) + paidFromPayments;
   const totalScheduled = vendor.payments.reduce((s, p) => s + p.amount, 0);
   const totalForProgress = vendor.totalCost > 0 ? vendor.totalCost : totalScheduled;
   const overdue = vendor.payments.filter((p) => !p.isPaid && daysUntil(p.dueDate) < 0);
@@ -1094,8 +1095,9 @@ function VendorCard({
 }) {
   const { t } = useTranslation();
   const payments = vendor.payments ?? [];
+  const hasDepositMilestone = payments.some((p) => p.label.toLowerCase() === "deposit");
   const paidFromPayments = payments.filter((p) => p.isPaid).reduce((s, p) => s + p.amount, 0);
-  const paidAmount = vendor.depositAmount + paidFromPayments;
+  const paidAmount = (hasDepositMilestone ? 0 : vendor.depositAmount) + paidFromPayments;
   const totalScheduled = payments.reduce((s, p) => s + p.amount, 0);
   const totalForProgress = vendor.totalCost > 0 ? vendor.totalCost : totalScheduled;
   const isFullyPaid = totalForProgress > 0 && paidAmount >= totalForProgress;
