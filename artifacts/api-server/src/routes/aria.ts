@@ -3,6 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import {
   db, vendors, vendorPayments, checklistItems, weddingProfiles, timelines,
   guests, weddingParty, hotelBlocks, manualExpenses, budgets, budgetItems, budgetPaymentLogs,
+  vendorContracts,
 } from "@workspace/db";
 import { eq, desc, and, asc, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -25,6 +26,7 @@ HOTELS — add_hotel, update_hotel, delete_hotel, list_hotels
 BUDGET — add_budget_item, update_budget_item, delete_budget_item, log_budget_payment, list_budget
 EXPENSES — add_expense, update_expense, delete_expense, list_expenses
 PROFILE — update_profile, get_profile
+CONTRACTS — list_contracts, get_contract
 
 ## How to use tools
 - When the user provides ANY information that maps to a portal action (e.g. "add my florist Sarah Bloom, sarahbloom@email.com, $4000"), CALL THE TOOL IMMEDIATELY. Do not ask for clarification on optional fields — only the required ones.
@@ -40,6 +42,7 @@ PROFILE — update_profile, get_profile
 - For expenses: required = name + category + cost. These are one-off purchases not tied to a vendor (e.g. ring polish, marriage license fee).
 - For UPDATE / DELETE / TOGGLE / MARK-PAID actions: prefer passing the record id when known. If you don't know the id, pass a name/title/match field — the tool will look it up case-insensitively. If multiple records match, the tool will return an error asking you to be more specific. When in doubt, call the corresponding list_* tool first to get ids.
 - For destructive operations (delete_*), double-check that the user actually meant to delete before calling. If unclear, ask one short clarifying question.
+- For contract questions: first call list_contracts to see what's uploaded, then call get_contract with the relevant id to read the full analysis and extracted text before answering. Never guess contract details — always read the contract data first.
 - After successfully running a tool, briefly confirm what you did in plain language ("Added Sarah Bloom to your florists ✓"). Don't dump JSON.
 - If a tool fails, explain the error simply and suggest a fix.
 - You CAN run multiple tools in one turn (e.g. add a vendor AND add a related checklist item).
@@ -594,6 +597,28 @@ const TOOLS = [
       name: "get_profile",
       description: "Get the current wedding profile details (date, venue, budget, etc.) for context.",
       parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "list_contracts",
+      description: "List all contracts the user has uploaded to the Contract Analyzer. Returns id, fileName, vendor type, risk level, and summary for each. Use this first when the user asks any question about their contracts.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_contract",
+      description: "Get the full details of a specific contract — including the complete AI analysis (red flags, key terms, cancellation policy, payment terms, liability notes, negotiation tips) and the extracted contract text. Use this to answer specific questions about a contract.",
+      parameters: {
+        type: "object",
+        properties: {
+          contractId: { type: "number", description: "The id of the contract to retrieve (from list_contracts)" },
+        },
+        required: ["contractId"],
+      },
     },
   },
 ];
@@ -1404,6 +1429,60 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         weddingDate: p.weddingDate, venue: p.venue, location: p.location,
         guestCount: p.guestCount, totalBudget: p.totalBudget, weddingVibe: p.weddingVibe,
         ceremonyTime: p.ceremonyTime, receptionTime: p.receptionTime,
+      } };
+    }
+
+    if (name === "list_contracts") {
+      const userId = await resolveScopeUserId(req);
+      const rows = await db
+        .select({
+          id: vendorContracts.id,
+          fileName: vendorContracts.fileName,
+          fileSize: vendorContracts.fileSize,
+          analysis: vendorContracts.analysis,
+          createdAt: vendorContracts.createdAt,
+        })
+        .from(vendorContracts)
+        .where(eq(vendorContracts.userId, userId))
+        .orderBy(desc(vendorContracts.createdAt))
+        .limit(50);
+      const summary = rows.map(r => {
+        const a = (r.analysis ?? {}) as Record<string, unknown>;
+        return {
+          id: r.id,
+          fileName: r.fileName,
+          vendorType: a["vendorType"] ?? "Unknown",
+          overallRiskLevel: a["overallRiskLevel"] ?? "unknown",
+          summary: a["summary"] ?? null,
+          uploadedAt: r.createdAt.toISOString(),
+        };
+      });
+      return { ok: true, data: summary };
+    }
+
+    if (name === "get_contract") {
+      const userId = await resolveScopeUserId(req);
+      const contractId = Number(args["contractId"]);
+      if (!Number.isFinite(contractId)) return { ok: false, error: "contractId must be a number." };
+      const [row] = await db
+        .select({
+          id: vendorContracts.id,
+          fileName: vendorContracts.fileName,
+          extractedText: vendorContracts.extractedText,
+          analysis: vendorContracts.analysis,
+          createdAt: vendorContracts.createdAt,
+          userId: vendorContracts.userId,
+        })
+        .from(vendorContracts)
+        .where(eq(vendorContracts.id, contractId))
+        .limit(1);
+      if (!row || row.userId !== userId) return { ok: false, error: "Contract not found." };
+      return { ok: true, data: {
+        id: row.id,
+        fileName: row.fileName,
+        uploadedAt: row.createdAt.toISOString(),
+        analysis: row.analysis,
+        extractedText: row.extractedText ?? "",
       } };
     }
 
