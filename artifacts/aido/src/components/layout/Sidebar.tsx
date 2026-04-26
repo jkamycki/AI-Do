@@ -303,13 +303,12 @@ export function Sidebar() {
         >
           {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </Button>
-        <div className="flex items-center gap-1.5 absolute left-1/2 -translate-x-1/2">
-          <img src="/logo.png" alt="A.I Do Logo" className="h-12 w-auto object-contain" />
-          <span className="text-[9px] font-bold tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10 self-end mb-1">
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="A.I Do Logo" className="h-14 w-auto object-contain" />
+          <span className="text-[9px] font-bold tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10">
             BETA
           </span>
         </div>
-        <div className="w-10 flex-shrink-0" />
       </div>
 
       <div
