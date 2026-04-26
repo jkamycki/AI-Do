@@ -23,6 +23,8 @@ import {
   MessageSquare,
   Trash2,
   History,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -199,6 +201,7 @@ export default function Aria() {
   const [streaming, setStreaming] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [hydratedUserId, setHydratedUserId] = useState<string | null | undefined>(undefined);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -454,48 +457,71 @@ export default function Aria() {
   return (
     <div className="flex fixed left-0 right-0 top-16 bottom-0 md:top-0 md:left-64">
       {/* History sidebar — desktop */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-border/40 bg-background/40 shrink-0">
-        <div className="p-3 border-b border-border/40">
-          <Button
-            onClick={startNewChat}
-            className="w-full gap-2"
-            variant="outline"
-            data-testid="btn-aria-new-chat"
-          >
-            <Plus className="h-4 w-4" /> {t("aria.new_chat")}
-          </Button>
-        </div>
-        {sortedConversations.length > 0 && (
-          <div className="px-3 py-2 border-b border-border/40 flex items-center justify-between">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              {t("aria.past_chats")}
-            </p>
+      <aside className={`hidden md:flex flex-col border-r border-border/40 bg-background/40 shrink-0 transition-all duration-300 ${sidebarCollapsed ? "w-10" : "w-64"}`}>
+        {sidebarCollapsed ? (
+          /* Collapsed: just a slim strip with expand button */
+          <div className="flex flex-col items-center py-3 gap-3">
             <button
-              onClick={clearAllConversations}
-              className="text-[11px] font-medium text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
-              title={t("aria.clear_all")}
-              data-testid="btn-aria-clear-all"
+              onClick={() => setSidebarCollapsed(false)}
+              className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+              title="Expand conversations"
             >
-              <Trash2 className="h-3 w-3" /> {t("aria.clear_all")}
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
+        ) : (
+          /* Expanded: full panel */
+          <>
+            <div className="p-3 border-b border-border/40 flex items-center gap-2">
+              <Button
+                onClick={startNewChat}
+                className="flex-1 gap-2"
+                variant="outline"
+                data-testid="btn-aria-new-chat"
+              >
+                <Plus className="h-4 w-4" /> {t("aria.new_chat")}
+              </Button>
+              <button
+                onClick={() => setSidebarCollapsed(true)}
+                className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground flex-shrink-0"
+                title="Collapse conversations"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            </div>
+            {sortedConversations.length > 0 && (
+              <div className="px-3 py-2 border-b border-border/40 flex items-center justify-between">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t("aria.past_chats")}
+                </p>
+                <button
+                  onClick={clearAllConversations}
+                  className="text-[11px] font-medium text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
+                  title={t("aria.clear_all")}
+                  data-testid="btn-aria-clear-all"
+                >
+                  <Trash2 className="h-3 w-3" /> {t("aria.clear_all")}
+                </button>
+              </div>
+            )}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {sortedConversations.length === 0 && (
+                <p className="text-xs text-muted-foreground px-2 py-3">
+                  {t("aria.conversations_empty")}
+                </p>
+              )}
+              {sortedConversations.map(c => (
+                <ConversationRow
+                  key={c.id}
+                  convo={c}
+                  active={c.id === activeId}
+                  onSelect={() => selectConversation(c.id)}
+                  onDelete={() => deleteConversation(c.id)}
+                />
+              ))}
+            </div>
+          </>
         )}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {sortedConversations.length === 0 && (
-            <p className="text-xs text-muted-foreground px-2 py-3">
-              {t("aria.conversations_empty")}
-            </p>
-          )}
-          {sortedConversations.map(c => (
-            <ConversationRow
-              key={c.id}
-              convo={c}
-              active={c.id === activeId}
-              onSelect={() => selectConversation(c.id)}
-              onDelete={() => deleteConversation(c.id)}
-            />
-          ))}
-        </div>
       </aside>
 
       {/* Mobile drawer */}
