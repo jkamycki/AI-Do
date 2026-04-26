@@ -193,8 +193,14 @@ export default function Landing() {
       <main className="flex-1 flex flex-col items-center">
         {/* Hero */}
         <section className="text-center px-6 pt-16 pb-16 max-w-3xl mx-auto">
-          <div className="flex justify-center mb-8">
+          <div className="flex flex-col items-center mb-8 gap-3">
             <img src="/logo.png" alt="A.I Do — AI Wedding Planner Assistant" className="h-80 w-auto object-contain drop-shadow-xl" />
+            <span
+              className="text-[11px] font-bold tracking-[0.22em] uppercase px-3 py-1 rounded-full border border-primary/50 text-primary bg-primary/10"
+              style={{ letterSpacing: "0.22em" }}
+            >
+              BETA
+            </span>
           </div>
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-sm font-semibold px-4 py-2 rounded-full mb-6">
             <Sparkles className="h-4 w-4" />

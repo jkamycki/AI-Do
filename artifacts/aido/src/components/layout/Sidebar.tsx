@@ -62,7 +62,7 @@ const navSections = [
   {
     labelKey: "nav.ai_label",
     items: [
-      { href: "/aria", labelKey: "nav.aria", icon: Sparkles },
+      { href: "/aria", labelKey: "nav.aria", icon: Sparkles, dot: true },
       { href: "/day-of", labelKey: "nav.dayof", icon: Smartphone },
     ],
   },
@@ -244,11 +244,13 @@ export function Sidebar() {
     label,
     icon: Icon,
     special = false,
+    dot = false,
   }: {
     href: string;
     label: string;
     icon: React.ElementType;
     special?: boolean;
+    dot?: boolean;
   }) => {
     const isActive =
       location === href || (href !== "/dashboard" && location.startsWith(href));
@@ -275,7 +277,16 @@ export function Sidebar() {
             isActive ? "" : "group-hover:scale-110 transition-transform duration-200"
           }`}
         />
-        <span className="text-sm">{label}</span>
+        <span className="text-sm flex-1">{label}</span>
+        {dot && (
+          <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-400">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+            </span>
+            online
+          </span>
+        )}
       </Link>
     );
   };
@@ -285,6 +296,9 @@ export function Sidebar() {
       <div className="md:hidden fixed top-0 left-0 right-0 h-20 bg-background border-b border-primary/10 z-50 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="A.I Do Logo" className="h-16 w-auto object-contain" />
+          <span className="text-[9px] font-bold tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10 self-end mb-2">
+            BETA
+          </span>
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -309,8 +323,11 @@ export function Sidebar() {
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
       >
-        <div className="hidden md:flex items-center justify-center px-4 py-4 border-b border-primary/10">
+        <div className="hidden md:flex flex-col items-center justify-center px-4 py-4 border-b border-primary/10 gap-2">
           <img src="/logo.png" alt="A.I Do — AI Wedding Planner Assistant" className="h-44 w-auto object-contain" />
+          <span className="text-[10px] font-bold tracking-[0.22em] uppercase px-2.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10">
+            BETA
+          </span>
         </div>
 
         <div className="pt-3 pb-1">
@@ -334,7 +351,7 @@ export function Sidebar() {
               </p>
               <div className="space-y-0.5">
                 {section.items.map((item) => (
-                  <NavLink key={item.href} href={item.href} label={t(item.labelKey)} icon={item.icon} />
+                  <NavLink key={item.href} href={item.href} label={t(item.labelKey)} icon={item.icon} dot={"dot" in item ? item.dot : undefined} />
                 ))}
               </div>
             </div>
