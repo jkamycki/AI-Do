@@ -452,7 +452,7 @@ export default function Aria() {
   const sortedConversations = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] max-w-6xl mx-auto">
+    <div className="flex h-[calc(100vh-4rem)] md:h-screen -mx-4 md:-mx-8 -mt-4 md:-mt-8">
       {/* History sidebar — desktop */}
       <aside className="hidden md:flex flex-col w-64 border-r border-border/40 bg-background/40 shrink-0">
         <div className="p-3 border-b border-border/40">
@@ -564,7 +564,16 @@ export default function Aria() {
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="font-serif text-lg text-primary leading-tight">{t("aria.name")}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-serif text-lg text-primary leading-tight">{t("aria.name")}</h1>
+                <span className="flex items-center gap-1">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                  </span>
+                  <span className="text-xs text-green-500 font-medium">Online</span>
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground">{t("aria.subtitle")}</p>
             </div>
           </div>

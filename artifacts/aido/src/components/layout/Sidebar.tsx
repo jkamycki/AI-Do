@@ -62,7 +62,7 @@ const navSections = [
   {
     labelKey: "nav.ai_label",
     items: [
-      { href: "/aria", labelKey: "nav.aria", icon: Sparkles, dot: true },
+      { href: "/aria", labelKey: "nav.aria", icon: Sparkles },
       { href: "/day-of", labelKey: "nav.dayof", icon: Smartphone },
     ],
   },
