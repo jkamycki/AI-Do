@@ -597,8 +597,8 @@ export default function Aria() {
           {isEmpty ? (
             <div className="flex flex-col items-center justify-center h-full gap-8 pb-8">
               <div className="text-center space-y-2">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mx-auto mb-4 border border-primary/15">
-                  <Sparkles className="h-8 w-8 text-primary" />
+                <div className="w-24 h-24 rounded-full mx-auto mb-4 overflow-hidden border-2 border-primary/20 shadow-lg bg-background flex items-center justify-center">
+                  <img src="/logo.png" alt="Aria" className="w-full h-full object-contain p-1" />
                 </div>
                 <h2 className="font-serif text-2xl text-primary">{t("aria.title")}</h2>
                 <p className="text-muted-foreground text-sm max-w-md">
