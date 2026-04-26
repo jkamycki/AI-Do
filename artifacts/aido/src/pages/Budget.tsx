@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Lock, Paperclip, X } from "lucide-react";
+import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Lock, Paperclip, X, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const MANUAL_CATEGORIES = [
@@ -291,6 +291,15 @@ export default function Budget() {
         <h1 className="font-serif text-4xl text-primary">{t("budget.title")}</h1>
         <p className="text-muted-foreground">
           {t("budget.subtitle")}
+        </p>
+      </div>
+
+      <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/8 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+        <p>
+          Budget figures and estimates in A.IDO are for personal planning purposes only and do not constitute financial, accounting, or tax advice.
+          Always verify figures with your vendors directly. By using these tools you agree to our{" "}
+          <a href="/terms" className="underline underline-offset-2 font-medium hover:opacity-80 transition-opacity">Terms of Service</a>.
         </p>
       </div>
 

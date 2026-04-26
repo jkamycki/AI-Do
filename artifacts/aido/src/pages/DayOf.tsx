@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Clock, CheckCircle2, Siren, Pencil, Save, X, RotateCcw } from "lucide-react";
+import { AlertCircle, Clock, CheckCircle2, Siren, Pencil, Save, X, RotateCcw, Info } from "lucide-react";
 import { format } from "date-fns";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useToast } from "@/hooks/use-toast";
@@ -158,6 +158,16 @@ export default function DayOf() {
         {hasUnsavedChanges && (
           <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">{t("dayof.unsaved_changes")}</p>
         )}
+      </div>
+
+      <div className="px-4 pt-1 pb-2">
+        <div className="flex items-start gap-2.5 rounded-lg border border-blue-500/25 bg-blue-500/8 px-3 py-2.5 text-xs text-blue-800 dark:text-blue-300">
+          <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <p>
+            Day-Of tools are planning aids only — not professional event coordination services. Verify all timelines with your vendors.{" "}
+            <a href="/terms" className="underline underline-offset-2 font-medium hover:opacity-80 transition-opacity">Terms apply.</a>
+          </p>
+        </div>
       </div>
 
       <div className="px-4 space-y-6">
