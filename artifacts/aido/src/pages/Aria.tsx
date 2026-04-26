@@ -452,7 +452,7 @@ export default function Aria() {
   const sortedConversations = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] md:h-screen -mx-4 md:-mx-8 -mt-4 md:-mt-8">
+    <div className="flex fixed inset-x-0 top-16 bottom-0 md:static md:h-screen md:-mx-8 md:-mt-8">
       {/* History sidebar — desktop */}
       <aside className="hidden md:flex flex-col w-64 border-r border-border/40 bg-background/40 shrink-0">
         <div className="p-3 border-b border-border/40">
