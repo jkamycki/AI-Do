@@ -527,6 +527,22 @@ export default function Contracts() {
         </div>
       </div>
 
+      {/* Legal Disclaimer Banner */}
+      <div className="rounded-xl border border-amber-500/40 bg-amber-500/8 px-5 py-4 flex gap-3">
+        <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+        <div className="space-y-1.5 min-w-0">
+          <p className="text-sm font-semibold text-amber-400">Not Legal Advice</p>
+          <p className="text-xs text-foreground/75 leading-relaxed">
+            A.IDO's contract analysis is powered by AI and is provided for <strong>informational and planning purposes only</strong>. 
+            It does not constitute legal advice, and no attorney-client relationship is formed by using this feature. 
+            AI analysis may miss issues, misinterpret clauses, or fail to account for your jurisdiction's laws. 
+            <strong> Always have a qualified attorney review any contract before you sign it.</strong>{" "}
+            By using this feature you confirm you have read and agreed to our{" "}
+            <a href="/terms" className="underline underline-offset-2 hover:text-amber-300 transition-colors">Terms of Service</a>.
+          </p>
+        </div>
+      </div>
+
       {/* Stats row */}
       {contracts.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
