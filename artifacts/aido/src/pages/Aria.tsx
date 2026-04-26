@@ -22,7 +22,7 @@ import {
   ChevronDown,
   MessageSquare,
   Trash2,
-  Menu,
+  History,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -558,7 +558,7 @@ export default function Aria() {
               onClick={() => setHistoryOpen(true)}
               aria-label="Open conversation history"
             >
-              <Menu className="h-5 w-5" />
+              <History className="h-5 w-5" />
             </button>
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-md">
               <Sparkles className="h-5 w-5 text-white" />
