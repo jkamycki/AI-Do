@@ -554,7 +554,7 @@ export default function Aria() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-background/80 backdrop-blur shrink-0">
           <div className="flex items-center gap-3">
             <button
-              className="md:hidden p-1.5 rounded hover:bg-muted"
+              className="p-1.5 rounded hover:bg-muted"
               onClick={() => setHistoryOpen(true)}
               aria-label="Open conversation history"
             >
