@@ -32,6 +32,10 @@ import WeddingParty from "@/pages/WeddingParty";
 import Contracts from "@/pages/Contracts";
 import Aria from "@/pages/Aria";
 import Terms from "@/pages/Terms";
+import Privacy from "@/pages/Privacy";
+import BetaDisclaimer from "@/pages/BetaDisclaimer";
+import Security from "@/pages/Security";
+import DataHandling from "@/pages/DataHandling";
 import NotFound from "@/pages/not-found";
 import VideoTemplate from "@/components/video/VideoTemplate";
 
@@ -1229,6 +1233,10 @@ function Router() {
       <Route path="/aria" component={() => <ProtectedRoute component={Aria} />} />
       <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} />} />
       <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/beta" component={BetaDisclaimer} />
+      <Route path="/security" component={Security} />
+      <Route path="/data-handling" component={DataHandling} />
       <Route path="/promo" component={VideoTemplate} />
       <Route component={NotFound} />
     </Switch>

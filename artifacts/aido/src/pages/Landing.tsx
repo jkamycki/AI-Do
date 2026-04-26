@@ -344,11 +344,27 @@ export default function Landing() {
           <img src="/logo.png" alt="A.I Do" className="h-20 w-auto object-contain" />
           <span className="brand-gradient-text font-semibold">{t("landing.footer_brand")}</span>
         </div>
-        <div className="flex items-center justify-center gap-4 text-xs text-white/45">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-white/45">
           <span>© {new Date().getFullYear()} A.IDO. {t("landing.footer_rights")}</span>
-          <span className="w-px h-3 bg-border inline-block" />
+          <span className="w-px h-3 bg-border inline-block hidden sm:inline-block" />
           <Link href="/terms" className="hover:text-primary transition-colors underline underline-offset-2">
-            {t("landing.footer_terms")}
+            Terms of Service
+          </Link>
+          <span className="w-px h-3 bg-border inline-block hidden sm:inline-block" />
+          <Link href="/privacy" className="hover:text-primary transition-colors underline underline-offset-2">
+            Privacy Policy
+          </Link>
+          <span className="w-px h-3 bg-border inline-block hidden sm:inline-block" />
+          <Link href="/beta" className="hover:text-primary transition-colors underline underline-offset-2">
+            Beta Disclaimer
+          </Link>
+          <span className="w-px h-3 bg-border inline-block hidden sm:inline-block" />
+          <Link href="/security" className="hover:text-primary transition-colors underline underline-offset-2">
+            Security
+          </Link>
+          <span className="w-px h-3 bg-border inline-block hidden sm:inline-block" />
+          <Link href="/data-handling" className="hover:text-primary transition-colors underline underline-offset-2">
+            Data Handling
           </Link>
         </div>
       </footer>
