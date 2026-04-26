@@ -168,33 +168,35 @@ export default function Landing() {
   return (
     <div className="dark min-h-screen bg-background flex flex-col">
       <header
-        className="px-8 py-4 flex items-center justify-between bg-background/80 backdrop-blur-md relative"
+        className="px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between bg-background/80 backdrop-blur-md relative"
         style={{
           borderBottom: "4px solid transparent",
           borderImage: "linear-gradient(90deg, #B8860B 0%, #D4A017 35%, #F5C842 50%, #D4A017 65%, #B8860B 100%) 1",
         }}
       >
-        <div className="flex-1 min-w-0 pr-6">
+        <div className="flex-1 min-w-0 pr-2 sm:pr-6 hidden sm:block">
           <RotatingTagline />
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-end">
           <LandingLanguagePicker />
-          <Link href="/sign-in">
-            <Button variant="ghost" className="text-primary hover:bg-primary/5 font-medium">{t("landing.cta_signin")}</Button>
-          </Link>
-          <Link href="/sign-up">
-            <Button className="btn-gradient rounded-full px-6 shadow-sm">
-              {t("landing.get_started")}
-            </Button>
-          </Link>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Link href="/sign-in">
+              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/5 font-medium text-sm px-3">{t("landing.cta_signin")}</Button>
+            </Link>
+            <Link href="/sign-up">
+              <Button size="sm" className="btn-gradient rounded-full px-4 sm:px-6 shadow-sm text-sm">
+                {t("landing.get_started")}
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center">
         {/* Hero */}
-        <section className="text-center px-6 pt-16 pb-16 max-w-3xl mx-auto">
-          <div className="flex flex-col items-center mb-8 gap-3">
-            <img src="/logo.png" alt="A.I Do — AI Wedding Planner Assistant" className="h-80 w-auto object-contain drop-shadow-xl" />
+        <section className="text-center px-4 sm:px-6 pt-8 sm:pt-16 pb-10 sm:pb-16 max-w-3xl mx-auto">
+          <div className="flex flex-col items-center mb-6 sm:mb-8 gap-3">
+            <img src="/logo.png" alt="A.I Do — AI Wedding Planner Assistant" className="h-48 sm:h-80 w-auto object-contain drop-shadow-xl" />
             <span
               className="text-[11px] font-bold tracking-[0.22em] uppercase px-3 py-1 rounded-full border border-primary/50 text-primary bg-primary/10"
               style={{ letterSpacing: "0.22em" }}
@@ -206,21 +208,21 @@ export default function Landing() {
             <Sparkles className="h-4 w-4" />
             <span>{t("landing.badge")}</span>
           </div>
-          <h1 className="font-serif text-5xl md:text-6xl leading-tight mb-6">
+          <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl leading-tight mb-4 sm:mb-6">
             <span className="brand-gradient-text">{t("landing.hero_line1")}</span><br />
             <span className="gold-gradient-text italic">{t("landing.hero_line2")}</span>
           </h1>
-          <p className="text-xl text-white/75 mb-10 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-xl text-white/75 mb-7 sm:mb-10 max-w-2xl mx-auto leading-relaxed">
             {t("landing.hero_desc")}
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <Link href="/sign-up">
-              <Button size="lg" className="btn-gradient rounded-full px-10 text-lg h-14 shadow-lg">
+              <Button size="lg" className="btn-gradient rounded-full px-8 sm:px-10 text-base sm:text-lg h-12 sm:h-14 shadow-lg w-full sm:w-auto">
                 {t("landing.cta_start")}
               </Button>
             </Link>
             <Link href="/sign-in">
-              <Button size="lg" variant="outline" className="border-primary/30 text-primary hover:bg-primary/5 rounded-full px-10 text-lg h-14">
+              <Button size="lg" variant="outline" className="border-primary/30 text-primary hover:bg-primary/5 rounded-full px-8 sm:px-10 text-base sm:text-lg h-12 sm:h-14 w-full sm:w-auto">
                 {t("landing.cta_signin")}
               </Button>
             </Link>
@@ -239,9 +241,9 @@ export default function Landing() {
         </section>
 
         {/* Promo Video */}
-        <section className="w-full max-w-7xl px-6 pb-20">
-          <div className="text-center mb-8">
-            <h2 className="font-serif text-3xl text-primary mb-3">{t("landing.video_title")}</h2>
+        <section className="w-full max-w-7xl px-4 sm:px-6 pb-10 sm:pb-20">
+          <div className="text-center mb-6 sm:mb-8">
+            <h2 className="font-serif text-2xl sm:text-3xl text-primary mb-3">{t("landing.video_title")}</h2>
             <p className="text-white/65">{t("landing.video_desc")}</p>
           </div>
           <div className="relative w-full overflow-hidden rounded-2xl shadow-2xl border border-primary/10" style={{ aspectRatio: "16/9" }}>
@@ -255,9 +257,9 @@ export default function Landing() {
         </section>
 
         {/* Features */}
-        <section className="w-full max-w-5xl px-6 pb-20">
-          <div className="text-center mb-12">
-            <h2 className="font-serif text-3xl text-primary mb-3">{t("landing.features_title")}</h2>
+        <section className="w-full max-w-5xl px-4 sm:px-6 pb-10 sm:pb-20">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="font-serif text-2xl sm:text-3xl text-primary mb-3">{t("landing.features_title")}</h2>
             <p className="text-white/65 text-lg">{t("landing.features_desc")}</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -282,14 +284,14 @@ export default function Landing() {
         </section>
 
         {/* Testimonials */}
-        <section className="w-full bg-background border-t border-b border-primary/10 py-20 px-6">
+        <section className="w-full bg-background border-t border-b border-primary/10 py-12 sm:py-20 px-4 sm:px-6">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-14">
+            <div className="text-center mb-8 sm:mb-14">
               <div className="inline-flex items-center gap-2 bg-amber-900/40 text-amber-300 text-sm font-medium px-4 py-1.5 rounded-full mb-4">
                 <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                 <span>{t("landing.testimonials_badge")}</span>
               </div>
-              <h2 className="font-serif text-3xl md:text-4xl text-primary mb-3">{t("landing.testimonials_title")}</h2>
+              <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl text-primary mb-3">{t("landing.testimonials_title")}</h2>
               <div className="flex items-center justify-center gap-2 text-white/65">
                 <Stars />
                 <span className="font-semibold text-foreground text-lg">5.0</span>
@@ -325,11 +327,11 @@ export default function Landing() {
         </section>
 
         {/* CTA */}
-        <section className="w-full py-20 px-6 text-center">
-          <h2 className="font-serif text-3xl md:text-4xl text-primary mb-4">{t("landing.final_title")}</h2>
-          <p className="text-white/70 mb-8 max-w-lg mx-auto text-lg">{t("landing.final_desc")}</p>
+        <section className="w-full py-12 sm:py-20 px-4 sm:px-6 text-center">
+          <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl text-primary mb-4">{t("landing.final_title")}</h2>
+          <p className="text-white/70 mb-6 sm:mb-8 max-w-lg mx-auto text-base sm:text-lg">{t("landing.final_desc")}</p>
           <Link href="/sign-up">
-            <Button size="lg" className="btn-gradient rounded-full px-14 text-lg h-14 shadow-lg">
+            <Button size="lg" className="btn-gradient rounded-full px-10 sm:px-14 text-base sm:text-lg h-12 sm:h-14 shadow-lg">
               {t("landing.final_cta")}
             </Button>
           </Link>

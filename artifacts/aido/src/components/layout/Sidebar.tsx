@@ -293,23 +293,23 @@ export function Sidebar() {
 
   return (
     <>
-      <div className="md:hidden fixed top-0 left-0 right-0 h-20 bg-background border-b border-primary/10 z-50 flex items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="A.I Do Logo" className="h-16 w-auto object-contain" />
-          <span className="text-[9px] font-bold tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10 self-end mb-2">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b border-primary/10 z-50 flex items-center justify-between px-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsOpen(!isOpen)}
+          data-testid="btn-toggle-menu"
+          className="flex-shrink-0"
+        >
+          {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </Button>
+        <div className="flex items-center gap-1.5 absolute left-1/2 -translate-x-1/2">
+          <img src="/logo.png" alt="A.I Do Logo" className="h-12 w-auto object-contain" />
+          <span className="text-[9px] font-bold tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10 self-end mb-1">
             BETA
           </span>
         </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsOpen(!isOpen)}
-            data-testid="btn-toggle-menu"
-          >
-            {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </Button>
-        </div>
+        <div className="w-10 flex-shrink-0" />
       </div>
 
       <div
@@ -318,7 +318,7 @@ export function Sidebar() {
           sessionStorage.setItem("aido_sidebar_scroll", String((e.target as HTMLDivElement).scrollTop));
         }}
         className={`
-          fixed top-0 left-0 h-full w-64 bg-card border-r z-40 transform transition-transform duration-300 ease-in-out pt-20 md:pt-0
+          fixed top-0 left-0 h-full w-64 bg-card border-r z-40 transform transition-transform duration-300 ease-in-out pt-16 md:pt-0
           flex flex-col overflow-y-auto
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
