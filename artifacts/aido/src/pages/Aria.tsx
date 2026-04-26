@@ -597,8 +597,8 @@ export default function Aria() {
           {isEmpty ? (
             <div className="flex flex-col items-center justify-center h-full gap-8 pb-8">
               <div className="text-center space-y-2">
-                <div className="w-24 h-24 rounded-full mx-auto mb-4 overflow-hidden border-2 border-primary/20 shadow-lg bg-background flex items-center justify-center">
-                  <img src="/logo.png" alt="Aria" className="w-full h-full object-contain p-1" />
+                <div className="mx-auto mb-4 flex items-center justify-center">
+                  <img src="/logo.png" alt="Aria" className="h-32 w-auto object-contain drop-shadow-lg" />
                 </div>
                 <h2 className="font-serif text-2xl text-primary">{t("aria.title")}</h2>
                 <p className="text-muted-foreground text-sm max-w-md">
