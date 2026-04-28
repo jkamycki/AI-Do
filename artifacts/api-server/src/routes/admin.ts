@@ -318,6 +318,87 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+router.get("/admin/dropoffs", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const days = parseInt(String(req.query.days ?? "0"), 10);
+    const since = days > 0 ? new Date(Date.now() - days * 86400000) : null;
+
+    const [profileRows, clerkResponse] = await Promise.all([
+      db.select({ userId: weddingProfiles.userId }).from(weddingProfiles),
+      clerkClient.users.getUserList({
+        limit: 500,
+        orderBy: "-created_at" as Parameters<typeof clerkClient.users.getUserList>[0]["orderBy"],
+        ...(since ? { createdAfter: since.getTime() } : {}),
+      }),
+    ]);
+
+    const onboardedIds = new Set(profileRows.map(r => r.userId).filter(Boolean));
+    const dropoffUsers = clerkResponse.data.filter(u => !onboardedIds.has(u.id));
+
+    const dropoffIds = dropoffUsers.map(u => u.id);
+    let eventRows: Array<{ user_id: string; login_count: number; last_seen: string | null }> = [];
+    if (dropoffIds.length > 0) {
+      const evResult = await db.execute(sql`
+        SELECT
+          user_id,
+          count(case when event_type = 'user_login' then 1 end)::int as login_count,
+          max(timestamp)::text as last_seen
+        FROM analytics_events
+        WHERE user_id = ANY(${dropoffIds}::text[])
+        GROUP BY user_id
+      `);
+      eventRows = evResult.rows as typeof eventRows;
+    }
+    const eventMap = new Map(eventRows.map(r => [r.user_id, r]));
+
+    const dropoffs = dropoffUsers.map(cu => {
+      const email = cu.emailAddresses.find(e => e.id === cu.primaryEmailAddressId)?.emailAddress
+        ?? cu.emailAddresses[0]?.emailAddress ?? null;
+      const ev = eventMap.get(cu.id);
+      const joinedAt = new Date(cu.createdAt);
+      const daysSince = Math.floor((Date.now() - joinedAt.getTime()) / 86400000);
+      return {
+        id: cu.id,
+        firstName: cu.firstName ?? "",
+        lastName: cu.lastName ?? "",
+        email,
+        imageUrl: cu.imageUrl ?? null,
+        joinedAt: joinedAt.toISOString(),
+        daysSince,
+        loginCount: ev?.login_count ?? 0,
+        lastSeen: ev?.last_seen ?? null,
+        neverReturned: !ev || (ev.login_count === 0),
+      };
+    });
+
+    dropoffs.sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime());
+
+    const cohortMap = new Map<string, { week: string; dropoffs: number; neverReturned: number }>();
+    for (const u of dropoffs) {
+      const d = new Date(u.joinedAt);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - d.getDay());
+      const key = d.toISOString().split("T")[0];
+      const existing = cohortMap.get(key) ?? { week: key, dropoffs: 0, neverReturned: 0 };
+      existing.dropoffs++;
+      if (u.neverReturned) existing.neverReturned++;
+      cohortMap.set(key, existing);
+    }
+    const cohorts = Array.from(cohortMap.values()).sort((a, b) => a.week.localeCompare(b.week));
+
+    res.json({
+      dropoffs,
+      total: dropoffs.length,
+      neverReturned: dropoffs.filter(u => u.neverReturned).length,
+      cameBack: dropoffs.filter(u => !u.neverReturned).length,
+      cohorts,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Admin dropoffs error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.delete("/admin/users/:userId", requireAuth, requireAdmin, async (req, res) => {
   const targetUserId = req.params.userId;
   if (!targetUserId) {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import {
   ChevronRight, Inbox, Star, MessageSquare, Bug, Lightbulb, Heart, ThumbsUp,
   MailOpen, Circle, CheckCircle2, Search, Calendar, Clock, ExternalLink,
   ChevronDown as ChevronDownIcon, ChevronUp as ChevronUpIcon, Trash2, Loader2,
+  UserX, TrendingDown, ArrowRight, SortAsc,
 } from "lucide-react";
 
 interface AdminMetrics {
@@ -72,6 +73,7 @@ interface AdminEvent {
 const BRAND = "#7C3F5E";
 const TABS = [
   { key: "users", label: "User Metrics", icon: Users },
+  { key: "dropoffs", label: "Drop-offs", icon: UserX },
   { key: "usage", label: "Product Usage", icon: Zap },
   { key: "money", label: "Money Metrics", icon: DollarSign },
   { key: "system", label: "System Health", icon: Shield },
@@ -353,6 +355,343 @@ function UserDetailModal({ user, onClose, onDeleted }: { user: AdminUser; onClos
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+interface DropoffUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  imageUrl: string | null;
+  joinedAt: string;
+  daysSince: number;
+  loginCount: number;
+  lastSeen: string | null;
+  neverReturned: boolean;
+}
+
+interface DropoffData {
+  dropoffs: DropoffUser[];
+  total: number;
+  neverReturned: number;
+  cameBack: number;
+  cohorts: Array<{ week: string; dropoffs: number; neverReturned: number }>;
+}
+
+function DropoffUserRow({ user }: { user: DropoffUser }) {
+  const [open, setOpen] = useState(false);
+  const initials = `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() || "?";
+  const fullName = `${user.firstName} ${user.lastName}`.trim() || "—";
+
+  return (
+    <>
+      <tr
+        className="border-b border-border/40 hover:bg-muted/30 cursor-pointer transition-colors"
+        onClick={() => setOpen(v => !v)}
+      >
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            {user.imageUrl
+              ? <img src={user.imageUrl} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+              : <div className="w-7 h-7 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center flex-shrink-0">{initials}</div>
+            }
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{fullName}</p>
+              <p className="text-xs text-muted-foreground truncate">{user.email ?? "—"}</p>
+            </div>
+          </div>
+        </td>
+        <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
+          {new Date(user.joinedAt).toLocaleDateString()}
+        </td>
+        <td className="px-4 py-3 text-sm text-center">
+          <span className={user.daysSince <= 3 ? "text-amber-600 font-medium" : user.daysSince >= 14 ? "text-red-500 font-medium" : "text-foreground"}>
+            {user.daysSince}d ago
+          </span>
+        </td>
+        <td className="px-4 py-3 text-sm text-center">
+          {user.loginCount > 0
+            ? <span className="text-amber-600 font-medium">{user.loginCount}×</span>
+            : <span className="text-muted-foreground">—</span>
+          }
+        </td>
+        <td className="px-4 py-3 text-center">
+          {user.neverReturned
+            ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-semibold uppercase tracking-wide">Ghost</span>
+            : <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold uppercase tracking-wide">Stalled</span>
+          }
+        </td>
+        <td className="px-4 py-3 text-center">
+          <span className={`transition-transform inline-block text-muted-foreground ${open ? "rotate-180" : ""}`}>
+            <ChevronDownIcon className="h-4 w-4" />
+          </span>
+        </td>
+      </tr>
+      {open && (
+        <tr className="bg-muted/20 border-b border-border/40">
+          <td colSpan={6} className="px-6 py-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+              <div><p className="text-xs text-muted-foreground mb-0.5">Clerk ID</p><p className="font-mono text-xs truncate">{user.id}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Signed Up</p><p>{new Date(user.joinedAt).toLocaleString()}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Last Seen</p><p>{user.lastSeen ? new Date(user.lastSeen).toLocaleString() : "Never"}</p></div>
+              <div><p className="text-xs text-muted-foreground mb-0.5">Login Events</p><p>{user.loginCount}</p></div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function DropoffAnalysisTab({ totalSignups, onboardedUsers }: { totalSignups: number; onboardedUsers: number }) {
+  const { getToken } = useAuth();
+  const [days, setDays] = useState(30);
+  const [filter, setFilter] = useState<"all" | "ghost" | "stalled">("all");
+  const [sort, setSort] = useState<"newest" | "oldest" | "most_logins" | "least_logins">("newest");
+  const [exporting, setExporting] = useState(false);
+
+  const { data, isLoading } = useQuery<DropoffData>({
+    queryKey: ["admin-dropoffs", days],
+    queryFn: async () => {
+      const token = await getToken();
+      const r = await fetch(`/api/admin/dropoffs?days=${days}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!r.ok) throw new Error("Failed to fetch drop-offs");
+      return r.json();
+    },
+  });
+
+  const filtered = useMemo(() => {
+    let list = data?.dropoffs ?? [];
+    if (filter === "ghost") list = list.filter(u => u.neverReturned);
+    if (filter === "stalled") list = list.filter(u => !u.neverReturned);
+    switch (sort) {
+      case "oldest": list = [...list].sort((a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()); break;
+      case "most_logins": list = [...list].sort((a, b) => b.loginCount - a.loginCount); break;
+      case "least_logins": list = [...list].sort((a, b) => a.loginCount - b.loginCount); break;
+      default: list = [...list].sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime());
+    }
+    return list;
+  }, [data, filter, sort]);
+
+  const conversionRate = totalSignups > 0 ? Math.round((onboardedUsers / totalSignups) * 100) : 0;
+  const dropoffRate = 100 - conversionRate;
+
+  const exportToExcel = async () => {
+    if (!data) return;
+    setExporting(true);
+    try {
+      const rows = data.dropoffs.map(u => ({
+        "First Name": u.firstName,
+        "Last Name": u.lastName,
+        "Email": u.email ?? "",
+        "Clerk ID": u.id,
+        "Signed Up": new Date(u.joinedAt).toLocaleString(),
+        "Days Since Signup": u.daysSince,
+        "Login Count": u.loginCount,
+        "Last Seen": u.lastSeen ? new Date(u.lastSeen).toLocaleString() : "Never",
+        "Type": u.neverReturned ? "Ghost" : "Stalled",
+      }));
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Drop-offs");
+      if (rows.length > 0) {
+        const headers = Object.keys(rows[0]);
+        ws.columns = headers.map(h => ({ header: h, key: h, width: 20 }));
+        rows.forEach(row => ws.addRow(row));
+      }
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `aido-dropoffs-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader
+        title="Drop-off Analysis"
+        description="Users who signed up but never completed onboarding."
+      />
+
+      {/* Funnel */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {[
+          { label: "Total Signups", value: totalSignups, color: "bg-blue-500" },
+          { label: "Never Onboarded", value: totalSignups - onboardedUsers, color: "bg-red-400" },
+          { label: "Onboarded", value: onboardedUsers, color: "bg-emerald-500" },
+        ].map((step, i, arr) => (
+          <React.Fragment key={step.label}>
+            <div className="flex-1 min-w-[110px] bg-card border border-border/60 rounded-xl p-4 text-center shadow-sm">
+              <div className={`w-2 h-2 rounded-full ${step.color} mx-auto mb-2`} />
+              <p className="text-2xl font-bold font-serif">{step.value.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{step.label}</p>
+              {i === 1 && (
+                <p className="text-xs font-semibold text-red-500 mt-1">{dropoffRate}% drop-off</p>
+              )}
+              {i === 2 && (
+                <p className="text-xs font-semibold text-emerald-600 mt-1">{conversionRate}% converted</p>
+              )}
+            </div>
+            {i < arr.length - 1 && <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-center flex-wrap gap-3">
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+          {[
+            { label: "All time", value: 0 },
+            { label: "7 days", value: 7 },
+            { label: "30 days", value: 30 },
+            { label: "90 days", value: 90 },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setDays(opt.value)}
+              className={`px-3 py-1.5 text-xs rounded-md font-medium transition-colors ${days === opt.value ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+          {[
+            { label: "All", value: "all" as const },
+            { label: "Ghost (never returned)", value: "ghost" as const },
+            { label: "Stalled (came back)", value: "stalled" as const },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setFilter(opt.value)}
+              className={`px-3 py-1.5 text-xs rounded-md font-medium transition-colors ${filter === opt.value ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-1.5 ml-auto">
+          <SortAsc className="h-3.5 w-3.5 text-muted-foreground" />
+          <select
+            value={sort}
+            onChange={e => setSort(e.target.value as typeof sort)}
+            className="text-xs bg-muted border-0 rounded-lg px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="most_logins">Most logins</option>
+            <option value="least_logins">Fewest logins</option>
+          </select>
+        </div>
+
+        <Button variant="outline" size="sm" onClick={exportToExcel} disabled={exporting || !data}>
+          {exporting ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5 mr-1.5" />}
+          Export
+        </Button>
+      </div>
+
+      {/* Summary chips */}
+      {data && !isLoading && (
+        <div className="flex items-center gap-3 flex-wrap text-sm">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
+            <span className="font-semibold text-red-500">{data.neverReturned}</span>
+            <span className="text-muted-foreground">ghost users (signed up, never came back)</span>
+          </span>
+          <span className="text-border">|</span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+            <span className="font-semibold text-amber-600">{data.cameBack}</span>
+            <span className="text-muted-foreground">stalled (returned but never finished)</span>
+          </span>
+          <span className="text-border">|</span>
+          <span className="text-muted-foreground">{filtered.length} shown</span>
+        </div>
+      )}
+
+      {/* Cohort chart */}
+      {data && data.cohorts.length > 0 && (
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-red-400" />
+              Drop-offs by week
+            </CardTitle>
+            <CardDescription>How many users dropped off each week they signed up</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={data.cohorts} barGap={2}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis
+                  dataKey="week"
+                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                  tickFormatter={v => {
+                    const d = new Date(v);
+                    return `${d.getMonth() + 1}/${d.getDate()}`;
+                  }}
+                />
+                <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+                <Tooltip
+                  formatter={(value, name) => [value, name === "dropoffs" ? "Drop-offs" : "Never returned"]}
+                  labelFormatter={v => `Week of ${new Date(v).toLocaleDateString()}`}
+                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                />
+                <Bar dataKey="dropoffs" fill="#f87171" radius={[3, 3, 0, 0]} name="dropoffs" />
+                <Bar dataKey="neverReturned" fill="#fca5a5" radius={[3, 3, 0, 0]} name="neverReturned" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* User table */}
+      <Card className="border-none shadow-sm overflow-hidden">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-medium">
+            {isLoading ? "Loading…" : `${filtered.length} drop-off users`}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="space-y-2 p-4">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
+          ) : filtered.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground text-sm">
+              <UserX className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              No drop-offs in this window.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border/40 bg-muted/30">
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">User</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Signed up</th>
+                    <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Age</th>
+                    <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Logins</th>
+                    <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
+                    <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(user => <DropoffUserRow key={user.id} user={user} />)}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -1288,7 +1627,7 @@ export default function AdminPage() {
 
       {/* Tab content */}
       <div>
-        {metricsLoading && activeTab !== "events" && (
+        {metricsLoading && activeTab !== "events" && activeTab !== "dropoffs" && (
           <div className="space-y-4">
             <div className="grid grid-cols-4 gap-4">
               {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28" />)}
@@ -1297,7 +1636,14 @@ export default function AdminPage() {
           </div>
         )}
 
-        {!metricsLoading && metrics && (
+        {activeTab === "dropoffs" && (
+          <DropoffAnalysisTab
+            totalSignups={metrics?.userMetrics.totalUsers ?? 0}
+            onboardedUsers={metrics?.userMetrics.onboardedUsers ?? 0}
+          />
+        )}
+
+        {!metricsLoading && metrics && activeTab !== "dropoffs" && (
           <>
             {activeTab === "users" && <UserMetricsSection metrics={metrics} />}
             {activeTab === "usage" && <ProductUsageSection metrics={metrics} />}
