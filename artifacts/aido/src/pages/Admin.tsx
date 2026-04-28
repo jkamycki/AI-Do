@@ -18,6 +18,7 @@ import {
   MailOpen, Circle, CheckCircle2, Search, Calendar, Clock, ExternalLink,
   ChevronDown as ChevronDownIcon, ChevronUp as ChevronUpIcon, Trash2, Loader2,
   UserX, TrendingDown, ArrowRight, SortAsc, Globe, Eye, UserCheck, UserMinus,
+  Megaphone, Send, X, CheckCircle, XCircle, Sparkles,
 } from "lucide-react";
 
 interface AdminMetrics {
@@ -82,6 +83,7 @@ const TABS = [
   { key: "overview", label: "Overview", icon: BarChart2 },
   { key: "users", label: "Users", icon: Users },
   { key: "engagement", label: "Engagement", icon: Zap },
+  { key: "marketing", label: "Marketing", icon: Megaphone },
   { key: "events", label: "Event Log", icon: Activity },
   { key: "messages", label: "Messages", icon: Inbox },
 ];
@@ -97,6 +99,8 @@ const EVENT_LABELS: Record<string, string> = {
   day_of_mode_activated: "Day-Of Mode Activated",
   pdf_exported: "PDF Exported",
   api_error: "API Error",
+  page_view: "Page View",
+  marketing_email_sent: "Marketing Email Sent",
 };
 
 const EVENT_COLORS: Record<string, string> = {
@@ -1663,6 +1667,291 @@ function MessagesSection() {
   );
 }
 
+const DEFAULT_SUBJECT = "Join A.IDO — Your AI Wedding Planning Assistant";
+const DEFAULT_BODY = `Hi there,
+
+I'm reaching out to share something I've been building that I think you'll find helpful. It's called A.IDO, an AI wedding-planning assistant designed to make planning easier, clearer, and way less stressful.
+
+You can use it to create timelines, manage vendors, track budgets, organize communication, and more — all in one simple place.
+
+If you'd like to try it out, here's the link to join the beta: https://www.aidowedding.net
+
+Would love to hear your feedback.
+
+Thanks,
+Joseph
+Founder, A.IDO`;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function parseEmails(raw: string): string[] {
+  return raw
+    .split(/[\n,;]+/)
+    .map(e => e.trim())
+    .filter(e => EMAIL_RE.test(e));
+}
+
+interface SendResult {
+  email: string;
+  ok: boolean;
+  error?: string;
+}
+
+function MarketingOutreachSection() {
+  const { getToken } = useAuth();
+  const [emailsRaw, setEmailsRaw] = useState("");
+  const [subject, setSubject] = useState(DEFAULT_SUBJECT);
+  const [body, setBody] = useState(DEFAULT_BODY);
+  const [generating, setGenerating] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendResults, setSendResults] = useState<SendResult[] | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  const parsedEmails = parseEmails(emailsRaw);
+
+  const authedFetch = async (url: string, opts: RequestInit = {}) => {
+    const token = await getToken();
+    return fetch(url, {
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...opts,
+    });
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const r = await authedFetch("/api/admin/marketing/generate", { method: "POST" });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({})) as { error?: string };
+        throw new Error(j.error ?? "Generate failed");
+      }
+      const { subject: s, body: b } = await r.json() as { subject: string; body: string };
+      if (s) setSubject(s);
+      if (b) setBody(b);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Failed to generate template");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (parsedEmails.length === 0) {
+      setSendError("No valid email addresses to send to.");
+      return;
+    }
+    if (!subject.trim() || !body.trim()) {
+      setSendError("Subject and body are required.");
+      return;
+    }
+    setSending(true);
+    setSendError(null);
+    setSendResults(null);
+    try {
+      const r = await authedFetch("/api/admin/marketing/send", {
+        method: "POST",
+        body: JSON.stringify({ emails: parsedEmails, subject, body }),
+      });
+      const json = await r.json() as { results?: SendResult[]; error?: string; succeeded?: number; failed?: number };
+      if (!r.ok || json.error) throw new Error(json.error ?? "Send failed");
+      setSendResults(json.results ?? []);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Failed to send emails");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const succeeded = sendResults?.filter(r => r.ok).length ?? 0;
+  const failed = sendResults?.filter(r => !r.ok).length ?? 0;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-serif text-primary flex items-center gap-2">
+            <Megaphone className="h-6 w-6" />
+            Marketing Outreach
+          </h2>
+          <p className="text-muted-foreground mt-1">Send personalized invitations to potential users and vendors.</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-primary/5 rounded-lg px-3 py-2">
+          <Mail className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+          Sends individually — no CC/BCC
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <Card className="border-none shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-medium flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                Recipients
+              </CardTitle>
+              <CardDescription>Enter email addresses — one per line, or comma-separated</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <textarea
+                value={emailsRaw}
+                onChange={e => {
+                  setEmailsRaw(e.target.value);
+                  setSendResults(null);
+                  setSendError(null);
+                }}
+                placeholder={"jane@example.com\njohn@example.com, vendor@company.com"}
+                rows={5}
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none font-mono"
+              />
+              {emailsRaw.trim().length > 0 && (
+                <div className="space-y-1">
+                  {parsedEmails.length > 0 ? (
+                    <>
+                      <p className="text-xs font-semibold text-emerald-600">{parsedEmails.length} valid email{parsedEmails.length !== 1 ? "s" : ""} found</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {parsedEmails.map(email => (
+                          <span key={email} className="flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-2 py-0.5 rounded-full">
+                            {email}
+                            <button
+                              onClick={() => {
+                                const newRaw = emailsRaw.split(/[\n,;]+/).filter(e => e.trim() !== email).join("\n");
+                                setEmailsRaw(newRaw);
+                              }}
+                              className="hover:text-red-500 transition-colors"
+                            >
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-amber-600">No valid emails detected yet.</p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {sendResults && (
+            <Card className="border-none shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-medium flex items-center gap-2">
+                  {failed === 0 ? (
+                    <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-500" />
+                  )}
+                  Send Results
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4 mb-3 text-sm">
+                  <span className="text-emerald-600 font-semibold">{succeeded} sent</span>
+                  {failed > 0 && <span className="text-red-600 font-semibold">{failed} failed</span>}
+                </div>
+                <div className="space-y-1.5">
+                  {sendResults.map(r => (
+                    <div key={r.email} className={`flex items-center gap-2 text-xs rounded-lg px-3 py-1.5 ${r.ok ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
+                      {r.ok ? <CheckCircle className="h-3 w-3 flex-shrink-0" /> : <XCircle className="h-3 w-3 flex-shrink-0" />}
+                      <span className="font-mono truncate">{r.email}</span>
+                      {!r.ok && r.error && <span className="ml-auto text-red-600 flex-shrink-0">{r.error}</span>}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {sendError && (
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+              <XCircle className="h-4 w-4 flex-shrink-0" />
+              {sendError}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <Card className="border-none shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <CardTitle className="text-base font-medium flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-primary" />
+                    Email Template
+                  </CardTitle>
+                  <CardDescription>Edit the subject and body before sending</CardDescription>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleGenerate}
+                  disabled={generating}
+                  className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
+                >
+                  {generating ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  {generating ? "Generating…" : "Generate AI Template"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">Subject</label>
+                <input
+                  type="text"
+                  value={subject}
+                  onChange={e => setSubject(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  placeholder="Email subject line"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">Body</label>
+                <textarea
+                  value={body}
+                  onChange={e => setBody(e.target.value)}
+                  rows={14}
+                  className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none leading-relaxed"
+                  placeholder="Email body…"
+                />
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <p className="text-xs text-muted-foreground">
+                  {body.split(/\s+/).filter(Boolean).length} words
+                </p>
+                <Button
+                  onClick={handleSend}
+                  disabled={sending || parsedEmails.length === 0 || !subject.trim() || !body.trim()}
+                  className="gap-2 bg-primary hover:bg-primary/90"
+                >
+                  {sending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  {sending
+                    ? "Sending…"
+                    : parsedEmails.length === 0
+                      ? "Add recipients first"
+                      : `Send to ${parsedEmails.length} recipient${parsedEmails.length !== 1 ? "s" : ""}`}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const { getToken, isSignedIn } = useAuth();
@@ -1823,6 +2112,8 @@ export default function AdminPage() {
             {activeTab === "engagement" && <ProductUsageSection metrics={metrics} />}
           </>
         )}
+
+        {activeTab === "marketing" && <MarketingOutreachSection />}
 
         {activeTab === "events" && (
           <EventLogSection events={eventsData?.events ?? []} isLoading={eventsLoading} />

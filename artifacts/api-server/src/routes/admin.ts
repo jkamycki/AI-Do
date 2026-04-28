@@ -5,6 +5,8 @@ import { db, analyticsEvents, adminUsers, weddingProfiles } from "@workspace/db"
 import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { purgeUserData } from "../lib/userCleanup";
+import { sendEmail, FROM_EMAIL } from "../lib/resend";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
@@ -485,6 +487,90 @@ router.delete("/admin/demote/:userId", requireAuth, requireAdmin, async (req, re
   } catch (err) {
     console.error("Admin demote error:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/admin/marketing/generate", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are the Marketing Outreach Tool inside the A.IDO Operations Center. You write warm, human, founder-led marketing emails to invite people to join A.IDO, an AI wedding planning assistant. Keep emails SHORT (under 150 words total), friendly, non-salesy, and focused on genuine value. Always sign off as Joseph, Founder of A.IDO.`,
+        },
+        {
+          role: "user",
+          content: `Generate a fresh marketing outreach email. Include:
+- A compelling subject line
+- Email body under 150 words that:
+  • Highlights 2-3 clear benefits of A.IDO (timelines, vendor management, budgeting, AI assistance)
+  • Has a clear CTA to sign up/join the beta at https://www.aidowedding.net
+  • Sounds like a real person wrote it, not a marketing department
+  • Ends signed by Joseph, Founder of A.IDO
+
+Return ONLY valid JSON (no markdown, no code block): { "subject": "...", "body": "..." }`,
+        },
+      ],
+      temperature: 0.9,
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "";
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON in AI response");
+    const parsed = JSON.parse(jsonMatch[0]) as { subject?: string; body?: string };
+    res.json({ subject: parsed.subject ?? "", body: parsed.body ?? "" });
+  } catch (err) {
+    req.log.error({ err }, "Marketing generate error");
+    res.status(500).json({ error: "Failed to generate template. Please try again." });
+  }
+});
+
+router.post("/admin/marketing/send", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { emails, subject, body } = req.body as {
+      emails: string[];
+      subject: string;
+      body: string;
+    };
+
+    if (!Array.isArray(emails) || emails.length === 0) {
+      return res.status(400).json({ error: "No email addresses provided." });
+    }
+    if (!subject?.trim() || !body?.trim()) {
+      return res.status(400).json({ error: "Subject and body are required." });
+    }
+
+    const results: Array<{ email: string; ok: boolean; error?: string }> = [];
+
+    for (const email of emails) {
+      const trimmed = email.trim();
+      if (!trimmed) continue;
+
+      const r = await sendEmail({
+        to: trimmed,
+        fromName: "Joseph @ A.IDO",
+        from: FROM_EMAIL,
+        replyTo: FROM_EMAIL,
+        subject: subject.trim(),
+        text: body.trim(),
+      });
+
+      await db.insert(analyticsEvents).values({
+        userId: req.userId ?? "admin",
+        eventType: "marketing_email_sent",
+        metadata: { to: trimmed, subject: subject.trim(), ok: r.ok, error: r.error ?? null },
+      }).catch(() => {});
+
+      results.push({ email: trimmed, ok: r.ok, error: r.error });
+    }
+
+    const succeeded = results.filter(r => r.ok).length;
+    const failed = results.filter(r => !r.ok).length;
+    res.json({ results, succeeded, failed });
+  } catch (err) {
+    req.log.error({ err }, "Marketing send error");
+    res.status(500).json({ error: "Failed to send emails. Please try again." });
   }
 });
 
