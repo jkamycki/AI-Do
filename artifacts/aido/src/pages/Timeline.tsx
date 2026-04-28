@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
-  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor,
   useSensor, useSensors, DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -372,14 +372,16 @@ function SortableEventCard({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`flex gap-2 sm:gap-3 group ${isDragging ? "opacity-50 z-50" : ""}`}
     >
-      <button
+      <div
         {...listeners}
         {...attributes}
-        className="mt-3 p-1 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted cursor-grab active:cursor-grabbing transition-colors flex-shrink-0 touch-none"
+        className="mt-3 p-1.5 rounded text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted cursor-grab active:cursor-grabbing transition-colors flex-shrink-0 select-none"
         title="Drag to reorder"
+        role="button"
+        tabIndex={0}
       >
         <GripVertical className="h-4 w-4" />
-      </button>
+      </div>
 
       <div className="w-16 sm:w-20 flex-shrink-0 text-right pt-3">
         <span className="text-sm font-mono font-medium text-foreground leading-tight">
@@ -545,7 +547,8 @@ export default function Timeline() {
   }
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
