@@ -72,17 +72,34 @@ router.post("/timeline", requireAuth, async (req, res) => {
 - Guest Count: ${profile.guestCount}
 - Wedding Style: ${profile.weddingVibe}${dayVision ? `\n- Couple's Vision for the Day: ${dayVision}` : ""}
 
-Generate a complete hour-by-hour schedule from morning preparation through the end of the reception. Include getting ready, first look (if applicable), ceremony, cocktail hour, dinner, dancing, and departure. Pay special attention to the couple's vision description when crafting each moment's tone and description.
+Generate a complete wedding day schedule from early morning preparation through the end of the reception. Include:
+- Bridal party / couple getting ready (preparation)
+- Vendor arrival blocks (photographer, florist, DJ, caterer, etc.) — category: vendors
+- First look or couple portraits — category: photos
+- Travel between locations — category: travel
+- Ceremony — category: ceremony
+- Cocktail hour — category: cocktail
+- Reception dinner — category: reception
+- First dance, toasts, cake cutting, dancing — category: dancing
+- Departure
+
+Include realistic buffer time between events. Use specific locations where applicable.
 
 Return ONLY a valid JSON array (no markdown, no explanation) with this exact structure:
 [
   {
-    "time": "8:00 AM",
+    "id": "block-1",
+    "startTime": "08:00",
+    "endTime": "09:30",
     "title": "Event Title",
-    "description": "Detailed description of what happens",
-    "category": "preparation|ceremony|cocktail|reception|dancing|other"
+    "description": "Detailed description of what happens during this block",
+    "category": "preparation|ceremony|cocktail|reception|photos|vendors|travel|dancing|other",
+    "location": "Room or venue area name",
+    "notes": ""
   }
-]${langInstruction}`;
+]
+
+Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like block-1, block-2, etc.${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",

@@ -1,0 +1,156 @@
+Goal: Revamp the Wedding Timeline feature into a dynamic, intelligent, drag‑and‑drop timeline builder that auto‑generates events, syncs with vendor data, detects conflicts, and provides multiple shareable versions.
+
+Core Requirements
+Drag‑and‑Drop Timeline Builder
+
+Each timeline item is a draggable block.
+
+Blocks snap into chronological order.
+
+When a block is moved, all dependent times auto‑adjust.
+
+Users can add, delete, duplicate, or edit blocks.
+
+AI Auto‑Generated Timeline
+
+Auto‑generate a full wedding day timeline based on:
+
+Ceremony time
+
+Reception start time
+
+First look or no first look
+
+Sunset time (auto‑pull via API)
+
+Travel time between locations
+
+Bridal party size
+
+Vendor arrival times
+
+AI should create a complete, realistic timeline with buffers.
+
+Vendor‑Synced Timeline Blocks
+
+When a vendor is added, auto‑create relevant timeline items:
+
+Photographer → arrival, photo start
+
+DJ → arrival, reception start
+
+Venue → setup window
+
+Caterer → dinner service
+
+If a vendor updates their time, the timeline updates automatically.
+
+Color‑Coding + Icons
+
+Categories with colors + icons:
+
+Ceremony (gold)
+
+Reception (pink)
+
+Photos (purple)
+
+Vendors (blue)
+
+Travel (gray)
+
+Alerts (red)
+
+Blocks should visually reflect their category.
+
+Smart Timeline Alerts
+
+Auto‑detect conflicts and display warnings:
+
+Overlapping events
+
+Travel time too short
+
+Sunset photos scheduled after sunset
+
+Vendor arrival after event start
+
+Missing buffer time
+
+Alerts appear inline and in a summary panel.
+
+Guest‑Facing & Vendor‑Facing Versions
+
+Generate simplified versions with toggles:
+
+Hide vendor arrival times
+
+Hide prep details
+
+Show only ceremony & reception events
+
+Share via link or PDF.
+
+Mobile Day‑Of Mode
+
+Clean, swipeable interface
+
+Large fonts
+
+“Mark as done” checkboxes
+
+Real‑time updates if timeline changes
+
+Optional push notifications (“Photographer arriving in 10 minutes”)
+
+Data Structure
+
+Each timeline block stores:
+
+id
+
+title
+
+category
+
+start_time
+
+end_time
+
+location
+
+vendor_id (optional)
+
+notes
+
+dependencies (optional)
+
+Real‑time sync using Supabase or Firebase listeners.
+
+UI Requirements
+
+Vertical timeline layout
+
+Drag handles on each block
+
+Color‑coded left border
+
+Icons for quick scanning
+
+Add‑block button with category presets
+
+Conflict alerts highlighted in red
+
+Auto‑scroll to current time in mobile mode
+
+Export Options
+
+PDF export
+
+Shareable link
+
+Bridal party version
+
+Vendor version
+
+Couple’s master version

@@ -19,10 +19,15 @@ Full-stack AI-powered wedding planning application. pnpm workspace monorepo usin
 - **AI**: OpenAI via Replit integration (model: gpt-5.2, no user API key needed)
 - **Frontend**: React + Vite + Tailwind CSS + shadcn/ui
 
+## SMS / Text Messaging
+- SMS RSVP was considered but deferred — user decided to stick with email-only RSVPs for now.
+- Twilio integration exists in Replit (`connector:ccfg_twilio_01K69QJTED9YTJFE2SJ7E4SY08`) but was not authorized. If SMS is revisited, propose that integration or ask the user for their Twilio Account SID, Auth Token, and sender phone number to store as secrets.
+- The `guests` table already has a `phone` column ready to use for SMS when needed.
+
 ## Application Features
 
 1. **Wedding Profile** — Store couple names, date, venue, guest count, budget, vibe
-2. **AI Timeline Generator** — Minute-by-minute wedding day schedule + PDF export
+2. **AI Timeline Builder** — Drag-and-drop block-based timeline with 9 color-coded categories (preparation/amber, ceremony/gold, cocktail/orange, reception/pink, photos/purple, vendors/blue, travel/gray, dancing/fuchsia, other), start+end times, location per block, smart conflict detection (overlaps + tight travel gaps), three view modes (Master/Guest/Vendor), and PDF export. Event schema: `{ id, startTime, endTime, title, description, category, location, notes }` stored in `timelines.events` JSONB.
 3. **AI Vendor Email Assistant** — Draft professional vendor emails with AI + PDF export
 4. **AI Budget Manager** — Track expenses + AI cost predictions by location
 5. **AI Checklist System** — Month-by-month planning tasks personalized by AI
