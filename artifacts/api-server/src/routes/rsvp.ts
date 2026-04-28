@@ -77,7 +77,10 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
     if (guest.email) {
       const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
       const weddingDateStr = profile.weddingDate
-        ? new Date(profile.weddingDate).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+        ? (() => {
+            const [y, m, d] = profile.weddingDate.split("-").map(Number);
+            return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+          })()
         : null;
 
       const html = `<!DOCTYPE html>

@@ -115,9 +115,12 @@ export default function Rsvp() {
   const couple = [info?.partner1Name, info?.partner2Name].filter(Boolean).join(" & ") || "The Couple";
 
   const weddingDateStr = info?.weddingDate
-    ? new Date(info.weddingDate).toLocaleDateString("en-US", {
-        weekday: "long", year: "numeric", month: "long", day: "numeric",
-      })
+    ? (() => {
+        const [y, m, d] = info.weddingDate.split("-").map(Number);
+        return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+          weekday: "long", year: "numeric", month: "long", day: "numeric",
+        });
+      })()
     : null;
 
   const mealLabel = (val?: string) => MEAL_OPTIONS.find(o => o.value === val)?.label ?? val ?? "—";
