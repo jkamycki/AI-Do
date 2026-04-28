@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { Sparkles, Calendar, DollarSign, CheckSquare, Mail, FileText, Armchair, Link2, Bot, Star, Quote, Globe } from "lucide-react";
+import { Sparkles, Calendar, DollarSign, CheckSquare, Mail, FileText, Armchair, Link2, Bot, Star, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LanguagePicker } from "@/components/LanguagePicker";
 import { useTranslation } from "react-i18next";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { AnimatePresence, motion } from "framer-motion";
@@ -46,12 +46,6 @@ function RotatingTagline() {
     </div>
   );
 }
-
-const LANGUAGES = [
-  "English", "Spanish", "French", "German", "Italian", "Portuguese",
-  "Chinese (Simplified)", "Japanese", "Korean", "Arabic", "Hindi",
-  "Russian", "Dutch", "Polish",
-];
 
 const LANG_CODE_TO_NAME: Record<string, string> = Object.fromEntries(
   Object.entries(LANG_NAME_TO_CODE).map(([name, code]) => [code, name])
@@ -106,28 +100,14 @@ function Stars({ count = 5 }: { count?: number }) {
 
 function LandingLanguagePicker() {
   const currentName = LANG_CODE_TO_NAME[i18n.language] ?? "English";
-  const currentCode = LANG_NAME_TO_CODE[currentName] ?? "en";
 
-  function handleChange(code: string) {
+  function handleChange(lang: string) {
+    const code = LANG_NAME_TO_CODE[lang] ?? "en";
     i18n.changeLanguage(code);
     localStorage.setItem("aido_language", code);
   }
 
-  return (
-    <Select value={currentCode} onValueChange={handleChange}>
-      <SelectTrigger className="w-auto gap-1.5 border-0 bg-transparent text-white/70 hover:text-primary hover:bg-white/5 focus:ring-0 focus:ring-offset-0 px-3 py-2 h-auto text-sm [&>svg]:hidden">
-        <Globe className="h-4 w-4 flex-shrink-0" />
-        <span className="hidden sm:inline"><SelectValue /></span>
-      </SelectTrigger>
-      <SelectContent className="max-h-72" align="start">
-        {LANGUAGES.map(lang => (
-          <SelectItem key={lang} value={LANG_NAME_TO_CODE[lang] ?? "en"}>
-            {lang}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
+  return <LanguagePicker value={currentName} onChange={handleChange} variant="header" />;
 }
 
 export default function Landing() {

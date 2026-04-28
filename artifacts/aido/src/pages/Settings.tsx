@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LanguagePicker } from "@/components/LanguagePicker";
 import { useGetProfile, useSaveProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { useTranslation } from "react-i18next";
@@ -21,12 +21,6 @@ import {
   CheckCircle2, Clock, XCircle, Trash2, RefreshCw, ChevronDown,
   Settings as SettingsIcon, Crown, Globe, Check, TriangleAlert,
 } from "lucide-react";
-
-const LANGUAGES = [
-  "English", "Spanish", "French", "German", "Italian", "Portuguese",
-  "Chinese (Simplified)", "Japanese", "Korean", "Arabic", "Hindi",
-  "Russian", "Dutch", "Polish",
-];
 
 type CollabRole = "partner" | "planner" | "vendor";
 type CollabStatus = "pending" | "active" | "declined";
@@ -210,12 +204,6 @@ function LanguageSwitcherCard() {
   const storedName = storedCode ? (Object.entries(LANG_NAME_TO_CODE).find(([, c]) => c === storedCode)?.[0] ?? "English") : "English";
   const current = selected ?? storedName;
   const hasChange = selected !== null;
-  const currentCode = LANG_NAME_TO_CODE[current] ?? "en";
-  const languageOptions = [
-    "English", "Spanish", "French", "German", "Italian", "Portuguese",
-    "Chinese (Simplified)", "Japanese", "Korean", "Arabic", "Hindi",
-    "Russian", "Dutch", "Polish",
-  ];
 
   function save() {
     if (!hasChange) return;
@@ -243,16 +231,7 @@ function LanguageSwitcherCard() {
       </CardHeader>
       <CardContent className="pt-0">
         <div className="flex items-center gap-3">
-          <Select value={currentCode} onValueChange={value => setSelected(languageOptions.find(name => LANG_NAME_TO_CODE[name] === value) ?? "English")}>
-            <SelectTrigger className="w-56 bg-background">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {languageOptions.map(lang => (
-                <SelectItem key={lang} value={LANG_NAME_TO_CODE[lang] ?? "en"}>{lang}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <LanguagePicker value={current} onChange={setSelected} />
           <Button
             onClick={save}
             disabled={!hasChange}
