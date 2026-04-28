@@ -10,13 +10,24 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Heart, CheckCircle2, XCircle, AlertCircle, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Heart, CheckCircle2, XCircle, AlertCircle, Loader2, User } from "lucide-react";
 
 const schema = z.object({
   attendance: z.enum(["attending", "declined"], { required_error: "Please select Accept or Decline." }),
   mealChoice: z.string().optional(),
   plusOne: z.boolean().default(false),
   plusOneName: z.string().optional(),
+  plusOneMealChoice: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -54,6 +65,7 @@ export default function Rsvp() {
   const token = params?.token ?? "";
   const [submitted, setSubmitted] = useState(false);
   const [finalStatus, setFinalStatus] = useState<"attending" | "declined" | null>(null);
+  const [pendingData, setPendingData] = useState<FormData | null>(null);
 
   const { data: info, isLoading, isError } = useQuery({
     queryKey: ["rsvp", token],
@@ -73,6 +85,7 @@ export default function Rsvp() {
       mealChoice: "",
       plusOne: false,
       plusOneName: "",
+      plusOneMealChoice: "",
     },
   });
 
@@ -95,6 +108,7 @@ export default function Rsvp() {
     onSuccess: (data) => {
       setFinalStatus(data.status as "attending" | "declined");
       setSubmitted(true);
+      setPendingData(null);
     },
   });
 
@@ -105,6 +119,8 @@ export default function Rsvp() {
         weekday: "long", year: "numeric", month: "long", day: "numeric",
       })
     : null;
+
+  const mealLabel = (val?: string) => MEAL_OPTIONS.find(o => o.value === val)?.label ?? val ?? "—";
 
   if (isLoading) {
     return (
@@ -209,7 +225,10 @@ export default function Rsvp() {
               </p>
 
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((d) => submit.mutate(d))} className="space-y-6">
+                <form
+                  onSubmit={form.handleSubmit((d) => setPendingData(d))}
+                  className="space-y-6"
+                >
 
                   <FormField
                     control={form.control}
@@ -249,12 +268,16 @@ export default function Rsvp() {
 
                   {attendance === "attending" && (
                     <div className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
+
                       <FormField
                         control={form.control}
                         name="mealChoice"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-white/80">Meal Selection</FormLabel>
+                            <FormLabel className="text-white/80 flex items-center gap-2">
+                              <User className="h-3.5 w-3.5 text-white/50" />
+                              Your Meal Selection
+                            </FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger className="bg-white/10 border-white/15 text-white">
@@ -294,23 +317,51 @@ export default function Rsvp() {
                         />
 
                         {plusOne && (
-                          <FormField
-                            control={form.control}
-                            name="plusOneName"
-                            render={({ field }) => (
-                              <FormItem className="animate-in fade-in slide-in-from-top-1 duration-150">
-                                <FormLabel className="text-white/80">Plus-one name</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="Guest's full name"
-                                    className="bg-white/10 border-white/15 text-white placeholder:text-white/30 focus:border-primary"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                          <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-150">
+                            <FormField
+                              control={form.control}
+                              name="plusOneName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-white/80">Plus-one name</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Guest's full name"
+                                      className="bg-white/10 border-white/15 text-white placeholder:text-white/30 focus:border-primary"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="plusOneMealChoice"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-white/80 flex items-center gap-2">
+                                    <User className="h-3.5 w-3.5 text-white/50" />
+                                    Plus-one Meal Selection
+                                  </FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger className="bg-white/10 border-white/15 text-white">
+                                        <SelectValue placeholder="Select a meal for your guest" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {MEAL_OPTIONS.map(o => (
+                                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                         )}
                       </div>
                     </div>
@@ -344,6 +395,76 @@ export default function Rsvp() {
           </p>
         </div>
       </div>
+
+      {/* Confirmation dialog */}
+      <AlertDialog open={!!pendingData} onOpenChange={(open) => { if (!open) setPendingData(null); }}>
+        <AlertDialogContent className="dark bg-[hsl(270,20%,12%)] border-white/10 text-white max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white text-center text-xl" style={{ fontFamily: "Georgia, serif" }}>
+              Confirm Your RSVP
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-white/70 text-sm text-center">
+                <p>
+                  Please review your details before sending your RSVP to{" "}
+                  <span className="text-white font-semibold">{couple}</span>.
+                </p>
+                {pendingData && (
+                  <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-left space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-white/50">Guest</span>
+                      <span className="text-white font-medium">{info?.guestName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-white/50">Response</span>
+                      <span className={`font-medium ${pendingData.attendance === "attending" ? "text-emerald-400" : "text-red-400"}`}>
+                        {pendingData.attendance === "attending" ? "Joyfully Accepts" : "Declines with Regrets"}
+                      </span>
+                    </div>
+                    {pendingData.attendance === "attending" && pendingData.mealChoice && (
+                      <div className="flex justify-between">
+                        <span className="text-white/50">Your Meal</span>
+                        <span className="text-white font-medium">{mealLabel(pendingData.mealChoice)}</span>
+                      </div>
+                    )}
+                    {pendingData.plusOne && pendingData.plusOneName && (
+                      <div className="flex justify-between">
+                        <span className="text-white/50">Plus-one</span>
+                        <span className="text-white font-medium">{pendingData.plusOneName}</span>
+                      </div>
+                    )}
+                    {pendingData.plusOne && pendingData.plusOneMealChoice && (
+                      <div className="flex justify-between">
+                        <span className="text-white/50">Their Meal</span>
+                        <span className="text-white font-medium">{mealLabel(pendingData.plusOneMealChoice)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel
+              className="border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+              onClick={() => setPendingData(null)}
+            >
+              Go Back
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-primary hover:bg-primary/90 text-white"
+              onClick={() => { if (pendingData) submit.mutate(pendingData); }}
+              disabled={submit.isPending}
+            >
+              {submit.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Sending...</>
+              ) : (
+                <><Heart className="h-4 w-4 mr-1.5 fill-current" /> Confirm & Send</>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
