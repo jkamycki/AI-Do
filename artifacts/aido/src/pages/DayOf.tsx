@@ -14,10 +14,27 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
 interface TimelineEvent {
-  time: string;
+  time?: string;
+  startTime?: string;
+  endTime?: string;
   title: string;
   description: string;
   category: string;
+  location?: string;
+  notes?: string;
+  id?: string;
+}
+
+function getDisplayTime(event: TimelineEvent): string {
+  if (event.time) return event.time;
+  if (event.startTime) {
+    const [hStr, mStr] = event.startTime.split(":");
+    const h = parseInt(hStr);
+    const ampm = h >= 12 ? "PM" : "AM";
+    const displayH = h % 12 || 12;
+    return `${displayH}:${mStr} ${ampm}`;
+  }
+  return "";
 }
 
 async function patchTimeline(id: number, events: TimelineEvent[]) {
@@ -75,8 +92,9 @@ export default function DayOf() {
   };
 
   const startEditing = (index: number) => {
+    const event = editableEvents[index];
     setEditingIndex(index);
-    setEditDraft({ ...editableEvents[index] });
+    setEditDraft({ ...event, time: getDisplayTime(event) });
   };
 
   const cancelEditing = () => {
@@ -229,8 +247,8 @@ export default function DayOf() {
                           />
                         ) : (
                           <>
-                            <span className="text-xl font-serif">{event.time.replace(/ AM| PM/i, '')}</span>
-                            <span className="text-[10px] uppercase tracking-widest mt-1">{event.time.toUpperCase().includes('AM') ? 'AM' : 'PM'}</span>
+                            <span className="text-xl font-serif">{getDisplayTime(event).replace(/ AM| PM/i, '')}</span>
+                            <span className="text-[10px] uppercase tracking-widest mt-1">{getDisplayTime(event).toUpperCase().includes('AM') ? 'AM' : 'PM'}</span>
                           </>
                         )}
                       </div>
