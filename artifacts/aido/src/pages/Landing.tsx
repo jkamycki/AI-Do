@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { Sparkles, Calendar, DollarSign, CheckSquare, Mail, FileText, Armchair, Link2, Bot, Star, Quote, Globe, ChevronDown } from "lucide-react";
+import { Sparkles, Calendar, DollarSign, CheckSquare, Mail, FileText, Armchair, Link2, Bot, Star, Quote, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslation } from "react-i18next";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { AnimatePresence, motion } from "framer-motion";
@@ -104,51 +105,28 @@ function Stars({ count = 5 }: { count?: number }) {
 }
 
 function LandingLanguagePicker() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
   const currentName = LANG_CODE_TO_NAME[i18n.language] ?? "English";
+  const currentCode = LANG_NAME_TO_CODE[currentName] ?? "en";
 
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  function select(lang: string) {
-    const code = LANG_NAME_TO_CODE[lang] ?? "en";
+  function handleChange(code: string) {
     i18n.changeLanguage(code);
     localStorage.setItem("aido_language", code);
-    setOpen(false);
   }
 
   return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1.5 text-sm text-white/70 hover:text-primary transition-colors px-3 py-2 rounded-lg hover:bg-white/5"
-      >
-        <Globe className="h-4 w-4" />
-        <span className="hidden sm:inline">{currentName}</span>
-        <ChevronDown className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <div className="absolute left-0 mt-1 w-48 bg-card border border-primary/20 rounded-xl shadow-xl z-50 py-1 max-h-64 overflow-y-auto"
-          style={{ maxWidth: "calc(100vw - 1rem)" }}
-        >
-          {LANGUAGES.map(lang => (
-            <button
-              key={lang}
-              onClick={() => select(lang)}
-              className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-primary/10 ${lang === currentName ? "text-primary font-medium" : "text-foreground"}`}
-            >
-              {lang}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <Select value={currentCode} onValueChange={handleChange}>
+      <SelectTrigger className="w-auto gap-1.5 border-0 bg-transparent text-white/70 hover:text-primary hover:bg-white/5 focus:ring-0 focus:ring-offset-0 px-3 py-2 h-auto text-sm [&>svg]:hidden">
+        <Globe className="h-4 w-4 flex-shrink-0" />
+        <span className="hidden sm:inline"><SelectValue /></span>
+      </SelectTrigger>
+      <SelectContent className="max-h-72" align="start">
+        {LANGUAGES.map(lang => (
+          <SelectItem key={lang} value={LANG_NAME_TO_CODE[lang] ?? "en"}>
+            {lang}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
