@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Clock, CheckCircle2, Siren, Pencil, Save, X, RotateCcw, Info, RefreshCw } from "lucide-react";
+import { AlertCircle, Clock, CheckCircle2, Siren, Pencil, Save, X, RotateCcw, Info, RefreshCw, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useToast } from "@/hooks/use-toast";
@@ -197,6 +197,26 @@ function DayOfInner() {
     });
   };
 
+  const deleteEvent = async (index: number) => {
+    if (!timeline?.id) return;
+    const updated = editableEvents.filter((_, i) => i !== index);
+    setCompletedSet((prev) => {
+      const next = new Set<number>();
+      prev.forEach(ci => { if (ci < index) next.add(ci); else if (ci > index) next.add(ci - 1); });
+      return next;
+    });
+    if (activeIndex === index) setActiveIndex(null);
+    else if (activeIndex !== null && activeIndex > index) setActiveIndex(activeIndex - 1);
+    setEditableEvents(updated);
+    try {
+      await patchTimeline(timeline.id, updated);
+      qc.invalidateQueries({ queryKey: ["/api/timeline"] });
+      toast({ title: "Event removed" });
+    } catch {
+      toast({ title: "Failed to remove event", variant: "destructive" });
+    }
+  };
+
   if (isLoadingTimeline) {
     return (
       <div className="space-y-4 max-w-md mx-auto p-4">
@@ -323,17 +343,29 @@ function DayOfInner() {
                           )}
 
                           {!editing && (
-                            <button
-                              className="flex-shrink-0 p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                              title={t("dayof.edit_event_title")}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveIndex(i);
-                                startEditing(i);
-                              }}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
+                            <div className="flex items-center gap-0.5 flex-shrink-0">
+                              <button
+                                className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                title={t("dayof.edit_event_title")}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveIndex(i);
+                                  startEditing(i);
+                                }}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                title="Delete event"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteEvent(i);
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           )}
                         </div>
 
