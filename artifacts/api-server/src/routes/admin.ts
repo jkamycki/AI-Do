@@ -9,7 +9,7 @@ import {
 } from "@workspace/db";
 import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { purgeUserData } from "../lib/userCleanup";
+import { purgeUserData, snapshotUserData } from "../lib/userCleanup";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
@@ -459,7 +459,12 @@ router.delete("/admin/users/:userId", requireAuth, requireAdmin, async (req, res
       userEmails = [];
     }
 
-    await purgeUserData(targetUserId, userEmails, { firstName: clerkFirstName, lastName: clerkLastName });
+    await snapshotUserData(targetUserId, {
+      email: userEmails[0] ?? null,
+      firstName: clerkFirstName,
+      lastName: clerkLastName,
+    });
+    await purgeUserData(targetUserId, userEmails);
 
     try {
       await clerkClient.users.deleteUser(targetUserId);

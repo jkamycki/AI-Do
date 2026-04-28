@@ -120,16 +120,7 @@ export async function snapshotUserData(
 export async function purgeUserData(
   userId: string,
   userEmail?: string | string[] | null,
-  clerkUser?: { firstName?: string | null; lastName?: string | null },
 ) {
-  const primaryEmail = Array.isArray(userEmail) ? (userEmail[0] ?? null) : (userEmail ?? null);
-
-  await snapshotUserData(userId, {
-    email: primaryEmail,
-    firstName: clerkUser?.firstName ?? null,
-    lastName: clerkUser?.lastName ?? null,
-  });
-
   const [profile] = await db
     .select()
     .from(weddingProfiles)
