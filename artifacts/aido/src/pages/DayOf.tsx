@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { Component, useState, useEffect, useRef } from "react";
 import { useGetTimeline, useEmergencyAdvice, useGetProfile } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,34 +7,84 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Clock, CheckCircle2, Siren, Pencil, Save, X, RotateCcw, Info } from "lucide-react";
+import { AlertCircle, Clock, CheckCircle2, Siren, Pencil, Save, X, RotateCcw, Info, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
 interface TimelineEvent {
-  time?: string;
-  startTime?: string;
-  endTime?: string;
+  time: string;
   title: string;
   description: string;
   category: string;
+  startTime?: string;
+  endTime?: string;
   location?: string;
   notes?: string;
   id?: string;
 }
 
-function getDisplayTime(event: TimelineEvent): string {
-  if (event.time) return event.time;
-  if (event.startTime) {
-    const [hStr, mStr] = event.startTime.split(":");
-    const h = parseInt(hStr);
-    const ampm = h >= 12 ? "PM" : "AM";
-    const displayH = h % 12 || 12;
-    return `${displayH}:${mStr} ${ampm}`;
+function toDisplayTime(raw: any): string {
+  if (raw?.time) return String(raw.time);
+  if (raw?.startTime) {
+    try {
+      const [hStr, mStr] = String(raw.startTime).split(":");
+      const h = parseInt(hStr, 10);
+      if (isNaN(h)) return "";
+      const ampm = h >= 12 ? "PM" : "AM";
+      const displayH = h % 12 || 12;
+      return `${displayH}:${mStr ?? "00"} ${ampm}`;
+    } catch {
+      return "";
+    }
   }
   return "";
+}
+
+function normalizeEvent(raw: any): TimelineEvent {
+  return {
+    time: toDisplayTime(raw),
+    title: raw?.title ?? "",
+    description: raw?.description ?? "",
+    category: raw?.category ?? "other",
+    startTime: raw?.startTime,
+    endTime: raw?.endTime,
+    location: raw?.location,
+    notes: raw?.notes,
+    id: raw?.id,
+  };
+}
+
+class DayOfErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-6 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive/60" />
+          <h2 className="font-serif text-xl text-foreground">Something went wrong loading Day-Of</h2>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            There was an error rendering your timeline. Please refresh the page to try again.
+          </p>
+          <Button variant="outline" onClick={() => window.location.reload()} className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh Page
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 async function patchTimeline(id: number, events: TimelineEvent[]) {
@@ -48,7 +98,7 @@ async function patchTimeline(id: number, events: TimelineEvent[]) {
   return res.json();
 }
 
-export default function DayOf() {
+function DayOfInner() {
   const { t } = useTranslation();
   const { data: timeline, isLoading: isLoadingTimeline } = useGetTimeline();
   const { data: profile } = useGetProfile();
@@ -71,7 +121,7 @@ export default function DayOf() {
 
   useEffect(() => {
     if (timeline?.events) {
-      setEditableEvents(timeline.events as TimelineEvent[]);
+      setEditableEvents((timeline.events as any[]).map(normalizeEvent));
     }
   }, [timeline]);
 
@@ -92,9 +142,8 @@ export default function DayOf() {
   };
 
   const startEditing = (index: number) => {
-    const event = editableEvents[index];
     setEditingIndex(index);
-    setEditDraft({ ...event, time: getDisplayTime(event) });
+    setEditDraft({ ...editableEvents[index] });
   };
 
   const cancelEditing = () => {
@@ -247,8 +296,8 @@ export default function DayOf() {
                           />
                         ) : (
                           <>
-                            <span className="text-xl font-serif">{getDisplayTime(event).replace(/ AM| PM/i, '')}</span>
-                            <span className="text-[10px] uppercase tracking-widest mt-1">{getDisplayTime(event).toUpperCase().includes('AM') ? 'AM' : 'PM'}</span>
+                            <span className="text-xl font-serif">{event.time.replace(/ AM| PM/i, '')}</span>
+                            <span className="text-[10px] uppercase tracking-widest mt-1">{event.time.toUpperCase().includes('AM') ? 'AM' : 'PM'}</span>
                           </>
                         )}
                       </div>
@@ -430,5 +479,13 @@ export default function DayOf() {
         </Dialog>
       </div>
     </div>
+  );
+}
+
+export default function DayOf() {
+  return (
+    <DayOfErrorBoundary>
+      <DayOfInner />
+    </DayOfErrorBoundary>
   );
 }
