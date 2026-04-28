@@ -697,6 +697,7 @@
     "guest_plus_one": "Plus one",
     "guest_table": "Table",
     "rsvp_pending": "Pending",
+    "rsvp_sent": "Sent",
     "rsvp_attending": "Attending",
     "rsvp_declined": "Declined",
     "rsvp_yes": "Attending",

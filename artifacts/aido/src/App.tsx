@@ -25,6 +25,7 @@ import Help from "@/pages/Help";
 import SeatingChart from "@/pages/SeatingChart";
 import InviteAccept from "@/pages/InviteAccept";
 import GuestCollect from "@/pages/GuestCollect";
+import Rsvp from "@/pages/Rsvp";
 import SharedWorkspace from "@/pages/SharedWorkspace";
 import Guests from "@/pages/Guests";
 import Hotels from "@/pages/Hotels";
@@ -1215,6 +1216,7 @@ function Router() {
       <Route path="/sso-callback" component={SsoCallbackPage} />
       <Route path="/invite/:token" component={InviteAccept} />
       <Route path="/collect/:token" component={GuestCollect} />
+      <Route path="/rsvp/:token" component={Rsvp} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
       <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} />} />

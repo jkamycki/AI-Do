@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,15 +25,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, Phone, MapPin } from "lucide-react";
+import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, Phone, MapPin, Send, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
 import { useTranslation } from "react-i18next";
 
 const RSVP_OPTIONS = [
-  { value: "pending", label: "Pending", color: "bg-amber-100 text-amber-800 border-amber-200" },
-  { value: "attending", label: "Attending", color: "bg-emerald-100 text-emerald-800 border-emerald-200" },
-  { value: "declined", label: "Declined", color: "bg-red-100 text-red-800 border-red-200" },
+  { value: "pending", label: "Pending", color: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/40" },
+  { value: "sent", label: "Sent", color: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800/40" },
+  { value: "attending", label: "Confirmed", color: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" },
+  { value: "declined", label: "Declined", color: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800/40" },
 ];
 
 const INVITATION_OPTIONS = [
@@ -537,10 +538,44 @@ export default function Guests() {
   const [isAdding, setIsAdding] = useState(false);
   const [editGuest, setEditGuest] = useState<Guest | null>(null);
 
+  const [copyRsvpState, setCopyRsvpState] = useState<{ name: string; url: string; copied: boolean } | null>(null);
+  const [sendingId, setSendingId] = useState<number | null>(null);
+
   const { data, isLoading, isError } = useGetGuests();
   const addGuest = useAddGuest();
   const updateGuest = useUpdateGuest();
   const deleteGuest = useDeleteGuest();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [queryClient]);
+
+  const sendRsvp = useMutation({
+    mutationFn: async (guestId: number) => {
+      const res = await authFetch(`/api/guests/${guestId}/send-rsvp`, { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "Failed to send RSVP");
+      }
+      return res.json() as Promise<{ rsvpUrl: string; emailSent: boolean }>;
+    },
+    onMutate: (guestId) => setSendingId(guestId),
+    onSettled: () => setSendingId(null),
+    onSuccess: (data, guestId) => {
+      optimisticUpdate(guestId, { rsvpStatus: "sent" });
+      invalidate();
+      if (data.emailSent) {
+        toast({ title: "RSVP sent successfully!", description: "Email delivered to guest." });
+      } else {
+        const guest = allGuests.find(g => g.id === guestId);
+        setCopyRsvpState({ name: guest?.name ?? "Guest", url: data.rsvpUrl, copied: false });
+      }
+    },
+    onError: (err) => toast({ title: "Failed to send RSVP", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
+  });
 
   const allGuests = data?.guests ?? [];
   const summary = data?.summary ?? { total: 0, attending: 0, declined: 0, pending: 0, plusOnes: 0 };
@@ -980,7 +1015,7 @@ export default function Guests() {
                                   className={`text-xs font-medium cursor-pointer ${g.rsvpStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
                                   onClick={() => handleRsvpChange(g, opt.value)}
                                 >
-                                  <span className={`w-2 h-2 rounded-full mr-2 ${opt.value === "attending" ? "bg-emerald-500" : opt.value === "declined" ? "bg-red-400" : "bg-amber-400"}`} />
+                                  <span className={`w-2 h-2 rounded-full mr-2 ${opt.value === "attending" ? "bg-emerald-500" : opt.value === "declined" ? "bg-red-400" : opt.value === "sent" ? "bg-yellow-400" : "bg-amber-400"}`} />
                                   {t(`guests.rsvp_${opt.value}`)}
                                 </DropdownMenuItem>
                               ))}
@@ -1002,6 +1037,39 @@ export default function Guests() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={`h-8 w-8 transition-colors ${
+                                g.rsvpStatus === "attending"
+                                  ? "text-emerald-500 cursor-default"
+                                  : g.rsvpStatus === "declined"
+                                    ? "text-red-400 cursor-default"
+                                    : g.rsvpStatus === "sent"
+                                      ? "text-yellow-500 hover:text-yellow-600"
+                                      : "text-muted-foreground hover:text-primary"
+                              }`}
+                              title={
+                                g.rsvpStatus === "attending" ? "RSVP confirmed" :
+                                g.rsvpStatus === "declined" ? "Declined" :
+                                g.rsvpStatus === "sent" ? "Resend RSVP" :
+                                g.email ? "Send RSVP email" : "Generate RSVP link"
+                              }
+                              disabled={
+                                (g.rsvpStatus === "attending" || g.rsvpStatus === "declined") ||
+                                sendingId === g.id
+                              }
+                              onClick={() => {
+                                if (g.rsvpStatus === "attending" || g.rsvpStatus === "declined") return;
+                                sendRsvp.mutate(g.id);
+                              }}
+                            >
+                              {sendingId === g.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Send className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
                             <Button
                               variant="ghost" size="icon" className="h-8 w-8"
                               onClick={() => setEditGuest(g)}
@@ -1071,6 +1139,43 @@ export default function Guests() {
               submitLabel="Save Changes"
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* RSVP link copy dialog (shown when guest has no email) */}
+      <Dialog open={!!copyRsvpState} onOpenChange={(open) => !open && setCopyRsvpState(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl text-primary flex items-center gap-2">
+              <Send className="h-5 w-5" /> RSVP Link for {copyRsvpState?.name}
+            </DialogTitle>
+            <DialogDescription>
+              No email address on file. Share this personal link directly with your guest.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2 mt-2">
+            <Input
+              readOnly
+              value={copyRsvpState?.url ?? ""}
+              className="font-mono text-xs bg-muted"
+            />
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => {
+                if (!copyRsvpState) return;
+                navigator.clipboard.writeText(copyRsvpState.url).then(() => {
+                  setCopyRsvpState(prev => prev ? { ...prev, copied: true } : null);
+                  setTimeout(() => setCopyRsvpState(prev => prev ? { ...prev, copied: false } : null), 2000);
+                });
+              }}
+            >
+              {copyRsvpState?.copied ? <CheckCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            The RSVP status has been updated to <span className="font-medium text-yellow-600">Sent</span>. Once your guest responds, their status will update automatically.
+          </p>
         </DialogContent>
       </Dialog>
     </div>
