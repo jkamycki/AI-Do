@@ -60,6 +60,7 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
     const [
       countsByType, dauRow, wauRow, mauRow, userGrowthRows, deviceRows,
       clerkTotal, clerkToday, clerkThisWeek, clerkThisMonth, onboardedRow,
+      pvTodayRow, pvWeekRow, pvTotalRow, onboardingGrowthRows,
     ] = await Promise.all([
       db.select({
         eventType: analyticsEvents.eventType,
@@ -111,6 +112,24 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
 
       // Onboarded = users with a wedding profile
       db.select({ count: sql<number>`count(*)::int` }).from(weddingProfiles),
+
+      // Page views
+      db.select({ count: sql<number>`count(*)::int` }).from(analyticsEvents)
+        .where(and(eq(analyticsEvents.eventType, "page_view"), gte(analyticsEvents.timestamp, dayAgo))),
+      db.select({ count: sql<number>`count(*)::int` }).from(analyticsEvents)
+        .where(and(eq(analyticsEvents.eventType, "page_view"), gte(analyticsEvents.timestamp, weekAgo))),
+      db.select({ count: sql<number>`count(*)::int` }).from(analyticsEvents)
+        .where(eq(analyticsEvents.eventType, "page_view")),
+
+      // Daily onboarding completions last 30 days
+      db.execute(sql`
+        SELECT
+          to_char(date_trunc('day', created_at), 'YYYY-MM-DD') as date,
+          count(*)::int as count
+        FROM wedding_profiles
+        WHERE created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY 1 ORDER BY 1
+      `),
     ]);
 
     const countMap = Object.fromEntries(countsByType.map(r => [r.eventType, r.count]));
@@ -179,6 +198,15 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
         })),
       },
       userGrowth: (userGrowthRows.rows as Array<{ date: string; count: number }>).map(r => ({
+        date: r.date,
+        count: r.count,
+      })),
+      pageViews: {
+        today: pvTodayRow[0]?.count ?? 0,
+        week: pvWeekRow[0]?.count ?? 0,
+        total: pvTotalRow[0]?.count ?? 0,
+      },
+      onboardingGrowth: (onboardingGrowthRows.rows as Array<{ date: string; count: number }>).map(r => ({
         date: r.date,
         count: r.count,
       })),

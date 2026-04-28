@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import ExcelJS from "exceljs";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  LineChart, Line, Legend, AreaChart, Area,
 } from "recharts";
 import {
   Users, TrendingUp, Zap, Shield, BarChart2, DollarSign,
@@ -16,7 +17,7 @@ import {
   ChevronRight, Inbox, Star, MessageSquare, Bug, Lightbulb, Heart, ThumbsUp,
   MailOpen, Circle, CheckCircle2, Search, Calendar, Clock, ExternalLink,
   ChevronDown as ChevronDownIcon, ChevronUp as ChevronUpIcon, Trash2, Loader2,
-  UserX, TrendingDown, ArrowRight, SortAsc,
+  UserX, TrendingDown, ArrowRight, SortAsc, Globe, Eye, UserCheck, UserMinus,
 } from "lucide-react";
 
 interface AdminMetrics {
@@ -60,6 +61,12 @@ interface AdminMetrics {
     deviceBreakdown: Array<{ device: string; count: number }>;
   };
   userGrowth: Array<{ date: string; count: number }>;
+  pageViews: {
+    today: number;
+    week: number;
+    total: number;
+  };
+  onboardingGrowth: Array<{ date: string; count: number }>;
 }
 
 interface AdminEvent {
@@ -72,11 +79,9 @@ interface AdminEvent {
 
 const BRAND = "#7C3F5E";
 const TABS = [
-  { key: "users", label: "User Metrics", icon: Users },
-  { key: "dropoffs", label: "Drop-offs", icon: UserX },
-  { key: "usage", label: "Product Usage", icon: Zap },
-  { key: "money", label: "Money Metrics", icon: DollarSign },
-  { key: "system", label: "System Health", icon: Shield },
+  { key: "overview", label: "Overview", icon: BarChart2 },
+  { key: "users", label: "Users", icon: Users },
+  { key: "engagement", label: "Engagement", icon: Zap },
   { key: "events", label: "Event Log", icon: Activity },
   { key: "messages", label: "Messages", icon: Inbox },
 ];
@@ -696,12 +701,15 @@ function DropoffAnalysisTab({ totalSignups, onboardedUsers }: { totalSignups: nu
   );
 }
 
+type UserFilter = "all" | "onboarded" | "not_onboarded" | "new_today";
+
 function UserDirectory() {
   const { getToken } = useAuth();
   const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [userFilter, setUserFilter] = useState<UserFilter>("all");
   const queryClient = useQueryClient();
 
   React.useEffect(() => {
@@ -773,7 +781,25 @@ function UserDirectory() {
     }
   };
 
-  const users = data?.users ?? [];
+  const allUsers = data?.users ?? [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const users = useMemo(() => {
+    return allUsers.filter(u => {
+      if (userFilter === "onboarded") return u.onboarded;
+      if (userFilter === "not_onboarded") return !u.onboarded;
+      if (userFilter === "new_today") return new Date(u.joinedAt) >= today;
+      return true;
+    });
+  }, [allUsers, userFilter]);
+
+  const filterOptions: { key: UserFilter; label: string; icon: React.ElementType; count: number }[] = [
+    { key: "all", label: "All Users", icon: Users, count: allUsers.length },
+    { key: "onboarded", label: "Onboarded", icon: UserCheck, count: allUsers.filter(u => u.onboarded).length },
+    { key: "not_onboarded", label: "Not Onboarded", icon: UserMinus, count: allUsers.filter(u => !u.onboarded).length },
+    { key: "new_today", label: "New Today", icon: TrendingUp, count: allUsers.filter(u => new Date(u.joinedAt) >= today).length },
+  ];
 
   return (
     <>
@@ -787,16 +813,41 @@ function UserDirectory() {
           }}
         />
       )}
+
+      <div className="flex gap-2 flex-wrap mb-4">
+        {filterOptions.map(opt => {
+          const Icon = opt.icon;
+          const active = userFilter === opt.key;
+          return (
+            <button
+              key={opt.key}
+              onClick={() => setUserFilter(opt.key)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                active
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {opt.label}
+              <span className={`ml-0.5 text-xs font-bold ${active ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                {isLoading ? "…" : opt.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <Card className="border-none shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <CardTitle className="font-serif text-lg flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
-                User Directory
+                {filterOptions.find(f => f.key === userFilter)?.label ?? "Users"}
               </CardTitle>
               <CardDescription className="mt-0.5">
-                {data ? `${data.total} user${data.total !== 1 ? "s" : ""} registered` : "Loading…"}
+                {data ? `Showing ${users.length} of ${data.total} total user${data.total !== 1 ? "s" : ""}` : "Loading…"}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -884,68 +935,156 @@ function UserDirectory() {
   );
 }
 
-function UserMetricsSection({ metrics }: { metrics: AdminMetrics }) {
-  const { userMetrics, userGrowth } = metrics;
-  const growthData = userGrowth.length > 0
-    ? userGrowth.map(d => ({ date: d.date.slice(5), count: d.count }))
-    : [];
+function OverviewSection({ metrics }: { metrics: AdminMetrics }) {
+  const { userMetrics, usageMetrics, systemMetrics, pageViews, userGrowth, onboardingGrowth } = metrics;
+  const dropoffs = Math.max(0, userMetrics.totalUsers - userMetrics.onboardedUsers);
+  const convRate = userMetrics.totalUsers > 0
+    ? Math.round((userMetrics.onboardedUsers / userMetrics.totalUsers) * 100)
+    : 0;
+
+  const growthDateSet = new Set([...userGrowth.map(d => d.date), ...onboardingGrowth.map(d => d.date)]);
+  const signupsMap = Object.fromEntries(userGrowth.map(d => [d.date, d.count]));
+  const onboardedMap = Object.fromEntries(onboardingGrowth.map(d => [d.date, d.count]));
+  const chartData = Array.from(growthDateSet).sort().slice(-30).map(date => ({
+    date: date.slice(5),
+    signups: signupsMap[date] ?? 0,
+    onboarded: onboardedMap[date] ?? 0,
+  }));
+
+  const funnelSteps = [
+    { label: "Website Visits", value: pageViews.total, color: "bg-indigo-500", pct: 100 },
+    {
+      label: "Signups",
+      value: userMetrics.totalUsers,
+      color: "bg-primary",
+      pct: pageViews.total > 0 ? Math.min(100, Math.round((userMetrics.totalUsers / pageViews.total) * 100)) : 100,
+    },
+    {
+      label: "Onboarded",
+      value: userMetrics.onboardedUsers,
+      color: "bg-emerald-500",
+      pct: userMetrics.totalUsers > 0 ? Math.round((userMetrics.onboardedUsers / Math.max(userMetrics.totalUsers, 1)) * 100) : 0,
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="User Metrics" description="Registration, activity, and retention across the platform." />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard title="Total Signups" value={userMetrics.totalUsers} sub="All Clerk accounts" icon={Users} accent />
-        <MetricCard title="DAU" value={userMetrics.dau} sub="Daily active" icon={TrendingUp} />
-        <MetricCard title="WAU" value={userMetrics.wau} sub="Weekly active" icon={TrendingUp} />
-        <MetricCard title="MAU" value={userMetrics.mau} sub="Monthly active" icon={TrendingUp} />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <MetricCard title="Visits Today" value={pageViews.today} sub="Landing page" icon={Globe} accent />
+        <MetricCard title="Visits (7 days)" value={pageViews.week} sub="Landing page" icon={Eye} />
+        <MetricCard title="New Signups Today" value={userMetrics.newToday} sub="Clerk accounts" icon={Users} />
+        <MetricCard title="Total Signups" value={userMetrics.totalUsers} sub="All time" icon={Users} />
+        <MetricCard title="Onboarded" value={userMetrics.onboardedUsers} sub="Completed setup" icon={UserCheck} />
+        <MetricCard title="Conversion" value={`${convRate}%`} sub="Signup → onboarded" icon={TrendingUp} />
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        <MetricCard title="New Today" value={userMetrics.newToday} sub="Clerk signups" icon={Users} />
-        <MetricCard title="New This Week" value={userMetrics.newThisWeek} sub="Clerk signups" icon={Users} />
-        <MetricCard title="New This Month" value={userMetrics.newThisMonth} sub="Clerk signups" icon={Users} />
+
+      <div className="grid md:grid-cols-3 gap-3">
+        <MetricCard title="Active Today (DAU)" value={userMetrics.dau} sub="Logged in today" icon={Activity} />
+        <MetricCard title="Active This Week (WAU)" value={userMetrics.wau} sub="Logged in 7 days" icon={Activity} />
+        <MetricCard title="Not Onboarded" value={dropoffs} sub="Signed up, no profile" icon={UserMinus} />
       </div>
-      <div className="grid md:grid-cols-3 gap-4">
-        <MetricCard
-          title="Onboarded Users"
-          value={userMetrics.onboardedUsers}
-          sub="Completed profile setup"
-          icon={CheckSquare}
-        />
-        <MetricCard
-          title="Onboarding Rate"
-          value={`${userMetrics.onboardingCompletionRate}%`}
-          sub="Signups that finished setup"
-          icon={CheckSquare}
-        />
-        <MetricCard
-          title="Drop-offs"
-          value={Math.max(0, userMetrics.totalUsers - userMetrics.onboardedUsers)}
-          sub="Signed up, never onboarded"
-          icon={Users}
-        />
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              Growth — Last 30 Days
+            </CardTitle>
+            <CardDescription>Onboardings completed per day (from profile creation)</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {chartData.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">No data yet.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -24, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorOnboarded" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorSignups" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={BRAND} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={BRAND} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                  />
+                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                  <Area type="monotone" dataKey="onboarded" stroke="#10b981" fill="url(#colorOnboarded)" name="Onboarded" strokeWidth={2} dot={false} />
+                  <Area type="monotone" dataKey="signups" stroke={BRAND} fill="url(#colorSignups)" name="Profile Created" strokeWidth={2} dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <ArrowRight className="h-4 w-4 text-primary" />
+              Conversion Funnel
+            </CardTitle>
+            <CardDescription>From website visit to active planner</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-2 space-y-4">
+            {funnelSteps.map((step, i) => (
+              <div key={step.label}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-medium">{step.label}</span>
+                  <span className="text-sm font-bold tabular-nums">{step.value.toLocaleString()}</span>
+                </div>
+                <div className="h-8 bg-muted rounded-lg overflow-hidden relative">
+                  <div
+                    className={`h-full ${step.color} rounded-lg transition-all duration-500 flex items-center justify-end pr-3`}
+                    style={{ width: `${Math.max(step.pct, 4)}%` }}
+                  >
+                    <span className="text-white text-xs font-semibold">{step.pct}%</span>
+                  </div>
+                </div>
+                {i < funnelSteps.length - 1 && (
+                  <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground pl-1">
+                    <ChevronRight className="h-3 w-3 opacity-40" />
+                    {i === 0
+                      ? `${funnelSteps[1].pct}% of visitors sign up`
+                      : `${convRate}% of signups complete onboarding`}
+                  </div>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       </div>
+
       <Card className="border-none shadow-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="font-serif text-lg">New User Signups — Last 30 Days</CardTitle>
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <Zap className="h-4 w-4 text-primary" />
+            Feature Usage
+          </CardTitle>
+          <CardDescription>Total times each feature was used across all users</CardDescription>
         </CardHeader>
-        <CardContent>
-          {growthData.length === 0 ? (
-            <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
-              No signup data yet. Data will appear as users register.
-            </div>
+        <CardContent className="pt-0">
+          {usageMetrics.totalEvents === 0 ? (
+            <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">No usage data yet.</div>
           ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={growthData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F0E8F0" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={usageMetrics.features} layout="vertical" margin={{ top: 0, right: 30, left: 80, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={76} />
                 <Tooltip
-                  contentStyle={{ fontSize: 12, borderRadius: 8, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }}
-                  formatter={(v: number) => [v, "New Users"]}
+                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                  formatter={(v: number) => [v, "Uses"]}
                 />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {growthData.map((_, i) => (
-                    <Cell key={i} fill={BRAND} opacity={0.7 + (i / growthData.length) * 0.3} />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                  {usageMetrics.features.map((_, i) => (
+                    <Cell key={i} fill={BRAND} opacity={0.5 + (i / usageMetrics.features.length) * 0.5} />
                   ))}
                 </Bar>
               </BarChart>
@@ -954,6 +1093,42 @@ function UserMetricsSection({ metrics }: { metrics: AdminMetrics }) {
         </CardContent>
       </Card>
 
+      <div className="grid md:grid-cols-3 gap-4">
+        <MetricCard title="Total Events Tracked" value={systemMetrics.totalEvents} sub="All analytics events" icon={Activity} />
+        <MetricCard title="API Errors" value={systemMetrics.apiErrors} sub="In analytics log" icon={AlertCircle} />
+        <MetricCard title="New This Month" value={userMetrics.newThisMonth} sub="Clerk signups" icon={Users} />
+      </div>
+    </div>
+  );
+}
+
+function UserMetricsSection({ metrics }: { metrics: AdminMetrics }) {
+  const { userMetrics } = metrics;
+  const dropoffs = Math.max(0, userMetrics.totalUsers - userMetrics.onboardedUsers);
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-3 gap-4">
+        <div
+          className="rounded-xl p-4 text-center border-2 border-emerald-200 bg-emerald-50 cursor-default"
+        >
+          <UserCheck className="h-6 w-6 text-emerald-600 mx-auto mb-1" />
+          <p className="text-3xl font-bold font-serif text-emerald-700">{userMetrics.onboardedUsers}</p>
+          <p className="text-xs text-emerald-600 mt-0.5 font-medium">Onboarded</p>
+          <p className="text-xs text-muted-foreground">Completed profile setup</p>
+        </div>
+        <div className="rounded-xl p-4 text-center border-2 border-amber-200 bg-amber-50 cursor-default">
+          <UserMinus className="h-6 w-6 text-amber-600 mx-auto mb-1" />
+          <p className="text-3xl font-bold font-serif text-amber-700">{dropoffs}</p>
+          <p className="text-xs text-amber-600 mt-0.5 font-medium">Not Onboarded</p>
+          <p className="text-xs text-muted-foreground">Signed up, no profile</p>
+        </div>
+        <div className="rounded-xl p-4 text-center border-2 border-blue-200 bg-blue-50 cursor-default">
+          <Users className="h-6 w-6 text-blue-600 mx-auto mb-1" />
+          <p className="text-3xl font-bold font-serif text-blue-700">{userMetrics.newToday}</p>
+          <p className="text-xs text-blue-600 mt-0.5 font-medium">New Today</p>
+          <p className="text-xs text-muted-foreground">Signed up in last 24h</p>
+        </div>
+      </div>
       <UserDirectory />
     </div>
   );
@@ -1489,7 +1664,7 @@ function MessagesSection() {
 }
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState("users");
+  const [activeTab, setActiveTab] = useState("overview");
   const { getToken, isSignedIn } = useAuth();
 
   const adminFetch = async (url: string) => {
@@ -1584,17 +1759,18 @@ export default function AdminPage() {
 
       {/* Quick stats row */}
       {metrics && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           {[
-            { label: "Total Users", value: metrics.userMetrics.totalUsers },
-            { label: "DAU", value: metrics.userMetrics.dau },
-            { label: "Events Tracked", value: metrics.systemMetrics.totalEvents },
-            { label: "PDFs Exported", value: metrics.usageMetrics.pdfExports },
-            { label: "Timelines Gen.", value: metrics.usageMetrics.timelinesGenerated },
+            { label: "Visits Today", value: metrics.pageViews?.today ?? 0, accent: true },
+            { label: "New Signups Today", value: metrics.userMetrics.newToday, accent: false },
+            { label: "Total Signups", value: metrics.userMetrics.totalUsers, accent: false },
+            { label: "Onboarded", value: metrics.userMetrics.onboardedUsers, accent: false },
+            { label: "Conversion", value: `${metrics.userMetrics.totalUsers > 0 ? Math.round((metrics.userMetrics.onboardedUsers / metrics.userMetrics.totalUsers) * 100) : 0}%`, accent: false },
+            { label: "DAU", value: metrics.userMetrics.dau, accent: false },
           ].map(s => (
-            <div key={s.label} className="bg-primary/5 rounded-xl p-3 text-center">
-              <p className="text-2xl font-bold font-serif text-primary">{s.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+            <div key={s.label} className={`rounded-xl p-3 text-center ${s.accent ? "bg-primary text-primary-foreground" : "bg-primary/5"}`}>
+              <p className={`text-2xl font-bold font-serif ${s.accent ? "text-primary-foreground" : "text-primary"}`}>{s.value}</p>
+              <p className={`text-xs mt-1 ${s.accent ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{s.label}</p>
             </div>
           ))}
         </div>
@@ -1627,28 +1803,24 @@ export default function AdminPage() {
 
       {/* Tab content */}
       <div>
-        {metricsLoading && activeTab !== "events" && activeTab !== "dropoffs" && (
+        {metricsLoading && activeTab !== "events" && activeTab !== "messages" && (
           <div className="space-y-4">
-            <div className="grid grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28" />)}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-24" />)}
             </div>
-            <Skeleton className="h-64 w-full" />
+            <div className="grid md:grid-cols-2 gap-4">
+              <Skeleton className="h-64" />
+              <Skeleton className="h-64" />
+            </div>
+            <Skeleton className="h-48 w-full" />
           </div>
         )}
 
-        {activeTab === "dropoffs" && (
-          <DropoffAnalysisTab
-            totalSignups={metrics?.userMetrics.totalUsers ?? 0}
-            onboardedUsers={metrics?.userMetrics.onboardedUsers ?? 0}
-          />
-        )}
-
-        {!metricsLoading && metrics && activeTab !== "dropoffs" && (
+        {!metricsLoading && metrics && (
           <>
+            {activeTab === "overview" && <OverviewSection metrics={metrics} />}
             {activeTab === "users" && <UserMetricsSection metrics={metrics} />}
-            {activeTab === "usage" && <ProductUsageSection metrics={metrics} />}
-            {activeTab === "money" && <MoneySection metrics={metrics} />}
-            {activeTab === "system" && <SystemSection metrics={metrics} />}
+            {activeTab === "engagement" && <ProductUsageSection metrics={metrics} />}
           </>
         )}
 

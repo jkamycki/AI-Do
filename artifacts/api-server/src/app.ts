@@ -335,6 +335,25 @@ app.use("/api", clerkWebhookRouter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+import { db, analyticsEvents } from "@workspace/db";
+app.post("/api/analytics/pageview", async (req, res) => {
+  try {
+    const { visitorId, path: pagePath } = req.body ?? {};
+    if (typeof visitorId === "string" && visitorId.length > 0) {
+      const ua = req.headers["user-agent"] ?? "";
+      const device = /mobile|android|iphone|ipad/i.test(ua) ? "mobile" : "desktop";
+      await db.insert(analyticsEvents).values({
+        userId: `visitor_${visitorId.slice(0, 36)}`,
+        eventType: "page_view",
+        metadata: { path: typeof pagePath === "string" ? pagePath : "/", device },
+      });
+    }
+    res.json({ ok: true });
+  } catch {
+    res.json({ ok: true });
+  }
+});
+
 app.use(clerkMiddleware());
 
 app.use("/api", router);

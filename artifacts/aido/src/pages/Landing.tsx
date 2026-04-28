@@ -113,6 +113,19 @@ function LandingLanguagePicker() {
 export default function Landing() {
   const { t } = useTranslation();
 
+  useEffect(() => {
+    let vid = localStorage.getItem("aido_vid");
+    if (!vid) {
+      vid = crypto.randomUUID();
+      localStorage.setItem("aido_vid", vid);
+    }
+    fetch("/api/analytics/pageview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visitorId: vid, path: "/" }),
+    }).catch(() => {});
+  }, []);
+
   const featureKeys = [
     "timeline", "budget", "checklist", "emails", "contracts", "profile", "seating", "collector", "assistant",
   ];

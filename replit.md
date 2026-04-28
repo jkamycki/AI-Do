@@ -24,6 +24,15 @@ Full-stack AI-powered wedding planning application. pnpm workspace monorepo usin
 - Twilio integration exists in Replit (`connector:ccfg_twilio_01K69QJTED9YTJFE2SJ7E4SY08`) but was not authorized. If SMS is revisited, propose that integration or ask the user for their Twilio Account SID, Auth Token, and sender phone number to store as secrets.
 - The `guests` table already has a `phone` column ready to use for SMS when needed.
 
+## Operations Center (Admin Dashboard)
+
+- Tabs: **Overview** | **Users** | **Engagement** | **Event Log** | **Messages**
+- **Overview**: Sticky KPI strip (visits today, signups today, total, onboarded, conversion rate, DAU), conversion funnel (Visits → Signups → Onboarded), area chart (growth last 30 days), feature usage bar chart, system summary
+- **Users**: Filter pills (All / Onboarded / Not Onboarded / New Today) with live counts, searchable user directory, per-user event count, Excel export, click-to-inspect detail modal
+- **Website visit tracking**: `POST /api/analytics/pageview` (public, no auth) stores visitor ID (localStorage UUID) + path + device in analytics_events; fires on every Landing page mount
+- **Engagement**: Feature usage charts, most/least used features
+- Page views tracked in `analytics_events` table with `eventType = 'page_view'` and `userId = visitor_{uuid}`
+
 ## Application Features
 
 1. **Wedding Profile** — Store couple names, date, venue, guest count, budget, vibe
