@@ -1,7 +1,12 @@
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { clerkClient } from "@clerk/express";
-import { db, analyticsEvents, adminUsers, weddingProfiles } from "@workspace/db";
+import {
+  db, analyticsEvents, adminUsers, weddingProfiles, deletedUserArchive,
+  timelines, budgets, budgetItems, budgetPaymentLogs,
+  checklistItems, vendors, guests, vendorContracts, seatingCharts,
+  hotelBlocks, weddingParty, manualExpenses,
+} from "@workspace/db";
 import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { purgeUserData } from "../lib/userCleanup";
@@ -441,16 +446,20 @@ router.delete("/admin/users/:userId", requireAuth, requireAdmin, async (req, res
   }
   try {
     let userEmails: string[] = [];
+    let clerkFirstName: string | null = null;
+    let clerkLastName: string | null = null;
     try {
       const u = await clerkClient.users.getUser(targetUserId);
       userEmails = (u.emailAddresses ?? [])
         .map((e) => e.emailAddress?.toLowerCase().trim())
         .filter((e): e is string => !!e);
+      clerkFirstName = u.firstName ?? null;
+      clerkLastName = u.lastName ?? null;
     } catch {
       userEmails = [];
     }
 
-    await purgeUserData(targetUserId, userEmails);
+    await purgeUserData(targetUserId, userEmails, { firstName: clerkFirstName, lastName: clerkLastName });
 
     try {
       await clerkClient.users.deleteUser(targetUserId);
@@ -487,6 +496,236 @@ router.delete("/admin/demote/:userId", requireAuth, requireAdmin, async (req, re
   } catch (err) {
     console.error("Admin demote error:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/admin/archive", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const rows = await db
+      .select({
+        id: deletedUserArchive.id,
+        userId: deletedUserArchive.userId,
+        email: deletedUserArchive.email,
+        firstName: deletedUserArchive.firstName,
+        lastName: deletedUserArchive.lastName,
+        deletedAt: deletedUserArchive.deletedAt,
+        restoredAt: deletedUserArchive.restoredAt,
+        restoredToUserId: deletedUserArchive.restoredToUserId,
+      })
+      .from(deletedUserArchive)
+      .orderBy(desc(deletedUserArchive.deletedAt))
+      .limit(200);
+    res.json({ archives: rows });
+  } catch (err) {
+    req.log.error({ err }, "Admin archive list error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/admin/archive/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params["id"]);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+    const [row] = await db.select().from(deletedUserArchive).where(eq(deletedUserArchive.id, id)).limit(1);
+    if (!row) return res.status(404).json({ error: "Archive not found" });
+    res.json({ archive: row });
+  } catch (err) {
+    req.log.error({ err }, "Admin archive get error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params["id"]);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid archive id" });
+
+    const newUserId: string = req.body?.newUserId;
+    if (!newUserId?.trim()) return res.status(400).json({ error: "newUserId is required" });
+
+    const [row] = await db.select().from(deletedUserArchive).where(eq(deletedUserArchive.id, id)).limit(1);
+    if (!row) return res.status(404).json({ error: "Archive not found" });
+    if (row.restoredAt) return res.status(409).json({ error: "This archive has already been restored." });
+
+    const data = row.archivedData as Record<string, unknown>;
+    const restored: Record<string, number> = {};
+
+    type ProfileRow = {
+      partner1Name?: string; partner2Name?: string; weddingDate?: string;
+      ceremonyTime?: string; receptionTime?: string; venue?: string;
+      location?: string; venueCity?: string | null; venueState?: string | null;
+      venueZip?: string | null; guestCount?: number; totalBudget?: string;
+      weddingVibe?: string; preferredLanguage?: string | null;
+      guestCollectionToken?: string | null; vendorBccEmail?: string | null;
+    };
+
+    let newProfileId: number | null = null;
+
+    const profileData = data.profile as ProfileRow | null;
+    if (profileData) {
+      const [inserted] = await db.insert(weddingProfiles).values({
+        userId: newUserId.trim(),
+        partner1Name: profileData.partner1Name ?? "",
+        partner2Name: profileData.partner2Name ?? "",
+        weddingDate: profileData.weddingDate ?? "",
+        ceremonyTime: profileData.ceremonyTime ?? "",
+        receptionTime: profileData.receptionTime ?? "",
+        venue: profileData.venue ?? "",
+        location: profileData.location ?? "",
+        venueCity: profileData.venueCity ?? null,
+        venueState: profileData.venueState ?? null,
+        venueZip: profileData.venueZip ?? null,
+        guestCount: profileData.guestCount ?? 0,
+        totalBudget: profileData.totalBudget ?? "0",
+        weddingVibe: profileData.weddingVibe ?? "",
+        preferredLanguage: profileData.preferredLanguage ?? "English",
+        guestCollectionToken: profileData.guestCollectionToken ?? null,
+        vendorBccEmail: profileData.vendorBccEmail ?? null,
+      }).returning({ id: weddingProfiles.id });
+      newProfileId = inserted?.id ?? null;
+      restored.profile = 1;
+    }
+
+    if (newProfileId) {
+      const tlRows = (data.timelines as Array<Record<string, unknown>>) ?? [];
+      if (tlRows.length > 0) {
+        for (const tl of tlRows) {
+          await db.insert(timelines).values({ profileId: newProfileId, events: (tl.events ?? []) as never });
+        }
+        restored.timelines = tlRows.length;
+      }
+
+      const guestRows = (data.guests as Array<Record<string, unknown>>) ?? [];
+      if (guestRows.length > 0) {
+        for (const g of guestRows) {
+          await db.insert(guests).values({
+            profileId: newProfileId,
+            firstName: String(g.firstName ?? ""),
+            lastName: String(g.lastName ?? ""),
+            email: g.email as string | null ?? null,
+            phone: g.phone as string | null ?? null,
+            rsvpStatus: (g.rsvpStatus as string) ?? "pending",
+            mealChoice: g.mealChoice as string | null ?? null,
+            plusOne: Boolean(g.plusOne ?? false),
+            plusOneName: g.plusOneName as string | null ?? null,
+            dietaryRestrictions: g.dietaryRestrictions as string | null ?? null,
+            tableNumber: g.tableNumber as number | null ?? null,
+            notes: g.notes as string | null ?? null,
+            group: g.group as string | null ?? null,
+            side: g.side as string | null ?? null,
+            tags: (g.tags as string[] | null) ?? null,
+          });
+        }
+        restored.guests = guestRows.length;
+      }
+
+      const ciRows = (data.checklistItems as Array<Record<string, unknown>>) ?? [];
+      if (ciRows.length > 0) {
+        for (const ci of ciRows) {
+          await db.insert(checklistItems).values({
+            profileId: newProfileId,
+            task: String(ci.task ?? ""),
+            category: String(ci.category ?? ""),
+            dueDate: ci.dueDate as string | null ?? null,
+            completed: Boolean(ci.completed ?? false),
+            notes: ci.notes as string | null ?? null,
+            monthLabel: ci.monthLabel as string | null ?? null,
+          });
+        }
+        restored.checklistItems = ciRows.length;
+      }
+
+      const budgetRows = (data.budgets as Array<Record<string, unknown>>) ?? [];
+      if (budgetRows.length > 0) {
+        const [newBudget] = await db.insert(budgets).values({
+          profileId: newProfileId,
+          totalBudget: String(budgetRows[0]?.totalBudget ?? "0"),
+        }).returning({ id: budgets.id });
+
+        const biRows = (data.budgetItems as Array<Record<string, unknown>>) ?? [];
+        if (newBudget && biRows.length > 0) {
+          for (const bi of biRows) {
+            await db.insert(budgetItems).values({
+              budgetId: newBudget.id,
+              category: String(bi.category ?? ""),
+              item: String(bi.item ?? ""),
+              estimatedCost: String(bi.estimatedCost ?? "0"),
+              actualCost: bi.actualCost as string | null ?? null,
+              paid: Boolean(bi.paid ?? false),
+              vendor: bi.vendor as string | null ?? null,
+              notes: bi.notes as string | null ?? null,
+            });
+          }
+          restored.budgetItems = biRows.length;
+        }
+        restored.budgets = 1;
+      }
+    }
+
+    const vendorRows = (data.vendors as Array<Record<string, unknown>>) ?? [];
+    if (vendorRows.length > 0) {
+      for (const v of vendorRows) {
+        await db.insert(vendors).values({
+          userId: newUserId.trim(),
+          name: String(v.name ?? ""),
+          category: String(v.category ?? ""),
+          email: v.email as string | null ?? null,
+          phone: v.phone as string | null ?? null,
+          website: v.website as string | null ?? null,
+          contactName: v.contactName as string | null ?? null,
+          price: v.price as string | null ?? null,
+          notes: v.notes as string | null ?? null,
+          status: String(v.status ?? "inquiry"),
+          contractSigned: Boolean(v.contractSigned ?? false),
+          depositPaid: Boolean(v.depositPaid ?? false),
+        });
+      }
+      restored.vendors = vendorRows.length;
+    }
+
+    const vcRows = (data.vendorContracts as Array<Record<string, unknown>>) ?? [];
+    if (vcRows.length > 0) {
+      for (const vc of vcRows) {
+        await db.insert(vendorContracts).values({
+          userId: newUserId.trim(),
+          vendorName: String(vc.vendorName ?? ""),
+          contractType: String(vc.contractType ?? ""),
+          fileUrl: String(vc.fileUrl ?? ""),
+          fileName: String(vc.fileName ?? ""),
+          notes: vc.notes as string | null ?? null,
+        });
+      }
+      restored.vendorContracts = vcRows.length;
+    }
+
+    const wpRows = (data.weddingParty as Array<Record<string, unknown>>) ?? [];
+    if (wpRows.length > 0) {
+      for (const m of wpRows) {
+        await db.insert(weddingParty).values({
+          userId: newUserId.trim(),
+          name: String(m.name ?? ""),
+          role: String(m.role ?? ""),
+          side: String(m.side ?? "bride"),
+          phone: m.phone as string | null ?? null,
+          email: m.email as string | null ?? null,
+          notes: m.notes as string | null ?? null,
+        });
+      }
+      restored.weddingPartyMembers = wpRows.length;
+    }
+
+    await db.update(deletedUserArchive)
+      .set({
+        restoredAt: new Date(),
+        restoredBy: req.userId ?? "admin",
+        restoredToUserId: newUserId.trim(),
+      })
+      .where(eq(deletedUserArchive.id, id));
+
+    res.json({ ok: true, restored });
+  } catch (err) {
+    req.log.error({ err }, "Admin archive restore error");
+    res.status(500).json({ error: "Restore failed. Please check server logs." });
   }
 });
 

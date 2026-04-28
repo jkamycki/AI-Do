@@ -361,3 +361,18 @@ export const deletedAccountEmails = pgTable("deleted_account_emails", {
 });
 
 export type DeletedAccountEmail = typeof deletedAccountEmails.$inferSelect;
+
+export const deletedUserArchive = pgTable("deleted_user_archive", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  email: text("email"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  deletedAt: timestamp("deleted_at").defaultNow().notNull(),
+  archivedData: jsonb("archived_data").$type<Record<string, unknown>>().notNull(),
+  restoredAt: timestamp("restored_at"),
+  restoredBy: text("restored_by"),
+  restoredToUserId: text("restored_to_user_id"),
+});
+
+export type DeletedUserArchive = typeof deletedUserArchive.$inferSelect;

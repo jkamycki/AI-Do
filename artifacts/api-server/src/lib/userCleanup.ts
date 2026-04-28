@@ -6,9 +6,10 @@ import {
   seatingCharts, guests, hotelBlocks, weddingParty,
   manualExpenses, vendorConversations, vendorMessages,
   contactMessages, feedbackSubmissions, adminUsers,
-  deletedAccountEmails,
+  deletedAccountEmails, deletedUserArchive,
 } from "@workspace/db";
 import { eq, inArray, or, sql } from "drizzle-orm";
+import { logger } from "./logger";
 
 export async function blockEmailsForUser(emails: string[], userId: string): Promise<void> {
   const normalized = Array.from(
@@ -29,10 +30,106 @@ export async function blockEmailsForUser(emails: string[], userId: string): Prom
   }
 }
 
+export async function snapshotUserData(
+  userId: string,
+  opts?: { email?: string | null; firstName?: string | null; lastName?: string | null },
+): Promise<void> {
+  try {
+    const [profile] = await db
+      .select()
+      .from(weddingProfiles)
+      .where(eq(weddingProfiles.userId, userId))
+      .limit(1);
+
+    const snapshot: Record<string, unknown> = { userId };
+
+    if (profile) {
+      snapshot.profile = profile;
+      const profileId = profile.id;
+
+      snapshot.timelines = await db.select().from(timelines).where(eq(timelines.profileId, profileId));
+      snapshot.checklistItems = await db.select().from(checklistItems).where(eq(checklistItems.profileId, profileId));
+      snapshot.guests = await db.select().from(guests).where(eq(guests.profileId, profileId));
+
+      const userBudgets = await db.select().from(budgets).where(eq(budgets.profileId, profileId));
+      snapshot.budgets = userBudgets;
+
+      if (userBudgets.length > 0) {
+        const budgetIds = userBudgets.map(b => b.id);
+        const items = await db.select().from(budgetItems).where(inArray(budgetItems.budgetId, budgetIds));
+        snapshot.budgetItems = items;
+        if (items.length > 0) {
+          const itemIds = items.map(i => i.id);
+          snapshot.budgetPaymentLogs = await db.select().from(budgetPaymentLogs).where(inArray(budgetPaymentLogs.budgetItemId, itemIds));
+        } else {
+          snapshot.budgetPaymentLogs = [];
+        }
+      } else {
+        snapshot.budgetItems = [];
+        snapshot.budgetPaymentLogs = [];
+      }
+    } else {
+      snapshot.profile = null;
+      snapshot.timelines = [];
+      snapshot.checklistItems = [];
+      snapshot.guests = [];
+      snapshot.budgets = [];
+      snapshot.budgetItems = [];
+      snapshot.budgetPaymentLogs = [];
+    }
+
+    const userVendors = await db.select().from(vendors).where(eq(vendors.userId, userId));
+    snapshot.vendors = userVendors;
+    if (userVendors.length > 0) {
+      const vendorIds = userVendors.map(v => v.id);
+      snapshot.vendorPayments = await db.select().from(vendorPayments).where(inArray(vendorPayments.vendorId, vendorIds));
+    } else {
+      snapshot.vendorPayments = [];
+    }
+
+    const convRows = await db.select().from(vendorConversations).where(eq(vendorConversations.userId, userId));
+    snapshot.vendorConversations = convRows;
+    if (convRows.length > 0) {
+      const convIds = convRows.map(c => c.id);
+      snapshot.vendorMessages = await db.select().from(vendorMessages).where(inArray(vendorMessages.conversationId, convIds));
+    } else {
+      snapshot.vendorMessages = [];
+    }
+
+    snapshot.vendorContracts = await db.select().from(vendorContracts).where(eq(vendorContracts.userId, userId));
+    snapshot.seatingCharts = await db.select().from(seatingCharts).where(eq(seatingCharts.userId, userId));
+    snapshot.hotelBlocks = await db.select().from(hotelBlocks).where(eq(hotelBlocks.userId, userId));
+    snapshot.weddingParty = await db.select().from(weddingParty).where(eq(weddingParty.userId, userId));
+    snapshot.manualExpenses = await db.select().from(manualExpenses).where(eq(manualExpenses.userId, userId));
+    snapshot.analyticsEvents = await db.select().from(analyticsEvents).where(eq(analyticsEvents.userId, userId));
+
+    await db.insert(deletedUserArchive).values({
+      userId,
+      email: opts?.email ?? null,
+      firstName: opts?.firstName ?? null,
+      lastName: opts?.lastName ?? null,
+      archivedData: snapshot,
+    });
+
+    logger.info({ userId }, "User data archived before deletion");
+  } catch (err) {
+    logger.error({ err, userId }, "Failed to snapshot user data — deletion will still proceed");
+  }
+}
+
 export async function purgeUserData(
   userId: string,
   userEmail?: string | string[] | null,
+  clerkUser?: { firstName?: string | null; lastName?: string | null },
 ) {
+  const primaryEmail = Array.isArray(userEmail) ? (userEmail[0] ?? null) : (userEmail ?? null);
+
+  await snapshotUserData(userId, {
+    email: primaryEmail,
+    firstName: clerkUser?.firstName ?? null,
+    lastName: clerkUser?.lastName ?? null,
+  });
+
   const [profile] = await db
     .select()
     .from(weddingProfiles)
@@ -84,7 +181,6 @@ export async function purgeUserData(
     await db.delete(guests).where(eq(guests.profileId, profileId));
   }
 
-  // Vendor messaging (vendorMessages -> vendorConversations by user_id)
   const userConvRows = await db
     .select({ id: vendorConversations.id })
     .from(vendorConversations)
@@ -120,10 +216,4 @@ export async function purgeUserData(
   if (profile) {
     await db.delete(weddingProfiles).where(eq(weddingProfiles.userId, userId));
   }
-
-  // Note: deletion intentionally does NOT add the email to a permanent
-  // blocklist. After deletion the email is fully released — the user must
-  // explicitly sign up again to come back. The "no account" experience on
-  // sign-in is handled by Clerk for password and by the post-OAuth check
-  // in the frontend for Google.
 }

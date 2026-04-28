@@ -84,6 +84,7 @@ const TABS = [
   { key: "users", label: "Users", icon: Users },
   { key: "engagement", label: "Engagement", icon: Zap },
   { key: "marketing", label: "Marketing", icon: Megaphone },
+  { key: "archive", label: "Archive", icon: Shield },
   { key: "events", label: "Event Log", icon: Activity },
   { key: "messages", label: "Messages", icon: Inbox },
 ];
@@ -1952,6 +1953,320 @@ function MarketingOutreachSection() {
   );
 }
 
+interface ArchiveEntry {
+  id: number;
+  userId: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  deletedAt: string;
+  restoredAt: string | null;
+  restoredToUserId: string | null;
+}
+
+interface ArchiveSummary {
+  profile: boolean;
+  guests: number;
+  vendors: number;
+  timelines: number;
+  checklistItems: number;
+  budgets: boolean;
+  vendorContracts: number;
+  weddingParty: number;
+}
+
+function archiveSummary(archivedData: Record<string, unknown>): ArchiveSummary {
+  const arr = (k: string) => Array.isArray(archivedData[k]) ? (archivedData[k] as unknown[]).length : 0;
+  return {
+    profile: !!archivedData.profile,
+    guests: arr("guests"),
+    vendors: arr("vendors"),
+    timelines: arr("timelines"),
+    checklistItems: arr("checklistItems"),
+    budgets: arr("budgets") > 0,
+    vendorContracts: arr("vendorContracts"),
+    weddingParty: arr("weddingParty"),
+  };
+}
+
+function DeletedArchiveSection() {
+  const { getToken } = useAuth();
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [restoreId, setRestoreId] = useState<number | null>(null);
+  const [newUserId, setNewUserId] = useState("");
+  const [restoring, setRestoring] = useState(false);
+  const [restoreResult, setRestoreResult] = useState<{ ok: boolean; restored?: Record<string, number>; error?: string } | null>(null);
+  const [fullData, setFullData] = useState<Record<number, Record<string, unknown>>>({});
+  const [loadingFull, setLoadingFull] = useState<number | null>(null);
+
+  const authedFetch = async (url: string, opts: RequestInit = {}) => {
+    const token = await getToken();
+    return fetch(url, {
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...opts,
+    });
+  };
+
+  const { data, isLoading, refetch } = useQuery<{ archives: ArchiveEntry[] }>({
+    queryKey: ["admin-archive"],
+    queryFn: async () => {
+      const r = await authedFetch("/api/admin/archive");
+      if (!r.ok) throw new Error("Failed to load archive");
+      return r.json();
+    },
+  });
+
+  const loadFull = async (id: number) => {
+    if (fullData[id]) return;
+    setLoadingFull(id);
+    try {
+      const r = await authedFetch(`/api/admin/archive/${id}`);
+      if (!r.ok) throw new Error("Failed to load archive detail");
+      const j = await r.json() as { archive: { archivedData: Record<string, unknown> } };
+      setFullData(prev => ({ ...prev, [id]: j.archive.archivedData }));
+    } catch {
+    } finally {
+      setLoadingFull(null);
+    }
+  };
+
+  const handleExpand = async (id: number) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(id);
+      await loadFull(id);
+    }
+  };
+
+  const handleRestore = async (archiveId: number) => {
+    if (!newUserId.trim()) return;
+    setRestoring(true);
+    setRestoreResult(null);
+    try {
+      const r = await authedFetch(`/api/admin/archive/${archiveId}/restore`, {
+        method: "POST",
+        body: JSON.stringify({ newUserId: newUserId.trim() }),
+      });
+      const j = await r.json() as { ok?: boolean; restored?: Record<string, number>; error?: string };
+      if (!r.ok || j.error) {
+        setRestoreResult({ ok: false, error: j.error ?? "Restore failed" });
+      } else {
+        setRestoreResult({ ok: true, restored: j.restored });
+        refetch();
+      }
+    } catch {
+      setRestoreResult({ ok: false, error: "Network error" });
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  const exportJson = (entry: ArchiveEntry, archivedData: Record<string, unknown>) => {
+    const blob = new Blob([JSON.stringify({ ...entry, archivedData }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `aido-archive-${entry.userId}-${entry.deletedAt.slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const archives = data?.archives ?? [];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-serif text-primary flex items-center gap-2">
+            <Shield className="h-6 w-6" />
+            Deleted User Archive
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Every user deletion is fully archived here — profile, guests, vendors, timeline, budget, and more. You can restore it all to a new account at any time.
+          </p>
+        </div>
+        {archives.length > 0 && (
+          <div className="flex items-center gap-2 text-sm font-medium bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            {archives.filter(a => !a.restoredAt).length} awaiting potential restore
+          </div>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>
+      ) : archives.length === 0 ? (
+        <div className="py-16 text-center text-muted-foreground">
+          <Shield className="h-10 w-10 mx-auto mb-3 opacity-20" />
+          <p className="font-medium">No archived users yet</p>
+          <p className="text-sm mt-1">When a user deletes their account, their full data snapshot will appear here.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {archives.map(entry => {
+            const isExpanded = expandedId === entry.id;
+            const isRestored = !!entry.restoredAt;
+            const full = fullData[entry.id];
+            const summary = full ? archiveSummary(full) : null;
+            const name = [entry.firstName, entry.lastName].filter(Boolean).join(" ") || "Unknown User";
+            const isRestoringThis = restoreId === entry.id;
+
+            return (
+              <Card key={entry.id} className={`border-none shadow-sm overflow-hidden transition-all ${isRestored ? "opacity-60" : ""}`}>
+                <div
+                  className="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-muted/20 transition-colors"
+                  onClick={() => handleExpand(entry.id)}
+                >
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${isRestored ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                    {isRestored ? "✓" : (name[0] ?? "?")}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-sm">{name}</span>
+                      {isRestored ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold uppercase tracking-wide">Restored</span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold uppercase tracking-wide">Archived</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{entry.email ?? entry.userId}</p>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-5 text-xs text-muted-foreground flex-shrink-0">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Deleted {new Date(entry.deletedAt).toLocaleDateString()}
+                    </span>
+                    {isRestored && entry.restoredAt && (
+                      <span className="flex items-center gap-1 text-emerald-600">
+                        <CheckCircle className="h-3 w-3" />
+                        Restored {new Date(entry.restoredAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  {isExpanded ? <ChevronUpIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" /> : <ChevronDownIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+                </div>
+
+                {isExpanded && (
+                  <div className="border-t border-border/40 px-5 py-4 bg-muted/10 space-y-4">
+                    {loadingFull === entry.id ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Loading archive data…
+                      </div>
+                    ) : summary ? (
+                      <>
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">What's Archived</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {[
+                              { label: "Wedding Profile", value: summary.profile ? "Yes" : "None", ok: summary.profile },
+                              { label: "Guests", value: summary.guests, ok: summary.guests > 0 },
+                              { label: "Vendors", value: summary.vendors, ok: summary.vendors > 0 },
+                              { label: "Timeline", value: summary.timelines > 0 ? "Yes" : "None", ok: summary.timelines > 0 },
+                              { label: "Checklist Items", value: summary.checklistItems, ok: summary.checklistItems > 0 },
+                              { label: "Budget", value: summary.budgets ? "Yes" : "None", ok: summary.budgets },
+                              { label: "Contracts", value: summary.vendorContracts, ok: summary.vendorContracts > 0 },
+                              { label: "Wedding Party", value: summary.weddingParty, ok: summary.weddingParty > 0 },
+                            ].map(s => (
+                              <div key={s.label} className={`rounded-lg p-2.5 text-center text-xs ${s.ok ? "bg-emerald-50 text-emerald-800" : "bg-muted/40 text-muted-foreground"}`}>
+                                <p className="font-bold text-base">{s.value}</p>
+                                <p className="text-[10px] mt-0.5">{s.label}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 text-xs"
+                            onClick={() => exportJson(entry, full)}
+                          >
+                            <FileDown className="h-3.5 w-3.5" />
+                            Export Full JSON
+                          </Button>
+                          {!isRestored && (
+                            <Button
+                              size="sm"
+                              className="gap-1.5 text-xs bg-primary hover:bg-primary/90"
+                              onClick={() => {
+                                setRestoreId(isRestoringThis ? null : entry.id);
+                                setNewUserId("");
+                                setRestoreResult(null);
+                              }}
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                              Restore to Account
+                            </Button>
+                          )}
+                        </div>
+
+                        {isRestoringThis && !isRestored && (
+                          <div className="border border-primary/20 rounded-xl p-4 bg-primary/5 space-y-3">
+                            <p className="text-sm font-medium text-primary">Enter the new Clerk User ID to restore data to:</p>
+                            <p className="text-xs text-muted-foreground">This is the Clerk ID of the user's new account (starts with <code className="bg-muted px-1 py-0.5 rounded text-[10px]">user_</code>). All their data will be re-created under this account.</p>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                placeholder="user_2aBcDeFgHiJkLmNoPqRs"
+                                value={newUserId}
+                                onChange={e => setNewUserId(e.target.value)}
+                                className="flex-1 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 font-mono"
+                              />
+                              <Button
+                                size="sm"
+                                disabled={!newUserId.trim() || restoring}
+                                onClick={() => handleRestore(entry.id)}
+                                className="gap-1.5 bg-primary hover:bg-primary/90 whitespace-nowrap"
+                              >
+                                {restoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                                {restoring ? "Restoring…" : "Restore Now"}
+                              </Button>
+                            </div>
+                            {restoreResult && (
+                              <div className={`flex items-start gap-2 text-sm rounded-lg px-3 py-2.5 ${restoreResult.ok ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                                {restoreResult.ok ? <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" /> : <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />}
+                                <div>
+                                  {restoreResult.ok ? (
+                                    <>
+                                      <p className="font-semibold">Restore complete!</p>
+                                      <p className="text-xs mt-0.5">
+                                        {Object.entries(restoreResult.restored ?? {}).map(([k, v]) => `${v} ${k}`).join(", ")} restored.
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <p>{restoreResult.error}</p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {isRestored && entry.restoredToUserId && (
+                          <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                            <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                            Restored to account <code className="font-mono bg-emerald-100 px-1 py-0.5 rounded">{entry.restoredToUserId}</code> on {new Date(entry.restoredAt!).toLocaleDateString()}
+                          </div>
+                        )}
+                      </>
+                    ) : null}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const { getToken, isSignedIn } = useAuth();
@@ -2114,6 +2429,7 @@ export default function AdminPage() {
         )}
 
         {activeTab === "marketing" && <MarketingOutreachSection />}
+        {activeTab === "archive" && <DeletedArchiveSection />}
 
         {activeTab === "events" && (
           <EventLogSection events={eventsData?.events ?? []} isLoading={eventsLoading} />
