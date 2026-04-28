@@ -28,6 +28,7 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   guestCollectionToken: text("guest_collection_token"),
   vendorBccEmail: text("vendor_bcc_email"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertWeddingProfileSchema = createInsertSchema(weddingProfiles).omit({ id: true, updatedAt: true });

@@ -29,6 +29,7 @@ interface AdminMetrics {
     newThisMonth: number;
     onboardingCompletionRate: number;
     totalSignups: number;
+    onboardedUsers: number;
   };
   usageMetrics: {
     timelinesGenerated: number;
@@ -554,27 +555,33 @@ function UserMetricsSection({ metrics }: { metrics: AdminMetrics }) {
     <div className="space-y-6">
       <SectionHeader title="User Metrics" description="Registration, activity, and retention across the platform." />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard title="Total Users" value={userMetrics.totalUsers} icon={Users} accent />
+        <MetricCard title="Total Signups" value={userMetrics.totalUsers} sub="All Clerk accounts" icon={Users} accent />
         <MetricCard title="DAU" value={userMetrics.dau} sub="Daily active" icon={TrendingUp} />
         <MetricCard title="WAU" value={userMetrics.wau} sub="Weekly active" icon={TrendingUp} />
         <MetricCard title="MAU" value={userMetrics.mau} sub="Monthly active" icon={TrendingUp} />
       </div>
       <div className="grid grid-cols-3 gap-4">
-        <MetricCard title="New Today" value={userMetrics.newToday} icon={Users} />
-        <MetricCard title="New This Week" value={userMetrics.newThisWeek} icon={Users} />
-        <MetricCard title="New This Month" value={userMetrics.newThisMonth} icon={Users} />
+        <MetricCard title="New Today" value={userMetrics.newToday} sub="Clerk signups" icon={Users} />
+        <MetricCard title="New This Week" value={userMetrics.newThisWeek} sub="Clerk signups" icon={Users} />
+        <MetricCard title="New This Month" value={userMetrics.newThisMonth} sub="Clerk signups" icon={Users} />
       </div>
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-3 gap-4">
         <MetricCard
-          title="Onboarding Completion Rate"
-          value={`${userMetrics.onboardingCompletionRate}%`}
-          sub="Users who completed profile setup"
+          title="Onboarded Users"
+          value={userMetrics.onboardedUsers}
+          sub="Completed profile setup"
           icon={CheckSquare}
         />
         <MetricCard
-          title="Total Signups (All Time)"
-          value={userMetrics.totalSignups}
-          sub="Users who created a profile"
+          title="Onboarding Rate"
+          value={`${userMetrics.onboardingCompletionRate}%`}
+          sub="Signups that finished setup"
+          icon={CheckSquare}
+        />
+        <MetricCard
+          title="Drop-offs"
+          value={Math.max(0, userMetrics.totalUsers - userMetrics.onboardedUsers)}
+          sub="Signed up, never onboarded"
           icon={Users}
         />
       </div>

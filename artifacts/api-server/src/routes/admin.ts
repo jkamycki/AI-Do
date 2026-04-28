@@ -57,15 +57,16 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
     const weekAgo = new Date(now.getTime() - 7 * 86400000);
     const monthAgo = new Date(now.getTime() - 30 * 86400000);
 
-    const [countsByType, totalUsersRow, dauRow, wauRow, mauRow, newTodayRow, newWeekRow, newMonthRow, userGrowthRows, deviceRows] = await Promise.all([
+    const [
+      countsByType, dauRow, wauRow, mauRow, userGrowthRows, deviceRows,
+      clerkTotal, clerkToday, clerkThisWeek, clerkThisMonth, onboardedRow,
+    ] = await Promise.all([
       db.select({
         eventType: analyticsEvents.eventType,
         count: sql<number>`count(*)::int`,
       })
         .from(analyticsEvents)
         .groupBy(analyticsEvents.eventType),
-
-      db.select({ count: sql<number>`count(distinct user_id)::int` }).from(analyticsEvents),
 
       db.select({ count: sql<number>`count(distinct user_id)::int` })
         .from(analyticsEvents)
@@ -79,34 +80,13 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
         .from(analyticsEvents)
         .where(gte(analyticsEvents.timestamp, monthAgo)),
 
-      db.select({ count: sql<number>`count(distinct user_id)::int` })
-        .from(analyticsEvents)
-        .where(and(
-          eq(analyticsEvents.eventType, "user_signup"),
-          gte(analyticsEvents.timestamp, dayAgo),
-        )),
-
-      db.select({ count: sql<number>`count(distinct user_id)::int` })
-        .from(analyticsEvents)
-        .where(and(
-          eq(analyticsEvents.eventType, "user_signup"),
-          gte(analyticsEvents.timestamp, weekAgo),
-        )),
-
-      db.select({ count: sql<number>`count(distinct user_id)::int` })
-        .from(analyticsEvents)
-        .where(and(
-          eq(analyticsEvents.eventType, "user_signup"),
-          gte(analyticsEvents.timestamp, monthAgo),
-        )),
-
+      // Growth chart: use wedding_profiles created_at (accurate first-time signups)
       db.execute(sql`
         SELECT
-          to_char(date_trunc('day', timestamp), 'YYYY-MM-DD') as date,
-          count(distinct user_id)::int as count
-        FROM analytics_events
-        WHERE event_type = 'user_signup'
-          AND timestamp >= NOW() - INTERVAL '30 days'
+          to_char(date_trunc('day', created_at), 'YYYY-MM-DD') as date,
+          count(*)::int as count
+        FROM wedding_profiles
+        WHERE created_at >= NOW() - INTERVAL '30 days'
         GROUP BY 1
         ORDER BY 1
       `),
@@ -122,13 +102,26 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
         WHERE metadata->>'device' IS NOT NULL
         GROUP BY 1
       `),
+
+      // Clerk as source of truth for signup counts
+      clerkClient.users.getUserList({ limit: 1, orderBy: "-created_at" }),
+      clerkClient.users.getUserList({ limit: 1, createdAfter: dayAgo.getTime() }),
+      clerkClient.users.getUserList({ limit: 1, createdAfter: weekAgo.getTime() }),
+      clerkClient.users.getUserList({ limit: 1, createdAfter: monthAgo.getTime() }),
+
+      // Onboarded = users with a wedding profile
+      db.select({ count: sql<number>`count(*)::int` }).from(weddingProfiles),
     ]);
 
     const countMap = Object.fromEntries(countsByType.map(r => [r.eventType, r.count]));
-    const totalUsers = totalUsersRow[0]?.count ?? 0;
-    const signupCount = countMap["user_signup"] ?? 0;
-    const onboardingCount = countMap["onboarding_completed"] ?? 0;
-    const onboardingRate = signupCount > 0 ? Math.round((onboardingCount / signupCount) * 100) : 0;
+
+    const totalUsers = clerkTotal.totalCount;
+    const newToday = clerkToday.totalCount;
+    const newThisWeek = clerkThisWeek.totalCount;
+    const newThisMonth = clerkThisMonth.totalCount;
+    const onboardedCount = onboardedRow[0]?.count ?? 0;
+    const onboardingRate = totalUsers > 0 ? Math.round((onboardedCount / totalUsers) * 100) : 0;
+    const signupCount = totalUsers;
 
     const features = [
       { name: "Timeline", eventType: "timeline_generated", count: countMap["timeline_generated"] ?? 0 },
@@ -148,11 +141,12 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
         dau: dauRow[0]?.count ?? 0,
         wau: wauRow[0]?.count ?? 0,
         mau: mauRow[0]?.count ?? 0,
-        newToday: newTodayRow[0]?.count ?? 0,
-        newThisWeek: newWeekRow[0]?.count ?? 0,
-        newThisMonth: newMonthRow[0]?.count ?? 0,
+        newToday,
+        newThisWeek,
+        newThisMonth,
         onboardingCompletionRate: onboardingRate,
         totalSignups: signupCount,
+        onboardedUsers: onboardedCount,
       },
       usageMetrics: {
         timelinesGenerated: countMap["timeline_generated"] ?? 0,
