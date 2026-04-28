@@ -538,8 +538,8 @@ export default function Guests() {
   const [isAdding, setIsAdding] = useState(false);
   const [editGuest, setEditGuest] = useState<Guest | null>(null);
 
-  const [copyRsvpState, setCopyRsvpState] = useState<{ name: string; url: string; copied: boolean } | null>(null);
-  const [sendingId, setSendingId] = useState<number | null>(null);
+  const [linkDialogState, setLinkDialogState] = useState<{ guestId: number; name: string; url: string; copied: boolean; hasEmail: boolean } | null>(null);
+  const [fetchingLinkId, setFetchingLinkId] = useState<number | null>(null);
 
   const { data, isLoading, isError } = useGetGuests();
   const addGuest = useAddGuest();
@@ -562,20 +562,32 @@ export default function Guests() {
       }
       return res.json() as Promise<{ rsvpUrl: string; emailSent: boolean }>;
     },
-    onMutate: (guestId) => setSendingId(guestId),
-    onSettled: () => setSendingId(null),
     onSuccess: (data, guestId) => {
       optimisticUpdate(guestId, { rsvpStatus: "sent" });
       invalidate();
+      setLinkDialogState(null);
       if (data.emailSent) {
-        toast({ title: "RSVP sent successfully!", description: "Email delivered to guest." });
+        toast({ title: "RSVP sent!", description: "Email delivered to guest." });
       } else {
-        const guest = allGuests.find(g => g.id === guestId);
-        setCopyRsvpState({ name: guest?.name ?? "Guest", url: data.rsvpUrl, copied: false });
+        toast({ title: "RSVP marked as sent.", description: "Share the link directly with your guest." });
       }
     },
     onError: (err) => toast({ title: "Failed to send RSVP", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
   });
+
+  const fetchRsvpLink = async (guest: Guest) => {
+    setFetchingLinkId(guest.id);
+    try {
+      const res = await authFetch(`/api/guests/${guest.id}/rsvp-link`);
+      if (!res.ok) throw new Error("Failed to generate link");
+      const { rsvpUrl } = await res.json() as { rsvpUrl: string };
+      setLinkDialogState({ guestId: guest.id, name: guest.name, url: rsvpUrl, copied: false, hasEmail: !!guest.email });
+    } catch {
+      toast({ title: "Could not generate RSVP link", variant: "destructive" });
+    } finally {
+      setFetchingLinkId(null);
+    }
+  };
 
   const allGuests = data?.guests ?? [];
   const summary = data?.summary ?? { total: 0, attending: 0, declined: 0, pending: 0, plusOnes: 0 };
@@ -1057,14 +1069,14 @@ export default function Guests() {
                               }
                               disabled={
                                 (g.rsvpStatus === "attending" || g.rsvpStatus === "declined") ||
-                                sendingId === g.id
+                                fetchingLinkId === g.id
                               }
                               onClick={() => {
                                 if (g.rsvpStatus === "attending" || g.rsvpStatus === "declined") return;
-                                sendRsvp.mutate(g.id);
+                                fetchRsvpLink(g);
                               }}
                             >
-                              {sendingId === g.id ? (
+                              {fetchingLinkId === g.id ? (
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                               ) : (
                                 <Send className="h-3.5 w-3.5" />
@@ -1142,40 +1154,68 @@ export default function Guests() {
         </DialogContent>
       </Dialog>
 
-      {/* RSVP link copy dialog (shown when guest has no email) */}
-      <Dialog open={!!copyRsvpState} onOpenChange={(open) => !open && setCopyRsvpState(null)}>
+      {/* RSVP link preview + send confirmation dialog */}
+      <Dialog open={!!linkDialogState} onOpenChange={(open) => { if (!open) setLinkDialogState(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl text-primary flex items-center gap-2">
-              <Send className="h-5 w-5" /> RSVP Link for {copyRsvpState?.name}
+              <Link2 className="h-5 w-5" /> RSVP Link for {linkDialogState?.name}
             </DialogTitle>
             <DialogDescription>
-              No email address on file. Share this personal link directly with your guest.
+              {linkDialogState?.hasEmail
+                ? "Copy this link or send it directly to your guest by email."
+                : "No email on file — copy and share this link directly with your guest."}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex items-center gap-2 mt-2">
+
+          <div className="flex items-center gap-2 mt-1">
             <Input
               readOnly
-              value={copyRsvpState?.url ?? ""}
+              value={linkDialogState?.url ?? ""}
               className="font-mono text-xs bg-muted"
             />
             <Button
               size="icon"
               variant="outline"
+              title="Copy link"
               onClick={() => {
-                if (!copyRsvpState) return;
-                navigator.clipboard.writeText(copyRsvpState.url).then(() => {
-                  setCopyRsvpState(prev => prev ? { ...prev, copied: true } : null);
-                  setTimeout(() => setCopyRsvpState(prev => prev ? { ...prev, copied: false } : null), 2000);
+                if (!linkDialogState) return;
+                navigator.clipboard.writeText(linkDialogState.url).then(() => {
+                  setLinkDialogState(prev => prev ? { ...prev, copied: true } : null);
+                  setTimeout(() => setLinkDialogState(prev => prev ? { ...prev, copied: false } : null), 2000);
                 });
               }}
             >
-              {copyRsvpState?.copied ? <CheckCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+              {linkDialogState?.copied ? <CheckCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            The RSVP status has been updated to <span className="font-medium text-yellow-600">Sent</span>. Once your guest responds, their status will update automatically.
+
+          <p className="text-xs text-muted-foreground">
+            Do you want to send this link to your guest?
+            {linkDialogState?.hasEmail && " An email will be delivered to their inbox."}
           </p>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="outline"
+              onClick={() => setLinkDialogState(null)}
+            >
+              Not now
+            </Button>
+            <Button
+              onClick={() => {
+                if (linkDialogState) sendRsvp.mutate(linkDialogState.guestId);
+              }}
+              disabled={sendRsvp.isPending}
+              className="gap-2"
+            >
+              {sendRsvp.isPending ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</>
+              ) : (
+                <><Send className="h-4 w-4" /> {linkDialogState?.hasEmail ? "Send email" : "Mark as sent"}</>
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

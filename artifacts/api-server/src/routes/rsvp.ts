@@ -14,6 +14,37 @@ function buildOrigin(req: import("express").Request): string {
   return `${proto}://${host}`;
 }
 
+router.get("/guests/:id/rsvp-link", requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid guest ID" });
+
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(400).json({ error: "No wedding profile found." });
+
+    const rows = await db
+      .select()
+      .from(guests)
+      .where(and(eq(guests.id, id), eq(guests.profileId, profile.id)))
+      .limit(1);
+
+    if (!rows.length) return res.status(404).json({ error: "Guest not found" });
+    const guest = rows[0];
+
+    const token = guest.rsvpToken ?? crypto.randomUUID();
+    if (!guest.rsvpToken) {
+      await db.update(guests).set({ rsvpToken: token }).where(eq(guests.id, id));
+    }
+
+    const origin = buildOrigin(req);
+    const rsvpUrl = `${origin}/rsvp/${token}`;
+    res.json({ rsvpUrl });
+  } catch (err) {
+    req.log.error(err, "Failed to generate RSVP link");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
