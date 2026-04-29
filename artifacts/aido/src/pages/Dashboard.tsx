@@ -33,9 +33,12 @@ import {
   GripVertical,
   RotateCcw,
   Camera,
+  Trash2,
+  ImagePlus,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useTranslation } from "react-i18next";
 
 const API = import.meta.env.VITE_API_URL ?? "";
@@ -540,6 +543,19 @@ export default function Dashboard() {
     }
   };
 
+  const handleRemovePic = async () => {
+    if (!user) return;
+    setUploadingPic(true);
+    try {
+      await user.setProfileImage({ file: null });
+      toast({ title: "Profile picture removed" });
+    } catch {
+      toast({ title: "Failed to remove photo", variant: "destructive" });
+    } finally {
+      setUploadingPic(false);
+    }
+  };
+
   // Non-owner collaborators always land on the shared workspace, not their own dashboard
   if (activeWorkspace && activeWorkspace.role !== "owner" && !isLoading) {
     setLocation(`/workspace/${activeWorkspace.profileId}`);
@@ -589,31 +605,58 @@ export default function Dashboard() {
       <div>
         <p className="text-sm text-muted-foreground font-medium">{t(getGreetingKey())},</p>
         <div className="flex items-center gap-3 mt-0.5">
-          <button
-            type="button"
-            onClick={() => picInputRef.current?.click()}
-            disabled={uploadingPic}
-            title="Change profile picture"
-            className="relative group flex-shrink-0 cursor-pointer focus:outline-none disabled:opacity-70"
-          >
-            {user?.imageUrl ? (
-              <img
-                src={user.imageUrl}
-                alt={firstName}
-                className="w-12 h-12 rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all shadow-sm"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-primary/15 ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all flex items-center justify-center shadow-sm">
-                <span className="text-primary font-semibold text-lg capitalize">{firstName[0]}</span>
-              </div>
-            )}
-            <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-              {uploadingPic
-                ? <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                : <Camera className="h-3.5 w-3.5 text-white drop-shadow" />
-              }
-            </div>
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild disabled={uploadingPic}>
+              <button
+                type="button"
+                className="relative flex-shrink-0 focus:outline-none disabled:opacity-70"
+                title="Edit profile picture"
+              >
+                {user?.imageUrl ? (
+                  <img
+                    src={user.imageUrl}
+                    alt={firstName}
+                    className="w-12 h-12 rounded-full object-cover ring-2 ring-primary/20 shadow-sm"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-primary/15 ring-2 ring-primary/20 flex items-center justify-center shadow-sm">
+                    <span className="text-primary font-semibold text-lg capitalize">{firstName[0]}</span>
+                  </div>
+                )}
+                {uploadingPic ? (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center ring-2 ring-background">
+                    <div className="h-2.5 w-2.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </span>
+                ) : (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center ring-2 ring-background">
+                    <Pencil className="h-2.5 w-2.5 text-white" />
+                  </span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuItem
+                className="gap-2 cursor-pointer"
+                onClick={() => picInputRef.current?.click()}
+              >
+                {user?.imageUrl
+                  ? <><Camera className="h-4 w-4" /> Replace photo</>
+                  : <><ImagePlus className="h-4 w-4" /> Add photo</>
+                }
+              </DropdownMenuItem>
+              {user?.imageUrl && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                    onClick={handleRemovePic}
+                  >
+                    <Trash2 className="h-4 w-4" /> Remove photo
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <h1 className="text-3xl md:text-4xl font-serif text-foreground capitalize">{firstName} 🤍</h1>
         </div>
         <input
