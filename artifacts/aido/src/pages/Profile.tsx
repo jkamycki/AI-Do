@@ -546,7 +546,6 @@ function InvitationPhotoCard() {
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [removingPhoto, setRemovingPhoto] = useState(false);
   const [showAiPanel, setShowAiPanel] = useState(false);
-  const [aiTone, setAiTone] = useState("romantic");
   const [aiDetails, setAiDetails] = useState("");
   const [generating, setGenerating] = useState(false);
 
@@ -578,7 +577,7 @@ function InvitationPhotoCard() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         credentials: "include",
-        body: JSON.stringify({ tone: aiTone, details: aiDetails }),
+        body: JSON.stringify({ details: aiDetails }),
       });
       if (!res.ok) throw new Error("Generation failed");
       const data = await res.json();
@@ -757,38 +756,18 @@ function InvitationPhotoCard() {
 
           {showAiPanel && (
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
-              <p className="text-xs text-muted-foreground font-medium">AI will write a message using your wedding details. Pick a tone and add any extras.</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Tone</label>
-                  <Select value={aiTone} onValueChange={setAiTone}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="romantic">Romantic</SelectItem>
-                      <SelectItem value="formal">Formal & Elegant</SelectItem>
-                      <SelectItem value="casual">Casual & Warm</SelectItem>
-                      <SelectItem value="playful">Playful</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Extra details <span className="text-muted-foreground font-normal">(optional)</span></label>
-                  <input
-                    className="w-full h-8 px-2.5 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="e.g. outdoor garden ceremony"
-                    value={aiDetails}
-                    onChange={e => setAiDetails(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); generateMessage(); } }}
-                  />
-                </div>
-              </div>
+              <Textarea
+                placeholder="e.g. We're getting married in a garden at sunset, it's a small intimate ceremony with close family and friends, we want guests to feel the warmth and excitement…"
+                value={aiDetails}
+                onChange={e => setAiDetails(e.target.value)}
+                rows={3}
+                className="resize-none text-sm bg-background"
+              />
               <Button
                 size="sm"
                 className="gap-2 w-full"
                 onClick={generateMessage}
-                disabled={generating}
+                disabled={generating || !aiDetails.trim()}
               >
                 {generating
                   ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating…</>

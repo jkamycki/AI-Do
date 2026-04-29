@@ -297,7 +297,7 @@ router.post("/profile/generate-invitation-message", requireAuth, async (req, res
     const profile = await resolveProfile(req);
     if (!profile) return res.status(400).json({ error: "No wedding profile found." });
 
-    const { tone = "romantic", details = "" } = req.body;
+    const { details = "" } = req.body;
 
     const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" and ");
     const dateStr = profile.weddingDate
@@ -305,18 +305,11 @@ router.post("/profile/generate-invitation-message", requireAuth, async (req, res
       : null;
     const venue = profile.venue ?? null;
 
-    const toneGuide: Record<string, string> = {
-      romantic:  "warm, poetic, and heartfelt — classic wedding invitation language",
-      formal:    "formal and elegant, like a traditional printed wedding invitation",
-      casual:    "friendly, warm, and conversational — like a note from close friends",
-      playful:   "fun, light-hearted, and a little whimsical",
-    };
-
     const context = [
       couple && `Couple: ${couple}`,
       dateStr && `Wedding date: ${dateStr}`,
       venue && `Venue: ${venue}`,
-      details && `Extra details from the couple: ${details}`,
+      details && `What the couple wants to convey: ${details}`,
     ].filter(Boolean).join("\n");
 
     const completion = await openai.chat.completions.create({
@@ -324,7 +317,7 @@ router.post("/profile/generate-invitation-message", requireAuth, async (req, res
       messages: [
         {
           role: "system",
-          content: `You write short, beautiful custom messages for digital wedding invitations. The message appears directly below the couple's names on their RSVP page. Write in ${toneGuide[tone] ?? toneGuide.romantic} style. Keep it to 1–3 sentences, max 300 characters. No salutations, no "Dear guest". Output only the message text — no quotes, no labels.`,
+          content: `You write short, beautiful custom messages for digital wedding invitations. The message appears directly below the couple's names on their RSVP page. Base the tone and content entirely on what the couple wants to convey — honour their voice and intent. Keep it to 1–3 sentences, max 300 characters. No salutations, no "Dear guest". Output only the message text — no quotes, no labels.`,
         },
         {
           role: "user",
