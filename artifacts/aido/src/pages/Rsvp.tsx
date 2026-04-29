@@ -38,16 +38,6 @@ const MEAL_OPTIONS = [
   { value: "fish", label: "Fish" },
 ];
 
-function Logo({ className }: { className?: string }) {
-  return (
-    <img
-      src="/logo.png"
-      alt="A.IDO — AI Wedding Planning OS"
-      className={className ?? "h-16 w-auto object-contain"}
-    />
-  );
-}
-
 interface RsvpInfo {
   guestName: string;
   partner1Name: string | null;
@@ -135,7 +125,6 @@ export default function Rsvp() {
   if (isError || !info) {
     return (
       <div className="dark min-h-screen flex flex-col items-center justify-center p-4 bg-[hsl(270,20%,10%)]">
-        <div className="mb-6"><Logo className="h-20 w-auto object-contain" /></div>
         <Card className="max-w-md w-full text-center shadow-xl border-white/10 bg-white/5">
           <CardContent className="pt-10 pb-8 space-y-4">
             <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto" />
@@ -152,7 +141,6 @@ export default function Rsvp() {
     return (
       <div className="dark min-h-screen flex flex-col items-center justify-center p-4 bg-[hsl(270,20%,10%)]"
         style={{ backgroundImage: "radial-gradient(hsl(40 82% 42% / 0.07) 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
-        <div className="mb-8"><Logo className="h-20 w-auto object-contain" /></div>
         <Card className="max-w-md w-full text-center shadow-2xl border-white/10 bg-white/5 overflow-hidden">
           <div className="h-1.5 w-full" style={{ background: accepted ? "linear-gradient(90deg,#22c55e,#16a34a)" : "linear-gradient(90deg,#ef4444,#dc2626)" }} />
           <CardContent className="pt-10 pb-10 space-y-5 px-8">
@@ -180,7 +168,6 @@ export default function Rsvp() {
             </div>
           </CardContent>
         </Card>
-        <p className="mt-6 text-xs text-white/40">Powered by A.IDO — AI Wedding Planning OS</p>
       </div>
     );
   }
@@ -200,20 +187,8 @@ export default function Rsvp() {
         </div>
       )}
 
-      {!info.hasPhoto && (
-        <div className="w-full py-4 px-6 flex items-center justify-center border-b border-white/10 bg-black/20 backdrop-blur-sm">
-          <Logo className="h-24 w-auto object-contain" />
-        </div>
-      )}
-
       <div className="flex-1 flex flex-col items-center py-10 px-4">
         <div className="max-w-lg w-full space-y-6">
-
-          {info.hasPhoto && (
-            <div className="flex justify-center pt-2">
-              <Logo className="h-14 w-auto object-contain opacity-90" />
-            </div>
-          )}
 
           <div className="text-center space-y-4 py-4">
             <div className="flex justify-center mb-2">
@@ -416,9 +391,6 @@ export default function Rsvp() {
             </CardContent>
           </Card>
 
-          <p className="text-center text-xs text-white/40 pb-6">
-            Powered by <span className="font-medium text-primary">A.IDO</span> — AI Wedding Planning OS
-          </p>
         </div>
       </div>
 
