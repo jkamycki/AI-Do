@@ -585,13 +585,13 @@ function InvitationPhotoCard() {
       });
       if (!res.ok) throw new Error("Generation failed");
       const data = await res.json();
-      const generated = data.message ?? "";
+      const generated = (data.message ?? "").trim();
+      if (!generated) throw new Error("Empty response");
       setMessage(generated);
       setAiDetails("");
       setShowAiPanel(false);
       setMessageHighlight(true);
       setTimeout(() => setMessageHighlight(false), 2000);
-      toast({ title: "Message generated!", description: "Scroll down to see it in the message box." });
     } catch {
       toast({ title: "Failed to generate message", variant: "destructive" });
     } finally {

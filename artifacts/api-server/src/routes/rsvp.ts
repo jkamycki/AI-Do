@@ -313,7 +313,7 @@ router.post("/profile/generate-invitation-message", requireAuth, async (req, res
     ].filter(Boolean).join("\n");
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: "gpt-4.1-mini",
       messages: [
         {
           role: "system",
@@ -324,7 +324,8 @@ router.post("/profile/generate-invitation-message", requireAuth, async (req, res
           content: context,
         },
       ],
-      max_completion_tokens: 150,
+      max_tokens: 150,
+      temperature: 0.85,
     });
 
     const message = completion.choices[0]?.message?.content?.trim() ?? "";
