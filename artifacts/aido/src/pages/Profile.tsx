@@ -15,9 +15,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarIcon, Save, RotateCcw, ImageIcon, Upload, Trash2, Loader2 } from "lucide-react";
+import { CalendarIcon, Save, RotateCcw, ImageIcon, Upload, Trash2, Loader2, Camera, UserCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useUpload } from "@workspace/object-storage-web";
+import { useUser } from "@clerk/react";
 
 const LANGUAGES = [
   "English", "Spanish", "French", "German", "Italian", "Portuguese",
@@ -529,8 +530,124 @@ export default function Profile() {
         </CardContent>
       </Card>
 
+      <ProfilePictureCard />
       <InvitationPhotoCard />
     </div>
+  );
+}
+
+function ProfilePictureCard() {
+  const { user } = useUser();
+  const { toast } = useToast();
+  const picInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handlePicChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max size is 5 MB.", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      await user.setProfileImage({ file });
+      toast({ title: "Profile picture updated!" });
+    } catch {
+      toast({ title: "Failed to update photo", variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (picInputRef.current) picInputRef.current.value = "";
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!user) return;
+    setUploading(true);
+    try {
+      await user.setProfileImage({ file: null });
+      toast({ title: "Profile picture removed" });
+    } catch {
+      toast({ title: "Failed to remove photo", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const firstName = user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] ?? "You";
+  const lastName = user?.lastName ?? "";
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+
+  return (
+    <Card className="border-none shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-xl font-serif text-primary flex items-center gap-2">
+          <UserCircle2 className="h-5 w-5" />
+          Profile Picture
+        </CardTitle>
+        <CardDescription>
+          Your photo appears next to your name on the dashboard. Supported: JPG, PNG — max 5 MB.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-5">
+          <div className="relative group flex-shrink-0">
+            {user?.imageUrl ? (
+              <img
+                src={user.imageUrl}
+                alt={fullName}
+                className="w-20 h-20 rounded-full object-cover ring-2 ring-primary/20 shadow-sm"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-primary/15 ring-2 ring-primary/20 flex items-center justify-center shadow-sm">
+                <span className="text-primary font-bold text-2xl capitalize">{firstName[0]}</span>
+              </div>
+            )}
+            {uploading && (
+              <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-white" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 space-y-1">
+            <p className="font-medium text-sm">{fullName}</p>
+            <p className="text-xs text-muted-foreground">{user?.emailAddresses?.[0]?.emailAddress}</p>
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs"
+                onClick={() => picInputRef.current?.click()}
+                disabled={uploading}
+              >
+                <Camera className="h-3.5 w-3.5" />
+                {user?.imageUrl ? "Change Photo" : "Upload Photo"}
+              </Button>
+              {user?.imageUrl && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+                  onClick={handleRemove}
+                  disabled={uploading}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Remove
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+        <input
+          ref={picInputRef}
+          type="file"
+          accept="image/jpeg,image/jpg,image/png,image/webp"
+          className="hidden"
+          onChange={handlePicChange}
+        />
+      </CardContent>
+    </Card>
   );
 }
 

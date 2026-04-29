@@ -32,6 +32,7 @@ import {
   Building2,
   GripVertical,
   RotateCcw,
+  Camera,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "react-i18next";
@@ -564,7 +565,27 @@ export default function Dashboard() {
       {/* Greeting */}
       <div>
         <p className="text-sm text-muted-foreground font-medium">{t(getGreetingKey())},</p>
-        <h1 className="text-3xl md:text-4xl font-serif text-foreground mt-0.5 capitalize">{firstName} 🤍</h1>
+        <div className="flex items-center gap-3 mt-0.5">
+          <Link href="/profile">
+            <div className="relative group flex-shrink-0 cursor-pointer">
+              {user?.imageUrl ? (
+                <img
+                  src={user.imageUrl}
+                  alt={firstName}
+                  className="w-12 h-12 rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all shadow-sm"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-primary/15 ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all flex items-center justify-center shadow-sm">
+                  <span className="text-primary font-semibold text-lg capitalize">{firstName[0]}</span>
+                </div>
+              )}
+              <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <Camera className="h-3.5 w-3.5 text-white drop-shadow" />
+              </div>
+            </div>
+          </Link>
+          <h1 className="text-3xl md:text-4xl font-serif text-foreground capitalize">{firstName} 🤍</h1>
+        </div>
         <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1.5 mt-2">
           <GripVertical className="h-3 w-3" /> {t("dashboard.drag_to_rearrange")}
         </p>
