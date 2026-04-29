@@ -9,6 +9,7 @@ import {
   resolveWorkspaceRole,
   hasMinRole,
   logActivity,
+  type CollaboratorRole,
 } from "../lib/workspaceAccess";
 
 async function getUserPrimaryEmail(userId: string): Promise<string | null> {
@@ -121,12 +122,26 @@ router.get("/collaborators", requireAuth, async (req, res) => {
           )
       : [];
 
+    const isLowPrivilege = !hasMinRole(myRole as CollaboratorRole, "planner");
     res.json({
-      collaborators: collaborators.map(c => ({
-        ...c,
-        invitedAt: c.invitedAt.toISOString(),
-        acceptedAt: c.acceptedAt?.toISOString() ?? null,
-      })),
+      collaborators: collaborators.map(c => {
+        const base = {
+          id: c.id,
+          profileId: c.profileId,
+          role: c.role,
+          status: c.status,
+          invitedAt: c.invitedAt.toISOString(),
+          acceptedAt: c.acceptedAt?.toISOString() ?? null,
+        };
+        if (isLowPrivilege) return base;
+        return {
+          ...base,
+          inviteeEmail: c.inviteeEmail,
+          inviteeUserId: c.inviteeUserId,
+          inviterUserId: c.inviterUserId,
+          inviteToken: c.inviteToken,
+        };
+      }),
       workspaceName: `${profile.partner1Name} & ${profile.partner2Name}`,
       profileId: profile.id,
       myRole,

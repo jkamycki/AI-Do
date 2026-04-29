@@ -30,14 +30,17 @@ router.get("/workspace/:profileId", requireAuth, async (req, res) => {
       return;
     }
 
-    res.json({
-      profile: {
-        ...result.profile,
-        totalBudget: parseFloat(result.profile.totalBudget as string),
-        updatedAt: result.profile.updatedAt.toISOString(),
-      },
-      role: result.role,
-    });
+    const isVendor = result.role === "vendor";
+    const profileData: Record<string, unknown> = {
+      ...result.profile,
+      totalBudget: parseFloat(result.profile.totalBudget as string),
+      updatedAt: result.profile.updatedAt.toISOString(),
+    };
+    if (isVendor) {
+      delete profileData["guestCollectionToken"];
+      delete profileData["vendorBccEmail"];
+    }
+    res.json({ profile: profileData, role: result.role });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }
@@ -196,6 +199,7 @@ router.get("/workspace/:profileId/hotels", requireAuth, async (req, res) => {
     const profileId = parseInt(req.params["profileId"] ?? "0");
     const result = await getWorkspaceProfile(req.userId!, profileId);
     if (!result) { res.status(403).json({ error: "Access denied." }); return; }
+    if (!hasMinRole(result.role, "planner")) { res.status(403).json({ error: "Insufficient permissions." }); return; }
 
     const ownerUserId = result.profile.userId;
     const rows = await db.select().from(hotelBlocks).where(eq(hotelBlocks.userId, ownerUserId));
@@ -210,6 +214,7 @@ router.get("/workspace/:profileId/wedding-party", requireAuth, async (req, res) 
     const profileId = parseInt(req.params["profileId"] ?? "0");
     const result = await getWorkspaceProfile(req.userId!, profileId);
     if (!result) { res.status(403).json({ error: "Access denied." }); return; }
+    if (!hasMinRole(result.role, "planner")) { res.status(403).json({ error: "Insufficient permissions." }); return; }
 
     const ownerUserId = result.profile.userId;
     const rows = await db.select().from(weddingParty).where(eq(weddingParty.userId, ownerUserId));
@@ -224,6 +229,7 @@ router.get("/workspace/:profileId/seating", requireAuth, async (req, res) => {
     const profileId = parseInt(req.params["profileId"] ?? "0");
     const result = await getWorkspaceProfile(req.userId!, profileId);
     if (!result) { res.status(403).json({ error: "Access denied." }); return; }
+    if (!hasMinRole(result.role, "planner")) { res.status(403).json({ error: "Insufficient permissions." }); return; }
 
     const ownerUserId = result.profile.userId;
     const rows = await db.select().from(seatingCharts).where(eq(seatingCharts.userId, ownerUserId)).orderBy(desc(seatingCharts.createdAt));
@@ -237,10 +243,8 @@ router.get("/workspace/:profileId/activity", requireAuth, async (req, res) => {
   try {
     const profileId = parseInt(req.params["profileId"] ?? "0");
     const result = await getWorkspaceProfile(req.userId!, profileId);
-    if (!result) {
-      res.status(403).json({ error: "Access denied." });
-      return;
-    }
+    if (!result) { res.status(403).json({ error: "Access denied." }); return; }
+    if (!hasMinRole(result.role, "planner")) { res.status(403).json({ error: "Insufficient permissions." }); return; }
 
     const limitParam = req.query["limit"];
     const limit = parseInt(typeof limitParam === "string" ? limitParam : "50");

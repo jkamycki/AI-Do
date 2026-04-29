@@ -4,7 +4,7 @@ import { weddingProfiles } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
-import { resolveProfile, resolveWorkspaceRole, hasMinRole } from "../../lib/workspaceAccess";
+import { resolveProfile, resolveWorkspaceRole, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -16,11 +16,18 @@ router.get("/profile", requireAuth, async (req, res) => {
       res.status(404).json({ error: "No profile found" });
       return;
     }
-    res.json({
+
+    const callerRole = await resolveCallerRole(req);
+    const profileData: Record<string, unknown> = {
       ...p,
       totalBudget: parseFloat(p.totalBudget as string),
       updatedAt: p.updatedAt.toISOString(),
-    });
+    };
+    if (callerRole === "vendor") {
+      delete profileData["guestCollectionToken"];
+      delete profileData["vendorBccEmail"];
+    }
+    res.json(profileData);
   } catch (err) {
     req.log.error(err, "Failed to get profile");
     res.status(500).json({ error: "Internal server error" });

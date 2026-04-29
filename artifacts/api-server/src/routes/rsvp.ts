@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, guests, weddingProfiles } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { resolveProfile } from "../lib/workspaceAccess";
+import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 import { sendEmail } from "../lib/resend";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -22,6 +22,9 @@ router.get("/guests/:id/rsvp-link", requireAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid guest ID" });
+
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
 
     const profile = await resolveProfile(req);
     if (!profile) return res.status(400).json({ error: "No wedding profile found." });
@@ -53,6 +56,9 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid guest ID" });
+
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
 
     const profile = await resolveProfile(req);
     if (!profile) return res.status(400).json({ error: "No wedding profile found." });
@@ -274,6 +280,9 @@ router.post("/rsvp/:token", async (req, res) => {
 
 router.patch("/profile/invitation-settings", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "partner")) return res.status(403).json({ error: "Insufficient permissions." });
+
     const profile = await resolveProfile(req);
     if (!profile) return res.status(400).json({ error: "No wedding profile found." });
 
@@ -294,6 +303,9 @@ router.patch("/profile/invitation-settings", requireAuth, async (req, res) => {
 
 router.post("/profile/generate-invitation-message", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "partner")) return res.status(403).json({ error: "Insufficient permissions." });
+
     const profile = await resolveProfile(req);
     if (!profile) return res.status(400).json({ error: "No wedding profile found." });
 

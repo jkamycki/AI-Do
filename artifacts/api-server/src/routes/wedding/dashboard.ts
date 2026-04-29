@@ -4,12 +4,15 @@ import { weddingProfiles, timelines, budgets, budgetItems, checklistItems, guest
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
-import { resolveProfile } from "../../lib/workspaceAccess";
+import { resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 
 const router = Router();
 
 router.get("/dashboard/summary", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
+
     const effectiveProfile = await resolveProfile(req);
     const profiles = effectiveProfile ? [effectiveProfile] : [];
 

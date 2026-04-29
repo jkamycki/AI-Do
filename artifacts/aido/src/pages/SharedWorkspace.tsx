@@ -94,22 +94,24 @@ export default function SharedWorkspacePage() {
     enabled: enabled && activeWorkspace?.role !== "vendor", refetchInterval: 10000,
   });
 
+  const isPlanner = enabled && activeWorkspace?.role !== "vendor";
+
   const { data: hotelData } = useQuery({
     queryKey: ["workspace-hotels", profileId],
     queryFn: async () => { const r = await authedFetch(`/api/workspace/${profileId}/hotels`); if (!r.ok) return null; return r.json(); },
-    enabled, refetchInterval: 30000,
+    enabled: isPlanner, refetchInterval: 30000,
   });
 
   const { data: partyData } = useQuery({
     queryKey: ["workspace-party", profileId],
     queryFn: async () => { const r = await authedFetch(`/api/workspace/${profileId}/wedding-party`); if (!r.ok) return null; return r.json(); },
-    enabled, refetchInterval: 30000,
+    enabled: isPlanner, refetchInterval: 30000,
   });
 
   const { data: seatingData } = useQuery({
     queryKey: ["workspace-seating", profileId],
     queryFn: async () => { const r = await authedFetch(`/api/workspace/${profileId}/seating`); if (!r.ok) return null; return r.json(); },
-    enabled, refetchInterval: 30000,
+    enabled: isPlanner, refetchInterval: 30000,
   });
 
   if (!activeWorkspace) {
@@ -359,57 +361,61 @@ export default function SharedWorkspacePage() {
               </div>
             ) : <div />}
 
-            {/* Wedding Party */}
-            <div className="bg-card border border-border/60 rounded-2xl p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-3">
-                <LayoutGrid className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">Wedding Party</span>
-              </div>
-              {partyList.length > 0 ? (
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-2xl font-serif font-semibold text-foreground">{partyList.length}</span>
-                    <div className="text-xs text-muted-foreground leading-tight">
-                      <div>{partyList.filter(m => m.side === "bride").length} bride side</div>
-                      <div>{partyList.filter(m => m.side === "groom").length} groom side</div>
-                    </div>
-                  </div>
-                  {partyList.slice(0, 3).map(m => (
-                    <div key={m.id} className="flex items-center justify-between">
-                      <span className="text-xs text-foreground truncate max-w-[120px]">{m.name}</span>
-                      <span className="text-[10px] text-muted-foreground capitalize">{m.role}</span>
-                    </div>
-                  ))}
-                  {partyList.length > 3 && <p className="text-[10px] text-muted-foreground">+{partyList.length - 3} more</p>}
+            {/* Wedding Party (planner+ only) */}
+            {role !== "vendor" ? (
+              <div className="bg-card border border-border/60 rounded-2xl p-4">
+                <div className="flex items-center gap-2 text-muted-foreground mb-3">
+                  <LayoutGrid className="h-4 w-4" />
+                  <span className="text-xs font-medium uppercase tracking-wider">Wedding Party</span>
                 </div>
-              ) : <p className="text-xs text-muted-foreground">No members added yet</p>}
-            </div>
-
-            {/* Seating */}
-            <div className="bg-card border border-border/60 rounded-2xl p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-3">
-                <Armchair className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">Seating</span>
-              </div>
-              {chartList.length > 0 ? (() => {
-                const latest = chartList[0];
-                const tableCount = latest.tables?.length ?? latest.tableCount ?? 0;
-                const totalSeated = latest.tables?.reduce((sum, t) => sum + t.guests.length, 0) ?? 0;
-                return (
+                {partyList.length > 0 ? (
                   <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-2xl font-serif font-semibold text-foreground">{chartList.length}</span>
-                      <span className="text-xs text-muted-foreground">chart{chartList.length !== 1 ? "s" : ""}</span>
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-2xl font-serif font-semibold text-foreground">{partyList.length}</span>
+                      <div className="text-xs text-muted-foreground leading-tight">
+                        <div>{partyList.filter(m => m.side === "bride").length} bride side</div>
+                        <div>{partyList.filter(m => m.side === "groom").length} groom side</div>
+                      </div>
                     </div>
-                    <p className="text-xs font-medium text-foreground truncate">{latest.name}</p>
-                    <div className="text-xs text-muted-foreground space-y-0.5">
-                      {tableCount > 0 && <div>{tableCount} tables</div>}
-                      {totalSeated > 0 && <div>{totalSeated} guests seated</div>}
-                    </div>
+                    {partyList.slice(0, 3).map(m => (
+                      <div key={m.id} className="flex items-center justify-between">
+                        <span className="text-xs text-foreground truncate max-w-[120px]">{m.name}</span>
+                        <span className="text-[10px] text-muted-foreground capitalize">{m.role}</span>
+                      </div>
+                    ))}
+                    {partyList.length > 3 && <p className="text-[10px] text-muted-foreground">+{partyList.length - 3} more</p>}
                   </div>
-                );
-              })() : <p className="text-xs text-muted-foreground">No seating charts yet</p>}
-            </div>
+                ) : <p className="text-xs text-muted-foreground">No members added yet</p>}
+              </div>
+            ) : <div />}
+
+            {/* Seating (planner+ only) */}
+            {role !== "vendor" ? (
+              <div className="bg-card border border-border/60 rounded-2xl p-4">
+                <div className="flex items-center gap-2 text-muted-foreground mb-3">
+                  <Armchair className="h-4 w-4" />
+                  <span className="text-xs font-medium uppercase tracking-wider">Seating</span>
+                </div>
+                {chartList.length > 0 ? (() => {
+                  const latest = chartList[0];
+                  const tableCount = latest.tables?.length ?? latest.tableCount ?? 0;
+                  const totalSeated = latest.tables?.reduce((sum, t) => sum + t.guests.length, 0) ?? 0;
+                  return (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-2xl font-serif font-semibold text-foreground">{chartList.length}</span>
+                        <span className="text-xs text-muted-foreground">chart{chartList.length !== 1 ? "s" : ""}</span>
+                      </div>
+                      <p className="text-xs font-medium text-foreground truncate">{latest.name}</p>
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        {tableCount > 0 && <div>{tableCount} tables</div>}
+                        {totalSeated > 0 && <div>{totalSeated} guests seated</div>}
+                      </div>
+                    </div>
+                  );
+                })() : <p className="text-xs text-muted-foreground">No seating charts yet</p>}
+              </div>
+            ) : <div />}
           </div>
 
           {/* Timeline + Budget/Checklist */}
