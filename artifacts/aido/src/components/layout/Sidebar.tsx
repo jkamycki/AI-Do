@@ -29,8 +29,15 @@ import {
   Flower2,
   FileText,
   Sparkles,
+  Camera,
+  ImagePlus,
+  Trash2,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
+import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 
 const navSections = [
   {
@@ -197,6 +204,52 @@ export function Sidebar() {
   const { getToken, isSignedIn } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const { t } = useTranslation();
+  const { toast } = useToast();
+  const picInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPic, setUploadingPic] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+
+  const handlePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max size is 10 MB.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.readAsDataURL(file);
+    if (picInputRef.current) picInputRef.current.value = "";
+  };
+
+  const handleCropConfirm = async (croppedFile: File) => {
+    setCropSrc(null);
+    if (!user) return;
+    setUploadingPic(true);
+    try {
+      await user.setProfileImage({ file: croppedFile });
+      toast({ title: "Profile picture updated!" });
+    } catch {
+      toast({ title: "Failed to update photo", variant: "destructive" });
+    } finally {
+      setUploadingPic(false);
+    }
+  };
+
+  const handleRemovePic = async () => {
+    if (!user) return;
+    setUploadingPic(true);
+    try {
+      await user.setProfileImage({ file: null });
+      toast({ title: "Profile picture removed" });
+    } catch {
+      toast({ title: "Failed to remove photo", variant: "destructive" });
+    } finally {
+      setUploadingPic(false);
+    }
+  };
+
+  const firstName = user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] ?? "";
 
   const { data: adminCheck } = useQuery({
     queryKey: ["admin-check"],
@@ -293,6 +346,21 @@ export function Sidebar() {
 
   return (
     <>
+      {cropSrc && (
+        <AvatarCropDialog
+          imageSrc={cropSrc}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
+      <input
+        ref={picInputRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp"
+        className="hidden"
+        onChange={handlePicChange}
+      />
+
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b border-primary/10 z-50 flex items-center justify-between px-3">
         <Button
           variant="ghost"
@@ -309,6 +377,58 @@ export function Sidebar() {
             BETA
           </span>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild disabled={uploadingPic}>
+            <button
+              type="button"
+              className="relative flex-shrink-0 focus:outline-none disabled:opacity-70"
+              title="Edit profile picture"
+            >
+              {user?.imageUrl ? (
+                <img
+                  src={user.imageUrl}
+                  alt={firstName}
+                  className="w-9 h-9 rounded-full object-cover ring-2 ring-primary/20 shadow-sm"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-primary/15 ring-2 ring-primary/20 flex items-center justify-center shadow-sm">
+                  <span className="text-primary font-semibold text-sm capitalize">{firstName[0]}</span>
+                </div>
+              )}
+              {uploadingPic ? (
+                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center ring-2 ring-background">
+                  <div className="h-2 w-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                </span>
+              ) : (
+                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center ring-2 ring-background">
+                  <Pencil className="h-2 w-2 text-white" />
+                </span>
+              )}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem
+              className="gap-2 cursor-pointer"
+              onClick={() => picInputRef.current?.click()}
+            >
+              {user?.imageUrl
+                ? <><Camera className="h-4 w-4" /> Replace photo</>
+                : <><ImagePlus className="h-4 w-4" /> Add photo</>
+              }
+            </DropdownMenuItem>
+            {user?.imageUrl && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                  onClick={handleRemovePic}
+                >
+                  <Trash2 className="h-4 w-4" /> Remove photo
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div
