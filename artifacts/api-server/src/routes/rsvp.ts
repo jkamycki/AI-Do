@@ -5,6 +5,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile } from "../lib/workspaceAccess";
 import { sendEmail } from "../lib/resend";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { openai } from "@workspace/integrations-openai-ai-server";
 import crypto from "crypto";
 
 const objectStorageService = new ObjectStorageService();
@@ -288,6 +289,57 @@ router.patch("/profile/invitation-settings", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error(err, "Failed to save invitation settings");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/profile/generate-invitation-message", requireAuth, async (req, res) => {
+  try {
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(400).json({ error: "No wedding profile found." });
+
+    const { tone = "romantic", details = "" } = req.body;
+
+    const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" and ");
+    const dateStr = profile.weddingDate
+      ? new Date(profile.weddingDate).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+      : null;
+    const venue = profile.venue ?? null;
+
+    const toneGuide: Record<string, string> = {
+      romantic:  "warm, poetic, and heartfelt — classic wedding invitation language",
+      formal:    "formal and elegant, like a traditional printed wedding invitation",
+      casual:    "friendly, warm, and conversational — like a note from close friends",
+      playful:   "fun, light-hearted, and a little whimsical",
+    };
+
+    const context = [
+      couple && `Couple: ${couple}`,
+      dateStr && `Wedding date: ${dateStr}`,
+      venue && `Venue: ${venue}`,
+      details && `Extra details from the couple: ${details}`,
+    ].filter(Boolean).join("\n");
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You write short, beautiful custom messages for digital wedding invitations. The message appears directly below the couple's names on their RSVP page. Write in ${toneGuide[tone] ?? toneGuide.romantic} style. Keep it to 1–3 sentences, max 300 characters. No salutations, no "Dear guest". Output only the message text — no quotes, no labels.`,
+        },
+        {
+          role: "user",
+          content: context,
+        },
+      ],
+      max_tokens: 150,
+      temperature: 0.85,
+    });
+
+    const message = completion.choices[0]?.message?.content?.trim() ?? "";
+    res.json({ message });
+  } catch (err) {
+    req.log.error(err, "Failed to generate invitation message");
+    res.status(500).json({ error: "Failed to generate message" });
   }
 });
 

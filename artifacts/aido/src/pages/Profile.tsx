@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarIcon, Save, RotateCcw, ImageIcon, Upload, Trash2, Loader2 } from "lucide-react";
+import { CalendarIcon, Save, RotateCcw, ImageIcon, Upload, Trash2, Loader2, Sparkles, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useUpload } from "@workspace/object-storage-web";
 
@@ -545,16 +545,51 @@ function InvitationPhotoCard() {
   const [saving, setSaving] = useState(false);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [removingPhoto, setRemovingPhoto] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [aiTone, setAiTone] = useState("romantic");
+  const [aiDetails, setAiDetails] = useState("");
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (profile) {
       const p = (profile as Record<string, unknown>).invitationPhotoUrl as string | null ?? null;
-      const m = (profile as Record<string, unknown>).invitationMessage as string | null ?? "";
+      const m = (profile as Record<string, unknown>).invitationMessage as string | null ?? null;
+      const p1 = (profile as Record<string, unknown>).partner1Name as string | null ?? "";
+      const p2 = (profile as Record<string, unknown>).partner2Name as string | null ?? "";
       setPhotoUrl(p);
-      setMessage(m ?? "");
+      if (m) {
+        setMessage(m);
+      } else if (p1 || p2) {
+        const couple = [p1, p2].filter(Boolean).join(" & ");
+        setMessage(`Together with their families, ${couple} joyfully invite you to celebrate their wedding day with them.`);
+      }
       if (p) setPreviewSrc(`/api/storage/objects/${p.replace("/objects/", "")}`);
     }
   }, [profile]);
+
+  const generateMessage = async () => {
+    setGenerating(true);
+    try {
+      const token = await getToken();
+      const res = await fetch("/api/profile/generate-invitation-message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({ tone: aiTone, details: aiDetails }),
+      });
+      if (!res.ok) throw new Error("Generation failed");
+      const data = await res.json();
+      setMessage(data.message);
+      setShowAiPanel(false);
+    } catch {
+      toast({ title: "Failed to generate message", variant: "destructive" });
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const { uploadFile, isUploading } = useUpload({
     getToken,
@@ -703,7 +738,66 @@ function InvitationPhotoCard() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Custom Invitation Message <span className="text-muted-foreground font-normal">(optional)</span></label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-foreground">
+              Invitation Message <span className="text-muted-foreground font-normal">(optional)</span>
+            </label>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs h-7 px-2.5 border-primary/30 text-primary hover:bg-primary/5"
+              onClick={() => setShowAiPanel(v => !v)}
+            >
+              <Sparkles className="h-3 w-3" />
+              AI Generate
+              {showAiPanel ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </Button>
+          </div>
+
+          {showAiPanel && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+              <p className="text-xs text-muted-foreground font-medium">AI will write a message using your wedding details. Pick a tone and add any extras.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Tone</label>
+                  <Select value={aiTone} onValueChange={setAiTone}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="romantic">Romantic</SelectItem>
+                      <SelectItem value="formal">Formal & Elegant</SelectItem>
+                      <SelectItem value="casual">Casual & Warm</SelectItem>
+                      <SelectItem value="playful">Playful</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Extra details <span className="text-muted-foreground font-normal">(optional)</span></label>
+                  <input
+                    className="w-full h-8 px-2.5 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="e.g. outdoor garden ceremony"
+                    value={aiDetails}
+                    onChange={e => setAiDetails(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); generateMessage(); } }}
+                  />
+                </div>
+              </div>
+              <Button
+                size="sm"
+                className="gap-2 w-full"
+                onClick={generateMessage}
+                disabled={generating}
+              >
+                {generating
+                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating…</>
+                  : <><Sparkles className="h-3.5 w-3.5" /> Generate Message</>
+                }
+              </Button>
+            </div>
+          )}
+
           <Textarea
             placeholder="e.g. Together with their families, we joyfully invite you to celebrate our wedding…"
             value={message}
@@ -712,7 +806,23 @@ function InvitationPhotoCard() {
             maxLength={400}
             className="resize-none"
           />
-          <p className="text-xs text-muted-foreground text-right">{message.length}/400</p>
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => {
+                const p1 = (profile as Record<string, unknown>)?.partner1Name as string ?? "";
+                const p2 = (profile as Record<string, unknown>)?.partner2Name as string ?? "";
+                const couple = [p1, p2].filter(Boolean).join(" & ");
+                setMessage(couple
+                  ? `Together with their families, ${couple} joyfully invite you to celebrate their wedding day with them.`
+                  : "Together with their families, we joyfully invite you to celebrate our wedding day with us.");
+              }}
+            >
+              <RefreshCw className="inline h-3 w-3 mr-1" />Reset to template
+            </button>
+            <p className="text-xs text-muted-foreground">{message.length}/400</p>
+          </div>
         </div>
 
         <div className="flex justify-end">
