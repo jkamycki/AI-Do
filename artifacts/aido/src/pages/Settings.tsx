@@ -28,12 +28,12 @@ type CollabStatus = "pending" | "active" | "declined";
 interface Collaborator {
   id: number;
   profileId: number;
-  inviterUserId: string;
-  inviteeEmail: string;
-  inviteeUserId: string | null;
+  inviterUserId?: string | null;
+  inviteeEmail?: string | null;
+  inviteeUserId?: string | null;
   role: CollabRole;
   status: CollabStatus;
-  inviteToken: string;
+  inviteToken?: string | null;
   invitedAt: string;
   acceptedAt: string | null;
 }
@@ -651,10 +651,10 @@ export default function SettingsPage() {
                     return (
                       <div key={collab.id} className="flex items-center gap-4 p-4 rounded-xl border border-border/60 hover:border-primary/20 transition-colors bg-card">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
-                          {collab.inviteeEmail[0].toUpperCase()}
+                          {collab.inviteeEmail ? collab.inviteeEmail[0].toUpperCase() : collab.role[0].toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground truncate">{collab.inviteeEmail}</p>
+                          <p className="font-medium text-foreground truncate">{collab.inviteeEmail ?? `${collab.role} collaborator`}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {t("settings.invited_on", { date: new Date(collab.invitedAt).toLocaleDateString() })}
                             {collab.acceptedAt && t("settings.accepted_on", { date: new Date(collab.acceptedAt).toLocaleDateString() })}

@@ -162,6 +162,7 @@ router.get("/workspace/:profileId/guests", requireAuth, async (req, res) => {
     const profileId = parseInt(req.params["profileId"] ?? "0");
     const result = await getWorkspaceProfile(req.userId!, profileId);
     if (!result) { res.status(403).json({ error: "Access denied." }); return; }
+    if (!hasMinRole(result.role, "planner")) { res.status(403).json({ error: "Insufficient permissions." }); return; }
 
     const rows = await db.select().from(guests).where(eq(guests.profileId, profileId));
     const plusOneCount = rows.filter(g => g.plusOne).length;
