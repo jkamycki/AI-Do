@@ -88,7 +88,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         : null;
 
       const photoImgTag = profile.invitationPhotoUrl
-        ? `<tr><td style="padding:0;"><img src="${origin}/rsvp/${token}/photo" alt="Wedding Photo" style="width:100%;max-height:320px;object-fit:cover;display:block;"/></td></tr>`
+        ? `<tr><td style="padding:0;"><img src="${origin}/api/rsvp/${token}/photo" alt="Wedding Photo" style="width:100%;max-height:320px;object-fit:cover;display:block;"/></td></tr>`
         : "";
       const customMsg = profile.invitationMessage
         ? `<p style="color:#555;font-size:15px;line-height:1.7;margin:0 0 24px;font-style:italic;">${profile.invitationMessage}</p>`
