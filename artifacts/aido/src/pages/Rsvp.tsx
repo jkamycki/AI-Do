@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -28,6 +29,7 @@ const schema = z.object({
   plusOne: z.boolean().default(false),
   plusOneName: z.string().optional(),
   plusOneMealChoice: z.string().optional(),
+  dietaryRestrictions: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -75,6 +77,7 @@ export default function Rsvp() {
       plusOne: false,
       plusOneName: "",
       plusOneMealChoice: "",
+      dietaryRestrictions: "",
     },
   });
 
@@ -365,6 +368,27 @@ export default function Rsvp() {
                           </div>
                         )}
                       </div>
+
+                      <FormField
+                        control={form.control}
+                        name="dietaryRestrictions"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white/80">
+                              Dietary Restrictions / Additional Notes
+                            </FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="e.g. vegetarian, gluten-free, nut allergy — leave blank if none"
+                                className="bg-white/10 border-white/15 text-white placeholder:text-white/30 focus:border-primary resize-none min-h-[80px]"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
                     </div>
                   )}
 
@@ -434,6 +458,12 @@ export default function Rsvp() {
                       <div className="flex justify-between">
                         <span className="text-white/50">Their Meal</span>
                         <span className="text-white font-medium">{mealLabel(pendingData.plusOneMealChoice)}</span>
+                      </div>
+                    )}
+                    {pendingData.dietaryRestrictions && (
+                      <div className="flex flex-col gap-0.5 pt-1 border-t border-white/10 mt-1">
+                        <span className="text-white/50">Dietary / Notes</span>
+                        <span className="text-white font-medium">{pendingData.dietaryRestrictions}</span>
                       </div>
                     )}
                   </div>

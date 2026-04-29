@@ -230,7 +230,7 @@ router.post("/rsvp/:token", async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: "Invalid or expired RSVP link." });
     const guest = rows[0];
 
-    const { attendance, mealChoice, plusOne, plusOneName, plusOneMealChoice } = req.body;
+    const { attendance, mealChoice, plusOne, plusOneName, plusOneMealChoice, dietaryRestrictions } = req.body;
 
     if (attendance !== "attending" && attendance !== "declined") {
       return res.status(400).json({ error: "Please select Accept or Decline." });
@@ -238,6 +238,9 @@ router.post("/rsvp/:token", async (req, res) => {
 
     const updateData: Partial<typeof guests.$inferInsert> = {
       rsvpStatus: attendance,
+      dietaryNotes: typeof dietaryRestrictions === "string" && dietaryRestrictions.trim()
+        ? dietaryRestrictions.trim()
+        : null,
     };
 
     if (attendance === "attending") {
