@@ -120,7 +120,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           <p style="color:#999;font-size:12px;margin:24px 0 0;">Or copy this link: <span style="color:#7B2FBE;">${rsvpUrl}</span></p>
         </td></tr>
         <tr><td style="border-top:1px solid #f0eee8;padding:20px 40px;text-align:center;">
-          <p style="color:#aaa;font-size:11px;margin:0;">Powered by <strong>A.IDO</strong> — AI Wedding Planning OS</p>
+          <p style="color:#aaa;font-size:11px;margin:0;">Planning your own wedding? <a href="https://aidowedding.net" style="color:#7B2FBE;text-decoration:none;font-weight:600;">Try A.IDO free →</a></p>
         </td></tr>
       </table>
     </td></tr>
