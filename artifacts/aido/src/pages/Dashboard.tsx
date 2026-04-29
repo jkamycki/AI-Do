@@ -2,7 +2,7 @@ import { useGetDashboardSummary } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@clerk/react";
 import { useLocation } from "wouter";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ import {
   Camera,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
 const API = import.meta.env.VITE_API_URL ?? "";
@@ -516,6 +517,28 @@ export default function Dashboard() {
     enabled: !!summary,
   });
   const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingWizard(summary?.hasProfile ?? true);
+  const { toast } = useToast();
+  const picInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPic, setUploadingPic] = useState(false);
+
+  const handlePicChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max size is 5 MB.", variant: "destructive" });
+      return;
+    }
+    setUploadingPic(true);
+    try {
+      await user.setProfileImage({ file });
+      toast({ title: "Profile picture updated!" });
+    } catch {
+      toast({ title: "Failed to update photo", variant: "destructive" });
+    } finally {
+      setUploadingPic(false);
+      if (picInputRef.current) picInputRef.current.value = "";
+    }
+  };
 
   // Non-owner collaborators always land on the shared workspace, not their own dashboard
   if (activeWorkspace && activeWorkspace.role !== "owner" && !isLoading) {
@@ -566,26 +589,40 @@ export default function Dashboard() {
       <div>
         <p className="text-sm text-muted-foreground font-medium">{t(getGreetingKey())},</p>
         <div className="flex items-center gap-3 mt-0.5">
-          <Link href="/profile">
-            <div className="relative group flex-shrink-0 cursor-pointer">
-              {user?.imageUrl ? (
-                <img
-                  src={user.imageUrl}
-                  alt={firstName}
-                  className="w-12 h-12 rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all shadow-sm"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-primary/15 ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all flex items-center justify-center shadow-sm">
-                  <span className="text-primary font-semibold text-lg capitalize">{firstName[0]}</span>
-                </div>
-              )}
-              <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                <Camera className="h-3.5 w-3.5 text-white drop-shadow" />
+          <button
+            type="button"
+            onClick={() => picInputRef.current?.click()}
+            disabled={uploadingPic}
+            title="Change profile picture"
+            className="relative group flex-shrink-0 cursor-pointer focus:outline-none disabled:opacity-70"
+          >
+            {user?.imageUrl ? (
+              <img
+                src={user.imageUrl}
+                alt={firstName}
+                className="w-12 h-12 rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all shadow-sm"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-primary/15 ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all flex items-center justify-center shadow-sm">
+                <span className="text-primary font-semibold text-lg capitalize">{firstName[0]}</span>
               </div>
+            )}
+            <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+              {uploadingPic
+                ? <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <Camera className="h-3.5 w-3.5 text-white drop-shadow" />
+              }
             </div>
-          </Link>
+          </button>
           <h1 className="text-3xl md:text-4xl font-serif text-foreground capitalize">{firstName} 🤍</h1>
         </div>
+        <input
+          ref={picInputRef}
+          type="file"
+          accept="image/jpeg,image/jpg,image/png,image/webp"
+          className="hidden"
+          onChange={handlePicChange}
+        />
         <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1.5 mt-2">
           <GripVertical className="h-3 w-3" /> {t("dashboard.drag_to_rearrange")}
         </p>
