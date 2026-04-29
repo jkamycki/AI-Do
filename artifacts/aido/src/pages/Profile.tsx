@@ -548,9 +548,11 @@ function InvitationPhotoCard() {
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [aiDetails, setAiDetails] = useState("");
   const [generating, setGenerating] = useState(false);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (profile) {
+    if (profile && !initializedRef.current) {
+      initializedRef.current = true;
       const p = (profile as Record<string, unknown>).invitationPhotoUrl as string | null ?? null;
       const m = (profile as Record<string, unknown>).invitationMessage as string | null ?? null;
       const p1 = (profile as Record<string, unknown>).partner1Name as string | null ?? "";
