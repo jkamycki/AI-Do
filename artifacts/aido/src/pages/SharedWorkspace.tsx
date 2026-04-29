@@ -82,19 +82,19 @@ export default function SharedWorkspacePage() {
     enabled: enabled && activeWorkspace?.role !== "vendor", refetchInterval: 10000,
   });
 
+  const isPlanner = enabled && activeWorkspace?.role !== "vendor";
+
   const { data: guestData } = useQuery({
     queryKey: ["workspace-guests", profileId],
     queryFn: async () => { const r = await authedFetch(`/api/workspace/${profileId}/guests`); if (!r.ok) return null; return r.json(); },
-    enabled, refetchInterval: 10000,
+    enabled: isPlanner, refetchInterval: 10000,
   });
 
   const { data: vendorData } = useQuery({
     queryKey: ["workspace-vendors", profileId],
     queryFn: async () => { const r = await authedFetch(`/api/workspace/${profileId}/vendors`); if (!r.ok) return null; return r.json(); },
-    enabled: enabled && activeWorkspace?.role !== "vendor", refetchInterval: 10000,
+    enabled: isPlanner, refetchInterval: 10000,
   });
-
-  const isPlanner = enabled && activeWorkspace?.role !== "vendor";
 
   const { data: hotelData } = useQuery({
     queryKey: ["workspace-hotels", profileId],
@@ -265,14 +265,16 @@ export default function SharedWorkspacePage() {
 
           {/* Stat chips */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-card border border-border/60 rounded-2xl p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <Users className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">Guests</span>
+            {role !== "vendor" && (
+              <div className="bg-card border border-border/60 rounded-2xl p-4">
+                <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                  <Users className="h-4 w-4" />
+                  <span className="text-xs font-medium uppercase tracking-wider">Guests</span>
+                </div>
+                <div className="text-2xl font-serif font-semibold text-foreground">{guestTotal}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">incl. plus-ones · {guestAttending} attending</div>
               </div>
-              <div className="text-2xl font-serif font-semibold text-foreground">{guestTotal}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">incl. plus-ones · {guestAttending} attending</div>
-            </div>
+            )}
             <div className="bg-card border border-border/60 rounded-2xl p-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-2">
                 <Clock className="h-4 w-4" />
@@ -306,33 +308,35 @@ export default function SharedWorkspacePage() {
 
           {/* Overview mini-cards: RSVP + Vendors + Wedding Party + Seating */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-            {/* Guest RSVP */}
-            <div className="bg-card border border-border/60 rounded-2xl p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-3">
-                <Users className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">Guest RSVPs</span>
-              </div>
-              {guestTotal > 0 ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /><span className="text-xs text-muted-foreground">Attending</span></div>
-                    <span className="text-sm font-semibold text-emerald-600">{guestAttending}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" /><span className="text-xs text-muted-foreground">Declined</span></div>
-                    <span className="text-sm font-semibold text-red-500">{guestDeclined}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /><span className="text-xs text-muted-foreground">Awaiting</span></div>
-                    <span className="text-sm font-semibold text-amber-600">{guestPending}</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-muted overflow-hidden flex mt-1">
-                    {guestAttending > 0 && <div className="h-full bg-emerald-500" style={{ width: `${(guestAttending / guestTotal) * 100}%` }} />}
-                    {guestDeclined > 0 && <div className="h-full bg-red-400" style={{ width: `${(guestDeclined / guestTotal) * 100}%` }} />}
-                  </div>
+            {/* Guest RSVP (planner+ only) */}
+            {role !== "vendor" ? (
+              <div className="bg-card border border-border/60 rounded-2xl p-4">
+                <div className="flex items-center gap-2 text-muted-foreground mb-3">
+                  <Users className="h-4 w-4" />
+                  <span className="text-xs font-medium uppercase tracking-wider">Guest RSVPs</span>
                 </div>
-              ) : <p className="text-xs text-muted-foreground">No guests added yet</p>}
-            </div>
+                {guestTotal > 0 ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /><span className="text-xs text-muted-foreground">Attending</span></div>
+                      <span className="text-sm font-semibold text-emerald-600">{guestAttending}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" /><span className="text-xs text-muted-foreground">Declined</span></div>
+                      <span className="text-sm font-semibold text-red-500">{guestDeclined}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /><span className="text-xs text-muted-foreground">Awaiting</span></div>
+                      <span className="text-sm font-semibold text-amber-600">{guestPending}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden flex mt-1">
+                      {guestAttending > 0 && <div className="h-full bg-emerald-500" style={{ width: `${(guestAttending / guestTotal) * 100}%` }} />}
+                      {guestDeclined > 0 && <div className="h-full bg-red-400" style={{ width: `${(guestDeclined / guestTotal) * 100}%` }} />}
+                    </div>
+                  </div>
+                ) : <p className="text-xs text-muted-foreground">No guests added yet</p>}
+              </div>
+            ) : <div />}
 
             {/* Vendors (non-vendor roles only) */}
             {role !== "vendor" ? (
