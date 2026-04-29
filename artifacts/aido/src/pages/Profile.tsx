@@ -568,6 +568,8 @@ function InvitationPhotoCard() {
     }
   }, [profile]);
 
+  const [messageHighlight, setMessageHighlight] = useState(false);
+
   const generateMessage = async () => {
     setGenerating(true);
     try {
@@ -583,8 +585,13 @@ function InvitationPhotoCard() {
       });
       if (!res.ok) throw new Error("Generation failed");
       const data = await res.json();
-      setMessage(data.message);
+      const generated = data.message ?? "";
+      setMessage(generated);
+      setAiDetails("");
       setShowAiPanel(false);
+      setMessageHighlight(true);
+      setTimeout(() => setMessageHighlight(false), 2000);
+      toast({ title: "Message generated!", description: "Scroll down to see it in the message box." });
     } catch {
       toast({ title: "Failed to generate message", variant: "destructive" });
     } finally {
@@ -785,7 +792,7 @@ function InvitationPhotoCard() {
             onChange={e => setMessage(e.target.value)}
             rows={3}
             maxLength={400}
-            className="resize-none"
+            className={`resize-none transition-all duration-300 ${messageHighlight ? "ring-2 ring-primary border-primary bg-primary/5" : ""}`}
           />
           <div className="flex items-center justify-between">
             <button
