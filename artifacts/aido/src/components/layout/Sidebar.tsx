@@ -508,39 +508,6 @@ export function Sidebar() {
         </nav>
 
         <div className="p-4 border-t border-primary/10">
-          {user && (
-            <div className="flex items-center gap-3 px-2 py-2 mb-2 rounded-lg">
-              <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
-                {user.imageUrl ? (
-                  <img
-                    src={user.imageUrl}
-                    alt="avatar"
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="text-primary text-sm font-semibold">
-                    {(
-                      user.firstName?.[0] ??
-                      user.emailAddresses[0]?.emailAddress?.[0] ??
-                      "U"
-                    ).toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-card-foreground truncate">
-                  {user.firstName
-                    ? `${user.firstName} ${user.lastName ?? ""}`.trim()
-                    : (user.emailAddresses[0]?.emailAddress ?? "")}
-                </p>
-                {user.firstName && (
-                  <p className="text-xs text-muted-foreground truncate">
-                    {user.emailAddresses[0]?.emailAddress ?? ""}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
           <Button
             variant="ghost"
             size="sm"
