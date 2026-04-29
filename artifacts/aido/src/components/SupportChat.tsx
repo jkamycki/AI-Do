@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/react";
 import { useGetProfile } from "@workspace/api-client-react";
-import { X, Send, Sparkles, ChevronDown, RotateCcw } from "lucide-react";
+import { X, Send, Sparkles, ChevronDown, RotateCcw, MessageCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 interface Message {
@@ -28,6 +28,7 @@ export function SupportChat() {
   const { getToken } = useAuth();
   const { data: profile } = useGetProfile();
   const [open, setOpen] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -144,23 +145,65 @@ export function SupportChat() {
     setLoading(false);
   };
 
+  const handleHide = () => {
+    setOpen(false);
+    setHidden(true);
+  };
+
+  const handleShow = () => {
+    setHidden(false);
+  };
+
+  if (hidden) {
+    return (
+      <button
+        onClick={handleShow}
+        className="fixed bottom-20 right-0 z-50 flex flex-col items-center gap-1 bg-primary text-primary-foreground pl-2 pr-1.5 py-3 rounded-l-xl shadow-lg hover:pr-2.5 transition-all duration-200 group"
+        aria-label="Open support assistant"
+      >
+        <MessageCircle className="h-4 w-4" />
+        {hasUnread && (
+          <span className="w-2 h-2 bg-rose-400 rounded-full" />
+        )}
+        <span
+          className="text-[10px] font-medium leading-none tracking-wide"
+          style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+        >
+          Aria
+        </span>
+      </button>
+    );
+  }
+
   return (
     <>
-      <button
-        onClick={() => setOpen(prev => !prev)}
-        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95
-          ${open ? "bg-primary/90" : "bg-primary"}`}
-        aria-label="Toggle support chat"
-      >
-        {open ? (
-          <ChevronDown className="h-6 w-6 text-white" />
-        ) : (
-          <Sparkles className="h-6 w-6 text-white" />
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1.5">
+        <button
+          onClick={() => setOpen(prev => !prev)}
+          className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 relative
+            ${open ? "bg-primary/90" : "bg-primary"}`}
+          aria-label="Toggle support chat"
+        >
+          {open ? (
+            <ChevronDown className="h-6 w-6 text-white" />
+          ) : (
+            <Sparkles className="h-6 w-6 text-white" />
+          )}
+          {hasUnread && !open && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full border-2 border-white" />
+          )}
+        </button>
+
+        {!open && (
+          <button
+            onClick={handleHide}
+            className="text-[11px] text-muted-foreground/70 hover:text-muted-foreground transition-colors px-2 py-0.5 rounded-full hover:bg-background/60 backdrop-blur-sm"
+            aria-label="Hide assistant"
+          >
+            Hide
+          </button>
         )}
-        {hasUnread && !open && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full border-2 border-white" />
-        )}
-      </button>
+      </div>
 
       <div
         className={`fixed bottom-24 right-6 z-50 w-[380px] max-h-[580px] bg-card border border-border/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300
@@ -184,8 +227,9 @@ export function SupportChat() {
               <RotateCcw className="h-4 w-4 text-primary-foreground/90" />
             </button>
             <button
-              onClick={() => setOpen(false)}
+              onClick={handleHide}
               className="p-1.5 rounded-lg hover:bg-primary-foreground/15 transition-colors"
+              title="Hide assistant"
             >
               <X className="h-4 w-4 text-primary-foreground/90" />
             </button>
