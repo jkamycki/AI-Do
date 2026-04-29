@@ -34,11 +34,8 @@ type FormData = z.infer<typeof schema>;
 
 const MEAL_OPTIONS = [
   { value: "chicken", label: "Chicken" },
-  { value: "beef", label: "Beef" },
-  { value: "vegetarian", label: "Vegetarian" },
-  { value: "vegan", label: "Vegan" },
+  { value: "steak", label: "Steak" },
   { value: "fish", label: "Fish" },
-  { value: "kids", label: "Kids Meal" },
 ];
 
 function Logo({ className }: { className?: string }) {
@@ -58,6 +55,8 @@ interface RsvpInfo {
   weddingDate: string | null;
   venue: string | null;
   currentStatus: string;
+  hasPhoto: boolean;
+  invitationMessage: string | null;
 }
 
 export default function Rsvp() {
@@ -190,12 +189,31 @@ export default function Rsvp() {
     <div className="dark min-h-screen flex flex-col bg-[hsl(270,20%,10%)]"
       style={{ backgroundImage: "radial-gradient(hsl(40 82% 42% / 0.07) 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
 
-      <div className="w-full py-4 px-6 flex items-center justify-center border-b border-white/10 bg-black/20 backdrop-blur-sm">
-        <Logo className="h-24 w-auto object-contain" />
-      </div>
+      {info.hasPhoto && (
+        <div className="w-full max-h-[55vw] sm:max-h-[420px] overflow-hidden">
+          <img
+            src={`/api/rsvp/${token}/photo`}
+            alt={`${couple}'s wedding`}
+            className="w-full h-full object-cover"
+            style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }}
+          />
+        </div>
+      )}
+
+      {!info.hasPhoto && (
+        <div className="w-full py-4 px-6 flex items-center justify-center border-b border-white/10 bg-black/20 backdrop-blur-sm">
+          <Logo className="h-24 w-auto object-contain" />
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col items-center py-10 px-4">
         <div className="max-w-lg w-full space-y-6">
+
+          {info.hasPhoto && (
+            <div className="flex justify-center pt-2">
+              <Logo className="h-14 w-auto object-contain opacity-90" />
+            </div>
+          )}
 
           <div className="text-center space-y-4 py-4">
             <div className="flex justify-center mb-2">
@@ -215,6 +233,11 @@ export default function Rsvp() {
               )}
               {info.venue && (
                 <p className="text-sm text-white/40 mt-0.5">{info.venue}</p>
+              )}
+              {info.invitationMessage && (
+                <p className="text-sm text-white/70 mt-4 leading-relaxed max-w-md mx-auto italic">
+                  "{info.invitationMessage}"
+                </p>
               )}
             </div>
           </div>
@@ -399,7 +422,6 @@ export default function Rsvp() {
         </div>
       </div>
 
-      {/* Confirmation dialog */}
       <AlertDialog open={!!pendingData} onOpenChange={(open) => { if (!open) setPendingData(null); }}>
         <AlertDialogContent className="dark bg-[hsl(270,20%,12%)] border-white/10 text-white max-w-sm">
           <AlertDialogHeader>

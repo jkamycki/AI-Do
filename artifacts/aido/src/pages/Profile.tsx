@@ -1,20 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useGetProfile, useSaveProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@clerk/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarIcon, Save, RotateCcw } from "lucide-react";
+import { CalendarIcon, Save, RotateCcw, ImageIcon, Upload, Trash2, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useUpload } from "@workspace/object-storage-web";
 
 const LANGUAGES = [
   "English", "Spanish", "French", "German", "Italian", "Portuguese",
@@ -525,6 +528,203 @@ export default function Profile() {
           </Form>
         </CardContent>
       </Card>
+
+      <InvitationPhotoCard />
     </div>
+  );
+}
+
+function InvitationPhotoCard() {
+  const { getToken } = useAuth();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { data: profile, isLoading: profileLoading } = useGetProfile();
+
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [removingPhoto, setRemovingPhoto] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      const p = (profile as Record<string, unknown>).invitationPhotoUrl as string | null ?? null;
+      const m = (profile as Record<string, unknown>).invitationMessage as string | null ?? "";
+      setPhotoUrl(p);
+      setMessage(m ?? "");
+      if (p) setPreviewSrc(`/api/storage/objects/${p.replace("/objects/", "")}`);
+    }
+  }, [profile]);
+
+  const { uploadFile, isUploading } = useUpload({
+    getToken,
+    onSuccess: (resp) => {
+      setPhotoUrl(resp.objectPath);
+      setPreviewSrc(URL.createObjectURL((fileInputRef.current?.files?.[0]) as File));
+    },
+    onError: (err) => toast({ title: "Upload failed", description: err.message, variant: "destructive" }),
+  });
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max size is 5 MB.", variant: "destructive" });
+      return;
+    }
+    const allowed = ["image/jpeg", "image/png", "image/heic", "image/heif"];
+    if (!allowed.includes(file.type) && !file.name.toLowerCase().match(/\.(jpg|jpeg|png|heic)$/)) {
+      toast({ title: "Unsupported format", description: "Please upload a JPG, PNG, or HEIC photo.", variant: "destructive" });
+      return;
+    }
+    setPreviewSrc(URL.createObjectURL(file));
+    await uploadFile(file);
+  };
+
+  const saveSettings = async () => {
+    setSaving(true);
+    try {
+      const token = await getToken();
+      const res = await fetch("/api/profile/invitation-settings", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({ invitationPhotoUrl: photoUrl, invitationMessage: message }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      toast({ title: "Invitation settings saved!" });
+    } catch {
+      toast({ title: "Failed to save", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removePhoto = async () => {
+    setRemovingPhoto(true);
+    setPhotoUrl(null);
+    setPreviewSrc(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    try {
+      const token = await getToken();
+      await fetch("/api/profile/invitation-settings", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({ invitationPhotoUrl: null }),
+      });
+      toast({ title: "Photo removed" });
+    } catch {
+      toast({ title: "Failed to remove photo", variant: "destructive" });
+    } finally {
+      setRemovingPhoto(false);
+    }
+  };
+
+  if (profileLoading) return null;
+
+  return (
+    <Card className="border-none shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-xl font-serif text-primary flex items-center gap-2">
+          <ImageIcon className="h-5 w-5" />
+          Digital Invitation Photo
+        </CardTitle>
+        <CardDescription>
+          Upload a photo that appears at the top of your guests' RSVP page. JPG, PNG, or HEIC — max 5 MB.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="space-y-3">
+          {previewSrc ? (
+            <div className="relative group rounded-xl overflow-hidden border border-border/50 shadow-sm">
+              <img
+                src={previewSrc}
+                alt="Invitation photo preview"
+                className="w-full max-h-72 object-cover"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 gap-3">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="gap-1.5"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  Change Photo
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="gap-1.5"
+                  onClick={removePhoto}
+                  disabled={removingPhoto}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Remove
+                </Button>
+              </div>
+              {isUploading && (
+                <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-2">
+                  <Loader2 className="h-6 w-6 animate-spin text-white" />
+                  <p className="text-white text-sm font-medium">Uploading…</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="w-full border-2 border-dashed border-border rounded-xl py-12 flex flex-col items-center gap-3 text-muted-foreground hover:border-primary/50 hover:text-primary/80 hover:bg-primary/3 transition-all disabled:opacity-50"
+            >
+              {isUploading ? (
+                <><Loader2 className="h-8 w-8 animate-spin" /><p className="text-sm font-medium">Uploading…</p></>
+              ) : (
+                <><Upload className="h-8 w-8" /><div className="text-center"><p className="text-sm font-medium">Click to upload photo</p><p className="text-xs mt-1">JPG, PNG, or HEIC · Max 5 MB</p></div></>
+              )}
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,.heic,.heif"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">Custom Invitation Message <span className="text-muted-foreground font-normal">(optional)</span></label>
+          <Textarea
+            placeholder="e.g. Together with their families, we joyfully invite you to celebrate our wedding…"
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            rows={3}
+            maxLength={400}
+            className="resize-none"
+          />
+          <p className="text-xs text-muted-foreground text-right">{message.length}/400</p>
+        </div>
+
+        <div className="flex justify-end">
+          <Button
+            onClick={saveSettings}
+            disabled={saving || isUploading}
+            className="gap-2 px-6"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving ? "Saving…" : "Save Invitation Settings"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

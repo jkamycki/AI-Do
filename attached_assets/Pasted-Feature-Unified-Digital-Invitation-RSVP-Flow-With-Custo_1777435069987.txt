@@ -1,0 +1,89 @@
+Feature: Unified Digital Invitation + RSVP Flow With Custom Photo Upload
+
+Goal
+
+Integrate the digital invitation and RSVP system into a single, seamless flow. Allow couples to upload a custom photo that appears on the digital invitation guests receive. Preserve the existing RSVP logic, with one modification to meal preferences.
+
+---
+
+Requirements
+
+1. Digital Invitation + RSVP Integration
+
+• The digital invitation should generate a unique link for each event (same as current RSVP links).
+• When a guest opens the link, they should see:• The couple’s uploaded photo
+• The invitation details
+• The RSVP form (same flow as current system)
+
+
+
+2. Couple Photo Upload
+
+• Add a new field in the couple’s dashboard:
+invitationPhoto: File
+• Accept JPG, PNG, or HEIC.
+• Max file size: 5MB.
+• Store in existing storage bucket (or create /invitation-photos/{eventId}.jpg).
+• When generating the digital invite link, embed the photo at the top of the form.
+
+
+3. Digital Invitation Layout
+
+• The uploaded photo should appear:• Full‑width at the top of the page
+• With rounded corners or soft shadow (optional)
+
+• Below the photo:• Couple names
+• Event date/time
+• Venue
+• Custom message (if provided)
+
+• Below that:• The RSVP form (unchanged except meal options)
+
+
+
+4. RSVP Flow (Existing Logic)
+
+Keep all current RSVP functionality:
+
+• Guest name input
+• Number of attendees
+• Contact info
+• Notes/allergies
+• Confirmation screen
+• Backend storage
+• Email notifications (if enabled)
+
+
+5. Meal Preference Update
+
+Replace the current meal options with:
+
+Chicken
+Steak
+Fish
+
+
+No additional options should appear unless manually added by the couple in the dashboard (optional future enhancement).
+
+6. Backend Changes
+
+• Add invitationPhotoUrl to event schema.
+• Update RSVP form renderer to include the photo if present.
+• Ensure the RSVP submission pipeline remains unchanged.
+
+
+7. Frontend Changes
+
+• Add photo upload UI in the event setup or invitation builder.
+• Add preview of the digital invitation with the uploaded photo.
+• Update RSVP form component to display the photo at the top.
+
+
+8. Optional Enhancements (Future‑Ready)
+
+Not required now, but easy to add later:
+
+• Photo cropping tool
+• Multiple photo carousel
+• Custom invitation themes
+• Animated invite templates

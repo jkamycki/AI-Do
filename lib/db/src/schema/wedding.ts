@@ -27,6 +27,8 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   preferredLanguage: text("preferred_language").default("English"),
   guestCollectionToken: text("guest_collection_token"),
   vendorBccEmail: text("vendor_bcc_email"),
+  invitationPhotoUrl: text("invitation_photo_url"),
+  invitationMessage: text("invitation_message"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -295,6 +297,7 @@ export const guests = pgTable("guests", {
   guestGroup: text("guest_group"),
   plusOne: boolean("plus_one").notNull().default(false),
   plusOneName: text("plus_one_name"),
+  plusOneMealChoice: text("plus_one_meal_choice"),
   tableAssignment: text("table_assignment"),
   notes: text("notes"),
   phone: text("phone"),

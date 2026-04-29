@@ -3,8 +3,11 @@ import { db, guests, weddingProfiles } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile } from "../lib/workspaceAccess";
-import { sendEmail, FROM_NAME } from "../lib/resend";
+import { sendEmail } from "../lib/resend";
+import { ObjectStorageService } from "../lib/objectStorage";
 import crypto from "crypto";
+
+const objectStorageService = new ObjectStorageService();
 
 const router = Router();
 
@@ -83,6 +86,13 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           })()
         : null;
 
+      const photoImgTag = profile.invitationPhotoUrl
+        ? `<tr><td style="padding:0;"><img src="${origin}/rsvp/${token}/photo" alt="Wedding Photo" style="width:100%;max-height:320px;object-fit:cover;display:block;"/></td></tr>`
+        : "";
+      const customMsg = profile.invitationMessage
+        ? `<p style="color:#555;font-size:15px;line-height:1.7;margin:0 0 24px;font-style:italic;">${profile.invitationMessage}</p>`
+        : "";
+
       const html = `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
@@ -90,6 +100,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf9f7;padding:40px 16px;">
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
+        ${photoImgTag}
         <tr><td style="background:linear-gradient(135deg,#E91E8C,#7B2FBE);padding:32px 40px;text-align:center;">
           <p style="color:rgba(255,255,255,0.85);font-size:11px;letter-spacing:3px;text-transform:uppercase;margin:0 0 12px;">You're Invited</p>
           <h1 style="color:#ffffff;font-size:28px;margin:0;font-weight:400;">${couple}</h1>
@@ -98,6 +109,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         </td></tr>
         <tr><td style="padding:36px 40px;text-align:center;">
           <p style="color:#555;font-size:16px;line-height:1.6;margin:0 0 8px;">Dear <strong>${guest.name}</strong>,</p>
+          ${customMsg}
           <p style="color:#555;font-size:15px;line-height:1.7;margin:0 0 32px;">
             We would be so honored to have you celebrate with us! Please take a moment to let us know if you can make it.
           </p>
@@ -133,6 +145,45 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
   }
 });
 
+router.get("/rsvp/:token/photo", async (req, res) => {
+  try {
+    const rows = await db
+      .select({ profileId: guests.profileId })
+      .from(guests)
+      .where(eq(guests.rsvpToken, req.params.token))
+      .limit(1);
+
+    if (!rows.length) return res.status(404).end();
+
+    const profiles = await db
+      .select({ invitationPhotoUrl: weddingProfiles.invitationPhotoUrl })
+      .from(weddingProfiles)
+      .where(eq(weddingProfiles.id, rows[0].profileId))
+      .limit(1);
+
+    const photoUrl = profiles[0]?.invitationPhotoUrl;
+    if (!photoUrl) return res.status(404).end();
+
+    const file = await objectStorageService.getObjectEntityFile(photoUrl);
+    const response = await objectStorageService.downloadObject(file, 86400);
+
+    const contentType = response.headers.get("Content-Type") ?? "image/jpeg";
+    const cacheControl = response.headers.get("Cache-Control") ?? "public, max-age=86400";
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", cacheControl);
+
+    if (response.body) {
+      const { Readable } = await import("stream");
+      Readable.fromWeb(response.body as import("stream/web").ReadableStream).pipe(res);
+    } else {
+      res.status(404).end();
+    }
+  } catch (err) {
+    req.log.error(err, "Failed to serve invitation photo");
+    res.status(404).end();
+  }
+});
+
 router.get("/rsvp/:token", async (req, res) => {
   try {
     const rows = await db
@@ -159,6 +210,8 @@ router.get("/rsvp/:token", async (req, res) => {
       weddingDate: profile?.weddingDate ?? null,
       venue: profile?.venue ?? null,
       currentStatus: guest.rsvpStatus,
+      hasPhoto: !!(profile?.invitationPhotoUrl),
+      invitationMessage: profile?.invitationMessage ?? null,
     });
   } catch (err) {
     req.log.error(err, "Failed to get RSVP info");
@@ -177,7 +230,7 @@ router.post("/rsvp/:token", async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: "Invalid or expired RSVP link." });
     const guest = rows[0];
 
-    const { attendance, mealChoice, plusOne, plusOneName } = req.body;
+    const { attendance, mealChoice, plusOne, plusOneName, plusOneMealChoice } = req.body;
 
     if (attendance !== "attending" && attendance !== "declined") {
       return res.status(400).json({ error: "Please select Accept or Decline." });
@@ -196,10 +249,14 @@ router.post("/rsvp/:token", async (req, res) => {
         updateData.plusOneName = plusOne && typeof plusOneName === "string" && plusOneName.trim()
           ? plusOneName.trim()
           : null;
+        updateData.plusOneMealChoice = plusOne && typeof plusOneMealChoice === "string" && plusOneMealChoice.trim()
+          ? plusOneMealChoice.trim()
+          : null;
       }
     } else {
       updateData.plusOne = false;
       updateData.plusOneName = null;
+      updateData.plusOneMealChoice = null;
     }
 
     await db.update(guests).set(updateData).where(eq(guests.id, guest.id));
@@ -207,6 +264,26 @@ router.post("/rsvp/:token", async (req, res) => {
     res.json({ success: true, status: attendance });
   } catch (err) {
     req.log.error(err, "Failed to submit RSVP");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/profile/invitation-settings", requireAuth, async (req, res) => {
+  try {
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(400).json({ error: "No wedding profile found." });
+
+    const { invitationPhotoUrl, invitationMessage } = req.body;
+
+    const updateData: Partial<typeof weddingProfiles.$inferInsert> = {};
+    if (invitationPhotoUrl !== undefined) updateData.invitationPhotoUrl = invitationPhotoUrl || null;
+    if (invitationMessage !== undefined) updateData.invitationMessage = invitationMessage || null;
+
+    await db.update(weddingProfiles).set(updateData).where(eq(weddingProfiles.id, profile.id));
+
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "Failed to save invitation settings");
     res.status(500).json({ error: "Internal server error" });
   }
 });
