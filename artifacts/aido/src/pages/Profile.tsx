@@ -635,9 +635,10 @@ function InvitationPhotoCard() {
         <CardTitle className="text-xl font-serif text-primary flex items-center gap-2">
           <ImageIcon className="h-5 w-5" />
           Digital Invitation Photo
+          <span className="text-xs font-sans font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Optional</span>
         </CardTitle>
         <CardDescription>
-          Upload a photo that appears at the top of your guests' RSVP page. JPG, PNG, or HEIC — max 5 MB.
+          Optionally add a photo that appears at the top of your digital invitation when guests open their RSVP link. Not used for printed materials. JPG, PNG, or HEIC — max 5 MB.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -688,7 +689,7 @@ function InvitationPhotoCard() {
               {isUploading ? (
                 <><Loader2 className="h-8 w-8 animate-spin" /><p className="text-sm font-medium">Uploading…</p></>
               ) : (
-                <><Upload className="h-8 w-8" /><div className="text-center"><p className="text-sm font-medium">Click to upload photo</p><p className="text-xs mt-1">JPG, PNG, or HEIC · Max 5 MB</p></div></>
+                <><Upload className="h-8 w-8" /><div className="text-center"><p className="text-sm font-medium">Click to upload a photo</p><p className="text-xs mt-1">Optional · For digital invitations only · JPG, PNG, or HEIC · Max 5 MB</p></div></>
               )}
             </button>
           )}
