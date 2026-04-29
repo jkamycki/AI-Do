@@ -39,6 +39,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 import { useTranslation } from "react-i18next";
 
 const API = import.meta.env.VITE_API_URL ?? "";
@@ -523,23 +524,32 @@ export default function Dashboard() {
   const { toast } = useToast();
   const picInputRef = useRef<HTMLInputElement>(null);
   const [uploadingPic, setUploadingPic] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
-  const handlePicChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Max size is 5 MB.", variant: "destructive" });
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max size is 10 MB.", variant: "destructive" });
       return;
     }
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.readAsDataURL(file);
+    if (picInputRef.current) picInputRef.current.value = "";
+  };
+
+  const handleCropConfirm = async (croppedFile: File) => {
+    setCropSrc(null);
+    if (!user) return;
     setUploadingPic(true);
     try {
-      await user.setProfileImage({ file });
+      await user.setProfileImage({ file: croppedFile });
       toast({ title: "Profile picture updated!" });
     } catch {
       toast({ title: "Failed to update photo", variant: "destructive" });
     } finally {
       setUploadingPic(false);
-      if (picInputRef.current) picInputRef.current.value = "";
     }
   };
 
@@ -600,6 +610,13 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <OnboardingWizard open={showOnboarding} onDismiss={dismissOnboarding} />
+      {cropSrc && (
+        <AvatarCropDialog
+          imageSrc={cropSrc}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
 
       {/* Greeting */}
       <div>
