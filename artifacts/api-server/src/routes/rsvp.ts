@@ -324,7 +324,7 @@ router.post("/profile/generate-invitation-message", requireAuth, async (req, res
           content: context,
         },
       ],
-      max_tokens: 150,
+      max_completion_tokens: 150,
       temperature: 0.85,
     });
 
