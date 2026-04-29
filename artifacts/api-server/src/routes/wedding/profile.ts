@@ -26,6 +26,8 @@ router.get("/profile", requireAuth, async (req, res) => {
     if (callerRole === "vendor") {
       delete profileData["guestCollectionToken"];
       delete profileData["vendorBccEmail"];
+      delete profileData["totalBudget"];
+      delete profileData["guestCount"];
     }
     res.json(profileData);
   } catch (err) {

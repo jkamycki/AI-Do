@@ -249,13 +249,13 @@ export default function SharedWorkspacePage() {
                 {/* Details */}
                 <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Details</p>
-                  {profile.guestCount && (
+                  {role !== "vendor" && profile.guestCount && (
                     <p className="text-sm text-foreground"><strong>{String(profile.guestCount)}</strong> expected guests</p>
                   )}
                   {profile.weddingVibe && (
                     <p className="text-sm text-foreground capitalize">{String(profile.weddingVibe)}</p>
                   )}
-                  {profile.totalBudget && Number(profile.totalBudget) > 0 && (
+                  {role !== "vendor" && profile.totalBudget && Number(profile.totalBudget) > 0 && (
                     <p className="text-sm text-foreground">${Number(profile.totalBudget).toLocaleString()} budget</p>
                   )}
                 </div>

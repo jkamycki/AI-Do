@@ -39,6 +39,8 @@ router.get("/workspace/:profileId", requireAuth, async (req, res) => {
     if (isVendor) {
       delete profileData["guestCollectionToken"];
       delete profileData["vendorBccEmail"];
+      delete profileData["totalBudget"];
+      delete profileData["guestCount"];
     }
     res.json({ profile: profileData, role: result.role });
   } catch (err) {
