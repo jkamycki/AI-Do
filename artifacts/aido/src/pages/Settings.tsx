@@ -417,7 +417,7 @@ export default function SettingsPage() {
     },
     onSuccess: (collab) => {
       qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
-      const link = `${window.location.origin}/invite/${collab.inviteToken}`;
+      const link = `${window.location.origin}/invite/${collab.inviteToken ?? ""}`;
       setNewInviteLink(link);
 
       // Open the user's email client with everything pre-filled
@@ -480,7 +480,7 @@ export default function SettingsPage() {
     },
     onSuccess: (collab) => {
       qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
-      const link = `${window.location.origin}/invite/${collab.inviteToken}`;
+      const link = `${window.location.origin}/invite/${collab.inviteToken ?? ""}`;
       setNewInviteLink(link);
       toast({ title: t("settings.new_invite_link") });
     },
@@ -491,8 +491,8 @@ export default function SettingsPage() {
     toast({ title: t("settings.link_copied") });
   };
 
-  const getInviteLink = (token: string) =>
-    `${window.location.origin}/invite/${token}`;
+  const getInviteLink = (token: string | null | undefined) =>
+    `${window.location.origin}/invite/${token ?? ""}`;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
