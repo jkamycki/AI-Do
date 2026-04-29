@@ -122,7 +122,7 @@ router.get("/collaborators", requireAuth, async (req, res) => {
           )
       : [];
 
-    const isLowPrivilege = !hasMinRole(myRole as CollaboratorRole, "planner");
+    const isLowPrivilege = !hasMinRole(myRole as CollaboratorRole, "partner");
     res.json({
       collaborators: collaborators.map(c => {
         const base = {
