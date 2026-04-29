@@ -325,7 +325,6 @@ router.post("/profile/generate-invitation-message", requireAuth, async (req, res
         },
       ],
       max_completion_tokens: 150,
-      temperature: 0.85,
     });
 
     const message = completion.choices[0]?.message?.content?.trim() ?? "";
