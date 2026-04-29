@@ -361,7 +361,7 @@ export function Sidebar() {
         onChange={handlePicChange}
       />
 
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b border-primary/10 z-50 flex items-center justify-between px-3">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b border-primary/10 z-50 flex items-center px-3">
         <Button
           variant="ghost"
           size="icon"
@@ -371,64 +371,12 @@ export function Sidebar() {
         >
           {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </Button>
-        <div className="flex items-center gap-2">
+        <div className="flex-1 flex items-center justify-end gap-2">
           <img src="/logo.png" alt="A.I Do Logo" className="h-14 w-auto object-contain" />
           <span className="text-[9px] font-bold tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10">
             BETA
           </span>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild disabled={uploadingPic}>
-            <button
-              type="button"
-              className="relative flex-shrink-0 focus:outline-none disabled:opacity-70"
-              title="Edit profile picture"
-            >
-              {user?.imageUrl ? (
-                <img
-                  src={user.imageUrl}
-                  alt={firstName}
-                  className="w-9 h-9 rounded-full object-cover ring-2 ring-primary/20 shadow-sm"
-                />
-              ) : (
-                <div className="w-9 h-9 rounded-full bg-primary/15 ring-2 ring-primary/20 flex items-center justify-center shadow-sm">
-                  <span className="text-primary font-semibold text-sm capitalize">{firstName[0]}</span>
-                </div>
-              )}
-              {uploadingPic ? (
-                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center ring-2 ring-background">
-                  <div className="h-2 w-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                </span>
-              ) : (
-                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center ring-2 ring-background">
-                  <Pencil className="h-2 w-2 text-white" />
-                </span>
-              )}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem
-              className="gap-2 cursor-pointer"
-              onClick={() => picInputRef.current?.click()}
-            >
-              {user?.imageUrl
-                ? <><Camera className="h-4 w-4" /> Replace photo</>
-                : <><ImagePlus className="h-4 w-4" /> Add photo</>
-              }
-            </DropdownMenuItem>
-            {user?.imageUrl && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-                  onClick={handleRemovePic}
-                >
-                  <Trash2 className="h-4 w-4" /> Remove photo
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       <div
@@ -461,6 +409,67 @@ export function Sidebar() {
             </p>
           </div>
         )}
+
+        <div className="px-4 pb-3 pt-1 border-b border-primary/10">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild disabled={uploadingPic}>
+              <button
+                type="button"
+                className="flex items-center gap-3 w-full rounded-xl px-2 py-2 hover:bg-primary/5 transition-colors focus:outline-none disabled:opacity-70"
+                title="Edit profile picture"
+              >
+                <div className="relative flex-shrink-0">
+                  {user?.imageUrl ? (
+                    <img
+                      src={user.imageUrl}
+                      alt={firstName}
+                      className="w-11 h-11 rounded-full object-cover ring-2 ring-primary/20 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-11 h-11 rounded-full bg-primary/15 ring-2 ring-primary/20 flex items-center justify-center shadow-sm">
+                      <span className="text-primary font-semibold text-base capitalize">{firstName[0]}</span>
+                    </div>
+                  )}
+                  {uploadingPic ? (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center ring-2 ring-card">
+                      <div className="h-2 w-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </span>
+                  ) : (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center ring-2 ring-card">
+                      <Pencil className="h-2 w-2 text-white" />
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col items-start min-w-0">
+                  <span className="text-sm font-medium text-foreground truncate max-w-[140px]">{firstName}</span>
+                  <span className="text-[11px] text-muted-foreground truncate max-w-[140px]">{user?.emailAddresses?.[0]?.emailAddress}</span>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuItem
+                className="gap-2 cursor-pointer"
+                onClick={() => picInputRef.current?.click()}
+              >
+                {user?.imageUrl
+                  ? <><Camera className="h-4 w-4" /> Replace photo</>
+                  : <><ImagePlus className="h-4 w-4" /> Add photo</>
+                }
+              </DropdownMenuItem>
+              {user?.imageUrl && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                    onClick={handleRemovePic}
+                  >
+                    <Trash2 className="h-4 w-4" /> Remove photo
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
         <nav className="flex-1 p-4 space-y-4">
           {navSections.map((section) => (
