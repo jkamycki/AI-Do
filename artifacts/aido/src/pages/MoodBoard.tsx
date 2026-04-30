@@ -488,6 +488,29 @@ export default function MoodBoard() {
       r.readAsDataURL(blob);
     });
 
+  // Crop a data-URL image to fill (cellW × cellH) without distortion (cover semantics).
+  const coverCrop = (dataUrl: string, cellW: number, cellH: number): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const scale = 2; // render at 2× for sharpness
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(cellW * scale);
+          canvas.height = Math.round(cellH * scale);
+          const ctx = canvas.getContext("2d");
+          if (!ctx) { resolve(dataUrl); return; }
+          const s = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+          const drawW = img.naturalWidth * s;
+          const drawH = img.naturalHeight * s;
+          ctx.drawImage(img, (canvas.width - drawW) / 2, (canvas.height - drawH) / 2, drawW, drawH);
+          resolve(canvas.toDataURL("image/jpeg", 0.88));
+        } catch { resolve(dataUrl); }
+      };
+      img.onerror = () => reject(new Error("img load failed"));
+      img.src = dataUrl;
+    });
+
   const generatePdf = async () => {
     setGeneratingPdf(true);
     try {
@@ -598,7 +621,9 @@ export default function MoodBoard() {
             const res = await authFetch(objectUrl(board.images[i].objectPath), {}, getToken);
             const blob = await res.blob();
             const dataUrl = await blobToDataUrl(blob);
-            doc.addImage(dataUrl, x, y, IMG_W, IMG_H);
+            // Crop to cell dimensions before embedding so jsPDF has nothing to stretch
+            const cropped = await coverCrop(dataUrl, IMG_W, IMG_H);
+            doc.addImage(cropped, "JPEG", x, y, IMG_W, IMG_H);
           } catch {
             doc.setFillColor(235, 228, 218);
             doc.roundedRect(x, y, IMG_W, IMG_H, 3, 3, "F");
