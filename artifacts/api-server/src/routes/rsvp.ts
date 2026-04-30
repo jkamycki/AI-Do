@@ -93,41 +93,145 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           })()
         : null;
 
-      const photoImgTag = profile.invitationPhotoUrl
-        ? `<tr><td style="padding:0;"><img src="${origin}/api/rsvp/${token}/photo" alt="Wedding Photo" style="width:100%;max-height:320px;object-fit:cover;display:block;"/></td></tr>`
-        : "";
+      // Download photo and embed as base64 so it shows in all email clients
+      let photoBlock = "";
+      if (profile.invitationPhotoUrl) {
+        try {
+          const photoFile = await objectStorageService.getObjectEntityFile(profile.invitationPhotoUrl);
+          const photoResp = await objectStorageService.downloadObject(photoFile, 86400);
+          if (photoResp.body) {
+            const { Readable } = await import("stream");
+            const chunks: Buffer[] = [];
+            for await (const chunk of Readable.fromWeb(photoResp.body as import("stream/web").ReadableStream)) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            const b64 = Buffer.concat(chunks).toString("base64");
+            const mimeType = photoResp.headers.get("Content-Type") || "image/jpeg";
+            photoBlock = `
+        <tr>
+          <td style="padding:0;line-height:0;font-size:0;">
+            <img src="data:${mimeType};base64,${b64}" alt="${couple}'s Wedding" width="560" style="width:100%;max-width:560px;height:280px;object-fit:cover;display:block;border-radius:0;"/>
+          </td>
+        </tr>`;
+          }
+        } catch (photoErr) {
+          req.log.warn(photoErr, "Could not embed invitation photo in email");
+        }
+      }
+
       const customMsg = profile.invitationMessage
-        ? `<p style="color:#555;font-size:15px;line-height:1.7;margin:0 0 24px;font-style:italic;">${profile.invitationMessage}</p>`
+        ? `<p style="font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:15px;line-height:1.8;margin:0 0 28px;font-style:italic;">&ldquo;${profile.invitationMessage}&rdquo;</p>`
         : "";
 
       const html = `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
-<body style="margin:0;padding:0;background:#faf9f7;font-family:Georgia,serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf9f7;padding:40px 16px;">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="x-apple-disable-message-reformatting"/>
+  <title>Wedding Invitation — ${couple}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f7f3ef;-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f3ef;padding:40px 16px;">
     <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
-        ${photoImgTag}
-        <tr><td style="background:linear-gradient(135deg,#E91E8C,#7B2FBE);padding:32px 40px;text-align:center;">
-          <p style="color:rgba(255,255,255,0.85);font-size:11px;letter-spacing:3px;text-transform:uppercase;margin:0 0 12px;">You're Invited</p>
-          <h1 style="color:#ffffff;font-size:28px;margin:0;font-weight:400;">${couple}</h1>
-          ${weddingDateStr ? `<p style="color:rgba(255,255,255,0.8);font-size:14px;margin:8px 0 0;">${weddingDateStr}</p>` : ""}
-          ${profile.venue ? `<p style="color:rgba(255,255,255,0.7);font-size:13px;margin:4px 0 0;">${profile.venue}</p>` : ""}
-        </td></tr>
-        <tr><td style="padding:36px 40px;text-align:center;">
-          <p style="color:#555;font-size:16px;line-height:1.6;margin:0 0 8px;">Dear <strong>${guest.name}</strong>,</p>
-          ${customMsg}
-          <p style="color:#555;font-size:15px;line-height:1.7;margin:0 0 32px;">
-            We would be so honored to have you celebrate with us! Please take a moment to let us know if you can make it.
-          </p>
-          <a href="${rsvpUrl}" style="display:inline-block;background:linear-gradient(135deg,#E91E8C,#7B2FBE);color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;padding:16px 40px;border-radius:50px;letter-spacing:0.5px;">
-            RSVP Now
-          </a>
-          <p style="color:#999;font-size:12px;margin:24px 0 0;">Or copy this link: <span style="color:#7B2FBE;">${rsvpUrl}</span></p>
-        </td></tr>
-        <tr><td style="border-top:1px solid #f0eee8;padding:20px 40px;text-align:center;">
-          <p style="color:#aaa;font-size:11px;margin:0;">Planning your own wedding? <a href="https://aidowedding.net" style="color:#7B2FBE;text-decoration:none;font-weight:600;">Try A.IDO free →</a></p>
-        </td></tr>
+
+      <!-- Outer card -->
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.10);">
+
+        <!-- Top accent bar -->
+        <tr><td style="height:5px;background:linear-gradient(90deg,#c9a96e,#e8c99a,#c9a96e);line-height:5px;font-size:5px;">&nbsp;</td></tr>
+
+        <!-- Hero photo (embedded) -->
+        ${photoBlock}
+
+        <!-- Ornament row -->
+        <tr>
+          <td style="padding:36px 48px 0;text-align:center;">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#c9a96e;font-size:22px;letter-spacing:8px;line-height:1;">&#10022; &#10022; &#10022;</p>
+          </td>
+        </tr>
+
+        <!-- Eyebrow label -->
+        <tr>
+          <td style="padding:16px 48px 0;text-align:center;">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:10px;letter-spacing:4px;text-transform:uppercase;">You are cordially invited</p>
+          </td>
+        </tr>
+
+        <!-- Couple names -->
+        <tr>
+          <td style="padding:14px 48px 0;text-align:center;">
+            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#3d2e22;font-size:34px;font-weight:400;line-height:1.2;">${couple}</h1>
+          </td>
+        </tr>
+
+        <!-- Thin divider -->
+        <tr>
+          <td style="padding:20px 80px 0;text-align:center;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td style="border-top:1px solid #e8ddd4;height:1px;font-size:1px;line-height:1px;">&nbsp;</td>
+            </tr></table>
+          </td>
+        </tr>
+
+        <!-- Date and venue -->
+        <tr>
+          <td style="padding:18px 48px 0;text-align:center;">
+            ${weddingDateStr ? `<p style="margin:0 0 4px;font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:15px;">${weddingDateStr}</p>` : ""}
+            ${profile.venue ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:12px;letter-spacing:1px;">${profile.venue}</p>` : ""}
+          </td>
+        </tr>
+
+        <!-- Body copy -->
+        <tr>
+          <td style="padding:32px 48px 0;text-align:center;">
+            <p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:15px;line-height:1.8;">
+              Dear <span style="color:#3d2e22;font-weight:bold;">${guest.name}</span>,
+            </p>
+            ${customMsg}
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:15px;line-height:1.8;">
+              We would be deeply honoured to have you join us as we celebrate our love. Please take a moment to let us know if you&rsquo;ll be able to attend.
+            </p>
+          </td>
+        </tr>
+
+        <!-- RSVP button -->
+        <tr>
+          <td style="padding:36px 48px;text-align:center;">
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+              <tr>
+                <td style="border-radius:2px;background:#3d2e22;">
+                  <a href="${rsvpUrl}" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#f7f3ef;text-decoration:none;letter-spacing:3px;text-transform:uppercase;padding:16px 44px;">
+                    RSVP Now
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:20px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#c4b8ac;">
+              Or visit: <a href="${rsvpUrl}" style="color:#c9a96e;text-decoration:none;">${rsvpUrl}</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Bottom ornament -->
+        <tr>
+          <td style="padding:0 48px 8px;text-align:center;">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#c9a96e;font-size:18px;letter-spacing:6px;">&#10022; &#10022; &#10022;</p>
+          </td>
+        </tr>
+
+        <!-- Bottom accent bar -->
+        <tr><td style="height:5px;background:linear-gradient(90deg,#c9a96e,#e8c99a,#c9a96e);line-height:5px;font-size:5px;">&nbsp;</td></tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#faf7f4;padding:18px 48px;text-align:center;border-top:1px solid #f0ebe4;">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#c4b8ac;letter-spacing:0.5px;">
+              Planning your own wedding? <a href="https://aidowedding.net" style="color:#c9a96e;text-decoration:none;">Try A.IDO free</a>
+            </p>
+          </td>
+        </tr>
+
       </table>
     </td></tr>
   </table>
@@ -138,8 +242,8 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         to: guest.email,
         replyTo: `noreply@aidowedding.net`,
         fromName: `${couple} via A.IDO`,
-        subject: `RSVP — ${couple}'s Wedding`,
-        text: `Dear ${guest.name},\n\nYou're invited to celebrate with ${couple}! Please RSVP using the link below:\n\n${rsvpUrl}\n\nWith love,\n${couple}`,
+        subject: `You're invited — ${couple}'s Wedding`,
+        text: `Dear ${guest.name},\n\nYou are cordially invited to the wedding of ${couple}${weddingDateStr ? ` on ${weddingDateStr}` : ""}${profile.venue ? ` at ${profile.venue}` : ""}.\n\n${profile.invitationMessage ? `"${profile.invitationMessage}"\n\n` : ""}Please RSVP using the link below:\n\n${rsvpUrl}\n\nWith love,\n${couple}`,
         html,
       });
       emailSent = result.ok;
