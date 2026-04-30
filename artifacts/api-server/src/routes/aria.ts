@@ -7,7 +7,9 @@ import {
 } from "@workspace/db";
 import { eq, desc, and, asc, ilike, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { aiLimiter, incrementDailyAria } from "../middlewares/rateLimiter";
 import { resolveProfile, resolveScopeUserId, resolveWorkspaceRole, hasMinRole, logActivity } from "../lib/workspaceAccess";
+import { getAuth } from "@clerk/express";
 import type { Request } from "express";
 
 const router = Router();
@@ -1552,8 +1554,23 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
   }
 }
 
-router.post("/aria/chat", requireAuth, async (req, res) => {
+router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
   try {
+    const { userId } = getAuth(req);
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const dailyCheck = incrementDailyAria(userId);
+    if (!dailyCheck.allowed) {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
+      res.write(`data: ${JSON.stringify({ type: "text", content: "You've reached your daily limit for Aria messages. Limits reset at midnight UTC. You can still browse and edit everything manually in the meantime." })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
     const { messages, preferredLanguage } = req.body as {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
       preferredLanguage?: string;

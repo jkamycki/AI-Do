@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../middlewares/requireAuth";
+import { aiLimiter, incrementDailySupport } from "../middlewares/rateLimiter";
+import { getAuth } from "@clerk/express";
 
 const router = Router();
 
@@ -37,8 +39,19 @@ const SYSTEM_PROMPT = `You are Aria, an expert AI wedding planning assistant bui
 - If the user's question is vague, ask one clarifying question before diving in
 - Celebrate wins and acknowledge stress — planning a wedding is emotional, not just logistical`;
 
-router.post("/support/chat", requireAuth, async (req, res) => {
+router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
   try {
+    const { userId } = getAuth(req);
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const dailyCheck = incrementDailySupport(userId);
+    if (!dailyCheck.allowed) {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.write(`data: ${JSON.stringify({ error: "You've reached your daily limit for Aria support messages. Limits reset at midnight UTC." })}\n\n`);
+      res.end();
+      return;
+    }
+
     const { messages, preferredLanguage } = req.body as {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
       preferredLanguage?: string;
