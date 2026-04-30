@@ -674,7 +674,11 @@ export default function Dashboard() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          <h1 className="text-3xl md:text-4xl font-serif text-foreground capitalize">{firstName} 🤍</h1>
+          <h1 className="text-3xl md:text-4xl font-serif text-foreground capitalize">
+            {summary?.profile?.partner1Name && summary?.profile?.partner2Name
+              ? `${summary.profile.partner1Name} & ${summary.profile.partner2Name}`
+              : firstName} 🤍
+          </h1>
         </div>
         <input
           ref={picInputRef}
