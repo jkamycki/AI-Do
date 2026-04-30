@@ -579,10 +579,10 @@ export default function MoodBoard() {
       };
 
       // ── Header ─────────────────────────────────────────────────────────────
-      // A.IDO logo — top left corner (logo is square 1:1, render at equal w/h)
-      const LOGO_SIZE = 44;
+      // A.IDO logo — top right corner (logo is square 1:1, render at equal w/h)
+      const LOGO_SIZE = 100;
       if (logoDataUrl) {
-        doc.addImage(logoDataUrl, "PNG", MARGIN, y - 4, LOGO_SIZE, LOGO_SIZE);
+        doc.addImage(logoDataUrl, "PNG", PAGE_W - MARGIN - LOGO_SIZE, y - 4, LOGO_SIZE, LOGO_SIZE);
       }
 
       // Couple names (large, centered)
