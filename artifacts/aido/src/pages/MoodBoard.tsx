@@ -545,16 +545,35 @@ export default function MoodBoard() {
       const MARGIN = 40;
       const CW = PAGE_W - 2 * MARGIN;
 
+      // ── Portal brand colors (dark theme) ────────────────────────────────────
+      // background: hsl(270 20% 10%) ≈ #1a141f
+      const [BG_R, BG_G, BG_B] = [26, 20, 31];
+      // primary gold: hsl(40 82% 52%) ≈ #e7a620
+      const [GD_R, GD_G, GD_B] = [231, 166, 32];
+      // foreground near-white: hsl(330 30% 95%) ≈ #f6eef2
+      const [WH_R, WH_G, WH_B] = [246, 238, 242];
+      // muted text: hsl(330 15% 62%) ≈ #ad909e
+      const [MT_R, MT_G, MT_B] = [173, 144, 158];
+      // border: hsl(270 15% 20%) ≈ #332b3b
+      const [BR_R, BR_G, BR_B] = [51, 43, 59];
+
+      // Fill page background
+      const fillBg = () => {
+        doc.setFillColor(BG_R, BG_G, BG_B);
+        doc.rect(0, 0, PAGE_W, PAGE_H, "F");
+      };
+      fillBg();
+
       let y = MARGIN;
 
       const sectionLabel = (text: string) => {
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(7.5);
-        doc.setTextColor(180, 160, 140);
+        doc.setFontSize(7);
+        doc.setTextColor(GD_R, GD_G, GD_B);
         doc.text(text.toUpperCase(), MARGIN, y);
-        y += 11;
-        doc.setDrawColor(220, 205, 185);
-        doc.setLineWidth(0.5);
+        y += 10;
+        doc.setDrawColor(BR_R, BR_G, BR_B);
+        doc.setLineWidth(0.4);
         doc.line(MARGIN, y, PAGE_W - MARGIN, y);
         y += 14;
       };
@@ -569,21 +588,21 @@ export default function MoodBoard() {
       const coupleLine = partner1 && partner2
         ? `${partner1} & ${partner2}`
         : "Our Wedding";
-      doc.setFont("helvetica", "normal");
+      doc.setFont("helvetica", "bold");
       doc.setFontSize(26);
-      doc.setTextColor(55, 38, 28);
+      doc.setTextColor(WH_R, WH_G, WH_B);
       doc.text(coupleLine, PAGE_W / 2, y, { align: "center" });
       y += 15;
 
       // Subtitle
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      doc.setTextColor(160, 140, 118);
+      doc.setTextColor(MT_R, MT_G, MT_B);
       doc.text("Wedding Mood Board", PAGE_W / 2, y, { align: "center" });
       y += 18;
 
       // Gold divider
-      doc.setDrawColor(201, 169, 110);
+      doc.setDrawColor(GD_R, GD_G, GD_B);
       doc.setLineWidth(0.8);
       doc.line(PAGE_W / 2 - 50, y, PAGE_W / 2 + 50, y);
       y += 24;
@@ -592,7 +611,7 @@ export default function MoodBoard() {
       if (board.aiSummary) {
         doc.setFont("helvetica", "italic");
         doc.setFontSize(10.5);
-        doc.setTextColor(110, 90, 70);
+        doc.setTextColor(MT_R, MT_G, MT_B);
         const lines = doc.splitTextToSize(`"${board.aiSummary}"`, CW);
         doc.text(lines, PAGE_W / 2, y, { align: "center" });
         y += (lines.length as number) * 14 + 24;
@@ -612,7 +631,7 @@ export default function MoodBoard() {
           if (col === 0 && i > 0) {
             y += IMG_H + GAP;
             if (y + IMG_H > PAGE_H - MARGIN) {
-              doc.addPage();
+              doc.addPage(); fillBg();
               y = MARGIN;
             }
           }
@@ -625,14 +644,14 @@ export default function MoodBoard() {
             const cropped = await coverCrop(dataUrl, IMG_W, IMG_H);
             doc.addImage(cropped, "JPEG", x, y, IMG_W, IMG_H);
           } catch {
-            doc.setFillColor(235, 228, 218);
+            doc.setFillColor(38, 30, 46);
             doc.roundedRect(x, y, IMG_W, IMG_H, 3, 3, "F");
           }
         }
         y += IMG_H + 28;
 
         if (y > PAGE_H - MARGIN - 80) {
-          doc.addPage();
+          doc.addPage(); fillBg();
           y = MARGIN;
         }
       }
@@ -651,7 +670,7 @@ export default function MoodBoard() {
           }
           doc.setFont("helvetica", "normal");
           doc.setFontSize(6.5);
-          doc.setTextColor(140, 120, 100);
+          doc.setTextColor(MT_R, MT_G, MT_B);
           doc.text(color.hex.toUpperCase(), x + SWATCH / 2, y + SWATCH + 9, { align: "center" });
           if (color.name) doc.text(color.name, x + SWATCH / 2, y + SWATCH + 17, { align: "center" });
         });
@@ -663,18 +682,18 @@ export default function MoodBoard() {
         sectionLabel("Style");
         doc.setFont("helvetica", "normal");
         doc.setFontSize(11);
-        doc.setTextColor(90, 70, 55);
+        doc.setTextColor(WH_R, WH_G, WH_B);
         doc.text(board.styleTags.join("  ·  "), MARGIN, y);
         y += 24;
       }
 
       // ── Notes ──────────────────────────────────────────────────────────────
       if (board.notes?.trim()) {
-        if (y + 60 > PAGE_H - MARGIN) { doc.addPage(); y = MARGIN; }
+        if (y + 60 > PAGE_H - MARGIN) { doc.addPage(); fillBg(); y = MARGIN; }
         sectionLabel("Notes");
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
-        doc.setTextColor(90, 70, 55);
+        doc.setTextColor(WH_R, WH_G, WH_B);
         const noteLines = doc.splitTextToSize(board.notes.trim(), CW);
         doc.text(noteLines, MARGIN, y);
       }
@@ -685,7 +704,7 @@ export default function MoodBoard() {
         doc.setPage(p);
         doc.setFont("helvetica", "normal");
         doc.setFontSize(7.5);
-        doc.setTextColor(190, 170, 148);
+        doc.setTextColor(MT_R, MT_G, MT_B);
         doc.text(
           `Created with A.IDO · aidowedding.net${totalPages > 1 ? `   ${p} / ${totalPages}` : ""}`,
           PAGE_W / 2,
@@ -724,11 +743,6 @@ export default function MoodBoard() {
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header: A.IDO logo top-left, centered title */}
       <div className="relative flex justify-center items-start pb-5 border-b border-border/50">
-        <img
-          src={`${import.meta.env.BASE_URL}logo.png`}
-          alt="A.IDO"
-          className="absolute left-0 top-0.5 h-8 w-auto object-contain"
-        />
         <div className="text-center">
           <h1 className="text-2xl font-bold tracking-tight">Your Wedding Mood Board</h1>
           <p className="text-sm text-muted-foreground mt-1">Curate and visualize your dream wedding style.</p>
