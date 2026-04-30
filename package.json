@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "build": "cd artifacts/aido && npm run build",
-    "dev": "cd artifacts/aido && npm run dev",
+    "build": "pnpm run build --filter artifacts/aido",
+    "dev": "cd artifacts/aido && pnpm run dev",
     "typecheck": "tsc -p artifacts/aido/tsconfig.json --noEmit"
   },
   "private": true,
