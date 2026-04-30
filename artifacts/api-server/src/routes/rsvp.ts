@@ -98,22 +98,22 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       if (profile.invitationPhotoUrl) {
         try {
           const photoFile = await objectStorageService.getObjectEntityFile(profile.invitationPhotoUrl);
-          const photoResp = await objectStorageService.downloadObject(photoFile, 86400);
-          if (photoResp.body) {
-            const { Readable } = await import("stream");
-            const chunks: Buffer[] = [];
-            for await (const chunk of Readable.fromWeb(photoResp.body as import("stream/web").ReadableStream)) {
-              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-            }
-            const b64 = Buffer.concat(chunks).toString("base64");
-            const mimeType = photoResp.headers.get("Content-Type") || "image/jpeg";
-            photoBlock = `
+          // Stream directly from GCS into a buffer, then base64-encode for embedding.
+          // Avoids double stream-conversion (toWeb → Response → fromWeb) that can silently fail.
+          const nodeStream = photoFile.createReadStream();
+          const chunks: Buffer[] = [];
+          for await (const chunk of nodeStream) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array));
+          }
+          const b64 = Buffer.concat(chunks).toString("base64");
+          const [meta] = await photoFile.getMetadata();
+          const mimeType = (meta.contentType as string | undefined) || "image/jpeg";
+          photoBlock = `
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
             <img src="data:${mimeType};base64,${b64}" alt="${couple}'s Wedding" width="560" style="width:100%;max-width:560px;height:280px;object-fit:cover;display:block;border-radius:0;"/>
           </td>
         </tr>`;
-          }
         } catch (photoErr) {
           req.log.warn(photoErr, "Could not embed invitation photo in email");
         }
@@ -208,7 +208,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
               </tr>
             </table>
             <p style="margin:20px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#c4b8ac;">
-              Or visit: <a href="${rsvpUrl}" style="color:#c9a96e;text-decoration:none;">${rsvpUrl}</a>
+              Button not working? <a href="${rsvpUrl}" style="color:#c9a96e;text-decoration:underline;">Click here to RSVP</a>
             </p>
           </td>
         </tr>
