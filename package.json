@@ -8,6 +8,7 @@
     "typecheck": "tsc -p artifacts/aido/tsconfig.json --noEmit"
   },
   "private": true,
+  "packageManager": "pnpm@10.26.1",
   "engines": {
     "node": ">=20"
   },

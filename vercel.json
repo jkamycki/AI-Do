@@ -1,5 +1,6 @@
 {
-  "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @workspace/aido run build",
-  "outputDirectory": "artifacts/aido/dist"
+  "framework": null,
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "dist"
 }
