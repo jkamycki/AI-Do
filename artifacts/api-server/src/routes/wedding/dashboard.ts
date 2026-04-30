@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { weddingProfiles, timelines, budgets, budgetItems, checklistItems, guests } from "@workspace/db";
+import { weddingProfiles, timelines, budgets, checklistItems, guests, vendors, manualExpenses } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
@@ -35,15 +35,25 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
     const timelineEventCount = hasTimeline ? (timelineRows[0].events as Array<unknown>).length : 0;
 
     const budgetRows = hasProfile
-      ? await db.select().from(budgets).where(eq(budgets.profileId, profileId)).limit(1)
+      ? await db.select().from(budgets).where(eq(budgets.profileId, profileId)).orderBy(desc(budgets.id)).limit(1)
       : [];
     let budgetTotal = 0;
-    let budgetSpent = 0;
     if (budgetRows.length) {
       budgetTotal = parseFloat(budgetRows[0].totalBudget as string);
-      const items = await db.select().from(budgetItems).where(eq(budgetItems.budgetId, budgetRows[0].id));
-      budgetSpent = items.reduce((sum, item) => sum + parseFloat(item.actualCost as string), 0);
     }
+
+    // Compute budgetSpent the same way the Budget page does:
+    // vendor totalCost + manual expenses cost (filtered by the effective owner userId)
+    const scopeUserId = effectiveProfile?.userId ?? req.userId!;
+    const [userVendors, userManualExpenses] = hasProfile
+      ? await Promise.all([
+          db.select({ totalCost: vendors.totalCost }).from(vendors).where(eq(vendors.userId, scopeUserId)),
+          db.select({ cost: manualExpenses.cost }).from(manualExpenses).where(eq(manualExpenses.userId, scopeUserId)),
+        ])
+      : [[], []];
+    const budgetSpent =
+      userVendors.reduce((sum, v) => sum + Number(v.totalCost), 0) +
+      userManualExpenses.reduce((sum, m) => sum + Number(m.cost), 0);
 
     const allChecklistItems = hasProfile
       ? await db.select().from(checklistItems).where(eq(checklistItems.profileId, profileId))
