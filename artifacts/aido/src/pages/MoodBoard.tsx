@@ -590,7 +590,7 @@ export default function MoodBoard() {
 
       // ── AI Summary ─────────────────────────────────────────────────────────
       if (board.aiSummary) {
-        doc.setFont("helvetica", "oblique");
+        doc.setFont("helvetica", "italic");
         doc.setFontSize(10.5);
         doc.setTextColor(110, 90, 70);
         const lines = doc.splitTextToSize(`"${board.aiSummary}"`, CW);
@@ -722,43 +722,33 @@ export default function MoodBoard() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Mood Board</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            Collect your wedding inspiration — Aria will analyze your style.
-          </p>
+      {/* Header: A.IDO logo top-left, centered title */}
+      <div className="relative flex justify-center items-start pb-5 border-b border-border/50">
+        <img
+          src={`${import.meta.env.BASE_URL}logo.png`}
+          alt="A.IDO"
+          className="absolute left-0 top-0.5 h-8 w-auto object-contain"
+        />
+        <div className="text-center">
+          <h1 className="text-2xl font-bold tracking-tight">Your Wedding Mood Board</h1>
+          <p className="text-sm text-muted-foreground mt-1">Curate and visualize your dream wedding style.</p>
         </div>
-        <div className="flex items-center gap-2">
-          {savePending && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin" /> Saving…
-            </span>
-          )}
-          <Button variant="outline" size="sm" onClick={generatePdf} disabled={generatingPdf}>
-            {generatingPdf
-              ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Generating PDF…</>
-              : <><Download className="h-4 w-4 mr-1.5" /> Export PDF</>}
-          </Button>
-          <Button
-            size="sm"
-            disabled={isUploading}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {isUploading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <ImagePlus className="h-4 w-4 mr-1.5" />}
-            {isUploading ? "Uploading…" : "Add Images"}
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handleFileChange}
-          />
-        </div>
+        {savePending && (
+          <span className="absolute right-0 top-0.5 text-xs text-muted-foreground flex items-center gap-1">
+            <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+          </span>
+        )}
       </div>
+
+      {/* Hidden file input — used by in-grid upload zone */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleFileChange}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         {/* ─── Image Grid ────────────────────────────────────────────── */}
@@ -847,53 +837,6 @@ export default function MoodBoard() {
 
         {/* ─── Right Sidebar ──────────────────────────────────────────── */}
         <div className="space-y-4">
-
-          {/* AI Style Summary */}
-          <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold">AI Style Summary</h3>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => generateSummaryMutation.mutate()}
-                disabled={generateSummaryMutation.isPending}
-                title="Regenerate"
-              >
-                {generateSummaryMutation.isPending
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : <RefreshCw className="h-3.5 w-3.5" />
-                }
-              </Button>
-            </div>
-
-            {board.aiSummary ? (
-              <p className="text-sm text-foreground leading-relaxed italic">
-                "{board.aiSummary}"
-              </p>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  Upload images and add style tags, then generate your personalized style summary.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-xs"
-                  onClick={() => generateSummaryMutation.mutate()}
-                  disabled={generateSummaryMutation.isPending}
-                >
-                  {generateSummaryMutation.isPending
-                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</>
-                    : <><Wand2 className="h-3.5 w-3.5 mr-1.5" /> Generate Summary</>
-                  }
-                </Button>
-              </div>
-            )}
-          </div>
 
           {/* Style Tags */}
           <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
@@ -994,6 +937,52 @@ export default function MoodBoard() {
                   : <><Wand2 className="h-3.5 w-3.5 mr-1.5" /> Extract Colors from Images</>
                 }
               </Button>
+            )}
+          </div>
+
+          {/* AI Style Summary */}
+          <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">AI Style Summary</h3>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => generateSummaryMutation.mutate()}
+                disabled={generateSummaryMutation.isPending}
+                title="Regenerate"
+              >
+                {generateSummaryMutation.isPending
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <RefreshCw className="h-3.5 w-3.5" />
+                }
+              </Button>
+            </div>
+            {board.aiSummary ? (
+              <p className="text-sm text-foreground leading-relaxed italic">
+                "{board.aiSummary}"
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Upload images and add style tags, then generate your personalized style summary.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => generateSummaryMutation.mutate()}
+                  disabled={generateSummaryMutation.isPending}
+                >
+                  {generateSummaryMutation.isPending
+                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</>
+                    : <><Wand2 className="h-3.5 w-3.5 mr-1.5" /> Generate Summary</>
+                  }
+                </Button>
+              </div>
             )}
           </div>
 
