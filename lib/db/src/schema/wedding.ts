@@ -379,3 +379,31 @@ export const deletedUserArchive = pgTable("deleted_user_archive", {
 });
 
 export type DeletedUserArchive = typeof deletedUserArchive.$inferSelect;
+
+export const moodBoards = pgTable("mood_boards", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().unique(),
+  images: jsonb("images").notNull().$type<Array<{
+    objectPath: string;
+    order: number;
+    name?: string;
+    analysis?: {
+      styleKeywords: string[];
+      dominantColors: string[];
+      decorThemes: string[];
+      floralStyle?: string;
+      venueVibe?: string;
+    };
+  }>>().default([]),
+  colorPalette: jsonb("color_palette").notNull().$type<Array<{
+    hex: string;
+    name: string;
+  }>>().default([]),
+  styleTags: jsonb("style_tags").notNull().$type<string[]>().default([]),
+  aiSummary: text("ai_summary"),
+  notes: text("notes"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type MoodBoard = typeof moodBoards.$inferSelect;

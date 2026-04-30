@@ -1,0 +1,813 @@
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useAuth } from "@clerk/react";
+import { useUpload } from "@workspace/object-storage-web";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import {
+  ImagePlus,
+  Sparkles,
+  Trash2,
+  GripVertical,
+  Wand2,
+  Palette,
+  X,
+  Plus,
+  Loader2,
+  RefreshCw,
+  Tag,
+  StickyNote,
+  Download,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface ImageAnalysis {
+  styleKeywords: string[];
+  dominantColors: string[];
+  decorThemes: string[];
+  floralStyle?: string;
+  venueVibe?: string;
+}
+
+interface MoodBoardImage {
+  objectPath: string;
+  order: number;
+  name?: string;
+  analysis?: ImageAnalysis;
+}
+
+interface ColorSwatch {
+  hex: string;
+  name: string;
+}
+
+interface MoodBoardData {
+  images: MoodBoardImage[];
+  colorPalette: ColorSwatch[];
+  styleTags: string[];
+  aiSummary: string | null;
+  notes: string | null;
+}
+
+// ─── Preset style tags ────────────────────────────────────────────────────────
+
+const PRESET_TAGS = [
+  "Romantic", "Rustic", "Modern", "Glam", "Boho",
+  "Minimalist", "Vintage", "Garden", "Coastal", "Industrial",
+  "Ethereal", "Whimsical", "Classic", "Tropical", "Autumn",
+];
+
+// ─── Auth headers helper ──────────────────────────────────────────────────────
+
+async function authFetch(url: string, options: RequestInit = {}, getToken: () => Promise<string | null>) {
+  const token = await getToken();
+  return fetch(url, {
+    ...options,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers as Record<string, string> ?? {}),
+    },
+  });
+}
+
+// ─── Storage URL helper ──────────────────────────────────────────────────────
+
+function objectUrl(objectPath: string) {
+  return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
+}
+
+// ─── Sortable Image Card ──────────────────────────────────────────────────────
+
+function SortableImageCard({
+  image,
+  onDelete,
+  onAnalyze,
+  analyzing,
+}: {
+  image: MoodBoardImage;
+  onDelete: () => void;
+  onAnalyze: () => void;
+  analyzing: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: image.objectPath,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "group relative rounded-xl overflow-hidden bg-muted aspect-square shadow-sm border border-border/50",
+        isDragging && "shadow-2xl ring-2 ring-primary/40",
+      )}
+    >
+      <img
+        src={objectUrl(image.objectPath)}
+        alt="Mood board image"
+        className="w-full h-full object-cover"
+        loading="lazy"
+      />
+
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200" />
+
+      <button
+        {...attributes}
+        {...listeners}
+        className="absolute top-2 left-2 p-1.5 rounded-lg bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+        title="Drag to reorder"
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
+
+      <button
+        onClick={onDelete}
+        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/70"
+        title="Remove image"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+
+      {!image.analysis && (
+        <button
+          onClick={onAnalyze}
+          disabled={analyzing}
+          className="absolute bottom-2 left-2 right-2 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-primary/85 text-primary-foreground text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-60"
+          title="Analyze with AI"
+        >
+          {analyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+          {analyzing ? "Analyzing…" : "Analyze"}
+        </button>
+      )}
+
+      {image.analysis && (
+        <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-t from-black/60 to-transparent">
+          <div className="flex flex-wrap gap-0.5">
+            {image.analysis.styleKeywords.slice(0, 3).map(k => (
+              <span key={k} className="text-[9px] font-medium text-white/90 bg-white/20 rounded-full px-1.5 py-0.5">
+                {k}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function MoodBoard() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [analyzingPath, setAnalyzingPath] = useState<string | null>(null);
+  const [newTag, setNewTag] = useState("");
+  const [savePending, setSavePending] = useState(false);
+  const [localBoard, setLocalBoard] = useState<MoodBoardData | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // ─── Upload hook ──────────────────────────────────────────────────────────
+  const { uploadFile, isUploading } = useUpload({
+    getToken,
+    onError: () => toast({ title: "Upload failed", variant: "destructive" }),
+  });
+
+  // ─── Fetch mood board ─────────────────────────────────────────────────────
+  const { data: serverBoard, isLoading } = useQuery<MoodBoardData>({
+    queryKey: ["mood-board"],
+    queryFn: async () => {
+      const token = await getToken();
+      const r = await fetch("/api/mood-board", {
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!r.ok) throw new Error("Failed to load");
+      return r.json();
+    },
+  });
+
+  useEffect(() => {
+    if (serverBoard && !localBoard) setLocalBoard(serverBoard);
+  }, [serverBoard]);
+
+  const board = localBoard ?? serverBoard ?? {
+    images: [], colorPalette: [], styleTags: [], aiSummary: null, notes: null,
+  };
+
+  // ─── Save helper (debounced) ──────────────────────────────────────────────
+  const save = useCallback(async (data: MoodBoardData) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setSavePending(true);
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        const token = await getToken();
+        await fetch("/api/mood-board", {
+          method: "PUT",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(data),
+        });
+        qc.invalidateQueries({ queryKey: ["mood-board"] });
+      } finally {
+        setSavePending(false);
+      }
+    }, 1000);
+  }, [getToken, qc]);
+
+  const update = useCallback((patch: Partial<MoodBoardData>) => {
+    setLocalBoard(prev => {
+      const next = { ...board, ...prev, ...patch };
+      save(next);
+      return next;
+    });
+  }, [board, save]);
+
+  // ─── Upload images ────────────────────────────────────────────────────────
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+
+    const uploads = await Promise.all(
+      files.map(f => uploadFile(f))
+    );
+
+    const newImages: MoodBoardImage[] = uploads
+      .filter(Boolean)
+      .map((r, i) => ({
+        objectPath: r!.objectPath,
+        order: board.images.length + i,
+        name: files[i]?.name,
+      }));
+
+    const updatedImages = [...board.images, ...newImages];
+    update({ images: updatedImages });
+    e.target.value = "";
+
+    if (newImages.length > 0) {
+      toast({ title: `${newImages.length} image${newImages.length > 1 ? "s" : ""} added to your mood board` });
+    }
+  };
+
+  // ─── Drag-and-drop reorder ────────────────────────────────────────────────
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = board.images.findIndex(img => img.objectPath === active.id);
+    const newIndex = board.images.findIndex(img => img.objectPath === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(board.images, oldIndex, newIndex).map((img, i) => ({
+      ...img, order: i,
+    }));
+    update({ images: reordered });
+  };
+
+  // ─── Remove image ─────────────────────────────────────────────────────────
+  const removeImage = (objectPath: string) => {
+    const updated = board.images
+      .filter(img => img.objectPath !== objectPath)
+      .map((img, i) => ({ ...img, order: i }));
+    update({ images: updated });
+  };
+
+  // ─── Analyze single image ─────────────────────────────────────────────────
+  const analyzeImage = async (objectPath: string) => {
+    setAnalyzingPath(objectPath);
+    try {
+      const r = await authFetch("/api/mood-board/analyze-image", {
+        method: "POST",
+        body: JSON.stringify({ objectPath }),
+      }, getToken);
+      if (!r.ok) throw new Error("Analysis failed");
+      const { analysis } = await r.json() as { analysis: ImageAnalysis };
+
+      const updatedImages = board.images.map(img =>
+        img.objectPath === objectPath ? { ...img, analysis } : img
+      );
+
+      const allColors = updatedImages.flatMap(img => img.analysis?.dominantColors ?? []);
+      const palette = buildPalette(allColors, board.colorPalette);
+      update({ images: updatedImages, colorPalette: palette });
+    } catch {
+      toast({ title: "Analysis failed", description: "Could not analyze this image.", variant: "destructive" });
+    } finally {
+      setAnalyzingPath(null);
+    }
+  };
+
+  // ─── Analyze all unanalyzed ───────────────────────────────────────────────
+  const analyzeAll = async () => {
+    const unanalyzed = board.images.filter(img => !img.analysis);
+    if (!unanalyzed.length) {
+      toast({ title: "All images already analyzed" });
+      return;
+    }
+    for (const img of unanalyzed) {
+      await analyzeImage(img.objectPath);
+    }
+    toast({ title: "Analysis complete" });
+  };
+
+  // ─── Generate AI summary ──────────────────────────────────────────────────
+  const generateSummaryMutation = useMutation({
+    mutationFn: async () => {
+      const r = await authFetch("/api/mood-board/generate-summary", {
+        method: "POST",
+        body: JSON.stringify({
+          styleTags: board.styleTags,
+          images: board.images,
+          colorPalette: board.colorPalette,
+        }),
+      }, getToken);
+      if (!r.ok) throw new Error("Failed");
+      return (await r.json() as { summary: string }).summary;
+    },
+    onSuccess: (summary) => {
+      update({ aiSummary: summary });
+      toast({ title: "Style summary generated" });
+    },
+    onError: () => toast({ title: "Could not generate summary", variant: "destructive" }),
+  });
+
+  // ─── Style tags ───────────────────────────────────────────────────────────
+  const toggleTag = (tag: string) => {
+    const tags = board.styleTags.includes(tag)
+      ? board.styleTags.filter(t => t !== tag)
+      : [...board.styleTags, tag];
+    update({ styleTags: tags });
+  };
+
+  const addCustomTag = () => {
+    const tag = newTag.trim();
+    if (!tag || board.styleTags.includes(tag)) { setNewTag(""); return; }
+    update({ styleTags: [...board.styleTags, tag] });
+    setNewTag("");
+  };
+
+  // ─── Color palette ────────────────────────────────────────────────────────
+  const renameColor = (index: number, name: string) => {
+    const updated = board.colorPalette.map((c, i) => i === index ? { ...c, name } : c);
+    update({ colorPalette: updated });
+  };
+
+  const removeColor = (index: number) => {
+    const updated = board.colorPalette.filter((_, i) => i !== index);
+    update({ colorPalette: updated });
+  };
+
+  // ─── Export / share ───────────────────────────────────────────────────────
+  const copyShareText = () => {
+    const lines = [
+      "Our Wedding Style",
+      board.aiSummary ?? "",
+      "",
+      board.styleTags.length ? `Style: ${board.styleTags.join(", ")}` : "",
+      board.colorPalette.length ? `Colors: ${board.colorPalette.map(c => `${c.name} (${c.hex})`).join(", ")}` : "",
+    ].filter(Boolean).join("\n");
+    navigator.clipboard.writeText(lines);
+    toast({ title: "Copied to clipboard" });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div className="h-8 w-48 bg-muted rounded-lg animate-pulse" />
+        <div className="grid grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="aspect-square bg-muted rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Mood Board</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            Collect your wedding inspiration — Aria will analyze your style.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {savePending && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={copyShareText}>
+            <Download className="h-4 w-4 mr-1.5" /> Share Style
+          </Button>
+          <Button
+            size="sm"
+            disabled={isUploading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {isUploading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <ImagePlus className="h-4 w-4 mr-1.5" />}
+            {isUploading ? "Uploading…" : "Add Images"}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleFileChange}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        {/* ─── Image Grid ────────────────────────────────────────────── */}
+        <div className="space-y-4">
+          {board.images.length > 0 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {board.images.length} image{board.images.length !== 1 ? "s" : ""} · Drag to reorder
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={analyzeAll}
+                disabled={!!analyzingPath}
+                className="text-xs"
+              >
+                {analyzingPath
+                  ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Analyzing…</>
+                  : <><RefreshCw className="h-3.5 w-3.5 mr-1" /> Analyze All</>
+                }
+              </Button>
+            </div>
+          )}
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={board.images.map(img => img.objectPath)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {board.images.map(img => (
+                  <SortableImageCard
+                    key={img.objectPath}
+                    image={img}
+                    onDelete={() => removeImage(img.objectPath)}
+                    onAnalyze={() => analyzeImage(img.objectPath)}
+                    analyzing={analyzingPath === img.objectPath}
+                  />
+                ))}
+
+                {/* Upload zone (always visible at end) */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className={cn(
+                    "aspect-square rounded-xl border-2 border-dashed border-border/60 flex flex-col items-center justify-center gap-2",
+                    "hover:border-primary/50 hover:bg-primary/3 transition-all text-muted-foreground hover:text-primary",
+                    isUploading && "opacity-50 cursor-not-allowed",
+                  )}
+                >
+                  {isUploading
+                    ? <Loader2 className="h-6 w-6 animate-spin" />
+                    : <ImagePlus className="h-6 w-6" />
+                  }
+                  <span className="text-xs font-medium">
+                    {isUploading ? "Uploading…" : "Add Image"}
+                  </span>
+                </button>
+              </div>
+            </SortableContext>
+          </DndContext>
+
+          {board.images.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-primary/8 flex items-center justify-center">
+                <Palette className="h-8 w-8 text-primary/60" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Start your mood board</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                  Upload photos from Pinterest, Instagram, or your camera roll. Aria will detect your style automatically.
+                </p>
+              </div>
+              <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                <ImagePlus className="h-4 w-4 mr-2" />
+                Upload Your First Image
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* ─── Right Sidebar ──────────────────────────────────────────── */}
+        <div className="space-y-4">
+
+          {/* AI Style Summary */}
+          <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">AI Style Summary</h3>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => generateSummaryMutation.mutate()}
+                disabled={generateSummaryMutation.isPending}
+                title="Regenerate"
+              >
+                {generateSummaryMutation.isPending
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <RefreshCw className="h-3.5 w-3.5" />
+                }
+              </Button>
+            </div>
+
+            {board.aiSummary ? (
+              <p className="text-sm text-foreground leading-relaxed italic">
+                "{board.aiSummary}"
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Upload images and add style tags, then generate your personalized style summary.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => generateSummaryMutation.mutate()}
+                  disabled={generateSummaryMutation.isPending}
+                >
+                  {generateSummaryMutation.isPending
+                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</>
+                    : <><Wand2 className="h-3.5 w-3.5 mr-1.5" /> Generate Summary</>
+                  }
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Style Tags */}
+          <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Tag className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">Style Tags</h3>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {PRESET_TAGS.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => toggleTag(tag)}
+                  className={cn(
+                    "text-xs px-2.5 py-1 rounded-full border transition-all",
+                    board.styleTags.includes(tag)
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border/60 text-muted-foreground hover:border-primary/50 hover:text-foreground",
+                  )}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+
+            {board.styleTags.filter(t => !PRESET_TAGS.includes(t)).length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {board.styleTags
+                  .filter(t => !PRESET_TAGS.includes(t))
+                  .map(tag => (
+                    <Badge key={tag} variant="secondary" className="gap-1 text-xs">
+                      {tag}
+                      <button onClick={() => toggleTag(tag)} className="hover:text-destructive">
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </Badge>
+                  ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <input
+                value={newTag}
+                onChange={e => setNewTag(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addCustomTag()}
+                placeholder="Add custom tag…"
+                className="flex-1 text-xs bg-muted/40 border border-border/40 rounded-lg px-3 py-1.5 outline-none focus:border-primary/40 text-foreground placeholder:text-muted-foreground"
+              />
+              <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={addCustomTag}>
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Color Palette */}
+          <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Palette className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">Color Palette</h3>
+            </div>
+
+            {board.colorPalette.length > 0 ? (
+              <div className="space-y-2">
+                {board.colorPalette.map((swatch, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div
+                      className="w-8 h-8 rounded-lg border border-border/40 shrink-0 shadow-sm"
+                      style={{ backgroundColor: swatch.hex }}
+                    />
+                    <input
+                      value={swatch.name}
+                      onChange={e => renameColor(i, e.target.value)}
+                      className="flex-1 text-xs bg-transparent text-foreground outline-none border-b border-transparent focus:border-border/60 py-0.5"
+                    />
+                    <span className="text-[10px] text-muted-foreground font-mono">{swatch.hex}</span>
+                    <button onClick={() => removeColor(i)} className="text-muted-foreground hover:text-destructive">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Analyze your images to automatically extract your wedding color palette.
+              </p>
+            )}
+
+            {board.images.some(img => !img.analysis) && board.images.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-xs"
+                onClick={analyzeAll}
+                disabled={!!analyzingPath}
+              >
+                {analyzingPath
+                  ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Analyzing images…</>
+                  : <><Wand2 className="h-3.5 w-3.5 mr-1.5" /> Extract Colors from Images</>
+                }
+              </Button>
+            )}
+          </div>
+
+          {/* Notes */}
+          <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <StickyNote className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">Notes & Inspiration</h3>
+            </div>
+            <Textarea
+              value={board.notes ?? ""}
+              onChange={e => update({ notes: e.target.value })}
+              placeholder="Jot down ideas, inspiration links, or details about your vision…"
+              className="resize-none text-sm min-h-[100px] bg-muted/30 border-border/40"
+            />
+          </div>
+
+          {/* Discovered insights (from analyzed images) */}
+          {board.images.some(img => img.analysis) && (
+            <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Wand2 className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">Discovered from Images</h3>
+              </div>
+              <div className="space-y-2">
+                {(() => {
+                  const allKeywords = [...new Set(board.images.flatMap(img => img.analysis?.styleKeywords ?? []))];
+                  const allThemes = [...new Set(board.images.flatMap(img => img.analysis?.decorThemes ?? []))];
+                  const floralStyles = [...new Set(board.images.map(img => img.analysis?.floralStyle).filter(Boolean))];
+                  const venueVibes = [...new Set(board.images.map(img => img.analysis?.venueVibe).filter(Boolean))];
+                  return (
+                    <>
+                      {allKeywords.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Aesthetic</p>
+                          <div className="flex flex-wrap gap-1">
+                            {allKeywords.slice(0, 8).map(k => (
+                              <span key={k} className="text-xs bg-primary/8 text-primary px-2 py-0.5 rounded-full">{k}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {allThemes.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Décor Themes</p>
+                          <div className="flex flex-wrap gap-1">
+                            {allThemes.slice(0, 6).map(t => (
+                              <span key={t} className="text-xs bg-muted text-foreground px-2 py-0.5 rounded-full">{t}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {floralStyles.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground">Florals:</span> {floralStyles.join(", ")}
+                        </p>
+                      )}
+                      {venueVibes.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground">Venue vibe:</span> {venueVibes.join(", ")}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Color palette builder ────────────────────────────────────────────────────
+
+function buildPalette(allColors: string[], existing: ColorSwatch[]): ColorSwatch[] {
+  const colorNames: Record<string, string> = {
+    "#ffffff": "White", "#f5f5f5": "Off White", "#fafafa": "Ivory",
+    "#fff8f0": "Cream", "#f5e6d3": "Blush", "#e8d5c4": "Champagne",
+    "#d4b896": "Nude", "#c8a882": "Sand", "#b8860b": "Gold",
+    "#ffd700": "Gold", "#c0a060": "Champagne Gold", "#808080": "Silver",
+    "#c0c0c0": "Silver", "#4a4a4a": "Charcoal", "#2d2d2d": "Dark",
+    "#1a1a2e": "Midnight", "#355070": "Navy", "#6b4c71": "Mauve",
+    "#d4a0b0": "Dusty Rose", "#e8a0a8": "Blush Pink", "#f4c2c2": "Light Pink",
+    "#c8b4d0": "Lavender", "#b0c4de": "Dusty Blue", "#7ec8c8": "Sage",
+    "#8fbc8f": "Sage Green", "#90a878": "Olive", "#556b2f": "Forest",
+  };
+
+  const counts = new Map<string, number>();
+  for (const color of allColors) {
+    counts.set(color.toLowerCase(), (counts.get(color.toLowerCase()) ?? 0) + 1);
+  }
+
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const selected: ColorSwatch[] = [];
+
+  for (const [hex] of sorted) {
+    if (selected.length >= 6) break;
+    if (existing.some(c => c.hex.toLowerCase() === hex)) {
+      const existingEntry = existing.find(c => c.hex.toLowerCase() === hex)!;
+      if (!selected.some(s => s.hex.toLowerCase() === hex)) {
+        selected.push(existingEntry);
+      }
+    } else {
+      const name = colorNames[hex] ?? "Wedding Tone";
+      selected.push({ hex, name });
+    }
+  }
+
+  for (const existing_swatch of existing) {
+    if (!selected.some(s => s.hex.toLowerCase() === existing_swatch.hex.toLowerCase())) {
+      selected.push(existing_swatch);
+    }
+  }
+
+  return selected.slice(0, 7);
+}

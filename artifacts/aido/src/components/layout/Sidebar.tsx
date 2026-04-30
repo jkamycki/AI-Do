@@ -45,6 +45,7 @@ const navSections = [
     items: [
       { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
       { href: "/profile", labelKey: "nav.profile", icon: User },
+      { href: "/mood-board", labelKey: "nav.mood_board", icon: ImagePlus },
       { href: "/timeline", labelKey: "nav.timeline", icon: CalendarDays },
       { href: "/checklist", labelKey: "nav.checklist", icon: CheckSquare },
     ],

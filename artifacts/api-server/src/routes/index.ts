@@ -28,6 +28,7 @@ import messagingRouter from "./wedding/messaging";
 import ttsRouter from "./tts";
 import authRouter from "./auth";
 import rsvpRouter from "./rsvp";
+import moodboardRouter from "./moodboard";
 
 const router: IRouter = Router();
 
@@ -60,5 +61,6 @@ router.use(messagingRouter);
 router.use(ttsRouter);
 router.use(authRouter);
 router.use(rsvpRouter);
+router.use(moodboardRouter);
 
 export default router;

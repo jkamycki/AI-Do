@@ -1,0 +1,128 @@
+“Add a complete Mood Board feature to my A.IDO wedding planning portal.
+This feature should let couples visually define their wedding style and connect that style to the rest of the planning tools. Build everything below:
+
+1. Mood Board Page / UI
+Create a dedicated Mood Board page with:
+
+A clean, modern grid layout for uploaded images
+
+Drag‑and‑drop image rearranging
+
+Ability to delete, replace, or reorder images
+
+Auto‑resizing collage layout
+
+A right‑side sidebar containing:
+
+Style tags (romantic, rustic, modern, glam, boho, etc.)
+
+Auto‑generated color palette
+
+Notes section for ideas or inspiration
+
+AI-generated style summary
+
+Design requirements:
+
+Soft, wedding‑aesthetic colors
+
+Rounded cards, subtle shadows
+
+Mobile‑friendly layout
+
+Fast image loading
+
+2. Image Upload + AI Analysis
+When a user uploads images, automatically run AI analysis to extract:
+
+Dominant colors
+
+Style keywords
+
+Décor themes
+
+Floral styles
+
+Venue vibes
+
+Fashion cues (dress/suit style, textures, materials)
+
+Display these insights in the sidebar.
+
+3. Auto‑Generated Color Palette
+Build a color palette generator that:
+
+Pulls 5–7 dominant colors from uploaded images
+
+Displays hex codes
+
+Allows renaming or adjusting colors
+
+Saves the palette to the user’s wedding profile
+
+4. AI Style Summary
+Generate a short, clear description of the couple’s wedding style, such as:
+
+“Your wedding style is modern romantic with blush tones, gold accents, and airy florals.”
+
+Save this summary to the Mood Board record.
+
+5. Connect Mood Board to Other A.IDO Tools
+Integrate the mood board with existing features:
+
+Timeline Generator:  
+Suggest golden hour photos, décor setup timing, etc. based on style.
+
+Vendor Matching:  
+Recommend photographers, florists, décor vendors that match the style keywords.
+
+Checklist Generator:  
+Add style‑specific items (e.g., neon sign for modern glam, candles for romantic).
+
+Budget Helper:  
+Adjust budget suggestions based on style complexity.
+
+6. Save + Share Options
+Add options for users to:
+
+Save the mood board to their account
+
+Export as an image
+
+Share with partner, planner, or vendors
+
+Generate a shareable link
+
+7. Database Structure
+Create a new data type called MoodBoard with fields:
+
+User
+
+Images (list)
+
+ColorPalette (list of hex codes)
+
+StyleKeywords (list)
+
+AISummary (text)
+
+Notes (text)
+
+CreatedDate
+
+LastUpdated
+
+Link MoodBoard to the user’s wedding profile.
+
+8. Integrations
+Ensure the Mood Board connects to:
+
+Vendor matching engine
+
+Timeline generator
+
+Checklist generator
+
+Wedding profile
+
+This Mood Board should feel like a simple, fast, built‑in Pinterest board that powers personalization across the entire A.IDO planning experience.”
