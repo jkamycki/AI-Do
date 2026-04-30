@@ -664,6 +664,58 @@ export default function Guests() {
     });
   }
 
+  function handleGroupChange(guest: Guest, newGroup: string) {
+    const val = newGroup === "none" ? null : newGroup;
+    optimisticUpdate(guest.id, { guestGroup: val });
+    updateGuest.mutate({
+      id: guest.id,
+      data: {
+        name: guest.name,
+        email: guest.email ?? undefined,
+        invitationStatus: guest.invitationStatus ?? "pending",
+        rsvpStatus: guest.rsvpStatus as "pending" | "attending" | "declined",
+        mealChoice: guest.mealChoice ?? undefined,
+        guestGroup: val ?? undefined,
+        plusOne: guest.plusOne,
+        plusOneName: guest.plusOneName ?? undefined,
+        tableAssignment: guest.tableAssignment ?? undefined,
+        notes: guest.notes ?? undefined,
+      },
+    }, {
+      onSuccess: () => invalidate(),
+      onError: () => {
+        optimisticUpdate(guest.id, { guestGroup: guest.guestGroup });
+        toast({ title: "Failed to update group", variant: "destructive" });
+      },
+    });
+  }
+
+  function handleMealChange(guest: Guest, newMeal: string) {
+    const val = newMeal === "none" ? null : newMeal;
+    optimisticUpdate(guest.id, { mealChoice: val });
+    updateGuest.mutate({
+      id: guest.id,
+      data: {
+        name: guest.name,
+        email: guest.email ?? undefined,
+        invitationStatus: guest.invitationStatus ?? "pending",
+        rsvpStatus: guest.rsvpStatus as "pending" | "attending" | "declined",
+        mealChoice: val ?? undefined,
+        guestGroup: guest.guestGroup ?? undefined,
+        plusOne: guest.plusOne,
+        plusOneName: guest.plusOneName ?? undefined,
+        tableAssignment: guest.tableAssignment ?? undefined,
+        notes: guest.notes ?? undefined,
+      },
+    }, {
+      onSuccess: () => invalidate(),
+      onError: () => {
+        optimisticUpdate(guest.id, { mealChoice: guest.mealChoice });
+        toast({ title: "Failed to update meal choice", variant: "destructive" });
+      },
+    });
+  }
+
   function handleAdd(data: GuestFormValues) {
     const plusOneName = data.plusOne
       ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()].filter(Boolean).join(" ") || undefined
@@ -1004,13 +1056,31 @@ export default function Guests() {
                           </DropdownMenu>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          {grpLabel ? (
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${grpColor}`}>
-                              {grpLabel}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
-                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border transition-opacity hover:opacity-80 cursor-pointer ${grpLabel ? grpColor : "border-border/50 text-muted-foreground bg-transparent"}`}>
+                                {grpLabel || "—"}
+                                <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-44">
+                              <DropdownMenuItem
+                                className={`text-xs cursor-pointer ${!g.guestGroup ? "opacity-50 pointer-events-none" : ""}`}
+                                onClick={() => handleGroupChange(g, "none")}
+                              >
+                                <span className="text-muted-foreground">— No group</span>
+                              </DropdownMenuItem>
+                              {GROUP_OPTIONS.map(opt => (
+                                <DropdownMenuItem
+                                  key={opt.value}
+                                  className={`text-xs font-medium cursor-pointer ${g.guestGroup === opt.value ? "opacity-50 pointer-events-none" : ""}`}
+                                  onClick={() => handleGroupChange(g, opt.value)}
+                                >
+                                  {t(`guests.group_${opt.value}`, opt.label)}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -1034,8 +1104,32 @@ export default function Guests() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground capitalize">
-                          {g.mealChoice ? g.mealChoice.replace(/_/g, " ") : "—"}
+                        <TableCell className="hidden md:table-cell">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border border-border/50 text-muted-foreground hover:opacity-80 transition-opacity cursor-pointer capitalize">
+                                {g.mealChoice ? g.mealChoice.replace(/_/g, " ") : "—"}
+                                <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-36">
+                              <DropdownMenuItem
+                                className={`text-xs cursor-pointer ${!g.mealChoice ? "opacity-50 pointer-events-none" : ""}`}
+                                onClick={() => handleMealChange(g, "none")}
+                              >
+                                <span className="text-muted-foreground">— No meal</span>
+                              </DropdownMenuItem>
+                              {MEAL_OPTIONS.map(opt => (
+                                <DropdownMenuItem
+                                  key={opt.value}
+                                  className={`text-xs font-medium cursor-pointer ${g.mealChoice === opt.value ? "opacity-50 pointer-events-none" : ""}`}
+                                  onClick={() => handleMealChange(g, opt.value)}
+                                >
+                                  {t(`guests.meal_${opt.value}`, opt.label)}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                           {g.tableAssignment || "—"}
