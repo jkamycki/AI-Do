@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "build": "pnpm run build --filter artifacts/aido",
+    "build": "cd artifacts/aido && pnpm run build && cd ../.. && mkdir -p dist && cp -r artifacts/aido/dist/* dist/",
     "dev": "cd artifacts/aido && pnpm run dev",
     "typecheck": "tsc -p artifacts/aido/tsconfig.json --noEmit"
   },
