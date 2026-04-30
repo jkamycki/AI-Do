@@ -255,6 +255,7 @@ export default function MoodBoard() {
   const [analyzingPath, setAnalyzingPath] = useState<string | null>(null);
   const [newTag, setNewTag] = useState("");
   const [savePending, setSavePending] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const [localBoard, setLocalBoard] = useState<MoodBoardData | null>(null);
   const [blobUrls, setBlobUrls] = useState<Map<string, string>>(new Map());
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -473,17 +474,175 @@ export default function MoodBoard() {
     update({ colorPalette: updated });
   };
 
-  // ─── Export / share ───────────────────────────────────────────────────────
-  const copyShareText = () => {
-    const lines = [
-      "Our Wedding Style",
-      board.aiSummary ?? "",
-      "",
-      board.styleTags.length ? `Style: ${board.styleTags.join(", ")}` : "",
-      board.colorPalette.length ? `Colors: ${board.colorPalette.map(c => `${c.name} (${c.hex})`).join(", ")}` : "",
-    ].filter(Boolean).join("\n");
-    navigator.clipboard.writeText(lines);
-    toast({ title: "Copied to clipboard" });
+  // ─── PDF export ───────────────────────────────────────────────────────────
+  const hexToRgb = (hex: string) => {
+    const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+    return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : null;
+  };
+
+  const blobToDataUrl = (blob: Blob): Promise<string> =>
+    new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onloadend = () => res(r.result as string);
+      r.onerror = rej;
+      r.readAsDataURL(blob);
+    });
+
+  const generatePdf = async () => {
+    setGeneratingPdf(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
+
+      const PAGE_W = 595;
+      const PAGE_H = 842;
+      const MARGIN = 40;
+      const CW = PAGE_W - 2 * MARGIN;
+
+      let y = MARGIN;
+
+      const sectionLabel = (text: string) => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(180, 160, 140);
+        doc.text(text.toUpperCase(), MARGIN, y);
+        y += 11;
+        doc.setDrawColor(220, 205, 185);
+        doc.setLineWidth(0.5);
+        doc.line(MARGIN, y, PAGE_W - MARGIN, y);
+        y += 14;
+      };
+
+      // ── Header ─────────────────────────────────────────────────────────────
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(190, 170, 148);
+      doc.text("WEDDING MOOD BOARD", PAGE_W / 2, y, { align: "center" });
+      y += 28;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(22);
+      doc.setTextColor(55, 38, 28);
+      doc.text("Our Wedding Style", PAGE_W / 2, y, { align: "center" });
+      y += 12;
+
+      doc.setDrawColor(201, 169, 110);
+      doc.setLineWidth(0.8);
+      doc.line(PAGE_W / 2 - 40, y, PAGE_W / 2 + 40, y);
+      y += 24;
+
+      // ── AI Summary ─────────────────────────────────────────────────────────
+      if (board.aiSummary) {
+        doc.setFont("helvetica", "oblique");
+        doc.setFontSize(10.5);
+        doc.setTextColor(110, 90, 70);
+        const lines = doc.splitTextToSize(`"${board.aiSummary}"`, CW);
+        doc.text(lines, PAGE_W / 2, y, { align: "center" });
+        y += (lines.length as number) * 14 + 24;
+      }
+
+      // ── Images grid ────────────────────────────────────────────────────────
+      if (board.images.length > 0) {
+        sectionLabel("Inspiration Images");
+
+        const COLS = 3;
+        const GAP = 7;
+        const IMG_W = (CW - GAP * (COLS - 1)) / COLS;
+        const IMG_H = Math.round(IMG_W * 0.7);
+
+        for (let i = 0; i < board.images.length; i++) {
+          const col = i % COLS;
+          if (col === 0 && i > 0) {
+            y += IMG_H + GAP;
+            if (y + IMG_H > PAGE_H - MARGIN) {
+              doc.addPage();
+              y = MARGIN;
+            }
+          }
+          const x = MARGIN + col * (IMG_W + GAP);
+          try {
+            const res = await authFetch(objectUrl(board.images[i].objectPath), {}, getToken);
+            const blob = await res.blob();
+            const dataUrl = await blobToDataUrl(blob);
+            doc.addImage(dataUrl, x, y, IMG_W, IMG_H);
+          } catch {
+            doc.setFillColor(235, 228, 218);
+            doc.roundedRect(x, y, IMG_W, IMG_H, 3, 3, "F");
+          }
+        }
+        y += IMG_H + 28;
+
+        if (y > PAGE_H - MARGIN - 80) {
+          doc.addPage();
+          y = MARGIN;
+        }
+      }
+
+      // ── Color Palette ──────────────────────────────────────────────────────
+      if (board.colorPalette.length > 0) {
+        sectionLabel("Color Palette");
+        const SWATCH = 30;
+        const SWATCH_GAP = 10;
+        board.colorPalette.forEach((color, i) => {
+          const x = MARGIN + i * (SWATCH + SWATCH_GAP);
+          const rgb = hexToRgb(color.hex);
+          if (rgb) {
+            doc.setFillColor(rgb.r, rgb.g, rgb.b);
+            doc.roundedRect(x, y, SWATCH, SWATCH, 3, 3, "F");
+          }
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(6.5);
+          doc.setTextColor(140, 120, 100);
+          doc.text(color.hex.toUpperCase(), x + SWATCH / 2, y + SWATCH + 9, { align: "center" });
+          if (color.name) doc.text(color.name, x + SWATCH / 2, y + SWATCH + 17, { align: "center" });
+        });
+        y += SWATCH + 32;
+      }
+
+      // ── Style Tags ─────────────────────────────────────────────────────────
+      if (board.styleTags.length > 0) {
+        sectionLabel("Style");
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.setTextColor(90, 70, 55);
+        doc.text(board.styleTags.join("  ·  "), MARGIN, y);
+        y += 24;
+      }
+
+      // ── Notes ──────────────────────────────────────────────────────────────
+      if (board.notes?.trim()) {
+        if (y + 60 > PAGE_H - MARGIN) { doc.addPage(); y = MARGIN; }
+        sectionLabel("Notes");
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(90, 70, 55);
+        const noteLines = doc.splitTextToSize(board.notes.trim(), CW);
+        doc.text(noteLines, MARGIN, y);
+      }
+
+      // ── Footer on every page ───────────────────────────────────────────────
+      const totalPages = doc.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(190, 170, 148);
+        doc.text(
+          `Created with A.IDO · aidowedding.net${totalPages > 1 ? `   ${p} / ${totalPages}` : ""}`,
+          PAGE_W / 2,
+          PAGE_H - 20,
+          { align: "center" }
+        );
+      }
+
+      doc.save("Wedding-Mood-Board.pdf");
+      toast({ title: "PDF ready", description: "Your mood board has been downloaded." });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Could not generate PDF", variant: "destructive" });
+    } finally {
+      setGeneratingPdf(false);
+    }
   };
 
   if (isLoading) {
@@ -515,8 +674,10 @@ export default function MoodBoard() {
               <Loader2 className="h-3 w-3 animate-spin" /> Saving…
             </span>
           )}
-          <Button variant="outline" size="sm" onClick={copyShareText}>
-            <Download className="h-4 w-4 mr-1.5" /> Share Style
+          <Button variant="outline" size="sm" onClick={generatePdf} disabled={generatingPdf}>
+            {generatingPdf
+              ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Generating PDF…</>
+              : <><Download className="h-4 w-4 mr-1.5" /> Export PDF</>}
           </Button>
           <Button
             size="sm"
