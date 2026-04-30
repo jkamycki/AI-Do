@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, memo } from "react";
 import { useAuth } from "@clerk/react";
 import { useUpload } from "@workspace/object-storage-web";
 import {
@@ -99,15 +99,75 @@ function objectUrl(objectPath: string) {
   return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
 }
 
+// ─── Authenticated image loader ───────────────────────────────────────────────
+// The storage route requires a Bearer token; <img> tags can't send one.
+// This component fetches the image with the Clerk token and renders it from a
+// local blob URL, bypassing the auth issue for both new and saved images.
+
+const AuthImage = memo(function AuthImage({
+  objectPath,
+  blobUrl,
+  alt,
+  className,
+}: {
+  objectPath: string;
+  blobUrl?: string;
+  alt: string;
+  className?: string;
+}) {
+  const { getToken } = useAuth();
+  const [src, setSrc] = useState<string | null>(blobUrl ?? null);
+  const blobRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (blobUrl) {
+      setSrc(blobUrl);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch(objectUrl(objectPath), {
+          credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok || cancelled) return;
+        const blob = await res.blob();
+        if (cancelled) return;
+        const url = URL.createObjectURL(blob);
+        blobRef.current = url;
+        setSrc(url);
+      } catch {
+        // silently fail — broken image placeholder shown
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (blobRef.current) {
+        URL.revokeObjectURL(blobRef.current);
+        blobRef.current = null;
+      }
+    };
+  }, [objectPath, blobUrl, getToken]);
+
+  if (!src) {
+    return <div className={cn("bg-muted animate-pulse", className)} />;
+  }
+  return <img src={src} alt={alt} className={className} />;
+});
+
 // ─── Sortable Image Card ──────────────────────────────────────────────────────
 
 function SortableImageCard({
   image,
+  blobUrl,
   onDelete,
   onAnalyze,
   analyzing,
 }: {
   image: MoodBoardImage;
+  blobUrl?: string;
   onDelete: () => void;
   onAnalyze: () => void;
   analyzing: boolean;
@@ -131,11 +191,11 @@ function SortableImageCard({
         isDragging && "shadow-2xl ring-2 ring-primary/40",
       )}
     >
-      <img
-        src={objectUrl(image.objectPath)}
+      <AuthImage
+        objectPath={image.objectPath}
+        blobUrl={blobUrl}
         alt="Mood board image"
         className="w-full h-full object-cover"
-        loading="lazy"
       />
 
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200" />
@@ -196,7 +256,13 @@ export default function MoodBoard() {
   const [newTag, setNewTag] = useState("");
   const [savePending, setSavePending] = useState(false);
   const [localBoard, setLocalBoard] = useState<MoodBoardData | null>(null);
+  const [blobUrls, setBlobUrls] = useState<Map<string, string>>(new Map());
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    const urls = blobUrls;
+    return () => { urls.forEach(url => URL.revokeObjectURL(url)); };
+  }, []);
 
   // ─── Upload hook ──────────────────────────────────────────────────────────
   const { uploadFile, isUploading } = useUpload({
@@ -266,13 +332,24 @@ export default function MoodBoard() {
       files.map(f => uploadFile(f))
     );
 
-    const newImages: MoodBoardImage[] = uploads
-      .filter(Boolean)
-      .map((r, i) => ({
-        objectPath: r!.objectPath,
-        order: board.images.length + i,
-        name: files[i]?.name,
-      }));
+    const successful = uploads
+      .map((r, i) => ({ result: r, file: files[i] }))
+      .filter(({ result }) => Boolean(result));
+
+    const newImages: MoodBoardImage[] = successful.map(({ result }, i) => ({
+      objectPath: result!.objectPath,
+      order: board.images.length + i,
+      name: successful[i].file?.name,
+    }));
+
+    // Create blob URLs for immediate display (no auth round-trip needed)
+    setBlobUrls(prev => {
+      const next = new Map(prev);
+      successful.forEach(({ result, file }) => {
+        if (result && file) next.set(result.objectPath, URL.createObjectURL(file));
+      });
+      return next;
+    });
 
     const updatedImages = [...board.images, ...newImages];
     update({ images: updatedImages });
@@ -497,6 +574,7 @@ export default function MoodBoard() {
                   <SortableImageCard
                     key={img.objectPath}
                     image={img}
+                    blobUrl={blobUrls.get(img.objectPath)}
                     onDelete={() => removeImage(img.objectPath)}
                     onAnalyze={() => analyzeImage(img.objectPath)}
                     analyzing={analyzingPath === img.objectPath}
