@@ -1,39 +1,15 @@
 {
-  "name": "workspace",
+  "name": "aido",
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "build": "pnpm run typecheck && pnpm -r --if-present run build",
-    "dev": "pnpm --filter @workspace/aido run dev",
-    "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "build": "cd artifacts/aido && npm run build",
+    "dev": "cd artifacts/aido && npm run dev",
+    "typecheck": "tsc -p artifacts/aido/tsconfig.json --noEmit"
   },
   "private": true,
   "engines": {
     "node": ">=20"
-  },
-  "pnpm": {
-    "overrides": {
-      "react": "19.1.0",
-      "react-dom": "19.1.0",
-      "picomatch": "4.0.4",
-      "path-to-regexp": "8.4.2",
-      "lodash": "4.18.1",
-      "yaml": "2.8.3",
-      "brace-expansion": "2.1.0",
-      "@tootallnate/once": "3.0.1",
-      "esbuild": "0.27.3",
-      "uuid": "14.0.0",
-      "postcss": "8.5.10"
-    },
-    "onlyBuiltDependencies": [
-      "@pnpm/exe",
-      "@swc/core",
-      "esbuild",
-      "msw",
-      "unrs-resolver"
-    ]
   },
   "devDependencies": {
     "prettier": "^3.8.1",
