@@ -494,6 +494,29 @@ export default function MoodBoard() {
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
 
+      // Fetch couple names from profile
+      let partner1 = "";
+      let partner2 = "";
+      try {
+        const profileRes = await authFetch(
+          `${import.meta.env.BASE_URL}api/profile`.replace(/\/+/g, "/"),
+          {},
+          getToken
+        );
+        if (profileRes.ok) {
+          const p = await profileRes.json() as { partner1Name?: string; partner2Name?: string };
+          partner1 = p.partner1Name ?? "";
+          partner2 = p.partner2Name ?? "";
+        }
+      } catch { /* fall back to generic title */ }
+
+      // Fetch A.IDO logo for embedding
+      let logoDataUrl: string | null = null;
+      try {
+        const logoRes = await fetch(`${import.meta.env.BASE_URL}logo.png`);
+        if (logoRes.ok) logoDataUrl = await blobToDataUrl(await logoRes.blob());
+      } catch { /* skip logo if unavailable */ }
+
       const PAGE_W = 595;
       const PAGE_H = 842;
       const MARGIN = 40;
@@ -514,21 +537,32 @@ export default function MoodBoard() {
       };
 
       // ── Header ─────────────────────────────────────────────────────────────
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
-      doc.setTextColor(190, 170, 148);
-      doc.text("WEDDING MOOD BOARD", PAGE_W / 2, y, { align: "center" });
-      y += 28;
+      // A.IDO logo — top left corner
+      if (logoDataUrl) {
+        doc.addImage(logoDataUrl, "PNG", MARGIN, y - 7, 52, 18);
+      }
 
+      // Couple names (large, centered)
+      const coupleLine = partner1 && partner2
+        ? `${partner1} & ${partner2}`
+        : "Our Wedding";
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(22);
+      doc.setFontSize(26);
       doc.setTextColor(55, 38, 28);
-      doc.text("Our Wedding Style", PAGE_W / 2, y, { align: "center" });
-      y += 12;
+      doc.text(coupleLine, PAGE_W / 2, y, { align: "center" });
+      y += 15;
 
+      // Subtitle
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(160, 140, 118);
+      doc.text("Wedding Mood Board", PAGE_W / 2, y, { align: "center" });
+      y += 18;
+
+      // Gold divider
       doc.setDrawColor(201, 169, 110);
       doc.setLineWidth(0.8);
-      doc.line(PAGE_W / 2 - 40, y, PAGE_W / 2 + 40, y);
+      doc.line(PAGE_W / 2 - 50, y, PAGE_W / 2 + 50, y);
       y += 24;
 
       // ── AI Summary ─────────────────────────────────────────────────────────
@@ -635,7 +669,10 @@ export default function MoodBoard() {
         );
       }
 
-      doc.save("Wedding-Mood-Board.pdf");
+      const filename = partner1 && partner2
+        ? `${partner1}-and-${partner2}-Wedding-Mood-Board.pdf`.replace(/\s+/g, "-")
+        : "Wedding-Mood-Board.pdf";
+      doc.save(filename);
       toast({ title: "PDF ready", description: "Your mood board has been downloaded." });
     } catch (err) {
       console.error(err);
