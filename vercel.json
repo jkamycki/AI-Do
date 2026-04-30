@@ -1,5 +1,5 @@
 {
-  "installCommand": "cd artifacts/aido && pnpm install",
-  "buildCommand": "cd artifacts/aido && pnpm run build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @workspace/aido run build",
   "outputDirectory": "artifacts/aido/dist"
 }
