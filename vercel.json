@@ -1,7 +1,5 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm run build",
-  "installCommand": "pnpm install",
-  "outputDirectory": "dist",
-  "framework": "vite"
+  "installCommand": "cd artifacts/aido && pnpm install",
+  "buildCommand": "cd artifacts/aido && pnpm run build",
+  "outputDirectory": "artifacts/aido/dist"
 }
