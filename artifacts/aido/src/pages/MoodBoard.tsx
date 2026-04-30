@@ -741,17 +741,29 @@ export default function MoodBoard() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Header: A.IDO logo top-left, centered title */}
+      {/* Header: centered title + Export PDF button top-right */}
       <div className="relative flex justify-center items-start pb-5 border-b border-border/50">
         <div className="text-center">
           <h1 className="text-2xl font-bold tracking-tight">Your Wedding Mood Board</h1>
           <p className="text-sm text-muted-foreground mt-1">Curate and visualize your dream wedding style.</p>
         </div>
-        {savePending && (
-          <span className="absolute right-0 top-0.5 text-xs text-muted-foreground flex items-center gap-1">
-            <Loader2 className="h-3 w-3 animate-spin" /> Saving…
-          </span>
-        )}
+        <div className="absolute right-0 top-0 flex items-center gap-2">
+          {savePending && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+            </span>
+          )}
+          <button
+            onClick={generatePdf}
+            disabled={generatingPdf}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent/50 disabled:opacity-60 transition-colors"
+          >
+            {generatingPdf
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <Download className="h-3.5 w-3.5" />}
+            Export PDF
+          </button>
+        </div>
       </div>
 
       {/* Hidden file input — used by in-grid upload zone */}
