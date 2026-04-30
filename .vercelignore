@@ -1,29 +1,5 @@
-# Replit-specific files
 .replit
 .replitignore
-replit.md
-
-# Project artifacts that shouldn't be deployed
-artifacts/api-server
-artifacts/mockup-sandbox
-
-# Build artifacts and caches
-.local
-node_modules
-.pnpm-store
-dist
-build
-
-# Assets and logs
-attached_assets
-**/*.log
-cloudflare
-
-# Development files
 .canvas
 .agents
-scripts
-lib
-tsconfig*.json
-pnpm-workspace.yaml
-threat_model.md
+*.toml
