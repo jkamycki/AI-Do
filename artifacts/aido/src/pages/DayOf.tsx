@@ -1,5 +1,5 @@
 import { Component, useState, useEffect, useRef } from "react";
-import { useGetTimeline, useEmergencyAdvice, useGetProfile } from "@workspace/api-client-react";
+import { useGetTimeline, useGenerateTimeline, useEmergencyAdvice, useGetProfile, getGetTimelineQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Clock, CheckCircle2, Siren, Pencil, Save, X, RotateCcw, Info, RefreshCw, Trash2 } from "lucide-react";
+import { AlertCircle, Clock, CheckCircle2, Siren, Pencil, Save, X, RotateCcw, Info, RefreshCw, Trash2, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useToast } from "@/hooks/use-toast";
@@ -104,11 +104,14 @@ function DayOfInner() {
   const { data: profile } = useGetProfile();
   const { activeWorkspace } = useWorkspace();
   const getAdvice = useEmergencyAdvice();
+  const generateTimeline = useGenerateTimeline();
   const { toast } = useToast();
   const qc = useQueryClient();
 
   const [emergencyText, setEmergencyText] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isRegenerateOpen, setIsRegenerateOpen] = useState(false);
+  const [dayVision, setDayVision] = useState("");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [completedSet, setCompletedSet] = useState<Set<number>>(new Set());
 
@@ -188,6 +191,24 @@ function DayOfInner() {
     }
   };
 
+  const handleRegenerate = () => {
+    if (!profile?.id) return;
+    generateTimeline.mutate(
+      { data: { profileId: profile.id, dayVision: dayVision.trim() || undefined } },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
+          setIsRegenerateOpen(false);
+          setDayVision("");
+          toast({ title: "Timeline regenerated" });
+        },
+        onError: () => {
+          toast({ title: "Failed to regenerate timeline", variant: "destructive" });
+        },
+      }
+    );
+  };
+
   const toggleDone = (index: number) => {
     setCompletedSet((prev) => {
       const next = new Set(prev);
@@ -228,7 +249,7 @@ function DayOfInner() {
     );
   }
 
-  const today = profile?.weddingDate ? new Date(profile.weddingDate) : new Date();
+  const today = profile?.weddingDate ? new Date(profile.weddingDate + "T00:00:00") : new Date();
   const dateStr = format(today, "EEEE, MMMM do");
   const isEditing = (i: number) => editingIndex === i;
 
@@ -263,12 +284,33 @@ function DayOfInner() {
             <CardContent className="space-y-4">
               <Clock className="h-12 w-12 text-primary/40 mx-auto" />
               <p className="text-muted-foreground">{t("dayof.no_timeline")}</p>
-              <Button variant="outline" onClick={() => window.location.href = '/timeline'}>{t("dayof.go_to_timeline")}</Button>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button
+                  className="gap-2"
+                  onClick={() => setIsRegenerateOpen(true)}
+                  disabled={generateTimeline.isPending}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Generate with AI
+                </Button>
+                <Button variant="outline" onClick={() => window.location.href = '/timeline'}>{t("dayof.go_to_timeline")}</Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
           <>
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs h-7 border-primary/30 text-primary hover:bg-primary/10"
+                onClick={() => setIsRegenerateOpen(true)}
+                disabled={generateTimeline.isPending}
+              >
+                <Sparkles className="h-3 w-3" />
+                Regenerate with AI
+              </Button>
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -434,6 +476,40 @@ function DayOfInner() {
           </>
         )}
       </div>
+
+      {/* Regenerate Timeline Dialog */}
+      <Dialog open={isRegenerateOpen} onOpenChange={(open) => { setIsRegenerateOpen(open); if (!open) { setDayVision(""); generateTimeline.reset(); } }}>
+        <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" /> Regenerate Timeline
+            </DialogTitle>
+            <DialogDescription>
+              AI will create a fresh wedding day timeline based on your profile. Optionally describe any vision for the day.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <Textarea
+              placeholder="Any special notes? (e.g. outdoor ceremony, first look before ceremony, extra time for photos…)"
+              value={dayVision}
+              onChange={(e) => setDayVision(e.target.value)}
+              className="min-h-[100px] resize-none bg-muted/50"
+              disabled={generateTimeline.isPending}
+            />
+            <Button
+              onClick={handleRegenerate}
+              disabled={generateTimeline.isPending}
+              className="w-full gap-2"
+            >
+              {generateTimeline.isPending ? (
+                <><RefreshCw className="h-4 w-4 animate-spin" /> Generating…</>
+              ) : (
+                <><Sparkles className="h-4 w-4" /> Generate New Timeline</>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Floating Emergency Button */}
       <div className="fixed bottom-6 left-0 right-0 px-4 z-30 pointer-events-none flex justify-center">
