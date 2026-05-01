@@ -56,7 +56,7 @@ export default function Profile() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isLoaded, isSignedIn } = useAuth();
-  const { data: profile, isLoading, isError, refetch } = useGetProfile({ query: { enabled: isLoaded && !!isSignedIn } });
+  const { data: profile, isLoading, isFetching, isError, refetch } = useGetProfile({ query: { enabled: isLoaded && !!isSignedIn } });
   const saveProfile = useSaveProfile();
 
   const form = useForm<ProfileFormValues>({
@@ -131,7 +131,7 @@ export default function Profile() {
     });
   };
 
-  if (isError && !profile) {
+  if (isError && !profile && !isFetching) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] space-y-4 text-center">
         <p className="text-muted-foreground text-sm">
@@ -144,7 +144,7 @@ export default function Profile() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || isFetching) {
     return (
       <div className="space-y-6 max-w-3xl mx-auto">
         <Skeleton className="h-12 w-64" />

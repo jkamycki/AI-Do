@@ -1220,14 +1220,32 @@ function ClerkQueryClientCacheInvalidator() {
   const { addListener } = useClerk();
   const qc = useQueryClient();
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
+  const prevSessionIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    const unsubscribe = addListener(({ user }) => {
+    const unsubscribe = addListener(({ user, session }) => {
       const userId = user?.id ?? null;
+      const sessionId = (session as { id?: string } | null)?.id ?? null;
+
+      // Clear entire cache when a different user signs in / signs out
       if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) {
         qc.clear();
       }
+
+      // When the session becomes active (or is silently refreshed), refetch
+      // all mounted queries so they pick up the fresh JWT.  This is the key
+      // fix for the stale-session 401 that occurs on cold-start or after a
+      // Clerk background re-auth (~14s after page load on free-tier Render).
+      if (
+        prevSessionIdRef.current !== undefined &&
+        prevSessionIdRef.current !== sessionId &&
+        sessionId !== null
+      ) {
+        qc.invalidateQueries();
+      }
+
       prevUserIdRef.current = userId;
+      prevSessionIdRef.current = sessionId;
     });
     return unsubscribe;
   }, [addListener, qc]);
