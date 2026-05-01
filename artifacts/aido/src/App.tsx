@@ -780,12 +780,18 @@ function CustomSignUpForm() {
 
   async function handleOAuth(strategy: "oauth_google" | "oauth_apple") {
     setError(null);
-    // Clear any stale sign-IN OAuth intent from a previously abandoned flow,
-    // so the no-account detector can never mistake this fresh sign-UP for an
-    // auto-created sign-in account.
+    // Mark this OAuth flow as a sign-UP attempt. After the OAuth callback
+    // the ExistingAccountFromSignUpDetector uses this flag to detect the
+    // case where Clerk silently "transferred" the sign-up into a sign-in
+    // because the email already had an account. Without this flag, the
+    // user would land on the dashboard logged in to their existing account
+    // and have no idea why their attempt to create a new account didn't
+    // work. The timestamp lets the detector tell apart "account created
+    // by THIS flow" (success — keep) from "existing account reused by
+    // transfer" (must sign out + bounce to /sign-in with a clear message).
     try {
-      sessionStorage.removeItem("aido_oauth_intent");
-      sessionStorage.removeItem("aido_oauth_intent_at");
+      sessionStorage.setItem("aido_oauth_intent", "signup");
+      sessionStorage.setItem("aido_oauth_intent_at", String(Date.now()));
     } catch {}
     try {
       setOauthLoading(strategy);
@@ -1132,6 +1138,74 @@ function LanguageSyncProvider() {
   return null;
 }
 
+function ExistingAccountFromSignUpDetector() {
+  // Mirror of NoAccountFromSignInDetector for the opposite case:
+  // user clicks "Continue with Google" on the SIGN-UP page, but Clerk
+  // detects the email already has an account and silently "transfers"
+  // the sign-up into a sign-in. From the user's perspective they wanted
+  // a brand new account and instead got logged into their old one —
+  // confusing and wrong.
+  //
+  // The sign-up page sets sessionStorage.aido_oauth_intent = "signup"
+  // before redirecting to Google. After Clerk completes the OAuth and
+  // signs them in, we check: if intent was "signup" AND the Clerk user's
+  // createdAt is OLDER than when we kicked off this flow, an existing
+  // account was reused (transfer happened). We sign the user out and
+  // bounce them to /sign-in with a clear message.
+  const { isSignedIn, isLoaded } = useAuth();
+  const clerk = useClerk();
+  const [, setLocation] = useLocation();
+  const checkedForUserRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+    const userId = clerk.user?.id;
+    if (!userId || checkedForUserRef.current === userId) return;
+    checkedForUserRef.current = userId;
+
+    let intent: string | null = null;
+    let intentAtRaw: string | null = null;
+    try {
+      intent = sessionStorage.getItem("aido_oauth_intent");
+      intentAtRaw = sessionStorage.getItem("aido_oauth_intent_at");
+    } catch {}
+    if (intent !== "signup") return;
+    try {
+      sessionStorage.removeItem("aido_oauth_intent");
+      sessionStorage.removeItem("aido_oauth_intent_at");
+    } catch {}
+
+    const intentAt = intentAtRaw ? Number(intentAtRaw) : 0;
+    // Stale intent guard — anything older than 10 minutes is ignored.
+    const INTENT_TTL_MS = 10 * 60 * 1000;
+    if (!intentAt || Date.now() - intentAt > INTENT_TTL_MS) return;
+
+    const createdAt = clerk.user?.createdAt
+      ? new Date(clerk.user.createdAt).getTime()
+      : 0;
+    // If the account was created BEFORE this OAuth flow began (with a
+    // small clock-skew buffer), it's an existing account that Clerk
+    // transferred into. New accounts created during the flow have
+    // createdAt >= intentAt and are the success case — leave them alone.
+    const SKEW_MS = 5_000;
+    const isExistingAccount = createdAt > 0 && createdAt < intentAt - SKEW_MS;
+    if (!isExistingAccount) return;
+
+    (async () => {
+      try {
+        sessionStorage.setItem(
+          "aido_signin_no_account_msg",
+          "An A.IDO account already exists for that Google email. We've signed you out so you can sign in with the existing account instead.",
+        );
+      } catch {}
+      await clerk.signOut().catch(() => {});
+      setLocation("/sign-in");
+    })();
+  }, [isLoaded, isSignedIn, clerk, setLocation]);
+
+  return null;
+}
+
 function NoAccountFromSignInDetector() {
   // When a user clicks "Continue with Google" on the SIGN-IN page and their
   // Google email has no existing A.IDO account, Clerk's OAuth flow silently
@@ -1343,6 +1417,7 @@ function ClerkProviderWithRoutes() {
         <ClerkTokenSetup />
         <ClerkQueryClientCacheInvalidator />
         <NoAccountFromSignInDetector />
+        <ExistingAccountFromSignUpDetector />
         <PendingInviteRedirector />
         <LanguageSyncProvider />
         <WorkspaceProvider>
