@@ -14,6 +14,42 @@ import type { Request } from "express";
 
 const router = Router();
 
+// Detect short conversational messages where Aria doesn't need any tools
+// (greetings, thanks, small talk, etc). When this returns true we strip
+// the ~3,700-token TOOLS schema from the Groq request, dropping per-call
+// usage from ~5,000 tokens to ~500. That keeps chitchat well under the
+// Groq free-tier 6,000 TPM budget so a friendly "how are you" never
+// hits a rate limit and shows the user "Aria is unavailable".
+//
+// Conservative heuristic — only triggers when EVERY signal lines up:
+//   - short message (< 80 chars)
+//   - matches a clearly conversational pattern at the start
+//   - contains no wedding-planning action keywords
+// Anything else falls through to the normal tools-enabled path so we
+// never accidentally drop tools for a real planning request.
+const ACTION_KEYWORDS = /\b(add|create|delete|remove|update|edit|change|set|save|book|schedule|invite|cancel|pay|paid|owe|cost|spend|budget|guest|vendor|venue|timeline|checklist|todo|task|event|payment|contract|hotel|party|reception|ceremony|honeymoon|email|message|reminder|date|when|where|how much|how many)\b/i;
+const CONVERSATIONAL_PATTERNS: RegExp[] = [
+  /^(hi|hey|hello|yo|sup|hola|aloha|howdy)\b/i,
+  /^how (are|r) (you|u|ya|things)/i,
+  /^how'?s it going/i,
+  /^how have you been/i,
+  /^what'?s up\b/i,
+  /^good (morning|afternoon|evening|night)\b/i,
+  /^(thank you|thanks|thx|ty)\b/i,
+  /^(bye|goodbye|see ya|ttyl|night)\b/i,
+  /^(lol|haha|nice|cool|ok|okay|got it|sounds good|awesome|love it|perfect)\b/i,
+  /^(who|what) are you\b/i,
+  /^tell me about yourself/i,
+  /^are you (real|human|ai|a bot)/i,
+];
+function isConversationalMessage(text: string): boolean {
+  if (typeof text !== "string") return false;
+  const trimmed = text.trim();
+  if (trimmed.length === 0 || trimmed.length > 80) return false;
+  if (ACTION_KEYWORDS.test(trimmed)) return false;
+  return CONVERSATIONAL_PATTERNS.some((re) => re.test(trimmed));
+}
+
 const SYSTEM_PROMPT = `You are Aria, the warm AI wedding planning assistant inside A.IDO. Speak like a thoughtful real wedding planner — friendly, specific, never robotic.
 
 #1 RULE: NEVER INVENT INFORMATION. If a request is missing details, ASK before calling any write tool. Never substitute a category word for a business name. Never assume defaults.
@@ -1363,9 +1399,17 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     let toolLoops = 0;
     const MAX_TOOL_LOOPS = 4;
 
+    // Detect chitchat: if the latest user message is a pure greeting/
+    // small talk, we skip the entire TOOLS schema below. That drops
+    // per-request token usage from ~5,000 to ~500 and keeps "how are
+    // you" replies well within Groq's 6,000 TPM free-tier budget.
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+    const skipTools = !!lastUserMsg && typeof lastUserMsg.content === "string"
+      && isConversationalMessage(lastUserMsg.content);
+
     // Helper: call with one automatic retry on Groq rate-limit (429)
     const createStream = async () => {
-      const params = {
+      const baseParams = {
         model: getModel(),
         // Tightened from 350 → 220 to stay under Groq free-tier 6000 TPM
         // when the tools schema (~3700 tok) + system prompt + history are
@@ -1373,10 +1417,11 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         max_tokens: 220,
         temperature: 0.1,   // low temp = reliable, consistent tool calls
         messages: convo as unknown as Parameters<typeof openai.chat.completions.create>[0]["messages"],
-        tools: TOOLS,
-        tool_choice: "auto" as const,
         stream: true as const,
       };
+      const params = skipTools
+        ? baseParams
+        : { ...baseParams, tools: TOOLS, tool_choice: "auto" as const };
       // Hard 20s timeout per attempt so a stuck Groq connection can never
       // leave the user staring at a spinning "..." for a minute. The OpenAI
       // SDK propagates AbortSignal to the underlying fetch.
@@ -1390,9 +1435,11 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         const isAbort = (firstErr as { name?: string })?.name === "AbortError"
           || (firstErr as { name?: string })?.name === "TimeoutError";
         if (firstStatus === 429) {
-          // Let the client know we're pausing, then retry after a short delay
+          // Let the client know we're pausing, then retry. Groq's TPM
+          // window resets every 60s — wait 25s so the retry has a real
+          // shot at succeeding (8s was nearly always too short).
           send({ type: "status", message: "Aria is catching her breath, retrying shortly…" });
-          await new Promise(resolve => setTimeout(resolve, 8_000));
+          await new Promise(resolve => setTimeout(resolve, 25_000));
           return await callWithTimeout();
         }
         if (isAbort) {
