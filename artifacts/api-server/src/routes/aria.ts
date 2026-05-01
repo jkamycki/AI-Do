@@ -14,24 +14,44 @@ import type { Request } from "express";
 
 const router = Router();
 
-const SYSTEM_PROMPT = `You are Aria, a warm and expert AI wedding planning assistant inside A.IDO. You can chat AND take real actions in the user's portal using tools.
+const SYSTEM_PROMPT = `You are Aria, a warm and expert AI wedding planning assistant inside A.IDO. You help users chat AND take real actions via tools.
 
-RULES:
-- NEVER call a tool unless ALL required fields are present in the user's message. If any required field is missing, ask ONE warm question to collect what you need, then call the tool on the next turn.
-- Do NOT ask for optional fields — only collect what's required, then act.
-- Vendors: required=name+category. Categories: Photography/Videography/Catering/Florist/DJ/Band/Venue/Officiant/Hair & Makeup/Transportation/Cake/Desserts/Stationery/Rentals/Planner/Other. If depositAmount given, a Deposit milestone auto-creates — do NOT also call add_vendor_payment for same deposit.
-- Payments: required=label+amount+dueDate(YYYY-MM-DD). Vendor must exist first. Convert relative dates to ISO. If vendor doesn't exist, add it first.
-- Checklist: required=task+month ("12 months out"/"6 months out"/"1 month out"/"Week of"/"Day of"). Infer month from context if possible.
-- Timeline: required=time+title+description+category(preparation|ceremony|cocktail|reception|dancing|other). Infer category from context.
-- Guests: required=name only.
-- Party: required=name+role+side(bride|groom|both).
-- Budget item: required=category+vendor+estimatedCost.
-- Expenses: required=name+category+cost.
-- For updates/deletes: pass id when known, else pass name/match field.
-- Contracts: call list_contracts first, then get_contract before answering.
-- After tool success: DO NOT add a text reply — the system confirms automatically.
-- For list/query tools: summarize results warmly in under 100 words. Never dump raw JSON.
-- Replies: warm, concise, under 100 words. Markdown renders.`;
+GOLDEN RULE: NEVER call a tool unless ALL required fields are present in the user's message. If anything is missing, ask ONE warm question to gather it, then act on the next reply. Never ask for optional fields.
+
+REQUIRED FIELDS PER ACTION:
+- add_vendor: name + category (Photography/Videography/Catering/Florist/DJ/Band/Venue/Officiant/Hair & Makeup/Transportation/Cake/Desserts/Stationery/Rentals/Planner/Other). If deposit given → auto-creates Deposit milestone, do NOT also call add_vendor_payment.
+- add_vendor_payment: label + amount + dueDate(YYYY-MM-DD). If vendor missing, add it first with add_vendor.
+- add_checklist_item: task + month ("12 months out"/"6 months out"/"1 month out"/"Week of"/"Day of"). Infer month from context if obvious.
+- add_timeline_event: time + title. category defaults to "other" if unclear; description defaults to title.
+- add_guest: name only.
+- add_party_member: name + role + side(bride/groom/both).
+- add_hotel: hotelName only.
+- add_budget_item: category + vendor + estimatedCost.
+- add_expense: name + category + cost.
+- update_profile: no required fields — update only what user mentions.
+
+QUERY GUIDE (use these tools for questions):
+- Overview / "how's planning going" → get_summary
+- Vendors / payments / contracts signed → list_vendors
+- Budget totals / spending → list_budget + list_expenses
+- Guest count / RSVP status → list_guests
+- Who's in the wedding party → list_party
+- Timeline / day-of schedule → list_timeline
+- Checklist progress → list_checklist
+- Hotels for guests → list_hotels
+- Wedding date / venue / vibe → get_profile
+- Contract questions → list_contracts, then get_contract(contractId)
+
+SPECIAL ACTIONS via update_guest:
+- RSVP update → update_guest(matchName, rsvpStatus="attending"/"declined"/"pending"/"maybe")
+- Table/seating assignment → update_guest(matchName, tableAssignment="Table 3")
+- Mark payment paid → mark_vendor_payment_paid
+
+RESPONSE RULES:
+- After write-tool success: DO NOT add text — system confirms automatically.
+- After query tools: summarize warmly in ≤100 words. Never dump raw JSON.
+- Advice/planning questions (no data needed): answer directly, no tools.
+- Replies: warm, concise, ≤100 words. Markdown renders.`;
 
 // Tools that write data — after these succeed we skip the second AI round-trip
 // and send an instant confirmation instead, saving ~1,000–2,000 tokens per call.
@@ -138,6 +158,7 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"get_profile", description:"Get wedding profile details.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"list_contracts", description:"List uploaded contracts.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"get_contract", description:"Get full contract analysis. Required: contractId.", parameters:{ type:"object", properties:{ contractId:{type:"number"} }, required:["contractId"] } } },
+  { type:"function" as const, function:{ name:"get_summary", description:"Get a compact overview of the couple's wedding planning progress: profile, guest counts, vendor count, budget totals, checklist completion, upcoming payments.", parameters:{ type:"object", properties:{} } } },
 ];
 
 const ALLOWED_VENDOR_CATEGORIES = [
@@ -495,10 +516,11 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
     if (name === "add_timeline_event") {
       const profile = await resolveProfile(req);
       if (!profile) return { ok: false, error: "Please complete your wedding profile before adding timeline events." };
+      const eventTitle = String(args.title ?? "").trim();
       const event = {
-        time: String(args.time ?? ""),
-        title: String(args.title ?? ""),
-        description: String(args.description ?? ""),
+        time: String(args.time ?? "").trim(),
+        title: eventTitle,
+        description: String(args.description ?? eventTitle), // fall back to title if no description
         category: String(args.category ?? "other"),
       };
       const [latest] = await db.select().from(timelines).where(eq(timelines.profileId, profile.id)).orderBy(desc(timelines.id)).limit(1);
@@ -1059,6 +1081,63 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         uploadedAt: row.createdAt.toISOString(),
         analysis: row.analysis,
         extractedText: row.extractedText ?? "",
+      } };
+    }
+
+    if (name === "get_summary") {
+      const userId = await resolveScopeUserId(req);
+      const profile = await resolveProfile(req);
+
+      // Guests
+      const allGuests = await db.select({ rsvpStatus: guests.rsvpStatus }).from(guests).where(eq(guests.userId, userId));
+      const guestCounts = { total: allGuests.length, attending: 0, declined: 0, pending: 0, maybe: 0 };
+      for (const g of allGuests) {
+        const s = g.rsvpStatus ?? "pending";
+        if (s === "attending") guestCounts.attending++;
+        else if (s === "declined") guestCounts.declined++;
+        else if (s === "maybe") guestCounts.maybe++;
+        else guestCounts.pending++;
+      }
+
+      // Vendors + upcoming payments
+      const allVendors = await db.select({ id: vendors.id, nextPaymentDue: vendors.nextPaymentDue, totalCost: vendors.totalCost }).from(vendors).where(eq(vendors.userId, userId));
+      const vendorIds = allVendors.map(v => v.id);
+      let upcomingPayments = 0;
+      let nextDue: string | null = null;
+      if (vendorIds.length > 0) {
+        const unpaid = await db.select({ dueDate: vendorPayments.dueDate }).from(vendorPayments)
+          .where(and(inArray(vendorPayments.vendorId, vendorIds), eq(vendorPayments.isPaid, false)));
+        upcomingPayments = unpaid.length;
+        const sorted = unpaid.map(p => p.dueDate).filter(Boolean).sort();
+        nextDue = sorted[0] ?? null;
+      }
+
+      // Budget
+      let budgetEstimated = 0;
+      let budgetPaid = 0;
+      if (profile) {
+        const [budget] = await db.select({ id: budgets.id }).from(budgets).where(eq(budgets.profileId, profile.id)).limit(1);
+        if (budget) {
+          const items = await db.select({ estimatedCost: budgetItems.estimatedCost, amountPaid: budgetItems.amountPaid }).from(budgetItems).where(eq(budgetItems.budgetId, budget.id));
+          for (const it of items) { budgetEstimated += Number(it.estimatedCost); budgetPaid += Number(it.amountPaid); }
+        }
+      }
+
+      // Checklist
+      const allChecklist = await db.select({ isCompleted: checklistItems.isCompleted }).from(checklistItems).where(eq(checklistItems.userId, userId));
+      const checklistTotal = allChecklist.length;
+      const checklistDone = allChecklist.filter(c => c.isCompleted).length;
+
+      return { ok: true, data: {
+        profile: profile ? {
+          partner1Name: profile.partner1Name, partner2Name: profile.partner2Name,
+          weddingDate: profile.weddingDate, venue: profile.venue, location: profile.location,
+          vibe: profile.weddingVibe, totalBudget: profile.totalBudget,
+        } : null,
+        guests: guestCounts,
+        vendors: { count: allVendors.length, upcomingUnpaidPayments: upcomingPayments, nextPaymentDue: nextDue },
+        budget: { estimated: budgetEstimated, paid: budgetPaid, remaining: budgetEstimated - budgetPaid },
+        checklist: { total: checklistTotal, completed: checklistDone, remaining: checklistTotal - checklistDone },
       } };
     }
 
