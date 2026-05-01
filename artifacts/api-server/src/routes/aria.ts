@@ -1699,9 +1699,15 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         const lowDetail = detail.toLowerCase();
         if (errCode === "insufficient_quota" || lowDetail.includes("quota") || lowDetail.includes("exceeded your current quota")) {
           userMsg = "Your AI API account has run out of credits. Please top up your Groq or OpenAI account and try again.";
-        } else if (lowDetail.includes("per day") || lowDetail.includes("tokens per day") || lowDetail.includes("tpd") || lowDetail.includes("requests per day") || lowDetail.includes("rpd") || lowDetail.includes("daily")) {
-          // Groq daily limit — waiting 30s won't help, the window resets at UTC midnight
-          userMsg = "Aria has hit today's AI usage limit. The limit resets at midnight UTC. To remove this cap, upgrade your Groq plan and update GROQ_API_KEY on the server.";
+        } else if (lowDetail.includes("per day") || lowDetail.includes("tokens per day") || lowDetail.includes("tpd") || lowDetail.includes("requests per day") || lowDetail.includes("rpd")) {
+          // Groq daily limit — waiting 30s won't help, the window resets
+          // at UTC midnight. Compute hours-until-reset so the message is
+          // actionable instead of just "midnight UTC" (which most users
+          // can't translate to their local time without thinking).
+          const now = new Date();
+          const nextMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+          const hoursLeft = Math.max(1, Math.round((nextMidnight.getTime() - now.getTime()) / 3_600_000));
+          userMsg = `Aria has hit today's AI usage limit (~500K Groq tokens). It resets in about ${hoursLeft} hour${hoursLeft === 1 ? "" : "s"} (midnight UTC). To remove this cap permanently, upgrade your Groq plan at console.groq.com/billing — your AI_INTEGRATIONS_OPENAI_API_KEY on Render will keep working with the upgraded account automatically.`;
         } else {
           // Per-minute (TPM/RPM) limit — still hit after the automatic 25s retry. Surface the actual Groq detail so the user can see what's tight.
           const niceDetail = detail.replace(/^.*?Limit /i, "Limit ").replace(/\. Visit.*$/i, ".").slice(0, 240);
