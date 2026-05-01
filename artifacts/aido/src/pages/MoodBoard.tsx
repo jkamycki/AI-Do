@@ -80,9 +80,13 @@ const PRESET_TAGS = [
 
 // ─── Auth headers helper ──────────────────────────────────────────────────────
 
+const _API = import.meta.env.VITE_API_URL ?? "";
+function applyApiBase(url: string): string {
+  return url.startsWith("/") && _API ? `${_API}${url}` : url;
+}
 async function authFetch(url: string, options: RequestInit = {}, getToken: () => Promise<string | null>) {
   const token = await getToken();
-  return fetch(url, {
+  return fetch(applyApiBase(url), {
     ...options,
     credentials: "include",
     headers: {
@@ -276,7 +280,7 @@ export default function MoodBoard() {
     queryKey: ["mood-board"],
     queryFn: async () => {
       const token = await getToken();
-      const r = await fetch("/api/mood-board", {
+      const r = await fetch(applyApiBase("/api/mood-board"), {
         credentials: "include",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -300,7 +304,7 @@ export default function MoodBoard() {
     saveTimerRef.current = setTimeout(async () => {
       try {
         const token = await getToken();
-        await fetch("/api/mood-board", {
+        await fetch(applyApiBase("/api/mood-board"), {
           method: "PUT",
           credentials: "include",
           headers: {

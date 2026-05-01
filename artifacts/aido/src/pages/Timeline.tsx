@@ -623,9 +623,8 @@ export default function Timeline() {
         location: e.location,
         endTime: e.endTime ? formatTime(e.endTime) : "",
       }));
-      const response = await fetch("/api/pdf/timeline", {
+      const response = await authFetch("/api/pdf/timeline", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ events: eventsForPdf, coupleName, weddingDate: profile?.weddingDate, venue: profile?.venue }),
       });

@@ -1,4 +1,5 @@
 import { Component, useState, useEffect, useRef } from "react";
+import { authFetch } from "@/lib/authFetch";
 import { useGetTimeline, useGenerateTimeline, useEmergencyAdvice, useGetProfile, getGetTimelineQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -88,10 +89,9 @@ class DayOfErrorBoundary extends Component<
 }
 
 async function patchTimeline(id: number, events: TimelineEvent[]) {
-  const res = await fetch(`/api/timeline/${id}`, {
+  const res = await authFetch(`/api/timeline/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
     body: JSON.stringify({ events }),
   });
   if (!res.ok) throw new Error("Failed to save timeline");

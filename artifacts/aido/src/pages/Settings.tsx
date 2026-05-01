@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { authFetch } from "@/lib/authFetch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/react";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
@@ -100,14 +101,9 @@ function DeleteAccountCard() {
   async function handleDelete() {
     setDeleting(true);
     try {
-      const token = await getToken();
-      const res = await fetch("/api/account", {
+      const res = await authFetch("/api/account", {
         method: "DELETE",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -368,7 +364,9 @@ export default function SettingsPage() {
 
   const authedFetch = async (url: string, init: RequestInit = {}) => {
     const token = await getToken();
-    return fetch(url, {
+    const apiBase = import.meta.env.VITE_API_URL ?? "";
+    const resolved = url.startsWith("/") && apiBase ? `${apiBase}${url}` : url;
+    return fetch(resolved, {
       ...init,
       credentials: "include",
       headers: {

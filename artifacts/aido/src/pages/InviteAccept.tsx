@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { apiFetch, authFetch } from "@/lib/authFetch";
 import { useRoute, useLocation } from "wouter";
 import { useAuth, useUser, SignIn, SignUp } from "@clerk/react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -85,23 +86,12 @@ export default function InviteAcceptPage() {
     ? `${window.location.origin}/invite/${token}`
     : `/invite/${token}`;
 
-  const authedFetch = async (url: string, init: RequestInit = {}) => {
-    const t = await getToken();
-    return fetch(url, {
-      ...init,
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        ...(init.headers ?? {}),
-        ...(t ? { Authorization: `Bearer ${t}` } : {}),
-      },
-    });
-  };
+  const authedFetch = (url: string, init: RequestInit = {}) => authFetch(url, init);
 
   const { data: invite, isLoading, isError } = useQuery({
     queryKey: ["invite", token],
     queryFn: async () => {
-      const r = await fetch(`/api/invite/${token}`);
+      const r = await apiFetch(`/api/invite/${token}`);
       if (!r.ok) {
         const err = await r.json();
         throw new Error(err.error ?? "Invite not found");

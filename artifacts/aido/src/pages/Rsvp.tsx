@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -61,7 +62,7 @@ export default function Rsvp() {
   const { data: info, isLoading, isError } = useQuery({
     queryKey: ["rsvp", token],
     queryFn: async () => {
-      const res = await fetch(`/api/rsvp/${token}`);
+      const res = await apiFetch(`/api/rsvp/${token}`);
       if (!res.ok) throw new Error("Invalid link");
       return res.json() as Promise<RsvpInfo>;
     },
@@ -86,7 +87,7 @@ export default function Rsvp() {
 
   const submit = useMutation({
     mutationFn: async (data: FormData) => {
-      const res = await fetch(`/api/rsvp/${token}`, {
+      const res = await apiFetch(`/api/rsvp/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useAuth } from "@clerk/react";
+import { authFetch } from "@/lib/authFetch";
 import { useGetProfile } from "@workspace/api-client-react";
 import { X, Send, Sparkles, ChevronDown, RotateCcw, MessageCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -25,7 +25,6 @@ const WELCOME_MESSAGE: Message = {
 };
 
 export function SupportChat() {
-  const { getToken } = useAuth();
   const { data: profile } = useGetProfile();
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -65,18 +64,13 @@ export function SupportChat() {
     }));
 
     try {
-      const token = await getToken();
       const ctrl = new AbortController();
       abortRef.current = ctrl;
 
-      const res = await fetch("/api/support/chat", {
+      const res = await authFetch("/api/support/chat", {
         method: "POST",
         signal: ctrl.signal,
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history, preferredLanguage: profile?.preferredLanguage ?? "English" }),
       });
 
@@ -130,7 +124,7 @@ export function SupportChat() {
       setLoading(false);
       abortRef.current = null;
     }
-  }, [loading, messages, getToken, open]);
+  }, [loading, messages, open]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

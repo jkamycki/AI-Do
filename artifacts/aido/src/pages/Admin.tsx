@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { authFetch } from "@/lib/authFetch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -214,10 +215,8 @@ function UserDetailModal({ user, onClose, onDeleted }: { user: AdminUser; onClos
     setDeleting(true);
     setDeleteError(null);
     try {
-      const token = await getToken();
-      const r = await fetch(`/api/admin/users/${user.id}`, {
+      const r = await authFetch(`/api/admin/users/${user.id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (!r.ok) {
         const body = await r.json().catch(() => ({}));
@@ -465,10 +464,7 @@ function DropoffAnalysisTab({ totalSignups, onboardedUsers }: { totalSignups: nu
   const { data, isLoading } = useQuery<DropoffData>({
     queryKey: ["admin-dropoffs", days],
     queryFn: async () => {
-      const token = await getToken();
-      const r = await fetch(`/api/admin/dropoffs?days=${days}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const r = await authFetch(`/api/admin/dropoffs?days=${days}`);
       if (!r.ok) throw new Error("Failed to fetch drop-offs");
       return r.json();
     },

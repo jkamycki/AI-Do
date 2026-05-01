@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { apiFetch } from "@/lib/authFetch";
 import { Link } from "wouter";
 import { Sparkles, Calendar, DollarSign, CheckSquare, Mail, FileText, Armchair, Link2, Bot, Star, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -119,7 +120,7 @@ export default function Landing() {
       vid = crypto.randomUUID();
       localStorage.setItem("aido_vid", vid);
     }
-    fetch("/api/analytics/pageview", {
+    apiFetch("/api/analytics/pageview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ visitorId: vid, path: "/" }),

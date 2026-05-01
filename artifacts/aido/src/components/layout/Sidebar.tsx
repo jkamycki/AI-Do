@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { AvatarCropDialog } from "@/components/AvatarCropDialog";
+import { authFetch } from "@/lib/authFetch";
 
 const navSections = [
   {
@@ -95,7 +96,7 @@ interface WorkspacesData {
 }
 
 function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
-  const { getToken, isSignedIn } = useAuth();
+  const { isSignedIn } = useAuth();
   const { activeWorkspace, setActiveWorkspace } = useWorkspace();
   const [, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
@@ -104,11 +105,7 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
   const { data } = useQuery<WorkspacesData>({
     queryKey: ["my-workspaces"],
     queryFn: async () => {
-      const token = await getToken();
-      const r = await fetch("/api/collaborators/my-workspaces", {
-        credentials: "include",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const r = await authFetch("/api/collaborators/my-workspaces");
       if (!r.ok) return { ownProfile: null, sharedWorkspaces: [] };
       return r.json();
     },
@@ -202,7 +199,7 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const { signOut } = useClerk();
   const { user } = useUser();
-  const { getToken, isSignedIn } = useAuth();
+  const { isSignedIn } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -255,11 +252,7 @@ export function Sidebar() {
   const { data: adminCheck } = useQuery({
     queryKey: ["admin-check"],
     queryFn: async () => {
-      const token = await getToken();
-      const r = await fetch("/api/admin/check", {
-        credentials: "include",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const r = await authFetch("/api/admin/check");
       if (!r.ok) return { isAdmin: false };
       return r.json() as Promise<{ isAdmin: boolean }>;
     },

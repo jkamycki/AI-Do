@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { authFetch } from "@/lib/authFetch";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -573,14 +574,9 @@ function InvitationPhotoCard() {
   const generateMessage = async () => {
     setGenerating(true);
     try {
-      const token = await getToken();
-      const res = await fetch("/api/profile/generate-invitation-message", {
+      const res = await authFetch("/api/profile/generate-invitation-message", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ details: aiDetails }),
       });
       if (!res.ok) throw new Error("Generation failed");
@@ -627,14 +623,9 @@ function InvitationPhotoCard() {
   const saveSettings = async () => {
     setSaving(true);
     try {
-      const token = await getToken();
-      const res = await fetch("/api/profile/invitation-settings", {
+      const res = await authFetch("/api/profile/invitation-settings", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invitationPhotoUrl: photoUrl, invitationMessage: message }),
       });
       if (!res.ok) throw new Error("Save failed");
@@ -652,14 +643,9 @@ function InvitationPhotoCard() {
     setPreviewSrc(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     try {
-      const token = await getToken();
-      await fetch("/api/profile/invitation-settings", {
+      await authFetch("/api/profile/invitation-settings", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invitationPhotoUrl: null }),
       });
       toast({ title: "Photo removed" });

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -41,7 +42,7 @@ export default function GuestCollect() {
   const { data: wedding, isLoading, isError } = useQuery({
     queryKey: ["guest-collect", token],
     queryFn: async () => {
-      const res = await fetch(`/api/guest-collect/${token}`);
+      const res = await apiFetch(`/api/guest-collect/${token}`);
       if (!res.ok) throw new Error("Invalid link");
       return res.json() as Promise<{
         partner1Name: string;
@@ -71,7 +72,7 @@ export default function GuestCollect() {
 
   const submit = useMutation({
     mutationFn: async (data: FormData) => {
-      const res = await fetch(`/api/guest-collect/${token}`, {
+      const res = await apiFetch(`/api/guest-collect/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

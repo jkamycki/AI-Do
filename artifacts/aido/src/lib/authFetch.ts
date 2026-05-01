@@ -1,5 +1,6 @@
 let _getToken: (() => Promise<string | null>) | null = null;
 let _workspaceProfileId: number | null = null;
+let _baseUrl: string | null = null;
 
 export function setFetchTokenGetter(getter: (() => Promise<string | null>) | null) {
   _getToken = getter;
@@ -9,13 +10,22 @@ export function setAuthFetchWorkspaceProfileId(id: number | null): void {
   _workspaceProfileId = id;
 }
 
+export function setAuthFetchBaseUrl(url: string | null): void {
+  _baseUrl = url ? url.replace(/\/+$/, "") : null;
+}
+
+function applyBase(input: RequestInfo | URL): RequestInfo | URL {
+  if (!_baseUrl) return input;
+  const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : (input as Request).url;
+  if (!url.startsWith("/")) return input;
+  const absolute = `${_baseUrl}${url}`;
+  if (typeof input === "string") return absolute;
+  if (input instanceof URL) return new URL(absolute);
+  return new Request(absolute, input as Request);
+}
+
 function getActiveWorkspaceProfileId(): number | null {
   if (_workspaceProfileId != null) return _workspaceProfileId;
-  // Fallback: read directly from localStorage so requests fired before
-  // the WorkspaceContext mounts still hit the right workspace. The cache
-  // is the new {userId, workspace} shape — anything else (legacy bare
-  // workspace, missing/corrupt) is ignored so a previous user's stale
-  // workspace can never leak into the current request.
   try {
     const stored = localStorage.getItem("aido_active_workspace");
     if (!stored) return null;
@@ -30,10 +40,14 @@ function getActiveWorkspaceProfileId(): number | null {
   }
 }
 
+export function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  return fetch(applyBase(input), init);
+}
+
 export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
   const token = _getToken ? await _getToken() : null;
   const wsId = getActiveWorkspaceProfileId();
-  return fetch(input, {
+  return fetch(applyBase(input), {
     ...init,
     credentials: "include",
     headers: {
