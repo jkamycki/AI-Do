@@ -66,7 +66,7 @@ router.post("/help/feedback", requireAuth, async (req, res) => {
 });
 
 async function isAdmin(userId: string): Promise<boolean> {
-  const OWNER_EMAILS_LOWER = ["kamyckijoseph@gmail.com", "kamyckijoseph@outlook.com"];
+  const OWNER_EMAILS_LOWER = ["kamyckijoseph@gmail.com"];
   const rows = await db
     .select()
     .from(adminUsers)

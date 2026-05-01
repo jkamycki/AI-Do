@@ -17,7 +17,6 @@ const router = Router();
 
 const OWNER_EMAILS = [
   "kamyckijoseph@gmail.com",
-  "kamyckijoseph@outlook.com",
 ];
 
 async function isAdmin(userId: string): Promise<boolean> {
