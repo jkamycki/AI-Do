@@ -1647,46 +1647,73 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const MAX_TOOL_LOOPS = 4;
 
     while (toolLoops < MAX_TOOL_LOOPS) {
-      const completion = await openai.chat.completions.create({
+      // Stream the response so text tokens appear in the UI immediately
+      const stream = await openai.chat.completions.create({
         model: getModel(),
-        max_tokens: 1000,
+        max_tokens: 1500,
         messages: convo as Parameters<typeof openai.chat.completions.create>[0]["messages"],
         tools: TOOLS,
         tool_choice: "auto",
+        stream: true,
       });
 
-      const choice = completion.choices[0];
-      const msg = choice?.message;
-      if (!msg) break;
+      // Accumulate streamed content and tool-call fragments
+      let contentAccum = "";
+      const toolCallsAccum: Record<number, { id: string; name: string; args: string }> = {};
 
-      const toolCalls = msg.tool_calls ?? [];
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta;
+        if (!delta) continue;
+
+        // Stream text tokens straight to the client
+        if (delta.content) {
+          contentAccum += delta.content;
+          send({ type: "content", content: delta.content });
+        }
+
+        // Accumulate tool-call argument fragments
+        if (delta.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            const idx = tc.index ?? 0;
+            if (!toolCallsAccum[idx]) {
+              toolCallsAccum[idx] = { id: "", name: "", args: "" };
+            }
+            if (tc.id) toolCallsAccum[idx].id = tc.id;
+            if (tc.function?.name) toolCallsAccum[idx].name += tc.function.name;
+            if (tc.function?.arguments) toolCallsAccum[idx].args += tc.function.arguments;
+          }
+        }
+      }
+
+      const toolCalls = Object.values(toolCallsAccum).filter(tc => tc.name);
 
       if (toolCalls.length === 0) {
-        const finalContent = msg.content ?? "";
-        send({ type: "content", content: finalContent });
+        // Pure text response — content was already streamed token by token
         send({ type: "done", actions: performedActions.map(a => ({ name: a.name, ok: a.result.ok, error: a.result.ok ? undefined : a.result.error })) });
         res.write("data: [DONE]\n\n");
         res.end();
         return;
       }
 
+      // Push assistant turn with tool calls into conversation history
       convo.push({
         role: "assistant",
-        content: msg.content ?? "",
+        content: contentAccum || "",
         tool_calls: toolCalls.map(tc => ({
           id: tc.id,
           type: "function",
-          function: { name: tc.function.name, arguments: tc.function.arguments },
+          function: { name: tc.name, arguments: tc.args },
         })),
       });
 
+      // Execute each tool and stream progress to the client
       for (const tc of toolCalls) {
         let parsedArgs: Record<string, unknown> = {};
-        try { parsedArgs = JSON.parse(tc.function.arguments || "{}"); } catch {}
-        send({ type: "action_start", name: tc.function.name, args: parsedArgs });
-        const result = await executeTool(tc.function.name, parsedArgs, req);
-        performedActions.push({ name: tc.function.name, args: parsedArgs, result });
-        send({ type: "action_result", name: tc.function.name, ok: result.ok, error: result.ok ? undefined : result.error });
+        try { parsedArgs = JSON.parse(tc.args || "{}"); } catch {}
+        send({ type: "action_start", name: tc.name, args: parsedArgs });
+        const result = await executeTool(tc.name, parsedArgs, req);
+        performedActions.push({ name: tc.name, args: parsedArgs, result });
+        send({ type: "action_result", name: tc.name, ok: result.ok, error: result.ok ? undefined : result.error });
         convo.push({
           role: "tool",
           tool_call_id: tc.id,
