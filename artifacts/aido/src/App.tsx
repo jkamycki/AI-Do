@@ -1216,6 +1216,20 @@ function ServerWarmupPing() {
   return null;
 }
 
+// Pings the API every 10 minutes so Render's free tier never goes to sleep
+// while the app is open, eliminating the 30-60s cold-start delay on Aria.
+function ServerKeepAlive() {
+  const { isSignedIn } = useAuth();
+  useEffect(() => {
+    if (!isSignedIn) return;
+    const API = import.meta.env.VITE_API_URL ?? "";
+    const ping = () => fetch(`${API}/api/healthz`, { method: "GET" }).catch(() => {});
+    const id = setInterval(ping, 10 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [isSignedIn]);
+  return null;
+}
+
 function ClerkQueryClientCacheInvalidator() {
   const { addListener } = useClerk();
   const qc = useQueryClient();
@@ -1319,6 +1333,7 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ServerWarmupPing />
+        <ServerKeepAlive />
         <ClerkTokenSetup />
         <ClerkQueryClientCacheInvalidator />
         <NoAccountFromSignInDetector />
