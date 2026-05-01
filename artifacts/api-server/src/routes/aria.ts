@@ -14,616 +14,67 @@ import type { Request } from "express";
 
 const router = Router();
 
-const SYSTEM_PROMPT = `You are Aria, an expert AI wedding planning assistant built into A.IDO.
-You are warm, confident, and act like a trusted, experienced friend who has helped hundreds of couples plan their weddings.
+const SYSTEM_PROMPT = `You are Aria, a warm and expert AI wedding planning assistant inside A.IDO. You can chat AND take real actions in the user's portal using tools.
 
-You can BOTH chat AND take real actions inside the user's A.IDO portal. You can do anything the user can do from the UI:
-
-VENDORS — add_vendor, update_vendor, delete_vendor, list_vendors, add_vendor_payment, update_vendor_payment, mark_vendor_payment_paid, delete_vendor_payment
-CHECKLIST — add_checklist_item, update_checklist_item, toggle_checklist_item, delete_checklist_item, list_checklist
-TIMELINE — add_timeline_event, update_timeline_event, delete_timeline_event, list_timeline
-GUESTS — add_guest, update_guest, delete_guest, list_guests
-WEDDING PARTY — add_party_member, update_party_member, delete_party_member, list_party
-HOTELS — add_hotel, update_hotel, delete_hotel, list_hotels
-BUDGET — add_budget_item, update_budget_item, delete_budget_item, log_budget_payment, list_budget
-EXPENSES — add_expense, update_expense, delete_expense, list_expenses
-PROFILE — update_profile, get_profile
-CONTRACTS — list_contracts, get_contract
-
-## How to use tools
-- When the user provides ANY information that maps to a portal action (e.g. "add my florist Sarah Bloom, sarahbloom@email.com, $4000"), CALL THE TOOL IMMEDIATELY. Do not ask for clarification on optional fields — only the required ones.
-- For vendors: required = name + category. Pick a sensible category from: Photography, Videography, Catering, Florist, DJ/Band, Venue, Officiant, Hair & Makeup, Transportation, Cake/Desserts, Stationery, Rentals, Planner, Other. Use Other if unsure. If the user provides a depositAmount, a Deposit payment milestone is created automatically — do NOT add a separate add_vendor_payment call for the same deposit. Pass depositPaid: true if the user says they've already paid the deposit.
-- For vendor payment milestones: required = vendorName (or vendorId), label, amount, dueDate (YYYY-MM-DD). The vendor must already exist — if it doesn't, add the vendor FIRST, then add the milestone. Convert relative dates ("next Friday", "May 1") into ISO YYYY-MM-DD using the current year, or next year if the date has already passed. If the user gives multiple milestones, call this tool once per milestone.
-- For checklist items: required = task + month (use a label like "12 months out", "6 months out", "1 month out", "Week of", "Day of").
-- For timeline events: required = time (e.g. "3:00 PM"), title, description, category (preparation|ceremony|cocktail|reception|dancing|other).
-- For profile updates: only update the specific fields the user mentions; leave others untouched.
-- For guests: required = name. RSVP status is one of: pending, attending, declined, maybe.
-- For wedding party: required = name + role + side (bride|groom|both). Roles include Maid of Honor, Best Man, Bridesmaid, Groomsman, Flower Girl, Ring Bearer, Officiant, etc.
-- For hotels: required = hotelName.
-- For budget items: required = category + vendor + estimatedCost. Categories include Venue, Catering, Photography, Florist, Music, Attire, Beauty, Stationery, Rings, Transportation, Decor, Cake, Other.
-- For expenses: required = name + category + cost. These are one-off purchases not tied to a vendor (e.g. ring polish, marriage license fee).
-- For UPDATE / DELETE / TOGGLE / MARK-PAID actions: prefer passing the record id when known. If you don't know the id, pass a name/title/match field — the tool will look it up case-insensitively. If multiple records match, the tool will return an error asking you to be more specific. When in doubt, call the corresponding list_* tool first to get ids.
-- For destructive operations (delete_*), double-check that the user actually meant to delete before calling. If unclear, ask one short clarifying question.
-- For contract questions: first call list_contracts to see what's uploaded, then call get_contract with the relevant id to read the full analysis and extracted text before answering. Never guess contract details — always read the contract data first.
-- After successfully running a tool, briefly confirm what you did in plain language ("Added Sarah Bloom to your florists ✓"). Don't dump JSON.
-- If a tool fails, explain the error simply and suggest a fix.
-- You CAN run multiple tools in one turn (e.g. add a vendor AND add a related checklist item).
-
-## Tone & style
-- Warm, encouraging, specific. Markdown renders in chat (bullets, bold, headers).
-- Keep replies under 250 words unless a detailed breakdown is needed.
-- Celebrate wins, acknowledge stress.
-
-## When NOT to take action
-- If the user is just asking advice ("what's a good DJ price?"), answer the question — don't add anything.
-- If you are unsure whether the user wants you to add something vs just discuss it, ask one short clarifying question.`;
+RULES:
+- Call tools immediately when the user provides actionable info. Don't ask for optional fields.
+- Vendors: required=name+category (Photography/Videography/Catering/Florist/DJ/Band/Venue/Officiant/Hair & Makeup/Transportation/Cake/Desserts/Stationery/Rentals/Planner/Other). If depositAmount given, a Deposit milestone auto-creates — do NOT also call add_vendor_payment for same deposit.
+- Payments: required=label+amount+dueDate(YYYY-MM-DD). Vendor must exist first. Convert relative dates to ISO.
+- Checklist: required=task+month ("12 months out"/"6 months out"/"1 month out"/"Week of"/"Day of").
+- Timeline: required=time+title+description+category(preparation|ceremony|cocktail|reception|dancing|other).
+- Guests: required=name. RSVP=pending|attending|declined|maybe.
+- Party: required=name+role+side(bride|groom|both).
+- Budget: required=category+vendor+estimatedCost.
+- Expenses: required=name+category+cost (one-off purchases).
+- For updates/deletes: pass id when known, else pass name/match field.
+- Contracts: always call list_contracts first, then get_contract before answering.
+- After tool success: confirm briefly ("Added Sarah Bloom ✓"). Never dump JSON.
+- Only answer questions if user is asking for advice — don't add anything unless asked.
+- Replies: warm, concise, under 150 words. Markdown renders.`;
 
 const TOOLS = [
-  {
-    type: "function" as const,
-    function: {
-      name: "add_vendor",
-      description: "Add a vendor to the user's vendor list. Use whenever the user gives you a vendor name + category (or enough info to infer one).",
-      parameters: {
-        type: "object",
-        properties: {
-          name: { type: "string", description: "Business or contact name" },
-          category: { type: "string", description: "Category (Photography, Catering, Florist, DJ/Band, Venue, etc.)" },
-          email: { type: "string" },
-          phone: { type: "string" },
-          website: { type: "string" },
-          notes: { type: "string" },
-          totalCost: { type: "number", description: "Estimated or quoted cost in dollars" },
-          depositAmount: { type: "number", description: "Deposit amount already agreed or paid. A Deposit payment milestone will be auto-created." },
-          depositPaid: { type: "boolean", description: "Set true if the deposit has already been paid. Defaults to false." },
-        },
-        required: ["name", "category"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "add_vendor_payment",
-      description: "Add a payment milestone to an existing vendor (e.g. deposit, second installment, final balance). Provide either vendorId (preferred if known) or vendorName (case-insensitive match against the user's vendor list).",
-      parameters: {
-        type: "object",
-        properties: {
-          vendorId: { type: "number", description: "ID of the vendor — preferred when known" },
-          vendorName: { type: "string", description: "Name of the vendor (used if vendorId is not provided). Case-insensitive partial match." },
-          label: { type: "string", description: "Short label, e.g. 'Deposit', 'Second payment', 'Final balance'" },
-          amount: { type: "number", description: "Payment amount in dollars" },
-          dueDate: { type: "string", description: "Due date in ISO YYYY-MM-DD format" },
-          isPaid: { type: "boolean", description: "True if already paid; defaults to false" },
-        },
-        required: ["label", "amount", "dueDate"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "update_vendor",
-      description: "Update fields on an existing vendor. Provide either vendorId or vendorName plus the fields to change.",
-      parameters: {
-        type: "object",
-        properties: {
-          vendorId: { type: "number" },
-          vendorName: { type: "string" },
-          name: { type: "string" }, category: { type: "string" }, email: { type: "string" }, phone: { type: "string" },
-          website: { type: "string" }, portalLink: { type: "string" }, notes: { type: "string" },
-          totalCost: { type: "number" }, depositAmount: { type: "number" }, contractSigned: { type: "boolean" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "delete_vendor",
-      description: "Delete a vendor and all their payment milestones. Provide vendorId or vendorName.",
-      parameters: {
-        type: "object",
-        properties: { vendorId: { type: "number" }, vendorName: { type: "string" } },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "update_vendor_payment",
-      description: "Update an existing vendor payment milestone. Pass paymentId (preferred) or vendorName + matchLabel.",
-      parameters: {
-        type: "object",
-        properties: {
-          paymentId: { type: "number" },
-          vendorName: { type: "string" }, matchLabel: { type: "string", description: "Existing milestone label to match" },
-          label: { type: "string" }, amount: { type: "number" }, dueDate: { type: "string" }, isPaid: { type: "boolean" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "mark_vendor_payment_paid",
-      description: "Mark a vendor payment milestone as paid. Pass paymentId or vendorName + matchLabel. Pass isPaid=false to undo.",
-      parameters: {
-        type: "object",
-        properties: {
-          paymentId: { type: "number" }, vendorName: { type: "string" }, matchLabel: { type: "string" },
-          isPaid: { type: "boolean", description: "Defaults to true" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "delete_vendor_payment",
-      description: "Delete a vendor payment milestone. Pass paymentId or vendorName + matchLabel.",
-      parameters: {
-        type: "object",
-        properties: { paymentId: { type: "number" }, vendorName: { type: "string" }, matchLabel: { type: "string" } },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "add_checklist_item",
-      description: "Add a task to the user's wedding checklist.",
-      parameters: {
-        type: "object",
-        properties: {
-          task: { type: "string", description: "Short task title" },
-          description: { type: "string" },
-          month: { type: "string", description: "Bucket label e.g. '12 months out', '6 months out', '1 month out', 'Week of', 'Day of'" },
-        },
-        required: ["task", "month"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "update_checklist_item",
-      description: "Update a checklist task's title, description, or month bucket. Pass itemId or matchTask.",
-      parameters: {
-        type: "object",
-        properties: {
-          itemId: { type: "number" }, matchTask: { type: "string" },
-          task: { type: "string" }, description: { type: "string" }, month: { type: "string" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "toggle_checklist_item",
-      description: "Mark a checklist item complete or incomplete. Pass itemId or matchTask, plus isCompleted (defaults true).",
-      parameters: {
-        type: "object",
-        properties: {
-          itemId: { type: "number" }, matchTask: { type: "string" }, isCompleted: { type: "boolean" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "delete_checklist_item",
-      description: "Delete a checklist item. Pass itemId or matchTask.",
-      parameters: {
-        type: "object",
-        properties: { itemId: { type: "number" }, matchTask: { type: "string" } },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_checklist",
-      description: "List all checklist items grouped by month bucket.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "add_timeline_event",
-      description: "Add a single event to the existing day-of timeline. If no timeline exists yet, this will create one.",
-      parameters: {
-        type: "object",
-        properties: {
-          time: { type: "string", description: "Time string e.g. '3:00 PM'" },
-          title: { type: "string" },
-          description: { type: "string" },
-          category: { type: "string", enum: ["preparation", "ceremony", "cocktail", "reception", "dancing", "other"] },
-        },
-        required: ["time", "title", "description", "category"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "update_timeline_event",
-      description: "Update an existing day-of timeline event. Match by matchTitle (case-insensitive substring) or matchTime.",
-      parameters: {
-        type: "object",
-        properties: {
-          matchTitle: { type: "string" }, matchTime: { type: "string" },
-          time: { type: "string" }, title: { type: "string" }, description: { type: "string" },
-          category: { type: "string", enum: ["preparation", "ceremony", "cocktail", "reception", "dancing", "other"] },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "delete_timeline_event",
-      description: "Delete a timeline event by matching title (case-insensitive substring) or exact time.",
-      parameters: {
-        type: "object",
-        properties: { matchTitle: { type: "string" }, matchTime: { type: "string" } },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_timeline",
-      description: "List all day-of timeline events in order.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "add_guest",
-      description: "Add a guest to the wedding guest list.",
-      parameters: {
-        type: "object",
-        properties: {
-          name: { type: "string" }, email: { type: "string" }, phone: { type: "string" },
-          rsvpStatus: { type: "string", enum: ["pending", "attending", "declined", "maybe"] },
-          mealChoice: { type: "string" }, dietaryNotes: { type: "string" },
-          guestGroup: { type: "string", description: "e.g. Family, Friends, Work, Plus One" },
-          plusOne: { type: "boolean" }, plusOneName: { type: "string" },
-          tableAssignment: { type: "string" }, notes: { type: "string" },
-          address: { type: "string" }, guestCity: { type: "string" }, guestState: { type: "string" }, guestZip: { type: "string" },
-        },
-        required: ["name"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "update_guest",
-      description: "Update fields on a guest. Pass guestId or matchName.",
-      parameters: {
-        type: "object",
-        properties: {
-          guestId: { type: "number" }, matchName: { type: "string" },
-          name: { type: "string" }, email: { type: "string" }, phone: { type: "string" },
-          rsvpStatus: { type: "string", enum: ["pending", "attending", "declined", "maybe"] },
-          mealChoice: { type: "string" }, dietaryNotes: { type: "string" },
-          guestGroup: { type: "string" }, plusOne: { type: "boolean" }, plusOneName: { type: "string" },
-          tableAssignment: { type: "string" }, notes: { type: "string" },
-          address: { type: "string" }, guestCity: { type: "string" }, guestState: { type: "string" }, guestZip: { type: "string" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "delete_guest",
-      description: "Remove a guest. Pass guestId or matchName.",
-      parameters: {
-        type: "object",
-        properties: { guestId: { type: "number" }, matchName: { type: "string" } },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_guests",
-      description: "List all guests with id, name, RSVP, meal, plus-one info.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "add_party_member",
-      description: "Add a wedding party member (bridesmaid, groomsman, etc.).",
-      parameters: {
-        type: "object",
-        properties: {
-          name: { type: "string" }, role: { type: "string" },
-          side: { type: "string", enum: ["bride", "groom", "both"] },
-          phone: { type: "string" }, email: { type: "string" },
-          outfitDetails: { type: "string" }, shoeSize: { type: "string" }, outfitStore: { type: "string" },
-          fittingDate: { type: "string", description: "YYYY-MM-DD" }, notes: { type: "string" },
-        },
-        required: ["name", "role", "side"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "update_party_member",
-      description: "Update a wedding party member. Pass memberId or matchName.",
-      parameters: {
-        type: "object",
-        properties: {
-          memberId: { type: "number" }, matchName: { type: "string" },
-          name: { type: "string" }, role: { type: "string" }, side: { type: "string" },
-          phone: { type: "string" }, email: { type: "string" },
-          outfitDetails: { type: "string" }, shoeSize: { type: "string" }, outfitStore: { type: "string" },
-          fittingDate: { type: "string" }, notes: { type: "string" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "delete_party_member",
-      description: "Remove a wedding party member. Pass memberId or matchName.",
-      parameters: {
-        type: "object",
-        properties: { memberId: { type: "number" }, matchName: { type: "string" } },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_party",
-      description: "List wedding party members.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "add_hotel",
-      description: "Add a hotel block for out-of-town guests.",
-      parameters: {
-        type: "object",
-        properties: {
-          hotelName: { type: "string" }, address: { type: "string" }, city: { type: "string" },
-          state: { type: "string" }, zip: { type: "string" }, phone: { type: "string" }, email: { type: "string" },
-          bookingLink: { type: "string" }, discountCode: { type: "string" }, groupName: { type: "string" },
-          cutoffDate: { type: "string", description: "YYYY-MM-DD" },
-          roomsReserved: { type: "number" }, pricePerNight: { type: "number" },
-          distanceFromVenue: { type: "string" }, notes: { type: "string" },
-        },
-        required: ["hotelName"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "update_hotel",
-      description: "Update a hotel block. Pass hotelId or matchName.",
-      parameters: {
-        type: "object",
-        properties: {
-          hotelId: { type: "number" }, matchName: { type: "string" },
-          hotelName: { type: "string" }, address: { type: "string" }, city: { type: "string" },
-          state: { type: "string" }, zip: { type: "string" }, phone: { type: "string" }, email: { type: "string" },
-          bookingLink: { type: "string" }, discountCode: { type: "string" }, groupName: { type: "string" },
-          cutoffDate: { type: "string" }, roomsReserved: { type: "number" }, roomsBooked: { type: "number" },
-          pricePerNight: { type: "number" }, distanceFromVenue: { type: "string" }, notes: { type: "string" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "delete_hotel",
-      description: "Delete a hotel block. Pass hotelId or matchName.",
-      parameters: {
-        type: "object",
-        properties: { hotelId: { type: "number" }, matchName: { type: "string" } },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_hotels",
-      description: "List all hotel blocks.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "add_budget_item",
-      description: "Add a budget line item (estimated cost for a category, optionally tied to a vendor name).",
-      parameters: {
-        type: "object",
-        properties: {
-          category: { type: "string" }, vendor: { type: "string" },
-          estimatedCost: { type: "number" }, actualCost: { type: "number" },
-          notes: { type: "string" },
-        },
-        required: ["category", "vendor", "estimatedCost"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "update_budget_item",
-      description: "Update a budget item. Pass itemId or matchVendor (matches vendor name).",
-      parameters: {
-        type: "object",
-        properties: {
-          itemId: { type: "number" }, matchVendor: { type: "string" },
-          category: { type: "string" }, vendor: { type: "string" },
-          estimatedCost: { type: "number" }, actualCost: { type: "number" },
-          notes: { type: "string" }, isPaid: { type: "boolean" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "delete_budget_item",
-      description: "Delete a budget item. Pass itemId or matchVendor.",
-      parameters: {
-        type: "object",
-        properties: { itemId: { type: "number" }, matchVendor: { type: "string" } },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "log_budget_payment",
-      description: "Record a payment against a budget item (adds to amountPaid). Pass itemId or matchVendor.",
-      parameters: {
-        type: "object",
-        properties: {
-          itemId: { type: "number" }, matchVendor: { type: "string" },
-          amount: { type: "number" }, note: { type: "string" },
-        },
-        required: ["amount"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_budget",
-      description: "List all budget items with category, vendor, estimated/actual/paid amounts.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "add_expense",
-      description: "Add a one-off expense (not tied to a vendor) — e.g. marriage license, gifts, supplies.",
-      parameters: {
-        type: "object",
-        properties: {
-          name: { type: "string" }, category: { type: "string" },
-          cost: { type: "number" }, amountPaid: { type: "number" }, notes: { type: "string" },
-        },
-        required: ["name", "category", "cost"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "update_expense",
-      description: "Update an expense. Pass expenseId or matchName.",
-      parameters: {
-        type: "object",
-        properties: {
-          expenseId: { type: "number" }, matchName: { type: "string" },
-          name: { type: "string" }, category: { type: "string" },
-          cost: { type: "number" }, amountPaid: { type: "number" }, notes: { type: "string" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "delete_expense",
-      description: "Delete an expense. Pass expenseId or matchName.",
-      parameters: {
-        type: "object",
-        properties: { expenseId: { type: "number" }, matchName: { type: "string" } },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_expenses",
-      description: "List all manual expenses.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "update_profile",
-      description: "Update one or more fields on the user's wedding profile. Only include fields the user explicitly wants to change.",
-      parameters: {
-        type: "object",
-        properties: {
-          partner1Name: { type: "string" },
-          partner2Name: { type: "string" },
-          weddingDate: { type: "string", description: "ISO date YYYY-MM-DD" },
-          ceremonyTime: { type: "string" },
-          receptionTime: { type: "string" },
-          venue: { type: "string" },
-          location: { type: "string" },
-          guestCount: { type: "number" },
-          totalBudget: { type: "number" },
-          weddingVibe: { type: "string" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_vendors",
-      description: "List all vendors currently in the user's vendor list. Use to avoid duplicates or to reference existing vendors.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "get_profile",
-      description: "Get the current wedding profile details (date, venue, budget, etc.) for context.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_contracts",
-      description: "List all contracts the user has uploaded to the Contract Analyzer. Returns id, fileName, vendor type, risk level, and summary for each. Use this first when the user asks any question about their contracts.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "get_contract",
-      description: "Get the full details of a specific contract — including the complete AI analysis (red flags, key terms, cancellation policy, payment terms, liability notes, negotiation tips) and the extracted contract text. Use this to answer specific questions about a contract.",
-      parameters: {
-        type: "object",
-        properties: {
-          contractId: { type: "number", description: "The id of the contract to retrieve (from list_contracts)" },
-        },
-        required: ["contractId"],
-      },
-    },
-  },
+  { type:"function" as const, function:{ name:"add_vendor", description:"Add vendor. Required: name, category.", parameters:{ type:"object", properties:{ name:{type:"string"}, category:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, depositPaid:{type:"boolean"} }, required:["name","category"] } } },
+  { type:"function" as const, function:{ name:"update_vendor", description:"Update vendor fields. Pass vendorId or vendorName.", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"}, name:{type:"string"}, category:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, portalLink:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, contractSigned:{type:"boolean"} } } } },
+  { type:"function" as const, function:{ name:"delete_vendor", description:"Delete vendor. Pass vendorId or vendorName.", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"list_vendors", description:"List all vendors.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"add_vendor_payment", description:"Add payment milestone to existing vendor. Required: label, amount, dueDate (YYYY-MM-DD).", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"}, label:{type:"string"}, amount:{type:"number"}, dueDate:{type:"string"}, isPaid:{type:"boolean"} }, required:["label","amount","dueDate"] } } },
+  { type:"function" as const, function:{ name:"update_vendor_payment", description:"Update payment milestone. Pass paymentId or vendorName+matchLabel.", parameters:{ type:"object", properties:{ paymentId:{type:"number"}, vendorName:{type:"string"}, matchLabel:{type:"string"}, label:{type:"string"}, amount:{type:"number"}, dueDate:{type:"string"}, isPaid:{type:"boolean"} } } } },
+  { type:"function" as const, function:{ name:"mark_vendor_payment_paid", description:"Mark payment paid. Pass paymentId or vendorName+matchLabel.", parameters:{ type:"object", properties:{ paymentId:{type:"number"}, vendorName:{type:"string"}, matchLabel:{type:"string"}, isPaid:{type:"boolean"} } } } },
+  { type:"function" as const, function:{ name:"delete_vendor_payment", description:"Delete payment milestone. Pass paymentId or vendorName+matchLabel.", parameters:{ type:"object", properties:{ paymentId:{type:"number"}, vendorName:{type:"string"}, matchLabel:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"add_checklist_item", description:"Add checklist task. Required: task, month.", parameters:{ type:"object", properties:{ task:{type:"string"}, description:{type:"string"}, month:{type:"string"} }, required:["task","month"] } } },
+  { type:"function" as const, function:{ name:"update_checklist_item", description:"Update checklist item. Pass itemId or matchTask.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchTask:{type:"string"}, task:{type:"string"}, description:{type:"string"}, month:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"toggle_checklist_item", description:"Toggle checklist item complete/incomplete. Pass itemId or matchTask.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchTask:{type:"string"}, isCompleted:{type:"boolean"} } } } },
+  { type:"function" as const, function:{ name:"delete_checklist_item", description:"Delete checklist item. Pass itemId or matchTask.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchTask:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"list_checklist", description:"List all checklist items.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"add_timeline_event", description:"Add timeline event. Required: time, title, description, category.", parameters:{ type:"object", properties:{ time:{type:"string"}, title:{type:"string"}, description:{type:"string"}, category:{type:"string",enum:["preparation","ceremony","cocktail","reception","dancing","other"]} }, required:["time","title","description","category"] } } },
+  { type:"function" as const, function:{ name:"update_timeline_event", description:"Update timeline event. Pass matchTitle or matchTime.", parameters:{ type:"object", properties:{ matchTitle:{type:"string"}, matchTime:{type:"string"}, time:{type:"string"}, title:{type:"string"}, description:{type:"string"}, category:{type:"string",enum:["preparation","ceremony","cocktail","reception","dancing","other"]} } } } },
+  { type:"function" as const, function:{ name:"delete_timeline_event", description:"Delete timeline event. Pass matchTitle or matchTime.", parameters:{ type:"object", properties:{ matchTitle:{type:"string"}, matchTime:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"list_timeline", description:"List timeline events.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"add_guest", description:"Add guest. Required: name.", parameters:{ type:"object", properties:{ name:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, rsvpStatus:{type:"string",enum:["pending","attending","declined","maybe"]}, mealChoice:{type:"string"}, dietaryNotes:{type:"string"}, guestGroup:{type:"string"}, plusOne:{type:"boolean"}, plusOneName:{type:"string"}, tableAssignment:{type:"string"}, notes:{type:"string"}, address:{type:"string"}, guestCity:{type:"string"}, guestState:{type:"string"}, guestZip:{type:"string"} }, required:["name"] } } },
+  { type:"function" as const, function:{ name:"update_guest", description:"Update guest. Pass guestId or matchName.", parameters:{ type:"object", properties:{ guestId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, rsvpStatus:{type:"string",enum:["pending","attending","declined","maybe"]}, mealChoice:{type:"string"}, dietaryNotes:{type:"string"}, guestGroup:{type:"string"}, plusOne:{type:"boolean"}, plusOneName:{type:"string"}, tableAssignment:{type:"string"}, notes:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"delete_guest", description:"Delete guest. Pass guestId or matchName.", parameters:{ type:"object", properties:{ guestId:{type:"number"}, matchName:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"list_guests", description:"List all guests.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"add_party_member", description:"Add wedding party member. Required: name, role, side.", parameters:{ type:"object", properties:{ name:{type:"string"}, role:{type:"string"}, side:{type:"string",enum:["bride","groom","both"]}, phone:{type:"string"}, email:{type:"string"}, outfitDetails:{type:"string"}, shoeSize:{type:"string"}, outfitStore:{type:"string"}, fittingDate:{type:"string"}, notes:{type:"string"} }, required:["name","role","side"] } } },
+  { type:"function" as const, function:{ name:"update_party_member", description:"Update party member. Pass memberId or matchName.", parameters:{ type:"object", properties:{ memberId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, role:{type:"string"}, side:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, outfitDetails:{type:"string"}, shoeSize:{type:"string"}, outfitStore:{type:"string"}, fittingDate:{type:"string"}, notes:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"delete_party_member", description:"Delete party member. Pass memberId or matchName.", parameters:{ type:"object", properties:{ memberId:{type:"number"}, matchName:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"list_party", description:"List wedding party members.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"add_hotel", description:"Add hotel block. Required: hotelName.", parameters:{ type:"object", properties:{ hotelName:{type:"string"}, address:{type:"string"}, city:{type:"string"}, state:{type:"string"}, zip:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, bookingLink:{type:"string"}, discountCode:{type:"string"}, groupName:{type:"string"}, cutoffDate:{type:"string"}, roomsReserved:{type:"number"}, pricePerNight:{type:"number"}, distanceFromVenue:{type:"string"}, notes:{type:"string"} }, required:["hotelName"] } } },
+  { type:"function" as const, function:{ name:"update_hotel", description:"Update hotel block. Pass hotelId or matchName.", parameters:{ type:"object", properties:{ hotelId:{type:"number"}, matchName:{type:"string"}, hotelName:{type:"string"}, address:{type:"string"}, city:{type:"string"}, state:{type:"string"}, zip:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, bookingLink:{type:"string"}, discountCode:{type:"string"}, groupName:{type:"string"}, cutoffDate:{type:"string"}, roomsReserved:{type:"number"}, roomsBooked:{type:"number"}, pricePerNight:{type:"number"}, distanceFromVenue:{type:"string"}, notes:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"delete_hotel", description:"Delete hotel block. Pass hotelId or matchName.", parameters:{ type:"object", properties:{ hotelId:{type:"number"}, matchName:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"list_hotels", description:"List all hotel blocks.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"add_budget_item", description:"Add budget line item. Required: category, vendor, estimatedCost.", parameters:{ type:"object", properties:{ category:{type:"string"}, vendor:{type:"string"}, estimatedCost:{type:"number"}, actualCost:{type:"number"}, notes:{type:"string"} }, required:["category","vendor","estimatedCost"] } } },
+  { type:"function" as const, function:{ name:"update_budget_item", description:"Update budget item. Pass itemId or matchVendor.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchVendor:{type:"string"}, category:{type:"string"}, vendor:{type:"string"}, estimatedCost:{type:"number"}, actualCost:{type:"number"}, notes:{type:"string"}, isPaid:{type:"boolean"} } } } },
+  { type:"function" as const, function:{ name:"delete_budget_item", description:"Delete budget item. Pass itemId or matchVendor.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchVendor:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"log_budget_payment", description:"Log payment against budget item. Required: amount.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchVendor:{type:"string"}, amount:{type:"number"}, note:{type:"string"} }, required:["amount"] } } },
+  { type:"function" as const, function:{ name:"list_budget", description:"List all budget items.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"add_expense", description:"Add one-off expense. Required: name, category, cost.", parameters:{ type:"object", properties:{ name:{type:"string"}, category:{type:"string"}, cost:{type:"number"}, amountPaid:{type:"number"}, notes:{type:"string"} }, required:["name","category","cost"] } } },
+  { type:"function" as const, function:{ name:"update_expense", description:"Update expense. Pass expenseId or matchName.", parameters:{ type:"object", properties:{ expenseId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, category:{type:"string"}, cost:{type:"number"}, amountPaid:{type:"number"}, notes:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"delete_expense", description:"Delete expense. Pass expenseId or matchName.", parameters:{ type:"object", properties:{ expenseId:{type:"number"}, matchName:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"list_expenses", description:"List all expenses.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"update_profile", description:"Update wedding profile fields.", parameters:{ type:"object", properties:{ partner1Name:{type:"string"}, partner2Name:{type:"string"}, weddingDate:{type:"string"}, ceremonyTime:{type:"string"}, receptionTime:{type:"string"}, venue:{type:"string"}, location:{type:"string"}, guestCount:{type:"number"}, totalBudget:{type:"number"}, weddingVibe:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"get_profile", description:"Get wedding profile details.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"list_contracts", description:"List uploaded contracts.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"get_contract", description:"Get full contract analysis. Required: contractId.", parameters:{ type:"object", properties:{ contractId:{type:"number"} }, required:["contractId"] } } },
 ];
 
 const ALLOWED_VENDOR_CATEGORIES = [
@@ -1649,9 +1100,9 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       ? `\n\nIMPORTANT: Always respond in ${preferredLanguage}, regardless of what language the user writes in.`
       : "";
 
-    // Keep only the last 6 messages (≈ 3 exchanges) to stay well within
+    // Keep only the last 2 messages (1 exchange) to stay well within
     // Groq's 6,000 tokens-per-minute free-tier limit.
-    const recent = messages.slice(-6);
+    const recent = messages.slice(-2);
     const convo: Array<Record<string, unknown>> = [
       { role: "system", content: SYSTEM_PROMPT + langInstruction },
       ...recent,
@@ -1665,7 +1116,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const createStream = async () => {
       const params = {
         model: getModel(),
-        max_tokens: 600,
+        max_tokens: 350,
         temperature: 0.1,   // low temp = reliable, consistent tool calls
         messages: convo as Parameters<typeof openai.chat.completions.create>[0]["messages"],
         tools: TOOLS,
