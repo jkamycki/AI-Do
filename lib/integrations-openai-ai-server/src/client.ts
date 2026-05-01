@@ -37,8 +37,11 @@ export const openai = new OpenAI({ apiKey, baseURL });
  */
 export function getModel(): string {
   if (process.env.AI_MODEL) return process.env.AI_MODEL;
-  if (baseURL.includes("groq.com")) return "llama-3.3-70b-versatile";
-  if (baseURL.includes("openrouter.ai")) return "meta-llama/llama-3.3-70b-instruct";
+  // llama-3.1-8b-instant: 20,000 TPM free tier (vs 6,000 for 70B) —
+  // much less rate-limiting, lower latency, still strong at tool-calling.
+  // Override with AI_MODEL=llama-3.3-70b-versatile for the larger model.
+  if (baseURL.includes("groq.com")) return "llama-3.1-8b-instant";
+  if (baseURL.includes("openrouter.ai")) return "meta-llama/llama-3.1-8b-instruct";
   if (baseURL.includes("anthropic")) return "claude-3-5-haiku-20241022";
   // OpenAI or Replit proxy
   return "gpt-4o-mini";

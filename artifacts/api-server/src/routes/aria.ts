@@ -1561,27 +1561,38 @@ const AI_CONFIGURED_FOR_PROD =
  * GET /aria/test — admin-only connectivity check for the OpenAI API.
  * Returns { ok, model, baseUrl, error? } without hitting the DB.
  */
-router.get("/aria/test", requireAuth, async (req, res) => {
-  const { userId } = getAuth(req);
-  if (!userId) return res.status(401).json({ ok: false, error: "Unauthorized" });
+router.get("/aria/test", async (req, res) => {
+  // Public endpoint — no auth required — so anyone can verify AI connectivity
+  // from the browser: GET /api/aria/test
+  const configured = !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY);
+  const baseUrlEnv = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || process.env.OPENAI_BASE_URL || "(not set)";
 
-  if (!AI_CONFIGURED_FOR_PROD) {
-    return res.json({ ok: false, error: "AI_INTEGRATIONS_OPENAI_API_KEY is not set." });
+  if (!configured) {
+    return res.json({
+      ok: false,
+      configured: false,
+      model: "(none)",
+      baseUrl: baseUrlEnv,
+      error: "No AI API key set (AI_INTEGRATIONS_OPENAI_API_KEY or OPENAI_API_KEY).",
+    });
   }
 
   try {
     const result = await openai.chat.completions.create({
       model: getModel(),
-      max_tokens: 5,
-      messages: [{ role: "user", content: "Say OK" }],
+      max_tokens: 10,
+      messages: [{ role: "user", content: "Reply with just OK" }],
     });
     const reply = result.choices[0]?.message?.content ?? "";
-    return res.json({ ok: true, model: getModel(), reply });
+    return res.json({ ok: true, configured: true, model: getModel(), baseUrl: baseUrlEnv, reply });
   } catch (err) {
     const e = err as { status?: number; message?: string; error?: { message?: string } };
+    req.log?.error(err, "aria/test failed");
     return res.json({
       ok: false,
+      configured: true,
       model: getModel(),
+      baseUrl: baseUrlEnv,
       status: e?.status,
       error: e?.error?.message || e?.message || String(err),
     });
@@ -1592,6 +1603,8 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
   try {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    req.log.info({ model: getModel(), userId }, "aria/chat request received");
 
     if (!AI_CONFIGURED_FOR_PROD) {
       res.setHeader("Content-Type", "text/event-stream");
