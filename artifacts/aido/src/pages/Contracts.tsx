@@ -441,7 +441,11 @@ export default function Contracts() {
 
   const { data: contracts = [], isLoading } = useQuery<Contract[]>({
     queryKey: ["contracts"],
-    queryFn: () => authFetch(`${API}/api/contracts`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await authFetch(`${API}/api/contracts`);
+      if (!r.ok) throw new Error(r.statusText);
+      return r.json();
+    },
   });
 
   const deleteMutation = useMutation({

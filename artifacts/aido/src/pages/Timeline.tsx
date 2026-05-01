@@ -499,12 +499,14 @@ export default function Timeline() {
   }, [timeline]);
 
   const saveTimeline = useMutation({
-    mutationFn: (events: TimelineEvent[]) =>
-      authFetch(`${API}/api/timeline/${timeline!.id}`, {
+    mutationFn: (events: TimelineEvent[]) => {
+      if (!timeline?.id) return Promise.resolve(new Response(null, { status: 204 }));
+      return authFetch(`${API}/api/timeline/${timeline.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ events }),
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
       setIsDirty(false);

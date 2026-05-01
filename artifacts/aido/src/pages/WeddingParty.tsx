@@ -238,7 +238,11 @@ export default function WeddingParty() {
 
   const { data: members = [], isLoading, isError } = useQuery<Member[]>({
     queryKey: ["wedding-party"],
-    queryFn: () => authFetch(`${API}/api/wedding-party`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await authFetch(`${API}/api/wedding-party`);
+      if (!r.ok) throw new Error(r.statusText);
+      return r.json();
+    },
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["wedding-party"] });

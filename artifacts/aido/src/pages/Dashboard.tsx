@@ -507,17 +507,29 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { data: hotels = [] } = useQuery<HotelBlock[]>({
     queryKey: ["hotels"],
-    queryFn: () => authFetch(`${API}/api/hotels`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await authFetch(`${API}/api/hotels`);
+      if (!r.ok) throw new Error(r.statusText);
+      return r.json();
+    },
     enabled: !!summary,
   });
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ["vendors-dashboard"],
-    queryFn: () => authFetch(`${API}/api/vendors`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await authFetch(`${API}/api/vendors`);
+      if (!r.ok) throw new Error(r.statusText);
+      return r.json();
+    },
     enabled: !!summary,
   });
   const { data: weddingParty = [] } = useQuery<WeddingPartyMember[]>({
     queryKey: ["wedding-party-dashboard"],
-    queryFn: () => authFetch(`${API}/api/wedding-party`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await authFetch(`${API}/api/wedding-party`);
+      if (!r.ok) throw new Error(r.statusText);
+      return r.json();
+    },
     enabled: !!summary,
   });
   const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingWizard(summary?.hasProfile ?? true);
@@ -567,8 +579,12 @@ export default function Dashboard() {
   };
 
   // Non-owner collaborators always land on the shared workspace, not their own dashboard
+  useEffect(() => {
+    if (activeWorkspace && activeWorkspace.role !== "owner" && !isLoading) {
+      setLocation(`/workspace/${activeWorkspace.profileId}`);
+    }
+  }, [activeWorkspace, isLoading, setLocation]);
   if (activeWorkspace && activeWorkspace.role !== "owner" && !isLoading) {
-    setLocation(`/workspace/${activeWorkspace.profileId}`);
     return null;
   }
 

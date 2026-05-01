@@ -51,30 +51,36 @@ export default function Checklist() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
 
   const updateItem = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<ChecklistItem> }) =>
-      authFetch(`${API}/api/checklist/items/${id}`, {
+    mutationFn: async ({ id, data }: { id: number; data: Partial<ChecklistItem> }) => {
+      const r = await authFetch(`${API}/api/checklist/items/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-      }),
+      });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error((e as any)?.error ?? r.statusText); }
+    },
     onSuccess: () => { invalidate(); toast({ title: t("checklist.task_updated") }); },
     onError: () => toast({ title: t("checklist.could_not_update"), variant: "destructive" }),
   });
 
   const deleteItem = useMutation({
-    mutationFn: (id: number) =>
-      authFetch(`${API}/api/checklist/items/${id}`, { method: "DELETE" }),
+    mutationFn: async (id: number) => {
+      const r = await authFetch(`${API}/api/checklist/items/${id}`, { method: "DELETE" });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error((e as any)?.error ?? r.statusText); }
+    },
     onSuccess: () => { invalidate(); toast({ title: t("checklist.task_removed") }); },
     onError: () => toast({ title: t("checklist.could_not_delete"), variant: "destructive" }),
   });
 
   const addItem = useMutation({
-    mutationFn: (data: { task: string; description: string; month: string }) =>
-      authFetch(`${API}/api/checklist/items`, {
+    mutationFn: async (data: { task: string; description: string; month: string }) => {
+      const r = await authFetch(`${API}/api/checklist/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-      }),
+      });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error((e as any)?.error ?? r.statusText); }
+    },
     onSuccess: () => {
       invalidate();
       toast({ title: t("checklist.task_added") });

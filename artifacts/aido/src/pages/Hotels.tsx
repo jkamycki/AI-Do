@@ -289,7 +289,11 @@ export default function Hotels() {
 
   const { data: hotels = [], isLoading, isError } = useQuery<HotelBlock[]>({
     queryKey: ["hotels"],
-    queryFn: () => authFetch(`${API}/api/hotels`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await authFetch(`${API}/api/hotels`);
+      if (!r.ok) throw new Error(r.statusText);
+      return r.json();
+    },
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["hotels"] });

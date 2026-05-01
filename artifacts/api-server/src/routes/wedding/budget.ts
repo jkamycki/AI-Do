@@ -273,7 +273,7 @@ router.put("/budget/items/:id", requireAuth, async (req, res) => {
     if (amountPaid !== undefined) updates.amountPaid = String(amountPaid);
     if (isPaid !== undefined) updates.isPaid = isPaid;
     if (notes !== undefined) updates.notes = notes;
-    if (nextPaymentDue !== undefined) updates.next_payment_due = nextPaymentDue ?? null;
+    if (nextPaymentDue !== undefined) updates.nextPaymentDue = nextPaymentDue ?? null;
 
     const [item] = await db.update(budgetItems).set(updates as never).where(eq(budgetItems.id, id)).returning();
 
