@@ -148,7 +148,7 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
     trackEvent(req.userId!, "pdf_exported", { type: "timeline", eventCount: events.length });
     finishPdf(doc, res, "aido-timeline.pdf");
   } catch (err) {
-    console.error("PDF generation error:", err);
+    req.log.error(err, "PDF generation error");
     if (!res.headersSent) {
       res.status(500).json({ error: "Failed to generate PDF" });
     }
@@ -231,7 +231,7 @@ router.post("/pdf/vendor-email", requireAuth, async (req, res) => {
     trackEvent(req.userId!, "pdf_exported", { type: "vendor_email", vendorType });
     finishPdf(doc, res, "aido-vendor-email.pdf");
   } catch (err) {
-    console.error("PDF generation error:", err);
+    req.log.error(err, "PDF vendor-email generation error");
     if (!res.headersSent) {
       res.status(500).json({ error: "Failed to generate PDF" });
     }

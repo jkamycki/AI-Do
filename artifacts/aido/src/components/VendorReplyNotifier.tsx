@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@clerk/react";
-import { useListConversations } from "@workspace/api-client-react";
+import { useListConversations, getListConversationsQueryKey } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { Mail } from "lucide-react";
 
@@ -14,6 +14,7 @@ export function VendorReplyNotifier() {
 
   const { data: conversations } = useListConversations({
     query: {
+      queryKey: getListConversationsQueryKey(),
       enabled: !!isSignedIn,
       refetchInterval: 20000,
       refetchIntervalInBackground: true,

@@ -208,8 +208,8 @@ export default function Budget() {
     const file = e.target.files?.[0];
     if (!file) return;
     const result = await upload.uploadFile(file);
-    if (result?.url) {
-      setForm((f) => ({ ...f, receiptUrl: result.url, receiptName: file.name }));
+    if (result?.objectPath) {
+      setForm((f) => ({ ...f, receiptUrl: result.objectPath, receiptName: file.name }));
       toast({ title: t("budget.toast_receipt_uploaded") });
     }
     e.target.value = "";

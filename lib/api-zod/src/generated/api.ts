@@ -156,6 +156,7 @@ export const GenerateVendorEmailBody = zod.object({
   venue: zod.string(),
   guestCount: zod.number(),
   additionalNotes: zod.string().optional(),
+  preferredLanguage: zod.string().nullish(),
 });
 
 export const GenerateVendorEmailResponse = zod.object({
@@ -444,6 +445,7 @@ export const ListVendorsResponseItem = zod.object({
   totalCost: zod.number(),
   depositAmount: zod.number(),
   contractSigned: zod.boolean(),
+  nextPaymentDue: zod.string().nullish(),
   files: zod.array(
     zod.object({
       name: zod.string(),
@@ -451,6 +453,20 @@ export const ListVendorsResponseItem = zod.object({
       type: zod.string(),
     }),
   ),
+  payments: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        vendorId: zod.number(),
+        label: zod.string(),
+        amount: zod.number(),
+        dueDate: zod.string(),
+        isPaid: zod.boolean(),
+        paidAt: zod.string().optional(),
+        createdAt: zod.string(),
+      }),
+    )
+    .optional(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -493,6 +509,7 @@ export const GetVendorResponse = zod
     totalCost: zod.number(),
     depositAmount: zod.number(),
     contractSigned: zod.boolean(),
+    nextPaymentDue: zod.string().nullish(),
     files: zod.array(
       zod.object({
         name: zod.string(),
@@ -500,6 +517,20 @@ export const GetVendorResponse = zod
         type: zod.string(),
       }),
     ),
+    payments: zod
+      .array(
+        zod.object({
+          id: zod.number(),
+          vendorId: zod.number(),
+          label: zod.string(),
+          amount: zod.number(),
+          dueDate: zod.string(),
+          isPaid: zod.boolean(),
+          paidAt: zod.string().optional(),
+          createdAt: zod.string(),
+        }),
+      )
+      .optional(),
     createdAt: zod.string(),
     updatedAt: zod.string(),
   })
@@ -562,6 +593,7 @@ export const UpdateVendorResponse = zod.object({
   totalCost: zod.number(),
   depositAmount: zod.number(),
   contractSigned: zod.boolean(),
+  nextPaymentDue: zod.string().nullish(),
   files: zod.array(
     zod.object({
       name: zod.string(),
@@ -569,6 +601,20 @@ export const UpdateVendorResponse = zod.object({
       type: zod.string(),
     }),
   ),
+  payments: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        vendorId: zod.number(),
+        label: zod.string(),
+        amount: zod.number(),
+        dueDate: zod.string(),
+        isPaid: zod.boolean(),
+        paidAt: zod.string().optional(),
+        createdAt: zod.string(),
+      }),
+    )
+    .optional(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -748,6 +794,7 @@ export const MarkConversationReadResponse = zod.object({
  */
 export const SummarizeVendorEmailBody = zod.object({
   emailText: zod.string(),
+  preferredLanguage: zod.string().nullish(),
 });
 
 export const SummarizeVendorEmailResponse = zod.object({
@@ -832,6 +879,7 @@ export const GetGuestsResponse = zod.object({
       name: zod.string(),
       email: zod.string().nullish(),
       rsvpStatus: zod.string(),
+      invitationStatus: zod.string().nullish(),
       mealChoice: zod.string().nullish(),
       dietaryNotes: zod.string().nullish(),
       guestGroup: zod.string().nullish(),
@@ -858,6 +906,7 @@ export const AddGuestBody = zod.object({
   name: zod.string(),
   email: zod.string().optional(),
   rsvpStatus: zod.string().optional(),
+  invitationStatus: zod.string().optional(),
   mealChoice: zod.string().optional(),
   dietaryNotes: zod.string().optional(),
   guestGroup: zod.string().optional(),
@@ -878,6 +927,7 @@ export const UpdateGuestBody = zod.object({
   name: zod.string().optional(),
   email: zod.string().optional(),
   rsvpStatus: zod.string().optional(),
+  invitationStatus: zod.string().optional(),
   mealChoice: zod.string().optional(),
   dietaryNotes: zod.string().optional(),
   guestGroup: zod.string().optional(),
@@ -893,6 +943,7 @@ export const UpdateGuestResponse = zod.object({
   name: zod.string(),
   email: zod.string().nullish(),
   rsvpStatus: zod.string(),
+  invitationStatus: zod.string().nullish(),
   mealChoice: zod.string().nullish(),
   dietaryNotes: zod.string().nullish(),
   guestGroup: zod.string().nullish(),

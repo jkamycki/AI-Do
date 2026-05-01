@@ -210,7 +210,7 @@ export default function SharedWorkspacePage() {
                   <div className="flex items-start gap-2">
                     <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                     <div className="min-w-0">
-                      {profile.venue && <p className="text-sm font-medium text-foreground">{String(profile.venue)}</p>}
+                      {!!profile.venue && <p className="text-sm font-medium text-foreground">{String(profile.venue)}</p>}
                       {[profile.venueCity, profile.venueState, profile.location].filter(Boolean).length > 0 && (
                         <p className="text-xs text-muted-foreground mt-0.5 break-words">
                           {[profile.venueCity, profile.venueState, profile.location].filter(Boolean).join(", ")}
@@ -249,13 +249,13 @@ export default function SharedWorkspacePage() {
                 {/* Details */}
                 <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Details</p>
-                  {role !== "vendor" && profile.guestCount && (
+                  {role !== "vendor" && !!profile.guestCount && (
                     <p className="text-sm text-foreground"><strong>{String(profile.guestCount)}</strong> expected guests</p>
                   )}
-                  {profile.weddingVibe && (
+                  {!!profile.weddingVibe && (
                     <p className="text-sm text-foreground capitalize">{String(profile.weddingVibe)}</p>
                   )}
-                  {role !== "vendor" && profile.totalBudget && Number(profile.totalBudget) > 0 && (
+                  {role !== "vendor" && !!profile.totalBudget && Number(profile.totalBudget) > 0 && (
                     <p className="text-sm text-foreground">${Number(profile.totalBudget).toLocaleString()} budget</p>
                   )}
                 </div>

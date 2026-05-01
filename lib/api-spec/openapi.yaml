@@ -1219,6 +1219,9 @@ components:
           type: integer
         additionalNotes:
           type: string
+        preferredLanguage:
+          type: string
+          nullable: true
       required:
         - vendorType
         - emailType
@@ -1571,10 +1574,17 @@ components:
           type: number
         contractSigned:
           type: boolean
+        nextPaymentDue:
+          type: string
+          nullable: true
         files:
           type: array
           items:
             $ref: "#/components/schemas/VendorFile"
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/VendorPayment"
         createdAt:
           type: string
         updatedAt:
@@ -1719,6 +1729,9 @@ components:
       properties:
         emailText:
           type: string
+        preferredLanguage:
+          type: string
+          nullable: true
       required:
         - emailText
 
@@ -1779,6 +1792,9 @@ components:
           nullable: true
         rsvpStatus:
           type: string
+        invitationStatus:
+          type: string
+          nullable: true
         mealChoice:
           type: string
           nullable: true
@@ -1848,6 +1864,8 @@ components:
           type: string
         rsvpStatus:
           type: string
+        invitationStatus:
+          type: string
         mealChoice:
           type: string
         dietaryNotes:
@@ -1873,6 +1891,8 @@ components:
         email:
           type: string
         rsvpStatus:
+          type: string
+        invitationStatus:
           type: string
         mealChoice:
           type: string

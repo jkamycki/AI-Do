@@ -58,6 +58,7 @@ export default function Profile() {
   const { isLoaded, isSignedIn } = useAuth();
   const { data: profile, isLoading, isFetching, isError, error, refetch } = useGetProfile({
     query: {
+      queryKey: getGetProfileQueryKey(),
       enabled: isLoaded && !!isSignedIn,
       retry: 3,
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
@@ -565,7 +566,7 @@ function InvitationPhotoCard() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: profile, isLoading: profileLoading } = useGetProfile({
-    query: { enabled: isLoaded && !!isSignedIn },
+    query: { queryKey: getGetProfileQueryKey(), enabled: isLoaded && !!isSignedIn },
   });
 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -624,11 +625,11 @@ function InvitationPhotoCard() {
 
   const { uploadFile, isUploading } = useUpload({
     getToken,
-    onSuccess: (resp) => {
+    onSuccess: (resp: { objectPath: string }) => {
       setPhotoUrl(resp.objectPath);
       setPreviewSrc(URL.createObjectURL((fileInputRef.current?.files?.[0]) as File));
     },
-    onError: (err) => toast({ title: "Upload failed", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Upload failed", description: err.message, variant: "destructive" }),
   });
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {

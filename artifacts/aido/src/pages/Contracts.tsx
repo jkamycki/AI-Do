@@ -384,9 +384,9 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
                 {riskLevel.toUpperCase()}
               </span>
             )}
-            {analysis?.redFlags?.length > 0 && (
+            {(analysis?.redFlags?.length ?? 0) > 0 && (
               <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100">
-                {t("contracts.flags_count", { n: analysis.redFlags.length })}
+                {t("contracts.flags_count", { n: analysis?.redFlags?.length ?? 0 })}
               </span>
             )}
           </div>

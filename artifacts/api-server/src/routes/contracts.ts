@@ -41,7 +41,8 @@ async function extractText(buffer: Buffer, mimetype: string): Promise<string> {
       }
       return text.slice(0, 40000);
     } catch (err) {
-      console.error("[contracts] PDF extraction failed:", err instanceof Error ? err.message : String(err));
+      // Note: no req context here (utility fn) — log to stderr is acceptable
+      process.stderr.write(`[contracts] PDF extraction failed: ${err instanceof Error ? err.message : String(err)}\n`);
       return "";
     }
   }

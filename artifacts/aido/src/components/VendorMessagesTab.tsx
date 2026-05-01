@@ -76,6 +76,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
 
   const { data: messages, isLoading: msgsLoading } = useListMessages(conversationId ?? 0, {
     query: {
+      queryKey: getListMessagesQueryKey(conversationId ?? 0),
       enabled: !!conversationId,
       refetchInterval: 15000,
     },

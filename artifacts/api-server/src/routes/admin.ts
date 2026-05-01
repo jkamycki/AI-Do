@@ -211,7 +211,7 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
       })),
     });
   } catch (err) {
-    console.error("Admin metrics error:", err);
+    req.log.error(err, "Admin metrics error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -241,7 +241,7 @@ router.get("/admin/events", requireAuth, requireAdmin, async (req, res) => {
       pages: Math.ceil(total / limit),
     });
   } catch (err) {
-    console.error("Admin events error:", err);
+    req.log.error(err, "Admin events error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -340,7 +340,7 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
 
     res.json({ users: filtered, total: filtered.length });
   } catch (err) {
-    console.error("Admin users error:", err);
+    req.log.error(err, "Admin users error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -477,7 +477,7 @@ router.post("/admin/promote/:userId", requireAuth, requireAdmin, async (req, res
     await db.insert(adminUsers).values({ userId }).onConflictDoNothing();
     res.json({ success: true, message: `User ${userId} promoted to admin.` });
   } catch (err) {
-    console.error("Admin promote error:", err);
+    req.log.error(err, "Admin promote error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -491,7 +491,7 @@ router.delete("/admin/demote/:userId", requireAuth, requireAdmin, async (req, re
     await db.delete(adminUsers).where(eq(adminUsers.userId, userId));
     res.json({ success: true });
   } catch (err) {
-    console.error("Admin demote error:", err);
+    req.log.error(err, "Admin demote error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

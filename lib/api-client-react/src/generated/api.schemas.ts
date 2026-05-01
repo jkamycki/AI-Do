@@ -134,6 +134,7 @@ export interface GenerateVendorEmailBody {
   venue: string;
   guestCount: number;
   additionalNotes?: string;
+  preferredLanguage?: string | null;
 }
 
 export interface BudgetItem {
@@ -320,6 +321,17 @@ export interface SuggestReplyResponse {
   draft: string;
 }
 
+export interface VendorPayment {
+  id: number;
+  vendorId: number;
+  label: string;
+  amount: number;
+  dueDate: string;
+  isPaid: boolean;
+  paidAt?: string;
+  createdAt: string;
+}
+
 export interface Vendor {
   id: number;
   profileId: number;
@@ -333,20 +345,11 @@ export interface Vendor {
   totalCost: number;
   depositAmount: number;
   contractSigned: boolean;
+  nextPaymentDue?: string | null;
   files: VendorFile[];
+  payments?: VendorPayment[];
   createdAt: string;
   updatedAt: string;
-}
-
-export interface VendorPayment {
-  id: number;
-  vendorId: number;
-  label: string;
-  amount: number;
-  dueDate: string;
-  isPaid: boolean;
-  paidAt?: string;
-  createdAt: string;
 }
 
 export type VendorWithPayments = Vendor & {
@@ -396,6 +399,7 @@ export interface UpdatePaymentBody {
 
 export interface SummarizeEmailBody {
   emailText: string;
+  preferredLanguage?: string | null;
 }
 
 export interface SummarizeEmailResponse {
@@ -421,6 +425,7 @@ export interface Guest {
   name: string;
   email?: string | null;
   rsvpStatus: string;
+  invitationStatus?: string | null;
   mealChoice?: string | null;
   dietaryNotes?: string | null;
   guestGroup?: string | null;
@@ -448,6 +453,7 @@ export interface CreateGuest {
   name: string;
   email?: string;
   rsvpStatus?: string;
+  invitationStatus?: string;
   mealChoice?: string;
   dietaryNotes?: string;
   guestGroup?: string;
@@ -461,6 +467,7 @@ export interface UpdateGuest {
   name?: string;
   email?: string;
   rsvpStatus?: string;
+  invitationStatus?: string;
   mealChoice?: string;
   dietaryNotes?: string;
   guestGroup?: string;

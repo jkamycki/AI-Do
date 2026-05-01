@@ -473,7 +473,7 @@ export function Sidebar() {
               </p>
               <div className="space-y-0.5">
                 {section.items.map((item) => (
-                  <NavLink key={item.href} href={item.href} label={t(item.labelKey)} icon={item.icon} dot={"dot" in item ? item.dot : undefined} />
+                  <NavLink key={item.href} href={item.href} label={t(item.labelKey)} icon={item.icon} dot={"dot" in item ? item.dot as boolean : undefined} />
                 ))}
               </div>
             </div>

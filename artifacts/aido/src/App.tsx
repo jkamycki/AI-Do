@@ -9,7 +9,7 @@ import { setFetchTokenGetter, setAuthFetchBaseUrl, authFetch } from "@/lib/authF
 import { AppLayout } from "@/components/layout/AppLayout";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { useGetProfile } from "@workspace/api-client-react";
+import { useGetProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
@@ -621,7 +621,8 @@ function SsoCallbackPage() {
 
 function CustomSignUpForm() {
   const clerk = useClerk();
-  const { signUp, isLoaded: signUpLoaded } = useSignUp();
+  const { signUp } = useSignUp();
+  const signUpLoaded = !!signUp;
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -766,7 +767,7 @@ function CustomSignUpForm() {
     setResendInfo(null);
     if (!signUpLoaded || !signUp) return;
     try {
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      await (signUp as unknown as { prepareEmailAddressVerification: (opts: { strategy: string }) => Promise<void> }).prepareEmailAddressVerification({ strategy: "email_code" });
       setResendInfo("A new code has been sent. Check your inbox and spam folder.");
     } catch (err: unknown) {
       const msg =
@@ -1108,7 +1109,7 @@ function PendingInviteRedirector() {
 function LanguageSyncProvider() {
   const { user, isLoaded } = useUser();
   const { isSignedIn } = useAuth();
-  const { data: profile } = useGetProfile({ query: { enabled: isLoaded && !!isSignedIn } });
+  const { data: profile } = useGetProfile({ query: { queryKey: getGetProfileQueryKey(), enabled: isLoaded && !!isSignedIn } });
 
   useEffect(() => {
     if (!isLoaded || !user) return;
