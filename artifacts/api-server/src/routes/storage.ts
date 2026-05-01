@@ -39,8 +39,14 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
       }),
     );
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    const isConfig = msg.includes("not configured") || msg.includes("R2");
     req.log.error({ err: error }, "Error generating upload URL");
-    res.status(500).json({ error: "Failed to generate upload URL" });
+    res.status(500).json({
+      error: isConfig
+        ? "Storage is not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME on the server."
+        : "Failed to generate upload URL",
+    });
   }
 });
 

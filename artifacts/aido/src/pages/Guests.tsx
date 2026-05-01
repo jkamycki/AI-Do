@@ -734,7 +734,13 @@ export default function Guests() {
         setIsAdding(false);
         invalidate();
       },
-      onError: () => toast({ title: "Failed to add guest", variant: "destructive" }),
+      onError: (err: unknown) => {
+        const status = (err as { status?: number })?.status;
+        toast({
+          title: status === 401 ? "Session refreshing — try again in a moment" : "Failed to add guest",
+          variant: "destructive",
+        });
+      },
     });
   }
 

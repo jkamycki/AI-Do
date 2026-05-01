@@ -94,7 +94,7 @@ export function useUpload(options: UseUploadOptions = {}) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to get upload URL");
+        throw new Error(errorData.error || `Failed to get upload URL (HTTP ${response.status})`);
       }
 
       return response.json();
@@ -170,7 +170,8 @@ export function useUpload(options: UseUploadOptions = {}) {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to get upload URL");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to get upload URL (HTTP ${response.status})`);
       }
 
       const data = await response.json();

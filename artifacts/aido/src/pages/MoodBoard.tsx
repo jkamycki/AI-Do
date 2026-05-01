@@ -272,7 +272,20 @@ export default function MoodBoard() {
   // ─── Upload hook ──────────────────────────────────────────────────────────
   const { uploadFile, isUploading } = useUpload({
     getToken,
-    onError: () => toast({ title: "Upload failed", variant: "destructive" }),
+    onError: (err: Error) => {
+      const msg = err?.message ?? "";
+      const is401 = msg.includes("401") || msg.toLowerCase().includes("session");
+      const isConfig = msg.toLowerCase().includes("storage is not configured") || msg.toLowerCase().includes("r2_");
+      toast({
+        title: "Upload failed",
+        description: is401
+          ? "Session refreshing — try again in a moment."
+          : isConfig
+          ? "Image storage is not configured on the server."
+          : undefined,
+        variant: "destructive",
+      });
+    },
   });
 
   // ─── Fetch mood board ─────────────────────────────────────────────────────
