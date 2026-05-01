@@ -312,12 +312,12 @@
     "keyboard_hint": "Presiona Enter para enviar · Shift+Enter para nueva línea · El historial se guarda automáticamente",
     "delete_confirm": "¿Eliminar esta conversación? Esta acción no se puede deshacer.",
     "open_history": "Abrir historial de conversaciones",
-    "starter_1": "Agrégame un proveedor a mi lista — solo dime su nombre, contacto y presupuesto",
-    "starter_2": "Añade 'Reservar prueba de peinado y maquillaje' a mi lista de tareas de 6 meses",
-    "starter_3": "¿Qué debo priorizar 6 meses antes de mi boda?",
-    "starter_4": "¿Qué suele incluir un contrato con un wedding planner?",
-    "starter_5": "¿Cómo creo una distribución de mesas sin conflictos?",
-    "starter_6": "¿Qué preguntas debo hacerle a un fotógrafo antes de contratarle?"
+    "starter_1": "Agrega un proveedor nuevo a mi lista de planificación",
+    "starter_2": "Dame un resumen rápido de cómo va mi planificación",
+    "starter_3": "Añade 'Reservar prueba de peinado y maquillaje' a mi lista de tareas de 6 meses",
+    "starter_4": "¿Qué debo priorizar 6 meses antes de mi boda?",
+    "starter_5": "¿Qué preguntas debo hacerle a un fotógrafo antes de contratarle?",
+    "starter_6": "Ayúdame a redactar el cronograma del día de la boda"
   },
   "budget": {
     "title": "Rastreador de Presupuesto",
