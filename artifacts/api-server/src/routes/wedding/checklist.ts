@@ -81,7 +81,9 @@ Include 5-8 tasks per relevant time period. Be specific and actionable. Make tas
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      max_completion_tokens: 8192,
+      // Keep total request (prompt + output) under Groq free-tier 6000 TPM.
+      // ~50 tasks × ~70 tokens each ≈ 3500 tokens, 4000 leaves headroom.
+      max_completion_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     });
 

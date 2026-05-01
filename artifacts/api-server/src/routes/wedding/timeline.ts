@@ -103,7 +103,9 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      max_completion_tokens: 8192,
+      // Keep total request (prompt + output) under Groq free-tier 6000 TPM.
+      // ~30 events × ~110 tokens each ≈ 3300 tokens, 4000 leaves headroom.
+      max_completion_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     });
 
