@@ -422,6 +422,10 @@ export default function Aria() {
           } else if (parsed.type === "content") {
             accumulated = (accumulated || "") + (parsed.content as string);
             updatePlaceholder({ content: accumulated, streaming: true });
+          } else if (parsed.type === "status") {
+            // Transient status (e.g. rate-limit retry notice) — show as italic text
+            accumulated = (accumulated || "") + `\n\n_${parsed.message as string}_\n\n`;
+            updatePlaceholder({ content: accumulated, streaming: true });
           } else if (parsed.type === "done") {
             updatePlaceholder({ streaming: false });
           } else if (parsed.type === "error") {

@@ -1646,16 +1646,33 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     let toolLoops = 0;
     const MAX_TOOL_LOOPS = 4;
 
-    while (toolLoops < MAX_TOOL_LOOPS) {
-      // Stream the response so text tokens appear in the UI immediately
-      const stream = await openai.chat.completions.create({
+    // Helper: call with one automatic retry on Groq rate-limit (429)
+    const createStream = async () => {
+      const params = {
         model: getModel(),
         max_tokens: 1500,
         messages: convo as Parameters<typeof openai.chat.completions.create>[0]["messages"],
         tools: TOOLS,
-        tool_choice: "auto",
-        stream: true,
-      });
+        tool_choice: "auto" as const,
+        stream: true as const,
+      };
+      try {
+        return await openai.chat.completions.create(params);
+      } catch (firstErr) {
+        const firstStatus = (firstErr as { status?: number })?.status;
+        if (firstStatus === 429) {
+          // Let the client know we're pausing, then retry after a short delay
+          send({ type: "status", message: "Aria is catching her breath, retrying in 15 seconds…" });
+          await new Promise(resolve => setTimeout(resolve, 15_000));
+          return await openai.chat.completions.create(params);
+        }
+        throw firstErr;
+      }
+    };
+
+    while (toolLoops < MAX_TOOL_LOOPS) {
+      // Stream the response so text tokens appear in the UI immediately
+      const stream = await createStream();
 
       // Accumulate streamed content and tool-call fragments
       let contentAccum = "";
@@ -1739,17 +1756,18 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       const errCode = apiErr?.error?.code ?? "";
       let userMsg = "Something went wrong. Please try again.";
       if (status === 401) {
-        userMsg = "OpenAI API key is invalid or expired. Please check the key set on your server.";
+        userMsg = "AI API key is invalid or expired. Please check the key set on your server.";
       } else if (status === 429) {
         if (errCode === "insufficient_quota" || detail.toLowerCase().includes("quota") || detail.toLowerCase().includes("exceeded your current quota")) {
-          userMsg = "Your OpenAI account has run out of credits. Please visit platform.openai.com/settings/billing to add credits, then try again.";
+          userMsg = "Your AI API account has run out of credits. Please top up your Groq or OpenAI account and try again.";
         } else {
-          userMsg = "OpenAI is busy right now. Please wait 30 seconds and try again.";
+          // Rate limit — still hit after the automatic retry; tell the user to wait a little longer
+          userMsg = "Aria is currently rate-limited. Please wait 30–60 seconds and try again.";
         }
       } else if (status === 404 || detail.toLowerCase().includes("model")) {
-        userMsg = `AI model not available on your plan. (${detail || "no detail"})`;
+        userMsg = `AI model not found. (${detail || "no detail"})`;
       } else if (detail) {
-        userMsg = `Aria error: ${detail}`;
+        userMsg = `Aria encountered an error: ${detail}`;
       }
 
       res.write(`data: ${JSON.stringify({ type: "error", error: userMsg })}\n\n`);
