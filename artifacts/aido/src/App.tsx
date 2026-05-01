@@ -1247,12 +1247,17 @@ function ClerkQueryClientCacheInvalidator() {
         qc.clear();
       }
 
-      // When the session becomes active (or is silently refreshed), refetch
-      // all mounted queries so they pick up the fresh JWT.  This is the key
-      // fix for the stale-session 401 that occurs on cold-start or after a
-      // Clerk background re-auth (~14s after page load on free-tier Render).
+      // When the session ID changes from one real session to a DIFFERENT
+      // real session, refetch all mounted queries so they pick up the fresh
+      // JWT. Critically we require the PREVIOUS session ID to be non-null —
+      // otherwise null → "abc" transitions (which happen routinely during
+      // Clerk's silent background JWT refresh on production / custom domain
+      // setups) would trigger invalidations on every refresh, causing an
+      // infinite refetch loop that pinned every query to isFetching=true
+      // forever and left UIs stuck on skeleton states.
       if (
         prevSessionIdRef.current !== undefined &&
+        prevSessionIdRef.current !== null &&
         prevSessionIdRef.current !== sessionId &&
         sessionId !== null
       ) {

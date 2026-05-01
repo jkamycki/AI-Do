@@ -156,7 +156,7 @@ export default function Profile() {
     );
   }
 
-  if (isLoading || isFetching || (!profile && !isError)) {
+  if (isLoading || (!profile && !isError)) {
     return (
       <div className="space-y-6 max-w-3xl mx-auto">
         <Skeleton className="h-12 w-64" />
