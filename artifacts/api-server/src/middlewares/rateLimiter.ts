@@ -49,6 +49,26 @@ export const authLimiter = rateLimit({
   message: { error: "Too many login attempts. Please try again in 15 minutes." },
 });
 
+// ─── Upload URL request limiter ───────────────────────────────────────────────
+// Each call generates a presigned R2 URL — cheap individually but a tight loop
+// could mint thousands of upload slots. 30/min per user is generous for the UI
+// (which never opens more than a few at once) and stops abuse cold.
+export const uploadUrlLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, keyGeneratorIpFallback: false },
+  keyGenerator: (req: Request) => {
+    try {
+      const { userId } = getAuth(req);
+      if (userId) return userId;
+    } catch {}
+    return req.ip ?? req.socket?.remoteAddress ?? "unknown";
+  },
+  message: { error: "Too many upload requests. Please slow down and try again in a minute." },
+});
+
 // ─── Per-user daily AI message cap ───────────────────────────────────────────
 // Separate from the hourly limiter — caps total daily spend per user.
 // Resets at midnight UTC. Stored in-memory (resets on server restart, which

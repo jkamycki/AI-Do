@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxyMiddleware";
@@ -10,6 +11,19 @@ import { logger } from "./lib/logger";
 const app: Express = express();
 app.set("etag", false);
 app.set("trust proxy", 1);
+
+// ─── Security headers ─────────────────────────────────────────────────────────
+// Helmet adds standard hardening headers (X-Content-Type-Options, X-Frame-Options
+// SAMEORIGIN, Strict-Transport-Security, Referrer-Policy, etc.). CSP is disabled
+// because this is a JSON API consumed by aidowedding.net (Vercel) — the frontend
+// host owns CSP, and a CSP here would not apply to the actual rendered pages.
+// crossOriginResourcePolicy is loosened so the Vercel frontend can fetch responses.
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
 app.use("/api", (_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
   res.setHeader("Pragma", "no-cache");

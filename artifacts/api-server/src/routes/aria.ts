@@ -1317,8 +1317,28 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
       preferredLanguage?: string;
     };
+
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: "messages array is required" });
+    }
+
+    // ─── Prompt-injection / abuse guard ───────────────────────────────
+    // Cap individual message size at 4,000 chars (~1,000 tokens). This
+    // prevents a malicious user from blowing through the AI rate budget
+    // with a single huge prompt or attempting to overwhelm the system
+    // prompt with a wall of injected instructions.
+    const MAX_MSG_CHARS = 4000;
+    const offender = messages.find(
+      (m) => typeof m?.content === "string" && m.content.length > MAX_MSG_CHARS,
+    );
+    if (offender) {
+      sseHeaders();
+      res.write(
+        `data: ${JSON.stringify({ type: "content", content: `Your message is too long (max ${MAX_MSG_CHARS} characters). Please trim it down and try again — I'll get a better answer with a focused question anyway.` })}\n\n`,
+      );
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
     }
 
     sseHeaders();

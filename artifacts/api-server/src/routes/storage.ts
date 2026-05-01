@@ -6,6 +6,7 @@ import {
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { requireAuth } from "../middlewares/requireAuth";
+import { uploadUrlLimiter } from "../middlewares/rateLimiter";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -18,7 +19,7 @@ const objectStorageService = new ObjectStorageService();
  * Then uploads the file directly to the returned presigned URL.
  * Requires authentication to prevent anonymous storage abuse.
  */
-router.post("/storage/uploads/request-url", requireAuth, async (req: Request, res: Response) => {
+router.post("/storage/uploads/request-url", requireAuth, uploadUrlLimiter, async (req: Request, res: Response) => {
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });
@@ -61,6 +62,21 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
   try {
     const raw = req.params.filePath;
     const filePath = Array.isArray(raw) ? raw.join("/") : raw;
+
+    // Defensive: reject any path that tries to traverse out of the public
+    // prefix using "..", backslashes, URL-encoded variants, or absolute paths.
+    // R2 keys are not filesystem paths so traditional "../" doesn't escape,
+    // but blocking these stops weird key probing and matches user expectations.
+    const decoded = decodeURIComponent(filePath);
+    if (
+      decoded.includes("..") ||
+      decoded.includes("\\") ||
+      decoded.startsWith("/")
+    ) {
+      res.status(400).json({ error: "Invalid file path." });
+      return;
+    }
+
     const file = await objectStorageService.searchPublicObject(filePath);
     if (!file) {
       res.status(404).json({ error: "File not found" });

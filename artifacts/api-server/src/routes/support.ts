@@ -61,6 +61,18 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
       return res.status(400).json({ error: "messages array is required" });
     }
 
+    // Same 4,000-char guard as Aria — stops a single huge prompt from
+    // burning the AI rate budget or attempting prompt-injection at scale.
+    const MAX_MSG_CHARS = 4000;
+    const tooLong = messages.find(
+      (m) => typeof m?.content === "string" && m.content.length > MAX_MSG_CHARS,
+    );
+    if (tooLong) {
+      return res.status(400).json({
+        error: `Your message is too long (max ${MAX_MSG_CHARS} characters). Please trim it and try again.`,
+      });
+    }
+
     const recent = messages.slice(-12);
 
     res.setHeader("Content-Type", "text/event-stream");

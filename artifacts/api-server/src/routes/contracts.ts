@@ -12,13 +12,26 @@ const require = createRequire(import.meta.url);
 const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require("pdf-parse");
 
 const router = Router();
+const ALLOWED_CONTRACT_MIMES = new Set([
+  "application/pdf",
+  "text/plain",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  // 5MB cap — protects Render memory from DoS via large uploads.
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
-    const allowed = ["application/pdf", "text/plain", "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
-    cb(null, allowed.includes(file.mimetype) || file.originalname.endsWith(".txt"));
+    const ok =
+      ALLOWED_CONTRACT_MIMES.has(file.mimetype) ||
+      file.originalname.toLowerCase().endsWith(".txt");
+    if (!ok) {
+      cb(new Error("Unsupported file type. Please upload a PDF, Word doc, or .txt file."));
+      return;
+    }
+    cb(null, true);
   },
 });
 
@@ -60,7 +73,23 @@ async function extractText(buffer: Buffer, mimetype: string): Promise<string> {
   }
 }
 
-router.post("/contracts/upload", requireAuth, upload.single("file"), async (req, res) => {
+router.post(
+  "/contracts/upload",
+  requireAuth,
+  // Wrap multer so file-size / file-type errors return clean 400s instead of
+  // bubbling up as 500s and leaking stack traces.
+  (req, res, next) => {
+    upload.single("file")(req, res, (err) => {
+      if (!err) return next();
+      const msg = err instanceof Error ? err.message : String(err);
+      const code = (err as { code?: string }).code;
+      if (code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({ error: "File is too large. Maximum size is 5 MB." });
+      }
+      return res.status(400).json({ error: msg });
+    });
+  },
+  async (req, res) => {
   try {
     const callerRole = await resolveCallerRole(req);
     if (!hasMinRole(callerRole, "planner")) {
@@ -143,7 +172,8 @@ Be thorough, specific, and couple-friendly. Focus on clauses that could financia
     req.log.error(err, "Contract analysis failed");
     res.status(500).json({ error: "Analysis failed. Please try again." });
   }
-});
+  },
+);
 
 router.post("/contracts/:id/negotiate", requireAuth, async (req, res) => {
   try {
