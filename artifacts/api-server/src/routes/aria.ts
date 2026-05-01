@@ -14,36 +14,63 @@ import type { Request } from "express";
 
 const router = Router();
 
-const SYSTEM_PROMPT = `You are Aria, the AI wedding planning assistant inside A.IDO. You are warm, confident, and accurate. Your job is to respond instantly and fully complete every task the user requests.
+const SYSTEM_PROMPT = `You are Aria, the warm and proactive AI wedding planning assistant inside A.IDO. You speak like a thoughtful real-life wedding planner — friendly, specific, never robotic.
 
-CORE RULES:
-1. Never hallucinate or invent information. If anything is unclear, ask exactly ONE clarifying question.
-2. Complete every task fully — never give partial answers.
-3. Maintain context from the full conversation.
-4. Prioritize accuracy. Follow user instructions exactly as given.
-5. Keep responses concise but complete. No rambling.
+══════════════════════════════════════════════════════════
+THE #1 RULE: NEVER INVENT INFORMATION. EVER.
+══════════════════════════════════════════════════════════
+You have ZERO tolerance for making things up. If the user's request is missing details, you MUST ask follow-up questions BEFORE calling any save/add/update/delete tool. Never substitute a category word for a business name. Never assume defaults. Never proceed on partial information.
 
-GATHER → CONFIRM → SAVE (for ALL write actions):
-- GATHER: if any required field is missing, ask ONE question to collect it. Never ask for optional fields.
-- CONFIRM: once you have all required info, echo it back: "Please confirm: [details]. Reply yes to save." Do NOT call the tool yet.
-- SAVE: call the tool only after the user replies yes/confirm/ok/sure.
-- DELETES: always state what will be deleted and ask for confirmation before calling the tool.
-- UPDATES: confirm which fields will change before saving.
+CORRECT EXAMPLE — User: "Can you add a vendor for me?"
+✅ You: "Of course! Tell me a bit about them: what's the vendor's business name, what kind of vendor are they (photographer, florist, caterer, DJ, etc.), and do you have their email, phone, or website? Bonus if you have a total cost or deposit amount."
 
-REQUIRED FIELDS:
-- add_vendor: name + category + at least one contact (email/phone/website). Categories: Photography/Videography/Catering/Florist/DJ/Band/Venue/Officiant/Hair & Makeup/Transportation/Cake/Desserts/Stationery/Rentals/Planner/Other. If deposit provided → auto-creates Deposit milestone, skip add_vendor_payment.
-- add_vendor_payment: vendorName + label + amount + dueDate(YYYY-MM-DD). Add vendor first if they don't exist.
-- add_checklist_item: task + month ("12 months out"/"6 months out"/"1 month out"/"Week of"/"Day of"). Infer from context when obvious.
-- add_timeline_event: time + title. category auto-inferred from context; description defaults to title.
-- add_guest: name only.
-- add_party_member: name + role + side(bride/groom/both).
-- add_hotel: hotelName only.
+WRONG EXAMPLE — User: "Can you add a vendor for me?"
+❌ You: "Added Florist." ← You invented the name AND the category. NEVER do this.
+
+CORRECT EXAMPLE — User: "Add a guest"
+✅ You: "Happy to! What's their full name? And if you know it: their email or phone, RSVP status, meal choice, plus-one info, or table assignment — but name is all I really need to start."
+
+══════════════════════════════════════════════════════════
+THE 3-STEP FLOW FOR EVERY WRITE / UPDATE / DELETE
+══════════════════════════════════════════════════════════
+STEP 1 — GATHER: Identify what required fields are missing. Ask ONE warm, conversational question that collects the missing required field(s) AND mentions a few useful optional fields the user might want to provide in the same message. Never call the tool yet.
+
+STEP 2 — CONFIRM: Once you have all REQUIRED info, summarize the action and ask for explicit confirmation:
+"Just to confirm: I'll add **Sweet Flora Studio** as a Florist (email: hello@sweetflora.com). Reply 'yes' to save."
+Do NOT call the tool yet.
+
+STEP 3 — SAVE: Call the tool ONLY after the user replies yes / confirm / ok / sure / save it / do it / yep.
+
+For DELETES: always state exactly what will be deleted ("I'll delete the vendor 'Sweet Flora Studio' and all 2 of their payment milestones — confirm?") and require confirmation.
+For UPDATES: confirm which specific fields will change ("I'll change the wedding date from Jun 15 to Jul 20 — confirm?").
+
+EXCEPTION — toggle_checklist_item is the only write tool that doesn't need confirmation: marking a task done is an instant low-risk action.
+
+══════════════════════════════════════════════════════════
+REQUIRED FIELDS PER TOOL (the bare minimum to ask for)
+══════════════════════════════════════════════════════════
+- add_vendor: business name (must be a specific name like "Bloom & Co", NEVER a category word like "Florist") + category (one of: Photography, Videography, Catering, Florist, DJ/Band, Venue, Officiant, Hair & Makeup, Transportation, Cake/Desserts, Stationery, Rentals, Planner, Other). Optional but worth offering: email, phone, website, totalCost, depositAmount. If deposit provided, the system auto-creates a Deposit milestone.
+- add_vendor_payment: vendorName (vendor must exist) + label + amount + dueDate (YYYY-MM-DD).
+- add_checklist_item: task + month (one of: "12 months out", "6 months out", "1 month out", "Week of", "Day of"). Infer the month from context when obvious; otherwise ask.
+- add_timeline_event: time + title. The category and description can be inferred — don't ask for those.
+- add_guest: name only is required. Worth offering in the same gather question: email, phone, RSVP status, meal, plus-one, table.
+- add_party_member: name + role (e.g. "Maid of Honor") + side (bride / groom / both).
+- add_hotel: hotelName only. Worth offering: address, group rate, cutoff date.
 - add_budget_item: category + vendor + estimatedCost.
 - add_expense: name + category + cost.
-- update_profile: no required fields — confirm the fields to be changed before saving.
+- update_profile: no required fields — but ALWAYS confirm which fields you're changing and to what values before saving.
 
-QUERY GUIDE (which tool answers which question):
-- Planning overview / progress → get_summary
+══════════════════════════════════════════════════════════
+WHAT HAPPENS AFTER A SUCCESSFUL SAVE
+══════════════════════════════════════════════════════════
+After any successful write tool call (add/update/delete), the system AUTOMATICALLY emits a confirmation message AND a proactive follow-up question for you. You do NOT need to add any text yourself — the system handles it. Just call the tool and stop.
+
+The system handles confirmation + follow-up for: add_vendor, add_vendor_payment, mark_vendor_payment_paid, add_checklist_item, add_timeline_event, add_guest, add_party_member, add_hotel, add_expense, add_budget_item, log_budget_payment, update_profile, and all delete_* / update_* variants.
+
+══════════════════════════════════════════════════════════
+QUERY GUIDE (which tool answers which question)
+══════════════════════════════════════════════════════════
+- Planning overview / progress / "where am I" → get_summary
 - Vendors, payments, contract status → list_vendors
 - Budget totals, spending, remaining → list_budget + list_expenses
 - Guest count, RSVP status, who's coming → list_guests
@@ -54,15 +81,21 @@ QUERY GUIDE (which tool answers which question):
 - Wedding date, venue, vibe, partner names → get_profile
 - Contract questions → list_contracts first, then get_contract(contractId)
 
-SPECIAL ACTIONS:
+EFFICIENCY: If the user asks a planning question that doesn't need their data (like "what's a typical day-of timeline?"), answer directly without calling any tool. Don't waste time calling list_X if you don't need the data.
+
+══════════════════════════════════════════════════════════
+SPECIAL ACTIONS
+══════════════════════════════════════════════════════════
 - Update RSVP → update_guest(matchName, rsvpStatus: "attending"/"declined"/"pending"/"maybe")
 - Assign seating → update_guest(matchName, tableAssignment: "Table 3")
-- Mark payment paid → mark_vendor_payment_paid(vendorName/paymentId)
+- Mark payment paid → mark_vendor_payment_paid(vendorName / paymentId)
 
-OUTPUT FORMAT:
+══════════════════════════════════════════════════════════
+OUTPUT FORMAT
+══════════════════════════════════════════════════════════
 - Plans, timelines, checklists → numbered steps with a brief summary at the end.
-- Query results → warm summary in ≤100 words. Never output raw JSON to the user.
-- After a write tool runs → DO NOT add any text, the system confirms automatically.
+- Query results → warm summary in ≤100 words. Never output raw JSON.
+- After a successful write tool → DO NOT confirm in text (the system shows a green badge). Just ask the proactive follow-up.
 - Pure advice (no data needed) → answer directly, no tools.
 - All other replies: ≤100 words unless a full plan is requested. Markdown renders.`;
 
@@ -81,9 +114,12 @@ const ACTION_TOOLS = new Set([
   "update_profile",
 ]);
 
-// Build a brief, friendly confirmation from tool results (no extra AI call needed)
+// Build a friendly confirmation + proactive follow-up question from tool
+// results. We do this in code (not via a second AI call) to keep writes fast
+// and to guarantee the follow-up actually appears even on the fast-path.
 function buildConfirmation(actions: ActionRecord[]): string {
   const lines: string[] = [];
+  let followUp = "";
   for (const a of actions) {
     if (!a.result.ok) {
       lines.push(`⚠️ ${a.name.replace(/_/g, " ")}: ${a.result.error ?? "failed"}`);
@@ -91,45 +127,122 @@ function buildConfirmation(actions: ActionRecord[]): string {
     }
     const d = (a.result as { ok: true; data?: Record<string, unknown> }).data ?? {};
     switch (a.name) {
-      case "add_vendor":      lines.push(`✅ Added **${d.name ?? "vendor"}** (${d.category ?? ""})`); break;
-      case "update_vendor":   lines.push(`✅ Updated **${d.name ?? "vendor"}**`); break;
-      case "delete_vendor":   lines.push(`✅ Removed **${d.name ?? "vendor"}**`); break;
-      case "add_vendor_payment": lines.push(`✅ Payment milestone added`); break;
-      case "update_vendor_payment": lines.push(`✅ Payment milestone updated`); break;
-      case "mark_vendor_payment_paid": lines.push(`✅ Payment marked as paid`); break;
-      case "delete_vendor_payment": lines.push(`✅ Payment milestone removed`); break;
-      case "add_checklist_item": lines.push(`✅ Checklist task added: **${d.task ?? ""}**`); break;
-      case "update_checklist_item": lines.push(`✅ Checklist task updated`); break;
-      case "toggle_checklist_item": lines.push(`✅ Task ${d.isCompleted ? "completed ✓" : "unmarked"}`); break;
-      case "delete_checklist_item": lines.push(`✅ Checklist task removed`); break;
-      case "add_timeline_event": lines.push(`✅ Timeline event added: **${d.title ?? ""}**`); break;
-      case "update_timeline_event": lines.push(`✅ Timeline event updated`); break;
-      case "delete_timeline_event": lines.push(`✅ Timeline event removed`); break;
-      case "add_guest": lines.push(`✅ Guest added: **${d.name ?? ""}**`); break;
-      case "update_guest": lines.push(`✅ Guest updated`); break;
-      case "delete_guest": lines.push(`✅ Guest removed`); break;
-      case "add_party_member": lines.push(`✅ **${d.name ?? "Party member"}** added to wedding party`); break;
-      case "update_party_member": lines.push(`✅ Wedding party member updated`); break;
-      case "delete_party_member": lines.push(`✅ Wedding party member removed`); break;
-      case "add_hotel": lines.push(`✅ Hotel block added: **${d.hotelName ?? ""}**`); break;
-      case "update_hotel": lines.push(`✅ Hotel block updated`); break;
-      case "delete_hotel": lines.push(`✅ Hotel block removed`); break;
-      case "add_expense": lines.push(`✅ Expense added: **${d.name ?? ""}**`); break;
-      case "update_expense": lines.push(`✅ Expense updated`); break;
-      case "delete_expense": lines.push(`✅ Expense removed`); break;
-      case "add_budget_item": lines.push(`✅ Budget item added`); break;
-      case "update_budget_item": lines.push(`✅ Budget item updated`); break;
-      case "delete_budget_item": lines.push(`✅ Budget item removed`); break;
-      case "log_budget_payment": lines.push(`✅ Payment logged`); break;
-      case "update_profile": lines.push(`✅ Profile updated`); break;
-      default: lines.push(`✅ Done`);
+      case "add_vendor":
+        lines.push(`✅ Added **${d.name ?? "vendor"}** (${d.category ?? ""})`);
+        followUp = `Want me to log a contract status, total cost, or any payment milestones (deposit, second payment, final balance) for **${d.name ?? "them"}**?`;
+        break;
+      case "update_vendor":
+        lines.push(`✅ Updated **${d.name ?? "vendor"}**`);
+        followUp = `Anything else to update on **${d.name ?? "this vendor"}** — payments, contract, or notes?`;
+        break;
+      case "delete_vendor":
+        lines.push(`✅ Removed **${d.name ?? "vendor"}**`);
+        break;
+      case "add_vendor_payment":
+        lines.push(`✅ Payment milestone added`);
+        followUp = `Want to add another milestone, or has this one already been paid?`;
+        break;
+      case "update_vendor_payment":
+        lines.push(`✅ Payment milestone updated`);
+        break;
+      case "mark_vendor_payment_paid":
+        lines.push(`✅ Payment marked as paid`);
+        followUp = `Want me to log the next milestone or check what's still outstanding?`;
+        break;
+      case "delete_vendor_payment":
+        lines.push(`✅ Payment milestone removed`);
+        break;
+      case "add_checklist_item":
+        lines.push(`✅ Checklist task added: **${d.task ?? ""}**`);
+        followUp = `Want me to add more tasks for the same timeframe?`;
+        break;
+      case "update_checklist_item":
+        lines.push(`✅ Checklist task updated`);
+        break;
+      case "toggle_checklist_item":
+        lines.push(`✅ Task ${d.isCompleted ? "completed ✓" : "unmarked"}`);
+        break;
+      case "delete_checklist_item":
+        lines.push(`✅ Checklist task removed`);
+        break;
+      case "add_timeline_event":
+        lines.push(`✅ Timeline event added: **${d.title ?? ""}**`);
+        followUp = `Want to add another timeline moment around the same time?`;
+        break;
+      case "update_timeline_event":
+        lines.push(`✅ Timeline event updated`);
+        break;
+      case "delete_timeline_event":
+        lines.push(`✅ Timeline event removed`);
+        break;
+      case "add_guest":
+        lines.push(`✅ Guest added: **${d.name ?? ""}**`);
+        followUp = `Want me to mark their RSVP, note a meal choice, add a plus-one, or assign them to a table?`;
+        break;
+      case "update_guest":
+        lines.push(`✅ Guest updated`);
+        break;
+      case "delete_guest":
+        lines.push(`✅ Guest removed`);
+        break;
+      case "add_party_member":
+        lines.push(`✅ **${d.name ?? "Party member"}** added to wedding party`);
+        followUp = `Want me to note their outfit details, fitting date, or shoe size?`;
+        break;
+      case "update_party_member":
+        lines.push(`✅ Wedding party member updated`);
+        break;
+      case "delete_party_member":
+        lines.push(`✅ Wedding party member removed`);
+        break;
+      case "add_hotel":
+        lines.push(`✅ Hotel block added: **${d.hotelName ?? ""}**`);
+        followUp = `Want to add a group rate, cutoff date, or booking link for this block?`;
+        break;
+      case "update_hotel":
+        lines.push(`✅ Hotel block updated`);
+        break;
+      case "delete_hotel":
+        lines.push(`✅ Hotel block removed`);
+        break;
+      case "add_expense":
+        lines.push(`✅ Expense added: **${d.name ?? ""}**`);
+        followUp = `Want to log a payment against this expense?`;
+        break;
+      case "update_expense":
+        lines.push(`✅ Expense updated`);
+        break;
+      case "delete_expense":
+        lines.push(`✅ Expense removed`);
+        break;
+      case "add_budget_item":
+        lines.push(`✅ Budget item added`);
+        followUp = `Want to log a payment you've already made on this?`;
+        break;
+      case "update_budget_item":
+        lines.push(`✅ Budget item updated`);
+        break;
+      case "delete_budget_item":
+        lines.push(`✅ Budget item removed`);
+        break;
+      case "log_budget_payment":
+        lines.push(`✅ Payment logged`);
+        followUp = `Want to log another payment or check what's left on the budget?`;
+        break;
+      case "update_profile":
+        lines.push(`✅ Profile updated`);
+        followUp = `Anything else about your wedding details I should update?`;
+        break;
+      default:
+        lines.push(`✅ Done`);
     }
   }
+  if (followUp) lines.push("", followUp);
   return lines.join("\n");
 }
 
 const TOOLS = [
-  { type:"function" as const, function:{ name:"add_vendor", description:"Add vendor. Required: name, category.", parameters:{ type:"object", properties:{ name:{type:"string"}, category:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, depositPaid:{type:"boolean"} }, required:["name","category"] } } },
+  { type:"function" as const, function:{ name:"add_vendor", description:"Add a new vendor to the user's wedding. ONLY call this AFTER the user has explicitly confirmed they want to save (replied 'yes' or similar to your confirmation message). Both 'name' and 'category' MUST be provided EXPLICITLY by the user — never invent them. 'name' must be a specific business or person name (e.g. 'Bloom & Co', 'Sarah Lee Photography'), NEVER a category word like 'Florist' or 'Photographer'. If you don't have these exact values from the user, ASK them first.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific business name provided by the user. Never a category word."}, category:{type:"string", enum:["Photography","Videography","Catering","Florist","DJ/Band","Venue","Officiant","Hair & Makeup","Transportation","Cake/Desserts","Stationery","Rentals","Planner","Other"], description:"Vendor category. Must come from the user."}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, depositPaid:{type:"boolean"} }, required:["name","category"] } } },
   { type:"function" as const, function:{ name:"update_vendor", description:"Update vendor fields. Pass vendorId or vendorName.", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"}, name:{type:"string"}, category:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, portalLink:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, contractSigned:{type:"boolean"} } } } },
   { type:"function" as const, function:{ name:"delete_vendor", description:"Delete vendor. Pass vendorId or vendorName.", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_vendors", description:"List all vendors.", parameters:{ type:"object", properties:{} } } },
@@ -146,11 +259,11 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"update_timeline_event", description:"Update timeline event. Pass matchTitle or matchTime.", parameters:{ type:"object", properties:{ matchTitle:{type:"string"}, matchTime:{type:"string"}, time:{type:"string"}, title:{type:"string"}, description:{type:"string"}, category:{type:"string",enum:["preparation","ceremony","cocktail","reception","dancing","other"]} } } } },
   { type:"function" as const, function:{ name:"delete_timeline_event", description:"Delete timeline event. Pass matchTitle or matchTime.", parameters:{ type:"object", properties:{ matchTitle:{type:"string"}, matchTime:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_timeline", description:"List timeline events.", parameters:{ type:"object", properties:{} } } },
-  { type:"function" as const, function:{ name:"add_guest", description:"Add guest. Required: name.", parameters:{ type:"object", properties:{ name:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, rsvpStatus:{type:"string",enum:["pending","attending","declined","maybe"]}, mealChoice:{type:"string"}, dietaryNotes:{type:"string"}, guestGroup:{type:"string"}, plusOne:{type:"boolean"}, plusOneName:{type:"string"}, tableAssignment:{type:"string"}, notes:{type:"string"}, address:{type:"string"}, guestCity:{type:"string"}, guestState:{type:"string"}, guestZip:{type:"string"} }, required:["name"] } } },
+  { type:"function" as const, function:{ name:"add_guest", description:"Add a guest to the wedding guest list. ONLY call after the user has explicitly confirmed (replied 'yes' or similar to your confirmation message). 'name' MUST be a specific person's name provided by the user — never invent placeholder names like 'Guest 1'. If the user just says 'add a guest' without naming anyone, ASK for the name first.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific guest full name provided by the user."}, email:{type:"string"}, phone:{type:"string"}, rsvpStatus:{type:"string",enum:["pending","attending","declined","maybe"]}, mealChoice:{type:"string"}, dietaryNotes:{type:"string"}, guestGroup:{type:"string"}, plusOne:{type:"boolean"}, plusOneName:{type:"string"}, tableAssignment:{type:"string"}, notes:{type:"string"}, address:{type:"string"}, guestCity:{type:"string"}, guestState:{type:"string"}, guestZip:{type:"string"} }, required:["name"] } } },
   { type:"function" as const, function:{ name:"update_guest", description:"Update guest. Pass guestId or matchName.", parameters:{ type:"object", properties:{ guestId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, rsvpStatus:{type:"string",enum:["pending","attending","declined","maybe"]}, mealChoice:{type:"string"}, dietaryNotes:{type:"string"}, guestGroup:{type:"string"}, plusOne:{type:"boolean"}, plusOneName:{type:"string"}, tableAssignment:{type:"string"}, notes:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_guest", description:"Delete guest. Pass guestId or matchName.", parameters:{ type:"object", properties:{ guestId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_guests", description:"List all guests.", parameters:{ type:"object", properties:{} } } },
-  { type:"function" as const, function:{ name:"add_party_member", description:"Add wedding party member. Required: name, role, side.", parameters:{ type:"object", properties:{ name:{type:"string"}, role:{type:"string"}, side:{type:"string",enum:["bride","groom","both"]}, phone:{type:"string"}, email:{type:"string"}, outfitDetails:{type:"string"}, shoeSize:{type:"string"}, outfitStore:{type:"string"}, fittingDate:{type:"string"}, notes:{type:"string"} }, required:["name","role","side"] } } },
+  { type:"function" as const, function:{ name:"add_party_member", description:"Add a wedding party member (bridesmaid, groomsman, etc.). ONLY call after the user has explicitly confirmed. All three required fields (name, role, side) MUST come from the user — never invent them. If any is missing, ASK first.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific person's name provided by the user."}, role:{type:"string", description:"Specific role like 'Maid of Honor', 'Best Man', 'Bridesmaid' — provided by the user."}, side:{type:"string",enum:["bride","groom","both"]}, phone:{type:"string"}, email:{type:"string"}, outfitDetails:{type:"string"}, shoeSize:{type:"string"}, outfitStore:{type:"string"}, fittingDate:{type:"string"}, notes:{type:"string"} }, required:["name","role","side"] } } },
   { type:"function" as const, function:{ name:"update_party_member", description:"Update party member. Pass memberId or matchName.", parameters:{ type:"object", properties:{ memberId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, role:{type:"string"}, side:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, outfitDetails:{type:"string"}, shoeSize:{type:"string"}, outfitStore:{type:"string"}, fittingDate:{type:"string"}, notes:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_party_member", description:"Delete party member. Pass memberId or matchName.", parameters:{ type:"object", properties:{ memberId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_party", description:"List wedding party members.", parameters:{ type:"object", properties:{} } } },
