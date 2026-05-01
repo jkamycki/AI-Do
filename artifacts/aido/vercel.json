@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://ebcf7fb1-c6cf-483e-9aba-a16ecc917c28-00-3v3k48w5ssp58.worf.replit.dev/api/$1"
+      "destination": "https://api.aidowedding.net/api/$1"
     },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
