@@ -1183,11 +1183,14 @@ function ExistingAccountFromSignUpDetector() {
     const createdAt = clerk.user?.createdAt
       ? new Date(clerk.user.createdAt).getTime()
       : 0;
-    // If the account was created BEFORE this OAuth flow began (with a
-    // small clock-skew buffer), it's an existing account that Clerk
-    // transferred into. New accounts created during the flow have
-    // createdAt >= intentAt and are the success case — leave them alone.
-    const SKEW_MS = 5_000;
+    // If the account was created MORE than 60s before this OAuth flow
+    // began, it's an existing account that Clerk transferred into. The
+    // 60s buffer is generous — it protects against clock skew between
+    // client/server AND against Clerk possibly stamping createdAt at
+    // the start of the OAuth flow (before Google round-trip) instead
+    // of at the end. Real existing accounts are minutes-to-days old,
+    // so 60s never produces a false positive on legitimate sign-ups.
+    const SKEW_MS = 60_000;
     const isExistingAccount = createdAt > 0 && createdAt < intentAt - SKEW_MS;
     if (!isExistingAccount) return;
 
