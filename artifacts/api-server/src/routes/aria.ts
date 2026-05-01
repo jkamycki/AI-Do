@@ -155,7 +155,8 @@ const SYSTEM_PROMPT = `You are Aria, the warm AI wedding planner inside A.IDO. T
 
 SMALL TALK: For greetings, thanks, "how are you?", or chitchat → reply warmly in 1-2 sentences. Don't force a planning topic. Example: "Hi" → "Hi there! 💕 Ready to dive in, or just chat?"
 
-#1 RULE — NEVER INVENT. If required tool fields are missing, ASK first. Never substitute a category word ("Florist") for a business name. Never assume defaults. Required fields are listed in each tool's schema — read them.
+#1 RULE — NEVER INVENT. If required tool fields are missing, ASK first. Never substitute a category word for a business name. Never assume defaults. Required fields are listed in each tool's schema — read them.
+Example: User "Add a vendor for me?" → You: "Of course! What's the business name and category (photographer, florist, caterer, DJ, etc.)? Email/phone/website are great too if you have them." NOT "Added Florist."
 
 WRITE/UPDATE/DELETE FLOW:
 1. GATHER — ask one warm question for missing required fields; mention useful optional ones.
@@ -1478,7 +1479,12 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const performedActions: ActionRecord[] = [];
 
     let toolLoops = 0;
-    const MAX_TOOL_LOOPS = 4;
+    // Lowered from 4 → 2 because each loop is another Groq call burning
+    // ~1,500-2,500 tokens. With 4 loops a single user turn could consume
+    // 8,000-10,000 tokens — over Groq's 6,000 TPM free-tier cap by itself.
+    // 2 loops covers the gather→save flow (one tool-call round + final
+    // text response) without blowing the TPM budget.
+    const MAX_TOOL_LOOPS = 2;
 
     // Decide whether tools are needed at all, and if so which subset.
     // Three tiers, each cheaper than the last:
@@ -1494,6 +1500,18 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const skipTools = !!lastUserText
       && (isConversationalMessage(lastUserText) || isInfoQuestion(lastUserText));
     const filteredTools = skipTools ? [] : pickToolsForMessages(recent as Array<{ role: string; content: string }>);
+    // Instrumentation so we can verify in prod that filtering is actually
+    // shrinking requests. Each tool definition is ~80-120 tokens; the
+    // system prompt + recent messages add ~500 tokens; response cap is
+    // 180. So estimated request size = (toolsCount * 100) + 700.
+    req.log.info({
+      userId,
+      skipTools,
+      toolsCount: filteredTools.length,
+      toolNames: filteredTools.map(t => t.function.name),
+      estimatedTokens: filteredTools.length * 100 + 700,
+      lastUserPreview: lastUserText.slice(0, 80),
+    }, "aria/chat tool selection");
 
     // Helper: call with one automatic retry on Groq rate-limit (429)
     const createStream = async () => {
@@ -1523,11 +1541,31 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         const isAbort = (firstErr as { name?: string })?.name === "AbortError"
           || (firstErr as { name?: string })?.name === "TimeoutError";
         if (firstStatus === 429) {
-          // Let the client know we're pausing, then retry. Groq's TPM
-          // window resets every 60s — wait 25s so the retry has a real
-          // shot at succeeding (8s was nearly always too short).
-          send({ type: "status", message: "Aria is catching her breath, retrying shortly…" });
-          await new Promise(resolve => setTimeout(resolve, 25_000));
+          // Honor Groq's actual retry-after hint instead of guessing.
+          // Groq returns it via response headers OR embedded in the
+          // error message ("Please try again in 14.5s").
+          const headers = (firstErr as { headers?: Record<string, string> })?.headers;
+          const headerSecs = headers ? Number(headers["retry-after"] ?? headers["Retry-After"]) : NaN;
+          const errMsg = (firstErr as { error?: { message?: string }; message?: string })?.error?.message
+            ?? (firstErr as { message?: string })?.message
+            ?? "";
+          const msgMatch = errMsg.match(/try again in ([\d.]+)\s*([ms])/i);
+          const msgSecs = msgMatch
+            ? (msgMatch[2].toLowerCase() === "m" ? Number(msgMatch[1]) * 60 : Number(msgMatch[1]))
+            : NaN;
+          const reportedSecs = !Number.isNaN(headerSecs) ? headerSecs
+            : !Number.isNaN(msgSecs) ? msgSecs
+            : 25;
+          // If Groq says wait >90s (i.e. we're in a TPD daily-limit hole),
+          // don't waste the user's time on a guaranteed-fail retry — fail
+          // fast so the client surfaces a clear "limit reached" message.
+          if (reportedSecs > 90) {
+            req.log.warn({ reportedSecs, errMsg }, "aria/chat skipping retry: Groq retry-after too long");
+            throw firstErr;
+          }
+          const waitMs = Math.max(3_000, Math.min(60_000, Math.ceil(reportedSecs * 1000) + 1500));
+          send({ type: "status", message: `Aria is catching her breath, retrying in ~${Math.round(waitMs / 1000)}s…` });
+          await new Promise(resolve => setTimeout(resolve, waitMs));
           return await callWithTimeout();
         }
         if (isAbort) {
