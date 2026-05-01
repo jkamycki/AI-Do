@@ -25,7 +25,9 @@ The steps should be concrete, actionable, and prioritized. Include 3-6 steps.`;
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      max_completion_tokens: 8192,
+      // Emergency advice is short (1-2 sentences + 3-6 steps). 600 tokens is
+      // plenty and keeps us safely under Groq free-tier 6000 TPM cap.
+      max_completion_tokens: 600,
       messages: [{ role: "user", content: prompt }],
     });
 
