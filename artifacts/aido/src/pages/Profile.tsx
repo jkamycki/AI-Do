@@ -56,7 +56,7 @@ export default function Profile() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isLoaded, isSignedIn } = useAuth();
-  const { data: profile, isLoading } = useGetProfile({ query: { enabled: isLoaded && !!isSignedIn } });
+  const { data: profile, isLoading, isError, refetch } = useGetProfile({ query: { enabled: isLoaded && !!isSignedIn } });
   const saveProfile = useSaveProfile();
 
   const form = useForm<ProfileFormValues>({
@@ -130,6 +130,19 @@ export default function Profile() {
       }
     });
   };
+
+  if (isError && !profile) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[40vh] space-y-4 text-center">
+        <p className="text-muted-foreground text-sm">
+          Could not load your profile. This sometimes happens right after a server restart.
+        </p>
+        <Button variant="outline" onClick={() => void refetch()} className="gap-2">
+          <RefreshCw className="h-4 w-4" /> Try again
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

@@ -59,8 +59,14 @@ const queryClient = new QueryClient({
     queries: {
       retry: (failureCount, error: unknown) => {
         const status = (error as { status?: number })?.status;
-        if (status === 404 || status === 401 || status === 403) return false;
+        if (status === 404 || status === 403) return false;
+        if (status === 401) return failureCount < 1;
         return failureCount < 2;
+      },
+      retryDelay: (attempt, error: unknown) => {
+        const status = (error as { status?: number })?.status;
+        if (status === 401) return 2500;
+        return Math.min(1000 * 2 ** attempt, 10000);
       },
     },
   },
