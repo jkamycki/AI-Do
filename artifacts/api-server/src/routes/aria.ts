@@ -133,13 +133,17 @@ function pickToolsForMessages(messages: Array<{ role: string; content: string }>
   }
   const allowedNames = new Set<string>(["get_summary"]);
   if (wantsOverview) {
-    // Overview always wants every read tool so Aria can stitch a real
-    // status report. Skip write tools for these.
+    // Overview wants every read tool so Aria can stitch a real status
+    // report — but ONLY read tools. Returning early here also stops
+    // matched domain groups from sneaking write tools back in (e.g. a
+    // user asking "give me an overview, especially budget" shouldn't
+    // unlock add_budget_item just because "budget" matched).
     for (const names of Object.values(TOOL_GROUPS)) {
       for (const n of names) {
         if (n.startsWith("list_") || n === "get_profile") allowedNames.add(n);
       }
     }
+    return TOOLS.filter(t => allowedNames.has(t.function.name));
   }
   for (const group of matched) {
     for (const name of TOOL_GROUPS[group] || []) allowedNames.add(name);
