@@ -1101,7 +1101,8 @@ function PendingInviteRedirector() {
 
 function LanguageSyncProvider() {
   const { user, isLoaded } = useUser();
-  const { data: profile } = useGetProfile();
+  const { isSignedIn } = useAuth();
+  const { data: profile } = useGetProfile({ query: { enabled: isLoaded && !!isSignedIn } });
 
   useEffect(() => {
     if (!isLoaded || !user) return;
@@ -1200,6 +1201,15 @@ function NoAccountFromSignInDetector() {
   return null;
 }
 
+function ServerWarmupPing() {
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL;
+    if (!apiUrl) return;
+    fetch(`${apiUrl}/api/healthz`, { method: "GET" }).catch(() => {});
+  }, []);
+  return null;
+}
+
 function ClerkQueryClientCacheInvalidator() {
   const { addListener } = useClerk();
   const qc = useQueryClient();
@@ -1284,6 +1294,7 @@ function ClerkProviderWithRoutes() {
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
       <QueryClientProvider client={queryClient}>
+        <ServerWarmupPing />
         <ClerkTokenSetup />
         <ClerkQueryClientCacheInvalidator />
         <NoAccountFromSignInDetector />

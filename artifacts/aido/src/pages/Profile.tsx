@@ -55,7 +55,8 @@ export default function Profile() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: profile, isLoading } = useGetProfile();
+  const { isLoaded, isSignedIn } = useAuth();
+  const { data: profile, isLoading } = useGetProfile({ query: { enabled: isLoaded && !!isSignedIn } });
   const saveProfile = useSaveProfile();
 
   const form = useForm<ProfileFormValues>({
