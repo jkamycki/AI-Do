@@ -374,8 +374,30 @@ app.use("/api", cloudflareInboundRouter);
 import clerkWebhookRouter from "./routes/webhooks/clerkWebhook";
 app.use("/api", clerkWebhookRouter);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ─── Body size limits ─────────────────────────────────────────────────────────
+// 1 MB cap is generous for every JSON endpoint in the app — none legitimately
+// post anything large in the body itself. File uploads (contracts, mood-board
+// images) flow through dedicated multer/signed-URL paths with their own caps.
+// Webhooks (Clerk, Resend, Cloudflare) use their own express.raw() handlers
+// before this point, so their 20 MB inbound-email allowance is unaffected.
+// Without an explicit cap, the default is 100 KB which is fine but silent —
+// being explicit prevents future routes from accidentally accepting huge
+// payloads that could exhaust Render memory.
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+// Convert "PayloadTooLargeError" from body-parser into a clean 413 instead
+// of leaking a stack trace.
+app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (
+    err && typeof err === "object" &&
+    (err as { type?: string }).type === "entity.too.large"
+  ) {
+    res.status(413).json({ error: "Request body too large. Maximum is 1 MB." });
+    return;
+  }
+  next(err);
+});
 
 import { db, analyticsEvents } from "@workspace/db";
 app.post("/api/analytics/pageview", async (req, res) => {
