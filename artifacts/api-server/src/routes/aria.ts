@@ -1057,12 +1057,21 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
     req.log.info({ model: getModel(), userId }, "aria/chat request received");
 
-    if (!AI_CONFIGURED_FOR_PROD) {
+    const sseHeaders = () => {
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      // Explicit CORS for SSE — Render's nginx can strip headers on streaming responses
+      const origin = req.headers.origin;
+      if (origin) res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
       res.flushHeaders();
-      res.write(`data: ${JSON.stringify({ type: "error", error: "Aria requires an OpenAI API key. Please add AI_INTEGRATIONS_OPENAI_API_KEY to your production server environment." })}\n\n`);
+    };
+
+    if (!AI_CONFIGURED_FOR_PROD) {
+      sseHeaders();
+      res.write(`data: ${JSON.stringify({ type: "error", error: "Aria requires an AI API key. Please add AI_INTEGRATIONS_OPENAI_API_KEY to your Render environment variables." })}\n\n`);
       res.write("data: [DONE]\n\n");
       res.end();
       return;
@@ -1070,11 +1079,8 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
     const dailyCheck = incrementDailyAria(userId);
     if (!dailyCheck.allowed) {
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-      res.flushHeaders();
-      res.write(`data: ${JSON.stringify({ type: "text", content: "You've reached your daily limit for Aria messages. Limits reset at midnight UTC. You can still browse and edit everything manually in the meantime." })}\n\n`);
+      sseHeaders();
+      res.write(`data: ${JSON.stringify({ type: "content", content: "You've reached your daily limit for Aria messages. Limits reset at midnight UTC. You can still browse and edit everything manually in the meantime." })}\n\n`);
       res.write("data: [DONE]\n\n");
       res.end();
       return;
@@ -1088,11 +1094,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       return res.status(400).json({ error: "messages array is required" });
     }
 
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("X-Accel-Buffering", "no");
-    res.flushHeaders();
+    sseHeaders();
 
     const send = (obj: unknown) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
 
