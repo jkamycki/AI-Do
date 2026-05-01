@@ -1503,13 +1503,20 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     let toolLoops = 0;
     const MAX_TOOL_LOOPS = 4;
 
-    // Detect chitchat: if the latest user message is a pure greeting/
-    // small talk, we skip the entire TOOLS schema below. That drops
-    // per-request token usage from ~5,000 to ~500 and keeps "how are
-    // you" replies well within Groq's 6,000 TPM free-tier budget.
+    // Decide whether tools are needed at all, and if so which subset.
+    // Three tiers, each cheaper than the last:
+    //   1. Pure chitchat ("hi", "thanks") → no tools (~500 tok request).
+    //   2. General planning advice ("what should I prioritize?", "what
+    //      questions to ask a photographer?") → no tools (~700 tok).
+    //   3. Real planning request → only tools matching the intent's
+    //      domain (~700-1,500 tok instead of all 35 tools / ~5,000 tok).
+    // The shrunken request also lets the model pick the right tool faster
+    // because it isn't scanning across 35 lookalike function signatures.
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
-    const skipTools = !!lastUserMsg && typeof lastUserMsg.content === "string"
-      && isConversationalMessage(lastUserMsg.content);
+    const lastUserText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
+    const skipTools = !!lastUserText
+      && (isConversationalMessage(lastUserText) || isInfoQuestion(lastUserText));
+    const filteredTools = skipTools ? [] : pickToolsForMessages(recent as Array<{ role: string; content: string }>);
 
     // Helper: call with one automatic retry on Groq rate-limit (429)
     const createStream = async () => {
@@ -1525,7 +1532,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       };
       const params = skipTools
         ? baseParams
-        : { ...baseParams, tools: TOOLS, tool_choice: "auto" as const };
+        : { ...baseParams, tools: filteredTools, tool_choice: "auto" as const };
       // Hard 20s timeout per attempt so a stuck Groq connection can never
       // leave the user staring at a spinning "..." for a minute. The OpenAI
       // SDK propagates AbortSignal to the underlying fetch.
