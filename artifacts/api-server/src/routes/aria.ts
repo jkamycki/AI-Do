@@ -1557,6 +1557,39 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
 const AI_BASE_URL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ?? "";
 const AI_CONFIGURED_FOR_PROD = AI_BASE_URL && !AI_BASE_URL.includes("localhost");
 
+/**
+ * GET /aria/test — admin-only connectivity check for the OpenAI API.
+ * Returns { ok, model, baseUrl, error? } without hitting the DB.
+ */
+router.get("/aria/test", requireAuth, async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) return res.status(401).json({ ok: false, error: "Unauthorized" });
+
+  const baseUrl = AI_BASE_URL || "(not set)";
+  if (!AI_CONFIGURED_FOR_PROD) {
+    return res.json({ ok: false, baseUrl, error: "AI_INTEGRATIONS_OPENAI_BASE_URL is not set or points to localhost." });
+  }
+
+  try {
+    const result = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_tokens: 5,
+      messages: [{ role: "user", content: "Say OK" }],
+    });
+    const reply = result.choices[0]?.message?.content ?? "";
+    return res.json({ ok: true, baseUrl, model: "gpt-4o", reply });
+  } catch (err) {
+    const e = err as { status?: number; message?: string; error?: { message?: string } };
+    return res.json({
+      ok: false,
+      baseUrl,
+      model: "gpt-4o",
+      status: e?.status,
+      error: e?.error?.message || e?.message || String(err),
+    });
+  }
+});
+
 router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
   try {
     const { userId } = getAuth(req);
@@ -1617,8 +1650,8 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
     while (toolLoops < MAX_TOOL_LOOPS) {
       const completion = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        max_completion_tokens: 1000,
+        model: "gpt-4o",
+        max_tokens: 1000,
         messages: convo as Parameters<typeof openai.chat.completions.create>[0]["messages"],
         tools: TOOLS,
         tool_choice: "auto",
@@ -1674,7 +1707,22 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
   } catch (err) {
     req.log.error(err, "Aria chat error");
     try {
-      res.write(`data: ${JSON.stringify({ type: "error", error: "Something went wrong. Please try again." })}\n\n`);
+      const apiErr = err as { status?: number; message?: string; error?: { message?: string; code?: string } };
+      const status = apiErr?.status;
+      const detail = apiErr?.error?.message || apiErr?.message || "";
+
+      let userMsg = "Something went wrong. Please try again.";
+      if (status === 401) {
+        userMsg = "OpenAI authentication failed. The API key on the server may be invalid or expired.";
+      } else if (status === 429) {
+        userMsg = "OpenAI rate limit reached. Please wait a moment and try again.";
+      } else if (status === 404 || detail.toLowerCase().includes("model")) {
+        userMsg = `Model not found or not available on your plan. Check AI_INTEGRATIONS_OPENAI_BASE_URL and your OpenAI plan. (${detail || "no detail"})`;
+      } else if (detail) {
+        userMsg = `Aria error: ${detail}`;
+      }
+
+      res.write(`data: ${JSON.stringify({ type: "error", error: userMsg })}\n\n`);
       res.end();
     } catch {}
   }
