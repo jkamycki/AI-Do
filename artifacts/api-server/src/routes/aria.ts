@@ -1357,15 +1357,30 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         tool_choice: "auto" as const,
         stream: true as const,
       };
+      // Hard 20s timeout per attempt so a stuck Groq connection can never
+      // leave the user staring at a spinning "..." for a minute. The OpenAI
+      // SDK propagates AbortSignal to the underlying fetch.
+      const callWithTimeout = () => openai.chat.completions.create(params, {
+        signal: AbortSignal.timeout(20_000),
+      });
       try {
-        return await openai.chat.completions.create(params);
+        return await callWithTimeout();
       } catch (firstErr) {
         const firstStatus = (firstErr as { status?: number })?.status;
+        const isAbort = (firstErr as { name?: string })?.name === "AbortError"
+          || (firstErr as { name?: string })?.name === "TimeoutError";
         if (firstStatus === 429) {
           // Let the client know we're pausing, then retry after a short delay
           send({ type: "status", message: "Aria is catching her breath, retrying shortly…" });
           await new Promise(resolve => setTimeout(resolve, 8_000));
-          return await openai.chat.completions.create(params);
+          return await callWithTimeout();
+        }
+        if (isAbort) {
+          // Reshape the abort error into something the outer catch will
+          // surface as a clear "took too long" message instead of a stack.
+          throw Object.assign(new Error("Aria's reply took too long. Please try again."), {
+            status: 504,
+          });
         }
         throw firstErr;
       }
@@ -1494,6 +1509,8 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
           // Rate limit — still hit after the automatic retry; tell the user to wait a little longer
           userMsg = "Aria is currently rate-limited. Please wait 30–60 seconds and try again.";
         }
+      } else if (status === 504) {
+        userMsg = "Aria's reply took too long to come back. Please try again — usually this clears within a few seconds.";
       } else if (status === 404 || detail.toLowerCase().includes("model")) {
         userMsg = `AI model not found. (${detail || "no detail"})`;
       } else if (detail) {
