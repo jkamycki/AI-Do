@@ -28,9 +28,75 @@ RULES:
 - Expenses: required=name+category+cost (one-off purchases).
 - For updates/deletes: pass id when known, else pass name/match field.
 - Contracts: always call list_contracts first, then get_contract before answering.
-- After tool success: confirm briefly ("Added Sarah Bloom ✓"). Never dump JSON.
+- After tool success: DO NOT add a text reply — the system confirms automatically.
+- For list/query tools: summarize results warmly in under 100 words. Never dump raw JSON.
 - Only answer questions if user is asking for advice — don't add anything unless asked.
-- Replies: warm, concise, under 150 words. Markdown renders.`;
+- Replies: warm, concise, under 100 words. Markdown renders.`;
+
+// Tools that write data — after these succeed we skip the second AI round-trip
+// and send an instant confirmation instead, saving ~1,000–2,000 tokens per call.
+const ACTION_TOOLS = new Set([
+  "add_vendor", "update_vendor", "delete_vendor",
+  "add_vendor_payment", "update_vendor_payment", "mark_vendor_payment_paid", "delete_vendor_payment",
+  "add_checklist_item", "update_checklist_item", "toggle_checklist_item", "delete_checklist_item",
+  "add_timeline_event", "update_timeline_event", "delete_timeline_event",
+  "add_guest", "update_guest", "delete_guest",
+  "add_wedding_party", "update_wedding_party", "delete_wedding_party",
+  "add_hotel_block", "update_hotel_block", "delete_hotel_block",
+  "add_manual_expense", "update_manual_expense", "delete_manual_expense",
+  "add_budget_item", "update_budget_item", "delete_budget_item",
+  "update_budget", "add_budget_payment_log", "delete_budget_payment_log",
+  "update_wedding_profile",
+]);
+
+// Build a brief, friendly confirmation from tool results (no extra AI call needed)
+function buildConfirmation(actions: ActionRecord[]): string {
+  const lines: string[] = [];
+  for (const a of actions) {
+    if (!a.result.ok) {
+      lines.push(`⚠️ ${a.name.replace(/_/g, " ")}: ${a.result.error ?? "failed"}`);
+      continue;
+    }
+    const d = (a.result as { ok: true; data?: Record<string, unknown> }).data ?? {};
+    switch (a.name) {
+      case "add_vendor":      lines.push(`✅ Added **${d.name ?? "vendor"}** (${d.category ?? ""})`); break;
+      case "update_vendor":   lines.push(`✅ Updated **${d.name ?? "vendor"}**`); break;
+      case "delete_vendor":   lines.push(`✅ Removed **${d.name ?? "vendor"}**`); break;
+      case "add_vendor_payment": lines.push(`✅ Payment milestone added`); break;
+      case "update_vendor_payment": lines.push(`✅ Payment milestone updated`); break;
+      case "mark_vendor_payment_paid": lines.push(`✅ Payment marked as paid`); break;
+      case "delete_vendor_payment": lines.push(`✅ Payment milestone removed`); break;
+      case "add_checklist_item": lines.push(`✅ Checklist task added: **${d.task ?? ""}**`); break;
+      case "update_checklist_item": lines.push(`✅ Checklist task updated`); break;
+      case "toggle_checklist_item": lines.push(`✅ Task ${d.isCompleted ? "completed ✓" : "unmarked"}`); break;
+      case "delete_checklist_item": lines.push(`✅ Checklist task removed`); break;
+      case "add_timeline_event": lines.push(`✅ Timeline event added: **${d.title ?? ""}**`); break;
+      case "update_timeline_event": lines.push(`✅ Timeline event updated`); break;
+      case "delete_timeline_event": lines.push(`✅ Timeline event removed`); break;
+      case "add_guest": lines.push(`✅ Guest added: **${d.name ?? ""}**`); break;
+      case "update_guest": lines.push(`✅ Guest updated`); break;
+      case "delete_guest": lines.push(`✅ Guest removed`); break;
+      case "add_wedding_party": lines.push(`✅ Wedding party member added`); break;
+      case "update_wedding_party": lines.push(`✅ Wedding party member updated`); break;
+      case "delete_wedding_party": lines.push(`✅ Wedding party member removed`); break;
+      case "add_hotel_block": lines.push(`✅ Hotel block added`); break;
+      case "update_hotel_block": lines.push(`✅ Hotel block updated`); break;
+      case "delete_hotel_block": lines.push(`✅ Hotel block removed`); break;
+      case "add_manual_expense": lines.push(`✅ Expense added: **${d.name ?? ""}**`); break;
+      case "update_manual_expense": lines.push(`✅ Expense updated`); break;
+      case "delete_manual_expense": lines.push(`✅ Expense removed`); break;
+      case "add_budget_item": lines.push(`✅ Budget item added`); break;
+      case "update_budget_item": lines.push(`✅ Budget item updated`); break;
+      case "delete_budget_item": lines.push(`✅ Budget item removed`); break;
+      case "update_budget": lines.push(`✅ Budget updated`); break;
+      case "add_budget_payment_log": lines.push(`✅ Payment logged`); break;
+      case "delete_budget_payment_log": lines.push(`✅ Payment log removed`); break;
+      case "update_wedding_profile": lines.push(`✅ Profile updated`); break;
+      default: lines.push(`✅ Done`);
+    }
+  }
+  return lines.join("\n");
+}
 
 const TOOLS = [
   { type:"function" as const, function:{ name:"add_vendor", description:"Add vendor. Required: name, category.", parameters:{ type:"object", properties:{ name:{type:"string"}, category:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, depositPaid:{type:"boolean"} }, required:["name","category"] } } },
@@ -1205,6 +1271,18 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
           tool_call_id: tc.id,
           content: JSON.stringify(result),
         });
+      }
+
+      // Fast path: if every tool was a write action, skip the second AI call
+      // and send an instant confirmation. This halves token usage and never fails.
+      const allActionTools = toolCalls.every(tc => ACTION_TOOLS.has(tc.name));
+      if (allActionTools) {
+        const confirmation = buildConfirmation(performedActions);
+        send({ type: "content", content: confirmation });
+        send({ type: "done", actions: performedActions.map(a => ({ name: a.name, ok: a.result.ok, error: a.result.ok ? undefined : a.result.error })) });
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
       }
 
       toolLoops++;
