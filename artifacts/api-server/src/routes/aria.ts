@@ -1708,13 +1708,18 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       const status = apiErr?.status;
       const detail = apiErr?.error?.message || apiErr?.message || "";
 
+      const errCode = apiErr?.error?.code ?? "";
       let userMsg = "Something went wrong. Please try again.";
       if (status === 401) {
-        userMsg = "OpenAI authentication failed. The API key on the server may be invalid or expired.";
+        userMsg = "OpenAI API key is invalid or expired. Please check the key set on your server.";
       } else if (status === 429) {
-        userMsg = "OpenAI rate limit reached. Please wait a moment and try again.";
+        if (errCode === "insufficient_quota" || detail.toLowerCase().includes("quota") || detail.toLowerCase().includes("exceeded your current quota")) {
+          userMsg = "Your OpenAI account has run out of credits. Please visit platform.openai.com/settings/billing to add credits, then try again.";
+        } else {
+          userMsg = "OpenAI is busy right now. Please wait 30 seconds and try again.";
+        }
       } else if (status === 404 || detail.toLowerCase().includes("model")) {
-        userMsg = `Model not found or not available on your plan. Check AI_INTEGRATIONS_OPENAI_BASE_URL and your OpenAI plan. (${detail || "no detail"})`;
+        userMsg = `AI model not available on your plan. (${detail || "no detail"})`;
       } else if (detail) {
         userMsg = `Aria error: ${detail}`;
       }

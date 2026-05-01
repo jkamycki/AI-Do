@@ -353,6 +353,7 @@ export default function Aria() {
     setInput("");
     setStreaming(true);
     abortRef.current = new AbortController();
+    const timeoutId = setTimeout(() => abortRef.current?.abort(), 90_000);
 
     try {
       const res = await authFetch(`${API}/api/aria/chat`, {
@@ -434,6 +435,11 @@ export default function Aria() {
     } catch (err) {
       if ((err as Error).name === "AbortError") {
         updateActiveMessages(msgs => msgs.filter(m => m.id !== placeholder.id));
+        toast({
+          title: "Aria timed out",
+          description: "The server took too long to respond. Try again — it may just be warming up.",
+          variant: "destructive",
+        });
         return;
       }
       toast({
@@ -443,6 +449,7 @@ export default function Aria() {
       });
       updateActiveMessages(msgs => msgs.filter(m => m.id !== placeholder.id));
     } finally {
+      clearTimeout(timeoutId);
       setStreaming(false);
     }
   }
