@@ -294,6 +294,11 @@ function CustomSignInForm() {
         strategy: "oauth_google",
         redirectUrl: `${origin}${basePath}/sso-callback`,
         redirectUrlComplete: `${origin}${basePath}/dashboard`,
+        // Force Google's account chooser every time. Without this, Google
+        // silently uses whichever account is currently signed in to the
+        // browser, which makes it impossible for users with multiple
+        // Google accounts to pick a different one.
+        oidcPrompt: "select_account",
       });
     } catch (err) {
       setOauthLoading(null);
@@ -810,6 +815,12 @@ function CustomSignUpForm() {
         strategy,
         redirectUrl: `${origin}${basePath}/sso-callback`,
         redirectUrlComplete: `${origin}${basePath}/dashboard`,
+        // Force Google's account chooser every time. Critical for sign-up:
+        // otherwise Google auto-uses the currently signed-in account, the
+        // user can't pick a different one, and they end up either reusing
+        // their existing A.IDO account or being unable to test multiple
+        // sign-ups from the same browser.
+        oidcPrompt: "select_account",
       });
     } catch (err: unknown) {
       const msg =
