@@ -1554,10 +1554,24 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
   }
 }
 
+const AI_BASE_URL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ?? "";
+const AI_CONFIGURED_FOR_PROD = AI_BASE_URL && !AI_BASE_URL.includes("localhost");
+
 router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
   try {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    if (!AI_CONFIGURED_FOR_PROD) {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
+      res.write(`data: ${JSON.stringify({ type: "error", error: "Aria requires an OpenAI API key to be configured in the server environment. Please add AI_INTEGRATIONS_OPENAI_API_KEY and AI_INTEGRATIONS_OPENAI_BASE_URL to your production server settings." })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
 
     const dailyCheck = incrementDailyAria(userId);
     if (!dailyCheck.allowed) {

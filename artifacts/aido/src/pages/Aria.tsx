@@ -397,31 +397,34 @@ export default function Aria() {
           if (!line.startsWith("data: ")) continue;
           const payload = line.slice(6).trim();
           if (payload === "[DONE]") continue;
+          let parsed: Record<string, unknown> | null = null;
           try {
-            const parsed = JSON.parse(payload);
-            if (parsed.type === "action_start") {
-              liveActions.push({ name: parsed.name, args: parsed.args, status: "running" });
-              updatePlaceholder({ actions: [...liveActions] });
-            } else if (parsed.type === "action_result") {
-              const idx = liveActions.findIndex(a => a.name === parsed.name && a.status === "running");
-              if (idx !== -1) {
-                liveActions[idx] = {
-                  ...liveActions[idx],
-                  status: parsed.ok ? "ok" : "error",
-                  error: parsed.error,
-                };
-                updatePlaceholder({ actions: [...liveActions] });
-              }
-            } else if (parsed.type === "content") {
-              accumulated = (accumulated || "") + parsed.content;
-              updatePlaceholder({ content: accumulated, streaming: true });
-            } else if (parsed.type === "done") {
-              updatePlaceholder({ streaming: false });
-            } else if (parsed.type === "error") {
-              throw new Error(parsed.error || "Aria error");
-            }
+            parsed = JSON.parse(payload);
           } catch {
-            // ignore JSON parse error for non-JSON lines
+            // ignore malformed non-JSON lines
+            continue;
+          }
+          if (!parsed) continue;
+          if (parsed.type === "action_start") {
+            liveActions.push({ name: parsed.name as string, args: parsed.args as Record<string, unknown>, status: "running" });
+            updatePlaceholder({ actions: [...liveActions] });
+          } else if (parsed.type === "action_result") {
+            const idx = liveActions.findIndex(a => a.name === parsed!.name && a.status === "running");
+            if (idx !== -1) {
+              liveActions[idx] = {
+                ...liveActions[idx],
+                status: parsed.ok ? "ok" : "error",
+                error: parsed.error as string | undefined,
+              };
+              updatePlaceholder({ actions: [...liveActions] });
+            }
+          } else if (parsed.type === "content") {
+            accumulated = (accumulated || "") + (parsed.content as string);
+            updatePlaceholder({ content: accumulated, streaming: true });
+          } else if (parsed.type === "done") {
+            updatePlaceholder({ streaming: false });
+          } else if (parsed.type === "error") {
+            throw new Error((parsed.error as string) || "Aria encountered an error. Please try again.");
           }
         }
       }
