@@ -85,15 +85,41 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
       ? `\n\nIMPORTANT: Always respond in ${preferredLanguage}, regardless of what language the user writes in.`
       : "";
 
-    const stream = await openai.chat.completions.create({
+    // Helper: call with one automatic retry on Groq rate-limit (429) and
+    // a hard 20s timeout per attempt. Mirrors Aria's resilience so a
+    // single rate-limited reply never leaves the user staring at a
+    // never-arriving "..." bubble.
+    const params = {
       model: getModel(),
       max_completion_tokens: 800,
       messages: [
         { role: "system", content: SYSTEM_PROMPT + langInstruction },
         ...recent,
-      ],
-      stream: true,
+      ] as unknown as Parameters<typeof openai.chat.completions.create>[0]["messages"],
+      stream: true as const,
+    };
+    const callWithTimeout = () => openai.chat.completions.create(params, {
+      signal: AbortSignal.timeout(20_000),
     });
+    let stream;
+    try {
+      stream = await callWithTimeout();
+    } catch (firstErr) {
+      const firstStatus = (firstErr as { status?: number })?.status;
+      const isAbort = (firstErr as { name?: string })?.name === "AbortError"
+        || (firstErr as { name?: string })?.name === "TimeoutError";
+      if (firstStatus === 429) {
+        // Tell the client we're pausing, then retry. Groq's TPM window
+        // resets every 60s — 25s gives the retry a real shot at success.
+        res.write(`data: ${JSON.stringify({ status: "Aria is catching her breath, retrying shortly…" })}\n\n`);
+        await new Promise(resolve => setTimeout(resolve, 25_000));
+        stream = await callWithTimeout();
+      } else if (isAbort) {
+        throw Object.assign(new Error("Aria's reply took too long. Please try again."), { status: 504 });
+      } else {
+        throw firstErr;
+      }
+    }
 
     for await (const chunk of stream) {
       const content = chunk.choices[0]?.delta?.content;
@@ -106,8 +132,30 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
     res.end();
   } catch (err) {
     req.log.error(err, "Support chat error");
-    res.write(`data: ${JSON.stringify({ error: "Something went wrong. Please try again." })}\n\n`);
-    res.end();
+    try {
+      const apiErr = err as { status?: number; message?: string; error?: { message?: string; code?: string } };
+      const status = apiErr?.status;
+      const detail = apiErr?.error?.message || apiErr?.message || "";
+      const errCode = apiErr?.error?.code ?? "";
+      let userMsg = "Something went wrong. Please try again.";
+      if (status === 401) {
+        userMsg = "AI API key is invalid or expired. Please check the key set on your server.";
+      } else if (status === 429) {
+        if (errCode === "insufficient_quota" || detail.toLowerCase().includes("quota") || detail.toLowerCase().includes("exceeded your current quota")) {
+          userMsg = "Your AI API account has run out of credits. Please top up your Groq or OpenAI account and try again.";
+        } else {
+          userMsg = "Aria is currently rate-limited. Please wait 30–60 seconds and try again.";
+        }
+      } else if (status === 504) {
+        userMsg = "Aria's reply took too long to come back. Please try again — usually this clears within a few seconds.";
+      } else if (status === 404 || detail.toLowerCase().includes("model")) {
+        userMsg = `AI model not found. (${detail || "no detail"})`;
+      } else if (detail) {
+        userMsg = `Aria encountered an error: ${detail}`;
+      }
+      res.write(`data: ${JSON.stringify({ error: userMsg })}\n\n`);
+      res.end();
+    } catch {}
   }
 });
 

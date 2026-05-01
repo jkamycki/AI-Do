@@ -81,6 +81,7 @@ export function SupportChat() {
       let buffer = "";
       let accumulated = "";
 
+      let serverError: string | null = null;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -101,13 +102,39 @@ export function SupportChat() {
                   m.id === assistantId ? { ...m, content: accumulated, streaming: true } : m
                 )
               );
+            } else if (parsed.error) {
+              // Server-emitted error — capture it so we can show it as
+              // the assistant's reply once the stream closes. Without
+              // this branch the bubble would end up empty and look like
+              // Aria simply didn't respond.
+              serverError = String(parsed.error);
+            } else if (parsed.status) {
+              // Transient status update (e.g. "catching her breath"
+              // during a 429 retry) — show it inline so the user knows
+              // we're still working.
+              setMessages(prev =>
+                prev.map(m =>
+                  m.id === assistantId
+                    ? { ...m, content: accumulated || `_${parsed.status}_`, streaming: true }
+                    : m
+                )
+              );
             }
           } catch {}
         }
       }
 
+      // If the server signaled an error OR the stream closed with zero
+      // content, surface a clear message instead of an empty bubble.
+      const finalContent = serverError
+        ? serverError
+        : accumulated || "Sorry, no response came back. Please try again in a moment.";
       setMessages(prev =>
-        prev.map(m => (m.id === assistantId ? { ...m, streaming: false } : m))
+        prev.map(m =>
+          m.id === assistantId
+            ? { ...m, content: finalContent, streaming: false }
+            : m
+        )
       );
 
       if (!open) setHasUnread(true);
