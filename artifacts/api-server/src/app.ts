@@ -318,11 +318,16 @@ if (process.env.NODE_ENV === "production") {
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 const ALLOWED_ORIGINS = new Set([
-  "https://ai-do-aido-orlizb7tn-kamyckijoseph-6037s-projects.vercel.app",
   "https://aidowedding.net",
   "https://www.aidowedding.net",
   ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+  ...(process.env.PUBLIC_APP_URL ? [process.env.PUBLIC_APP_URL] : []),
 ]);
+
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https:\/\/ai-do-aido[a-z0-9-]*\.vercel\.app$/,
+  /^https:\/\/[a-z0-9-]+-kamyckijoseph[a-z0-9-]*\.vercel\.app$/,
+];
 
 app.use(
   cors({
@@ -341,6 +346,7 @@ app.use(
         return callback(null, true);
       }
       if (ALLOWED_ORIGINS.has(origin)) return callback(null, true);
+      if (ALLOWED_ORIGIN_PATTERNS.some(pattern => pattern.test(origin))) return callback(null, true);
       callback(new Error(`CORS: origin not allowed — ${origin}`));
     },
   }),
