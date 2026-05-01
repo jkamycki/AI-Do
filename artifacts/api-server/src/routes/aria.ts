@@ -50,6 +50,103 @@ function isConversationalMessage(text: string): boolean {
   return CONVERSATIONAL_PATTERNS.some((re) => re.test(trimmed));
 }
 
+// Detect "advice" questions where the user wants general planning wisdom
+// rather than a database action — e.g. "what should I prioritize at 6
+// months", "what questions should I ask a photographer". For these we
+// skip the entire tools schema (~3,700 tokens) so Aria answers from her
+// system-prompt knowledge alone, well within Groq's 6,000 TPM budget.
+//
+// We exclude messages that reference the user's own data ("my budget",
+// "how much is left") — those genuinely need a database lookup.
+const INFO_QUESTION_PATTERNS: RegExp[] = [
+  /^what (questions|should i (ask|prioritize|focus|do|consider|expect|know|look (out )?for)|tips|advice|are some|are the|do you recommend|does .{0,40}\s(typically|usually) (cost|include)|happens (during|if)|color|theme|flower|food|music)/i,
+  /^how (do i|should i|can i) (find|choose|pick|select|hire|interview|negotiate|decide|approach|handle|plan|prep|prepare|word|write|ask)/i,
+  /^how (long|far in advance) (should|does|do)/i,
+  /^when should i (book|hire|start|order|send|begin|reserve|sign|announce|share|post)/i,
+  /^(any|got any|do you have any) (tips|advice|ideas|suggestions|recommendations|thoughts)/i,
+  /^(give me|share) (some |a few |any )?(tips|advice|ideas|suggestions|recommendations|thoughts)/i,
+  /^tell me (about (the |a |an )?(typical|usual|normal|average|wedding|ceremony|reception|tradition)|how to|why)/i,
+  /^explain\b/i,
+  /^what'?s? (a |an |the )?(typical|good|normal|common|average|standard|best)/i,
+  /^why (do|does|should|is|are)/i,
+  /\bbefore (booking|signing|hiring|choosing|selecting|paying|meeting)/i,
+  /^should i\b/i,
+];
+// Override: messages that refer to the user's stored data — we DO need
+// to call list_* tools for these even though they look like questions.
+const DATA_LOOKUP_KEYWORDS = /\bmy (budget|guests?|vendors?|checklist|timeline|party|hotels?|contracts?|profile|spending|expenses?|payments?|tasks?|seating|wedding party|day-?of)\b|\bi (have|added|booked|paid)\b|\bwe (have|added|booked|paid)\b|\bhow much (is|are|do i have) (left|remaining|spent|in)/i;
+
+function isInfoQuestion(text: string): boolean {
+  if (typeof text !== "string") return false;
+  const trimmed = text.trim();
+  if (trimmed.length === 0 || trimmed.length > 240) return false;
+  if (DATA_LOOKUP_KEYWORDS.test(trimmed)) return false;
+  return INFO_QUESTION_PATTERNS.some((re) => re.test(trimmed));
+}
+
+// Group every tool by its data domain so we can send only the relevant
+// subset on each request. Picking the right subset cuts the per-request
+// tools schema from ~3,700 tokens (all 35 tools) to ~300-700 tokens
+// (typically 4-9 tools) — the single biggest lever for keeping Aria
+// inside Groq's 6,000 TPM free-tier budget.
+const TOOL_GROUPS: Record<string, string[]> = {
+  vendor: ["add_vendor","update_vendor","delete_vendor","list_vendors","add_vendor_payment","update_vendor_payment","mark_vendor_payment_paid","delete_vendor_payment"],
+  checklist: ["add_checklist_item","update_checklist_item","toggle_checklist_item","delete_checklist_item","list_checklist"],
+  timeline: ["add_timeline_event","update_timeline_event","delete_timeline_event","list_timeline"],
+  guest: ["add_guest","update_guest","delete_guest","list_guests"],
+  party: ["add_party_member","update_party_member","delete_party_member","list_party"],
+  hotel: ["add_hotel","update_hotel","delete_hotel","list_hotels"],
+  budget: ["add_budget_item","update_budget_item","delete_budget_item","log_budget_payment","list_budget","add_expense","update_expense","delete_expense","list_expenses"],
+  profile: ["update_profile","get_profile"],
+  contract: ["list_contracts","get_contract"],
+};
+const GROUP_KEYWORDS: Record<string, RegExp> = {
+  vendor: /\b(vendors?|photographers?|videographers?|florists?|caterer|catering|djs?|bands?|musician|officiant|hair|makeup|transport|limo|cake|baker|stationery|invitation|rental|planner|venue|deposit)\b/i,
+  checklist: /\b(checklist|tasks?|todo|to-?do|prioritize|priorities|month(s)?\s*out|due|reminder)\b/i,
+  timeline: /\b(timeline|day-?of|schedule|ceremony|reception|cocktail|run-?sheet|order of (events|service))\b/i,
+  guest: /\b(guests?|rsvp|seating|seats?|tables?|plus[-\s]?one|dietary|meal|invite list|guest list)\b/i,
+  party: /\b(bridesmaids?|groomsm[ae]n|maid of honor|best man|party members?|wedding party|attendants?)\b/i,
+  hotel: /\b(hotels?|room block|accommodat|lodging)\b/i,
+  budget: /\b(budget|expenses?|cost|price|payment|paid|spend|spent|money|dollars?|owe|left to spend|remaining|\$)/i,
+  profile: /\b(profile|partner|vibe|theme|wedding date|guest count|total budget)\b/i,
+  contract: /\b(contracts?|agreements?)\b/i,
+};
+function pickToolsForMessages(messages: Array<{ role: string; content: string }>) {
+  // Scan recent text (both the user's latest message and Aria's prior
+  // reply) so confirmation turns like "yes save it" still pick up the
+  // domain from Aria's earlier "Reply yes to save vendor X" prompt.
+  const fullText = messages.map(m => typeof m?.content === "string" ? m.content : "").join(" ");
+  const matched = new Set<string>();
+  for (const [group, regex] of Object.entries(GROUP_KEYWORDS)) {
+    if (regex.test(fullText)) matched.add(group);
+  }
+  // Multi-domain questions (e.g. "summary of where I am") are detected
+  // by 3+ matched groups OR an explicit overview/summary keyword —
+  // those cases need get_summary + a few read tools, not all 35 tools.
+  const wantsOverview = /\b(summary|overview|where (am|are) (i|we)|where i am|how (am|are) (i|we) doing|catch me up|status|progress)\b/i.test(fullText);
+  if (matched.size === 0 && !wantsOverview) {
+    // Truly ambiguous — fall back to a small "core" so we still don't
+    // pay the full 3,700-token tax. Get_summary + read tools cover most
+    // unknown questions without write capability.
+    const coreNames = new Set(["get_summary","get_profile","list_vendors","list_budget","list_guests","list_checklist"]);
+    return TOOLS.filter(t => coreNames.has(t.function.name));
+  }
+  const allowedNames = new Set<string>(["get_summary"]);
+  if (wantsOverview) {
+    // Overview always wants every read tool so Aria can stitch a real
+    // status report. Skip write tools for these.
+    for (const names of Object.values(TOOL_GROUPS)) {
+      for (const n of names) {
+        if (n.startsWith("list_") || n === "get_profile") allowedNames.add(n);
+      }
+    }
+  }
+  for (const group of matched) {
+    for (const name of TOOL_GROUPS[group] || []) allowedNames.add(name);
+  }
+  return TOOLS.filter(t => allowedNames.has(t.function.name));
+}
+
 const SYSTEM_PROMPT = `You are Aria, the warm AI wedding planning assistant inside A.IDO. Speak like a thoughtful real wedding planner — friendly, specific, never robotic.
 
 SMALL TALK & PERSONALITY: When the user is just being friendly — greetings ("hi", "hey"), check-ins ("how are you?", "what's up?"), thanks, compliments, or casual chitchat — respond warmly in 1-2 conversational sentences like a real person would. Have personality: you're cheerful, a little excited about weddings, supportive of their journey. Examples:
