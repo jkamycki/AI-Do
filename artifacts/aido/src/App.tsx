@@ -1031,30 +1031,38 @@ function CustomSignUpForm() {
 }
 
 function HomeRedirect() {
-  return (
-    <>
-      <Show when="signed-in">
-        <Redirect to="/dashboard" />
-      </Show>
-      <Show when="signed-out">
-        <Landing />
-      </Show>
-    </>
-  );
+  const { isLoaded, isSignedIn } = useAuth();
+
+  if (!isLoaded) {
+    return <Landing />;
+  }
+
+  if (isSignedIn) {
+    return <Redirect to="/dashboard" />;
+  }
+
+  return <Landing />;
 }
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  const { isLoaded, isSignedIn } = useAuth();
+
+  if (!isLoaded) {
+    return (
+      <div className="dark min-h-screen bg-background text-foreground flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return <Redirect to="/" />;
+  }
+
   return (
-    <>
-      <Show when="signed-in">
-        <AppLayout>
-          <Component />
-        </AppLayout>
-      </Show>
-      <Show when="signed-out">
-        <Redirect to="/" />
-      </Show>
-    </>
+    <AppLayout>
+      <Component />
+    </AppLayout>
   );
 }
 
