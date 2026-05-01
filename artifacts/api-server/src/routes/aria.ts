@@ -1554,8 +1554,7 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
   }
 }
 
-const AI_BASE_URL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ?? "";
-const AI_CONFIGURED_FOR_PROD = AI_BASE_URL && !AI_BASE_URL.includes("localhost");
+const AI_CONFIGURED_FOR_PROD = !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
 
 /**
  * GET /aria/test — admin-only connectivity check for the OpenAI API.
@@ -1565,9 +1564,8 @@ router.get("/aria/test", requireAuth, async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ ok: false, error: "Unauthorized" });
 
-  const baseUrl = AI_BASE_URL || "(not set)";
   if (!AI_CONFIGURED_FOR_PROD) {
-    return res.json({ ok: false, baseUrl, error: "AI_INTEGRATIONS_OPENAI_BASE_URL is not set or points to localhost." });
+    return res.json({ ok: false, error: "AI_INTEGRATIONS_OPENAI_API_KEY is not set." });
   }
 
   try {
@@ -1577,12 +1575,11 @@ router.get("/aria/test", requireAuth, async (req, res) => {
       messages: [{ role: "user", content: "Say OK" }],
     });
     const reply = result.choices[0]?.message?.content ?? "";
-    return res.json({ ok: true, baseUrl, model: "gpt-4o", reply });
+    return res.json({ ok: true, model: "gpt-4o", reply });
   } catch (err) {
     const e = err as { status?: number; message?: string; error?: { message?: string } };
     return res.json({
       ok: false,
-      baseUrl,
       model: "gpt-4o",
       status: e?.status,
       error: e?.error?.message || e?.message || String(err),
@@ -1600,7 +1597,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
       res.flushHeaders();
-      res.write(`data: ${JSON.stringify({ type: "error", error: "Aria requires an OpenAI API key to be configured in the server environment. Please add AI_INTEGRATIONS_OPENAI_API_KEY and AI_INTEGRATIONS_OPENAI_BASE_URL to your production server settings." })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: "error", error: "Aria requires an OpenAI API key. Please add AI_INTEGRATIONS_OPENAI_API_KEY to your production server environment." })}\n\n`);
       res.write("data: [DONE]\n\n");
       res.end();
       return;
