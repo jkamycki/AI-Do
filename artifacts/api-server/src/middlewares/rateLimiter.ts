@@ -1,4 +1,4 @@
-import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import rateLimit from "express-rate-limit";
 import type { Request, Response } from "express";
 import { getAuth } from "@clerk/express";
 
@@ -22,13 +22,13 @@ export const aiLimiter = rateLimit({
   limit: 40,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  validate: { xForwardedForHeader: false },
+  validate: { xForwardedForHeader: false, keyGeneratorIpFallback: false },
   keyGenerator: (req: Request) => {
     try {
       const { userId } = getAuth(req);
       if (userId) return userId;
     } catch {}
-    return ipKeyGenerator(req);
+    return req.ip ?? req.socket?.remoteAddress ?? "unknown";
   },
   message: { error: "You've reached the hourly AI request limit. Please wait a while before continuing." },
   handler: (_req: Request, res: Response) => {

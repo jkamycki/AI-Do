@@ -252,7 +252,7 @@ router.put("/budget/items/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id), 10);
     const profile = await resolveProfile(req);
     if (!profile) {
       res.status(403).json({ error: "Insufficient permissions" });
@@ -306,7 +306,7 @@ router.delete("/budget/items/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id), 10);
     const profile = await resolveProfile(req);
     if (!profile) {
       res.status(403).json({ error: "Insufficient permissions" });
@@ -334,7 +334,7 @@ router.get("/budget/items/:id/payments", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const itemId = parseInt(req.params.id);
+    const itemId = parseInt(String(req.params.id), 10);
     const profile = await resolveProfile(req);
     if (!profile) {
       res.status(403).json({ error: "Insufficient permissions" });
@@ -371,7 +371,7 @@ router.post("/budget/items/:id/payments", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const itemId = parseInt(req.params.id);
+    const itemId = parseInt(String(req.params.id), 10);
     const profile = await resolveProfile(req);
     if (!profile) {
       res.status(403).json({ error: "Insufficient permissions" });
@@ -438,8 +438,8 @@ router.patch("/budget/items/:id/payments/:paymentId", requireAuth, async (req, r
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const itemId = parseInt(req.params.id);
-    const paymentId = parseInt(req.params.paymentId);
+    const itemId = parseInt(String(req.params.id), 10);
+    const paymentId = parseInt(String(req.params.paymentId), 10);
     const profile = await resolveProfile(req);
     if (!profile) {
       res.status(403).json({ error: "Insufficient permissions" });
@@ -491,8 +491,8 @@ router.delete("/budget/items/:id/payments/:paymentId", requireAuth, async (req, 
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const itemId = parseInt(req.params.id);
-    const paymentId = parseInt(req.params.paymentId);
+    const itemId = parseInt(String(req.params.id), 10);
+    const paymentId = parseInt(String(req.params.paymentId), 10);
     const profile = await resolveProfile(req);
     if (!profile) {
       res.status(403).json({ error: "Insufficient permissions" });

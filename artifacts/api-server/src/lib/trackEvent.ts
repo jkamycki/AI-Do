@@ -1,4 +1,5 @@
 import { db, analyticsEvents } from "@workspace/db";
+import { logger } from "./logger";
 
 export async function trackEvent(
   userId: string,
@@ -8,5 +9,5 @@ export async function trackEvent(
   db.insert(analyticsEvents)
     .values({ userId, eventType, metadata: metadata ?? null })
     .then(() => {})
-    .catch((err: unknown) => console.error("[trackEvent] Failed to track:", eventType, err));
+    .catch((err: unknown) => logger.error({ err, eventType }, "[trackEvent] Failed to track"));
 }

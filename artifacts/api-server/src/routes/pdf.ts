@@ -124,7 +124,7 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
       doc.fillColor(TEXT_DARK).font("Helvetica-Bold").fontSize(11)
         .text(event.title, titleX, rowY + 4, { width: titleW });
 
-      const titleHeight = doc.heightOfString(event.title, { width: titleW, font: "Helvetica-Bold", size: 11 });
+      const titleHeight = doc.heightOfString(event.title, { width: titleW });
 
       doc.fillColor(TEXT_MEDIUM).font("Helvetica").fontSize(9)
         .text(event.description ?? "", titleX, rowY + 6 + titleHeight, {
@@ -132,7 +132,7 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
         });
 
       const descHeight = doc.heightOfString(event.description ?? "", {
-        width: titleW, font: "Helvetica", size: 9,
+        width: titleW,
       });
 
       const catLabel = (event.category ?? "").charAt(0).toUpperCase() + (event.category ?? "").slice(1);

@@ -200,7 +200,7 @@ router.put("/seating/charts/:id", requireAuth, async (req, res) => {
         seatsPerTable,
         updatedAt: new Date(),
       })
-      .where(and(eq(seatingCharts.id, parseInt(req.params["id"] ?? "0")), eq(seatingCharts.userId, userId)))
+      .where(and(eq(seatingCharts.id, parseInt(String(req.params["id"] ?? "0"), 10)), eq(seatingCharts.userId, userId)))
       .returning();
     if (!updated) {
       res.status(404).json({ error: "Seating chart not found" });
@@ -229,7 +229,7 @@ router.delete("/seating/charts/:id", requireAuth, async (req, res) => {
     await db
       .delete(seatingCharts)
       .where(and(
-        eq(seatingCharts.id, parseInt(req.params["id"] ?? "0")),
+        eq(seatingCharts.id, parseInt(String(req.params["id"] ?? "0"), 10)),
         eq(seatingCharts.userId, userId),
       ));
     res.json({ success: true });

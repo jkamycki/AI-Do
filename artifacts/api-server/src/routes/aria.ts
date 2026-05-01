@@ -1102,7 +1102,9 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       const profile = await resolveProfile(req);
 
       // Guests
-      const allGuests = await db.select({ rsvpStatus: guests.rsvpStatus }).from(guests).where(eq(guests.userId, userId));
+      const allGuests = profile
+        ? await db.select({ rsvpStatus: guests.rsvpStatus }).from(guests).where(eq(guests.profileId, profile.id))
+        : [];
       const guestCounts = { total: allGuests.length, attending: 0, declined: 0, pending: 0, maybe: 0 };
       for (const g of allGuests) {
         const s = g.rsvpStatus ?? "pending";
@@ -1137,7 +1139,9 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       }
 
       // Checklist
-      const allChecklist = await db.select({ isCompleted: checklistItems.isCompleted }).from(checklistItems).where(eq(checklistItems.userId, userId));
+      const allChecklist = profile
+        ? await db.select({ isCompleted: checklistItems.isCompleted }).from(checklistItems).where(eq(checklistItems.profileId, profile.id))
+        : [];
       const checklistTotal = allChecklist.length;
       const checklistDone = allChecklist.filter(c => c.isCompleted).length;
 
@@ -1275,7 +1279,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         model: getModel(),
         max_tokens: 350,
         temperature: 0.1,   // low temp = reliable, consistent tool calls
-        messages: convo as Parameters<typeof openai.chat.completions.create>[0]["messages"],
+        messages: convo as unknown as Parameters<typeof openai.chat.completions.create>[0]["messages"],
         tools: TOOLS,
         tool_choice: "auto" as const,
         stream: true as const,

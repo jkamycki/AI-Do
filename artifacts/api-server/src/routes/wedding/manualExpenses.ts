@@ -100,7 +100,7 @@ router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
       return;
     }
     const userId = await resolveScopeUserId(req);
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(String(req.params.id), 10);
     const { name, category, cost, amountPaid, notes, receiptUrl, receiptName } = req.body ?? {};
     const updates: Partial<typeof manualExpenses.$inferInsert> = {};
     if (name !== undefined) {
@@ -156,7 +156,7 @@ router.delete("/manual-expenses/:id", requireAuth, async (req, res) => {
       return;
     }
     const userId = await resolveScopeUserId(req);
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(String(req.params.id), 10);
     const result = await db
       .delete(manualExpenses)
       .where(and(eq(manualExpenses.id, id), eq(manualExpenses.userId, userId)))

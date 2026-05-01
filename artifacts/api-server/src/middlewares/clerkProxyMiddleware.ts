@@ -22,6 +22,7 @@
 import { createProxyMiddleware } from "http-proxy-middleware";
 import type { RequestHandler } from "express";
 import type { IncomingMessage, ClientRequest } from "http";
+import { logger } from "../lib/logger";
 
 const CLERK_FAPI = "https://frontend-api.clerk.dev";
 export const CLERK_PROXY_PATH = "/api/__clerk";
@@ -38,7 +39,7 @@ export function clerkProxyMiddleware(): RequestHandler {
   }
 
   const pubKey = process.env.VITE_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY || "";
-  console.log("[Clerk Proxy] Initialising. PubKey prefix:", pubKey.substring(0, 20));
+  logger.info({ pubKeyPrefix: pubKey.substring(0, 20) }, "[Clerk Proxy] Initialising");
 
   return createProxyMiddleware({
     target: CLERK_FAPI,
@@ -66,7 +67,7 @@ export function clerkProxyMiddleware(): RequestHandler {
 
         const url = (req as any).url || "";
         if (url.includes("sign_up")) {
-          console.log("[Clerk Proxy] sign_up request → proxyUrl:", proxyUrl, "secretPrefix:", secretKey.substring(0, 15));
+          logger.debug({ proxyUrl, secretPrefix: secretKey.substring(0, 15) }, "[Clerk Proxy] sign_up request");
         }
       },
       proxyRes: (proxyRes: IncomingMessage, req: IncomingMessage) => {
@@ -77,7 +78,7 @@ export function clerkProxyMiddleware(): RequestHandler {
           proxyRes.on("end", () => {
             try {
               const body = Buffer.concat(chunks).toString("utf8");
-              console.error("[Clerk 422 sign_up BODY]", body.substring(0, 1200));
+              logger.error({ body: body.substring(0, 1200) }, "[Clerk 422 sign_up BODY]");
             } catch {}
           });
         }

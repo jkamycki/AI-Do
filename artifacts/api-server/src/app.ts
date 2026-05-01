@@ -169,11 +169,7 @@ if (process.env.NODE_ENV === "production") {
         expires_in_seconds: 60,
       });
       if (!tokenRes.ok) {
-        console.error(
-          "[ticket] sign_in_token failed:",
-          tokenRes.status,
-          (await tokenRes.text()).substring(0, 200),
-        );
+        logger.error({ status: tokenRes.status, body: (await tokenRes.text()).substring(0, 200) }, "[ticket] sign_in_token failed");
         return false;
       }
       const { token: ticket } = JSON.parse(await tokenRes.text());
@@ -190,11 +186,7 @@ if (process.env.NODE_ENV === "production") {
       );
       const ticketBody = await ticketRes.text();
       if (!ticketRes.ok) {
-        console.error(
-          "[ticket] sign-in failed:",
-          ticketRes.status,
-          ticketBody.substring(0, 300),
-        );
+        logger.error({ status: ticketRes.status, body: ticketBody.substring(0, 300) }, "[ticket] sign-in failed");
         return false;
       }
 
@@ -267,7 +259,7 @@ if (process.env.NODE_ENV === "production") {
           return forwardResponse(fapiRes, fapiBody, res);
         }
 
-        console.log("[sign_in] HIBP blocked → BAPI verify_password");
+        logger.info("[sign_in] HIBP blocked → BAPI verify_password");
 
         const siaRes = await fapiFetch(
           `/v1/client/sign_ins/${siaId}`,
@@ -309,7 +301,7 @@ if (process.env.NODE_ENV === "production") {
         // The ticket strategy is an admin token that bypasses all second-factor
         // requirements; using it for MFA users would silently skip their 2FA.
         if (user.two_factor_enabled) {
-          console.log("[sign_in] user has 2FA enabled — not using ticket bypass for HIBP case");
+          logger.info("[sign_in] user has 2FA enabled — not using ticket bypass for HIBP case");
           return forwardResponse(fapiRes, fapiBody, res);
         }
 

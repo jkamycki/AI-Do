@@ -114,7 +114,7 @@ router.patch("/help/messages/contact/:id/read", requireAuth, async (req, res) =>
     await db
       .update(contactMessages)
       .set({ isRead: true })
-      .where(eq(contactMessages.id, parseInt(req.params["id"] ?? "0")));
+      .where(eq(contactMessages.id, parseInt(String(req.params["id"] ?? "0"), 10)));
 
     res.json({ success: true });
   } catch (err) {
@@ -130,7 +130,7 @@ router.patch("/help/messages/feedback/:id/read", requireAuth, async (req, res) =
     await db
       .update(feedbackSubmissions)
       .set({ isRead: true })
-      .where(eq(feedbackSubmissions.id, parseInt(req.params["id"] ?? "0")));
+      .where(eq(feedbackSubmissions.id, parseInt(String(req.params["id"] ?? "0"), 10)));
 
     res.json({ success: true });
   } catch (err) {
@@ -147,7 +147,7 @@ router.patch("/help/messages/contact/:id/resolve", requireAuth, async (req, res)
     await db
       .update(contactMessages)
       .set({ isResolved: resolved !== false, isRead: true })
-      .where(eq(contactMessages.id, parseInt(req.params["id"] ?? "0")));
+      .where(eq(contactMessages.id, parseInt(String(req.params["id"] ?? "0"), 10)));
 
     res.json({ success: true });
   } catch {
@@ -164,7 +164,7 @@ router.patch("/help/messages/feedback/:id/resolve", requireAuth, async (req, res
     await db
       .update(feedbackSubmissions)
       .set({ isResolved: resolved !== false, isRead: true })
-      .where(eq(feedbackSubmissions.id, parseInt(req.params["id"] ?? "0")));
+      .where(eq(feedbackSubmissions.id, parseInt(String(req.params["id"] ?? "0"), 10)));
 
     res.json({ success: true });
   } catch {

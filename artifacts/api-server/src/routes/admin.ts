@@ -105,9 +105,9 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
 
       // Clerk as source of truth for signup counts
       clerkClient.users.getUserList({ limit: 1, orderBy: "-created_at" }),
-      clerkClient.users.getUserList({ limit: 1, createdAfter: dayAgo.getTime() }),
-      clerkClient.users.getUserList({ limit: 1, createdAfter: weekAgo.getTime() }),
-      clerkClient.users.getUserList({ limit: 1, createdAfter: monthAgo.getTime() }),
+      clerkClient.users.getUserList({ limit: 1, createdAtAfter: dayAgo.getTime() }),
+      clerkClient.users.getUserList({ limit: 1, createdAtAfter: weekAgo.getTime() }),
+      clerkClient.users.getUserList({ limit: 1, createdAtAfter: monthAgo.getTime() }),
 
       // Onboarded = users with a wedding profile
       db.select({ count: sql<number>`count(*)::int` }).from(weddingProfiles),
@@ -354,8 +354,7 @@ router.get("/admin/dropoffs", requireAuth, requireAdmin, async (req, res) => {
       db.select({ userId: weddingProfiles.userId }).from(weddingProfiles),
       clerkClient.users.getUserList({
         limit: 500,
-        orderBy: "-created_at" as Parameters<typeof clerkClient.users.getUserList>[0]["orderBy"],
-        ...(since ? { createdAfter: since.getTime() } : {}),
+        ...(since ? { createdAtAfter: since.getTime() } : {}),
       }),
     ]);
 
@@ -427,7 +426,7 @@ router.get("/admin/dropoffs", requireAuth, requireAdmin, async (req, res) => {
 });
 
 router.delete("/admin/users/:userId", requireAuth, requireAdmin, async (req, res) => {
-  const targetUserId = req.params.userId;
+  const targetUserId = String(req.params.userId ?? "");
   if (!targetUserId) {
     res.status(400).json({ error: "Missing userId" });
     return;
@@ -473,7 +472,7 @@ router.delete("/admin/users/:userId", requireAuth, requireAdmin, async (req, res
 
 router.post("/admin/promote/:userId", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = String(req.params.userId ?? "");
     await db.insert(adminUsers).values({ userId }).onConflictDoNothing();
     res.json({ success: true, message: `User ${userId} promoted to admin.` });
   } catch (err) {
@@ -484,7 +483,7 @@ router.post("/admin/promote/:userId", requireAuth, requireAdmin, async (req, res
 
 router.delete("/admin/demote/:userId", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = String(req.params.userId ?? "");
     if (userId === req.userId) {
       return res.status(400).json({ error: "Cannot demote yourself." });
     }
@@ -597,20 +596,17 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
         for (const g of guestRows) {
           await db.insert(guests).values({
             profileId: newProfileId,
-            firstName: String(g.firstName ?? ""),
-            lastName: String(g.lastName ?? ""),
+            name: String(g.name ?? (`${g.firstName ?? ""} ${g.lastName ?? ""}`.trim() || "Guest")),
             email: g.email as string | null ?? null,
             phone: g.phone as string | null ?? null,
             rsvpStatus: (g.rsvpStatus as string) ?? "pending",
             mealChoice: g.mealChoice as string | null ?? null,
             plusOne: Boolean(g.plusOne ?? false),
             plusOneName: g.plusOneName as string | null ?? null,
-            dietaryRestrictions: g.dietaryRestrictions as string | null ?? null,
-            tableNumber: g.tableNumber as number | null ?? null,
+            dietaryNotes: (g.dietaryRestrictions ?? g.dietaryNotes) as string | null ?? null,
+            tableAssignment: g.tableNumber != null ? String(g.tableNumber) : (g.tableAssignment as string | null ?? null),
             notes: g.notes as string | null ?? null,
-            group: g.group as string | null ?? null,
-            side: g.side as string | null ?? null,
-            tags: (g.tags as string[] | null) ?? null,
+            guestGroup: (g.group ?? g.guestGroup) as string | null ?? null,
           });
         }
         restored.guests = guestRows.length;
@@ -621,12 +617,11 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
         for (const ci of ciRows) {
           await db.insert(checklistItems).values({
             profileId: newProfileId,
+            month: String(ci.month ?? ci.monthLabel ?? ci.category ?? ""),
             task: String(ci.task ?? ""),
-            category: String(ci.category ?? ""),
-            dueDate: ci.dueDate as string | null ?? null,
-            completed: Boolean(ci.completed ?? false),
-            notes: ci.notes as string | null ?? null,
-            monthLabel: ci.monthLabel as string | null ?? null,
+            description: String(ci.notes ?? ""),
+            isCompleted: Boolean(ci.completed ?? ci.isCompleted ?? false),
+            completedAt: (ci.completed ?? ci.isCompleted) ? new Date() : null,
           });
         }
         restored.checklistItems = ciRows.length;
@@ -645,11 +640,10 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
             await db.insert(budgetItems).values({
               budgetId: newBudget.id,
               category: String(bi.category ?? ""),
-              item: String(bi.item ?? ""),
+              vendor: String(bi.vendor ?? bi.item ?? ""),
               estimatedCost: String(bi.estimatedCost ?? "0"),
-              actualCost: bi.actualCost as string | null ?? null,
-              paid: Boolean(bi.paid ?? false),
-              vendor: bi.vendor as string | null ?? null,
+              actualCost: String(bi.actualCost ?? "0"),
+              isPaid: Boolean(bi.paid ?? bi.isPaid ?? false),
               notes: bi.notes as string | null ?? null,
             });
           }
@@ -669,12 +663,9 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
           email: v.email as string | null ?? null,
           phone: v.phone as string | null ?? null,
           website: v.website as string | null ?? null,
-          contactName: v.contactName as string | null ?? null,
-          price: v.price as string | null ?? null,
           notes: v.notes as string | null ?? null,
-          status: String(v.status ?? "inquiry"),
+          totalCost: String(v.price ?? v.totalCost ?? "0"),
           contractSigned: Boolean(v.contractSigned ?? false),
-          depositPaid: Boolean(v.depositPaid ?? false),
         });
       }
       restored.vendors = vendorRows.length;
@@ -685,11 +676,8 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
       for (const vc of vcRows) {
         await db.insert(vendorContracts).values({
           userId: newUserId.trim(),
-          vendorName: String(vc.vendorName ?? ""),
-          contractType: String(vc.contractType ?? ""),
-          fileUrl: String(vc.fileUrl ?? ""),
-          fileName: String(vc.fileName ?? ""),
-          notes: vc.notes as string | null ?? null,
+          fileName: String(vc.fileName ?? vc.vendorName ?? "contract"),
+          extractedText: vc.notes as string | null ?? null,
         });
       }
       restored.vendorContracts = vcRows.length;

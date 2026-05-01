@@ -127,9 +127,7 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
         totalPaid,
         isPaidOff: totalCost > 0 && totalPaid >= totalCost,
         nextPaymentDue: v.nextPaymentDue
-          ? (v.nextPaymentDue instanceof Date
-            ? v.nextPaymentDue.toISOString().slice(0, 10)
-            : String(v.nextPaymentDue).slice(0, 10))
+          ? String(v.nextPaymentDue).slice(0, 10)
           : null,
       };
     });
@@ -192,7 +190,7 @@ router.get("/vendors/:id", requireAuth, async (req, res) => {
       return;
     }
     const userId = await resolveScopeUserId(req);
-    const vendorId = parseInt(req.params.id, 10);
+    const vendorId = parseInt(String(req.params.id), 10);
     const [vendor] = await db
       .select()
       .from(vendors)
@@ -221,7 +219,7 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
       return;
     }
     const userId = await resolveScopeUserId(req);
-    const vendorId = parseInt(req.params.id, 10);
+    const vendorId = parseInt(String(req.params.id), 10);
     const {
       name, category, email, phone, website, portalLink,
       notes, totalCost, depositAmount, contractSigned, files, nextPaymentDue,
@@ -263,7 +261,7 @@ router.delete("/vendors/:id", requireAuth, async (req, res) => {
       return;
     }
     const userId = await resolveScopeUserId(req);
-    const vendorId = parseInt(req.params.id, 10);
+    const vendorId = parseInt(String(req.params.id), 10);
     const [vendor] = await db
       .select({ id: vendors.id })
       .from(vendors)
@@ -289,7 +287,7 @@ router.post("/vendors/:id/payments", requireAuth, async (req, res) => {
       return;
     }
     const userId = await resolveScopeUserId(req);
-    const vendorId = parseInt(req.params.id, 10);
+    const vendorId = parseInt(String(req.params.id), 10);
     const [vendor] = await db
       .select({ id: vendors.id })
       .from(vendors)
@@ -322,8 +320,8 @@ router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => 
       return;
     }
     const userId = await resolveScopeUserId(req);
-    const vendorId = parseInt(req.params.id, 10);
-    const paymentId = parseInt(req.params.paymentId, 10);
+    const vendorId = parseInt(String(req.params.id), 10);
+    const paymentId = parseInt(String(req.params.paymentId), 10);
     const [vendor] = await db
       .select({ id: vendors.id })
       .from(vendors)
@@ -365,8 +363,8 @@ router.delete("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) 
       return;
     }
     const userId = await resolveScopeUserId(req);
-    const vendorId = parseInt(req.params.id, 10);
-    const paymentId = parseInt(req.params.paymentId, 10);
+    const vendorId = parseInt(String(req.params.id), 10);
+    const paymentId = parseInt(String(req.params.paymentId), 10);
     const [vendor] = await db
       .select({ id: vendors.id })
       .from(vendors)

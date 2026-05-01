@@ -76,7 +76,7 @@ router.get("/collaborators", requireAuth, async (req, res) => {
   try {
     const workspaceIdParam = req.query.workspaceId ? parseInt(String(req.query.workspaceId)) : null;
 
-    let profile: Awaited<ReturnType<typeof getProfileByUserId>> = null;
+    let profile: Awaited<ReturnType<typeof getProfileByUserId>> | null = null;
     let myRole: string = "owner";
 
     if (workspaceIdParam) {
@@ -198,7 +198,7 @@ router.post("/collaborators/invite", requireAuth, async (req, res) => {
   try {
     const { email, role, workspaceId: bodyWorkspaceId } = req.body as { email: string; role: string; workspaceId?: number };
 
-    let profile: Awaited<ReturnType<typeof getProfileByUserId>> = null;
+    let profile: Awaited<ReturnType<typeof getProfileByUserId>> | null = null;
 
     if (bodyWorkspaceId) {
       const myRole = await resolveWorkspaceRole(req.userId!, bodyWorkspaceId);
@@ -316,7 +316,7 @@ router.get("/invite/:token", async (req, res) => {
 
 router.post("/invite/:token/accept", requireAuth, async (req, res) => {
   try {
-    const { token } = req.params;
+    const token = String(req.params.token ?? "");
 
     const [collab] = await db
       .select()
@@ -381,7 +381,7 @@ router.post("/invite/:token/accept", requireAuth, async (req, res) => {
 
 router.post("/invite/:token/decline", requireAuth, async (req, res) => {
   try {
-    const { token } = req.params;
+    const token = String(req.params.token ?? "");
 
     const [collab] = await db
       .select()
@@ -411,7 +411,7 @@ router.post("/invite/:token/decline", requireAuth, async (req, res) => {
 
 router.patch("/collaborators/:id/role", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id), 10);
     const { role } = req.body as { role: string };
 
     if (!["partner", "planner", "vendor"].includes(role)) {
@@ -456,7 +456,7 @@ router.patch("/collaborators/:id/role", requireAuth, async (req, res) => {
 
 router.delete("/collaborators/:id", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id), 10);
 
     const [collab] = await db
       .select()
@@ -488,7 +488,7 @@ router.delete("/collaborators/:id", requireAuth, async (req, res) => {
 
 router.post("/collaborators/:id/resend", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id), 10);
 
     const [collab] = await db
       .select()

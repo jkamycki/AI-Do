@@ -142,7 +142,7 @@ router.patch("/timeline/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id), 10);
     const { events } = req.body;
     if (!Array.isArray(events)) return res.status(400).json({ error: "events must be an array" });
 

@@ -152,7 +152,7 @@ router.post("/contracts/:id/negotiate", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const id = parseInt(req.params["id"] ?? "0");
+    const id = parseInt(String(req.params["id"] ?? "0"), 10);
     const [contract] = await db
       .select({
         extractedText: vendorContracts.extractedText,
@@ -250,7 +250,7 @@ router.patch("/contracts/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const id = parseInt(req.params["id"] ?? "0");
+    const id = parseInt(String(req.params["id"] ?? "0"), 10);
     const { fileName } = req.body;
     if (!fileName || typeof fileName !== "string" || !fileName.trim()) {
       return res.status(400).json({ error: "fileName is required" });
@@ -279,7 +279,7 @@ router.delete("/contracts/:id", requireAuth, async (req, res) => {
     await db
       .delete(vendorContracts)
       .where(and(
-        eq(vendorContracts.id, parseInt(req.params["id"] ?? "0")),
+        eq(vendorContracts.id, parseInt(String(req.params["id"] ?? "0"), 10)),
         eq(vendorContracts.userId, userId),
       ));
     res.json({ success: true });
