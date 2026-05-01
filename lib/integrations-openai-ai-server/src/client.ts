@@ -46,3 +46,20 @@ export function getModel(): string {
   // OpenAI or Replit proxy
   return "gpt-4o-mini";
 }
+
+/**
+ * Returns a vision-capable chat model for the active provider.
+ * Most cheap text-only models (e.g. Llama 3.1/3.3 instant/versatile on Groq)
+ * cannot accept image_url content, so endpoints that send images MUST use
+ * this instead of getModel(). Override with AI_VISION_MODEL.
+ */
+export function getVisionModel(): string {
+  if (process.env.AI_VISION_MODEL) return process.env.AI_VISION_MODEL;
+  // Groq's free-tier multimodal Llama 4 Scout model — accepts image_url and is
+  // OpenAI-compatible. The text-only AI_MODEL override does not apply here.
+  if (baseURL.includes("groq.com")) return "meta-llama/llama-4-scout-17b-16e-instruct";
+  if (baseURL.includes("openrouter.ai")) return "meta-llama/llama-3.2-11b-vision-instruct";
+  if (baseURL.includes("anthropic")) return "claude-3-5-sonnet-20241022";
+  // OpenAI or Replit proxy — gpt-4o-mini supports vision.
+  return "gpt-4o-mini";
+}

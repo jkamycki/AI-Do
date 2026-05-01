@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { authFetch } from "@/lib/authFetch";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -573,10 +573,40 @@ function InvitationPhotoCard() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [previewSrc, setPreviewSrcRaw] = useState<string | null>(null);
   const [removingPhoto, setRemovingPhoto] = useState(false);
-  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropSrc, setCropSrcRaw] = useState<string | null>(null);
   const [cropFileName, setCropFileName] = useState<string>("invitation");
+
+  // Track blob URLs we created so we can revoke them when replaced or on
+  // unmount, avoiding a slow memory leak from repeated upload + crop cycles.
+  const previewBlobRef = useRef<string | null>(null);
+  const cropBlobRef = useRef<string | null>(null);
+
+  const setPreviewSrc = useCallback((next: string | null) => {
+    if (previewBlobRef.current && previewBlobRef.current !== next) {
+      URL.revokeObjectURL(previewBlobRef.current);
+      previewBlobRef.current = null;
+    }
+    if (next?.startsWith("blob:")) previewBlobRef.current = next;
+    setPreviewSrcRaw(next);
+  }, []);
+
+  const setCropSrc = useCallback((next: string | null) => {
+    if (cropBlobRef.current && cropBlobRef.current !== next) {
+      URL.revokeObjectURL(cropBlobRef.current);
+      cropBlobRef.current = null;
+    }
+    if (next?.startsWith("blob:")) cropBlobRef.current = next;
+    setCropSrcRaw(next);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewBlobRef.current) URL.revokeObjectURL(previewBlobRef.current);
+      if (cropBlobRef.current) URL.revokeObjectURL(cropBlobRef.current);
+    };
+  }, []);
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [aiDetails, setAiDetails] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -669,7 +699,6 @@ function InvitationPhotoCard() {
   };
 
   const handleCropConfirm = async (cropped: File) => {
-    if (cropSrc) URL.revokeObjectURL(cropSrc);
     setCropSrc(null);
     setPreviewSrc(URL.createObjectURL(cropped));
     await uploadFile(cropped);
@@ -677,7 +706,6 @@ function InvitationPhotoCard() {
   };
 
   const handleCropCancel = () => {
-    if (cropSrc) URL.revokeObjectURL(cropSrc);
     setCropSrc(null);
     resetFileInput();
   };

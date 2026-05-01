@@ -3,7 +3,7 @@ import { getAuth } from "@clerk/express";
 import { db, moodBoards } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { openai, getModel } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel, getVisionModel } from "@workspace/integrations-openai-ai-server";
 import { ObjectStorageService } from "../lib/objectStorage";
 
 const router = Router();
@@ -111,7 +111,7 @@ router.post("/mood-board/analyze-image", requireAuth, async (req, res) => {
     const contentType = (metadata.contentType as string) || "image/jpeg";
 
     const response = await openai.chat.completions.create({
-      model: getModel(),
+      model: getVisionModel(),
       messages: [{
         role: "user",
         content: [
@@ -139,7 +139,10 @@ Return ONLY valid JSON, no markdown or explanation.`,
     const raw = response.choices[0]?.message?.content ?? "{}";
     let analysis: MoodBoardImage["analysis"];
     try {
-      analysis = JSON.parse(raw) as MoodBoardImage["analysis"];
+      // Some models still wrap JSON in markdown fences or add prose; extract the
+      // first {...} block defensively before parsing.
+      const match = raw.match(/\{[\s\S]*\}/);
+      analysis = JSON.parse(match ? match[0] : raw) as MoodBoardImage["analysis"];
     } catch {
       analysis = { styleKeywords: [], dominantColors: [], decorThemes: [] };
     }

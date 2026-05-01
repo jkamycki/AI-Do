@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ZoomIn, ZoomOut } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface InvitationCropDialogProps {
   imageSrc: string;
@@ -61,6 +62,7 @@ async function getCroppedFile(
 }
 
 export function InvitationCropDialog({ imageSrc, originalFileName, onConfirm, onCancel }: InvitationCropDialogProps) {
+  const { toast } = useToast();
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [aspect, setAspect] = useState<number>(4 / 3);
@@ -77,7 +79,12 @@ export function InvitationCropDialog({ imageSrc, originalFileName, onConfirm, on
     try {
       const file = await getCroppedFile(imageSrc, croppedAreaPixels, originalFileName);
       onConfirm(file);
-    } catch {
+    } catch (err) {
+      toast({
+        title: "Couldn't crop the image",
+        description: err instanceof Error ? err.message : "Try again or use a different photo.",
+        variant: "destructive",
+      });
       setApplying(false);
     }
   };

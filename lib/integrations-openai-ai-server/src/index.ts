@@ -1,3 +1,3 @@
-export { openai, getModel } from "./client";
+export { openai, getModel, getVisionModel } from "./client";
 export { generateImageBuffer, editImages } from "./image";
 export { batchProcess, batchProcessWithSSE, isRateLimitError, type BatchOptions } from "./batch";

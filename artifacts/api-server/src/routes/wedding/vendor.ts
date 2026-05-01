@@ -40,12 +40,16 @@ Return ONLY valid JSON (no markdown) with this structure:
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      max_completion_tokens: 8192,
+      max_completion_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
+      // Force structured output so Llama-family models don't wrap in markdown
+      // or prepend an explanation, which would make JSON.parse fail and the
+      // user gets a raw blob in the body field.
+      response_format: { type: "json_object" },
     });
 
     const content = completion.choices[0]?.message?.content ?? "{}";
-    let result;
+    let result: { subject?: string; body?: string; vendorType?: string; emailType?: string };
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       result = JSON.parse(jsonMatch ? jsonMatch[0] : content);
@@ -53,8 +57,17 @@ Return ONLY valid JSON (no markdown) with this structure:
       result = { subject: "Email", body: content, vendorType, emailType };
     }
 
+    // Always echo back vendorType/emailType so the response matches the schema
+    // even if the model omits them.
+    const safeResult = {
+      subject: result.subject?.trim() || "Email",
+      body: result.body?.trim() || content,
+      vendorType: result.vendorType ?? vendorType,
+      emailType: result.emailType ?? emailType,
+    };
+
     trackEvent(req.userId!, "vendor_email_generated", { vendorType, emailType });
-    res.json(result);
+    res.json(safeResult);
   } catch (err) {
     req.log.error(err, "Failed to generate vendor email");
     res.status(500).json({ error: "Internal server error" });
