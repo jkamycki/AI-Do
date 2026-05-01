@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { CalendarIcon, Save, RotateCcw, ImageIcon, Upload, Trash2, Loader2, Sparkles, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useUpload } from "@workspace/object-storage-web";
+import { InvitationCropDialog } from "@/components/InvitationCropDialog";
 
 const LANGUAGES = [
   "English", "Spanish", "French", "German", "Italian", "Portuguese",
@@ -574,6 +575,8 @@ function InvitationPhotoCard() {
   const [saving, setSaving] = useState(false);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [removingPhoto, setRemovingPhoto] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropFileName, setCropFileName] = useState<string>("invitation");
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [aiDetails, setAiDetails] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -627,25 +630,56 @@ function InvitationPhotoCard() {
     getToken,
     onSuccess: (resp: { objectPath: string }) => {
       setPhotoUrl(resp.objectPath);
-      setPreviewSrc(URL.createObjectURL((fileInputRef.current?.files?.[0]) as File));
+      // previewSrc is already set to the (cropped or original) file before upload
     },
     onError: (err: Error) => toast({ title: "Upload failed", description: err.message, variant: "destructive" }),
   });
+
+  const resetFileInput = () => {
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       toast({ title: "File too large", description: "Max size is 5 MB.", variant: "destructive" });
+      resetFileInput();
       return;
     }
     const allowed = ["image/jpeg", "image/png", "image/heic", "image/heif"];
-    if (!allowed.includes(file.type) && !file.name.toLowerCase().match(/\.(jpg|jpeg|png|heic)$/)) {
+    if (!allowed.includes(file.type) && !file.name.toLowerCase().match(/\.(jpg|jpeg|png|heic|heif)$/)) {
       toast({ title: "Unsupported format", description: "Please upload a JPG, PNG, or HEIC photo.", variant: "destructive" });
+      resetFileInput();
       return;
     }
-    setPreviewSrc(URL.createObjectURL(file));
-    await uploadFile(file);
+
+    // HEIC/HEIF can't render in <img> in most browsers, so we can't show a cropper.
+    // Upload the original directly in that case.
+    const isHeic = file.type === "image/heic" || file.type === "image/heif" || /\.(heic|heif)$/i.test(file.name);
+    if (isHeic) {
+      setPreviewSrc(URL.createObjectURL(file));
+      await uploadFile(file);
+      return;
+    }
+
+    // For JPG/PNG, open the crop dialog before uploading.
+    setCropFileName(file.name);
+    setCropSrc(URL.createObjectURL(file));
+  };
+
+  const handleCropConfirm = async (cropped: File) => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+    setPreviewSrc(URL.createObjectURL(cropped));
+    await uploadFile(cropped);
+    resetFileInput();
+  };
+
+  const handleCropCancel = () => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+    resetFileInput();
   };
 
   const saveSettings = async () => {
@@ -757,6 +791,14 @@ function InvitationPhotoCard() {
             className="hidden"
             onChange={handleFileSelect}
           />
+          {cropSrc && (
+            <InvitationCropDialog
+              imageSrc={cropSrc}
+              originalFileName={cropFileName}
+              onConfirm={handleCropConfirm}
+              onCancel={handleCropCancel}
+            />
+          )}
         </div>
 
         <div className="space-y-2">
