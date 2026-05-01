@@ -1,22 +1,32 @@
 import OpenAI from "openai";
 
-const rawBaseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ?? "";
+const replitBaseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ?? "";
+const replitApiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "";
+const directBaseUrl = process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
+const directApiKey = process.env.OPENAI_API_KEY ?? "";
 
-// If the base URL is missing or still points to the Replit local proxy (localhost),
-// fall back to the standard OpenAI endpoint automatically.
-// This means only AI_INTEGRATIONS_OPENAI_API_KEY is required in production.
-const baseURL =
-  rawBaseUrl && !rawBaseUrl.includes("localhost")
-    ? rawBaseUrl.replace(/\/$/, "")
-    : "https://api.openai.com/v1";
+// If base URL points to the Replit local proxy, use it as-is (works inside Replit).
+// Otherwise fall back: if the Replit integration key is set, pair it with the
+// configured base URL (or api.openai.com). Last resort: OPENAI_API_KEY direct.
+const isReplitProxy = replitBaseUrl.startsWith("http://localhost");
 
-if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+let baseURL: string;
+let apiKey: string;
+
+if (isReplitProxy) {
+  baseURL = replitBaseUrl;
+  apiKey = replitApiKey;
+} else if (replitApiKey) {
+  // Non-localhost base URL (or none) + Replit key → use explicit url or openai default
+  baseURL = (replitBaseUrl || directBaseUrl).replace(/\/$/, "");
+  apiKey = replitApiKey;
+} else if (directApiKey) {
+  baseURL = directBaseUrl.replace(/\/$/, "");
+  apiKey = directApiKey;
+} else {
   throw new Error(
-    "AI_INTEGRATIONS_OPENAI_API_KEY must be set.",
+    "No AI provider configured. Set AI_INTEGRATIONS_OPENAI_API_KEY or OPENAI_API_KEY.",
   );
 }
 
-export const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL,
-});
+export const openai = new OpenAI({ apiKey, baseURL });

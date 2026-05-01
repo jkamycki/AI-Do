@@ -1554,7 +1554,8 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
   }
 }
 
-const AI_CONFIGURED_FOR_PROD = !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+const AI_CONFIGURED_FOR_PROD =
+  !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY);
 
 /**
  * GET /aria/test — admin-only connectivity check for the OpenAI API.
