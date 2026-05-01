@@ -1424,13 +1424,30 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         })),
       });
 
-      // Execute each tool and stream progress to the client
-      for (const tc of toolCalls) {
+      // Parse args + emit action_start synchronously, in order, so the UI
+      // shows every tool the model wanted to call right away.
+      const parsedArgsList = toolCalls.map(tc => {
         let parsedArgs: Record<string, unknown> = {};
         try { parsedArgs = JSON.parse(tc.args || "{}"); } catch {}
         send({ type: "action_start", name: tc.name, args: parsedArgs });
-        const result = await executeTool(tc.name, parsedArgs, req);
-        performedActions.push({ name: tc.name, args: parsedArgs, result });
+        return parsedArgs;
+      });
+
+      // Execute all tools in PARALLEL. Most are independent read queries
+      // (list_vendors, list_budget, list_guests, etc.) and serializing them
+      // multiplied latency by the number of tools called. With Promise.all,
+      // a 4-tool fan-out returns in roughly the time of the slowest single
+      // query instead of their sum.
+      const results = await Promise.all(
+        toolCalls.map((tc, i) => executeTool(tc.name, parsedArgsList[i], req))
+      );
+
+      // Stream results + record into conversation history in deterministic
+      // order so the model sees tool replies aligned with its tool_calls.
+      for (let i = 0; i < toolCalls.length; i++) {
+        const tc = toolCalls[i];
+        const result = results[i];
+        performedActions.push({ name: tc.name, args: parsedArgsList[i], result });
         send({ type: "action_result", name: tc.name, ok: result.ok, error: result.ok ? undefined : result.error });
         convo.push({
           role: "tool",
