@@ -1636,7 +1636,9 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       ? `\n\nIMPORTANT: Always respond in ${preferredLanguage}, regardless of what language the user writes in.`
       : "";
 
-    const recent = messages.slice(-20);
+    // Keep only the last 6 messages (≈ 3 exchanges) to stay well within
+    // Groq's 6,000 tokens-per-minute free-tier limit.
+    const recent = messages.slice(-6);
     const convo: Array<Record<string, unknown>> = [
       { role: "system", content: SYSTEM_PROMPT + langInstruction },
       ...recent,
@@ -1650,7 +1652,8 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const createStream = async () => {
       const params = {
         model: getModel(),
-        max_tokens: 1500,
+        max_tokens: 600,
+        temperature: 0.1,   // low temp = reliable, consistent tool calls
         messages: convo as Parameters<typeof openai.chat.completions.create>[0]["messages"],
         tools: TOOLS,
         tool_choice: "auto" as const,
@@ -1662,8 +1665,8 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         const firstStatus = (firstErr as { status?: number })?.status;
         if (firstStatus === 429) {
           // Let the client know we're pausing, then retry after a short delay
-          send({ type: "status", message: "Aria is catching her breath, retrying in 15 seconds…" });
-          await new Promise(resolve => setTimeout(resolve, 15_000));
+          send({ type: "status", message: "Aria is catching her breath, retrying shortly…" });
+          await new Promise(resolve => setTimeout(resolve, 8_000));
           return await openai.chat.completions.create(params);
         }
         throw firstErr;
