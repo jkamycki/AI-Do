@@ -10,8 +10,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1039.0",
+    "@aws-sdk/s3-request-presigner": "^3.1039.0",
     "@clerk/express": "^2.1.4",
-    "@google-cloud/storage": "^7.19.0",
     "@types/multer": "^2.1.0",
     "@types/pdf-parse": "^1.1.5",
     "@workspace/api-zod": "workspace:*",
@@ -22,7 +23,6 @@
     "drizzle-orm": "catalog:",
     "express": "^5",
     "express-rate-limit": "^8.4.1",
-    "google-auth-library": "^10.6.2",
     "http-proxy-middleware": "^3.0.5",
     "multer": "^2.1.1",
     "pdf-parse": "^1.1.4",
