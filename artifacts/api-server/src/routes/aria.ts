@@ -1658,11 +1658,18 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       if (status === 401) {
         userMsg = "AI API key is invalid or expired. Please check the key set on your server.";
       } else if (status === 429) {
-        if (errCode === "insufficient_quota" || detail.toLowerCase().includes("quota") || detail.toLowerCase().includes("exceeded your current quota")) {
+        const lowDetail = detail.toLowerCase();
+        if (errCode === "insufficient_quota" || lowDetail.includes("quota") || lowDetail.includes("exceeded your current quota")) {
           userMsg = "Your AI API account has run out of credits. Please top up your Groq or OpenAI account and try again.";
+        } else if (lowDetail.includes("per day") || lowDetail.includes("tokens per day") || lowDetail.includes("tpd") || lowDetail.includes("requests per day") || lowDetail.includes("rpd") || lowDetail.includes("daily")) {
+          // Groq daily limit — waiting 30s won't help, the window resets at UTC midnight
+          userMsg = "Aria has hit today's AI usage limit. The limit resets at midnight UTC. To remove this cap, upgrade your Groq plan and update GROQ_API_KEY on the server.";
         } else {
-          // Rate limit — still hit after the automatic retry; tell the user to wait a little longer
-          userMsg = "Aria is currently rate-limited. Please wait 30–60 seconds and try again.";
+          // Per-minute (TPM/RPM) limit — still hit after the automatic 25s retry. Surface the actual Groq detail so the user can see what's tight.
+          const niceDetail = detail.replace(/^.*?Limit /i, "Limit ").replace(/\. Visit.*$/i, ".").slice(0, 240);
+          userMsg = niceDetail
+            ? `Aria is hitting Groq's per-minute limit. ${niceDetail} Please wait ~60 seconds and try again, or upgrade your Groq plan.`
+            : "Aria is currently rate-limited. Please wait 30–60 seconds and try again.";
         }
       } else if (status === 504) {
         userMsg = "Aria's reply took too long to come back. Please try again — usually this clears within a few seconds.";
