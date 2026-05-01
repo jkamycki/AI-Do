@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { vendors, vendorConversations, vendorMessages, weddingProfiles } from "@workspace/db/schema";
 import { and, asc, desc, eq } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 import {
@@ -287,7 +287,7 @@ ${transcript || "(no messages yet)"}
 Write a friendly, professional reply the couple can send. Keep it concise (2-4 short paragraphs). Do NOT include a subject line, do NOT include greeting placeholders like [Vendor Name] — use the actual name. End with the couple's first names. Return ONLY the message body, no JSON, no markdown.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: getModel(),
       max_completion_tokens: 1000,
       messages: [{ role: "user", content: prompt }],
     });

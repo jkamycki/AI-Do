@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { budgets, budgetItems, weddingProfiles, budgetPaymentLogs } from "@workspace/db";
 import { eq, desc, asc } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 import { logActivity, resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
@@ -167,7 +167,7 @@ Return ONLY valid JSON (no markdown) with this structure:
 Include these categories: Venue, Catering & Bar, Photography, Videography, Florals & Decor, Music/DJ/Band, Wedding Cake, Attire & Beauty, Invitations & Stationery, Transportation, Officiant, Favors & Gifts, Honeymoon Fund, Miscellaneous/Emergency Fund.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: getModel(),
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     });

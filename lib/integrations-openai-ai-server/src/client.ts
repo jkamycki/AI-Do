@@ -6,8 +6,8 @@ const directBaseUrl = process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1"
 const directApiKey = process.env.OPENAI_API_KEY ?? "";
 
 // If base URL points to the Replit local proxy, use it as-is (works inside Replit).
-// Otherwise fall back: if the Replit integration key is set, pair it with the
-// configured base URL (or api.openai.com). Last resort: OPENAI_API_KEY direct.
+// Otherwise: use the explicit non-localhost base URL with the integration key,
+// or fall back to OPENAI_API_KEY + OPENAI_BASE_URL for direct OpenAI access.
 const isReplitProxy = replitBaseUrl.startsWith("http://localhost");
 
 let baseURL: string;
@@ -17,7 +17,6 @@ if (isReplitProxy) {
   baseURL = replitBaseUrl;
   apiKey = replitApiKey;
 } else if (replitApiKey) {
-  // Non-localhost base URL (or none) + Replit key → use explicit url or openai default
   baseURL = (replitBaseUrl || directBaseUrl).replace(/\/$/, "");
   apiKey = replitApiKey;
 } else if (directApiKey) {
@@ -30,3 +29,17 @@ if (isReplitProxy) {
 }
 
 export const openai = new OpenAI({ apiKey, baseURL });
+
+/**
+ * Returns the best chat model for the active provider.
+ * Provider is detected from the resolved base URL.
+ * Override at any time by setting the AI_MODEL env var.
+ */
+export function getModel(): string {
+  if (process.env.AI_MODEL) return process.env.AI_MODEL;
+  if (baseURL.includes("groq.com")) return "llama-3.3-70b-versatile";
+  if (baseURL.includes("openrouter.ai")) return "meta-llama/llama-3.3-70b-instruct";
+  if (baseURL.includes("anthropic")) return "claude-3-5-haiku-20241022";
+  // OpenAI or Replit proxy
+  return "gpt-4o-mini";
+}

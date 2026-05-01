@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { timelines, weddingProfiles } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 import { logActivity, resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
@@ -102,7 +102,7 @@ Return ONLY a valid JSON array (no markdown, no explanation) with this exact str
 Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like block-1, block-2, etc.${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: getModel(),
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     });

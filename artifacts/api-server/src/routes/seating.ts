@@ -3,7 +3,7 @@ import { db, seatingCharts, guests as guestRecords } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveScopeUserId, resolveCallerRole, hasMinRole, resolveProfile } from "../lib/workspaceAccess";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
@@ -100,7 +100,7 @@ Return ONLY valid JSON:
 Use only the exact guest names from the list. Only create tables that have guests. Distribute guests evenly.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: getModel(),
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_tokens: 2000,

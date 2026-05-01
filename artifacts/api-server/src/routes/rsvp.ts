@@ -5,7 +5,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 import { sendEmail } from "../lib/resend";
 import { ObjectStorageService } from "../lib/objectStorage";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import crypto from "crypto";
 
 const objectStorageService = new ObjectStorageService();
@@ -429,7 +429,7 @@ router.post("/profile/generate-invitation-message", requireAuth, async (req, res
     ].filter(Boolean).join("\n");
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: getModel(),
       messages: [
         {
           role: "system",

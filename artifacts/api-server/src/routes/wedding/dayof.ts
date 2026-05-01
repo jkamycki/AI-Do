@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 
@@ -24,7 +24,7 @@ Return ONLY valid JSON (no markdown) with this structure:
 The steps should be concrete, actionable, and prioritized. Include 3-6 steps.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: getModel(),
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     });

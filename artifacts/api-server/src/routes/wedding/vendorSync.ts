@@ -3,7 +3,7 @@ import { db, vendors, vendorPayments } from "@workspace/db";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
@@ -414,7 +414,7 @@ Return ONLY valid JSON (no markdown) with this structure:
 }${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: getModel(),
       max_completion_tokens: 2048,
       messages: [{ role: "user", content: prompt }],
     });

@@ -5,7 +5,7 @@ import { db, vendorContracts } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 
 const require = createRequire(import.meta.url);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -108,7 +108,7 @@ Return ONLY valid JSON in this exact format:
 Be thorough, specific, and couple-friendly. Focus on clauses that could financially harm the couple or cause day-of issues.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: getModel(),
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_tokens: 2000,
@@ -202,7 +202,7 @@ Write a professional, polite, and firm negotiation email from the couple to the 
 Return ONLY the email body text, no subject line, no extra explanation.${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: getModel(),
       messages: [{ role: "user", content: prompt }],
       max_tokens: 1200,
     });

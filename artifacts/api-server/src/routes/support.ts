@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../middlewares/requireAuth";
 import { aiLimiter, incrementDailySupport } from "../middlewares/rateLimiter";
 import { getAuth } from "@clerk/express";
@@ -74,7 +74,7 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
       : "";
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: getModel(),
       max_completion_tokens: 800,
       messages: [
         { role: "system", content: SYSTEM_PROMPT + langInstruction },

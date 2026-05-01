@@ -11,7 +11,7 @@ import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { purgeUserData, snapshotUserData } from "../lib/userCleanup";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
@@ -729,7 +729,7 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
 router.post("/admin/marketing/generate", requireAuth, requireAdmin, async (req, res) => {
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: getModel(),
       messages: [
         {
           role: "system",

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { checklistItems, weddingProfiles } from "@workspace/db";
 import { eq, asc, and } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 import { logActivity, resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
@@ -80,7 +80,7 @@ Return ONLY a valid JSON array (no markdown, no explanation) with this structure
 Include 5-8 tasks per relevant time period. Be specific and actionable. Make tasks appropriate for the style: ${weddingVibe}.${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: getModel(),
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     });

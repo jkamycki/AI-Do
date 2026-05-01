@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import {
   db, vendors, vendorPayments, checklistItems, weddingProfiles, timelines,
   guests, weddingParty, hotelBlocks, manualExpenses, budgets, budgetItems, budgetPaymentLogs,
@@ -1571,17 +1571,17 @@ router.get("/aria/test", requireAuth, async (req, res) => {
 
   try {
     const result = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: getModel(),
       max_tokens: 5,
       messages: [{ role: "user", content: "Say OK" }],
     });
     const reply = result.choices[0]?.message?.content ?? "";
-    return res.json({ ok: true, model: "gpt-4o-mini", reply });
+    return res.json({ ok: true, model: getModel(), reply });
   } catch (err) {
     const e = err as { status?: number; message?: string; error?: { message?: string } };
     return res.json({
       ok: false,
-      model: "gpt-4o-mini",
+      model: getModel(),
       status: e?.status,
       error: e?.error?.message || e?.message || String(err),
     });
@@ -1648,7 +1648,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
     while (toolLoops < MAX_TOOL_LOOPS) {
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: getModel(),
         max_tokens: 1000,
         messages: convo as Parameters<typeof openai.chat.completions.create>[0]["messages"],
         tools: TOOLS,

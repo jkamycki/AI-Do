@@ -3,7 +3,7 @@ import { getAuth } from "@clerk/express";
 import { db, moodBoards } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { ObjectStorageService } from "../lib/objectStorage";
 
 const router = Router();
@@ -111,7 +111,7 @@ router.post("/mood-board/analyze-image", requireAuth, async (req, res) => {
     const contentType = (metadata.contentType as string) || "image/jpeg";
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: getModel(),
       messages: [{
         role: "user",
         content: [
@@ -187,7 +187,7 @@ Color palette: ${colors.slice(0, 6).join(", ") || "not specified"}
 Write in second person ("Your wedding style is..."). Be specific, evocative, and positive. Under 50 words.`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: getModel(),
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 150,
     });
