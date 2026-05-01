@@ -56,7 +56,13 @@ export default function Profile() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isLoaded, isSignedIn } = useAuth();
-  const { data: profile, isLoading, isFetching, isError, refetch } = useGetProfile({ query: { enabled: isLoaded && !!isSignedIn } });
+  const { data: profile, isLoading, isFetching, isError, error, refetch } = useGetProfile({
+    query: {
+      enabled: isLoaded && !!isSignedIn,
+      retry: 3,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+    }
+  });
   const saveProfile = useSaveProfile();
 
   const form = useForm<ProfileFormValues>({
@@ -90,20 +96,20 @@ export default function Profile() {
       form.reset({
         partner1Name: profile.partner1Name,
         partner2Name: profile.partner2Name,
-        weddingDate: profile.weddingDate.split('T')[0],
+        weddingDate: (profile.weddingDate ?? "").split('T')[0],
         ceremonyTime: profile.ceremonyTime,
         receptionTime: profile.receptionTime,
         venue: profile.venue,
         location: profile.location,
         venueCity: profile.venueCity ?? "",
         venueState: profile.venueState ?? "",
-        venueZip: (profile as any).venueZip ?? "",
-        ceremonyAtVenue: (profile as any).ceremonyAtVenue ?? true,
-        ceremonyVenueName: (profile as any).ceremonyVenueName ?? "",
-        ceremonyAddress: (profile as any).ceremonyAddress ?? "",
-        ceremonyCity: (profile as any).ceremonyCity ?? "",
-        ceremonyState: (profile as any).ceremonyState ?? "",
-        ceremonyZip: (profile as any).ceremonyZip ?? "",
+        venueZip: profile.venueZip ?? "",
+        ceremonyAtVenue: profile.ceremonyAtVenue ?? true,
+        ceremonyVenueName: profile.ceremonyVenueName ?? "",
+        ceremonyAddress: profile.ceremonyAddress ?? "",
+        ceremonyCity: profile.ceremonyCity ?? "",
+        ceremonyState: profile.ceremonyState ?? "",
+        ceremonyZip: profile.ceremonyZip ?? "",
         guestCount: profile.guestCount,
         totalBudget: profile.totalBudget,
         weddingVibe: profile.weddingVibe,
@@ -132,19 +138,24 @@ export default function Profile() {
   };
 
   if (isError && !profile && !isFetching) {
+    const is404 = (error as any)?.status === 404;
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] space-y-4 text-center">
         <p className="text-muted-foreground text-sm">
-          Could not load your profile. This sometimes happens right after a server restart.
+          {is404
+            ? "No profile found. Please complete onboarding from the Dashboard."
+            : "Could not load your profile. The server may be starting up — please try again."}
         </p>
-        <Button variant="outline" onClick={() => void refetch()} className="gap-2">
-          <RefreshCw className="h-4 w-4" /> Try again
-        </Button>
+        {!is404 && (
+          <Button variant="outline" onClick={() => void refetch()} className="gap-2">
+            <RefreshCw className="h-4 w-4" /> Try again
+          </Button>
+        )}
       </div>
     );
   }
 
-  if (isLoading || isFetching) {
+  if (isLoading || isFetching || (!profile && !isError)) {
     return (
       <div className="space-y-6 max-w-3xl mx-auto">
         <Skeleton className="h-12 w-64" />
@@ -550,10 +561,12 @@ export default function Profile() {
 }
 
 function InvitationPhotoCard() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { data: profile, isLoading: profileLoading } = useGetProfile();
+  const { data: profile, isLoading: profileLoading } = useGetProfile({
+    query: { enabled: isLoaded && !!isSignedIn },
+  });
 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -568,10 +581,10 @@ function InvitationPhotoCard() {
   useEffect(() => {
     if (profile && !initializedRef.current) {
       initializedRef.current = true;
-      const p = (profile as Record<string, unknown>).invitationPhotoUrl as string | null ?? null;
-      const m = (profile as Record<string, unknown>).invitationMessage as string | null ?? null;
-      const p1 = (profile as Record<string, unknown>).partner1Name as string | null ?? "";
-      const p2 = (profile as Record<string, unknown>).partner2Name as string | null ?? "";
+      const p = profile.invitationPhotoUrl ?? null;
+      const m = profile.invitationMessage ?? null;
+      const p1 = profile.partner1Name ?? "";
+      const p2 = profile.partner2Name ?? "";
       setPhotoUrl(p);
       if (m) {
         setMessage(m);
@@ -799,8 +812,8 @@ function InvitationPhotoCard() {
               type="button"
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => {
-                const p1 = (profile as Record<string, unknown>)?.partner1Name as string ?? "";
-                const p2 = (profile as Record<string, unknown>)?.partner2Name as string ?? "";
+                const p1 = profile?.partner1Name ?? "";
+                const p2 = profile?.partner2Name ?? "";
                 const couple = [p1, p2].filter(Boolean).join(" & ");
                 setMessage(couple
                   ? `Together with their families, ${couple} joyfully invite you to celebrate their wedding day with them.`

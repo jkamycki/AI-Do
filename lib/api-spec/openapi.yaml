@@ -1013,8 +1013,30 @@ components:
           type: string
         venueCity:
           type: string
+          nullable: true
         venueState:
           type: string
+          nullable: true
+        venueZip:
+          type: string
+          nullable: true
+        ceremonyAtVenue:
+          type: boolean
+        ceremonyVenueName:
+          type: string
+          nullable: true
+        ceremonyAddress:
+          type: string
+          nullable: true
+        ceremonyCity:
+          type: string
+          nullable: true
+        ceremonyState:
+          type: string
+          nullable: true
+        ceremonyZip:
+          type: string
+          nullable: true
         guestCount:
           type: integer
         totalBudget:
@@ -1023,10 +1045,19 @@ components:
           type: string
         preferredLanguage:
           type: string
+          nullable: true
         vendorBccEmail:
           type: string
           nullable: true
+        invitationPhotoUrl:
+          type: string
+          nullable: true
+        invitationMessage:
+          type: string
+          nullable: true
         updatedAt:
+          type: string
+        createdAt:
           type: string
       required:
         - id
@@ -1040,6 +1071,7 @@ components:
         - guestCount
         - totalBudget
         - weddingVibe
+        - ceremonyAtVenue
         - updatedAt
 
     SaveProfileBody:
@@ -1061,8 +1093,30 @@ components:
           type: string
         venueCity:
           type: string
+          nullable: true
         venueState:
           type: string
+          nullable: true
+        venueZip:
+          type: string
+          nullable: true
+        ceremonyAtVenue:
+          type: boolean
+        ceremonyVenueName:
+          type: string
+          nullable: true
+        ceremonyAddress:
+          type: string
+          nullable: true
+        ceremonyCity:
+          type: string
+          nullable: true
+        ceremonyState:
+          type: string
+          nullable: true
+        ceremonyZip:
+          type: string
+          nullable: true
         guestCount:
           type: integer
         totalBudget:
@@ -1071,6 +1125,7 @@ components:
           type: string
         preferredLanguage:
           type: string
+          nullable: true
         vendorBccEmail:
           type: string
           nullable: true

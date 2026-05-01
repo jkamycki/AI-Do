@@ -56,14 +56,24 @@ export interface WeddingProfile {
   receptionTime: string;
   venue: string;
   location: string;
-  venueCity?: string;
-  venueState?: string;
+  venueCity?: string | null;
+  venueState?: string | null;
+  venueZip?: string | null;
+  ceremonyAtVenue: boolean;
+  ceremonyVenueName?: string | null;
+  ceremonyAddress?: string | null;
+  ceremonyCity?: string | null;
+  ceremonyState?: string | null;
+  ceremonyZip?: string | null;
   guestCount: number;
   totalBudget: number;
   weddingVibe: string;
-  preferredLanguage?: string;
+  preferredLanguage?: string | null;
   vendorBccEmail?: string | null;
+  invitationPhotoUrl?: string | null;
+  invitationMessage?: string | null;
   updatedAt: string;
+  createdAt?: string;
 }
 
 export interface SaveProfileBody {
@@ -74,12 +84,19 @@ export interface SaveProfileBody {
   receptionTime: string;
   venue: string;
   location: string;
-  venueCity?: string;
-  venueState?: string;
+  venueCity?: string | null;
+  venueState?: string | null;
+  venueZip?: string | null;
+  ceremonyAtVenue?: boolean;
+  ceremonyVenueName?: string | null;
+  ceremonyAddress?: string | null;
+  ceremonyCity?: string | null;
+  ceremonyState?: string | null;
+  ceremonyZip?: string | null;
   guestCount: number;
   totalBudget: number;
   weddingVibe: string;
-  preferredLanguage?: string;
+  preferredLanguage?: string | null;
   vendorBccEmail?: string | null;
 }
 
@@ -379,7 +396,6 @@ export interface UpdatePaymentBody {
 
 export interface SummarizeEmailBody {
   emailText: string;
-  preferredLanguage?: string;
 }
 
 export interface SummarizeEmailResponse {
