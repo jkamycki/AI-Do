@@ -41,12 +41,11 @@ const ACTION_TOOLS = new Set([
   "add_checklist_item", "update_checklist_item", "toggle_checklist_item", "delete_checklist_item",
   "add_timeline_event", "update_timeline_event", "delete_timeline_event",
   "add_guest", "update_guest", "delete_guest",
-  "add_wedding_party", "update_wedding_party", "delete_wedding_party",
-  "add_hotel_block", "update_hotel_block", "delete_hotel_block",
-  "add_manual_expense", "update_manual_expense", "delete_manual_expense",
-  "add_budget_item", "update_budget_item", "delete_budget_item",
-  "update_budget", "add_budget_payment_log", "delete_budget_payment_log",
-  "update_wedding_profile",
+  "add_party_member", "update_party_member", "delete_party_member",
+  "add_hotel", "update_hotel", "delete_hotel",
+  "add_expense", "update_expense", "delete_expense",
+  "add_budget_item", "update_budget_item", "delete_budget_item", "log_budget_payment",
+  "update_profile",
 ]);
 
 // Build a brief, friendly confirmation from tool results (no extra AI call needed)
@@ -76,22 +75,20 @@ function buildConfirmation(actions: ActionRecord[]): string {
       case "add_guest": lines.push(`✅ Guest added: **${d.name ?? ""}**`); break;
       case "update_guest": lines.push(`✅ Guest updated`); break;
       case "delete_guest": lines.push(`✅ Guest removed`); break;
-      case "add_wedding_party": lines.push(`✅ Wedding party member added`); break;
-      case "update_wedding_party": lines.push(`✅ Wedding party member updated`); break;
-      case "delete_wedding_party": lines.push(`✅ Wedding party member removed`); break;
-      case "add_hotel_block": lines.push(`✅ Hotel block added`); break;
-      case "update_hotel_block": lines.push(`✅ Hotel block updated`); break;
-      case "delete_hotel_block": lines.push(`✅ Hotel block removed`); break;
-      case "add_manual_expense": lines.push(`✅ Expense added: **${d.name ?? ""}**`); break;
-      case "update_manual_expense": lines.push(`✅ Expense updated`); break;
-      case "delete_manual_expense": lines.push(`✅ Expense removed`); break;
+      case "add_party_member": lines.push(`✅ **${d.name ?? "Party member"}** added to wedding party`); break;
+      case "update_party_member": lines.push(`✅ Wedding party member updated`); break;
+      case "delete_party_member": lines.push(`✅ Wedding party member removed`); break;
+      case "add_hotel": lines.push(`✅ Hotel block added: **${d.hotelName ?? ""}**`); break;
+      case "update_hotel": lines.push(`✅ Hotel block updated`); break;
+      case "delete_hotel": lines.push(`✅ Hotel block removed`); break;
+      case "add_expense": lines.push(`✅ Expense added: **${d.name ?? ""}**`); break;
+      case "update_expense": lines.push(`✅ Expense updated`); break;
+      case "delete_expense": lines.push(`✅ Expense removed`); break;
       case "add_budget_item": lines.push(`✅ Budget item added`); break;
       case "update_budget_item": lines.push(`✅ Budget item updated`); break;
       case "delete_budget_item": lines.push(`✅ Budget item removed`); break;
-      case "update_budget": lines.push(`✅ Budget updated`); break;
-      case "add_budget_payment_log": lines.push(`✅ Payment logged`); break;
-      case "delete_budget_payment_log": lines.push(`✅ Payment log removed`); break;
-      case "update_wedding_profile": lines.push(`✅ Profile updated`); break;
+      case "log_budget_payment": lines.push(`✅ Payment logged`); break;
+      case "update_profile": lines.push(`✅ Profile updated`); break;
       default: lines.push(`✅ Done`);
     }
   }
