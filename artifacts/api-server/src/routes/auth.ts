@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { logger } from "../lib/logger";
+import { testSigninLimiter } from "../middlewares/rateLimiter";
 
 const router: IRouter = Router();
 
@@ -36,7 +37,7 @@ router.post("/auth/resend", gone);
 // on. The test email defaults to "test@aidowedding.net" and can be
 // overridden with `TEST_ACCOUNT_EMAIL`.
 // ─────────────────────────────────────────────────────────────────
-router.post("/auth/test-signin", async (_req, res) => {
+router.post("/auth/test-signin", testSigninLimiter, async (_req, res) => {
   if (process.env["ENABLE_TEST_ACCOUNT"] !== "true") {
     res.status(404).json({ error: "Not found" });
     return;

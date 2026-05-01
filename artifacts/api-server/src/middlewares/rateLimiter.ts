@@ -49,6 +49,19 @@ export const authLimiter = rateLimit({
   message: { error: "Too many login attempts. Please try again in 15 minutes." },
 });
 
+// ─── Test account sign-in limiter ─────────────────────────────────────────────
+// /auth/test-signin mints a Clerk sign-in ticket for a fixed test user. When
+// ENABLE_TEST_ACCOUNT=true this is effectively public, so cap it tightly per
+// IP to stop anyone spamming Clerk's Backend API and burning the quota.
+export const testSigninLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { error: "Too many test sign-in attempts. Please wait a minute and try again." },
+});
+
 // ─── Upload URL request limiter ───────────────────────────────────────────────
 // Each call generates a presigned R2 URL — cheap individually but a tight loop
 // could mint thousands of upload slots. 30/min per user is generous for the UI
