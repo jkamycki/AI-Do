@@ -1511,6 +1511,14 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         }
       } else if (status === 504) {
         userMsg = "Aria's reply took too long to come back. Please try again — usually this clears within a few seconds.";
+      } else if (
+        detail.toLowerCase().includes("tool call validation failed") ||
+        detail.toLowerCase().includes("did not match schema")
+      ) {
+        // Groq's small Llama models occasionally pick the wrong tool or
+        // emit numbers as strings, and Groq rejects with a verbose schema
+        // dump. Hide the dump and give the user a clean recovery prompt.
+        userMsg = "Aria got a little tangled up trying to use one of her tools. Try rephrasing your message — for general planning advice, you don't need to mention adding anything.";
       } else if (status === 404 || detail.toLowerCase().includes("model")) {
         userMsg = `AI model not found. (${detail || "no detail"})`;
       } else if (detail) {
