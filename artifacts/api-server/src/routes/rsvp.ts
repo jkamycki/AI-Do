@@ -429,7 +429,7 @@ router.post("/profile/generate-invitation-message", requireAuth, async (req, res
     ].filter(Boolean).join("\n");
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",

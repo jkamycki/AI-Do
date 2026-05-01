@@ -1570,17 +1570,17 @@ router.get("/aria/test", requireAuth, async (req, res) => {
 
   try {
     const result = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       max_tokens: 5,
       messages: [{ role: "user", content: "Say OK" }],
     });
     const reply = result.choices[0]?.message?.content ?? "";
-    return res.json({ ok: true, model: "gpt-4o", reply });
+    return res.json({ ok: true, model: "gpt-4o-mini", reply });
   } catch (err) {
     const e = err as { status?: number; message?: string; error?: { message?: string } };
     return res.json({
       ok: false,
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       status: e?.status,
       error: e?.error?.message || e?.message || String(err),
     });
@@ -1647,7 +1647,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
     while (toolLoops < MAX_TOOL_LOOPS) {
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         max_tokens: 1000,
         messages: convo as Parameters<typeof openai.chat.completions.create>[0]["messages"],
         tools: TOOLS,

@@ -100,7 +100,7 @@ Return ONLY valid JSON:
 Use only the exact guest names from the list. Only create tables that have guests. Distribute guests evenly.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_tokens: 2000,

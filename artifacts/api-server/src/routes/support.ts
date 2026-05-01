@@ -74,7 +74,7 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
       : "";
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-4o-mini",
       max_completion_tokens: 800,
       messages: [
         { role: "system", content: SYSTEM_PROMPT + langInstruction },
