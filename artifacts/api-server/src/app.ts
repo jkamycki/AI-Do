@@ -317,7 +317,34 @@ if (process.env.NODE_ENV === "production") {
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-app.use(cors({ credentials: true, origin: true }));
+const ALLOWED_ORIGINS = new Set([
+  "https://ai-do-aido-orlizb7tn-kamyckijoseph-6037s-projects.vercel.app",
+  "https://aidowedding.net",
+  "https://www.aidowedding.net",
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+]);
+
+app.use(
+  cors({
+    credentials: true,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (server-to-server, curl, Render health checks)
+      if (!origin) return callback(null, true);
+      // Allow any localhost / replit dev origin in development
+      if (
+        process.env.NODE_ENV !== "production" ||
+        origin.includes("localhost") ||
+        origin.includes(".replit.dev") ||
+        origin.includes(".worf.replit.dev") ||
+        origin.includes(".repl.co")
+      ) {
+        return callback(null, true);
+      }
+      if (ALLOWED_ORIGINS.has(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin not allowed — ${origin}`));
+    },
+  }),
+);
 app.use("/api", generalLimiter);
 
 import resendInboundRouter from "./routes/webhooks/resendInbound";

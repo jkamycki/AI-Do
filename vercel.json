@@ -1,12 +1,12 @@
 {
   "framework": null,
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --frozen-lockfile=false",
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://ebcf7fb1-c6cf-483e-9aba-a16ecc917c28-00-3v3k48w5ssp58.worf.replit.dev/api/$1"
+      "destination": "https://ai-do.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",

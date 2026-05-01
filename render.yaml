@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: ai-do-api
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: .
+    buildCommand: pnpm install --frozen-lockfile=false && pnpm --filter @workspace/api-server run build
+    startCommand: pnpm --filter @workspace/api-server run start
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: FRONTEND_URL
+        value: https://ai-do-aido-orlizb7tn-kamyckijoseph-6037s-projects.vercel.app
