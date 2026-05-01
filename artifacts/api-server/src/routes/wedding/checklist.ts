@@ -64,26 +64,20 @@ router.post("/checklist", requireAuth, async (req, res) => {
     const lang = profile.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
     const langInstruction = lang ? `\n\nIMPORTANT: Write all task names, descriptions, and time period labels in ${lang}.` : "";
 
-    const prompt = `Create a comprehensive month-by-month wedding planning checklist for a ${weddingVibe} wedding with ${guestCount} guests, happening in approximately ${monthsUntil} months from today (date: ${weddingDate}).
+    const prompt = `Build a wedding checklist for a ${weddingVibe} wedding with ${guestCount} guests, ${monthsUntil} months out (date: ${weddingDate}).
 
-Generate tasks organized by time period (e.g., "12+ Months Before", "9-12 Months Before", "6-9 Months Before", "3-6 Months Before", "1-3 Months Before", "1 Month Before", "1 Week Before", "Day Before", "Wedding Day"). Only include time periods that are relevant given the ${monthsUntil} months available.
+Group tasks by time period: "12+ Months Before", "9-12 Months Before", "6-9 Months Before", "3-6 Months Before", "1-3 Months Before", "1 Month Before", "1 Week Before", "Day Before", "Wedding Day". Skip periods that don't apply given the ${monthsUntil}-month timeline.
 
-Return ONLY a valid JSON array (no markdown, no explanation) with this structure:
-[
-  {
-    "month": "12+ Months Before",
-    "task": "Book the venue",
-    "description": "Research and secure your ceremony and reception venue early as popular venues book up fast"
-  }
-]
+Return ONLY a JSON array (no markdown):
+[{"month":"12+ Months Before","task":"Book the venue","description":"Short reason why this matters"}]
 
-Include 5-8 tasks per relevant time period. Be specific and actionable. Make tasks appropriate for the style: ${weddingVibe}.${langInstruction}`;
+4-6 tasks per relevant period. Be specific and actionable. Match the ${weddingVibe} style. Keep each description ≤15 words.${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      // Keep total request (prompt + output) under Groq free-tier 6000 TPM.
-      // ~50 tasks × ~70 tokens each ≈ 3500 tokens, 4000 leaves headroom.
-      max_completion_tokens: 4000,
+      // Was 4000. With 4-6 tasks × ~6 periods × ~50 tok = ~1500 tok.
+      // 2500 leaves margin for longer planning windows.
+      max_completion_tokens: 2500,
       messages: [{ role: "user", content: prompt }],
     });
 

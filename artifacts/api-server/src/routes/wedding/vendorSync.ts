@@ -395,25 +395,28 @@ router.post("/vendor/email/summarize", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "emailText is required" });
     }
     const langInstruction = preferredLanguage && preferredLanguage !== "English"
-      ? `\n\nIMPORTANT: Write your entire response (all summary text, key points, and action items) in ${preferredLanguage}.`
+      ? `\n\nIMPORTANT: Write your entire response in ${preferredLanguage}.`
       : "";
-    const prompt = `You are a wedding planning assistant. A couple has received an email from a vendor and needs help understanding it.
 
-Summarize the following vendor email clearly and concisely. Extract key information like pricing, availability, terms, and next steps.
+    // Truncate vendor email input to ~4K chars (~1K tok). Long forwarded
+    // threads with quoted history were burning 3-5K input tokens per call.
+    const MAX_EMAIL_CHARS = 4000;
+    const trimmedEmail = emailText.length > MAX_EMAIL_CHARS
+      ? emailText.slice(0, MAX_EMAIL_CHARS) + "\n\n[…truncated…]"
+      : emailText;
+
+    const prompt = `Summarize this vendor email for a couple planning their wedding. Extract pricing, availability, terms, next steps.
 
 Email:
-${emailText}
+${trimmedEmail}
 
-Return ONLY valid JSON (no markdown) with this structure:
-{
-  "summary": "A 2-3 sentence plain English summary of what this email says",
-  "keyPoints": ["Key point 1", "Key point 2", "Key point 3"],
-  "actionItems": ["Action item 1", "Action item 2"]
-}${langInstruction}`;
+Return ONLY this JSON (no markdown):
+{"summary":"2-3 sentence plain summary","keyPoints":["..."],"actionItems":["..."]}${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      max_completion_tokens: 2048,
+      // Was 2048. Summary JSON ≈ 300-500 tok; 800 covers verbose vendor emails.
+      max_completion_tokens: 800,
       messages: [{ role: "user", content: prompt }],
     });
 

@@ -103,7 +103,9 @@ Use only the exact guest names from the list. Only create tables that have guest
       model: getModel(),
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
-      max_tokens: 2000,
+      // Was 2000. JSON output is ~tableCount × 80 tok + insights/warnings.
+      // Even a 20-table chart fits in 1500 tok; bigger weddings will too.
+      max_tokens: 1500,
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";

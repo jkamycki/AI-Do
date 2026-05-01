@@ -288,7 +288,8 @@ Write a friendly, professional reply the couple can send. Keep it concise (2-4 s
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      max_completion_tokens: 1000,
+      // Was 1000. 2-4 short paragraphs ≈ 300-500 tok; 600 fits comfortably.
+      max_completion_tokens: 600,
       messages: [{ role: "user", content: prompt }],
     });
     const draft = completion.choices[0]?.message?.content?.trim() ?? "";

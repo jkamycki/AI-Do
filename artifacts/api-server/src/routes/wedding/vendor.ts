@@ -40,7 +40,9 @@ Return ONLY valid JSON (no markdown) with this structure:
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      max_completion_tokens: 1500,
+      // Was 1500. Single vendor email JSON ≈ 400-600 tok; 900 leaves room
+      // for negotiation/follow-up emails that run longer.
+      max_completion_tokens: 900,
       messages: [{ role: "user", content: prompt }],
       // Force structured output so Llama-family models don't wrap in markdown
       // or prepend an explanation, which would make JSON.parse fail and the

@@ -168,9 +168,9 @@ Include these categories: Venue, Catering & Bar, Photography, Videography, Flora
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      // Budget JSON is ~14 categories × ~80 tokens + suggestions ≈ 1500 tok.
-      // 2500 leaves headroom; 8192 was guaranteed-fail on Groq's 6000 TPM cap.
-      max_completion_tokens: 2500,
+      // Was 2500. 14 categories × ~70 tok + ~200 tok of suggestions ≈ 1180.
+      // 1500 fits comfortably and keeps the request well under TPM cap.
+      max_completion_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
     });
 

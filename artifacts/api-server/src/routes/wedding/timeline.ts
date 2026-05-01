@@ -103,9 +103,9 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      // Keep total request (prompt + output) under Groq free-tier 6000 TPM.
-      // ~30 events × ~110 tokens each ≈ 3300 tokens, 4000 leaves headroom.
-      max_completion_tokens: 4000,
+      // Was 4000. Most weddings need 15-22 events × ~90 tok = ~1800 tok.
+      // 2500 covers extra-long days while halving the per-call TPD spend.
+      max_completion_tokens: 2500,
       messages: [{ role: "user", content: prompt }],
     });
 

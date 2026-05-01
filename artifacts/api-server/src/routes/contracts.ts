@@ -111,37 +111,34 @@ router.post(
       });
     }
 
-    const prompt = `You are an expert wedding contract attorney reviewing a vendor contract for a couple. Analyze the following contract text and provide a structured risk assessment in JSON format.
+    // Truncate to ~7K chars (~1.7K tokens) using a HEAD + TAIL strategy.
+    // Critical clauses (cancellation, payment terms, liability, force majeure,
+    // signatures) almost always appear in the FIRST or LAST sections of a
+    // contract; the middle is usually scope-of-work boilerplate. Keeping
+    // 4K head + 3K tail preserves both. This was the single biggest TPD
+    // waste before — 12-page PDFs were sending 8-10K input tokens per call.
+    const HEAD_CHARS = 4000;
+    const TAIL_CHARS = 3000;
+    const trimmedContractText = extractedText.length > HEAD_CHARS + TAIL_CHARS + 200
+      ? `${extractedText.slice(0, HEAD_CHARS)}\n\n[…middle of contract omitted for length; full text kept on file…]\n\n${extractedText.slice(-TAIL_CHARS)}`
+      : extractedText;
 
-CONTRACT TEXT:
-${extractedText}
+    const prompt = `You are a wedding contract attorney. Analyze this vendor contract and return a JSON risk assessment.
 
-Return ONLY valid JSON in this exact format:
-{
-  "overallRiskLevel": "low" | "medium" | "high",
-  "vendorType": "string (e.g., Photographer, Caterer, Venue, Florist, DJ, etc.)",
-  "summary": "2-3 sentence plain-language summary of what this contract covers",
-  "redFlags": [
-    { "severity": "high" | "medium" | "low", "title": "string", "detail": "string", "recommendation": "string" }
-  ],
-  "keyTerms": [
-    { "label": "string", "value": "string" }
-  ],
-  "cancellationPolicy": "string describing cancellation terms or 'Not specified'",
-  "paymentTerms": "string describing payment schedule or 'Not specified'",
-  "liabilityNotes": "string describing liability clauses or 'Not specified'",
-  "positives": ["string"],
-  "missingClauses": ["string"],
-  "negotiationTips": ["string"]
-}
+CONTRACT:
+${trimmedContractText}
 
-Be thorough, specific, and couple-friendly. Focus on clauses that could financially harm the couple or cause day-of issues.`;
+Return ONLY this JSON shape:
+{"overallRiskLevel":"low|medium|high","vendorType":"string","summary":"2-3 sentences","redFlags":[{"severity":"high|medium|low","title":"string","detail":"string","recommendation":"string"}],"keyTerms":[{"label":"string","value":"string"}],"cancellationPolicy":"string or 'Not specified'","paymentTerms":"string or 'Not specified'","liabilityNotes":"string or 'Not specified'","positives":["string"],"missingClauses":["string"],"negotiationTips":["string"]}
+
+Focus on clauses that could financially harm the couple or cause day-of issues.`;
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
-      max_tokens: 2000,
+      // Was 2000. Real analyses fit in ~1200 tokens; 1500 leaves margin.
+      max_tokens: 1500,
     });
 
     const analysisRaw = completion.choices[0]?.message?.content ?? "{}";
@@ -216,26 +213,17 @@ router.post("/contracts/:id/negotiate", requireAuth, async (req, res) => {
       .map((f, i) => `${i + 1}. [${f.severity.toUpperCase()}] ${f.title}: ${f.detail}. Recommendation: ${f.recommendation}`)
       .join("\n");
 
-    const prompt = `You are a professional wedding planner helping a couple negotiate contract terms with their ${vendorType}.
-
-The couple's contract has the following red flags identified by an attorney review:
+    const prompt = `You're a wedding planner helping a couple negotiate with their ${vendorType}. Their contract review found these red flags:
 
 ${flagsSummary}
 
-Write a professional, polite, and firm negotiation email from the couple to the vendor. The email should:
-- Open with appreciation for their services
-- Address each red flag clearly but diplomatically, requesting specific changes
-- Be assertive but not aggressive — assume good faith from the vendor
-- Close with a request for a revised contract and a positive tone
-- Sound like a real person wrote it, not a legal document
-- Be ready to copy and paste — use [Your Names] and [Vendor Name] as placeholders
-
-Return ONLY the email body text, no subject line, no extra explanation.${langInstruction}`;
+Write a polite, firm negotiation email from the couple. Open with appreciation, address each flag diplomatically requesting specific changes, sound like a real person not a lawyer, close warmly. Use [Your Names] and [Vendor Name] as placeholders. Return ONLY the email body — no subject line, no extras.${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 1200,
+      // Was 1200. Negotiation emails are 200-400 words ≈ 600 tokens; 800 leaves room for longer flag lists.
+      max_tokens: 800,
     });
 
     const emailText = completion.choices[0]?.message?.content?.trim() ?? "";

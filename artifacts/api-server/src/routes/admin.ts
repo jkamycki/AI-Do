@@ -720,22 +720,19 @@ router.post("/admin/marketing/generate", requireAuth, requireAdmin, async (req, 
       messages: [
         {
           role: "system",
-          content: `You are the Marketing Outreach Tool inside the A.IDO Operations Center. You write warm, human, founder-led marketing emails to invite people to join A.IDO, an AI wedding planning assistant. Keep emails SHORT (under 150 words total), friendly, non-salesy, and focused on genuine value. Always sign off as Joseph, Founder of A.IDO.`,
+          content: `You're the Marketing Outreach Tool inside A.IDO Operations Center. Write warm, human, founder-led marketing emails inviting people to A.IDO (AI wedding planning). SHORT (under 150 words), friendly, non-salesy. Sign off as Joseph, Founder of A.IDO.`,
         },
         {
           role: "user",
-          content: `Generate a fresh marketing outreach email. Include:
-- A compelling subject line
-- Email body under 150 words that:
-  • Highlights 2-3 clear benefits of A.IDO (timelines, vendor management, budgeting, AI assistance)
-  • Has a clear CTA to sign up/join the beta at https://www.aidowedding.net
-  • Sounds like a real person wrote it, not a marketing department
-  • Ends signed by Joseph, Founder of A.IDO
+          content: `Generate a fresh outreach email. Include a compelling subject and body under 150 words that highlights 2-3 A.IDO benefits (timelines, vendors, budget, AI), has a clear CTA to https://www.aidowedding.net, sounds human, and is signed by Joseph.
 
-Return ONLY valid JSON (no markdown, no code block): { "subject": "...", "body": "..." }`,
+Return ONLY JSON: {"subject":"...","body":"..."}`,
         },
       ],
       temperature: 0.9,
+      // PREVIOUSLY UNCAPPED — defaulted to model max, which on llama-3.1-8b
+      // is huge. 150-word email ≈ 220 tok; 400 is safe ceiling.
+      max_completion_tokens: 400,
     });
 
     const raw = completion.choices[0]?.message?.content ?? "";
