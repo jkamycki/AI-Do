@@ -4,7 +4,7 @@ import { ClerkProvider, useClerk, useAuth, useUser, useSignIn, useSignUp, Show, 
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 import { setFetchTokenGetter, authFetch } from "@/lib/authFetch";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
@@ -44,6 +44,8 @@ import VideoTemplate from "@/components/video/VideoTemplate";
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+setBaseUrl(import.meta.env.VITE_API_URL || null);
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
