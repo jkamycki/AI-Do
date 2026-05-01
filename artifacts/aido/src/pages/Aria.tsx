@@ -355,6 +355,21 @@ export default function Aria() {
     abortRef.current = new AbortController();
     const timeoutId = setTimeout(() => abortRef.current?.abort(), 90_000);
 
+    // Hoisted so the catch block can also patch the bubble — keeps any
+    // network/abort error visible inline instead of vanishing the message.
+    const updatePlaceholder = (patch: Partial<Message>) => {
+      setConversations(prev =>
+        prev.map(c => {
+          if (c.id !== convoId) return c;
+          return {
+            ...c,
+            updatedAt: Date.now(),
+            messages: c.messages.map(m => (m.id === placeholder.id ? { ...m, ...patch } : m)),
+          };
+        })
+      );
+    };
+
     try {
       const res = await authFetch(`${API}/api/aria/chat`, {
         method: "POST",
@@ -373,19 +388,6 @@ export default function Aria() {
       let buffer = "";
       let accumulated = "";
       const liveActions: ActionLog[] = [];
-
-      const updatePlaceholder = (patch: Partial<Message>) => {
-        setConversations(prev =>
-          prev.map(c => {
-            if (c.id !== convoId) return c;
-            return {
-              ...c,
-              updatedAt: Date.now(),
-              messages: c.messages.map(m => (m.id === placeholder.id ? { ...m, ...patch } : m)),
-            };
-          })
-        );
-      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -429,7 +431,19 @@ export default function Aria() {
           } else if (parsed.type === "done") {
             updatePlaceholder({ streaming: false });
           } else if (parsed.type === "error") {
-            throw new Error((parsed.error as string) || "Aria encountered an error. Please try again.");
+            // Server-emitted error (rate limit, timeout, model error, etc).
+            // Render it INSIDE the chat bubble instead of throwing & hiding
+            // it behind a toast — toasts disappear and removing the bubble
+            // makes Aria look like she "ghosted" the user. Showing the
+            // message inline lets the user read what went wrong and try
+            // again with context.
+            const errMsg = (parsed.error as string) || "Aria encountered an error. Please try again.";
+            accumulated = errMsg;
+            updatePlaceholder({ content: errMsg, streaming: false });
+            // Skip the rest of the stream cleanly
+            try { await reader.cancel(); } catch {}
+            refreshAfterActions(liveActions);
+            return;
           }
         }
       }
@@ -438,20 +452,22 @@ export default function Aria() {
       refreshAfterActions(liveActions);
     } catch (err) {
       if ((err as Error).name === "AbortError") {
-        updateActiveMessages(msgs => msgs.filter(m => m.id !== placeholder.id));
-        toast({
-          title: "Aria timed out",
-          description: "The server took too long to respond. Try again — it may just be warming up.",
-          variant: "destructive",
+        // Replace the placeholder with the timeout message inline so the
+        // user keeps their question visible above and can retry.
+        updatePlaceholder({
+          content: "Aria's reply took too long. The server may just be warming up — please try again.",
+          streaming: false,
         });
         return;
       }
-      toast({
-        title: "Aria is unavailable",
-        description: err instanceof Error ? err.message : "Please try again.",
-        variant: "destructive",
+      // Network or transport failure — show inline so the user can read
+      // and retry. Bubble stays visible above their original question.
+      updatePlaceholder({
+        content: err instanceof Error && err.message
+          ? `Aria couldn't respond: ${err.message}. Please try again.`
+          : "Aria couldn't respond right now. Please try again.",
+        streaming: false,
       });
-      updateActiveMessages(msgs => msgs.filter(m => m.id !== placeholder.id));
     } finally {
       clearTimeout(timeoutId);
       setStreaming(false);

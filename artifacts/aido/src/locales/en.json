@@ -326,12 +326,12 @@
     "keyboard_hint": "Press Enter to send · Shift+Enter for new line · Conversation history saved automatically",
     "delete_confirm": "Delete this conversation? This can't be undone.",
     "open_history": "Open conversation history",
-    "starter_1": "Add a new vendor to my planning list",
-    "starter_2": "Give me a quick summary of where I am in my planning",
-    "starter_3": "Add 'Book hair & makeup trial' to my 6 months out checklist",
+    "starter_1": "Add a vendor to my vendor list for me",
+    "starter_2": "What questions should I ask a photographer before booking?",
+    "starter_3": "Add a new expense for me",
     "starter_4": "What should I prioritize 6 months before my wedding?",
-    "starter_5": "What questions should I ask a photographer before booking?",
-    "starter_6": "Help me draft a day-of timeline"
+    "starter_5": "How much is left in my budget to spend?",
+    "starter_6": "Add a new guest for me"
   },
   "budget": {
     "title": "Budget Tracker",
