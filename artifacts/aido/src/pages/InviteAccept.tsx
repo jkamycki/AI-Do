@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { apiFetch, authFetch } from "@/lib/authFetch";
 import { useRoute, useLocation } from "wouter";
-import { useAuth, useUser, useSignIn, useSignUp } from "@clerk/react";
+import { useAuth, useUser, useClerk } from "@clerk/react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Button } from "@/components/ui/button";
@@ -42,9 +42,51 @@ export default function InviteAcceptPage() {
 
   const { isSignedIn, userId } = useAuth();
   const { user } = useUser();
-  const { signIn, isLoaded: signInLoaded } = useSignIn();
-  const { signUp, isLoaded: signUpLoaded } = useSignUp();
+  const clerk = useClerk();
   const { setActiveWorkspace } = useWorkspace();
+
+  function generateRandomPassword(): string {
+    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lower = "abcdefghijklmnopqrstuvwxyz";
+    const digits = "0123456789";
+    const symbols = "!@#$%^&*-_=+";
+    const all = upper + lower + digits + symbols;
+    function pick(set: string): string {
+      const buf = new Uint32Array(1);
+      crypto.getRandomValues(buf);
+      return set[buf[0] % set.length];
+    }
+    const required = [pick(upper), pick(lower), pick(digits), pick(symbols)];
+    const fillCount = 32 - required.length;
+    const fill = new Uint32Array(fillCount);
+    crypto.getRandomValues(fill);
+    const chars = required.concat(Array.from(fill, (n) => all[n % all.length]));
+    const shuffleBuf = new Uint32Array(chars.length);
+    crypto.getRandomValues(shuffleBuf);
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = shuffleBuf[i] % (i + 1);
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join("");
+  }
+
+  async function waitForSignUpClient() {
+    const start = Date.now();
+    while (Date.now() - start < 8000) {
+      if (clerk.loaded && clerk.client?.signUp) return clerk.client.signUp;
+      await new Promise((res) => setTimeout(res, 80));
+    }
+    return clerk.client?.signUp ?? null;
+  }
+
+  async function waitForSignInClient() {
+    const start = Date.now();
+    while (Date.now() - start < 8000) {
+      if (clerk.loaded && clerk.client?.signIn) return clerk.client.signIn;
+      await new Promise((res) => setTimeout(res, 80));
+    }
+    return clerk.client?.signIn ?? null;
+  }
 
   // Auth state
   const [authStep, setAuthStep] = useState<AuthStep>("email");
@@ -152,7 +194,6 @@ export default function InviteAcceptPage() {
   // ── Passwordless email submit ─────────────────────────────────────────────
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!signUpLoaded || !signInLoaded || !signUp || !signIn) return;
     const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail) return;
 
@@ -160,46 +201,57 @@ export default function InviteAcceptPage() {
     setAuthError(null);
 
     try {
-      // Try sign-up first — works for new users
-      await signUp.create({ emailAddress: trimmedEmail });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setAuthMode("signup");
-      setAuthStep("code");
-    } catch (signUpErr: any) {
-      const errCode: string = signUpErr?.errors?.[0]?.code ?? "";
-      const isExisting = errCode === "form_identifier_exists" || errCode.includes("exists");
+      const liveSignUp = await waitForSignUpClient();
+      if (!liveSignUp) {
+        setAuthError("Auth is still loading. Please try again in a moment.");
+        return;
+      }
 
-      if (isExisting) {
-        // User already has an account — sign them in with email code
-        try {
-          const si = await signIn.create({ identifier: trimmedEmail });
+      // Try sign-up first — works for new users
+      try {
+        await liveSignUp.create({ emailAddress: trimmedEmail, password: generateRandomPassword() });
+        await liveSignUp.prepareEmailAddressVerification({ strategy: "email_code" });
+        setAuthMode("signup");
+        setAuthStep("code");
+      } catch (signUpErr: any) {
+        const errCode: string = signUpErr?.errors?.[0]?.code ?? "";
+        const isExisting = errCode === "form_identifier_exists" || errCode.includes("exists");
+
+        if (isExisting) {
+          // User already has an account — sign them in with email code
+          const liveSignIn = await waitForSignInClient();
+          if (!liveSignIn) {
+            setAuthError("Auth is still loading. Please try again in a moment.");
+            return;
+          }
+          const si = await liveSignIn.create({ identifier: trimmedEmail });
           const factor = (si.supportedFirstFactors as any[] | undefined)?.find(
             (f: any) => f.strategy === "email_code"
           );
           if (!factor) {
             throw new Error("Passwordless sign-in is not enabled on this account. Please contact support.");
           }
-          await signIn.prepareFirstFactor({
+          await liveSignIn.prepareFirstFactor({
             strategy: "email_code",
             emailAddressId: factor.emailAddressId,
           });
           setSignInEmailAddressId(factor.emailAddressId);
           setAuthMode("signin");
           setAuthStep("code");
-        } catch (signInErr: any) {
+        } else {
           setAuthError(
-            signInErr?.errors?.[0]?.longMessage ??
-            signInErr?.message ??
+            signUpErr?.errors?.[0]?.longMessage ??
+            signUpErr?.message ??
             "Could not send a verification code. Please try again."
           );
         }
-      } else {
-        setAuthError(
-          signUpErr?.errors?.[0]?.longMessage ??
-          signUpErr?.message ??
-          "Could not send a verification code. Please try again."
-        );
       }
+    } catch (err: any) {
+      setAuthError(
+        err?.errors?.[0]?.longMessage ??
+        err?.message ??
+        "Could not send a verification code. Please try again."
+      );
     } finally {
       setIsSending(false);
     }
@@ -207,21 +259,27 @@ export default function InviteAcceptPage() {
 
   // ── OTP verification ──────────────────────────────────────────────────────
   async function handleOtpVerify(otpValue: string) {
-    if (otpValue.length < 6 || !signUp || !signIn) return;
+    if (otpValue.length < 6) return;
     setIsVerifying(true);
     setAuthError(null);
 
     try {
       let result: any;
       if (authMode === "signup") {
-        result = await signUp.attemptEmailAddressVerification({ code: otpValue });
+        const liveSignUp = await waitForSignUpClient();
+        if (!liveSignUp) throw new Error("Auth is still loading. Please try again.");
+        result = await liveSignUp.attemptEmailAddressVerification({ code: otpValue });
       } else {
-        result = await signIn.attemptFirstFactor({ strategy: "email_code", code: otpValue });
+        const liveSignIn = await waitForSignInClient();
+        if (!liveSignIn) throw new Error("Auth is still loading. Please try again.");
+        result = await liveSignIn.attemptFirstFactor({ strategy: "email_code", code: otpValue });
       }
 
-      if (result.status === "complete") {
-        // Mark pending — the useEffect above will call acceptMutation once
-        // Clerk updates isSignedIn to true in the next render cycle.
+      if (result.status === "complete" && result.createdSessionId && clerk.setActive) {
+        await clerk.setActive({ session: result.createdSessionId });
+        setPendingAccept(true);
+      } else if (result.status === "complete") {
+        // Session already active (rare fallback)
         setPendingAccept(true);
       } else {
         throw new Error("Verification incomplete. Please try again.");
@@ -248,17 +306,15 @@ export default function InviteAcceptPage() {
 
   // ── Resend code ───────────────────────────────────────────────────────────
   async function handleResend() {
-    if (!signUp || !signIn) return;
     setAuthError(null);
     setOtp("");
     try {
       if (authMode === "signup") {
-        await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+        const liveSignUp = await waitForSignUpClient();
+        if (liveSignUp) await liveSignUp.prepareEmailAddressVerification({ strategy: "email_code" });
       } else if (signInEmailAddressId) {
-        await signIn.prepareFirstFactor({
-          strategy: "email_code",
-          emailAddressId: signInEmailAddressId,
-        });
+        const liveSignIn = await waitForSignInClient();
+        if (liveSignIn) await liveSignIn.prepareFirstFactor({ strategy: "email_code", emailAddressId: signInEmailAddressId });
       }
     } catch {
       setAuthError("Could not resend code. Please try again.");
