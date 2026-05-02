@@ -59,6 +59,7 @@ export interface WeddingProfile {
   venueCity?: string | null;
   venueState?: string | null;
   venueZip?: string | null;
+  venueCountry?: string | null;
   ceremonyAtVenue: boolean;
   ceremonyVenueName?: string | null;
   ceremonyAddress?: string | null;
@@ -87,6 +88,7 @@ export interface SaveProfileBody {
   venueCity?: string | null;
   venueState?: string | null;
   venueZip?: string | null;
+  venueCountry?: string | null;
   ceremonyAtVenue?: boolean;
   ceremonyVenueName?: string | null;
   ceremonyAddress?: string | null;

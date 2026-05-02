@@ -20,6 +20,9 @@ import { CalendarIcon, Save, RotateCcw, ImageIcon, Upload, Trash2, Loader2, Spar
 import { useTranslation } from "react-i18next";
 import { useUpload } from "@workspace/object-storage-web";
 import { InvitationCropDialog } from "@/components/InvitationCropDialog";
+import { COUNTRIES } from "@/lib/countries";
+
+const NO_COUNTRY = "__none__";
 
 const LANGUAGES = [
   "English", "Spanish", "French", "German", "Italian", "Portuguese",
@@ -38,6 +41,7 @@ const profileSchema = z.object({
   venueCity: z.string().optional().default(""),
   venueState: z.string().optional().default(""),
   venueZip: z.string().optional().default(""),
+  venueCountry: z.string().optional().default(""),
   ceremonyAtVenue: z.boolean().default(true),
   ceremonyVenueName: z.string().optional().default(""),
   ceremonyAddress: z.string().optional().default(""),
@@ -80,6 +84,7 @@ export default function Profile() {
       venueCity: "",
       venueState: "",
       venueZip: "",
+      venueCountry: "",
       ceremonyAtVenue: true,
       ceremonyVenueName: "",
       ceremonyAddress: "",
@@ -106,6 +111,7 @@ export default function Profile() {
         venueCity: profile.venueCity ?? "",
         venueState: profile.venueState ?? "",
         venueZip: profile.venueZip ?? "",
+        venueCountry: (profile as { venueCountry?: string | null }).venueCountry ?? "",
         ceremonyAtVenue: profile.ceremonyAtVenue ?? true,
         ceremonyVenueName: profile.ceremonyVenueName ?? "",
         ceremonyAddress: profile.ceremonyAddress ?? "",
@@ -333,6 +339,33 @@ export default function Profile() {
                 />
               </div>
 
+              <FormField
+                control={form.control}
+                name="venueCountry"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("guests.country")}</FormLabel>
+                    <Select
+                      value={field.value ? field.value : NO_COUNTRY}
+                      onValueChange={(v) => field.onChange(v === NO_COUNTRY ? "" : v)}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="bg-background" data-testid="select-venue-country">
+                          <SelectValue placeholder={t("guests.country_placeholder")} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="max-h-72">
+                        <SelectItem value={NO_COUNTRY}>{t("guests.country_none")}</SelectItem>
+                        {COUNTRIES.map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <div className="rounded-lg border border-primary/10 bg-primary/5 p-5 space-y-5">
                 <FormField
                   control={form.control}
@@ -512,6 +545,7 @@ export default function Profile() {
                     venueCity: "",
                     venueState: "",
                     venueZip: "",
+                    venueCountry: "",
                     ceremonyAtVenue: true,
                     ceremonyVenueName: "",
                     ceremonyAddress: "",

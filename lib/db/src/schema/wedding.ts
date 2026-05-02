@@ -15,6 +15,7 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   venueCity: text("venue_city"),
   venueState: text("venue_state"),
   venueZip: text("venue_zip"),
+  venueCountry: text("venue_country"),
   ceremonyAtVenue: boolean("ceremony_at_venue").notNull().default(true),
   ceremonyVenueName: text("ceremony_venue_name"),
   ceremonyAddress: text("ceremony_address"),

@@ -1020,6 +1020,9 @@ components:
         venueZip:
           type: string
           nullable: true
+        venueCountry:
+          type: string
+          nullable: true
         ceremonyAtVenue:
           type: boolean
         ceremonyVenueName:
@@ -1098,6 +1101,9 @@ components:
           type: string
           nullable: true
         venueZip:
+          type: string
+          nullable: true
+        venueCountry:
           type: string
           nullable: true
         ceremonyAtVenue:

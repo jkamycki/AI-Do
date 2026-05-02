@@ -40,7 +40,8 @@ router.post("/profile", requireAuth, async (req, res) => {
   try {
     const {
       partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
-      venue, location, venueCity, venueState, venueZip, guestCount, totalBudget, weddingVibe,
+      venue, location, venueCity, venueState, venueZip, venueCountry,
+      guestCount, totalBudget, weddingVibe,
       preferredLanguage, vendorBccEmail,
       ceremonyAtVenue, ceremonyVenueName, ceremonyAddress, ceremonyCity, ceremonyState, ceremonyZip,
     } = req.body;
@@ -81,7 +82,7 @@ router.post("/profile", requireAuth, async (req, res) => {
         .set({
           partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
           venue, location, venueCity: venueCity ?? null, venueState: venueState ?? null,
-          venueZip: venueZip ?? null,
+          venueZip: venueZip ?? null, venueCountry: venueCountry ?? null,
           ...ceremonyFields,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           preferredLanguage: preferredLanguage ?? "English",
@@ -103,7 +104,7 @@ router.post("/profile", requireAuth, async (req, res) => {
           userId: req.userId,
           partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
           venue, location, venueCity: venueCity ?? null, venueState: venueState ?? null,
-          venueZip: venueZip ?? null,
+          venueZip: venueZip ?? null, venueCountry: venueCountry ?? null,
           ...ceremonyFields,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           preferredLanguage: preferredLanguage ?? "English",
