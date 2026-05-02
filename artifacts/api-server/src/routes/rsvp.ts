@@ -125,6 +125,66 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         ? `<p style="font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:15px;line-height:1.8;margin:0 0 28px;font-style:italic;">&ldquo;${profile.invitationMessage}&rdquo;</p>`
         : "";
 
+      const formatTime12h = (timeStr: string | null | undefined): string | null => {
+        if (!timeStr) return null;
+        const [h, m] = timeStr.split(":").map(Number);
+        if (Number.isNaN(h) || Number.isNaN(m)) return timeStr;
+        const ampm = h >= 12 ? "PM" : "AM";
+        const h12 = h % 12 || 12;
+        return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+      };
+
+      const ceremonyTimeStr = formatTime12h(profile.ceremonyTime);
+      const receptionTimeStr = formatTime12h(profile.receptionTime);
+
+      const receptionCityStateZip = [
+        profile.venueCity,
+        [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
+      ].filter(Boolean).join(", ");
+
+      const ceremonyCityStateZip = [
+        profile.ceremonyCity,
+        [profile.ceremonyState, profile.ceremonyZip].filter(Boolean).join(" "),
+      ].filter(Boolean).join(", ");
+
+      const hasSeparateCeremony = !profile.ceremonyAtVenue && !!(
+        profile.ceremonyVenueName || profile.ceremonyAddress || profile.ceremonyCity
+      );
+
+      const eventDetailsBlock = hasSeparateCeremony
+        ? `
+        <tr>
+          <td style="padding:18px 32px 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td width="50%" valign="top" style="padding:12px 8px;background:#faf7f4;border-radius:4px;text-align:center;">
+                  <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;color:#c9a96e;font-size:9px;letter-spacing:3px;text-transform:uppercase;">Ceremony</p>
+                  ${ceremonyTimeStr ? `<p style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;color:#3d2e22;font-size:15px;font-weight:bold;">${ceremonyTimeStr}</p>` : ""}
+                  ${profile.ceremonyVenueName ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#3d2e22;font-size:11px;font-weight:bold;">${profile.ceremonyVenueName}</p>` : ""}
+                  ${profile.ceremonyAddress ? `<p style="margin:2px 0 0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:10px;">${profile.ceremonyAddress}</p>` : ""}
+                  ${ceremonyCityStateZip ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:10px;">${ceremonyCityStateZip}</p>` : ""}
+                </td>
+                <td width="8" style="font-size:1px;line-height:1px;">&nbsp;</td>
+                <td width="50%" valign="top" style="padding:12px 8px;background:#faf7f4;border-radius:4px;text-align:center;">
+                  <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;color:#c9a96e;font-size:9px;letter-spacing:3px;text-transform:uppercase;">Reception</p>
+                  ${receptionTimeStr ? `<p style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;color:#3d2e22;font-size:15px;font-weight:bold;">${receptionTimeStr}</p>` : ""}
+                  ${profile.venue ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#3d2e22;font-size:11px;font-weight:bold;">${profile.venue}</p>` : ""}
+                  ${profile.location ? `<p style="margin:2px 0 0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:10px;">${profile.location}</p>` : ""}
+                  ${receptionCityStateZip ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:10px;">${receptionCityStateZip}</p>` : ""}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>`
+        : `
+        <tr>
+          <td style="padding:8px 48px 0;text-align:center;">
+            ${profile.location ? `<p style="margin:4px 0 0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:11px;">${profile.location}</p>` : ""}
+            ${receptionCityStateZip ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:11px;">${receptionCityStateZip}</p>` : ""}
+            ${(ceremonyTimeStr || receptionTimeStr) ? `<p style="margin:10px 0 0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:12px;">${[ceremonyTimeStr ? `Ceremony ${ceremonyTimeStr}` : null, receptionTimeStr ? `Reception ${receptionTimeStr}` : null].filter(Boolean).join(" &nbsp;&bull;&nbsp; ")}</p>` : ""}
+          </td>
+        </tr>`;
+
       const html = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -177,9 +237,12 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         <tr>
           <td style="padding:18px 48px 0;text-align:center;">
             ${weddingDateStr ? `<p style="margin:0 0 4px;font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:15px;">${weddingDateStr}</p>` : ""}
-            ${profile.venue ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:12px;letter-spacing:1px;">${profile.venue}</p>` : ""}
+            ${profile.venue && !hasSeparateCeremony ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:12px;letter-spacing:1px;">${profile.venue}</p>` : ""}
           </td>
         </tr>
+
+        <!-- Event details: ceremony / reception with times + addresses -->
+        ${eventDetailsBlock}
 
         <!-- Body copy -->
         <tr>
@@ -323,6 +386,14 @@ router.get("/rsvp/:token", async (req, res) => {
       venueCity: profile?.venueCity ?? null,
       venueState: profile?.venueState ?? null,
       venueZip: profile?.venueZip ?? null,
+      ceremonyTime: profile?.ceremonyTime ?? null,
+      receptionTime: profile?.receptionTime ?? null,
+      ceremonyAtVenue: profile?.ceremonyAtVenue ?? true,
+      ceremonyVenueName: profile?.ceremonyVenueName ?? null,
+      ceremonyAddress: profile?.ceremonyAddress ?? null,
+      ceremonyCity: profile?.ceremonyCity ?? null,
+      ceremonyState: profile?.ceremonyState ?? null,
+      ceremonyZip: profile?.ceremonyZip ?? null,
       currentStatus: guest.rsvpStatus,
       hasPhoto: !!(profile?.invitationPhotoUrl),
       invitationMessage: profile?.invitationMessage ?? null,

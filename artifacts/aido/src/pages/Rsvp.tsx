@@ -51,9 +51,26 @@ interface RsvpInfo {
   venueCity: string | null;
   venueState: string | null;
   venueZip: string | null;
+  ceremonyTime: string | null;
+  receptionTime: string | null;
+  ceremonyAtVenue: boolean;
+  ceremonyVenueName: string | null;
+  ceremonyAddress: string | null;
+  ceremonyCity: string | null;
+  ceremonyState: string | null;
+  ceremonyZip: string | null;
   currentStatus: string;
   hasPhoto: boolean;
   invitationMessage: string | null;
+}
+
+function formatTime(timeStr: string | null | undefined) {
+  if (!timeStr) return null;
+  const [h, m] = timeStr.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return timeStr;
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
 export default function Rsvp() {
@@ -123,11 +140,25 @@ export default function Rsvp() {
 
   const mealLabel = (val?: string) => MEAL_OPTIONS.find(o => o.value === val)?.label ?? val ?? "—";
 
-  const cityStateZip = [
+  const receptionCityStateZip = [
     info?.venueCity,
     [info?.venueState, info?.venueZip].filter(Boolean).join(" "),
   ].filter(Boolean).join(", ");
-  const addressLine1 = info?.venueAddress ?? "";
+  const receptionAddressLine1 = info?.venueAddress ?? "";
+
+  const ceremonyCityStateZip = [
+    info?.ceremonyCity,
+    [info?.ceremonyState, info?.ceremonyZip].filter(Boolean).join(" "),
+  ].filter(Boolean).join(", ");
+  const ceremonyAddressLine1 = info?.ceremonyAddress ?? "";
+
+  const ceremonyTimeStr = formatTime(info?.ceremonyTime);
+  const receptionTimeStr = formatTime(info?.receptionTime);
+
+  const hasSeparateCeremony = !!(
+    info && !info.ceremonyAtVenue &&
+    (info.ceremonyVenueName || info.ceremonyAddress || info.ceremonyCity)
+  );
 
   const blobToDataUrl = (blob: Blob): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -219,28 +250,86 @@ export default function Rsvp() {
         y += 22;
       }
 
-      if (info.venue) {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(12);
-        doc.setTextColor(WH_R, WH_G, WH_B);
-        doc.text(info.venue, PAGE_W / 2, y, { align: "center" });
-        y += 16;
-      }
+      const drawEventBlock = (
+        label: string | null,
+        time: string | null,
+        venueName: string | null,
+        addr: string,
+        cityStateZip: string,
+      ) => {
+        if (label) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          doc.setTextColor(GD_R, GD_G, GD_B);
+          doc.text(label, PAGE_W / 2, y, { align: "center", charSpace: 2 });
+          y += 14;
+        }
+        if (time) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(13);
+          doc.setTextColor(WH_R, WH_G, WH_B);
+          doc.text(time, PAGE_W / 2, y, { align: "center" });
+          y += 16;
+        }
+        if (venueName) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(11);
+          doc.setTextColor(WH_R, WH_G, WH_B);
+          doc.text(venueName, PAGE_W / 2, y, { align: "center" });
+          y += 14;
+        }
+        if (addr) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          doc.setTextColor(MT_R, MT_G, MT_B);
+          doc.text(addr, PAGE_W / 2, y, { align: "center" });
+          y += 13;
+        }
+        if (cityStateZip) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          doc.setTextColor(MT_R, MT_G, MT_B);
+          doc.text(cityStateZip, PAGE_W / 2, y, { align: "center" });
+          y += 13;
+        }
+      };
 
-      if (addressLine1) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-        doc.setTextColor(MT_R, MT_G, MT_B);
-        doc.text(addressLine1, PAGE_W / 2, y, { align: "center" });
-        y += 14;
-      }
-
-      if (cityStateZip) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-        doc.setTextColor(MT_R, MT_G, MT_B);
-        doc.text(cityStateZip, PAGE_W / 2, y, { align: "center" });
-        y += 14;
+      if (hasSeparateCeremony) {
+        y += 4;
+        drawEventBlock(
+          "CEREMONY",
+          ceremonyTimeStr,
+          info.ceremonyVenueName,
+          ceremonyAddressLine1,
+          ceremonyCityStateZip,
+        );
+        y += 12;
+        drawEventBlock(
+          "RECEPTION",
+          receptionTimeStr,
+          info.venue,
+          receptionAddressLine1,
+          receptionCityStateZip,
+        );
+      } else {
+        drawEventBlock(
+          null,
+          null,
+          info.venue,
+          receptionAddressLine1,
+          receptionCityStateZip,
+        );
+        const timeParts: string[] = [];
+        if (ceremonyTimeStr) timeParts.push(`Ceremony ${ceremonyTimeStr}`);
+        if (receptionTimeStr) timeParts.push(`Reception ${receptionTimeStr}`);
+        if (timeParts.length) {
+          y += 4;
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(11);
+          doc.setTextColor(WH_R, WH_G, WH_B);
+          doc.text(timeParts.join("  •  "), PAGE_W / 2, y, { align: "center" });
+          y += 14;
+        }
       }
 
       if (info.invitationMessage) {
@@ -379,17 +468,64 @@ export default function Rsvp() {
               {weddingDateStr && (
                 <p className="text-base text-white/60 mt-1">{weddingDateStr}</p>
               )}
-              {info.venue && (
+              {hasSeparateCeremony ? (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto">
+                  <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1.5">Ceremony</p>
+                    {ceremonyTimeStr && (
+                      <p className="text-sm font-semibold text-white">{ceremonyTimeStr}</p>
+                    )}
+                    {info.ceremonyVenueName && (
+                      <div className="mt-1 flex items-center justify-center gap-1 text-white/80">
+                        <MapPin className="h-3 w-3 text-primary/80" />
+                        <p className="text-xs font-medium">{info.ceremonyVenueName}</p>
+                      </div>
+                    )}
+                    {ceremonyAddressLine1 && (
+                      <p className="text-[11px] text-white/50 mt-0.5">{ceremonyAddressLine1}</p>
+                    )}
+                    {ceremonyCityStateZip && (
+                      <p className="text-[11px] text-white/50">{ceremonyCityStateZip}</p>
+                    )}
+                  </div>
+                  <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1.5">Reception</p>
+                    {receptionTimeStr && (
+                      <p className="text-sm font-semibold text-white">{receptionTimeStr}</p>
+                    )}
+                    {info.venue && (
+                      <div className="mt-1 flex items-center justify-center gap-1 text-white/80">
+                        <MapPin className="h-3 w-3 text-primary/80" />
+                        <p className="text-xs font-medium">{info.venue}</p>
+                      </div>
+                    )}
+                    {receptionAddressLine1 && (
+                      <p className="text-[11px] text-white/50 mt-0.5">{receptionAddressLine1}</p>
+                    )}
+                    {receptionCityStateZip && (
+                      <p className="text-[11px] text-white/50">{receptionCityStateZip}</p>
+                    )}
+                  </div>
+                </div>
+              ) : info.venue && (
                 <div className="mt-2 flex flex-col items-center gap-0.5">
                   <div className="flex items-center gap-1.5 text-white/70">
                     <MapPin className="h-3.5 w-3.5 text-primary/80" />
                     <p className="text-sm font-medium">{info.venue}</p>
                   </div>
-                  {addressLine1 && (
-                    <p className="text-xs text-white/50">{addressLine1}</p>
+                  {receptionAddressLine1 && (
+                    <p className="text-xs text-white/50">{receptionAddressLine1}</p>
                   )}
-                  {cityStateZip && (
-                    <p className="text-xs text-white/50">{cityStateZip}</p>
+                  {receptionCityStateZip && (
+                    <p className="text-xs text-white/50">{receptionCityStateZip}</p>
+                  )}
+                  {(ceremonyTimeStr || receptionTimeStr) && (
+                    <p className="text-xs text-white/60 mt-1">
+                      {[
+                        ceremonyTimeStr && `Ceremony ${ceremonyTimeStr}`,
+                        receptionTimeStr && `Reception ${receptionTimeStr}`,
+                      ].filter(Boolean).join("  •  ")}
+                    </p>
                   )}
                 </div>
               )}
