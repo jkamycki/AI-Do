@@ -28,10 +28,20 @@ const schema = z.object({
   attendance: z.enum(["attending", "declined"], { required_error: "Please select Accept or Decline." }),
   mealChoice: z.string().optional(),
   plusOne: z.boolean().default(false),
-  plusOneName: z.string().optional(),
+  plusOneFirstName: z.string().optional(),
+  plusOneLastName: z.string().optional(),
   plusOneMealChoice: z.string().optional(),
   dietaryRestrictions: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    if (data.attendance !== "attending" || !data.plusOne) return true;
+    return !!(data.plusOneFirstName?.trim() && data.plusOneLastName?.trim());
+  },
+  {
+    message: "Please enter your guest's first and last name.",
+    path: ["plusOneFirstName"],
+  },
+);
 
 type FormData = z.infer<typeof schema>;
 
@@ -39,6 +49,7 @@ const MEAL_OPTIONS = [
   { value: "chicken", label: "Chicken" },
   { value: "steak", label: "Steak" },
   { value: "fish", label: "Fish" },
+  { value: "none", label: "None / No preference" },
 ];
 
 interface RsvpInfo {
@@ -98,7 +109,8 @@ export default function Rsvp() {
       attendance: undefined,
       mealChoice: "",
       plusOne: false,
-      plusOneName: "",
+      plusOneFirstName: "",
+      plusOneLastName: "",
       plusOneMealChoice: "",
       dietaryRestrictions: "",
     },
@@ -109,10 +121,25 @@ export default function Rsvp() {
 
   const submit = useMutation({
     mutationFn: async (data: FormData) => {
+      const plusOneName = data.plusOne
+        ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()]
+            .filter(Boolean)
+            .join(" ")
+        : "";
+      const payload = {
+        attendance: data.attendance,
+        mealChoice: data.mealChoice,
+        plusOne: data.plusOne,
+        plusOneName,
+        plusOneFirstName: data.plusOneFirstName?.trim() || "",
+        plusOneLastName: data.plusOneLastName?.trim() || "",
+        plusOneMealChoice: data.plusOneMealChoice,
+        dietaryRestrictions: data.dietaryRestrictions,
+      };
       const res = await apiFetch(`/api/rsvp/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -203,7 +230,7 @@ export default function Rsvp() {
         if (logoRes.ok) {
           const logoData = await blobToDataUrl(await logoRes.blob());
           const dims = await loadImageDims(logoData);
-          const logoH = 70;
+          const logoH = 110;
           const logoW = (dims.w / dims.h) * logoH;
           doc.addImage(logoData, "PNG", (PAGE_W - logoW) / 2, y, logoW, logoH);
           y += logoH + 24;
@@ -434,7 +461,7 @@ export default function Rsvp() {
         <img
           src="/logo.png"
           alt="A.IDO"
-          className="h-16 sm:h-20 w-auto object-contain"
+          className="h-28 sm:h-36 w-auto object-contain"
         />
       </div>
 
@@ -655,23 +682,42 @@ export default function Rsvp() {
 
                         {plusOne && (
                           <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-150">
-                            <FormField
-                              control={form.control}
-                              name="plusOneName"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-white/80">Plus-one name</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="Guest's full name"
-                                      className="bg-white/10 border-white/15 text-white placeholder:text-white/30 focus:border-primary"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <FormField
+                                control={form.control}
+                                name="plusOneFirstName"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-white/80">Guest first name</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="First name"
+                                        className="bg-white/10 border-white/15 text-white placeholder:text-white/30 focus:border-primary"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name="plusOneLastName"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-white/80">Guest last name</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="Last name"
+                                        className="bg-white/10 border-white/15 text-white placeholder:text-white/30 focus:border-primary"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
 
                             <FormField
                               control={form.control}
@@ -781,10 +827,10 @@ export default function Rsvp() {
                         <span className="text-white font-medium">{mealLabel(pendingData.mealChoice)}</span>
                       </div>
                     )}
-                    {pendingData.plusOne && pendingData.plusOneName && (
+                    {pendingData.plusOne && (pendingData.plusOneFirstName || pendingData.plusOneLastName) && (
                       <div className="flex justify-between">
                         <span className="text-white/50">Plus-one</span>
-                        <span className="text-white font-medium">{pendingData.plusOneName}</span>
+                        <span className="text-white font-medium">{[pendingData.plusOneFirstName, pendingData.plusOneLastName].filter(Boolean).join(" ")}</span>
                       </div>
                     )}
                     {pendingData.plusOne && pendingData.plusOneMealChoice && (

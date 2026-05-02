@@ -415,11 +415,28 @@ router.post("/rsvp/:token", async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: "Invalid or expired RSVP link." });
     const guest = rows[0];
 
-    const { attendance, mealChoice, plusOne, plusOneName, plusOneMealChoice, dietaryRestrictions } = req.body;
+    const {
+      attendance,
+      mealChoice,
+      plusOne,
+      plusOneName,
+      plusOneFirstName,
+      plusOneLastName,
+      plusOneMealChoice,
+      dietaryRestrictions,
+    } = req.body;
 
     if (attendance !== "attending" && attendance !== "declined") {
       return res.status(400).json({ error: "Please select Accept or Decline." });
     }
+
+    // Treat "none" / "no preference" / empty as an explicit clear (null).
+    const normalizeMeal = (val: unknown): string | null => {
+      if (typeof val !== "string") return null;
+      const trimmed = val.trim().toLowerCase();
+      if (!trimmed || trimmed === "none" || trimmed === "no_preference") return null;
+      return val.trim();
+    };
 
     const updateData: Partial<typeof guests.$inferInsert> = {
       rsvpStatus: attendance,
@@ -429,22 +446,25 @@ router.post("/rsvp/:token", async (req, res) => {
     };
 
     if (attendance === "attending") {
-      if (mealChoice && typeof mealChoice === "string") {
-        updateData.mealChoice = mealChoice;
-      }
+      // Always set mealChoice (including null for "none") so guests can clear it.
+      updateData.mealChoice = normalizeMeal(mealChoice);
       if (plusOne !== undefined) {
         updateData.plusOne = !!plusOne;
-        updateData.plusOneName = plusOne && typeof plusOneName === "string" && plusOneName.trim()
-          ? plusOneName.trim()
-          : null;
-        updateData.plusOneMealChoice = plusOne && typeof plusOneMealChoice === "string" && plusOneMealChoice.trim()
-          ? plusOneMealChoice.trim()
-          : null;
+        // Prefer split first/last when provided; fall back to combined plusOneName.
+        const combined = [
+          typeof plusOneFirstName === "string" ? plusOneFirstName.trim() : "",
+          typeof plusOneLastName === "string" ? plusOneLastName.trim() : "",
+        ].filter(Boolean).join(" ");
+        const fallback = typeof plusOneName === "string" ? plusOneName.trim() : "";
+        const finalName = combined || fallback;
+        updateData.plusOneName = plusOne && finalName ? finalName : null;
+        updateData.plusOneMealChoice = plusOne ? normalizeMeal(plusOneMealChoice) : null;
       }
     } else {
       updateData.plusOne = false;
       updateData.plusOneName = null;
       updateData.plusOneMealChoice = null;
+      updateData.mealChoice = null;
     }
 
     await db.update(guests).set(updateData).where(eq(guests.id, guest.id));
