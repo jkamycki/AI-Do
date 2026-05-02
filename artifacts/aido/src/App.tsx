@@ -1330,8 +1330,24 @@ function ClerkQueryClientCacheInvalidator() {
       const userId = user?.id ?? null;
       const sessionId = (session as { id?: string } | null)?.id ?? null;
 
-      // Clear entire cache when a different user signs in / signs out
-      if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) {
+      // Clear entire cache when a DIFFERENT real user takes over the
+      // session. We deliberately ignore transitions involving `null` —
+      // Clerk emits user=null momentarily during silent background JWT
+      // refresh on production / custom-domain setups, and clearing the
+      // cache on every refresh creates an infinite loop: clear → mounted
+      // observers refetch → if a query happens to 404 (e.g. brand-new
+      // user without a profile yet) the page is stuck on its skeleton
+      // state forever and floods the API with the same request.
+      // Sign-out is handled by route guards (ProtectedRoute redirects
+      // to "/"), and a fresh sign-in from a different account hydrates
+      // the workspace context which already invalidates user-scoped
+      // queries it cares about.
+      if (
+        prevUserIdRef.current !== undefined &&
+        prevUserIdRef.current !== null &&
+        prevUserIdRef.current !== userId &&
+        userId !== null
+      ) {
         qc.clear();
       }
 
