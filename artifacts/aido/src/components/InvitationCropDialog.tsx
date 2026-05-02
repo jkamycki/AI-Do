@@ -1,9 +1,9 @@
-import { useState, useCallback } from "react";
-import Cropper, { type Area } from "react-easy-crop";
+import { useState, useCallback, useRef } from "react";
+import Cropper, { type Area, type MediaSize } from "react-easy-crop";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { ZoomIn, ZoomOut } from "lucide-react";
+import { ZoomIn, ZoomOut, ArrowUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface InvitationCropDialogProps {
@@ -19,6 +19,33 @@ const ASPECT_OPTIONS = [
   { label: "1:1", value: 1 },
   { label: "3:4", value: 3 / 4 },
 ] as const;
+
+/**
+ * Compute an initial crop area (as percentages of the image dimensions) that
+ * biases toward the top of the image when the image is taller than the crop
+ * ratio — so heads and faces stay in frame rather than being cut off.
+ */
+function computeInitialCropArea(
+  natW: number,
+  natH: number,
+  asp: number,
+): { x: number; y: number; width: number; height: number } {
+  const imageAsp = natW / natH;
+
+  if (imageAsp >= asp) {
+    // Image is wider relative to the crop — crop fills full image height,
+    // center the crop horizontally.
+    const w = (asp / imageAsp) * 100;
+    return { x: (100 - w) / 2, y: 0, width: w, height: 100 };
+  }
+
+  // Image is taller relative to the crop — crop fills full image width.
+  // Start near the top (~8 % down) so there is a small breathing space above
+  // heads/hair while still keeping faces in frame.
+  const h = (imageAsp / asp) * 100;
+  const y = Math.max(0, Math.min(8, 100 - h));
+  return { x: 0, y, width: 100, height: h };
+}
 
 async function getCroppedFile(
   imageSrc: string,
@@ -69,9 +96,47 @@ export function InvitationCropDialog({ imageSrc, originalFileName, onConfirm, on
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [applying, setApplying] = useState(false);
 
+  // Key incremented to force-remount the Cropper whenever we want
+  // initialCroppedAreaPercentages to take effect (on first load or aspect change).
+  const [cropperKey, setCropperKey] = useState(0);
+  const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
+
+  // Prevent the auto-position logic from triggering on every Cropper remount.
+  const autoPositioned = useRef(false);
+
   const onCropComplete = useCallback((_: Area, pixels: Area) => {
     setCroppedAreaPixels(pixels);
   }, []);
+
+  /**
+   * Called once when the image element is ready. We grab the natural dimensions
+   * to compute a smart initial crop area, then remount the Cropper so that
+   * initialCroppedAreaPercentages is applied correctly.
+   */
+  const handleMediaLoaded = useCallback((ms: MediaSize) => {
+    if (autoPositioned.current) return;
+    autoPositioned.current = true;
+    setNaturalSize({ w: ms.naturalWidth, h: ms.naturalHeight });
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    // Remount so the computed initialCroppedAreaPercentages is respected.
+    setCropperKey(k => k + 1);
+  }, []);
+
+  const handleAspectChange = (next: number) => {
+    setAspect(next);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    // Remount so the new aspect ratio's smart initial area is applied.
+    setCropperKey(k => k + 1);
+  };
+
+  /** Snap the crop window back to the top-biased position. */
+  const handleResetToTop = () => {
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCropperKey(k => k + 1);
+  };
 
   const handleApply = async () => {
     if (!croppedAreaPixels) return;
@@ -89,11 +154,9 @@ export function InvitationCropDialog({ imageSrc, originalFileName, onConfirm, on
     }
   };
 
-  const handleAspectChange = (next: number) => {
-    setAspect(next);
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
-  };
+  const initialCropArea = naturalSize
+    ? computeInitialCropArea(naturalSize.w, naturalSize.h, aspect)
+    : undefined;
 
   return (
     <Dialog open onOpenChange={open => { if (!open) onCancel(); }}>
@@ -101,12 +164,13 @@ export function InvitationCropDialog({ imageSrc, originalFileName, onConfirm, on
         <DialogHeader className="px-5 pt-5 pb-2">
           <DialogTitle className="font-serif text-primary text-lg">Crop invitation photo</DialogTitle>
           <DialogDescription className="text-xs">
-            Drag to reposition. Use the slider to zoom. Pick the shape that suits your photo.
+            The crop starts near the top to keep heads in frame. Drag to reposition, zoom to fill, or pick a different shape.
           </DialogDescription>
         </DialogHeader>
 
         <div className="relative w-full bg-black" style={{ height: 320 }}>
           <Cropper
+            key={cropperKey}
             image={imageSrc}
             crop={crop}
             zoom={zoom}
@@ -116,6 +180,8 @@ export function InvitationCropDialog({ imageSrc, originalFileName, onConfirm, on
             onCropChange={setCrop}
             onZoomChange={setZoom}
             onCropComplete={onCropComplete}
+            onMediaLoaded={handleMediaLoaded}
+            initialCroppedAreaPercentages={initialCropArea}
             style={{
               containerStyle: { borderRadius: 0 },
               cropAreaStyle: { border: "2px solid white", boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)" },
@@ -123,19 +189,32 @@ export function InvitationCropDialog({ imageSrc, originalFileName, onConfirm, on
           />
         </div>
 
-        <div className="px-5 pt-3 pb-1 flex flex-wrap gap-1.5 justify-center">
-          {ASPECT_OPTIONS.map(opt => (
-            <Button
-              key={opt.label}
-              type="button"
-              size="sm"
-              variant={aspect === opt.value ? "default" : "outline"}
-              className="text-xs h-7 px-3"
-              onClick={() => handleAspectChange(opt.value)}
-            >
-              {opt.label}
-            </Button>
-          ))}
+        <div className="px-5 pt-3 pb-1 flex flex-wrap gap-1.5 justify-between items-center">
+          <div className="flex flex-wrap gap-1.5">
+            {ASPECT_OPTIONS.map(opt => (
+              <Button
+                key={opt.label}
+                type="button"
+                size="sm"
+                variant={aspect === opt.value ? "default" : "outline"}
+                className="text-xs h-7 px-3"
+                onClick={() => handleAspectChange(opt.value)}
+              >
+                {opt.label}
+              </Button>
+            ))}
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="text-xs h-7 px-2 text-muted-foreground hover:text-foreground gap-1"
+            title="Reset crop to top of image"
+            onClick={handleResetToTop}
+          >
+            <ArrowUp className="h-3 w-3" />
+            Reset to top
+          </Button>
         </div>
 
         <div className="px-5 pt-3 pb-2">
