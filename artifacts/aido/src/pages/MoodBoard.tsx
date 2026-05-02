@@ -34,11 +34,25 @@ import {
   Tag,
   StickyNote,
   Download,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+
+const TAG_DRAG_TYPE = "application/x-mood-tag";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -55,6 +69,7 @@ interface MoodBoardImage {
   order: number;
   name?: string;
   analysis?: ImageAnalysis;
+  tags?: string[];
 }
 
 interface ColorSwatch {
@@ -169,16 +184,23 @@ function SortableImageCard({
   onDelete,
   onAnalyze,
   analyzing,
+  onAddTag,
+  onRemoveTag,
 }: {
   image: MoodBoardImage;
   blobUrl?: string;
   onDelete: () => void;
   onAnalyze: () => void;
   analyzing: boolean;
+  onAddTag: (tag: string) => void;
+  onRemoveTag: (tag: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: image.objectPath,
   });
+  const [isDropTarget, setIsDropTarget] = useState(false);
+
+  const tags = image.tags ?? image.analysis?.styleKeywords ?? [];
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -190,9 +212,30 @@ function SortableImageCard({
     <div
       ref={setNodeRef}
       style={style}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes(TAG_DRAG_TYPE)) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          if (!isDropTarget) setIsDropTarget(true);
+        }
+      }}
+      onDragLeave={(e) => {
+        // Only clear when leaving the card itself, not child elements
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        setIsDropTarget(false);
+      }}
+      onDrop={(e) => {
+        const tag = e.dataTransfer.getData(TAG_DRAG_TYPE);
+        setIsDropTarget(false);
+        if (tag) {
+          e.preventDefault();
+          onAddTag(tag);
+        }
+      }}
       className={cn(
         "group relative rounded-xl overflow-hidden bg-muted aspect-square shadow-sm border border-border/50",
         isDragging && "shadow-2xl ring-2 ring-primary/40",
+        isDropTarget && "ring-2 ring-primary ring-offset-2 ring-offset-background",
       )}
     >
       <AuthImage
@@ -202,12 +245,12 @@ function SortableImageCard({
         className="w-full h-full object-cover"
       />
 
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200" />
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200 pointer-events-none" />
 
       <button
         {...attributes}
         {...listeners}
-        className="absolute top-2 left-2 p-1.5 rounded-lg bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+        className="absolute top-2 left-2 p-1.5 rounded-lg bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-10"
         title="Drag to reorder"
       >
         <GripVertical className="h-3.5 w-3.5" />
@@ -215,17 +258,17 @@ function SortableImageCard({
 
       <button
         onClick={onDelete}
-        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/70"
+        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/70 z-10"
         title="Remove image"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>
 
-      {!image.analysis && (
+      {!image.analysis && tags.length === 0 && (
         <button
           onClick={onAnalyze}
           disabled={analyzing}
-          className="absolute bottom-2 left-2 right-2 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-primary/85 text-primary-foreground text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-60"
+          className="absolute bottom-2 left-2 right-2 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-primary/85 text-primary-foreground text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-60 z-10"
           title="Analyze with AI"
         >
           {analyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
@@ -233,15 +276,35 @@ function SortableImageCard({
         </button>
       )}
 
-      {image.analysis && (
-        <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-t from-black/60 to-transparent">
-          <div className="flex flex-wrap gap-0.5">
-            {image.analysis.styleKeywords.slice(0, 3).map(k => (
-              <span key={k} className="text-[9px] font-medium text-white/90 bg-white/20 rounded-full px-1.5 py-0.5">
-                {k}
+      {tags.length > 0 && (
+        <div className="absolute bottom-0 left-0 right-0 px-2 pt-4 pb-2 bg-gradient-to-t from-black/85 via-black/50 to-transparent">
+          <div className="flex flex-wrap gap-1">
+            {tags.map(t => (
+              <span
+                key={t}
+                className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-primary-foreground bg-primary border border-primary-foreground/20 rounded-full pl-2 pr-0.5 py-[1px] shadow-md leading-tight"
+              >
+                <span className="tracking-tight">{t}</span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onRemoveTag(t); }}
+                  className="rounded-full p-0.5 hover:bg-black/25 transition-colors"
+                  aria-label={`Remove ${t}`}
+                  title="Remove tag"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {isDropTarget && (
+        <div className="absolute inset-0 flex items-center justify-center bg-primary/15 backdrop-blur-[1px] pointer-events-none">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 shadow-lg">
+            <Plus className="h-3.5 w-3.5" /> Drop tag here
+          </span>
         </div>
       )}
     </div>
@@ -478,6 +541,49 @@ export default function MoodBoard() {
     if (!tag || board.styleTags.includes(tag)) { setNewTag(""); return; }
     update({ styleTags: [...board.styleTags, tag] });
     setNewTag("");
+  };
+
+  // ─── Per-photo tags (drag-to-assign / X-to-remove) ────────────────────────
+  const addImageTag = (objectPath: string, tag: string) => {
+    const trimmed = tag.trim();
+    if (!trimmed) return;
+    const updatedImages = board.images.map(img => {
+      if (img.objectPath !== objectPath) return img;
+      const current = img.tags ?? img.analysis?.styleKeywords ?? [];
+      if (current.includes(trimmed)) return img;
+      return { ...img, tags: [...current, trimmed] };
+    });
+    update({ images: updatedImages });
+  };
+
+  const removeImageTag = (objectPath: string, tag: string) => {
+    const updatedImages = board.images.map(img => {
+      if (img.objectPath !== objectPath) return img;
+      const current = img.tags ?? img.analysis?.styleKeywords ?? [];
+      return { ...img, tags: current.filter(t => t !== tag) };
+    });
+    update({ images: updatedImages });
+  };
+
+  // ─── Reset entire board ───────────────────────────────────────────────────
+  const isBoardEmpty =
+    board.images.length === 0 &&
+    board.colorPalette.length === 0 &&
+    board.styleTags.length === 0 &&
+    !board.aiSummary &&
+    (!board.notes || board.notes.length === 0);
+
+  const resetBoard = () => {
+    blobUrls.forEach(url => URL.revokeObjectURL(url));
+    setBlobUrls(new Map());
+    update({
+      images: [],
+      colorPalette: [],
+      styleTags: [],
+      aiSummary: null,
+      notes: null,
+    });
+    toast({ title: "Mood board cleared" });
   };
 
   // ─── Color palette ────────────────────────────────────────────────────────
@@ -771,6 +877,35 @@ export default function MoodBoard() {
               <Loader2 className="h-3 w-3 animate-spin" /> Saving…
             </span>
           )}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                disabled={isBoardEmpty}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title={isBoardEmpty ? "Nothing to reset" : "Clear the entire mood board"}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear your mood board?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This removes all images, the color palette, style tags, the AI style summary, and your notes from this mood board. Uploaded files remain in storage but will no longer appear here. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={resetBoard}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Clear everything
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <button
             onClick={generatePdf}
             disabled={generatingPdf}
@@ -835,6 +970,8 @@ export default function MoodBoard() {
                     onDelete={() => removeImage(img.objectPath)}
                     onAnalyze={() => analyzeImage(img.objectPath)}
                     analyzing={analyzingPath === img.objectPath}
+                    onAddTag={(tag) => addImageTag(img.objectPath, tag)}
+                    onRemoveTag={(tag) => removeImageTag(img.objectPath, tag)}
                   />
                 ))}
 
@@ -888,18 +1025,29 @@ export default function MoodBoard() {
               <Tag className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold">Style Tags</h3>
             </div>
+            {board.images.length > 0 && (
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Tap to add to your overall style. <span className="text-foreground/80">Drag any tag onto a photo</span> to assign it to that image.
+              </p>
+            )}
 
             <div className="flex flex-wrap gap-1.5">
               {PRESET_TAGS.map(tag => (
                 <button
                   key={tag}
                   onClick={() => toggleTag(tag)}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(TAG_DRAG_TYPE, tag);
+                    e.dataTransfer.effectAllowed = "copy";
+                  }}
                   className={cn(
-                    "text-xs px-2.5 py-1 rounded-full border transition-all",
+                    "text-xs px-2.5 py-1 rounded-full border transition-all cursor-grab active:cursor-grabbing select-none",
                     board.styleTags.includes(tag)
                       ? "bg-primary text-primary-foreground border-primary"
                       : "border-border/60 text-muted-foreground hover:border-primary/50 hover:text-foreground",
                   )}
+                  title="Click to toggle on board · Drag onto a photo to assign"
                 >
                   {tag}
                 </button>
@@ -911,7 +1059,17 @@ export default function MoodBoard() {
                 {board.styleTags
                   .filter(t => !PRESET_TAGS.includes(t))
                   .map(tag => (
-                    <Badge key={tag} variant="secondary" className="gap-1 text-xs">
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="gap-1 text-xs cursor-grab active:cursor-grabbing select-none"
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData(TAG_DRAG_TYPE, tag);
+                        e.dataTransfer.effectAllowed = "copy";
+                      }}
+                      title="Drag onto a photo to assign · Click X to remove from board"
+                    >
                       {tag}
                       <button onClick={() => toggleTag(tag)} className="hover:text-destructive">
                         <X className="h-2.5 w-2.5" />
