@@ -254,13 +254,6 @@ export default function Rsvp() {
         } catch { /* skip photo */ }
       }
 
-      doc.setTextColor(GD_R, GD_G, GD_B);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      const eyebrow = "WEDDING INVITATION";
-      doc.text(eyebrow, PAGE_W / 2, y, { align: "center", charSpace: 3 });
-      y += 22;
-
       doc.setTextColor(WH_R, WH_G, WH_B);
       doc.setFont("times", "bold");
       doc.setFontSize(28);
