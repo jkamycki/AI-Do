@@ -264,32 +264,6 @@ function GuestForm({
               <FormMessage />
             </FormItem>
           )} />
-          <FormField control={form.control} name="address" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("guests.street_address")}</FormLabel>
-              <FormControl>
-                <AddressAutocomplete
-                  value={field.value ?? ""}
-                  onChange={field.onChange}
-                  onSelect={s => {
-                    field.onChange(s.street);
-                    form.setValue("guestCity", s.city, { shouldDirty: true });
-                    form.setValue("guestState", s.state, { shouldDirty: true });
-                    form.setValue("guestZip", s.zip, { shouldDirty: true });
-                  }}
-                  placeholder="123 Main St"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="aptUnit" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("guests.apt_unit")}</FormLabel>
-              <FormControl><Input placeholder="Apt 4B" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
           <FormField control={form.control} name="guestCountry" render={({ field }) => (
             <FormItem className="col-span-2">
               <FormLabel>{t("guests.country")}</FormLabel>
@@ -309,36 +283,64 @@ function GuestForm({
               <FormMessage />
             </FormItem>
           )} />
-          <FormField control={form.control} name="guestCity" render={({ field }) => {
+          <FormField control={form.control} name="address" render={({ field }) => (
+            <FormItem className="col-span-2">
+              <FormLabel>{t("guests.street_address")}</FormLabel>
+              <FormControl>
+                <AddressAutocomplete
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onSelect={s => {
+                    field.onChange(s.street);
+                    form.setValue("guestCity", s.city, { shouldDirty: true });
+                    form.setValue("guestState", s.state, { shouldDirty: true });
+                    form.setValue("guestZip", s.zip, { shouldDirty: true });
+                  }}
+                  placeholder="123 Main St"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="aptUnit" render={({ field }) => (
+            <FormItem className="col-span-2">
+              <FormLabel>{t("guests.apt_unit")}</FormLabel>
+              <FormControl><Input placeholder="Apt 4B" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          {(() => {
             const fmt = getAddressFormat(form.watch("guestCountry"));
             return (
-              <FormItem>
-                <FormLabel>{fmt.cityLabel}</FormLabel>
-                <FormControl><Input placeholder={fmt.cityPlaceholder} {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <>
+                <FormField control={form.control} name="guestCity" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{fmt.cityLabel}</FormLabel>
+                    <FormControl><Input placeholder={fmt.cityPlaceholder} {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                {fmt.showState && (
+                  <FormField control={form.control} name="guestState" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{fmt.stateLabel}</FormLabel>
+                      <FormControl><Input placeholder={fmt.statePlaceholder} {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
+                {fmt.showZip && (
+                  <FormField control={form.control} name="guestZip" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{fmt.zipLabel}</FormLabel>
+                      <FormControl><Input placeholder={fmt.zipPlaceholder} {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
+              </>
             );
-          }} />
-          <FormField control={form.control} name="guestState" render={({ field }) => {
-            const fmt = getAddressFormat(form.watch("guestCountry"));
-            return (
-              <FormItem>
-                <FormLabel>{fmt.stateLabel}</FormLabel>
-                <FormControl><Input placeholder={fmt.statePlaceholder} {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            );
-          }} />
-          <FormField control={form.control} name="guestZip" render={({ field }) => {
-            const fmt = getAddressFormat(form.watch("guestCountry"));
-            return (
-              <FormItem>
-                <FormLabel>{fmt.zipLabel}</FormLabel>
-                <FormControl><Input placeholder={fmt.zipPlaceholder} {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            );
-          }} />
+          })()}
         </div>
 
         <FormField control={form.control} name="plusOne" render={({ field }) => (

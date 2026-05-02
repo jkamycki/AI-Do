@@ -286,20 +286,6 @@ export default function Profile() {
 
               <FormField
                 control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("profile.street_address")}</FormLabel>
-                    <FormControl>
-                      <Input placeholder="123 Magnolia Lane" {...field} data-testid="input-location" className="bg-background" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="venueCountry"
                 render={({ field }) => (
                   <FormItem>
@@ -325,56 +311,72 @@ export default function Profile() {
                 )}
               />
 
-              <div className="grid md:grid-cols-3 gap-6">
-                <FormField
-                  control={form.control}
-                  name="venueCity"
-                  render={({ field }) => {
-                    const fmt = getAddressFormat(form.watch("venueCountry"));
-                    return (
-                      <FormItem>
-                        <FormLabel>{fmt.cityLabel}</FormLabel>
-                        <FormControl>
-                          <Input placeholder={fmt.cityPlaceholder} {...field} data-testid="input-venue-city" className="bg-background" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
-                <FormField
-                  control={form.control}
-                  name="venueState"
-                  render={({ field }) => {
-                    const fmt = getAddressFormat(form.watch("venueCountry"));
-                    return (
-                      <FormItem>
-                        <FormLabel>{fmt.stateLabel}</FormLabel>
-                        <FormControl>
-                          <Input placeholder={fmt.statePlaceholder} {...field} data-testid="input-venue-state" className="bg-background" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
-                <FormField
-                  control={form.control}
-                  name="venueZip"
-                  render={({ field }) => {
-                    const fmt = getAddressFormat(form.watch("venueCountry"));
-                    return (
-                      <FormItem>
-                        <FormLabel>{fmt.zipLabel}</FormLabel>
-                        <FormControl>
-                          <Input placeholder={fmt.zipPlaceholder} {...field} data-testid="input-venue-zip" className="bg-background" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("profile.street_address")}</FormLabel>
+                    <FormControl>
+                      <Input placeholder="123 Magnolia Lane" {...field} data-testid="input-location" className="bg-background" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {(() => {
+                const fmt = getAddressFormat(form.watch("venueCountry"));
+                const visible = 1 + (fmt.showState ? 1 : 0) + (fmt.showZip ? 1 : 0);
+                const gridCls = visible >= 3 ? "grid md:grid-cols-3 gap-6" : visible === 2 ? "grid md:grid-cols-2 gap-6" : "grid gap-6";
+                return (
+                  <div className={gridCls}>
+                    <FormField
+                      control={form.control}
+                      name="venueCity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{fmt.cityLabel}</FormLabel>
+                          <FormControl>
+                            <Input placeholder={fmt.cityPlaceholder} {...field} data-testid="input-venue-city" className="bg-background" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    {fmt.showState && (
+                      <FormField
+                        control={form.control}
+                        name="venueState"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{fmt.stateLabel}</FormLabel>
+                            <FormControl>
+                              <Input placeholder={fmt.statePlaceholder} {...field} data-testid="input-venue-state" className="bg-background" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                    {fmt.showZip && (
+                      <FormField
+                        control={form.control}
+                        name="venueZip"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{fmt.zipLabel}</FormLabel>
+                            <FormControl>
+                              <Input placeholder={fmt.zipPlaceholder} {...field} data-testid="input-venue-zip" className="bg-background" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </div>
+                );
+              })()}
 
               <div className="rounded-lg border border-primary/10 bg-primary/5 p-5 space-y-5">
                 <FormField
@@ -428,56 +430,58 @@ export default function Profile() {
                         </FormItem>
                       )}
                     />
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="ceremonyCity"
-                        render={({ field }) => {
-                          const fmt = getAddressFormat(form.watch("venueCountry"));
-                          return (
-                            <FormItem>
-                              <FormLabel>{fmt.cityLabel}</FormLabel>
-                              <FormControl>
-                                <Input placeholder={fmt.cityPlaceholder} {...field} data-testid="input-ceremony-city" className="bg-background" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          );
-                        }}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="ceremonyState"
-                        render={({ field }) => {
-                          const fmt = getAddressFormat(form.watch("venueCountry"));
-                          return (
-                            <FormItem>
-                              <FormLabel>{fmt.stateLabel}</FormLabel>
-                              <FormControl>
-                                <Input placeholder={fmt.statePlaceholder} {...field} data-testid="input-ceremony-state" className="bg-background" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          );
-                        }}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="ceremonyZip"
-                        render={({ field }) => {
-                          const fmt = getAddressFormat(form.watch("venueCountry"));
-                          return (
-                            <FormItem>
-                              <FormLabel>{fmt.zipLabel}</FormLabel>
-                              <FormControl>
-                                <Input placeholder={fmt.zipPlaceholder} {...field} data-testid="input-ceremony-zip" className="bg-background" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          );
-                        }}
-                      />
-                    </div>
+                    {(() => {
+                      const fmt = getAddressFormat(form.watch("venueCountry"));
+                      const visible = 1 + (fmt.showState ? 1 : 0) + (fmt.showZip ? 1 : 0);
+                      const gridCls = visible >= 3 ? "grid md:grid-cols-3 gap-4" : visible === 2 ? "grid md:grid-cols-2 gap-4" : "grid gap-4";
+                      return (
+                        <div className={gridCls}>
+                          <FormField
+                            control={form.control}
+                            name="ceremonyCity"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>{fmt.cityLabel}</FormLabel>
+                                <FormControl>
+                                  <Input placeholder={fmt.cityPlaceholder} {...field} data-testid="input-ceremony-city" className="bg-background" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          {fmt.showState && (
+                            <FormField
+                              control={form.control}
+                              name="ceremonyState"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>{fmt.stateLabel}</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder={fmt.statePlaceholder} {...field} data-testid="input-ceremony-state" className="bg-background" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                          {fmt.showZip && (
+                            <FormField
+                              control={form.control}
+                              name="ceremonyZip"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>{fmt.zipLabel}</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder={fmt.zipPlaceholder} {...field} data-testid="input-ceremony-zip" className="bg-background" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
