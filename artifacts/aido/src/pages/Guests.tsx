@@ -777,8 +777,8 @@ export default function Guests() {
   function handleEdit(data: GuestFormValues) {
     if (!editGuest) return;
     const plusOneName = data.plusOne
-      ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()].filter(Boolean).join(" ") || null
-      : null;
+      ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()].filter(Boolean).join(" ")
+      : "";
     updateGuest.mutate({
       id: editGuest.id,
       data: {
@@ -787,7 +787,7 @@ export default function Guests() {
         invitationStatus: data.invitationStatus,
         rsvpStatus: data.rsvpStatus,
         plusOne: data.plusOne,
-        plusOneName: plusOneName ?? undefined,
+        plusOneName: plusOneName,
         mealChoice: (data.mealChoice === "none" || !data.mealChoice) ? null : data.mealChoice,
         dietaryNotes: data.mealChoice === "other" ? (data.dietaryNotes?.trim() || null) : null,
         guestGroup: (data.guestGroup === "none" || !data.guestGroup) ? null : data.guestGroup,
