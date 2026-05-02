@@ -30,6 +30,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { authFetch } from "@/lib/authFetch";
 import { useTranslation } from "react-i18next";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { COUNTRIES } from "@/lib/countries";
 
 const RSVP_OPTIONS = [
   { value: "attending", label: "Attending", color: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" },
@@ -97,6 +98,7 @@ const guestSchema = z.object({
   guestCity: z.string().optional().default(""),
   guestState: z.string().optional().default(""),
   guestZip: z.string().optional().default(""),
+  guestCountry: z.string().optional().default(""),
   notes: z.string().optional(),
 });
 
@@ -140,6 +142,7 @@ function GuestForm({
       guestCity: "",
       guestState: "",
       guestZip: "",
+      guestCountry: "",
       notes: "",
       ...defaultValues,
     },
@@ -307,6 +310,25 @@ function GuestForm({
               <FormMessage />
             </FormItem>
           )} />
+          <FormField control={form.control} name="guestCountry" render={({ field }) => (
+            <FormItem className="col-span-2">
+              <FormLabel>{t("guests.country")}</FormLabel>
+              <Select value={field.value || ""} onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("guests.country_placeholder")} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="__none__">{t("guests.country_none")}</SelectItem>
+                  {COUNTRIES.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )} />
         </div>
 
         <FormField control={form.control} name="plusOne" render={({ field }) => (
@@ -350,7 +372,7 @@ function GuestForm({
         )} />
 
         <div className="flex gap-3 mt-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset({ name: "", email: "", invitationStatus: "pending", rsvpStatus: "pending", mealChoice: "", guestGroup: "", plusOne: false, plusOneFirstName: "", plusOneLastName: "", tableAssignment: "", phone: "", address: "", aptUnit: "", guestCity: "", guestState: "", guestZip: "", notes: "" })}>
+          <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset({ name: "", email: "", invitationStatus: "pending", rsvpStatus: "pending", mealChoice: "", guestGroup: "", plusOne: false, plusOneFirstName: "", plusOneLastName: "", tableAssignment: "", phone: "", address: "", aptUnit: "", guestCity: "", guestState: "", guestZip: "", guestCountry: "", notes: "" })}>
             <RotateCcw className="h-4 w-4 mr-2" /> {t("guests.reset")}
           </Button>
           <Button type="submit" className="flex-1" disabled={isPending}>
@@ -363,7 +385,7 @@ function GuestForm({
 }
 
 function exportCSV(guestList: Guest[]) {
-  const headers = ["Name", "Email", "Invitation Sent", "Group", "RSVP", "Meal", "Plus One", "Plus One Name", "Table", "Street Address", "Apt/Unit", "City", "State", "ZIP", "Notes"];
+  const headers = ["Name", "Email", "Invitation Sent", "Group", "RSVP", "Meal", "Plus One", "Plus One Name", "Table", "Street Address", "Apt/Unit", "City", "State", "ZIP", "Country", "Notes"];
   const rows = guestList.map(g => [
     g.name,
     g.email ?? "",
@@ -379,6 +401,7 @@ function exportCSV(guestList: Guest[]) {
     (g as any).guestCity ?? "",
     (g as any).guestState ?? "",
     (g as any).guestZip ?? "",
+    (g as any).guestCountry ?? "",
     g.notes ?? "",
   ]);
   const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -805,6 +828,7 @@ export default function Guests() {
         guestCity: data.guestCity || null,
         guestState: data.guestState || null,
         guestZip: data.guestZip || null,
+        guestCountry: data.guestCountry || null,
       } as Parameters<typeof updateGuest.mutate>[0]["data"]
     }, {
       onSuccess: () => {
@@ -1059,14 +1083,16 @@ export default function Guests() {
                               <span>{(g as any).phone}</span>
                             </div>
                           )}
-                          {(g as any).address && (
+                          {((g as any).address || (g as any).guestCity || (g as any).guestState || (g as any).guestZip || (g as any).guestCountry) && (
                             <div className="flex items-start gap-1 text-xs text-muted-foreground">
                               <MapPin className="h-3 w-3 shrink-0 mt-0.5" />
                               <span className="leading-snug">
-                                {(g as any).address}
-                                {(g as any).aptUnit && <>, {(g as any).aptUnit}</>}
+                                {(g as any).address && <>{(g as any).address}{(g as any).aptUnit && <>, {(g as any).aptUnit}</>}</>}
                                 {((g as any).guestCity || (g as any).guestState || (g as any).guestZip) && (
-                                  <><br />{[(g as any).guestCity, (g as any).guestState, (g as any).guestZip].filter(Boolean).join(", ")}</>
+                                  <>{(g as any).address && <br />}{[(g as any).guestCity, (g as any).guestState, (g as any).guestZip].filter(Boolean).join(", ")}</>
+                                )}
+                                {(g as any).guestCountry && (
+                                  <>{((g as any).address || (g as any).guestCity || (g as any).guestState || (g as any).guestZip) && <br />}{(g as any).guestCountry}</>
                                 )}
                               </span>
                             </div>
@@ -1285,6 +1311,7 @@ export default function Guests() {
                 guestCity: (editGuest as any).guestCity ?? "",
                 guestState: (editGuest as any).guestState ?? "",
                 guestZip: (editGuest as any).guestZip ?? "",
+                guestCountry: (editGuest as any).guestCountry ?? "",
                 notes: editGuest.notes ?? "",
               }}
               onSubmit={handleEdit}
