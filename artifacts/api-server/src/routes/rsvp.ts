@@ -113,7 +113,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           photoBlock = `
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
-            <img src="data:${mimeType};base64,${b64}" alt="${couple}'s Wedding" width="560" style="width:100%;max-width:560px;height:280px;object-fit:cover;display:block;border-radius:0;"/>
+            <img src="data:${mimeType};base64,${b64}" alt="${couple}'s Wedding" width="560" style="width:100%;max-width:560px;height:auto;display:block;border-radius:0;"/>
           </td>
         </tr>`;
         } catch (photoErr) {
