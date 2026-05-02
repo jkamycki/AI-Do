@@ -29,6 +29,7 @@ import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Dow
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
 import { useTranslation } from "react-i18next";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
 const RSVP_OPTIONS = [
   { value: "attending", label: "Attending", color: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" },
@@ -260,7 +261,19 @@ function GuestForm({
           <FormField control={form.control} name="address" render={({ field }) => (
             <FormItem>
               <FormLabel>{t("guests.street_address")}</FormLabel>
-              <FormControl><Input placeholder="123 Main St" {...field} /></FormControl>
+              <FormControl>
+                <AddressAutocomplete
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onSelect={s => {
+                    field.onChange(s.street);
+                    form.setValue("guestCity", s.city, { shouldDirty: true });
+                    form.setValue("guestState", s.state, { shouldDirty: true });
+                    form.setValue("guestZip", s.zip, { shouldDirty: true });
+                  }}
+                  placeholder="123 Main St"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )} />

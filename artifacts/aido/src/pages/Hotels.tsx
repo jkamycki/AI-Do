@@ -15,8 +15,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "react-i18next";
 import {
   Hotel, Plus, ExternalLink, Phone, Mail, Copy, Check,
-  Trash2, Edit2, BedDouble, Calendar, DollarSign, MapPin, Tag, RotateCcw,
+  Trash2, Edit2, BedDouble, Calendar, DollarSign, MapPin, Tag, RotateCcw, Navigation, Loader2,
 } from "lucide-react";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -85,8 +86,34 @@ function HotelForm({
   isPending: boolean;
   submitLabel: string;
 }) {
+  const { toast } = useToast();
   const [form, setForm] = useState<Partial<HotelBlock>>({ ...EMPTY, ...defaultValues });
+  const [calcLoading, setCalcLoading] = useState(false);
   const set = (k: keyof HotelBlock, v: string | number | null) => setForm(f => ({ ...f, [k]: v }));
+
+  const hasAddress = !!(form.address || form.city || form.state);
+
+  async function calculateDistance() {
+    setCalcLoading(true);
+    try {
+      const r = await authFetch(`${API}/api/hotels/calculate-distance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: form.address, city: form.city, state: form.state, zip: form.zip }),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        toast({ title: data.error ?? "Could not calculate distance", variant: "destructive" });
+        return;
+      }
+      set("distanceFromVenue", data.distance);
+      toast({ title: `Distance calculated: ${data.distance}` });
+    } catch {
+      toast({ title: "Failed to calculate distance", variant: "destructive" });
+    } finally {
+      setCalcLoading(false);
+    }
+  }
 
   return (
     <form
@@ -100,7 +127,12 @@ function HotelForm({
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>Street Address</Label>
-          <Input placeholder="123 Main St" value={form.address ?? ""} onChange={e => set("address", e.target.value)} />
+          <AddressAutocomplete
+            value={form.address ?? ""}
+            onChange={v => set("address", v)}
+            onSelect={s => setForm(f => ({ ...f, address: s.street, city: s.city, state: s.state, zip: s.zip }))}
+            placeholder="123 Main St"
+          />
         </div>
         <div className="space-y-1.5">
           <Label>City</Label>
@@ -149,6 +181,29 @@ function HotelForm({
         <div className="space-y-1.5">
           <Label>Rooms Booked So Far</Label>
           <Input type="number" min="0" placeholder="0" value={form.roomsBooked ?? 0} onChange={e => set("roomsBooked", Number(e.target.value))} />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <div className="flex items-center justify-between">
+            <Label>Distance from Venue</Label>
+            {hasAddress && (
+              <button
+                type="button"
+                onClick={calculateDistance}
+                disabled={calcLoading}
+                className="flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+              >
+                {calcLoading
+                  ? <><Loader2 className="h-3 w-3 animate-spin" /> Calculating…</>
+                  : <><Navigation className="h-3 w-3" /> Calculate from venue</>
+                }
+              </button>
+            )}
+          </div>
+          <Input
+            placeholder="1.2 mi from venue"
+            value={form.distanceFromVenue ?? ""}
+            onChange={e => set("distanceFromVenue", e.target.value)}
+          />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>Notes</Label>
@@ -234,6 +289,11 @@ function HotelCard({ hotel, onEdit, onDelete }: { hotel: HotelBlock; onEdit: () 
             }`}>
               <Calendar className="h-3 w-3" />
               {daysLeft < 0 ? "Block expired" : `Cutoff in ${daysLeft}d`}
+            </span>
+          )}
+          {hotel.distanceFromVenue && (
+            <span className="inline-flex items-center gap-1 text-xs bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full">
+              <Navigation className="h-3 w-3" />{hotel.distanceFromVenue}
             </span>
           )}
         </div>
