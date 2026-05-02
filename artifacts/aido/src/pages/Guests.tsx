@@ -603,6 +603,7 @@ export default function Guests() {
   const [editGuest, setEditGuest] = useState<Guest | null>(null);
 
   const [duplicateGuestIds, setDuplicateGuestIds] = useState<Set<number>>(new Set());
+  const [pendingGuestData, setPendingGuestData] = useState<GuestFormValues | null>(null);
 
   const [linkDialogState, setLinkDialogState] = useState<{ guestId: number; name: string; url: string; copied: boolean; hasEmail: boolean } | null>(null);
   const [fetchingLinkId, setFetchingLinkId] = useState<number | null>(null);
@@ -849,15 +850,9 @@ export default function Guests() {
         const status = (err as { status?: number })?.status;
         if (status === 409) {
           const ids = ((err as { data?: { duplicateIds?: number[] } })?.data?.duplicateIds) ?? [];
-          if (ids.length > 0) {
-            setDuplicateGuestIds(new Set(ids));
-            setIsAdding(false);
-          }
-          toast({
-            title: "Duplicate guest detected",
-            description: "A guest with this name or email already exists. The matching entry is highlighted below.",
-            variant: "destructive",
-          });
+          setDuplicateGuestIds(new Set(ids));
+          setPendingGuestData(data);
+          setIsAdding(false);
         } else {
           toast({
             title: status === 401 ? "Session refreshing — try again in a moment" : "Failed to add guest",
@@ -866,6 +861,35 @@ export default function Guests() {
         }
       },
     });
+  }
+
+  async function handleForceAdd() {
+    if (!pendingGuestData) return;
+    const data = pendingGuestData;
+    const plusOneName = data.plusOne
+      ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()].filter(Boolean).join(" ") || undefined
+      : undefined;
+    const payload = {
+      ...data,
+      plusOneName,
+      email: data.email || undefined,
+      mealChoice: data.mealChoice === "none" ? undefined : data.mealChoice || undefined,
+      guestGroup: data.guestGroup === "none" ? undefined : data.guestGroup || undefined,
+    };
+    try {
+      const res = await authFetch("/api/guests?force=true", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Failed to add guest");
+      toast({ title: "Guest added" });
+      setPendingGuestData(null);
+      setDuplicateGuestIds(new Set());
+      invalidate();
+    } catch {
+      toast({ title: "Failed to add guest", variant: "destructive" });
+    }
   }
 
   function handleEdit(data: GuestFormValues) {
@@ -1092,8 +1116,34 @@ export default function Guests() {
         </Card>
       )}
 
-      {/* Duplicate warning banner */}
-      {duplicateGuestIds.size > 0 && (
+      {/* Duplicate confirmation dialog */}
+      <AlertDialog open={!!pendingGuestData} onOpenChange={open => { if (!open) { setPendingGuestData(null); setDuplicateGuestIds(new Set()); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-rose-500" />
+              Duplicate guest detected
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              A guest with this name or email already exists — the matching {duplicateGuestIds.size === 1 ? "entry is" : "entries are"} highlighted in the list below. Do you still want to add this guest?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setPendingGuestData(null); setDuplicateGuestIds(new Set()); }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-500 hover:bg-rose-600"
+              onClick={handleForceAdd}
+            >
+              Add Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Duplicate highlight banner (shown after dismissing the dialog) */}
+      {duplicateGuestIds.size > 0 && !pendingGuestData && (
         <Card className="border-rose-300/60 bg-rose-50/70 dark:bg-rose-900/15 dark:border-rose-700/50 shadow-sm">
           <CardContent className="py-3 px-4 flex items-start sm:items-center gap-3">
             <div className="shrink-0 h-9 w-9 rounded-full bg-rose-200/80 dark:bg-rose-800/40 flex items-center justify-center ring-1 ring-rose-300/60 dark:ring-rose-700/60">
@@ -1101,10 +1151,10 @@ export default function Guests() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-rose-900 dark:text-rose-200">
-                Duplicate guest detected
+                Existing {duplicateGuestIds.size === 1 ? "guest" : "guests"} highlighted below
               </p>
               <p className="text-xs text-rose-800/80 dark:text-rose-300/70 mt-0.5">
-                The highlighted {duplicateGuestIds.size === 1 ? "entry matches" : "entries match"} the name or email you tried to add. Review before proceeding.
+                {duplicateGuestIds.size === 1 ? "This entry matches" : "These entries match"} the name or email you tried to add.
               </p>
             </div>
             <Button

@@ -76,19 +76,21 @@ router.post("/guests", requireAuth, async (req, res) => {
     const trimmedName = name.trim();
     const cleanEmail = email?.trim() || null;
 
-    const dupConditions = [ilike(guests.name, trimmedName)];
-    if (cleanEmail) dupConditions.push(ilike(guests.email, cleanEmail));
+    if (req.query.force !== "true") {
+      const dupConditions = [ilike(guests.name, trimmedName)];
+      if (cleanEmail) dupConditions.push(ilike(guests.email, cleanEmail));
 
-    const existing = await db
-      .select({ id: guests.id })
-      .from(guests)
-      .where(and(eq(guests.profileId, profileId), or(...dupConditions)));
+      const existing = await db
+        .select({ id: guests.id })
+        .from(guests)
+        .where(and(eq(guests.profileId, profileId), or(...dupConditions)));
 
-    if (existing.length > 0) {
-      return res.status(409).json({
-        error: "A guest with this name or email already exists.",
-        duplicateIds: existing.map(g => g.id),
-      });
+      if (existing.length > 0) {
+        return res.status(409).json({
+          error: "A guest with this name or email already exists.",
+          duplicateIds: existing.map(g => g.id),
+        });
+      }
     }
 
     const [created] = await db
