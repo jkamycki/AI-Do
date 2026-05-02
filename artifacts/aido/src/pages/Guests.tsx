@@ -624,12 +624,15 @@ export default function Guests() {
 
   const usedGroups = [...new Set(allGuests.map(g => g.guestGroup).filter(Boolean))] as string[];
 
-  const filtered = allGuests.filter(g => {
-    const matchesSearch = !search || g.name.toLowerCase().includes(search.toLowerCase()) || (g.email ?? "").toLowerCase().includes(search.toLowerCase());
-    const matchesRsvp = rsvpFilter === "all" || g.rsvpStatus === rsvpFilter;
-    const matchesGroup = groupFilter === "all" || g.guestGroup === groupFilter;
-    return matchesSearch && matchesRsvp && matchesGroup;
-  });
+  const filtered = allGuests
+    .filter(g => {
+      const matchesSearch = !search || g.name.toLowerCase().includes(search.toLowerCase()) || (g.email ?? "").toLowerCase().includes(search.toLowerCase());
+      const matchesRsvp = rsvpFilter === "all" || g.rsvpStatus === rsvpFilter;
+      const matchesGroup = groupFilter === "all" || g.guestGroup === groupFilter;
+      return matchesSearch && matchesRsvp && matchesGroup;
+    })
+    .slice()
+    .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" }));
 
   const queryKey = getGetGuestsQueryKey();
   const invalidate = () => queryClient.invalidateQueries({ queryKey });
