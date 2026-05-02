@@ -233,9 +233,26 @@ export default function Rsvp() {
           const logoH = 110;
           const logoW = (dims.w / dims.h) * logoH;
           doc.addImage(logoData, "PNG", (PAGE_W - logoW) / 2, y, logoW, logoH);
-          y += logoH + 24;
+          y += logoH + 20;
         }
       } catch { /* skip logo */ }
+
+      // Couple names (gold) — placed above the photo so they read first.
+      doc.setTextColor(GD_R, GD_G, GD_B);
+      doc.setFont("times", "bold");
+      doc.setFontSize(28);
+      const coupleLines = doc.splitTextToSize(couple, CW);
+      doc.text(coupleLines, PAGE_W / 2, y, { align: "center" });
+      y += coupleLines.length * 30;
+
+      if (weddingDateStr) {
+        y += 4;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(13);
+        doc.setTextColor(WH_R, WH_G, WH_B);
+        doc.text(weddingDateStr, PAGE_W / 2, y, { align: "center" });
+        y += 22;
+      }
 
       if (info.hasPhoto) {
         try {
@@ -249,25 +266,9 @@ export default function Rsvp() {
             const drawW = dims.w * scale;
             const drawH = dims.h * scale;
             doc.addImage(photoData, "JPEG", (PAGE_W - drawW) / 2, y, drawW, drawH);
-            y += drawH + 28;
+            y += drawH + 24;
           }
         } catch { /* skip photo */ }
-      }
-
-      doc.setTextColor(WH_R, WH_G, WH_B);
-      doc.setFont("times", "bold");
-      doc.setFontSize(28);
-      const coupleLines = doc.splitTextToSize(couple, CW);
-      doc.text(coupleLines, PAGE_W / 2, y, { align: "center" });
-      y += coupleLines.length * 30;
-
-      if (weddingDateStr) {
-        y += 6;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(13);
-        doc.setTextColor(WH_R, WH_G, WH_B);
-        doc.text(weddingDateStr, PAGE_W / 2, y, { align: "center" });
-        y += 22;
       }
 
       const drawEventBlock = (
@@ -375,9 +376,25 @@ export default function Rsvp() {
       doc.text(`For ${info.guestName}`, PAGE_W / 2, y, { align: "center" });
 
       const footerY = PAGE_H - 30;
+      doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(MT_R, MT_G, MT_B);
-      doc.text("Created with A.IDO — aidowedding.net", PAGE_W / 2, footerY, { align: "center" });
+      const footerText = "Created with A.IDO — aidowedding.net";
+      const footerUrl = "https://aidowedding.net";
+      doc.textWithLink(footerText, PAGE_W / 2, footerY, {
+        align: "center",
+        url: footerUrl,
+      });
+      // Add a backup invisible link rectangle covering the text in case the
+      // viewer doesn't honor jsPDF's text-anchored link bounding box.
+      const footerWidth = doc.getTextWidth(footerText);
+      doc.link(
+        (PAGE_W - footerWidth) / 2,
+        footerY - 8,
+        footerWidth,
+        12,
+        { url: footerUrl },
+      );
 
       const safeCouple = couple.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") || "wedding";
       doc.save(`${safeCouple}_invitation.pdf`);
