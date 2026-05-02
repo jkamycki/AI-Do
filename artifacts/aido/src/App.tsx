@@ -57,6 +57,21 @@ function stripBase(path: string): string {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      // Circuit breaker against runaway refetch loops. We previously saw the
+      // /profile endpoint being hit 4+ times per second on production (with
+      // a brand-new user that 404s) because some component cycle was causing
+      // observers to mount repeatedly. With staleTime=30s, even if observers
+      // mount/unmount in a tight loop, the same query cannot fetch more than
+      // once per 30s window. Mutations + explicit invalidateQueries() still
+      // force fresh fetches as expected (invalidate marks the query stale).
+      // Bonus: navigating between pages reuses cached data for 30s, which is
+      // a perceived-perf win across the app.
+      staleTime: 30_000,
+      // If a query errors (e.g. 404 for a brand-new user without a profile),
+      // don't have every newly-mounted observer trigger another retry. Pages
+      // that need to recover from a transient error already render an
+      // explicit "Try again" button that calls refetch().
+      retryOnMount: false,
       retry: (failureCount, error: unknown) => {
         const status = (error as { status?: number })?.status;
         if (status === 404 || status === 403) return false;
