@@ -180,6 +180,14 @@ export default function Rsvp() {
     <div className="dark min-h-screen flex flex-col bg-[hsl(270,20%,10%)]"
       style={{ backgroundImage: "radial-gradient(hsl(40 82% 42% / 0.07) 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
 
+      <div className="w-full flex justify-center pt-6 px-4">
+        <img
+          src="/logo.png"
+          alt="A.IDO"
+          className="h-16 sm:h-20 w-auto object-contain"
+        />
+      </div>
+
       {info.hasPhoto && (
         <div className="w-full flex justify-center pt-6 px-4">
           <img

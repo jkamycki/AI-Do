@@ -767,7 +767,12 @@ function InvitationPhotoCard() {
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Preview — how guests will see it on the RSVP page
               </p>
-              <div className="relative group rounded-xl overflow-hidden border border-border/50 shadow-sm bg-[hsl(270,20%,10%)] py-6 px-4 flex justify-center">
+              <div className="relative group rounded-xl overflow-hidden border border-border/50 shadow-sm bg-[hsl(270,20%,10%)] py-6 px-4 flex flex-col items-center gap-6">
+                <img
+                  src="/logo.png"
+                  alt="A.IDO"
+                  className="h-16 w-auto object-contain"
+                />
                 <img
                   src={previewSrc}
                   alt="Invitation photo preview"
