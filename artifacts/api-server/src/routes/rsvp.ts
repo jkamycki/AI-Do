@@ -140,9 +140,6 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       <!-- Outer card -->
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.10);">
 
-        <!-- Top accent bar -->
-        <tr><td style="height:5px;background:linear-gradient(90deg,#c9a96e,#e8c99a,#c9a96e);line-height:5px;font-size:5px;">&nbsp;</td></tr>
-
         <!-- Hero photo (embedded) -->
         ${photoBlock}
 
