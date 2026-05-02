@@ -181,11 +181,11 @@ export default function Rsvp() {
       style={{ backgroundImage: "radial-gradient(hsl(40 82% 42% / 0.07) 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
 
       {info.hasPhoto && (
-        <div className="w-full max-h-[55vw] sm:max-h-[420px] overflow-hidden">
+        <div className="w-full">
           <img
             src={`/api/rsvp/${token}/photo`}
             alt={`${couple}'s wedding`}
-            className="w-full h-full object-cover"
+            className="w-full h-auto block"
             style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }}
           />
         </div>
