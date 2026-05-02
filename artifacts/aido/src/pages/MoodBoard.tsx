@@ -480,9 +480,13 @@ export default function MoodBoard() {
       if (!r.ok) throw new Error("Analysis failed");
       const { analysis } = await r.json() as { analysis: ImageAnalysis };
 
-      const updatedImages = board.images.map(img =>
-        img.objectPath === objectPath ? { ...img, analysis } : img
-      );
+      const updatedImages = board.images.map(img => {
+        if (img.objectPath !== objectPath) return img;
+        const existing = img.tags ?? [];
+        const aiTags = analysis.styleKeywords ?? [];
+        const mergedTags = [...existing, ...aiTags.filter(t => !existing.includes(t))];
+        return { ...img, analysis, tags: mergedTags };
+      });
 
       const allColors = updatedImages.flatMap(img => img.analysis?.dominantColors ?? []);
       const palette = buildPalette(allColors, board.colorPalette);
@@ -747,14 +751,16 @@ export default function MoodBoard() {
 
         const COLS = 3;
         const GAP = 7;
+        const CAPTION_H = 22; // reserved space for per-photo tag caption
         const IMG_W = (CW - GAP * (COLS - 1)) / COLS;
         const IMG_H = Math.round(IMG_W * 0.7);
+        const ROW_H = IMG_H + CAPTION_H;
 
         for (let i = 0; i < board.images.length; i++) {
           const col = i % COLS;
           if (col === 0 && i > 0) {
-            y += IMG_H + GAP;
-            if (y + IMG_H > PAGE_H - MARGIN) {
+            y += ROW_H + GAP;
+            if (y + ROW_H > PAGE_H - MARGIN) {
               doc.addPage(); fillBg();
               y = MARGIN;
             }
@@ -771,8 +777,21 @@ export default function MoodBoard() {
             doc.setFillColor(38, 30, 46);
             doc.roundedRect(x, y, IMG_W, IMG_H, 3, 3, "F");
           }
+          // Per-photo tags caption (gold), under each image
+          const imgTags = board.images[i].tags ?? board.images[i].analysis?.styleKeywords ?? [];
+          if (imgTags.length > 0) {
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(6.5);
+            doc.setTextColor(GD_R, GD_G, GD_B);
+            const captionLines = doc.splitTextToSize(imgTags.join(" · "), IMG_W) as string[];
+            const lines = captionLines.slice(0, 2);
+            if (captionLines.length > 2 && lines[1]) {
+              lines[1] = lines[1].replace(/.{0,2}$/, "…");
+            }
+            doc.text(lines, x, y + IMG_H + 9);
+          }
         }
-        y += IMG_H + 28;
+        y += ROW_H + 22;
 
         if (y > PAGE_H - MARGIN - 80) {
           doc.addPage(); fillBg();
