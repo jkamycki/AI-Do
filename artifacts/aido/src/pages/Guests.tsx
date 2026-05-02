@@ -38,8 +38,8 @@ const RSVP_OPTIONS = [
 ];
 
 const INVITATION_OPTIONS = [
-  { value: "pending", label: "Pending", color: "bg-amber-100 text-amber-800 border-amber-200" },
-  { value: "sent", label: "Sent", color: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  { value: "pending", label: "Not Sent", color: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700" },
+  { value: "sent", label: "Sent", color: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" },
 ];
 
 const MEAL_OPTIONS = [
@@ -345,7 +345,7 @@ function exportCSV(guestList: Guest[]) {
   const rows = guestList.map(g => [
     g.name,
     g.email ?? "",
-    g.invitationStatus === "sent" ? "Sent" : "Pending",
+    g.invitationStatus === "sent" ? "Sent" : "Not Sent",
     getGroupLabel(g.guestGroup),
     g.rsvpStatus,
     g.mealChoice ?? "",
