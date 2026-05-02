@@ -730,7 +730,10 @@ export default function Guests() {
         email: guest.email ?? undefined,
         invitationStatus: guest.invitationStatus ?? "pending",
         rsvpStatus: guest.rsvpStatus as "pending" | "attending" | "maybe" | "declined",
-        mealChoice: val ?? undefined,
+        // Send empty string when clearing — the server converts "" -> NULL.
+        // Sending `undefined` would be dropped by JSON.stringify and the
+        // server's `if (mealChoice !== undefined)` guard would skip the update.
+        mealChoice: val ?? "",
         guestGroup: guest.guestGroup ?? undefined,
         plusOne: guest.plusOne,
         plusOneName: guest.plusOneName ?? undefined,
