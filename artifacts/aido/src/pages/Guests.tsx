@@ -31,6 +31,7 @@ import { authFetch } from "@/lib/authFetch";
 import { useTranslation } from "react-i18next";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { COUNTRIES } from "@/lib/countries";
+import { getAddressFormat } from "@/lib/addressFormat";
 
 const RSVP_OPTIONS = [
   { value: "attending", label: "Attending", color: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" },
@@ -289,27 +290,6 @@ function GuestForm({
               <FormMessage />
             </FormItem>
           )} />
-          <FormField control={form.control} name="guestCity" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("guests.city")}</FormLabel>
-              <FormControl><Input placeholder="Boston" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="guestState" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("guests.state")}</FormLabel>
-              <FormControl><Input placeholder="MA" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="guestZip" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("guests.zip")}</FormLabel>
-              <FormControl><Input placeholder="02101" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
           <FormField control={form.control} name="guestCountry" render={({ field }) => (
             <FormItem className="col-span-2">
               <FormLabel>{t("guests.country")}</FormLabel>
@@ -329,6 +309,36 @@ function GuestForm({
               <FormMessage />
             </FormItem>
           )} />
+          <FormField control={form.control} name="guestCity" render={({ field }) => {
+            const fmt = getAddressFormat(form.watch("guestCountry"));
+            return (
+              <FormItem>
+                <FormLabel>{fmt.cityLabel}</FormLabel>
+                <FormControl><Input placeholder={fmt.cityPlaceholder} {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            );
+          }} />
+          <FormField control={form.control} name="guestState" render={({ field }) => {
+            const fmt = getAddressFormat(form.watch("guestCountry"));
+            return (
+              <FormItem>
+                <FormLabel>{fmt.stateLabel}</FormLabel>
+                <FormControl><Input placeholder={fmt.statePlaceholder} {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            );
+          }} />
+          <FormField control={form.control} name="guestZip" render={({ field }) => {
+            const fmt = getAddressFormat(form.watch("guestCountry"));
+            return (
+              <FormItem>
+                <FormLabel>{fmt.zipLabel}</FormLabel>
+                <FormControl><Input placeholder={fmt.zipPlaceholder} {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            );
+          }} />
         </div>
 
         <FormField control={form.control} name="plusOne" render={({ field }) => (

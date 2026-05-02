@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import { useUpload } from "@workspace/object-storage-web";
 import { InvitationCropDialog } from "@/components/InvitationCropDialog";
 import { COUNTRIES } from "@/lib/countries";
+import { getAddressFormat } from "@/lib/addressFormat";
 
 const NO_COUNTRY = "__none__";
 
@@ -297,48 +298,6 @@ export default function Profile() {
                 )}
               />
 
-              <div className="grid md:grid-cols-3 gap-6">
-                <FormField
-                  control={form.control}
-                  name="venueCity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("profile.city")}</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Charleston" {...field} data-testid="input-venue-city" className="bg-background" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="venueState"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("profile.state")}</FormLabel>
-                      <FormControl>
-                        <Input placeholder="SC" {...field} data-testid="input-venue-state" className="bg-background" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="venueZip"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("profile.zip")}</FormLabel>
-                      <FormControl>
-                        <Input placeholder="29401" {...field} data-testid="input-venue-zip" className="bg-background" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
               <FormField
                 control={form.control}
                 name="venueCountry"
@@ -365,6 +324,57 @@ export default function Profile() {
                   </FormItem>
                 )}
               />
+
+              <div className="grid md:grid-cols-3 gap-6">
+                <FormField
+                  control={form.control}
+                  name="venueCity"
+                  render={({ field }) => {
+                    const fmt = getAddressFormat(form.watch("venueCountry"));
+                    return (
+                      <FormItem>
+                        <FormLabel>{fmt.cityLabel}</FormLabel>
+                        <FormControl>
+                          <Input placeholder={fmt.cityPlaceholder} {...field} data-testid="input-venue-city" className="bg-background" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+                <FormField
+                  control={form.control}
+                  name="venueState"
+                  render={({ field }) => {
+                    const fmt = getAddressFormat(form.watch("venueCountry"));
+                    return (
+                      <FormItem>
+                        <FormLabel>{fmt.stateLabel}</FormLabel>
+                        <FormControl>
+                          <Input placeholder={fmt.statePlaceholder} {...field} data-testid="input-venue-state" className="bg-background" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+                <FormField
+                  control={form.control}
+                  name="venueZip"
+                  render={({ field }) => {
+                    const fmt = getAddressFormat(form.watch("venueCountry"));
+                    return (
+                      <FormItem>
+                        <FormLabel>{fmt.zipLabel}</FormLabel>
+                        <FormControl>
+                          <Input placeholder={fmt.zipPlaceholder} {...field} data-testid="input-venue-zip" className="bg-background" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+              </div>
 
               <div className="rounded-lg border border-primary/10 bg-primary/5 p-5 space-y-5">
                 <FormField
@@ -422,41 +432,50 @@ export default function Profile() {
                       <FormField
                         control={form.control}
                         name="ceremonyCity"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t("profile.city")}</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Charleston" {...field} data-testid="input-ceremony-city" className="bg-background" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const fmt = getAddressFormat(form.watch("venueCountry"));
+                          return (
+                            <FormItem>
+                              <FormLabel>{fmt.cityLabel}</FormLabel>
+                              <FormControl>
+                                <Input placeholder={fmt.cityPlaceholder} {...field} data-testid="input-ceremony-city" className="bg-background" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
                       <FormField
                         control={form.control}
                         name="ceremonyState"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t("profile.state")}</FormLabel>
-                            <FormControl>
-                              <Input placeholder="SC" {...field} data-testid="input-ceremony-state" className="bg-background" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const fmt = getAddressFormat(form.watch("venueCountry"));
+                          return (
+                            <FormItem>
+                              <FormLabel>{fmt.stateLabel}</FormLabel>
+                              <FormControl>
+                                <Input placeholder={fmt.statePlaceholder} {...field} data-testid="input-ceremony-state" className="bg-background" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
                       <FormField
                         control={form.control}
                         name="ceremonyZip"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t("profile.zip")}</FormLabel>
-                            <FormControl>
-                              <Input placeholder="29401" {...field} data-testid="input-ceremony-zip" className="bg-background" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const fmt = getAddressFormat(form.watch("venueCountry"));
+                          return (
+                            <FormItem>
+                              <FormLabel>{fmt.zipLabel}</FormLabel>
+                              <FormControl>
+                                <Input placeholder={fmt.zipPlaceholder} {...field} data-testid="input-ceremony-zip" className="bg-background" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
                     </div>
                   </div>
