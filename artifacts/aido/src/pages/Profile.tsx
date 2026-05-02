@@ -763,40 +763,46 @@ function InvitationPhotoCard() {
       <CardContent className="space-y-5">
         <div className="space-y-3">
           {previewSrc ? (
-            <div className="relative group rounded-xl overflow-hidden border border-border/50 shadow-sm">
-              <img
-                src={previewSrc}
-                alt="Invitation photo preview"
-                className="w-full max-h-72 object-cover"
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 gap-3">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="gap-1.5"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  Change Photo
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="gap-1.5"
-                  onClick={removePhoto}
-                  disabled={removingPhoto}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Remove
-                </Button>
-              </div>
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Preview — how guests will see it on the RSVP page
+              </p>
+              <div className="relative group rounded-xl overflow-hidden border border-border/50 shadow-sm bg-[hsl(270,20%,10%)] py-6 px-4 flex justify-center">
+                <img
+                  src={previewSrc}
+                  alt="Invitation photo preview"
+                  className="w-full max-w-md h-auto block rounded-lg"
+                  style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }}
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 gap-3">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="gap-1.5"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    Change Photo
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="gap-1.5"
+                    onClick={removePhoto}
+                    disabled={removingPhoto}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove
+                  </Button>
+                </div>
               {isUploading && (
                 <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-2">
                   <Loader2 className="h-6 w-6 animate-spin text-white" />
                   <p className="text-white text-sm font-medium">Uploading…</p>
                 </div>
               )}
+              </div>
             </div>
           ) : (
             <button
