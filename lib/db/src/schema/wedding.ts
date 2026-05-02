@@ -351,6 +351,7 @@ export const weddingParty = pgTable("wedding_party", {
   outfitStore: text("outfit_store"),
   fittingDate: text("fitting_date"),
   notes: text("notes"),
+  photoUrl: text("photo_url"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

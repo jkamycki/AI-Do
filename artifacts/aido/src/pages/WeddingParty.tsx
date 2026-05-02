@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, memo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { authFetch } from "@/lib/authFetch";
+import { useAuth } from "@clerk/react";
+import { useUpload } from "@workspace/object-storage-web";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,10 +13,69 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Plus, Phone, Mail, Trash2, Edit2, Crown, Heart, RotateCcw } from "lucide-react";
+import { Users, Plus, Phone, Mail, Trash2, Edit2, Crown, Heart, RotateCcw, Camera, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { HeadshotCropDialog } from "@/components/HeadshotCropDialog";
 
 const API = import.meta.env.VITE_API_URL ?? "";
+
+// ─── Storage helpers ──────────────────────────────────────────────────────────
+
+function objectUrl(objectPath: string) {
+  return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
+}
+
+/**
+ * Authenticated image — storage objects require a Bearer token that plain
+ * <img> tags cannot send, so we fetch the blob with credentials and render
+ * from a local blob URL.
+ */
+const AuthImage = memo(function AuthImage({
+  objectPath,
+  alt,
+  className,
+}: {
+  objectPath: string;
+  alt: string;
+  className?: string;
+}) {
+  const { getToken } = useAuth();
+  const [src, setSrc] = useState<string | null>(null);
+  const blobRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch(objectUrl(objectPath), {
+          credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok || cancelled) return;
+        const blob = await res.blob();
+        if (cancelled) return;
+        const url = URL.createObjectURL(blob);
+        blobRef.current = url;
+        setSrc(url);
+      } catch {
+        /* silently fail — letter avatar shown instead */
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (blobRef.current) {
+        URL.revokeObjectURL(blobRef.current);
+        blobRef.current = null;
+      }
+    };
+  }, [objectPath, getToken]);
+
+  if (!src) return <div className={`bg-muted animate-pulse ${className ?? ""}`} />;
+  return <img src={src} alt={alt} className={className} />;
+});
+
+// ─── Types / Constants ────────────────────────────────────────────────────────
 
 interface Member {
   id: number;
@@ -24,6 +85,7 @@ interface Member {
   phone?: string | null;
   email?: string | null;
   notes?: string | null;
+  photoUrl?: string | null;
   sortOrder: number;
   createdAt: string;
 }
@@ -52,15 +114,17 @@ const SIDE_COLORS: Record<string, string> = {
   groom: "bg-sky-100 text-sky-700 border-sky-200",
 };
 
-const ROLE_ICONS: Record<string, React.ElementType> = {
-  "Maid of Honor": Crown,
-  "Best Man": Crown,
+const AVATAR_BG: Record<string, string> = {
+  bride: "bg-rose-100 text-rose-700",
+  groom: "bg-sky-100 text-sky-700",
 };
 
 const EMPTY: Partial<Member> = {
   name: "", role: "Bridesmaid", side: "bride",
   phone: "", email: "", notes: "", sortOrder: 0,
 };
+
+// ─── MemberForm ───────────────────────────────────────────────────────────────
 
 function MemberForm({
   defaultValues = {},
@@ -128,90 +192,191 @@ function MemberForm({
   );
 }
 
-function MemberCard({ member, onEdit, onDelete }: { member: Member; onEdit: () => void; onDelete: () => void }) {
+// ─── MemberCard ───────────────────────────────────────────────────────────────
+
+function MemberCard({
+  member,
+  onEdit,
+  onDelete,
+  onPhotoChange,
+}: {
+  member: Member;
+  onEdit: () => void;
+  onDelete: () => void;
+  onPhotoChange: (memberId: number, photoUrl: string | null) => void;
+}) {
   const { t } = useTranslation();
+  const { toast } = useToast();
+  const { getToken } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropFileName, setCropFileName] = useState("headshot");
+
   const sideColor = SIDE_COLORS[member.side] ?? SIDE_COLORS.bride;
   const sideLabel = member.side === "bride" ? t("party.side_bridal") : member.side === "groom" ? t("party.side_groomsmen") : member.side;
+  const avatarBg = AVATAR_BG[member.side] ?? "bg-violet-100 text-violet-700";
+
+  const { uploadFile, isUploading } = useUpload({
+    getToken,
+    onError: (err) => toast({ title: "Upload failed", description: err.message, variant: "destructive" }),
+  });
+
+  const photoMutation = useMutation({
+    mutationFn: async (photoUrl: string | null) => {
+      const res = await authFetch(`${API}/api/wedding-party/${member.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...member, photoUrl }),
+      });
+      if (!res.ok) throw new Error("Failed to save photo");
+      return res.json() as Promise<Member>;
+    },
+    onSuccess: (updated) => {
+      onPhotoChange(member.id, updated.photoUrl ?? null);
+    },
+    onError: () => toast({ title: "Could not save photo", variant: "destructive" }),
+  });
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCropFileName(file.name);
+    setCropSrc(URL.createObjectURL(file));
+    e.target.value = "";
+  }
+
+  async function handleCropConfirm(croppedFile: File) {
+    setCropSrc(null);
+    const result = await uploadFile(croppedFile);
+    if (result) {
+      photoMutation.mutate(result.objectPath);
+    }
+  }
+
+  const isBusy = isUploading || photoMutation.isPending;
 
   return (
-    <Card className="border-border/60 shadow-sm hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-bold text-sm ${
-              member.side === "bride" ? "bg-rose-100 text-rose-700" :
-              member.side === "groom" ? "bg-sky-100 text-sky-700" :
-              "bg-violet-100 text-violet-700"
-            }`}>
-              {member.name.charAt(0).toUpperCase()}
+    <>
+      <Card className="border-border/60 shadow-sm hover:shadow-md transition-shadow">
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start gap-3">
+              {/* Avatar — click to upload/change headshot */}
+              <div
+                className="relative group w-11 h-11 rounded-full shrink-0 cursor-pointer overflow-hidden"
+                onClick={() => !isBusy && fileInputRef.current?.click()}
+                title={member.photoUrl ? "Change headshot" : "Add headshot"}
+              >
+                {member.photoUrl ? (
+                  <AuthImage
+                    objectPath={member.photoUrl}
+                    alt={member.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className={`w-full h-full flex items-center justify-center font-bold text-sm ${avatarBg}`}>
+                    {member.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                {/* hover / busy overlay */}
+                <div className={`absolute inset-0 rounded-full flex items-center justify-center transition-opacity ${
+                  isBusy ? "opacity-100 bg-black/50" : "opacity-0 group-hover:opacity-100 bg-black/40"
+                }`}>
+                  {isBusy
+                    ? <Loader2 className="h-4 w-4 text-white animate-spin" />
+                    : <Camera className="h-4 w-4 text-white" />
+                  }
+                </div>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={handleFileSelect}
+              />
+
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-semibold text-foreground">{member.name}</p>
+                  {(member.role === "Maid of Honor" || member.role === "Best Man") && (
+                    <Crown className="h-3.5 w-3.5 text-amber-500" />
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="text-xs text-muted-foreground">{member.role}</span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${sideColor}`}>
+                    {sideLabel}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-semibold text-foreground">{member.name}</p>
-                {(member.role === "Maid of Honor" || member.role === "Best Man") && (
-                  <Crown className="h-3.5 w-3.5 text-amber-500" />
+
+            <div className="flex gap-1 shrink-0">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Edit2 className="h-3.5 w-3.5" /></Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t("party.remove_member_title", { name: member.name })}</AlertDialogTitle>
+                    <AlertDialogDescription>{t("party.remove_member_desc")}</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                    <AlertDialogAction onClick={onDelete} className="bg-destructive hover:bg-destructive/90">{t("party.remove_btn")}</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+
+          {/* Contact / notes */}
+          <div className="mt-3 space-y-1.5">
+            {(member.phone || member.email) && (
+              <div className="flex flex-wrap gap-3">
+                {member.phone && (
+                  <a href={`tel:${member.phone}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <Phone className="h-3.5 w-3.5" />{member.phone}
+                  </a>
+                )}
+                {member.email && (
+                  <a href={`mailto:${member.email}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <Mail className="h-3.5 w-3.5" />{member.email}
+                  </a>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="text-xs text-muted-foreground">{member.role}</span>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${sideColor}`}>
-                  {sideLabel}
-                </span>
-              </div>
-            </div>
+            )}
+            {member.notes && (
+              <p className="text-xs text-muted-foreground italic border-t border-border/40 pt-2 mt-2">{member.notes}</p>
+            )}
           </div>
-          <div className="flex gap-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Edit2 className="h-3.5 w-3.5" /></Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{t("party.remove_member_title", { name: member.name })}</AlertDialogTitle>
-                  <AlertDialogDescription>{t("party.remove_member_desc")}</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-                  <AlertDialogAction onClick={onDelete} className="bg-destructive hover:bg-destructive/90">{t("party.remove_btn")}</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Details */}
-        <div className="mt-3 space-y-1.5">
-          {(member.phone || member.email) && (
-            <div className="flex flex-wrap gap-3">
-              {member.phone && (
-                <a href={`tel:${member.phone}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                  <Phone className="h-3.5 w-3.5" />{member.phone}
-                </a>
-              )}
-              {member.email && (
-                <a href={`mailto:${member.email}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                  <Mail className="h-3.5 w-3.5" />{member.email}
-                </a>
-              )}
-            </div>
-          )}
-          {member.notes && (
-            <p className="text-xs text-muted-foreground italic border-t border-border/40 pt-2 mt-2">{member.notes}</p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      {cropSrc && (
+        <HeadshotCropDialog
+          imageSrc={cropSrc}
+          originalFileName={cropFileName}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
+    </>
   );
 }
 
-function PartyGroup({ title, members, icon: Icon, color, onEdit, onDelete }: {
+// ─── PartyGroup ───────────────────────────────────────────────────────────────
+
+function PartyGroup({ title, members, icon: Icon, color, onEdit, onDelete, onPhotoChange }: {
   title: string;
   members: Member[];
   icon: React.ElementType;
   color: string;
   onEdit: (m: Member) => void;
   onDelete: (id: number) => void;
+  onPhotoChange: (id: number, photoUrl: string | null) => void;
 }) {
   if (members.length === 0) return null;
   return (
@@ -222,12 +387,20 @@ function PartyGroup({ title, members, icon: Icon, color, onEdit, onDelete }: {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {members.map(m => (
-          <MemberCard key={m.id} member={m} onEdit={() => onEdit(m)} onDelete={() => onDelete(m.id)} />
+          <MemberCard
+            key={m.id}
+            member={m}
+            onEdit={() => onEdit(m)}
+            onDelete={() => onDelete(m.id)}
+            onPhotoChange={onPhotoChange}
+          />
         ))}
       </div>
     </div>
   );
 }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function WeddingParty() {
   const { t } = useTranslation();
@@ -267,6 +440,13 @@ export default function WeddingParty() {
     onSuccess: () => { toast({ title: t("party.member_removed") }); invalidate(); },
     onError: () => toast({ title: t("party.member_remove_failed"), variant: "destructive" }),
   });
+
+  /** Optimistically update the photo in the cache without a full refetch. */
+  function handlePhotoChange(id: number, photoUrl: string | null) {
+    queryClient.setQueryData<Member[]>(["wedding-party"], old =>
+      old ? old.map(m => m.id === id ? { ...m, photoUrl } : m) : old,
+    );
+  }
 
   const bridesSide = members.filter(m => m.side === "bride");
   const groomsSide = members.filter(m => m.side === "groom");
@@ -365,6 +545,7 @@ export default function WeddingParty() {
             color="bg-rose-50 text-rose-700 border-rose-200"
             onEdit={setEditMember}
             onDelete={id => deleteMutation.mutate(id)}
+            onPhotoChange={handlePhotoChange}
           />
           <PartyGroup
             title={t("party.groomsmen")}
@@ -373,6 +554,7 @@ export default function WeddingParty() {
             color="bg-sky-50 text-sky-700 border-sky-200"
             onEdit={setEditMember}
             onDelete={id => deleteMutation.mutate(id)}
+            onPhotoChange={handlePhotoChange}
           />
         </div>
       )}

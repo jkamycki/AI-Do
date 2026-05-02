@@ -75,11 +75,11 @@ router.patch("/wedding-party/:id", requireAuth, async (req, res) => {
     const id = Number(req.params.id);
     const {
       name, role, side, phone, email,
-      outfitDetails, shoeSize, outfitStore, fittingDate, notes, sortOrder,
+      outfitDetails, shoeSize, outfitStore, fittingDate, notes, photoUrl, sortOrder,
     } = req.body;
     const [updated] = await db
       .update(weddingParty)
-      .set({ name, role, side, phone, email, outfitDetails, shoeSize, outfitStore, fittingDate, notes, sortOrder })
+      .set({ name, role, side, phone, email, outfitDetails, shoeSize, outfitStore, fittingDate, notes, photoUrl, sortOrder })
       .where(and(eq(weddingParty.id, id), eq(weddingParty.userId, userId)))
       .returning();
     if (!updated) return res.status(404).json({ error: "Not found" });
