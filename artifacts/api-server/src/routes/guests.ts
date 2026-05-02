@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, guests, weddingProfiles } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, ilike, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 
@@ -73,12 +73,30 @@ router.post("/guests", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Guest name is required" });
     }
 
+    const trimmedName = name.trim();
+    const cleanEmail = email?.trim() || null;
+
+    const dupConditions = [ilike(guests.name, trimmedName)];
+    if (cleanEmail) dupConditions.push(ilike(guests.email, cleanEmail));
+
+    const existing = await db
+      .select({ id: guests.id })
+      .from(guests)
+      .where(and(eq(guests.profileId, profileId), or(...dupConditions)));
+
+    if (existing.length > 0) {
+      return res.status(409).json({
+        error: "A guest with this name or email already exists.",
+        duplicateIds: existing.map(g => g.id),
+      });
+    }
+
     const [created] = await db
       .insert(guests)
       .values({
         profileId,
-        name: name.trim(),
-        email: email || null,
+        name: trimmedName,
+        email: cleanEmail,
         invitationStatus: invitationStatus || "pending",
         rsvpStatus: rsvpStatus || "pending",
         mealChoice: mealChoice || null,
@@ -122,6 +140,26 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     if (!profileId) return res.status(400).json({ error: "No wedding profile found." });
 
     const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, aptUnit, guestCity, guestState, guestZip, guestCountry } = req.body;
+
+    if (name !== undefined || email !== undefined) {
+      const checkName = (name ?? "").trim();
+      const checkEmail = (email ?? "").trim() || null;
+      const dupConditions = [];
+      if (checkName) dupConditions.push(ilike(guests.name, checkName));
+      if (checkEmail) dupConditions.push(ilike(guests.email, checkEmail));
+      if (dupConditions.length > 0) {
+        const existing = await db
+          .select({ id: guests.id })
+          .from(guests)
+          .where(and(eq(guests.profileId, profileId), not(eq(guests.id, id)), or(...dupConditions)));
+        if (existing.length > 0) {
+          return res.status(409).json({
+            error: "A guest with this name or email already exists.",
+            duplicateIds: existing.map(g => g.id),
+          });
+        }
+      }
+    }
 
     const updateData: Partial<typeof guests.$inferInsert> = {};
     if (name !== undefined) updateData.name = name;

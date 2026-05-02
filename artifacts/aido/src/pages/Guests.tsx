@@ -26,7 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, Phone, MapPin, Send, Loader2, Sparkles, X as XIcon } from "lucide-react";
+import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, Phone, MapPin, Send, Loader2, Sparkles, X as XIcon, AlertTriangle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
 import { useTranslation } from "react-i18next";
@@ -602,6 +602,8 @@ export default function Guests() {
   const [isAdding, setIsAdding] = useState(false);
   const [editGuest, setEditGuest] = useState<Guest | null>(null);
 
+  const [duplicateGuestIds, setDuplicateGuestIds] = useState<Set<number>>(new Set());
+
   const [linkDialogState, setLinkDialogState] = useState<{ guestId: number; name: string; url: string; copied: boolean; hasEmail: boolean } | null>(null);
   const [fetchingLinkId, setFetchingLinkId] = useState<number | null>(null);
 
@@ -840,14 +842,28 @@ export default function Guests() {
       onSuccess: () => {
         toast({ title: "Guest added" });
         setIsAdding(false);
+        setDuplicateGuestIds(new Set());
         invalidate();
       },
       onError: (err: unknown) => {
         const status = (err as { status?: number })?.status;
-        toast({
-          title: status === 401 ? "Session refreshing — try again in a moment" : "Failed to add guest",
-          variant: "destructive",
-        });
+        if (status === 409) {
+          const ids = ((err as { data?: { duplicateIds?: number[] } })?.data?.duplicateIds) ?? [];
+          if (ids.length > 0) {
+            setDuplicateGuestIds(new Set(ids));
+            setIsAdding(false);
+          }
+          toast({
+            title: "Duplicate guest detected",
+            description: "A guest with this name or email already exists. The matching entry is highlighted below.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: status === 401 ? "Session refreshing — try again in a moment" : "Failed to add guest",
+            variant: "destructive",
+          });
+        }
       },
     });
   }
@@ -885,7 +901,14 @@ export default function Guests() {
         setEditGuest(null);
         invalidate();
       },
-      onError: () => toast({ title: "Failed to update guest", variant: "destructive" }),
+      onError: (err: unknown) => {
+        const status = (err as { status?: number })?.status;
+        toast({
+          title: status === 409 ? "Duplicate guest detected" : "Failed to update guest",
+          description: status === 409 ? "A guest with this name or email already exists." : undefined,
+          variant: "destructive",
+        });
+      },
     });
   }
 
@@ -1069,6 +1092,34 @@ export default function Guests() {
         </Card>
       )}
 
+      {/* Duplicate warning banner */}
+      {duplicateGuestIds.size > 0 && (
+        <Card className="border-rose-300/60 bg-rose-50/70 dark:bg-rose-900/15 dark:border-rose-700/50 shadow-sm">
+          <CardContent className="py-3 px-4 flex items-start sm:items-center gap-3">
+            <div className="shrink-0 h-9 w-9 rounded-full bg-rose-200/80 dark:bg-rose-800/40 flex items-center justify-center ring-1 ring-rose-300/60 dark:ring-rose-700/60">
+              <AlertTriangle className="h-4 w-4 text-rose-700 dark:text-rose-300" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-rose-900 dark:text-rose-200">
+                Duplicate guest detected
+              </p>
+              <p className="text-xs text-rose-800/80 dark:text-rose-300/70 mt-0.5">
+                The highlighted {duplicateGuestIds.size === 1 ? "entry matches" : "entries match"} the name or email you tried to add. Review before proceeding.
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 text-rose-900 dark:text-rose-200 hover:bg-rose-200/60 dark:hover:bg-rose-800/30"
+              onClick={() => setDuplicateGuestIds(new Set())}
+            >
+              <XIcon className="h-3.5 w-3.5 mr-1.5" />
+              Dismiss
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Search + filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -1148,10 +1199,11 @@ export default function Guests() {
                     const grpLabel = g.guestGroup ? t(`guests.group_${g.guestGroup}`, getGroupLabel(g.guestGroup)) : "";
                     const grpColor = g.guestGroup ? (GROUP_COLORS[g.guestGroup] ?? "bg-gray-100 text-gray-700 border-gray-200") : "";
                     const isNew = newGuestIds.has(g.id);
+                    const isDuplicate = duplicateGuestIds.has(g.id);
                     return (
                       <TableRow
                         key={g.id}
-                        className={`group ${isNew ? "bg-amber-50/40 dark:bg-amber-900/10 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
+                        className={`group ${isDuplicate ? "bg-rose-50/60 dark:bg-rose-900/15 border-l-4 border-l-rose-500 dark:border-l-rose-400" : isNew ? "bg-amber-50/40 dark:bg-amber-900/10 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
                       >
                         <TableCell className="min-w-[200px]">
                           <div className="flex items-center gap-2 flex-wrap">

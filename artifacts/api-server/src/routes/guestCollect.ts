@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, guests, weddingProfiles } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and, or, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import crypto from "crypto";
 
@@ -169,6 +169,22 @@ router.post("/guest-collect/:token", async (req, res) => {
       return res.status(400).json({ error: "Your name is required." });
     }
 
+    const profileId = profiles[0].id;
+    const trimmedName = name.trim();
+    const trimmedEmail = email?.trim() || null;
+
+    const dupConditions = [ilike(guests.name, trimmedName)];
+    if (trimmedEmail) dupConditions.push(ilike(guests.email, trimmedEmail));
+
+    const existing = await db
+      .select({ id: guests.id })
+      .from(guests)
+      .where(and(eq(guests.profileId, profileId), or(...dupConditions)));
+
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "It looks like your info is already in the system — no need to submit again!" });
+    }
+
     const cleanMeal = typeof mealChoice === "string" && mealChoice.trim() ? mealChoice.trim() : null;
     const cleanDietary = cleanMeal === "other" && typeof dietaryNotes === "string" && dietaryNotes.trim()
       ? dietaryNotes.trim().slice(0, 500)
@@ -181,9 +197,9 @@ router.post("/guest-collect/:token", async (req, res) => {
     const [created] = await db
       .insert(guests)
       .values({
-        profileId: profiles[0].id,
-        name: name.trim(),
-        email: email?.trim() || null,
+        profileId,
+        name: trimmedName,
+        email: trimmedEmail,
         phone: phone?.trim() || null,
         address: address?.trim() || null,
         rsvpStatus: "pending",
