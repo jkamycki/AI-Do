@@ -797,7 +797,14 @@ export default function MoodBoard() {
 
         const COLS = 3;
         const GAP = 7;
-        const CAPTION_H = 24; // generous space for up to 2 lines of caption
+        // Caption = up to 2 rows of small pill chips, centered under image
+        const PILL_FONT = 6.5;
+        const PILL_H = 9;
+        const PILL_PAD_X = 3.5;
+        const PILL_GAP = 3;
+        const PILL_ROW_GAP = 2.5;
+        const PILL_TOP_OFFSET = 6;
+        const CAPTION_H = PILL_TOP_OFFSET + PILL_H * 2 + PILL_ROW_GAP + 2; // ~30
         const IMG_W = (CW - GAP * (COLS - 1)) / COLS;
         const IMG_H = Math.round(IMG_W * 0.7);
         const ROW_H = IMG_H + CAPTION_H;
@@ -834,18 +841,64 @@ export default function MoodBoard() {
             doc.setFillColor(38, 30, 46);
             doc.roundedRect(x, y, IMG_W, IMG_H, 3, 3, "F");
           }
-          // Per-photo tags caption (gold), under each image
+          // Per-photo tags — render as small gold pill chips centered under
+          // each image, wrapping into at most 2 rows. Overflow becomes "+N".
           const imgTags = board.images[i].tags ?? board.images[i].analysis?.styleKeywords ?? [];
           if (imgTags.length > 0) {
             doc.setFont("helvetica", "normal");
-            doc.setFontSize(6.5);
-            doc.setTextColor(GD_R, GD_G, GD_B);
-            const captionLines = doc.splitTextToSize(imgTags.join(" · "), IMG_W) as string[];
-            const lines = captionLines.slice(0, 2);
-            if (captionLines.length > 2 && lines[1]) {
-              lines[1] = lines[1].replace(/.{0,2}$/, "…");
+            doc.setFontSize(PILL_FONT);
+
+            // Measure each pill width: text + horizontal padding
+            const pills = imgTags.map(t => ({
+              text: t,
+              w: doc.getTextWidth(t) + PILL_PAD_X * 2,
+            }));
+
+            // Greedy line-break into rows that fit within IMG_W
+            const MAX_ROWS = 2;
+            const rows: { text: string; w: number }[][] = [[]];
+            for (const p of pills) {
+              const row = rows[rows.length - 1]!;
+              const additional = (row.length === 0 ? 0 : PILL_GAP) + p.w;
+              const rowW = row.reduce((s, t, idx) => s + t.w + (idx > 0 ? PILL_GAP : 0), 0);
+              if (rowW + additional > IMG_W && row.length > 0) {
+                if (rows.length >= MAX_ROWS) break;
+                rows.push([p]);
+              } else {
+                row.push(p);
+              }
             }
-            doc.text(lines, x, y + IMG_H + 9);
+
+            // If any tags didn't fit, replace tail of last row with "+N"
+            const placed = rows.reduce((n, r) => n + r.length, 0);
+            if (placed < pills.length) {
+              const remaining = pills.length - placed;
+              const lastRow = rows[rows.length - 1]!;
+              const more = { text: `+${remaining}`, w: doc.getTextWidth(`+${remaining}`) + PILL_PAD_X * 2 };
+              let lastW = lastRow.reduce((s, t, idx) => s + t.w + (idx > 0 ? PILL_GAP : 0), 0);
+              while (lastRow.length > 0 && lastW + PILL_GAP + more.w > IMG_W) {
+                const removed = lastRow.pop()!;
+                lastW -= removed.w + (lastRow.length > 0 ? PILL_GAP : 0);
+              }
+              lastRow.push(more);
+            }
+
+            // Render each row centered horizontally within the image cell
+            let captionY = y + IMG_H + PILL_TOP_OFFSET;
+            doc.setDrawColor(GD_R, GD_G, GD_B);
+            doc.setLineWidth(0.4);
+            doc.setTextColor(GD_R, GD_G, GD_B);
+            for (const row of rows) {
+              if (row.length === 0) continue;
+              const rowW = row.reduce((s, t, idx) => s + t.w + (idx > 0 ? PILL_GAP : 0), 0);
+              let pillX = x + (IMG_W - rowW) / 2;
+              for (const t of row) {
+                doc.roundedRect(pillX, captionY, t.w, PILL_H, PILL_H / 2, PILL_H / 2, "S");
+                doc.text(t.text, pillX + t.w / 2, captionY + PILL_H - 2.7, { align: "center" });
+                pillX += t.w + PILL_GAP;
+              }
+              captionY += PILL_H + PILL_ROW_GAP;
+            }
           }
         }
         y += ROW_H + 22;
