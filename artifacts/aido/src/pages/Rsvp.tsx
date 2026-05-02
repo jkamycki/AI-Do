@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Heart, CheckCircle2, XCircle, AlertCircle, Loader2, User } from "lucide-react";
+import { Heart, CheckCircle2, XCircle, AlertCircle, Loader2, User, Download, MapPin } from "lucide-react";
 
 const schema = z.object({
   attendance: z.enum(["attending", "declined"], { required_error: "Please select Accept or Decline." }),
@@ -47,6 +47,10 @@ interface RsvpInfo {
   partner2Name: string | null;
   weddingDate: string | null;
   venue: string | null;
+  venueAddress: string | null;
+  venueCity: string | null;
+  venueState: string | null;
+  venueZip: string | null;
   currentStatus: string;
   hasPhoto: boolean;
   invitationMessage: string | null;
@@ -58,6 +62,7 @@ export default function Rsvp() {
   const [submitted, setSubmitted] = useState(false);
   const [finalStatus, setFinalStatus] = useState<"attending" | "declined" | null>(null);
   const [pendingData, setPendingData] = useState<FormData | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const { data: info, isLoading, isError } = useQuery({
     queryKey: ["rsvp", token],
@@ -117,6 +122,162 @@ export default function Rsvp() {
     : null;
 
   const mealLabel = (val?: string) => MEAL_OPTIONS.find(o => o.value === val)?.label ?? val ?? "—";
+
+  const cityStateZip = [
+    info?.venueCity,
+    [info?.venueState, info?.venueZip].filter(Boolean).join(" "),
+  ].filter(Boolean).join(", ");
+  const addressLine1 = info?.venueAddress ?? "";
+
+  const blobToDataUrl = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("read failed"));
+      reader.readAsDataURL(blob);
+    });
+
+  const loadImageDims = (dataUrl: string): Promise<{ w: number; h: number }> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => reject(new Error("img load failed"));
+      img.src = dataUrl;
+    });
+
+  const downloadInvitationPdf = async () => {
+    if (!info) return;
+    setDownloadingPdf(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
+
+      const PAGE_W = 595;
+      const PAGE_H = 842;
+      const MARGIN = 50;
+      const CW = PAGE_W - 2 * MARGIN;
+
+      const [BG_R, BG_G, BG_B] = [26, 20, 31];
+      const [GD_R, GD_G, GD_B] = [231, 166, 32];
+      const [WH_R, WH_G, WH_B] = [246, 238, 242];
+      const [MT_R, MT_G, MT_B] = [173, 144, 158];
+
+      doc.setFillColor(BG_R, BG_G, BG_B);
+      doc.rect(0, 0, PAGE_W, PAGE_H, "F");
+
+      let y = MARGIN + 10;
+
+      try {
+        const logoRes = await fetch("/logo.png");
+        if (logoRes.ok) {
+          const logoData = await blobToDataUrl(await logoRes.blob());
+          const dims = await loadImageDims(logoData);
+          const logoH = 70;
+          const logoW = (dims.w / dims.h) * logoH;
+          doc.addImage(logoData, "PNG", (PAGE_W - logoW) / 2, y, logoW, logoH);
+          y += logoH + 24;
+        }
+      } catch { /* skip logo */ }
+
+      if (info.hasPhoto) {
+        try {
+          const photoRes = await fetch(`/api/rsvp/${token}/photo`);
+          if (photoRes.ok) {
+            const photoData = await blobToDataUrl(await photoRes.blob());
+            const dims = await loadImageDims(photoData);
+            const maxW = CW;
+            const maxH = 320;
+            const scale = Math.min(maxW / dims.w, maxH / dims.h);
+            const drawW = dims.w * scale;
+            const drawH = dims.h * scale;
+            doc.addImage(photoData, "JPEG", (PAGE_W - drawW) / 2, y, drawW, drawH);
+            y += drawH + 28;
+          }
+        } catch { /* skip photo */ }
+      }
+
+      doc.setTextColor(GD_R, GD_G, GD_B);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      const eyebrow = "WEDDING INVITATION";
+      doc.text(eyebrow, PAGE_W / 2, y, { align: "center", charSpace: 3 });
+      y += 22;
+
+      doc.setTextColor(WH_R, WH_G, WH_B);
+      doc.setFont("times", "bold");
+      doc.setFontSize(28);
+      const coupleLines = doc.splitTextToSize(couple, CW);
+      doc.text(coupleLines, PAGE_W / 2, y, { align: "center" });
+      y += coupleLines.length * 30;
+
+      if (weddingDateStr) {
+        y += 6;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(13);
+        doc.setTextColor(WH_R, WH_G, WH_B);
+        doc.text(weddingDateStr, PAGE_W / 2, y, { align: "center" });
+        y += 22;
+      }
+
+      if (info.venue) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(WH_R, WH_G, WH_B);
+        doc.text(info.venue, PAGE_W / 2, y, { align: "center" });
+        y += 16;
+      }
+
+      if (addressLine1) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.setTextColor(MT_R, MT_G, MT_B);
+        doc.text(addressLine1, PAGE_W / 2, y, { align: "center" });
+        y += 14;
+      }
+
+      if (cityStateZip) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.setTextColor(MT_R, MT_G, MT_B);
+        doc.text(cityStateZip, PAGE_W / 2, y, { align: "center" });
+        y += 14;
+      }
+
+      if (info.invitationMessage) {
+        y += 18;
+        doc.setFont("times", "italic");
+        doc.setFontSize(12);
+        doc.setTextColor(WH_R, WH_G, WH_B);
+        const msgLines = doc.splitTextToSize(`"${info.invitationMessage}"`, CW - 40);
+        doc.text(msgLines, PAGE_W / 2, y, { align: "center" });
+        y += msgLines.length * 16;
+      }
+
+      y += 22;
+      doc.setDrawColor(GD_R, GD_G, GD_B);
+      doc.setLineWidth(0.8);
+      const divW = 80;
+      doc.line((PAGE_W - divW) / 2, y, (PAGE_W + divW) / 2, y);
+      y += 22;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(MT_R, MT_G, MT_B);
+      doc.text(`For ${info.guestName}`, PAGE_W / 2, y, { align: "center" });
+
+      const footerY = PAGE_H - 30;
+      doc.setFontSize(8);
+      doc.setTextColor(MT_R, MT_G, MT_B);
+      doc.text("Created with A.IDO — aidowedding.net", PAGE_W / 2, footerY, { align: "center" });
+
+      const safeCouple = couple.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") || "wedding";
+      doc.save(`${safeCouple}_invitation.pdf`);
+    } catch (err) {
+      console.error("PDF generation failed", err);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -219,13 +380,40 @@ export default function Rsvp() {
                 <p className="text-base text-white/60 mt-1">{weddingDateStr}</p>
               )}
               {info.venue && (
-                <p className="text-sm text-white/40 mt-0.5">{info.venue}</p>
+                <div className="mt-2 flex flex-col items-center gap-0.5">
+                  <div className="flex items-center gap-1.5 text-white/70">
+                    <MapPin className="h-3.5 w-3.5 text-primary/80" />
+                    <p className="text-sm font-medium">{info.venue}</p>
+                  </div>
+                  {addressLine1 && (
+                    <p className="text-xs text-white/50">{addressLine1}</p>
+                  )}
+                  {cityStateZip && (
+                    <p className="text-xs text-white/50">{cityStateZip}</p>
+                  )}
+                </div>
               )}
               {info.invitationMessage && (
                 <p className="text-sm text-white/70 mt-4 leading-relaxed max-w-md mx-auto italic">
                   "{info.invitationMessage}"
                 </p>
               )}
+              <div className="pt-3 flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadInvitationPdf}
+                  disabled={downloadingPdf}
+                  className="gap-2 border-white/20 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white"
+                >
+                  {downloadingPdf ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating PDF…</>
+                  ) : (
+                    <><Download className="h-3.5 w-3.5" /> Download Invitation (PDF)</>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
 
