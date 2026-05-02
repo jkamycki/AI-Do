@@ -51,6 +51,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 
 const TAG_DRAG_TYPE = "application/x-mood-tag";
 
@@ -326,6 +327,9 @@ export default function MoodBoard() {
   const [localBoard, setLocalBoard] = useState<MoodBoardData | null>(null);
   const [blobUrls, setBlobUrls] = useState<Map<string, string>>(new Map());
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const [cropQueue, setCropQueue] = useState<File[]>([]);
+  const [cropIndex, setCropIndex] = useState(0);
+  const [cropTotal, setCropTotal] = useState(0);
 
   useEffect(() => {
     const urls = blobUrls;
@@ -404,42 +408,66 @@ export default function MoodBoard() {
     });
   }, [board, save]);
 
-  // ─── Upload images ────────────────────────────────────────────────────────
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
+  // ─── Upload images (with crop step) ──────────────────────────────────────
+  // 1. User selects files -> we queue them for the crop dialog.
+  // 2. For each file the dialog returns a cropped File (or the original if skipped).
+  // 3. We upload that file and append it to the board.
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []).filter(f => f.type.startsWith("image/"));
+    e.target.value = "";
     if (!files.length) return;
+    setCropQueue(files);
+    setCropIndex(0);
+    setCropTotal(files.length);
+  };
 
-    const uploads = await Promise.all(
-      files.map(f => uploadFile(f))
-    );
-
-    const successful = uploads
-      .map((r, i) => ({ result: r, file: files[i] }))
-      .filter(({ result }) => Boolean(result));
-
-    const newImages: MoodBoardImage[] = successful.map(({ result }, i) => ({
-      objectPath: result!.objectPath,
-      order: board.images.length + i,
-      name: successful[i].file?.name,
-    }));
-
-    // Create blob URLs for immediate display (no auth round-trip needed)
+  const uploadOne = useCallback(async (file: File) => {
+    const result = await uploadFile(file);
+    if (!result) return;
     setBlobUrls(prev => {
       const next = new Map(prev);
-      successful.forEach(({ result, file }) => {
-        if (result && file) next.set(result.objectPath, URL.createObjectURL(file));
-      });
+      next.set(result.objectPath, URL.createObjectURL(file));
       return next;
     });
+    setLocalBoard(prev => {
+      const current = prev ?? board;
+      const newImage: MoodBoardImage = {
+        objectPath: result.objectPath,
+        order: current.images.length,
+        name: file.name,
+      };
+      const next = { ...current, images: [...current.images, newImage] };
+      save(next);
+      return next;
+    });
+    toast({ title: "Image added to your mood board" });
+  }, [uploadFile, board, save, toast]);
 
-    const updatedImages = [...board.images, ...newImages];
-    update({ images: updatedImages });
-    e.target.value = "";
+  const advanceQueue = useCallback(() => {
+    setCropQueue(prev => prev.slice(1));
+    setCropIndex(i => i + 1);
+  }, []);
 
-    if (newImages.length > 0) {
-      toast({ title: `${newImages.length} image${newImages.length > 1 ? "s" : ""} added to your mood board` });
-    }
-  };
+  const handleCropComplete = useCallback((cropped: File) => {
+    void uploadOne(cropped);
+    advanceQueue();
+  }, [uploadOne, advanceQueue]);
+
+  const handleCropSkip = useCallback(() => {
+    const first = cropQueue[0];
+    if (first) void uploadOne(first);
+    advanceQueue();
+  }, [cropQueue, uploadOne, advanceQueue]);
+
+  const handleCropCancelAll = useCallback(() => {
+    setCropQueue([]);
+    setCropIndex(0);
+    setCropTotal(0);
+  }, []);
+
+  const cropItem: CropQueueItem | null = cropQueue.length > 0 && cropQueue[0]
+    ? { file: cropQueue[0], index: cropIndex, total: cropTotal }
+    : null;
 
   // ─── Drag-and-drop reorder ────────────────────────────────────────────────
   const sensors = useSensors(
@@ -615,24 +643,42 @@ export default function MoodBoard() {
       r.readAsDataURL(blob);
     });
 
-  // Crop a data-URL image to fill (cellW × cellH) without distortion (cover semantics).
-  const coverCrop = (dataUrl: string, cellW: number, cellH: number): Promise<string> =>
+  // Fit a data-URL image into (cellW × cellH) with CONTAIN semantics: the
+  // entire image is preserved (no clipping) and centered, with the page
+  // background filling the letterbox area. Returns { dataUrl, drawW, drawH,
+  // offsetX, offsetY } so the caller can position it inside the cell.
+  type FitResult = { dataUrl: string; drawW: number; drawH: number; offsetX: number; offsetY: number };
+  const containFit = (dataUrl: string, cellW: number, cellH: number): Promise<FitResult> =>
     new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
         try {
-          const scale = 2; // render at 2× for sharpness
+          const imgAspect = img.naturalWidth / img.naturalHeight;
+          const cellAspect = cellW / cellH;
+          let drawW: number, drawH: number;
+          if (imgAspect > cellAspect) {
+            // image wider than cell -> fit to width, letterbox top/bottom
+            drawW = cellW;
+            drawH = cellW / imgAspect;
+          } else {
+            drawH = cellH;
+            drawW = cellH * imgAspect;
+          }
+          const offsetX = (cellW - drawW) / 2;
+          const offsetY = (cellH - drawH) / 2;
+          // Re-encode to JPEG at the actual draw size (×2 for sharpness)
+          const scale = 2;
           const canvas = document.createElement("canvas");
-          canvas.width = Math.round(cellW * scale);
-          canvas.height = Math.round(cellH * scale);
+          canvas.width = Math.max(1, Math.round(drawW * scale));
+          canvas.height = Math.max(1, Math.round(drawH * scale));
           const ctx = canvas.getContext("2d");
-          if (!ctx) { resolve(dataUrl); return; }
-          const s = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
-          const drawW = img.naturalWidth * s;
-          const drawH = img.naturalHeight * s;
-          ctx.drawImage(img, (canvas.width - drawW) / 2, (canvas.height - drawH) / 2, drawW, drawH);
-          resolve(canvas.toDataURL("image/jpeg", 0.88));
-        } catch { resolve(dataUrl); }
+          if (!ctx) { resolve({ dataUrl, drawW, drawH, offsetX, offsetY }); return; }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve({
+            dataUrl: canvas.toDataURL("image/jpeg", 0.9),
+            drawW, drawH, offsetX, offsetY,
+          });
+        } catch { resolve({ dataUrl, drawW: cellW, drawH: cellH, offsetX: 0, offsetY: 0 }); }
       };
       img.onerror = () => reject(new Error("img load failed"));
       img.src = dataUrl;
@@ -751,7 +797,7 @@ export default function MoodBoard() {
 
         const COLS = 3;
         const GAP = 7;
-        const CAPTION_H = 22; // reserved space for per-photo tag caption
+        const CAPTION_H = 24; // generous space for up to 2 lines of caption
         const IMG_W = (CW - GAP * (COLS - 1)) / COLS;
         const IMG_H = Math.round(IMG_W * 0.7);
         const ROW_H = IMG_H + CAPTION_H;
@@ -760,6 +806,8 @@ export default function MoodBoard() {
           const col = i % COLS;
           if (col === 0) {
             if (i > 0) y += ROW_H + GAP;
+            // Page break check: include the inter-row GAP so the next row's
+            // bottom (caption included) is fully inside the page margins.
             if (y + ROW_H > PAGE_H - MARGIN) {
               doc.addPage(); fillBg();
               y = MARGIN;
@@ -770,9 +818,18 @@ export default function MoodBoard() {
             const res = await authFetch(objectUrl(board.images[i].objectPath), {}, getToken);
             const blob = await res.blob();
             const dataUrl = await blobToDataUrl(blob);
-            // Crop to cell dimensions before embedding so jsPDF has nothing to stretch
-            const cropped = await coverCrop(dataUrl, IMG_W, IMG_H);
-            doc.addImage(cropped, "JPEG", x, y, IMG_W, IMG_H);
+            // CONTAIN-fit so no part of the user's photo is clipped.
+            // We draw at the fitted size and center inside the cell — the
+            // page background fills any letterbox area naturally.
+            const fit = await containFit(dataUrl, IMG_W, IMG_H);
+            doc.addImage(
+              fit.dataUrl,
+              "JPEG",
+              x + fit.offsetX,
+              y + fit.offsetY,
+              fit.drawW,
+              fit.drawH,
+            );
           } catch {
             doc.setFillColor(38, 30, 46);
             doc.roundedRect(x, y, IMG_W, IMG_H, 3, 3, "F");
@@ -946,6 +1003,14 @@ export default function MoodBoard() {
         multiple
         className="hidden"
         onChange={handleFileChange}
+      />
+
+      {/* Crop dialog — shown one image at a time after the user selects files */}
+      <ImageCropDialog
+        item={cropItem}
+        onComplete={handleCropComplete}
+        onSkip={handleCropSkip}
+        onCancelAll={handleCropCancelAll}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
