@@ -66,10 +66,17 @@ export default function Profile() {
     query: {
       queryKey: getGetProfileQueryKey(),
       enabled: isLoaded && !!isSignedIn,
-      retry: 3,
+      // Don't retry 404 — that just means "no profile yet, render the empty form".
+      retry: (failureCount, err) => {
+        if ((err as { status?: number } | null | undefined)?.status === 404) return false;
+        return failureCount < 3;
+      },
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
     }
   });
+  // True 404 = brand-new user without a profile yet. We render the empty form
+  // so they can fill it in (POST /api/profile creates the row on save).
+  const isNoProfileYet = isError && (error as { status?: number } | null)?.status === 404;
   const saveProfile = useSaveProfile();
 
   const form = useForm<ProfileFormValues>({
@@ -146,20 +153,17 @@ export default function Profile() {
     });
   };
 
-  if (isError && !profile && !isFetching) {
-    const is404 = (error as any)?.status === 404;
+  // Only show the error screen for real errors (network/500). A 404 is the
+  // expected "first-time user" state — fall through to render the empty form.
+  if (isError && !profile && !isFetching && !isNoProfileYet) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] space-y-4 text-center">
         <p className="text-muted-foreground text-sm">
-          {is404
-            ? "No profile found. Please complete onboarding from the Dashboard."
-            : "Could not load your profile. The server may be starting up — please try again."}
+          Could not load your profile. The server may be starting up — please try again.
         </p>
-        {!is404 && (
-          <Button variant="outline" onClick={() => void refetch()} className="gap-2">
-            <RefreshCw className="h-4 w-4" /> Try again
-          </Button>
-        )}
+        <Button variant="outline" onClick={() => void refetch()} className="gap-2">
+          <RefreshCw className="h-4 w-4" /> Try again
+        </Button>
       </div>
     );
   }
@@ -184,9 +188,22 @@ export default function Profile() {
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-4xl font-serif text-primary">{t("profile.title")}</h1>
-        <p className="text-lg text-muted-foreground mt-2">{t("profile.subtitle")}</p>
+        <h1 className="text-4xl font-serif text-primary">
+          {isNoProfileYet ? "Set up your wedding profile" : t("profile.title")}
+        </h1>
+        <p className="text-lg text-muted-foreground mt-2">
+          {isNoProfileYet
+            ? "Tell us a few quick details so Aria can personalize your planning experience."
+            : t("profile.subtitle")}
+        </p>
       </div>
+
+      {isNoProfileYet && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground">
+          <span className="font-medium text-primary">Welcome!</span>{" "}
+          Fill in your wedding details below and tap <span className="font-medium">Save</span> at the bottom to get started.
+        </div>
+      )}
 
       <Card className="border-none shadow-md overflow-hidden bg-card">
         <CardHeader className="bg-primary/5 pb-6 border-b border-primary/10">
