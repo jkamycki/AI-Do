@@ -103,11 +103,10 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      // Was 4000. Most weddings need 15-22 events × ~90 tok = ~1800 tok.
-      // 2500 covers extra-long days while halving the per-call TPD spend.
-      max_completion_tokens: 2500,
+      // 4096 tokens accommodates weddings with 25+ events (elaborate schedules).
+      max_completion_tokens: 4096,
       messages: [{ role: "user", content: prompt }],
-    });
+    }, { signal: AbortSignal.timeout(90_000) });
 
     const content = completion.choices[0]?.message?.content ?? "[]";
     let events: Array<{ time: string; title: string; description: string; category: string }>;

@@ -1467,11 +1467,10 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       ? `\n\nIMPORTANT: Always respond in ${preferredLanguage}, regardless of what language the user writes in.`
       : "";
 
-    // Keep the last 2 messages (1 exchange) — enough for gather→confirm→save
-    // flows. The system prompt + tools schema already eat ~4,500 tokens of
-    // Groq's 6,000 TPM budget on the free tier, so we cannot afford more
-    // history. If the user wanted more memory we'd need to switch tiers.
-    const recent = messages.slice(-2);
+    // Keep the last 6 messages (3 exchanges) for meaningful context.
+    // Groq llama-3.1-8b-instant has a 20K TPM budget — plenty for the
+    // system prompt + tools schema (~3,700 tok) + history + 600 output tokens.
+    const recent = messages.slice(-6);
     const convo: Array<Record<string, unknown>> = [
       { role: "system", content: SYSTEM_PROMPT + langInstruction },
       ...recent,
@@ -1479,12 +1478,11 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const performedActions: ActionRecord[] = [];
 
     let toolLoops = 0;
-    // Lowered from 4 → 2 because each loop is another Groq call burning
-    // ~1,500-2,500 tokens. With 4 loops a single user turn could consume
-    // 8,000-10,000 tokens — over Groq's 6,000 TPM free-tier cap by itself.
-    // 2 loops covers the gather→save flow (one tool-call round + final
-    // text response) without blowing the TPM budget.
-    const MAX_TOOL_LOOPS = 2;
+    let textContinuations = 0;
+    // 4 tool loops: gather → confirm → save → final-text — covers all multi-step flows.
+    const MAX_TOOL_LOOPS = 4;
+    // Up to 3 automatic continuations when a text response hits max_tokens.
+    const MAX_TEXT_CONTINUATIONS = 3;
 
     // Decide whether tools are needed at all, and if so which subset.
     // Three tiers, each cheaper than the last:
@@ -1500,16 +1498,12 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const skipTools = !!lastUserText
       && (isConversationalMessage(lastUserText) || isInfoQuestion(lastUserText));
     const filteredTools = skipTools ? [] : pickToolsForMessages(recent as Array<{ role: string; content: string }>);
-    // Instrumentation so we can verify in prod that filtering is actually
-    // shrinking requests. Each tool definition is ~80-120 tokens; the
-    // system prompt + recent messages add ~500 tokens; response cap is
-    // 180. So estimated request size = (toolsCount * 100) + 700.
     req.log.info({
       userId,
       skipTools,
       toolsCount: filteredTools.length,
       toolNames: filteredTools.map(t => t.function.name),
-      estimatedTokens: filteredTools.length * 100 + 700,
+      estimatedInputTokens: filteredTools.length * 100 + 700,
       lastUserPreview: lastUserText.slice(0, 80),
     }, "aria/chat tool selection");
 
@@ -1517,10 +1511,11 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const createStream = async () => {
       const baseParams = {
         model: getModel(),
-        // Tightened from 350 → 220 to stay under Groq free-tier 6000 TPM
-        // when the tools schema (~3700 tok) + system prompt + history are
-        // already in the request. Aria's responses are <100 words anyway.
-        max_tokens: 180,
+        // 600 tokens allows thorough conversational responses (~450 words).
+        // Groq llama-3.1-8b-instant has 20K TPM — easily covers
+        // system prompt + tools schema (~3,700 tok) + 6 history msgs + 600 output.
+        // If the model hits this limit, the continuation loop below requests more.
+        max_tokens: 600,
         temperature: 0.1,   // low temp = reliable, consistent tool calls
         messages: convo as unknown as Parameters<typeof openai.chat.completions.create>[0]["messages"],
         stream: true as const,
@@ -1528,11 +1523,10 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       const params = skipTools
         ? baseParams
         : { ...baseParams, tools: filteredTools, tool_choice: "auto" as const };
-      // Hard 20s timeout per attempt so a stuck Groq connection can never
-      // leave the user staring at a spinning "..." for a minute. The OpenAI
-      // SDK propagates AbortSignal to the underlying fetch.
+      // 55s timeout per attempt — long enough for a full tool chain + response.
+      // The frontend has a 90s client-side abort as a final safety net.
       const callWithTimeout = () => openai.chat.completions.create(params, {
-        signal: AbortSignal.timeout(20_000),
+        signal: AbortSignal.timeout(55_000),
       });
       try {
         return await callWithTimeout();
@@ -1585,10 +1579,14 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
       // Accumulate streamed content and tool-call fragments
       let contentAccum = "";
+      let finishReason: string | null = null;
       const toolCallsAccum: Record<number, { id: string; name: string; args: string }> = {};
 
       for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta;
+        const choice = chunk.choices[0];
+        if (!choice) continue;
+        if (choice.finish_reason) finishReason = choice.finish_reason;
+        const delta = choice.delta;
         if (!delta) continue;
 
         // Stream text tokens straight to the client
@@ -1614,6 +1612,16 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       const toolCalls = Object.values(toolCallsAccum).filter(tc => tc.name);
 
       if (toolCalls.length === 0) {
+        // If the model was cut off mid-response, add its partial reply to
+        // the conversation and request a seamless continuation. The client
+        // sees one unbroken stream — no gap, no "click to continue" needed.
+        if (finishReason === "length" && contentAccum && textContinuations < MAX_TEXT_CONTINUATIONS) {
+          convo.push({ role: "assistant", content: contentAccum });
+          convo.push({ role: "user", content: "Continue." });
+          textContinuations++;
+          // Don't count against toolLoops — this is a text continuation only.
+          continue;
+        }
         // Pure text response — content was already streamed token by token
         send({ type: "done", actions: performedActions.map(a => ({ name: a.name, ok: a.result.ok, error: a.result.ok ? undefined : a.result.error })) });
         res.write("data: [DONE]\n\n");

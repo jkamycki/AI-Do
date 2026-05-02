@@ -63,10 +63,11 @@ export function SupportChat() {
       content: m.content,
     }));
 
-    try {
-      const ctrl = new AbortController();
-      abortRef.current = ctrl;
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    const timeoutId = setTimeout(() => ctrl.abort(), 90_000);
 
+    try {
       const res = await authFetch("/api/support/chat", {
         method: "POST",
         signal: ctrl.signal,
@@ -139,15 +140,22 @@ export function SupportChat() {
 
       if (!open) setHasUnread(true);
     } catch (err: unknown) {
-      if ((err as Error).name === "AbortError") return;
+      const isAbort = (err as Error).name === "AbortError";
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantId
-            ? { ...m, content: "Sorry, something went wrong. Please try again.", streaming: false }
+            ? {
+                ...m,
+                content: isAbort
+                  ? "Aria's reply took too long. Please try again."
+                  : "Sorry, something went wrong. Please try again.",
+                streaming: false,
+              }
             : m
         )
       );
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
       abortRef.current = null;
     }

@@ -137,9 +137,9 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
       model: getModel(),
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
-      // Was 2000. Real analyses fit in ~1200 tokens; 1500 leaves margin.
-      max_tokens: 1500,
-    });
+      // 2048 tokens for comprehensive risk analyses with full clause coverage.
+      max_tokens: 2048,
+    }, { signal: AbortSignal.timeout(90_000) });
 
     const analysisRaw = completion.choices[0]?.message?.content ?? "{}";
     let analysis: Record<string, unknown> = {};

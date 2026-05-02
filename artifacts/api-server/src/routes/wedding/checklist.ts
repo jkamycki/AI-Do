@@ -75,11 +75,10 @@ Return ONLY a JSON array (no markdown):
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      // Was 4000. With 4-6 tasks × ~6 periods × ~50 tok = ~1500 tok.
-      // 2500 leaves margin for longer planning windows.
-      max_completion_tokens: 2500,
+      // 4096 tokens handles extensive 18-month checklists with all time periods.
+      max_completion_tokens: 4096,
       messages: [{ role: "user", content: prompt }],
-    });
+    }, { signal: AbortSignal.timeout(90_000) });
 
     const content = completion.choices[0]?.message?.content ?? "[]";
     let tasks: Array<{ month: string; task: string; description: string }>;

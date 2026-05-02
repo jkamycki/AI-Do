@@ -73,7 +73,7 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
       });
     }
 
-    const recent = messages.slice(-12);
+    const recent = messages.slice(-20);
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -85,47 +85,82 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
       ? `\n\nIMPORTANT: Always respond in ${preferredLanguage}, regardless of what language the user writes in.`
       : "";
 
-    // Helper: call with one automatic retry on Groq rate-limit (429) and
-    // a hard 20s timeout per attempt. Mirrors Aria's resilience so a
-    // single rate-limited reply never leaves the user staring at a
-    // never-arriving "..." bubble.
-    const params = {
+    // Conversation history passed to the model — starts as user history, extended
+    // with assistant turns when continuing a cut-off response.
+    const convo: Array<{ role: string; content: string }> = [
+      { role: "system", content: SYSTEM_PROMPT + langInstruction },
+      ...recent,
+    ];
+
+    const callWithTimeout = () => openai.chat.completions.create({
       model: getModel(),
-      max_completion_tokens: 800,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT + langInstruction },
-        ...recent,
-      ] as unknown as Parameters<typeof openai.chat.completions.create>[0]["messages"],
+      // 2048 tokens allows thorough responses (~1500 words). Groq's 20K TPM
+      // free tier easily handles this since the support prompt has no tools schema.
+      max_completion_tokens: 2048,
+      messages: convo as unknown as Parameters<typeof openai.chat.completions.create>[0]["messages"],
       stream: true as const,
-    };
-    const callWithTimeout = () => openai.chat.completions.create(params, {
-      signal: AbortSignal.timeout(20_000),
+    }, {
+      signal: AbortSignal.timeout(55_000),
     });
-    let stream;
-    try {
-      stream = await callWithTimeout();
-    } catch (firstErr) {
-      const firstStatus = (firstErr as { status?: number })?.status;
-      const isAbort = (firstErr as { name?: string })?.name === "AbortError"
-        || (firstErr as { name?: string })?.name === "TimeoutError";
-      if (firstStatus === 429) {
-        // Tell the client we're pausing, then retry. Groq's TPM window
-        // resets every 60s — 25s gives the retry a real shot at success.
-        res.write(`data: ${JSON.stringify({ status: "Aria is catching her breath, retrying shortly…" })}\n\n`);
-        await new Promise(resolve => setTimeout(resolve, 25_000));
-        stream = await callWithTimeout();
-      } else if (isAbort) {
-        throw Object.assign(new Error("Aria's reply took too long. Please try again."), { status: 504 });
-      } else {
+
+    const callWithRetry = async (): Promise<ReturnType<typeof callWithTimeout>> => {
+      try {
+        return await callWithTimeout();
+      } catch (firstErr) {
+        const firstStatus = (firstErr as { status?: number })?.status;
+        const isAbort = (firstErr as { name?: string })?.name === "AbortError"
+          || (firstErr as { name?: string })?.name === "TimeoutError";
+        if (firstStatus === 429) {
+          // Honor Groq's retry-after header when present; fall back to 25s.
+          const headers = (firstErr as { headers?: Record<string, string> })?.headers;
+          const headerSecs = headers ? Number(headers["retry-after"] ?? headers["Retry-After"]) : NaN;
+          const errMsg = (firstErr as { error?: { message?: string }; message?: string })?.error?.message ?? (firstErr as { message?: string })?.message ?? "";
+          const msgMatch = errMsg.match(/try again in ([\d.]+)\s*([ms])/i);
+          const msgSecs = msgMatch
+            ? (msgMatch[2].toLowerCase() === "m" ? Number(msgMatch[1]) * 60 : Number(msgMatch[1]))
+            : NaN;
+          const waitMs = !Number.isNaN(headerSecs) ? Math.ceil(headerSecs * 1000) + 1000
+            : !Number.isNaN(msgSecs) ? Math.ceil(msgSecs * 1000) + 1000
+            : 25_000;
+          res.write(`data: ${JSON.stringify({ status: "Aria is catching her breath, retrying shortly…" })}\n\n`);
+          await new Promise(resolve => setTimeout(resolve, Math.min(waitMs, 60_000)));
+          return await callWithTimeout();
+        }
+        if (isAbort) {
+          throw Object.assign(new Error("Aria's reply took too long. Please try again."), { status: 504 });
+        }
         throw firstErr;
       }
-    }
+    };
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    // Stream with automatic continuation when the model hits max_completion_tokens.
+    // Each continuation adds the partial response to the conversation and asks the
+    // model to keep going — the client sees one seamless stream.
+    const MAX_CONTINUATIONS = 3;
+    let continuations = 0;
+    while (true) {
+      const stream = await callWithRetry();
+      let accumulated = "";
+      let finishReason: string | null = null;
+
+      for await (const chunk of stream) {
+        const choice = chunk.choices[0];
+        if (choice?.finish_reason) finishReason = choice.finish_reason;
+        const content = choice?.delta?.content;
+        if (content) {
+          accumulated += content;
+          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        }
       }
+
+      // If the model was cut off mid-response, request a seamless continuation.
+      if (finishReason === "length" && accumulated && continuations < MAX_CONTINUATIONS) {
+        convo.push({ role: "assistant", content: accumulated });
+        convo.push({ role: "user", content: "Continue." });
+        continuations++;
+        continue;
+      }
+      break;
     }
 
     res.write("data: [DONE]\n\n");

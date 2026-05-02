@@ -15,7 +15,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
+const server = app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
@@ -25,6 +25,14 @@ app.listen(port, (err) => {
 
   void disableClerkBreachedPasswordCheck();
 });
+
+// SSE connections stay open for the duration of an AI response.
+// Render (and most proxies) close idle TCP connections after ~75s by
+// default, which cuts off long AI streams before the model finishes.
+// Setting these above the longest expected AI response (90s client
+// timeout in the frontend) ensures the socket stays alive.
+server.keepAliveTimeout = 120_000;
+server.headersTimeout = 125_000;
 
 async function disableClerkBreachedPasswordCheck(): Promise<void> {
   const secretKey = process.env["CLERK_SECRET_KEY"];

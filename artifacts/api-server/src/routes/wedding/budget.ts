@@ -168,11 +168,10 @@ Include these categories: Venue, Catering & Bar, Photography, Videography, Flora
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      // Was 2500. 14 categories × ~70 tok + ~200 tok of suggestions ≈ 1180.
-      // 1500 fits comfortably and keeps the request well under TPM cap.
-      max_completion_tokens: 1500,
+      // 2048 tokens comfortably covers 14 categories + thorough AI suggestions.
+      max_completion_tokens: 2048,
       messages: [{ role: "user", content: prompt }],
-    });
+    }, { signal: AbortSignal.timeout(90_000) });
 
     const content = completion.choices[0]?.message?.content ?? "{}";
     let result;
