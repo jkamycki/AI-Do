@@ -308,6 +308,7 @@ export default function Profile() {
                   <FormItem>
                     <FormLabel>{t("guests.country")}</FormLabel>
                     <Select
+                      key={field.value || NO_COUNTRY}
                       value={field.value ? field.value : NO_COUNTRY}
                       onValueChange={(v) => field.onChange(v === NO_COUNTRY ? "" : v)}
                     >
