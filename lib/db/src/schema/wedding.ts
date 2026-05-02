@@ -302,6 +302,7 @@ export const guests = pgTable("guests", {
   notes: text("notes"),
   phone: text("phone"),
   address: text("address"),
+  aptUnit: text("apt_unit"),
   guestCity: text("guest_city"),
   guestState: text("guest_state"),
   guestZip: text("guest_zip"),

@@ -67,7 +67,7 @@ router.post("/guests", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "No wedding profile found. Create a profile first." });
     }
 
-    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, guestCity, guestState, guestZip } = req.body;
+    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, aptUnit, guestCity, guestState, guestZip } = req.body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return res.status(400).json({ error: "Guest name is required" });
@@ -90,6 +90,7 @@ router.post("/guests", requireAuth, async (req, res) => {
         notes: notes || null,
         phone: phone || null,
         address: address || null,
+        aptUnit: aptUnit || null,
         guestCity: guestCity || null,
         guestState: guestState || null,
         guestZip: guestZip || null,
@@ -119,7 +120,7 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     const profileId = profile?.id ?? null;
     if (!profileId) return res.status(400).json({ error: "No wedding profile found." });
 
-    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, guestCity, guestState, guestZip } = req.body;
+    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, aptUnit, guestCity, guestState, guestZip } = req.body;
 
     const updateData: Partial<typeof guests.$inferInsert> = {};
     if (name !== undefined) updateData.name = name;
@@ -135,6 +136,7 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     if (notes !== undefined) updateData.notes = notes || null;
     if (phone !== undefined) updateData.phone = phone || null;
     if (address !== undefined) updateData.address = address || null;
+    if (aptUnit !== undefined) updateData.aptUnit = aptUnit || null;
     if (guestCity !== undefined) updateData.guestCity = guestCity || null;
     if (guestState !== undefined) updateData.guestState = guestState || null;
     if (guestZip !== undefined) updateData.guestZip = guestZip || null;

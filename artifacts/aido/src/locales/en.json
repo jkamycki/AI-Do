@@ -731,6 +731,7 @@
     "dietary_placeholder": "e.g. Gluten-free, nut allergy, halal, kosher…",
     "phone_label": "Phone",
     "street_address": "Street Address",
+    "apt_unit": "Apt / Unit",
     "city": "City",
     "state": "State",
     "zip": "ZIP Code",

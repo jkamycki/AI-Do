@@ -93,6 +93,7 @@ const guestSchema = z.object({
   tableAssignment: z.string().optional(),
   phone: z.string().optional().default(""),
   address: z.string().optional().default(""),
+  aptUnit: z.string().optional().default(""),
   guestCity: z.string().optional().default(""),
   guestState: z.string().optional().default(""),
   guestZip: z.string().optional().default(""),
@@ -135,6 +136,7 @@ function GuestForm({
       tableAssignment: "",
       phone: "",
       address: "",
+      aptUnit: "",
       guestCity: "",
       guestState: "",
       guestZip: "",
@@ -277,6 +279,13 @@ function GuestForm({
               <FormMessage />
             </FormItem>
           )} />
+          <FormField control={form.control} name="aptUnit" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("guests.apt_unit")}</FormLabel>
+              <FormControl><Input placeholder="Apt 4B" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
           <FormField control={form.control} name="guestCity" render={({ field }) => (
             <FormItem>
               <FormLabel>{t("guests.city")}</FormLabel>
@@ -341,7 +350,7 @@ function GuestForm({
         )} />
 
         <div className="flex gap-3 mt-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset({ name: "", email: "", invitationStatus: "pending", rsvpStatus: "pending", mealChoice: "", guestGroup: "", plusOne: false, plusOneFirstName: "", plusOneLastName: "", tableAssignment: "", phone: "", address: "", guestCity: "", guestState: "", guestZip: "", notes: "" })}>
+          <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset({ name: "", email: "", invitationStatus: "pending", rsvpStatus: "pending", mealChoice: "", guestGroup: "", plusOne: false, plusOneFirstName: "", plusOneLastName: "", tableAssignment: "", phone: "", address: "", aptUnit: "", guestCity: "", guestState: "", guestZip: "", notes: "" })}>
             <RotateCcw className="h-4 w-4 mr-2" /> {t("guests.reset")}
           </Button>
           <Button type="submit" className="flex-1" disabled={isPending}>
@@ -354,7 +363,7 @@ function GuestForm({
 }
 
 function exportCSV(guestList: Guest[]) {
-  const headers = ["Name", "Email", "Invitation Sent", "Group", "RSVP", "Meal", "Plus One", "Plus One Name", "Table", "Notes"];
+  const headers = ["Name", "Email", "Invitation Sent", "Group", "RSVP", "Meal", "Plus One", "Plus One Name", "Table", "Street Address", "Apt/Unit", "City", "State", "ZIP", "Notes"];
   const rows = guestList.map(g => [
     g.name,
     g.email ?? "",
@@ -365,6 +374,11 @@ function exportCSV(guestList: Guest[]) {
     g.plusOne ? "Yes" : "No",
     g.plusOneName ?? "",
     g.tableAssignment ?? "",
+    (g as any).address ?? "",
+    (g as any).aptUnit ?? "",
+    (g as any).guestCity ?? "",
+    (g as any).guestState ?? "",
+    (g as any).guestZip ?? "",
     g.notes ?? "",
   ]);
   const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -781,6 +795,7 @@ export default function Guests() {
         notes: data.notes || null,
         phone: data.phone || null,
         address: data.address || null,
+        aptUnit: data.aptUnit || null,
         guestCity: data.guestCity || null,
         guestState: data.guestState || null,
         guestZip: data.guestZip || null,
@@ -1043,6 +1058,7 @@ export default function Guests() {
                               <MapPin className="h-3 w-3 shrink-0 mt-0.5" />
                               <span className="leading-snug">
                                 {(g as any).address}
+                                {(g as any).aptUnit && <>, {(g as any).aptUnit}</>}
                                 {((g as any).guestCity || (g as any).guestState || (g as any).guestZip) && (
                                   <><br />{[(g as any).guestCity, (g as any).guestState, (g as any).guestZip].filter(Boolean).join(", ")}</>
                                 )}
@@ -1257,6 +1273,7 @@ export default function Guests() {
                 tableAssignment: editGuest.tableAssignment ?? "",
                 phone: (editGuest as any).phone ?? "",
                 address: (editGuest as any).address ?? "",
+                aptUnit: (editGuest as any).aptUnit ?? "",
                 guestCity: (editGuest as any).guestCity ?? "",
                 guestState: (editGuest as any).guestState ?? "",
                 guestZip: (editGuest as any).guestZip ?? "",
