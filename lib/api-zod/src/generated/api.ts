@@ -890,6 +890,8 @@ export const GetGuestsResponse = zod.object({
       plusOneName: zod.string().nullish(),
       tableAssignment: zod.string().nullish(),
       notes: zod.string().nullish(),
+      source: zod.string().nullish(),
+      acknowledgedAt: zod.string().nullish(),
       createdAt: zod.string(),
     }),
   ),
@@ -954,6 +956,8 @@ export const UpdateGuestResponse = zod.object({
   plusOneName: zod.string().nullish(),
   tableAssignment: zod.string().nullish(),
   notes: zod.string().nullish(),
+  source: zod.string().nullish(),
+  acknowledgedAt: zod.string().nullish(),
   createdAt: zod.string(),
 });
 
@@ -966,6 +970,32 @@ export const DeleteGuestParams = zod.object({
 
 export const DeleteGuestResponse = zod.object({
   success: zod.boolean(),
+});
+
+/**
+ * @summary Mark a self-collected guest as seen by the planner
+ */
+export const AcknowledgeGuestParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AcknowledgeGuestResponse = zod.object({
+  id: zod.number(),
+  profileId: zod.number(),
+  name: zod.string(),
+  email: zod.string().nullish(),
+  rsvpStatus: zod.string(),
+  invitationStatus: zod.string().nullish(),
+  mealChoice: zod.string().nullish(),
+  dietaryNotes: zod.string().nullish(),
+  guestGroup: zod.string().nullish(),
+  plusOne: zod.boolean(),
+  plusOneName: zod.string().nullish(),
+  tableAssignment: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  source: zod.string().nullish(),
+  acknowledgedAt: zod.string().nullish(),
+  createdAt: zod.string(),
 });
 
 /**

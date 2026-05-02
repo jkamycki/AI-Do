@@ -3414,6 +3414,90 @@ export const useDeleteGuest = <
 };
 
 /**
+ * @summary Mark a self-collected guest as seen by the planner
+ */
+export const getAcknowledgeGuestUrl = (id: number) => {
+  return `/api/guests/${id}/acknowledge`;
+};
+
+export const acknowledgeGuest = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Guest> => {
+  return customFetch<Guest>(getAcknowledgeGuestUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAcknowledgeGuestMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acknowledgeGuest>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof acknowledgeGuest>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["acknowledgeGuest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof acknowledgeGuest>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return acknowledgeGuest(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AcknowledgeGuestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof acknowledgeGuest>>
+>;
+
+export type AcknowledgeGuestMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Mark a self-collected guest as seen by the planner
+ */
+export const useAcknowledgeGuest = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acknowledgeGuest>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof acknowledgeGuest>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getAcknowledgeGuestMutationOptions(options));
+};
+
+/**
  * @summary List manual (non-vendor) expenses
  */
 export const getListManualExpensesUrl = () => {

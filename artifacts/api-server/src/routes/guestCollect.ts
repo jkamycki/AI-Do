@@ -191,6 +191,8 @@ router.post("/guest-collect/:token", async (req, res) => {
         dietaryNotes: cleanDietary,
         plusOne: !!plusOne,
         plusOneName,
+        source: "self_collect",
+        acknowledgedAt: null,
       })
       .returning();
 

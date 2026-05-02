@@ -7,6 +7,7 @@ import {
   useAddGuest,
   useUpdateGuest,
   useDeleteGuest,
+  useAcknowledgeGuest,
   getGetGuestsQueryKey,
   useGetProfile,
 } from "@workspace/api-client-react";
@@ -25,7 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, Phone, MapPin, Send, Loader2 } from "lucide-react";
+import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, Phone, MapPin, Send, Loader2, Sparkles, X as XIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
 import { useTranslation } from "react-i18next";
@@ -608,6 +609,7 @@ export default function Guests() {
   const addGuest = useAddGuest();
   const updateGuest = useUpdateGuest();
   const deleteGuest = useDeleteGuest();
+  const acknowledgeGuest = useAcknowledgeGuest();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -656,6 +658,41 @@ export default function Guests() {
 
   const allGuests = data?.guests ?? [];
   const summary = data?.summary ?? { total: 0, attending: 0, declined: 0, pending: 0, plusOnes: 0 };
+
+  const newGuests = allGuests.filter(g => (g as any).source === "self_collect" && !(g as any).acknowledgedAt);
+  const newGuestIds = new Set(newGuests.map(g => g.id));
+
+  const handleAcknowledge = (guestId: number) => {
+    if (!newGuestIds.has(guestId)) return;
+    queryClient.setQueryData(getGetGuestsQueryKey(), (old: typeof data) => {
+      if (!old) return old;
+      return {
+        ...old,
+        guests: old.guests.map((g: Guest) => g.id === guestId ? { ...g, acknowledgedAt: new Date().toISOString() } as Guest : g),
+      };
+    });
+    acknowledgeGuest.mutate({ id: guestId }, {
+      onError: () => queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() }),
+    });
+  };
+
+  const handleAcknowledgeAll = () => {
+    const ids = Array.from(newGuestIds);
+    if (ids.length === 0) return;
+    queryClient.setQueryData(getGetGuestsQueryKey(), (old: typeof data) => {
+      if (!old) return old;
+      const now = new Date().toISOString();
+      return {
+        ...old,
+        guests: old.guests.map((g: Guest) => newGuestIds.has(g.id) ? { ...g, acknowledgedAt: now } as Guest : g),
+      };
+    });
+    ids.forEach(id => {
+      acknowledgeGuest.mutate({ id }, {
+        onError: () => queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() }),
+      });
+    });
+  };
 
   const usedGroups = [...new Set(allGuests.map(g => g.guestGroup).filter(Boolean))] as string[];
 
@@ -1001,6 +1038,37 @@ export default function Guests() {
         </div>
       )}
 
+      {/* New guests alert — recently self-added via collector link */}
+      {newGuests.length > 0 && (
+        <Card className="border-amber-300/60 bg-amber-50/70 dark:bg-amber-900/15 dark:border-amber-700/50 shadow-sm">
+          <CardContent className="py-3 px-4 flex items-start sm:items-center gap-3">
+            <div className="shrink-0 h-9 w-9 rounded-full bg-amber-200/80 dark:bg-amber-800/40 flex items-center justify-center ring-1 ring-amber-300/60 dark:ring-amber-700/60">
+              <Sparkles className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                {newGuests.length === 1
+                  ? t("guests.new_guest_alert_one", { name: newGuests[0].name })
+                  : t("guests.new_guest_alert_other", { count: newGuests.length })}
+              </p>
+              <p className="text-xs text-amber-800/80 dark:text-amber-300/70 mt-0.5">
+                {t("guests.new_guest_alert_desc")}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 text-amber-900 dark:text-amber-200 hover:bg-amber-200/60 dark:hover:bg-amber-800/30"
+              onClick={handleAcknowledgeAll}
+              data-testid="button-acknowledge-all-new"
+            >
+              <CheckCheck className="h-3.5 w-3.5 mr-1.5" />
+              {t("guests.dismiss_new_alert")}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Search + filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -1079,10 +1147,29 @@ export default function Guests() {
                     const badge = getRsvpBadge(g.rsvpStatus);
                     const grpLabel = g.guestGroup ? t(`guests.group_${g.guestGroup}`, getGroupLabel(g.guestGroup)) : "";
                     const grpColor = g.guestGroup ? (GROUP_COLORS[g.guestGroup] ?? "bg-gray-100 text-gray-700 border-gray-200") : "";
+                    const isNew = newGuestIds.has(g.id);
                     return (
-                      <TableRow key={g.id} className="group">
+                      <TableRow
+                        key={g.id}
+                        className={`group ${isNew ? "bg-amber-50/40 dark:bg-amber-900/10 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
+                      >
                         <TableCell className="min-w-[200px]">
-                          <div className="font-medium">{g.name}</div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium">{g.name}</span>
+                            {isNew && (
+                              <button
+                                type="button"
+                                onClick={() => handleAcknowledge(g.id)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-200 dark:bg-amber-700/60 text-amber-900 dark:text-amber-100 border border-amber-300 dark:border-amber-600 hover:opacity-80 transition-opacity"
+                                title={t("guests.dismiss_new_badge")}
+                                data-testid={`button-dismiss-new-${g.id}`}
+                              >
+                                <Sparkles className="h-2.5 w-2.5" />
+                                {t("guests.new_guest_badge")}
+                                <XIcon className="h-2.5 w-2.5 opacity-70" />
+                              </button>
+                            )}
+                          </div>
                           {g.email && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                               <Mail className="h-3 w-3 shrink-0" />
@@ -1262,7 +1349,7 @@ export default function Guests() {
                             </Button>
                             <Button
                               variant="ghost" size="icon" className="h-8 w-8"
-                              onClick={() => setEditGuest(g)}
+                              onClick={() => { handleAcknowledge(g.id); setEditGuest(g); }}
                             >
                               <Edit2 className="h-3.5 w-3.5" />
                             </Button>

@@ -435,6 +435,8 @@ export interface Guest {
   plusOneName?: string | null;
   tableAssignment?: string | null;
   notes?: string | null;
+  source?: string | null;
+  acknowledgedAt?: string | null;
   createdAt: string;
 }
 

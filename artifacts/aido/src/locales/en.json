@@ -814,7 +814,13 @@
     "save_changes": "Save Changes",
     "failed_to_load": "Failed to load guest list. Please refresh.",
     "plus_one_yes": "Yes",
-    "plus_one_no": "No"
+    "plus_one_no": "No",
+    "new_guest_badge": "New",
+    "new_guest_alert_one": "{{name}} just filled out their info",
+    "new_guest_alert_other": "{{count}} guests just filled out their info",
+    "new_guest_alert_desc": "They were added to your guest list via your collector link.",
+    "dismiss_new_alert": "Got it",
+    "dismiss_new_badge": "Click to dismiss"
   },
   "timeline": {
     "title": "Wedding Day Timeline",

@@ -159,6 +159,36 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
   }
 });
 
+router.post("/guests/:id/acknowledge", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid guest ID" });
+
+    const profile = await resolveProfile(req);
+    const profileId = profile?.id ?? null;
+    if (!profileId) return res.status(400).json({ error: "No wedding profile found." });
+
+    const [updated] = await db
+      .update(guests)
+      .set({ acknowledgedAt: new Date() })
+      .where(and(eq(guests.id, id), eq(guests.profileId, profileId)))
+      .returning();
+
+    if (!updated) return res.status(404).json({ error: "Guest not found" });
+    res.json(updated);
+    return;
+  } catch (err) {
+    req.log.error(err, "Failed to acknowledge guest");
+    res.status(500).json({ error: "Internal server error" });
+    return;
+  }
+});
+
 router.delete("/guests/:id", requireAuth, async (req, res) => {
   try {
     const callerRole = await resolveCallerRole(req);

@@ -826,6 +826,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
 
+  /guests/{id}/acknowledge:
+    post:
+      operationId: acknowledgeGuest
+      tags: [guests]
+      summary: Mark a self-collected guest as seen by the planner
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Acknowledged guest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Guest"
+
   /manual-expenses:
     get:
       operationId: listManualExpenses
@@ -1819,6 +1838,12 @@ components:
           type: string
           nullable: true
         notes:
+          type: string
+          nullable: true
+        source:
+          type: string
+          nullable: true
+        acknowledgedAt:
           type: string
           nullable: true
         createdAt:
