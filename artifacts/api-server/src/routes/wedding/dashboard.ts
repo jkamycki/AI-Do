@@ -72,6 +72,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       total: guestCount,
       attending: guestRows.filter(g => g.rsvpStatus === "attending").length + guestRows.filter(g => g.rsvpStatus === "attending" && g.plusOne).length,
       declined: guestRows.filter(g => g.rsvpStatus === "declined").length + guestRows.filter(g => g.rsvpStatus === "declined" && g.plusOne).length,
+      maybe: guestRows.filter(g => g.rsvpStatus === "maybe").length + guestRows.filter(g => g.rsvpStatus === "maybe" && g.plusOne).length,
       pending: guestRows.filter(g => g.rsvpStatus === "pending").length + guestRows.filter(g => g.rsvpStatus === "pending" && g.plusOne).length,
     };
 

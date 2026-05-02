@@ -173,6 +173,7 @@ router.get("/workspace/:profileId/guests", requireAuth, async (req, res) => {
       total,
       attending: rows.filter(g => g.rsvpStatus === "attending").length + rows.filter(g => g.rsvpStatus === "attending" && g.plusOne).length,
       declined: rows.filter(g => g.rsvpStatus === "declined").length + rows.filter(g => g.rsvpStatus === "declined" && g.plusOne).length,
+      maybe: rows.filter(g => g.rsvpStatus === "maybe").length + rows.filter(g => g.rsvpStatus === "maybe" && g.plusOne).length,
       pending: rows.filter(g => g.rsvpStatus === "pending").length + rows.filter(g => g.rsvpStatus === "pending" && g.plusOne).length,
       plusOnes: plusOneCount,
       role: result.role,

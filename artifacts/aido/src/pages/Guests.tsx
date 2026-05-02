@@ -31,10 +31,10 @@ import { authFetch } from "@/lib/authFetch";
 import { useTranslation } from "react-i18next";
 
 const RSVP_OPTIONS = [
-  { value: "pending", label: "Pending", color: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/40" },
-  { value: "sent", label: "Sent", color: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800/40" },
-  { value: "attending", label: "Confirmed", color: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" },
+  { value: "attending", label: "Attending", color: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" },
   { value: "declined", label: "Declined", color: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800/40" },
+  { value: "maybe", label: "Maybe", color: "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800/40" },
+  { value: "pending", label: "Pending", color: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/40" },
 ];
 
 const INVITATION_OPTIONS = [
@@ -82,7 +82,7 @@ const guestSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email").or(z.literal("")).optional(),
   invitationStatus: z.enum(["pending", "sent"]).default("pending"),
-  rsvpStatus: z.enum(["pending", "attending", "declined"]).default("pending"),
+  rsvpStatus: z.enum(["pending", "attending", "maybe", "declined"]).default("pending"),
   mealChoice: z.string().optional(),
   dietaryNotes: z.string().max(500).optional(),
   guestGroup: z.string().optional(),
@@ -102,7 +102,8 @@ type GuestFormValues = z.infer<typeof guestSchema>;
 
 function getRsvpBadge(status: string) {
   const opt = RSVP_OPTIONS.find(o => o.value === status);
-  return opt ? opt : RSVP_OPTIONS[0];
+  // Fall back to "Pending" badge for any legacy/unknown status (e.g. old "sent" rows).
+  return opt ?? RSVP_OPTIONS.find(o => o.value === "pending")!;
 }
 
 function GuestForm({
@@ -563,7 +564,9 @@ export default function Guests() {
       return res.json() as Promise<{ rsvpUrl: string; emailSent: boolean }>;
     },
     onSuccess: (data, guestId) => {
-      optimisticUpdate(guestId, { rsvpStatus: "sent" });
+      // Track "sent" on invitationStatus, not rsvpStatus — rsvpStatus is reserved
+      // for the guest's actual response (attending / maybe / declined / pending).
+      optimisticUpdate(guestId, { invitationStatus: "sent" });
       invalidate();
       setLinkDialogState(null);
       if (data.emailSent) {
@@ -622,7 +625,7 @@ export default function Guests() {
         name: guest.name,
         email: guest.email ?? undefined,
         invitationStatus: guest.invitationStatus ?? "pending",
-        rsvpStatus: newStatus as "pending" | "attending" | "declined",
+        rsvpStatus: newStatus as "pending" | "attending" | "maybe" | "declined",
         mealChoice: guest.mealChoice ?? undefined,
         guestGroup: guest.guestGroup ?? undefined,
         plusOne: guest.plusOne,
@@ -647,7 +650,7 @@ export default function Guests() {
         name: guest.name,
         email: guest.email ?? undefined,
         invitationStatus: newStatus,
-        rsvpStatus: guest.rsvpStatus as "pending" | "attending" | "declined",
+        rsvpStatus: guest.rsvpStatus as "pending" | "attending" | "maybe" | "declined",
         mealChoice: guest.mealChoice ?? undefined,
         guestGroup: guest.guestGroup ?? undefined,
         plusOne: guest.plusOne,
@@ -673,7 +676,7 @@ export default function Guests() {
         name: guest.name,
         email: guest.email ?? undefined,
         invitationStatus: guest.invitationStatus ?? "pending",
-        rsvpStatus: guest.rsvpStatus as "pending" | "attending" | "declined",
+        rsvpStatus: guest.rsvpStatus as "pending" | "attending" | "maybe" | "declined",
         mealChoice: guest.mealChoice ?? undefined,
         guestGroup: val ?? undefined,
         plusOne: guest.plusOne,
@@ -699,7 +702,7 @@ export default function Guests() {
         name: guest.name,
         email: guest.email ?? undefined,
         invitationStatus: guest.invitationStatus ?? "pending",
-        rsvpStatus: guest.rsvpStatus as "pending" | "attending" | "declined",
+        rsvpStatus: guest.rsvpStatus as "pending" | "attending" | "maybe" | "declined",
         mealChoice: val ?? undefined,
         guestGroup: guest.guestGroup ?? undefined,
         plusOne: guest.plusOne,
@@ -1103,7 +1106,7 @@ export default function Guests() {
                                   className={`text-xs font-medium cursor-pointer ${g.rsvpStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
                                   onClick={() => handleRsvpChange(g, opt.value)}
                                 >
-                                  <span className={`w-2 h-2 rounded-full mr-2 ${opt.value === "attending" ? "bg-emerald-500" : opt.value === "declined" ? "bg-red-400" : opt.value === "sent" ? "bg-yellow-400" : "bg-amber-400"}`} />
+                                  <span className={`w-2 h-2 rounded-full mr-2 ${opt.value === "attending" ? "bg-emerald-500" : opt.value === "declined" ? "bg-red-400" : opt.value === "maybe" ? "bg-sky-400" : "bg-amber-400"}`} />
                                   {t(`guests.rsvp_${opt.value}`)}
                                 </DropdownMenuItem>
                               ))}
@@ -1157,14 +1160,14 @@ export default function Guests() {
                                   ? "text-emerald-500 cursor-default"
                                   : g.rsvpStatus === "declined"
                                     ? "text-red-400 cursor-default"
-                                    : g.rsvpStatus === "sent"
+                                    : g.invitationStatus === "sent"
                                       ? "text-yellow-500 hover:text-yellow-600"
                                       : "text-muted-foreground hover:text-primary"
                               }`}
                               title={
                                 g.rsvpStatus === "attending" ? "RSVP confirmed" :
                                 g.rsvpStatus === "declined" ? "Declined" :
-                                g.rsvpStatus === "sent" ? "Resend RSVP" :
+                                g.invitationStatus === "sent" ? "Resend RSVP" :
                                 g.email ? "Send RSVP email" : "Generate RSVP link"
                               }
                               disabled={
@@ -1231,7 +1234,7 @@ export default function Guests() {
               defaultValues={{
                 name: editGuest.name,
                 email: editGuest.email ?? "",
-                rsvpStatus: (editGuest.rsvpStatus as "pending" | "attending" | "declined") ?? "pending",
+                rsvpStatus: (editGuest.rsvpStatus as "pending" | "attending" | "maybe" | "declined") ?? "pending",
                 mealChoice: editGuest.mealChoice ?? "",
                 dietaryNotes: (editGuest as any).dietaryNotes ?? "",
                 guestGroup: editGuest.guestGroup ?? "",

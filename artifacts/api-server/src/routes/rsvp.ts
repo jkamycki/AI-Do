@@ -75,9 +75,11 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
     const token = guest.rsvpToken ?? crypto.randomUUID();
     const now = new Date();
 
+    // Track "sent" on invitationStatus — rsvpStatus is reserved for the guest's
+    // actual response (attending / maybe / declined / pending).
     await db
       .update(guests)
-      .set({ rsvpToken: token, rsvpStatus: "sent", rsvpSentAt: now })
+      .set({ rsvpToken: token, invitationStatus: "sent", rsvpSentAt: now })
       .where(eq(guests.id, id));
 
     const origin = buildOrigin(req);
