@@ -395,6 +395,7 @@ router.get("/rsvp/:token", async (req, res) => {
       ceremonyState: profile?.ceremonyState ?? null,
       ceremonyZip: profile?.ceremonyZip ?? null,
       currentStatus: guest.rsvpStatus,
+      plusOneAllowed: !!guest.plusOne,
       hasPhoto: !!(profile?.invitationPhotoUrl),
       invitationMessage: profile?.invitationMessage ?? null,
     });

@@ -71,6 +71,7 @@ interface RsvpInfo {
   ceremonyState: string | null;
   ceremonyZip: string | null;
   currentStatus: string;
+  plusOneAllowed: boolean;
   hasPhoto: boolean;
   invitationMessage: string | null;
 }
@@ -669,6 +670,7 @@ export default function Rsvp() {
                         )}
                       />
 
+                      {info.plusOneAllowed && (
                       <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-4">
                         <FormField
                           control={form.control}
@@ -757,6 +759,7 @@ export default function Rsvp() {
                           </div>
                         )}
                       </div>
+                      )}
 
                       <FormField
                         control={form.control}
