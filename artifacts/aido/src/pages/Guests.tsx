@@ -1183,7 +1183,9 @@ export default function Guests() {
                             <span className="font-bold text-primary">
                               ♥ {g.plusOneName || t("guests.plus_one_yes")}
                             </span>
-                          ) : "—"}
+                          ) : (
+                            <span className="text-muted-foreground">{t("guests.plus_one_no")}</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">

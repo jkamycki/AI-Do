@@ -810,7 +810,8 @@
     "edit_desc": "Update {{name}}'s details.",
     "save_changes": "Save Changes",
     "failed_to_load": "Failed to load guest list. Please refresh.",
-    "plus_one_yes": "Yes"
+    "plus_one_yes": "Yes",
+    "plus_one_no": "No"
   },
   "timeline": {
     "title": "Wedding Day Timeline",

@@ -676,17 +676,34 @@ export default function Rsvp() {
                           control={form.control}
                           name="plusOne"
                           render={({ field }) => (
-                            <FormItem className="flex items-center gap-3">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  className="border-white/30 data-[state=checked]:bg-primary"
-                                />
-                              </FormControl>
+                            <FormItem className="space-y-3">
                               <div>
-                                <FormLabel className="text-white/90 cursor-pointer">Bringing a guest?</FormLabel>
-                                <p className="text-xs text-white/50 mt-0.5">Check if someone will be joining you</p>
+                                <FormLabel className="text-white/90 text-base">Are you bringing a plus one?</FormLabel>
+                                <p className="text-xs text-white/50 mt-0.5">You're welcome to bring a guest with you.</p>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => field.onChange(true)}
+                                  className={`px-4 py-2 rounded-lg border transition-colors text-sm font-medium ${
+                                    field.value
+                                      ? "bg-primary border-primary text-primary-foreground"
+                                      : "bg-white/5 border-white/15 text-white/80 hover:bg-white/10"
+                                  }`}
+                                >
+                                  Yes
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => field.onChange(false)}
+                                  className={`px-4 py-2 rounded-lg border transition-colors text-sm font-medium ${
+                                    !field.value
+                                      ? "bg-primary border-primary text-primary-foreground"
+                                      : "bg-white/5 border-white/15 text-white/80 hover:bg-white/10"
+                                  }`}
+                                >
+                                  No
+                                </button>
                               </div>
                             </FormItem>
                           )}

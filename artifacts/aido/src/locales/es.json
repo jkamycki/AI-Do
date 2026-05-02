@@ -795,7 +795,8 @@
     "edit_desc": "Actualiza los detalles de {{name}}.",
     "save_changes": "Guardar cambios",
     "failed_to_load": "No se pudo cargar la lista de invitados. Por favor, actualiza.",
-    "plus_one_yes": "Sí"
+    "plus_one_yes": "Sí",
+    "plus_one_no": "No"
   },
   "timeline": {
     "title": "Cronograma del Día de la Boda",
