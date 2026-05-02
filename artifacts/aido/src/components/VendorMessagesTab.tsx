@@ -202,6 +202,14 @@ export function VendorMessagesTab({ vendorId }: Props) {
       setCc(finalList);
       setCcInput("");
     }
+    // POST /api/profile is a full-document save — every field omitted from
+    // the body is reset to NULL on the server. We MUST forward every field
+    // from the existing profile (including venueZip, venueCountry, and the
+    // entire ceremony block) so this CC-email-only save doesn't silently
+    // wipe wedding details the user set elsewhere. Settings.tsx's
+    // VendorBccEmailCard does the same thing for the same reason — keep
+    // these two save sites in sync. (Long-term TODO: switch the API to a
+    // PATCH semantic so partial updates can't trigger this class of bug.)
     saveProfile.mutate({
       data: {
         partner1Name: profile.partner1Name,
@@ -213,6 +221,14 @@ export function VendorMessagesTab({ vendorId }: Props) {
         location: profile.location,
         venueCity: profile.venueCity ?? undefined,
         venueState: profile.venueState ?? undefined,
+        venueZip: profile.venueZip ?? undefined,
+        venueCountry: (profile as { venueCountry?: string | null }).venueCountry ?? undefined,
+        ceremonyAtVenue: (profile as { ceremonyAtVenue?: boolean }).ceremonyAtVenue,
+        ceremonyVenueName: (profile as { ceremonyVenueName?: string | null }).ceremonyVenueName ?? undefined,
+        ceremonyAddress: (profile as { ceremonyAddress?: string | null }).ceremonyAddress ?? undefined,
+        ceremonyCity: (profile as { ceremonyCity?: string | null }).ceremonyCity ?? undefined,
+        ceremonyState: (profile as { ceremonyState?: string | null }).ceremonyState ?? undefined,
+        ceremonyZip: (profile as { ceremonyZip?: string | null }).ceremonyZip ?? undefined,
         guestCount: profile.guestCount,
         totalBudget: profile.totalBudget,
         weddingVibe: profile.weddingVibe,
