@@ -1335,59 +1335,34 @@ function ServerKeepAlive() {
 }
 
 function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
+  // Use Clerk's stable useAuth hook rather than addListener. The hook
+  // returns the canonical signed-in user, which only changes when the
+  // actual auth state changes — it does NOT flicker during silent
+  // background JWT refresh, unlike the raw client listener which can
+  // briefly emit user=null between token rotations on custom domains.
+  const { isLoaded, userId } = useAuth();
   const qc = useQueryClient();
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
-  const prevSessionIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    const unsubscribe = addListener(({ user, session }) => {
-      const userId = user?.id ?? null;
-      const sessionId = (session as { id?: string } | null)?.id ?? null;
+    if (!isLoaded) return;
+    const prev = prevUserIdRef.current;
+    const next = userId ?? null;
 
-      // Clear entire cache when a DIFFERENT real user takes over the
-      // session. We deliberately ignore transitions involving `null` —
-      // Clerk emits user=null momentarily during silent background JWT
-      // refresh on production / custom-domain setups, and clearing the
-      // cache on every refresh creates an infinite loop: clear → mounted
-      // observers refetch → if a query happens to 404 (e.g. brand-new
-      // user without a profile yet) the page is stuck on its skeleton
-      // state forever and floods the API with the same request.
-      // Sign-out is handled by route guards (ProtectedRoute redirects
-      // to "/"), and a fresh sign-in from a different account hydrates
-      // the workspace context which already invalidates user-scoped
-      // queries it cares about.
-      if (
-        prevUserIdRef.current !== undefined &&
-        prevUserIdRef.current !== null &&
-        prevUserIdRef.current !== userId &&
-        userId !== null
-      ) {
-        qc.clear();
-      }
-
-      // When the session ID changes from one real session to a DIFFERENT
-      // real session, refetch all mounted queries so they pick up the fresh
-      // JWT. Critically we require the PREVIOUS session ID to be non-null —
-      // otherwise null → "abc" transitions (which happen routinely during
-      // Clerk's silent background JWT refresh on production / custom domain
-      // setups) would trigger invalidations on every refresh, causing an
-      // infinite refetch loop that pinned every query to isFetching=true
-      // forever and left UIs stuck on skeleton states.
-      if (
-        prevSessionIdRef.current !== undefined &&
-        prevSessionIdRef.current !== null &&
-        prevSessionIdRef.current !== sessionId &&
-        sessionId !== null
-      ) {
-        qc.invalidateQueries();
-      }
-
-      prevUserIdRef.current = userId;
-      prevSessionIdRef.current = sessionId;
-    });
-    return unsubscribe;
-  }, [addListener, qc]);
+    // Clear the entire query cache on ANY real auth change after the
+    // initial mount. This includes:
+    //   user1 -> null  (logout)        — prevents user1's data leaking
+    //                                     into a subsequent user2 session
+    //   null  -> user2 (fresh sign-in) — defensive: ensures no stale data
+    //                                     survives from a prior session
+    //   user1 -> user2 (account switch) — same reason
+    // The only transition we skip is undefined -> x, i.e. the initial
+    // hydration on first mount, where no prior data could exist.
+    if (prev !== undefined && prev !== next) {
+      qc.clear();
+    }
+    prevUserIdRef.current = next;
+  }, [isLoaded, userId, qc]);
 
   return null;
 }
