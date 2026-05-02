@@ -758,8 +758,8 @@ export default function MoodBoard() {
 
         for (let i = 0; i < board.images.length; i++) {
           const col = i % COLS;
-          if (col === 0 && i > 0) {
-            y += ROW_H + GAP;
+          if (col === 0) {
+            if (i > 0) y += ROW_H + GAP;
             if (y + ROW_H > PAGE_H - MARGIN) {
               doc.addPage(); fillBg();
               y = MARGIN;
