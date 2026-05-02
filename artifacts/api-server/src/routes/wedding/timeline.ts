@@ -119,10 +119,17 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
       events = [];
     }
 
-    const [created] = await db
-      .insert(timelines)
-      .values({ profileId: profile.id, events })
-      .returning();
+    // Replace any existing timelines for this profile so regenerate doesn't pile up duplicate rows.
+    // Wrap delete+insert in a transaction so concurrent regenerate clicks can't interleave
+    // (last-deleter-wins) and produce missing/inconsistent timeline state.
+    const created = await db.transaction(async (tx) => {
+      await tx.delete(timelines).where(eq(timelines.profileId, profile.id));
+      const [row] = await tx
+        .insert(timelines)
+        .values({ profileId: profile.id, events })
+        .returning();
+      return row;
+    });
 
     trackEvent(req.userId!, "timeline_generated", { eventCount: events.length });
     logActivity(profile.id, req.userId!, `Generated day-of timeline (${events.length} events)`, "timeline", { eventCount: events.length });
@@ -133,7 +140,25 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
     });
   } catch (err) {
     req.log.error(err, "Failed to generate timeline");
-    res.status(500).json({ error: "Internal server error" });
+    // Surface AI provider rate limits / capacity errors so the client can show
+    // a meaningful message instead of a generic "generation failed" toast.
+    const e = err as { status?: number; code?: string; message?: string };
+    const status = typeof e?.status === "number" ? e.status : 500;
+    if (status === 429) {
+      res.status(429).json({
+        error: "Aria is at her daily AI limit. Please try again after midnight UTC.",
+      });
+      return;
+    }
+    if (status === 503 || status === 502) {
+      res.status(503).json({
+        error: "Aria is temporarily unavailable. Please try again in a moment.",
+      });
+      return;
+    }
+    res.status(500).json({
+      error: e?.message ? `Timeline generation failed: ${e.message}` : "Internal server error",
+    });
   }
 });
 

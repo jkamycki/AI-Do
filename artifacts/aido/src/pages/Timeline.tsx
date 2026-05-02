@@ -607,7 +607,17 @@ export default function Timeline() {
           setEditingEvent(null);
           setAddingEvent(false);
         },
-        onError: () => toast({ variant: "destructive", title: t("timeline.generation_failed_title"), description: t("timeline.generation_failed_desc") }),
+        onError: (err: unknown) => {
+          // Pass through server-provided error messages (e.g. AI rate limits) so
+          // the user sees the real reason instead of a generic failure toast.
+          const e = err as { data?: { error?: string }; message?: string; status?: number };
+          const serverMsg = e?.data?.error ?? e?.message;
+          toast({
+            variant: "destructive",
+            title: t("timeline.generation_failed_title"),
+            description: serverMsg || t("timeline.generation_failed_desc"),
+          });
+        },
       }
     );
   };
