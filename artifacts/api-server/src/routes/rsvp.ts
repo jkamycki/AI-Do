@@ -213,14 +213,14 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         <!-- Eyebrow label -->
         <tr>
           <td style="padding:16px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:10px;letter-spacing:4px;text-transform:uppercase;">You are cordially invited</p>
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:10px;letter-spacing:4px;text-transform:uppercase;">You are cordially invited to</p>
           </td>
         </tr>
 
         <!-- Couple names -->
         <tr>
           <td style="padding:14px 48px 0;text-align:center;">
-            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#3d2e22;font-size:34px;font-weight:400;line-height:1.2;">${couple}</h1>
+            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#3d2e22;font-size:34px;font-weight:400;line-height:1.2;">${couple}&rsquo;s Wedding</h1>
           </td>
         </tr>
 
@@ -305,7 +305,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         replyTo: `noreply@aidowedding.net`,
         fromName: `${couple} via A.IDO`,
         subject: `You're invited — ${couple}'s Wedding`,
-        text: `Dear ${guest.name},\n\nYou are cordially invited to the wedding of ${couple}${weddingDateStr ? ` on ${weddingDateStr}` : ""}${profile.venue ? ` at ${profile.venue}` : ""}.\n\n${profile.invitationMessage ? `"${profile.invitationMessage}"\n\n` : ""}Please RSVP using the link below:\n\n${rsvpUrl}\n\nWith love,\n${couple}`,
+        text: `Dear ${guest.name},\n\nYou are cordially invited to ${couple}'s Wedding${weddingDateStr ? ` on ${weddingDateStr}` : ""}${profile.venue ? ` at ${profile.venue}` : ""}.\n\n${profile.invitationMessage ? `"${profile.invitationMessage}"\n\n` : ""}Please RSVP using the link below:\n\n${rsvpUrl}\n\nWith love,\n${couple}`,
         html,
       });
       emailSent = result.ok;
