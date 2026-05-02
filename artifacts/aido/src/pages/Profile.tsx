@@ -331,19 +331,6 @@ export default function Profile() {
                 const gridCls = visible >= 3 ? "grid md:grid-cols-3 gap-6" : visible === 2 ? "grid md:grid-cols-2 gap-6" : "grid gap-6";
                 return (
                   <div className={gridCls}>
-                    <FormField
-                      control={form.control}
-                      name="venueCity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{fmt.cityLabel}</FormLabel>
-                          <FormControl>
-                            <Input placeholder={fmt.cityPlaceholder} {...field} data-testid="input-venue-city" className="bg-background" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                     {fmt.showState && (
                       <FormField
                         control={form.control}
@@ -359,6 +346,19 @@ export default function Profile() {
                         )}
                       />
                     )}
+                    <FormField
+                      control={form.control}
+                      name="venueCity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{fmt.cityLabel}</FormLabel>
+                          <FormControl>
+                            <Input placeholder={fmt.cityPlaceholder} {...field} data-testid="input-venue-city" className="bg-background" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     {fmt.showZip && (
                       <FormField
                         control={form.control}
@@ -436,19 +436,6 @@ export default function Profile() {
                       const gridCls = visible >= 3 ? "grid md:grid-cols-3 gap-4" : visible === 2 ? "grid md:grid-cols-2 gap-4" : "grid gap-4";
                       return (
                         <div className={gridCls}>
-                          <FormField
-                            control={form.control}
-                            name="ceremonyCity"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>{fmt.cityLabel}</FormLabel>
-                                <FormControl>
-                                  <Input placeholder={fmt.cityPlaceholder} {...field} data-testid="input-ceremony-city" className="bg-background" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
                           {fmt.showState && (
                             <FormField
                               control={form.control}
@@ -464,6 +451,19 @@ export default function Profile() {
                               )}
                             />
                           )}
+                          <FormField
+                            control={form.control}
+                            name="ceremonyCity"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>{fmt.cityLabel}</FormLabel>
+                                <FormControl>
+                                  <Input placeholder={fmt.cityPlaceholder} {...field} data-testid="input-ceremony-city" className="bg-background" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                           {fmt.showZip && (
                             <FormField
                               control={form.control}

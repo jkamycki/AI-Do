@@ -313,13 +313,6 @@ function GuestForm({
             const fmt = getAddressFormat(form.watch("guestCountry"));
             return (
               <>
-                <FormField control={form.control} name="guestCity" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{fmt.cityLabel}</FormLabel>
-                    <FormControl><Input placeholder={fmt.cityPlaceholder} {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
                 {fmt.showState && (
                   <FormField control={form.control} name="guestState" render={({ field }) => (
                     <FormItem>
@@ -329,6 +322,13 @@ function GuestForm({
                     </FormItem>
                   )} />
                 )}
+                <FormField control={form.control} name="guestCity" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{fmt.cityLabel}</FormLabel>
+                    <FormControl><Input placeholder={fmt.cityPlaceholder} {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
                 {fmt.showZip && (
                   <FormField control={form.control} name="guestZip" render={({ field }) => (
                     <FormItem>
