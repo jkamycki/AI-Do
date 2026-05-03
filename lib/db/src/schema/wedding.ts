@@ -31,6 +31,7 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   invitationPhotoUrl: text("invitation_photo_url"),
   invitationMessage: text("invitation_message"),
   saveTheDatePhotoUrl: text("save_the_date_photo_url"),
+  saveTheDateMessage: text("save_the_date_message"),
   digitalInvitationPhotoUrl: text("digital_invitation_photo_url"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

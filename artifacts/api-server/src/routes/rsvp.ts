@@ -598,6 +598,13 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           </td>
         </tr>` : ""}
 
+        ${(profile as any).saveTheDateMessage ? `
+        <tr>
+          <td style="padding:20px 48px 0;text-align:center;">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:15px;line-height:1.7;font-style:italic;">${(profile as any).saveTheDateMessage}</p>
+          </td>
+        </tr>` : ""}
+
         <tr>
           <td style="padding:28px 48px 36px;text-align:center;">
             <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#c9a96e;font-size:14px;font-style:italic;letter-spacing:1px;">Formal invitation to follow</p>
@@ -646,12 +653,13 @@ router.patch("/profile/invitation-settings", requireAuth, async (req, res) => {
     const profile = await resolveProfile(req);
     if (!profile) return res.status(400).json({ error: "No wedding profile found." });
 
-    const { invitationPhotoUrl, invitationMessage, saveTheDatePhotoUrl, digitalInvitationPhotoUrl } = req.body;
+    const { invitationPhotoUrl, invitationMessage, saveTheDatePhotoUrl, saveTheDateMessage, digitalInvitationPhotoUrl } = req.body;
 
     const updateData: Partial<typeof weddingProfiles.$inferInsert> = {};
     if (invitationPhotoUrl !== undefined) updateData.invitationPhotoUrl = invitationPhotoUrl || null;
     if (invitationMessage !== undefined) updateData.invitationMessage = invitationMessage || null;
     if (saveTheDatePhotoUrl !== undefined) updateData.saveTheDatePhotoUrl = saveTheDatePhotoUrl || null;
+    if (saveTheDateMessage !== undefined) updateData.saveTheDateMessage = saveTheDateMessage || null;
     if (digitalInvitationPhotoUrl !== undefined) updateData.digitalInvitationPhotoUrl = digitalInvitationPhotoUrl || null;
 
     await db.update(weddingProfiles).set(updateData).where(eq(weddingProfiles.id, profile.id));

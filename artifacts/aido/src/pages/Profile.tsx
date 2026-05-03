@@ -632,8 +632,8 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      <InvitationPhotoCard />
       <SaveTheDatePhotoCard />
+      <InvitationPhotoCard />
     </div>
   );
 }
@@ -647,14 +647,20 @@ function SaveTheDatePhotoCard() {
   });
 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [previewSrc, setPreviewSrcRaw] = useState<string | null>(null);
   const [removingPhoto, setRemovingPhoto] = useState(false);
   const [cropSrc, setCropSrcRaw] = useState<string | null>(null);
   const [cropFileName, setCropFileName] = useState<string>("save-the-date");
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [aiDetails, setAiDetails] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [messageHighlight, setMessageHighlight] = useState(false);
 
   const previewBlobRef = useRef<string | null>(null);
   const cropBlobRef = useRef<string | null>(null);
+  const initializedRef = useRef(false);
 
   const setPreviewSrc = useCallback((next: string | null) => {
     if (previewBlobRef.current && previewBlobRef.current !== next) {
@@ -681,16 +687,47 @@ function SaveTheDatePhotoCard() {
     };
   }, []);
 
-  const initializedRef = useRef(false);
-
   useEffect(() => {
     if (profile && !initializedRef.current) {
       initializedRef.current = true;
       const p = (profile as any).saveTheDatePhotoUrl ?? null;
+      const m = (profile as any).saveTheDateMessage ?? null;
+      const p1 = profile.partner1Name ?? "";
+      const p2 = profile.partner2Name ?? "";
       setPhotoUrl(p);
+      if (m) {
+        setMessage(m);
+      } else if (p1 || p2) {
+        const couple = [p1, p2].filter(Boolean).join(" & ");
+        setMessage(`Mark your calendar! ${couple} are getting married and we'd love to celebrate with you. Formal invitation to follow.`);
+      }
       if (p) setPreviewSrc(`/api/storage/objects/${p.replace("/objects/", "")}`);
     }
   }, [profile]);
+
+  const generateMessage = async () => {
+    setGenerating(true);
+    try {
+      const res = await authFetch("/api/profile/generate-invitation-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ details: aiDetails }),
+      });
+      if (!res.ok) throw new Error("Generation failed");
+      const data = await res.json();
+      const generated = (data.message ?? "").trim();
+      if (!generated) throw new Error("Empty response");
+      setMessage(generated);
+      setAiDetails("");
+      setShowAiPanel(false);
+      setMessageHighlight(true);
+      setTimeout(() => setMessageHighlight(false), 2000);
+    } catch {
+      toast({ title: "Failed to generate message", variant: "destructive" });
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const { uploadFile, isUploading } = useUpload({
     getToken,
@@ -746,10 +783,10 @@ function SaveTheDatePhotoCard() {
       const res = await authFetch("/api/profile/invitation-settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ saveTheDatePhotoUrl: photoUrl }),
+        body: JSON.stringify({ saveTheDatePhotoUrl: photoUrl, saveTheDateMessage: message }),
       });
       if (!res.ok) throw new Error("Save failed");
-      toast({ title: "Save the Date photo saved!" });
+      toast({ title: "Save the Date settings saved!" });
     } catch {
       toast({ title: "Failed to save", variant: "destructive" });
     } finally {
@@ -783,11 +820,11 @@ function SaveTheDatePhotoCard() {
       <CardHeader>
         <CardTitle className="text-xl font-serif text-primary flex items-center gap-2">
           <ImageIcon className="h-5 w-5" />
-          Save the Date Photo
+          Save the Date
           <span className="text-xs font-sans font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Optional</span>
         </CardTitle>
         <CardDescription>
-          Add a photo for your Save the Date emails. This photo will appear in the simplified email sent before the formal invitation. JPG, PNG, or HEIC — max 5 MB.
+          Add a photo and message for your Save the Date emails — the simplified email sent before the formal invitation. JPG, PNG, or HEIC — max 5 MB.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -795,14 +832,10 @@ function SaveTheDatePhotoCard() {
           {previewSrc ? (
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Preview — how it will appear in the Save the Date email
+                Preview — how guests will see it in the Save the Date email
               </p>
               <div className="relative group rounded-xl overflow-hidden border border-border/50 shadow-sm bg-[hsl(270,20%,10%)] py-6 px-4 flex flex-col items-center gap-6">
-                <img
-                  src="/logo.png"
-                  alt="A.IDO"
-                  className="h-28 w-auto object-contain"
-                />
+                <img src="/logo.png" alt="A.IDO" className="h-28 w-auto object-contain" />
                 <img
                   src={previewSrc}
                   alt="Save the Date photo preview"
@@ -810,25 +843,11 @@ function SaveTheDatePhotoCard() {
                   style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }}
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 gap-3">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="gap-1.5"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                  >
-                    <Upload className="h-3.5 w-3.5" />
-                    Change Photo
+                  <Button size="sm" variant="secondary" className="gap-1.5" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                    <Upload className="h-3.5 w-3.5" /> Change Photo
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="gap-1.5"
-                    onClick={removePhoto}
-                    disabled={removingPhoto}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Remove
+                  <Button size="sm" variant="destructive" className="gap-1.5" onClick={removePhoto} disabled={removingPhoto}>
+                    <Trash2 className="h-3.5 w-3.5" /> Remove
                   </Button>
                 </div>
                 {isUploading && (
@@ -870,14 +889,78 @@ function SaveTheDatePhotoCard() {
           )}
         </div>
 
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-foreground">
+              Save the Date Message <span className="text-muted-foreground font-normal">(optional)</span>
+            </label>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs h-7 px-2.5 border-primary/30 text-primary hover:bg-primary/5"
+              onClick={() => setShowAiPanel(v => !v)}
+            >
+              <Sparkles className="h-3 w-3" />
+              AI Generate
+              {showAiPanel ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </Button>
+          </div>
+
+          {showAiPanel && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+              <Textarea
+                placeholder="e.g. We're having an intimate outdoor ceremony in the mountains, and we want guests to feel the excitement and warmth before the formal invite arrives…"
+                value={aiDetails}
+                onChange={e => setAiDetails(e.target.value)}
+                rows={3}
+                className="resize-none text-sm bg-background"
+              />
+              <Button
+                size="sm"
+                className="gap-2 w-full"
+                onClick={generateMessage}
+                disabled={generating || !aiDetails.trim()}
+              >
+                {generating
+                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating…</>
+                  : <><Sparkles className="h-3.5 w-3.5" /> Generate Message</>
+                }
+              </Button>
+            </div>
+          )}
+
+          <Textarea
+            placeholder="e.g. Mark your calendar! We're getting married and we'd love to celebrate with you. Formal invitation to follow."
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            rows={3}
+            maxLength={400}
+            className={`resize-none transition-all duration-300 ${messageHighlight ? "ring-2 ring-primary border-primary bg-primary/5" : ""}`}
+          />
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => {
+                const p1 = profile?.partner1Name ?? "";
+                const p2 = profile?.partner2Name ?? "";
+                const couple = [p1, p2].filter(Boolean).join(" & ");
+                setMessage(couple
+                  ? `Mark your calendar! ${couple} are getting married and we'd love to celebrate with you. Formal invitation to follow.`
+                  : "Mark your calendar! We're getting married and we'd love to celebrate with you. Formal invitation to follow.");
+              }}
+            >
+              <RefreshCw className="inline h-3 w-3 mr-1" />Reset to template
+            </button>
+            <p className="text-xs text-muted-foreground">{message.length}/400</p>
+          </div>
+        </div>
+
         <div className="flex justify-end">
-          <Button
-            onClick={saveSettings}
-            disabled={saving || isUploading}
-            className="gap-2 px-6"
-          >
+          <Button onClick={saveSettings} disabled={saving || isUploading} className="gap-2 px-6">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? "Saving…" : "Save Photo"}
+            {saving ? "Saving…" : "Save Settings"}
           </Button>
         </div>
       </CardContent>
