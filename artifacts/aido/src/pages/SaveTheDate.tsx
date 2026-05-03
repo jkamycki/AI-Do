@@ -108,9 +108,9 @@ export default function SaveTheDate() {
       const MARGIN = 50;
       const CW = PAGE_W - 2 * MARGIN;
 
-      // Palette: ivory bg, blush accent, dark brown text, mauve secondary
-      const [BG_R, BG_G, BG_B] = [253, 248, 242];
-      const [AC_R, AC_G, AC_B] = [200, 116, 145]; // blush/rose
+      // Palette: ivory bg, champagne accent, dark brown text, warm gray secondary
+      const [BG_R, BG_G, BG_B] = [253, 249, 240];
+      const [AC_R, AC_G, AC_B] = [201, 169, 110]; // champagne gold
       const [TX_R, TX_G, TX_B] = [61, 46, 34];    // dark brown
       const [MU_R, MU_G, MU_B] = [163, 140, 128]; // muted warm gray
 
@@ -342,17 +342,17 @@ export default function SaveTheDate() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#fdf8f2" }}>
-        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#c87491" }} />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#fdf9f0" }}>
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#c9a96e" }} />
       </div>
     );
   }
 
   if (isError || !info) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: "#fdf8f2" }}>
-        <div className="max-w-md w-full text-center rounded-2xl border p-10 space-y-4 shadow-sm" style={{ borderColor: "#e8d5c4", background: "#fff" }}>
-          <AlertCircle className="h-12 w-12 mx-auto" style={{ color: "#c87491" }} />
+      <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: "#fdf9f0" }}>
+        <div className="max-w-md w-full text-center rounded-2xl border p-10 space-y-4 shadow-sm" style={{ borderColor: "#e8dcc8", background: "#fff" }}>
+          <AlertCircle className="h-12 w-12 mx-auto" style={{ color: "#c9a96e" }} />
           <h2 className="text-xl font-semibold" style={{ color: "#3d2e22" }}>This link is no longer valid</h2>
           <p className="text-sm" style={{ color: "#a38c80" }}>Please contact the couple directly.</p>
         </div>
@@ -361,9 +361,9 @@ export default function SaveTheDate() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#fdf8f2" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#fdf9f0" }}>
       {/* Top accent bar */}
-      <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg, #c87491, #e8a0b4, #c87491)" }} />
+      <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg, #c9a96e, #e8c99a, #c9a96e)" }} />
 
       {/* Logo */}
       <div className="w-full flex justify-center pt-8 px-4">
@@ -388,14 +388,14 @@ export default function SaveTheDate() {
 
           {/* Header block */}
           <div className="text-center space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "#c87491" }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "#c9a96e" }}>
               Please
             </p>
             <h1 className="text-5xl sm:text-6xl font-bold italic" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "#3d2e22", letterSpacing: "1px" }}>
               Save the Date
             </h1>
             <div className="flex justify-center py-1">
-              <div className="h-px w-24" style={{ background: "#c87491" }} />
+              <div className="h-px w-24" style={{ background: "#c9a96e" }} />
             </div>
             <h2 className="text-2xl sm:text-3xl font-medium" style={{ fontFamily: "Georgia, serif", color: "#3d2e22" }}>
               {couple}
@@ -408,20 +408,20 @@ export default function SaveTheDate() {
           </div>
 
           {/* Times + venue */}
-          <div className="rounded-2xl border p-6 space-y-4" style={{ borderColor: "#e8d5c4", background: "#fff" }}>
+          <div className="rounded-2xl border p-6 space-y-4" style={{ borderColor: "#e8dcc8", background: "#fff" }}>
             {hasSeparateCeremony ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="text-center space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#c87491" }}>Ceremony</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#c9a96e" }}>Ceremony</p>
                   {ceremonyTimeStr && (
                     <div className="flex items-center justify-center gap-1.5" style={{ color: "#3d2e22" }}>
-                      <Clock className="h-3.5 w-3.5" style={{ color: "#c87491" }} />
+                      <Clock className="h-3.5 w-3.5" style={{ color: "#c9a96e" }} />
                       <span className="text-sm font-semibold">{ceremonyTimeStr}</span>
                     </div>
                   )}
                   {info.ceremonyVenueName && (
                     <div className="flex items-center justify-center gap-1" style={{ color: "#3d2e22" }}>
-                      <MapPin className="h-3.5 w-3.5" style={{ color: "#c87491" }} />
+                      <MapPin className="h-3.5 w-3.5" style={{ color: "#c9a96e" }} />
                       <p className="text-sm font-medium">{info.ceremonyVenueName}</p>
                     </div>
                   )}
@@ -429,16 +429,16 @@ export default function SaveTheDate() {
                   {ceremonyCityStateZip && <p className="text-xs" style={{ color: "#a38c80" }}>{ceremonyCityStateZip}</p>}
                 </div>
                 <div className="text-center space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#c87491" }}>Reception</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#c9a96e" }}>Reception</p>
                   {receptionTimeStr && (
                     <div className="flex items-center justify-center gap-1.5" style={{ color: "#3d2e22" }}>
-                      <Clock className="h-3.5 w-3.5" style={{ color: "#c87491" }} />
+                      <Clock className="h-3.5 w-3.5" style={{ color: "#c9a96e" }} />
                       <span className="text-sm font-semibold">{receptionTimeStr}</span>
                     </div>
                   )}
                   {info.venue && (
                     <div className="flex items-center justify-center gap-1" style={{ color: "#3d2e22" }}>
-                      <MapPin className="h-3.5 w-3.5" style={{ color: "#c87491" }} />
+                      <MapPin className="h-3.5 w-3.5" style={{ color: "#c9a96e" }} />
                       <p className="text-sm font-medium">{info.venue}</p>
                     </div>
                   )}
@@ -450,7 +450,7 @@ export default function SaveTheDate() {
               <div className="text-center space-y-2">
                 {info.venue && (
                   <div className="flex items-center justify-center gap-1.5">
-                    <MapPin className="h-4 w-4" style={{ color: "#c87491" }} />
+                    <MapPin className="h-4 w-4" style={{ color: "#c9a96e" }} />
                     <p className="font-semibold" style={{ color: "#3d2e22" }}>{info.venue}</p>
                   </div>
                 )}
@@ -460,16 +460,16 @@ export default function SaveTheDate() {
                   <div className="flex items-center justify-center gap-3 pt-1 flex-wrap">
                     {ceremonyTimeStr && (
                       <div className="flex items-center gap-1.5" style={{ color: "#3d2e22" }}>
-                        <Clock className="h-3.5 w-3.5" style={{ color: "#c87491" }} />
+                        <Clock className="h-3.5 w-3.5" style={{ color: "#c9a96e" }} />
                         <span className="text-sm">Ceremony {ceremonyTimeStr}</span>
                       </div>
                     )}
                     {ceremonyTimeStr && receptionTimeStr && (
-                      <span className="text-sm" style={{ color: "#c87491" }}>·</span>
+                      <span className="text-sm" style={{ color: "#c9a96e" }}>·</span>
                     )}
                     {receptionTimeStr && (
                       <div className="flex items-center gap-1.5" style={{ color: "#3d2e22" }}>
-                        <Clock className="h-3.5 w-3.5" style={{ color: "#c87491" }} />
+                        <Clock className="h-3.5 w-3.5" style={{ color: "#c9a96e" }} />
                         <span className="text-sm">Reception {receptionTimeStr}</span>
                       </div>
                     )}
@@ -490,7 +490,7 @@ export default function SaveTheDate() {
 
           {/* Formal invitation to follow */}
           <div className="text-center">
-            <p className="text-sm italic tracking-wide" style={{ color: "#c87491", fontFamily: "Georgia, serif" }}>
+            <p className="text-sm italic tracking-wide" style={{ color: "#c9a96e", fontFamily: "Georgia, serif" }}>
               Formal invitation to follow
             </p>
           </div>
@@ -501,7 +501,7 @@ export default function SaveTheDate() {
               onClick={downloadPdf}
               disabled={downloadingPdf}
               className="flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
-              style={{ background: "#c87491", color: "#fff" }}
+              style={{ background: "#c9a96e", color: "#fff" }}
             >
               {downloadingPdf ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Generating PDF&hellip;</>
@@ -515,7 +515,7 @@ export default function SaveTheDate() {
           <div className="text-center pt-4 pb-8">
             <p className="text-xs" style={{ color: "#c4b8ac" }}>
               Planning your own wedding?{" "}
-              <a href="https://aidowedding.net" className="hover:underline" style={{ color: "#c87491" }}>
+              <a href="https://aidowedding.net" className="hover:underline" style={{ color: "#c9a96e" }}>
                 Try A.IDO free
               </a>
             </p>
@@ -525,7 +525,7 @@ export default function SaveTheDate() {
       </div>
 
       {/* Bottom accent bar */}
-      <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg, #c87491, #e8a0b4, #c87491)" }} />
+      <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg, #c9a96e, #e8c99a, #c9a96e)" }} />
     </div>
   );
 }
