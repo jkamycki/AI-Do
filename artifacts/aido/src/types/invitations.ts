@@ -16,6 +16,8 @@ export interface InvitationCustomization {
   saveTheDatePhotoUrl: string | null;
   digitalInvitationPhotoUrl: string | null;
   selectedFont: string;
+  saveTheDateFont?: string;
+  digitalInvitationFont?: string;
   selectedLayout: string;
   backgroundImageUrl: string | null;
   updatedAt?: string;

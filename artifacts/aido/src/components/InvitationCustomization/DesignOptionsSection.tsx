@@ -40,8 +40,10 @@ const LAYOUTS = [
 ];
 
 interface DesignOptionsSectionProps {
-  selectedFont: string;
-  onFontChange: (font: string) => void;
+  saveTheDateFont: string;
+  onSaveTheDateFontChange: (font: string) => void;
+  digitalInvitationFont: string;
+  onDigitalInvitationFontChange: (font: string) => void;
   selectedLayout: string;
   onLayoutChange: (layout: string) => void;
   backgroundColor: string | null;
@@ -51,8 +53,10 @@ interface DesignOptionsSectionProps {
 }
 
 export function DesignOptionsSection({
-  selectedFont,
-  onFontChange,
+  saveTheDateFont,
+  onSaveTheDateFontChange,
+  digitalInvitationFont,
+  onDigitalInvitationFontChange,
   selectedLayout,
   onLayoutChange,
   backgroundColor,
@@ -66,10 +70,10 @@ export function DesignOptionsSection({
         <CardTitle className="text-lg">✨ Design Options</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Font Selector */}
+        {/* Save the Date Font Selector */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Font Style</label>
-          <Select value={selectedFont} onValueChange={onFontChange}>
+          <label className="text-sm font-medium">Save the Date Font</label>
+          <Select value={saveTheDateFont} onValueChange={onSaveTheDateFontChange}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -83,9 +87,32 @@ export function DesignOptionsSection({
           </Select>
           <p
             className="text-sm text-muted-foreground"
-            style={{ fontFamily: selectedFont }}
+            style={{ fontFamily: saveTheDateFont }}
           >
-            Preview of {selectedFont}
+            Preview of {saveTheDateFont}
+          </p>
+        </div>
+
+        {/* Digital Invitation Font Selector */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Digital Invitation Font</label>
+          <Select value={digitalInvitationFont} onValueChange={onDigitalInvitationFontChange}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FONTS.map((font) => (
+                <SelectItem key={font} value={font}>
+                  {font}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p
+            className="text-sm text-muted-foreground"
+            style={{ fontFamily: digitalInvitationFont }}
+          >
+            Preview of {digitalInvitationFont}
           </p>
         </div>
 
