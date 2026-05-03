@@ -142,6 +142,7 @@ type VendorFormData = {
   totalCost: string;
   depositAmount: string;
   contractSigned: boolean;
+  primaryContact: string;
 };
 
 const defaultFormData: VendorFormData = {
@@ -155,6 +156,7 @@ const defaultFormData: VendorFormData = {
   totalCost: "",
   depositAmount: "",
   contractSigned: false,
+  primaryContact: "",
 };
 
 function AddEditVendorDialog({
@@ -183,6 +185,7 @@ function AddEditVendorDialog({
             totalCost: vendor.totalCost > 0 ? String(vendor.totalCost) : "",
             depositAmount: vendor.depositAmount > 0 ? String(vendor.depositAmount) : "",
             contractSigned: vendor.contractSigned,
+            primaryContact: (vendor as any).primaryContact ?? "",
           }
         : defaultFormData,
     [vendor]
@@ -236,6 +239,7 @@ function AddEditVendorDialog({
       totalCost: form.totalCost ? Number(form.totalCost) : 0,
       depositAmount: form.depositAmount ? Number(form.depositAmount) : 0,
       contractSigned: form.contractSigned,
+      primaryContact: form.primaryContact.trim() || null,
     };
   }
 
@@ -259,6 +263,7 @@ function AddEditVendorDialog({
         totalCost: form.totalCost ? Number(form.totalCost) : 0,
         depositAmount: form.depositAmount ? Number(form.depositAmount) : 0,
         contractSigned: form.contractSigned,
+        primaryContact: form.primaryContact.trim() || undefined,
       };
       createMutation.mutate({ data: createPayload });
     }
@@ -307,6 +312,14 @@ function AddEditVendorDialog({
                 placeholder={t("vendors.email_placeholder")}
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Primary Contact</Label>
+              <Input
+                placeholder="Contact person name"
+                value={form.primaryContact}
+                onChange={(e) => setForm({ ...form, primaryContact: e.target.value })}
               />
             </div>
             <div className="space-y-1.5">
