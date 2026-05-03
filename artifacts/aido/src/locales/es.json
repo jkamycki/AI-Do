@@ -62,6 +62,7 @@
     "settings": "Ajustes y Colaboradores",
     "help": "Ayuda y Soporte",
     "planning": "Planificación",
+    "mood_board": "Tablero de Ideas",
     "admin": "Centro de Operaciones"
   },
   "settings": {
@@ -799,7 +800,15 @@
     "save_changes": "Guardar cambios",
     "failed_to_load": "No se pudo cargar la lista de invitados. Por favor, actualiza.",
     "plus_one_yes": "Sí",
-    "plus_one_no": "No"
+    "plus_one_no": "No",
+    "rsvp_sent": "Enviada",
+    "apt_unit": "Apto / Unidad",
+    "new_guest_badge": "Nuevo",
+    "new_guest_alert_one": "{{name}} acaba de completar su información",
+    "new_guest_alert_other": "{{count}} invitados acaban de completar su información",
+    "new_guest_alert_desc": "Fueron añadidos a tu lista de invitados a través de tu enlace de recopilación.",
+    "dismiss_new_alert": "Entendido",
+    "dismiss_new_badge": "Haz clic para cerrar"
   },
   "timeline": {
     "title": "Cronograma del Día de la Boda",
