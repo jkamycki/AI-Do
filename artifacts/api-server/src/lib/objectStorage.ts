@@ -271,4 +271,25 @@ export class ObjectStorageService {
       requestedPermission: requestedPermission ?? ObjectPermission.READ,
     });
   }
+
+  async uploadFile(
+    buffer: Buffer,
+    fileName: string,
+    contentType: string,
+    folder: string = "uploads",
+  ): Promise<string> {
+    const prefix = getPublicPrefix();
+    const key = `${prefix}/${folder}/${fileName}`;
+
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+      }),
+    );
+
+    return `/${folder}/${fileName}`;
+  }
 }
