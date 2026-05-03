@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
+import { useRoute } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -44,6 +46,8 @@ function formatDate(dateStr: string) {
 }
 
 export default function SharedWorkspacePage() {
+  const [, params] = useRoute("/workspace/:profileId");
+  const urlProfileId = params?.profileId ? parseInt(params.profileId, 10) : null;
   const { activeWorkspace, setActiveWorkspace } = useWorkspace();
   const { getToken } = useAuth();
 
@@ -55,7 +59,7 @@ export default function SharedWorkspacePage() {
     });
   };
 
-  const profileId = activeWorkspace?.profileId;
+  const profileId = activeWorkspace?.profileId ?? urlProfileId;
   const enabled = !!profileId;
 
   const { data: workspaceData } = useQuery({
@@ -114,7 +118,19 @@ export default function SharedWorkspacePage() {
     enabled: isPlanner, refetchInterval: 30000,
   });
 
-  if (!activeWorkspace) {
+  useEffect(() => {
+    if (!activeWorkspace && workspaceData && profileId) {
+      setActiveWorkspace({
+        profileId,
+        role: workspaceData.role,
+        partner1Name: (workspaceData.profile.partner1Name as string) || "",
+        partner2Name: (workspaceData.profile.partner2Name as string) || "",
+        weddingDate: (workspaceData.profile.weddingDate as string) || "",
+      });
+    }
+  }, [workspaceData, activeWorkspace, profileId, setActiveWorkspace]);
+
+  if (!activeWorkspace && !profileId) {
     return (
       <div className="text-center py-24 space-y-4">
         <Users className="h-12 w-12 text-muted-foreground/40 mx-auto" />
@@ -123,9 +139,17 @@ export default function SharedWorkspacePage() {
     );
   }
 
-  const role = activeWorkspace.role;
+  const role = activeWorkspace?.role ?? workspaceData?.role ?? "vendor";
   const roleCfg = ROLE_LABELS[role] ?? ROLE_LABELS.vendor;
   const RoleIcon = roleCfg.icon;
+
+  const workspace = activeWorkspace || (workspaceData && profileId ? {
+    profileId,
+    role: workspaceData.role,
+    partner1Name: (workspaceData.profile.partner1Name as string) || "",
+    partner2Name: (workspaceData.profile.partner2Name as string) || "",
+    weddingDate: (workspaceData.profile.weddingDate as string) || "",
+  } : null);
 
   const profile = workspaceData?.profile as Record<string, unknown> | undefined;
   const events = timelineData?.events ?? [];
@@ -146,6 +170,16 @@ export default function SharedWorkspacePage() {
   const partyList: Array<{ id: number; name: string; role: string; side: string }> = partyData?.members ?? [];
   const chartList: Array<{ id: number; name: string; tableCount: number; seatsPerTable: number; tables?: Array<{ tableName: string; guests: string[] }> | null }> = seatingData?.charts ?? [];
 
+  if (!workspace) {
+    return (
+      <div className="space-y-6 max-w-5xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 rounded-2xl" />)}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header */}
@@ -154,7 +188,7 @@ export default function SharedWorkspacePage() {
           <div className="flex items-center gap-2 mb-1">
             <Heart className="h-5 w-5 fill-primary text-primary" />
             <h1 className="text-3xl font-serif text-primary">
-              {activeWorkspace.partner1Name} & {activeWorkspace.partner2Name}
+              {workspace.partner1Name} & {workspace.partner2Name}
             </h1>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -162,7 +196,7 @@ export default function SharedWorkspacePage() {
               <RoleIcon className="h-3 w-3" />
               {roleCfg.label}
             </span>
-            <span className="text-sm text-muted-foreground">{activeWorkspace.weddingDate}</span>
+            <span className="text-sm text-muted-foreground">{workspace.weddingDate}</span>
             <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-200 bg-emerald-50">
               Live · Updates every 5s
             </Badge>
@@ -193,7 +227,7 @@ export default function SharedWorkspacePage() {
                   <div className="flex items-start gap-2">
                     <Calendar className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-foreground">{formatDate(activeWorkspace.weddingDate)}</p>
+                      <p className="text-sm font-medium text-foreground">{formatDate(workspace.weddingDate)}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {[
                           profile.ceremonyTime && `Ceremony ${formatTime(String(profile.ceremonyTime))}`,
