@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Guests from "./Guests";
 import InvitationCustomization from "./InvitationCustomization";
 import { useRoute } from "wouter";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 
 interface RouteParams {
   profileId?: string;
@@ -10,7 +11,10 @@ interface RouteParams {
 
 export default function GuestListAndInvitations() {
   const [, params] = useRoute("/guests/:profileId");
-  const profileId = params?.profileId ? parseInt(params.profileId) : undefined;
+  const { activeWorkspace } = useWorkspace();
+  const profileId = params?.profileId
+    ? parseInt(params.profileId)
+    : activeWorkspace?.profileId;
 
   const [activeTab, setActiveTab] = useState("guest-list");
 
