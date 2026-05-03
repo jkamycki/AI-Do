@@ -72,11 +72,6 @@ export async function sendEmail(p: SendEmailParams): Promise<SendEmailResult> {
     reply_to: p.replyTo,
     subject: p.subject,
     text: p.text,
-    headers: {
-      "X-Mailer": "A.IDO Wedding Planning",
-      "X-Priority": "3 (Normal)",
-      "Precedence": "bulk",
-    },
   };
   if (p.bcc) body.bcc = Array.isArray(p.bcc) ? p.bcc : [p.bcc];
   if (p.cc) body.cc = Array.isArray(p.cc) ? p.cc : [p.cc];
