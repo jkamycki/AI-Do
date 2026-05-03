@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { ColorPalette } from "@/types/invitations";
 
 interface SaveTheDatePreviewProps {
@@ -15,6 +16,35 @@ export function SaveTheDatePreview({
   font,
   backgroundColor,
 }: SaveTheDatePreviewProps) {
+  useEffect(() => {
+    const fontMap: Record<string, string> = {
+      "Playfair Display": "Playfair+Display:wght@400;700",
+      "Cormorant Garamond": "Cormorant+Garamond:wght@400;700",
+      "Great Vibes": "Great+Vibes:wght@400",
+      "Dancing Script": "Dancing+Script:wght@400;700",
+      "Montserrat": "Montserrat:wght@400;700",
+      "Open Sans": "Open+Sans:wght@400;700",
+      "Lora": "Lora:wght@400;700",
+      "Merriweather": "Merriweather:wght@400;700",
+      "Raleway": "Raleway:wght@400;700",
+      "Poppins": "Poppins:wght@400;700",
+      "Inter": "Inter:wght@400;700",
+      "Source Sans Pro": "Source+Sans+Pro:wght@400;700",
+    };
+
+    const fontKey = fontMap[font];
+    if (!fontKey) return;
+
+    const link = document.createElement("link");
+    link.href = `https://fonts.googleapis.com/css2?family=${fontKey}&display=swap`;
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
+
+    return () => {
+      document.head.removeChild(link);
+    };
+  }, [font]);
+
   const previewStyles = {
     backgroundColor: backgroundColor || "#FFFFFF",
     fontFamily: font,
