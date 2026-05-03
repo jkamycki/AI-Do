@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, X, AlertCircle } from "lucide-react";
+import { Upload, X, AlertCircle, Crop } from "lucide-react";
+import { PhotoCropDialog } from "./PhotoCropDialog";
 
 interface PhotoUploadSectionProps {
   onSaveTheDatePhotoChange: (file: File | null) => void;
@@ -22,6 +23,9 @@ export function PhotoUploadSection({
   const [digitalInvitationError, setDigitalInvitationError] = useState<
     string | null
   >(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [cropType, setCropType] = useState<"save-the-date" | "digital-invitation" | null>(null);
+  const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
 
   const validateFile = (file: File): string | null => {
     const allowedMimes = ["image/png", "image/jpeg", "image/webp"];
@@ -55,7 +59,10 @@ export function PhotoUploadSection({
     }
 
     setSaveTheDateError(null);
-    onSaveTheDatePhotoChange(file);
+    const url = URL.createObjectURL(file);
+    setCropImageUrl(url);
+    setCropType("save-the-date");
+    setCropOpen(true);
   };
 
   const handleDigitalInvitationChange = (
@@ -76,7 +83,21 @@ export function PhotoUploadSection({
     }
 
     setDigitalInvitationError(null);
-    onDigitalInvitationPhotoChange(file);
+    const url = URL.createObjectURL(file);
+    setCropImageUrl(url);
+    setCropType("digital-invitation");
+    setCropOpen(true);
+  };
+
+  const handleCropComplete = (croppedFile: File) => {
+    if (cropType === "save-the-date") {
+      onSaveTheDatePhotoChange(croppedFile);
+    } else if (cropType === "digital-invitation") {
+      onDigitalInvitationPhotoChange(croppedFile);
+    }
+    setCropOpen(false);
+    setCropImageUrl(null);
+    setCropType(null);
   };
 
   return (
@@ -187,6 +208,19 @@ export function PhotoUploadSection({
           </div>
         </div>
       </CardContent>
+
+      {cropImageUrl && (
+        <PhotoCropDialog
+          open={cropOpen}
+          onClose={() => {
+            setCropOpen(false);
+            setCropImageUrl(null);
+            setCropType(null);
+          }}
+          imageUrl={cropImageUrl}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </Card>
   );
 }
