@@ -222,103 +222,93 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
   <meta name="x-apple-disable-message-reformatting"/>
   <title>Wedding Invitation — ${couple}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#f7f3ef;-webkit-font-smoothing:antialiased;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f3ef;padding:40px 16px;">
+<body style="margin:0;padding:0;background:linear-gradient(135deg,#f5f1ec 0%,#faf7f4 100%);-webkit-font-smoothing:antialiased;font-family:Georgia,'Times New Roman',serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#f5f1ec 0%,#faf7f4 100%);padding:60px 16px;">
     <tr><td align="center">
 
-      <!-- Outer card -->
-      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.10);">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 8px 48px rgba(0,0,0,0.12);">
 
-        <!-- Hero photo (embedded) -->
         ${photoBlock}
 
-        <!-- Ornament row -->
         <tr>
-          <td style="padding:36px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#c9a96e;font-size:22px;letter-spacing:8px;line-height:1;">&#10022; &#10022; &#10022;</p>
+          <td style="padding:48px 48px 24px;text-align:center;">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:20px;letter-spacing:6px;line-height:1.4;">✦  ✦  ✦</p>
           </td>
         </tr>
 
-        <!-- Eyebrow label -->
         <tr>
-          <td style="padding:16px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:10px;letter-spacing:4px;text-transform:uppercase;">You are cordially invited to</p>
+          <td style="padding:0 48px;text-align:center;">
+            <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;color:${colors.secondary};font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:500;">You are cordially invited to</p>
           </td>
         </tr>
 
-        <!-- Couple names -->
         <tr>
-          <td style="padding:14px 48px 0;text-align:center;">
-            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#3d2e22;font-size:34px;font-weight:400;line-height:1.2;">${couple}&rsquo;s Wedding</h1>
+          <td style="padding:0 48px;text-align:center;">
+            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:40px;font-weight:300;line-height:1.2;letter-spacing:0.5px;">${couple}</h1>
           </td>
         </tr>
 
-        <!-- Thin divider -->
         <tr>
-          <td style="padding:20px 80px 0;text-align:center;">
+          <td style="padding:8px 48px 0;text-align:center;">
+            <h2 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.secondary};font-size:20px;font-weight:300;letter-spacing:1px;">Wedding Celebration</h2>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:24px 80px 0;text-align:center;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-              <td style="border-top:1px solid #e8ddd4;height:1px;font-size:1px;line-height:1px;">&nbsp;</td>
+              <td style="border-top:3px solid ${colors.accent};height:3px;font-size:1px;line-height:1px;">&nbsp;</td>
             </tr></table>
           </td>
         </tr>
 
-        <!-- Date and venue -->
         <tr>
-          <td style="padding:18px 48px 0;text-align:center;">
-            ${weddingDateStr ? `<p style="margin:0 0 4px;font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:15px;">${weddingDateStr}</p>` : ""}
-            ${profile.venue && !hasSeparateCeremony ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:12px;letter-spacing:1px;">${profile.venue}</p>` : ""}
+          <td style="padding:28px 48px 12px;text-align:center;">
+            ${weddingDateStr ? `<p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:18px;font-weight:400;">${weddingDateStr}</p>` : ""}
+            ${profile.venue && !hasSeparateCeremony ? `<p style="margin:4px 0 0;font-family:Arial,Helvetica,sans-serif;color:#9a8a7e;font-size:13px;letter-spacing:0.5px;">${profile.venue}</p>` : ""}
           </td>
         </tr>
 
-        <!-- Event details: ceremony / reception with times + addresses -->
         ${eventDetailsBlock}
 
-        <!-- Body copy -->
         <tr>
-          <td style="padding:32px 48px 0;text-align:center;">
-            <p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:15px;line-height:1.8;">
-              Dear <span style="color:#3d2e22;font-weight:bold;">${guest.name}</span>,
+          <td style="padding:32px 48px 12px;text-align:center;">
+            <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;color:#5a4a40;font-size:16px;font-weight:300;line-height:1.8;">
+              Dear <span style="color:${colors.primary};font-weight:500;">${guest.name}</span>,
             </p>
             ${customMsg}
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:15px;line-height:1.8;">
-              We would be deeply honoured to have you join us as we celebrate our love. Please take a moment to let us know if you&rsquo;ll be able to attend.
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#5a4a40;font-size:16px;font-weight:300;line-height:1.8;">
+              We would be deeply honored to celebrate with you. Please let us know if you can join us.
             </p>
           </td>
         </tr>
 
-        <!-- RSVP button -->
         <tr>
           <td style="padding:36px 48px;text-align:center;">
-            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-              <tr>
-                <td style="border-radius:2px;background:#3d2e22;">
-                  <a href="${rsvpUrl}" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#f7f3ef;text-decoration:none;letter-spacing:3px;text-transform:uppercase;padding:16px 44px;">
-                    RSVP Now
-                  </a>
-                </td>
-              </tr>
-            </table>
-            <p style="margin:20px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#c4b8ac;">
-              Button not working? <a href="${rsvpUrl}" style="color:#c9a96e;text-decoration:underline;">Click here to RSVP</a>
+            <a href="${rsvpUrl}" style="display:inline-block;background:linear-gradient(135deg,${colors.primary},${colors.secondary});color:white;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:2px;text-transform:uppercase;padding:14px 40px;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+              RSVP
+            </a>
+            <p style="margin:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#a89890;">
+              <a href="${rsvpUrl}" style="color:${colors.primary};text-decoration:none;">Respond to this invitation</a>
             </p>
           </td>
         </tr>
 
-        <!-- Bottom ornament -->
         <tr>
-          <td style="padding:0 48px 8px;text-align:center;">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#c9a96e;font-size:18px;letter-spacing:6px;">&#10022; &#10022; &#10022;</p>
+          <td style="padding:0 48px 16px;text-align:center;">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.secondary};font-size:18px;letter-spacing:4px;">✦  ✦  ✦</p>
           </td>
         </tr>
 
-        <!-- Bottom accent bar -->
-        <tr><td style="height:5px;background:linear-gradient(90deg,#c9a96e,#e8c99a,#c9a96e);line-height:5px;font-size:5px;">&nbsp;</td></tr>
+        <tr><td style="height:6px;background:linear-gradient(90deg,${colors.primary},${colors.secondary},${colors.accent},${colors.primary});line-height:6px;font-size:6px;opacity:0.8;">&nbsp;</td></tr>
 
-        <!-- Footer -->
         <tr>
-          <td style="background:#faf7f4;padding:18px 48px;text-align:center;border-top:1px solid #f0ebe4;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#c4b8ac;letter-spacing:0.5px;">
-              Planning your own wedding? <a href="https://aidowedding.net" style="color:#c9a96e;text-decoration:none;">Try A.IDO free</a>
+          <td style="background:linear-gradient(to bottom,#faf8f5,#f5f2ef);padding:24px 48px;text-align:center;border-top:1px solid #ede8e2;">
+            <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#a89890;letter-spacing:0.5px;font-weight:500;">
+              Planning your own wedding?
+            </p>
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#c4b8ac;">
+              <a href="https://aidowedding.net" style="color:${colors.primary};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
             </p>
           </td>
         </tr>
@@ -605,90 +595,87 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
   <meta name="x-apple-disable-message-reformatting"/>
   <title>Save the Date — ${couple}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#f7f3ef;-webkit-font-smoothing:antialiased;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f3ef;padding:40px 16px;">
+<body style="margin:0;padding:0;background:linear-gradient(135deg,#f5f1ec 0%,#faf7f4 100%);-webkit-font-smoothing:antialiased;font-family:Georgia,'Times New Roman',serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#f5f1ec 0%,#faf7f4 100%);padding:60px 16px;">
     <tr><td align="center">
 
-      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.10);">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 8px 48px rgba(0,0,0,0.12);">
 
         ${photoBlock}
 
         <tr>
-          <td style="padding:36px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:10px;letter-spacing:5px;text-transform:uppercase;">Please</p>
+          <td style="padding:48px 48px 24px;text-align:center;">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${colors.secondary};font-size:11px;letter-spacing:4px;text-transform:uppercase;font-weight:500;">Save the Date</p>
           </td>
         </tr>
 
         <tr>
-          <td style="padding:8px 48px 0;text-align:center;">
-            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:42px;font-weight:400;line-height:1.1;letter-spacing:2px;">Save the Date</h1>
+          <td style="padding:0 48px;text-align:center;">
+            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:48px;font-weight:300;line-height:1.2;letter-spacing:1px;">${couple}</h1>
           </td>
         </tr>
 
         <tr>
-          <td style="padding:20px 80px 0;text-align:center;">
+          <td style="padding:24px 80px 0;text-align:center;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-              <td style="border-top:2px solid ${colors.accent};height:2px;font-size:1px;line-height:1px;">&nbsp;</td>
+              <td style="border-top:3px solid ${colors.accent};height:3px;font-size:1px;line-height:1px;">&nbsp;</td>
             </tr></table>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding:20px 48px 0;text-align:center;">
-            <h2 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:26px;font-weight:400;">${couple}</h2>
           </td>
         </tr>
 
         ${weddingDateStr ? `
         <tr>
-          <td style="padding:14px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.secondary};font-size:16px;">${weddingDateStr}</p>
+          <td style="padding:28px 48px 8px;text-align:center;">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:20px;font-weight:400;letter-spacing:0.5px;">${weddingDateStr}</p>
           </td>
         </tr>` : ""}
 
         ${locationLine ? `
         <tr>
-          <td style="padding:8px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:12px;letter-spacing:1px;">${locationLine}</p>
+          <td style="padding:12px 48px 0;text-align:center;">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#9a8a7e;font-size:13px;letter-spacing:0.5px;font-weight:400;">${locationLine}</p>
           </td>
         </tr>` : ""}
 
         ${(ceremonyTimeStr || receptionTimeStr) ? `
         <tr>
-          <td style="padding:12px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:11px;letter-spacing:1px;">
-              ${[ceremonyTimeStr ? `Ceremony ${ceremonyTimeStr}` : null, receptionTimeStr ? `Reception ${receptionTimeStr}` : null].filter(Boolean).join("&nbsp;&nbsp;·&nbsp;&nbsp;")}
+          <td style="padding:8px 48px 0;text-align:center;">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b0a09a;font-size:12px;letter-spacing:0.5px;">
+              ${[ceremonyTimeStr ? `Ceremony at ${ceremonyTimeStr}` : null, receptionTimeStr ? `Reception at ${receptionTimeStr}` : null].filter(Boolean).join(" • ")}
             </p>
           </td>
         </tr>` : ""}
 
         ${(profile as any).saveTheDateMessage ? `
         <tr>
-          <td style="padding:20px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:15px;line-height:1.7;font-style:italic;">${(profile as any).saveTheDateMessage}</p>
+          <td style="padding:28px 48px 0;text-align:center;">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:16px;line-height:1.8;font-weight:300;font-style:italic;">"${(profile as any).saveTheDateMessage}"</p>
           </td>
         </tr>` : ""}
 
         <tr>
+          <td style="padding:32px 48px 0;text-align:center;">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.secondary};font-size:13px;font-style:italic;letter-spacing:1px;font-weight:300;">Formal invitation to follow</p>
+          </td>
+        </tr>
+
+        <tr>
           <td style="padding:28px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.accent};font-size:14px;font-style:italic;letter-spacing:1px;">Formal invitation to follow</p>
+            <a href="${origin}/save-the-date/${token}" style="display:inline-block;background:linear-gradient(135deg,${colors.primary},${colors.secondary});color:white;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:14px 36px;border-radius:4px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:all 0.3s ease;">View &amp; Download</a>
           </td>
         </tr>
 
-        <tr>
-          <td style="padding:16px 48px 0;text-align:center;">
-            <a href="${origin}/save-the-date/${token}" style="display:inline-block;background:${colors.primary};color:white;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:12px 28px;border-radius:2px;">View &amp; Download</a>
-          </td>
-        </tr>
+        <tr><td style="height:48px;font-size:48px;line-height:48px;">&nbsp;</td></tr>
 
-        <tr><td style="height:36px;font-size:36px;line-height:36px;">&nbsp;</td></tr>
-
-        <tr><td style="height:5px;background:linear-gradient(90deg,${colors.primary},${colors.secondary},${colors.primary});line-height:5px;font-size:5px;">&nbsp;</td></tr>
+        <tr><td style="height:6px;background:linear-gradient(90deg,${colors.primary},${colors.secondary},${colors.accent},${colors.primary});line-height:6px;font-size:6px;opacity:0.8;">&nbsp;</td></tr>
 
         <tr>
-          <td style="background:#faf7f4;padding:18px 48px;text-align:center;border-top:1px solid #f0ebe4;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#c4b8ac;letter-spacing:0.5px;">
-              Planning your own wedding? <a href="https://aidowedding.net" style="color:#c9a96e;text-decoration:none;">Try A.IDO free</a>
+          <td style="background:linear-gradient(to bottom,#faf8f5,#f5f2ef);padding:24px 48px;text-align:center;border-top:1px solid #ede8e2;">
+            <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#a89890;letter-spacing:0.5px;font-weight:500;">
+              Planning your own wedding?
+            </p>
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#c4b8ac;">
+              <a href="https://aidowedding.net" style="color:${colors.primary};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
             </p>
           </td>
         </tr>
