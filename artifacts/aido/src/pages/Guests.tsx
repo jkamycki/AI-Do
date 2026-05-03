@@ -607,6 +607,7 @@ export default function Guests() {
 
   const [linkDialogState, setLinkDialogState] = useState<{ guestId: number; name: string; url: string; copied: boolean; hasEmail: boolean } | null>(null);
   const [fetchingLinkId, setFetchingLinkId] = useState<number | null>(null);
+  const [inviteTypeGuest, setInviteTypeGuest] = useState<Guest | null>(null);
 
   const { data, isLoading, isError } = useGetGuests();
   const addGuest = useAddGuest();
@@ -620,6 +621,24 @@ export default function Guests() {
     }, 15000);
     return () => clearInterval(interval);
   }, [queryClient]);
+
+  const sendSaveTheDate = useMutation({
+    mutationFn: async (guestId: number) => {
+      const res = await authFetch(`/api/guests/${guestId}/send-save-the-date`, { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "Failed to send save-the-date");
+      }
+      return res.json();
+    },
+    onSuccess: (_, guestId) => {
+      optimisticUpdate(guestId, { saveTheDateStatus: "sent" } as any);
+      invalidate();
+      setInviteTypeGuest(null);
+      toast({ title: "Save the Date sent!", description: "Email delivered to guest." });
+    },
+    onError: (err) => toast({ title: "Failed to send Save the Date", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
+  });
 
   const sendRsvp = useMutation({
     mutationFn: async (guestId: number) => {
@@ -795,6 +814,22 @@ export default function Guests() {
         optimisticUpdate(guest.id, { guestGroup: guest.guestGroup });
         toast({ title: "Failed to update group", variant: "destructive" });
       },
+    });
+  }
+
+  function handleSaveDateChange(guest: Guest, newStatus: string) {
+    const prev = (guest as any).saveTheDateStatus ?? "not_sent";
+    optimisticUpdate(guest.id, { saveTheDateStatus: newStatus } as any);
+    authFetch(`/api/guests/${guest.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ saveTheDateStatus: newStatus }),
+    }).then(async res => {
+      if (!res.ok) throw new Error();
+      invalidate();
+    }).catch(() => {
+      optimisticUpdate(guest.id, { saveTheDateStatus: prev } as any);
+      toast({ title: "Failed to update save-the-date status", variant: "destructive" });
     });
   }
 
@@ -1235,6 +1270,7 @@ export default function Guests() {
                   <TableRow>
                     <TableHead>{t("guests.col_name")}</TableHead>
                     <TableHead className="hidden sm:table-cell">{t("guests.col_invitation")}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t("guests.col_save_the_date")}</TableHead>
                     <TableHead className="hidden sm:table-cell">{t("guests.col_group")}</TableHead>
                     <TableHead>{t("guests.col_rsvp")}</TableHead>
                     <TableHead className="hidden md:table-cell">{t("guests.col_meal")}</TableHead>
@@ -1323,6 +1359,30 @@ export default function Guests() {
                                   {t(`guests.invitation_${opt.value}`)}
                                 </DropdownMenuItem>
                               ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-sm">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${(g as any).saveTheDateStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}>
+                                {(g as any).saveTheDateStatus === "sent" ? t("guests.save_the_date_sent") : t("guests.save_the_date_not_sent")}
+                                <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-36">
+                              <DropdownMenuItem
+                                className={`text-xs cursor-pointer ${(g as any).saveTheDateStatus !== "sent" ? "opacity-50 pointer-events-none" : ""}`}
+                                onClick={() => handleSaveDateChange(g, "not_sent")}
+                              >
+                                {t("guests.save_the_date_not_sent")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className={`text-xs font-medium cursor-pointer ${(g as any).saveTheDateStatus === "sent" ? "opacity-50 pointer-events-none" : ""}`}
+                                onClick={() => handleSaveDateChange(g, "sent")}
+                              >
+                                {t("guests.save_the_date_sent")}
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -1431,8 +1491,7 @@ export default function Guests() {
                               title={
                                 g.rsvpStatus === "attending" ? "RSVP confirmed" :
                                 g.rsvpStatus === "declined" ? "Declined" :
-                                g.invitationStatus === "sent" ? "Resend RSVP" :
-                                g.email ? "Send RSVP email" : "Generate RSVP link"
+                                "Send invitation"
                               }
                               disabled={
                                 (g.rsvpStatus === "attending" || g.rsvpStatus === "declined") ||
@@ -1440,7 +1499,7 @@ export default function Guests() {
                               }
                               onClick={() => {
                                 if (g.rsvpStatus === "attending" || g.rsvpStatus === "declined") return;
-                                fetchRsvpLink(g);
+                                setInviteTypeGuest(g);
                               }}
                             >
                               {fetchingLinkId === g.id ? (
@@ -1520,6 +1579,54 @@ export default function Guests() {
               submitLabel="Save Changes"
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite type picker dialog */}
+      <Dialog open={!!inviteTypeGuest} onOpenChange={(open) => { if (!open) setInviteTypeGuest(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl text-primary flex items-center gap-2">
+              <Send className="h-5 w-5" /> {t("guests.send_invite_title")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("guests.send_invite_desc", { name: inviteTypeGuest?.name ?? "" })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 pt-1">
+            <Button
+              variant="outline"
+              className="h-auto py-4 flex flex-col items-start gap-1 text-left"
+              onClick={() => {
+                if (inviteTypeGuest) sendSaveTheDate.mutate(inviteTypeGuest.id);
+              }}
+              disabled={sendSaveTheDate.isPending}
+            >
+              <span className="font-semibold text-foreground flex items-center gap-2">
+                {sendSaveTheDate.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                {t("guests.send_save_the_date_option")}
+              </span>
+              <span className="text-xs text-muted-foreground font-normal">{t("guests.send_save_the_date_option_desc")}</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto py-4 flex flex-col items-start gap-1 text-left"
+              onClick={() => {
+                if (inviteTypeGuest) {
+                  const g = inviteTypeGuest;
+                  setInviteTypeGuest(null);
+                  fetchRsvpLink(g);
+                }
+              }}
+              disabled={fetchingLinkId !== null}
+            >
+              <span className="font-semibold text-foreground flex items-center gap-2">
+                {fetchingLinkId !== null ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                {t("guests.send_digital_invite_option")}
+              </span>
+              <span className="text-xs text-muted-foreground font-normal">{t("guests.send_digital_invite_option_desc")}</span>
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -477,6 +477,167 @@ router.post("/rsvp/:token", async (req, res) => {
   }
 });
 
+router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid guest ID" });
+
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
+
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(400).json({ error: "No wedding profile found." });
+
+    const rows = await db
+      .select()
+      .from(guests)
+      .where(and(eq(guests.id, id), eq(guests.profileId, profile.id)))
+      .limit(1);
+
+    if (!rows.length) return res.status(404).json({ error: "Guest not found" });
+    const guest = rows[0];
+
+    await db
+      .update(guests)
+      .set({ saveTheDateStatus: "sent" })
+      .where(eq(guests.id, id));
+
+    let emailSent = false;
+    if (guest.email) {
+      const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+      const weddingDateStr = profile.weddingDate
+        ? (() => {
+            const [y, m, d] = profile.weddingDate.split("-").map(Number);
+            return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+          })()
+        : null;
+
+      let photoBlock = "";
+      const stdPhotoUrl = profile.saveTheDatePhotoUrl;
+      if (stdPhotoUrl) {
+        try {
+          const photoFile = await objectStorageService.getObjectEntityFile(stdPhotoUrl);
+          const nodeStream = photoFile.createReadStream();
+          const chunks: Buffer[] = [];
+          for await (const chunk of nodeStream) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array));
+          }
+          const b64 = Buffer.concat(chunks).toString("base64");
+          const [meta] = await photoFile.getMetadata();
+          const mimeType = (meta.contentType as string | undefined) || "image/jpeg";
+          photoBlock = `
+        <tr>
+          <td style="padding:0;line-height:0;font-size:0;">
+            <img src="data:${mimeType};base64,${b64}" alt="Save the Date — ${couple}" width="560" style="width:100%;max-width:560px;height:auto;display:block;"/>
+          </td>
+        </tr>`;
+        } catch (photoErr) {
+          req.log.warn(photoErr, "Could not embed save-the-date photo");
+        }
+      }
+
+      const locationLine = [
+        profile.venue,
+        profile.location,
+        [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+      ].filter(Boolean).join(" · ");
+
+      const html = `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="x-apple-disable-message-reformatting"/>
+  <title>Save the Date — ${couple}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f7f3ef;-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f3ef;padding:40px 16px;">
+    <tr><td align="center">
+
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.10);">
+
+        ${photoBlock}
+
+        <tr>
+          <td style="padding:36px 48px 0;text-align:center;">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:10px;letter-spacing:5px;text-transform:uppercase;">Please</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:8px 48px 0;text-align:center;">
+            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#3d2e22;font-size:42px;font-weight:400;line-height:1.1;letter-spacing:2px;">Save the Date</h1>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:20px 80px 0;text-align:center;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td style="border-top:1px solid #e8ddd4;height:1px;font-size:1px;line-height:1px;">&nbsp;</td>
+            </tr></table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:20px 48px 0;text-align:center;">
+            <h2 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#3d2e22;font-size:26px;font-weight:400;">${couple}</h2>
+          </td>
+        </tr>
+
+        ${weddingDateStr ? `
+        <tr>
+          <td style="padding:14px 48px 0;text-align:center;">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:16px;">${weddingDateStr}</p>
+          </td>
+        </tr>` : ""}
+
+        ${locationLine ? `
+        <tr>
+          <td style="padding:8px 48px 0;text-align:center;">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:12px;letter-spacing:1px;">${locationLine}</p>
+          </td>
+        </tr>` : ""}
+
+        <tr>
+          <td style="padding:28px 48px 36px;text-align:center;">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#c9a96e;font-size:14px;font-style:italic;letter-spacing:1px;">Formal invitation to follow</p>
+          </td>
+        </tr>
+
+        <tr><td style="height:5px;background:linear-gradient(90deg,#c9a96e,#e8c99a,#c9a96e);line-height:5px;font-size:5px;">&nbsp;</td></tr>
+
+        <tr>
+          <td style="background:#faf7f4;padding:18px 48px;text-align:center;border-top:1px solid #f0ebe4;">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#c4b8ac;letter-spacing:0.5px;">
+              Planning your own wedding? <a href="https://aidowedding.net" style="color:#c9a96e;text-decoration:none;">Try A.IDO free</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+      const result = await sendEmail({
+        to: guest.email,
+        replyTo: `noreply@aidowedding.net`,
+        fromName: `${couple} via A.IDO`,
+        subject: `Save the Date — ${couple}'s Wedding`,
+        text: `Save the Date!\n\n${couple}\n\n${weddingDateStr ?? ""}${locationLine ? `\n${locationLine}` : ""}\n\nFormal invitation to follow.\n\nWith love,\n${couple}`,
+        html,
+      });
+      emailSent = result.ok;
+    }
+
+    res.json({ emailSent });
+  } catch (err) {
+    req.log.error(err, "Failed to send save-the-date");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.patch("/profile/invitation-settings", requireAuth, async (req, res) => {
   try {
     const callerRole = await resolveCallerRole(req);
@@ -485,11 +646,13 @@ router.patch("/profile/invitation-settings", requireAuth, async (req, res) => {
     const profile = await resolveProfile(req);
     if (!profile) return res.status(400).json({ error: "No wedding profile found." });
 
-    const { invitationPhotoUrl, invitationMessage } = req.body;
+    const { invitationPhotoUrl, invitationMessage, saveTheDatePhotoUrl, digitalInvitationPhotoUrl } = req.body;
 
     const updateData: Partial<typeof weddingProfiles.$inferInsert> = {};
     if (invitationPhotoUrl !== undefined) updateData.invitationPhotoUrl = invitationPhotoUrl || null;
     if (invitationMessage !== undefined) updateData.invitationMessage = invitationMessage || null;
+    if (saveTheDatePhotoUrl !== undefined) updateData.saveTheDatePhotoUrl = saveTheDatePhotoUrl || null;
+    if (digitalInvitationPhotoUrl !== undefined) updateData.digitalInvitationPhotoUrl = digitalInvitationPhotoUrl || null;
 
     await db.update(weddingProfiles).set(updateData).where(eq(weddingProfiles.id, profile.id));
 

@@ -30,6 +30,8 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   vendorBccEmail: text("vendor_bcc_email"),
   invitationPhotoUrl: text("invitation_photo_url"),
   invitationMessage: text("invitation_message"),
+  saveTheDatePhotoUrl: text("save_the_date_photo_url"),
+  digitalInvitationPhotoUrl: text("digital_invitation_photo_url"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -310,6 +312,7 @@ export const guests = pgTable("guests", {
   guestCountry: text("guest_country"),
   rsvpToken: text("rsvp_token"),
   rsvpSentAt: timestamp("rsvp_sent_at"),
+  saveTheDateStatus: text("save_the_date_status").notNull().default("not_sent"),
   source: text("source").notNull().default("manual"),
   acknowledgedAt: timestamp("acknowledged_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

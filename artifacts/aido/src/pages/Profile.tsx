@@ -633,7 +633,255 @@ export default function Profile() {
       </Card>
 
       <InvitationPhotoCard />
+      <SaveTheDatePhotoCard />
     </div>
+  );
+}
+
+function SaveTheDatePhotoCard() {
+  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { data: profile, isLoading: profileLoading } = useGetProfile({
+    query: { queryKey: getGetProfileQueryKey(), enabled: isLoaded && !!isSignedIn },
+  });
+
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [previewSrc, setPreviewSrcRaw] = useState<string | null>(null);
+  const [removingPhoto, setRemovingPhoto] = useState(false);
+  const [cropSrc, setCropSrcRaw] = useState<string | null>(null);
+  const [cropFileName, setCropFileName] = useState<string>("save-the-date");
+
+  const previewBlobRef = useRef<string | null>(null);
+  const cropBlobRef = useRef<string | null>(null);
+
+  const setPreviewSrc = useCallback((next: string | null) => {
+    if (previewBlobRef.current && previewBlobRef.current !== next) {
+      URL.revokeObjectURL(previewBlobRef.current);
+      previewBlobRef.current = null;
+    }
+    if (next?.startsWith("blob:")) previewBlobRef.current = next;
+    setPreviewSrcRaw(next);
+  }, []);
+
+  const setCropSrc = useCallback((next: string | null) => {
+    if (cropBlobRef.current && cropBlobRef.current !== next) {
+      URL.revokeObjectURL(cropBlobRef.current);
+      cropBlobRef.current = null;
+    }
+    if (next?.startsWith("blob:")) cropBlobRef.current = next;
+    setCropSrcRaw(next);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewBlobRef.current) URL.revokeObjectURL(previewBlobRef.current);
+      if (cropBlobRef.current) URL.revokeObjectURL(cropBlobRef.current);
+    };
+  }, []);
+
+  const initializedRef = useRef(false);
+
+  useEffect(() => {
+    if (profile && !initializedRef.current) {
+      initializedRef.current = true;
+      const p = (profile as any).saveTheDatePhotoUrl ?? null;
+      setPhotoUrl(p);
+      if (p) setPreviewSrc(`/api/storage/objects/${p.replace("/objects/", "")}`);
+    }
+  }, [profile]);
+
+  const { uploadFile, isUploading } = useUpload({
+    getToken,
+    onSuccess: (resp: { objectPath: string }) => {
+      setPhotoUrl(resp.objectPath);
+    },
+    onError: (err: Error) => toast({ title: "Upload failed", description: err.message, variant: "destructive" }),
+  });
+
+  const resetFileInput = () => {
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max size is 5 MB.", variant: "destructive" });
+      resetFileInput();
+      return;
+    }
+    const allowed = ["image/jpeg", "image/png", "image/heic", "image/heif"];
+    if (!allowed.includes(file.type) && !file.name.toLowerCase().match(/\.(jpg|jpeg|png|heic|heif)$/)) {
+      toast({ title: "Unsupported format", description: "Please upload a JPG, PNG, or HEIC photo.", variant: "destructive" });
+      resetFileInput();
+      return;
+    }
+    const isHeic = file.type === "image/heic" || file.type === "image/heif" || /\.(heic|heif)$/i.test(file.name);
+    if (isHeic) {
+      setPreviewSrc(URL.createObjectURL(file));
+      await uploadFile(file);
+      return;
+    }
+    setCropFileName(file.name);
+    setCropSrc(URL.createObjectURL(file));
+  };
+
+  const handleCropConfirm = async (cropped: File) => {
+    setCropSrc(null);
+    setPreviewSrc(URL.createObjectURL(cropped));
+    await uploadFile(cropped);
+    resetFileInput();
+  };
+
+  const handleCropCancel = () => {
+    setCropSrc(null);
+    resetFileInput();
+  };
+
+  const saveSettings = async () => {
+    setSaving(true);
+    try {
+      const res = await authFetch("/api/profile/invitation-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ saveTheDatePhotoUrl: photoUrl }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      toast({ title: "Save the Date photo saved!" });
+    } catch {
+      toast({ title: "Failed to save", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removePhoto = async () => {
+    setRemovingPhoto(true);
+    setPhotoUrl(null);
+    setPreviewSrc(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    try {
+      await authFetch("/api/profile/invitation-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ saveTheDatePhotoUrl: null }),
+      });
+      toast({ title: "Photo removed" });
+    } catch {
+      toast({ title: "Failed to remove photo", variant: "destructive" });
+    } finally {
+      setRemovingPhoto(false);
+    }
+  };
+
+  if (profileLoading) return null;
+
+  return (
+    <Card className="border-none shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-xl font-serif text-primary flex items-center gap-2">
+          <ImageIcon className="h-5 w-5" />
+          Save the Date Photo
+          <span className="text-xs font-sans font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Optional</span>
+        </CardTitle>
+        <CardDescription>
+          Add a photo for your Save the Date emails. This photo will appear in the simplified email sent before the formal invitation. JPG, PNG, or HEIC — max 5 MB.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="space-y-3">
+          {previewSrc ? (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Preview — how it will appear in the Save the Date email
+              </p>
+              <div className="relative group rounded-xl overflow-hidden border border-border/50 shadow-sm bg-[hsl(270,20%,10%)] py-6 px-4 flex flex-col items-center gap-6">
+                <img
+                  src="/logo.png"
+                  alt="A.IDO"
+                  className="h-28 w-auto object-contain"
+                />
+                <img
+                  src={previewSrc}
+                  alt="Save the Date photo preview"
+                  className="w-full max-w-md h-auto block rounded-lg"
+                  style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }}
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 gap-3">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="gap-1.5"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    Change Photo
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="gap-1.5"
+                    onClick={removePhoto}
+                    disabled={removingPhoto}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove
+                  </Button>
+                </div>
+                {isUploading && (
+                  <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-2">
+                    <Loader2 className="h-6 w-6 animate-spin text-white" />
+                    <p className="text-white text-sm font-medium">Uploading…</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="w-full border-2 border-dashed border-border rounded-xl py-12 flex flex-col items-center gap-3 text-muted-foreground hover:border-primary/50 hover:text-primary/80 hover:bg-primary/3 transition-all disabled:opacity-50"
+            >
+              {isUploading ? (
+                <><Loader2 className="h-8 w-8 animate-spin" /><p className="text-sm font-medium">Uploading…</p></>
+              ) : (
+                <><Upload className="h-8 w-8" /><div className="text-center"><p className="text-sm font-medium">Click to upload a photo</p><p className="text-xs mt-1">Optional · For Save the Date emails only · JPG, PNG, or HEIC · Max 5 MB</p></div></>
+              )}
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,.heic,.heif"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+          {cropSrc && (
+            <InvitationCropDialog
+              imageSrc={cropSrc}
+              originalFileName={cropFileName}
+              onConfirm={handleCropConfirm}
+              onCancel={handleCropCancel}
+            />
+          )}
+        </div>
+
+        <div className="flex justify-end">
+          <Button
+            onClick={saveSettings}
+            disabled={saving || isUploading}
+            className="gap-2 px-6"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving ? "Saving…" : "Save Photo"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
