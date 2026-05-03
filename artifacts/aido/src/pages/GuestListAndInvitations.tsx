@@ -4,6 +4,7 @@ import Guests from "./Guests";
 import InvitationCustomization from "./InvitationCustomization";
 import { useRoute } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { useGetProfile } from "@workspace/api-client-react";
 
 interface RouteParams {
   profileId?: string;
@@ -12,14 +13,16 @@ interface RouteParams {
 export default function GuestListAndInvitations() {
   const [, params] = useRoute("/guests/:profileId");
   const { activeWorkspace } = useWorkspace();
+  const { data: profile } = useGetProfile();
+
   const profileId = params?.profileId
     ? parseInt(params.profileId)
-    : activeWorkspace?.profileId;
+    : activeWorkspace?.profileId || profile?.id;
 
   const [activeTab, setActiveTab] = useState("guest-list");
 
   if (!profileId) {
-    return <div className="p-4 text-center">Profile not found</div>;
+    return <div className="p-4 text-center">Loading profile...</div>;
   }
 
   return (
