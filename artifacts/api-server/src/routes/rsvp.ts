@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, guests, weddingProfiles } from "@workspace/db";
+import { db, guests, weddingProfiles, invitationCustomizations } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
@@ -11,6 +11,14 @@ import crypto from "crypto";
 const objectStorageService = new ObjectStorageService();
 
 const router = Router();
+
+// Default colors (fallback)
+const DEFAULT_COLORS = {
+  primary: "#D4A017",
+  secondary: "#F5C842",
+  accent: "#7B2FBE",
+  neutral: "#666666",
+};
 
 function buildOrigin(req: import("express").Request): string {
   const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() || req.protocol;
@@ -72,6 +80,18 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: "Guest not found" });
     const guest = rows[0];
 
+    // Fetch invitation customizations
+    const customizationRows = await db
+      .select()
+      .from(invitationCustomizations)
+      .where(eq(invitationCustomizations.profileId, profile.id))
+      .limit(1);
+    const customization = customizationRows.length > 0 ? customizationRows[0] : null;
+
+    // Use customization colors or defaults
+    const colors = customization?.colorPalette || DEFAULT_COLORS;
+    const digitalInvitationPhotoUrl = customization?.digitalInvitationPhotoUrl || profile.invitationPhotoUrl;
+
     const token = guest.rsvpToken ?? crypto.randomUUID();
     const now = new Date();
 
@@ -95,7 +115,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           })()
         : null;
 
-      const photoBlock = profile.invitationPhotoUrl
+      const photoBlock = digitalInvitationPhotoUrl
         ? `
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
@@ -311,13 +331,24 @@ router.get("/rsvp/:token/photo", async (req, res) => {
 
     if (!rows.length) return res.status(404).end();
 
-    const profiles = await db
-      .select({ invitationPhotoUrl: weddingProfiles.invitationPhotoUrl })
-      .from(weddingProfiles)
-      .where(eq(weddingProfiles.id, rows[0].profileId))
+    // Try customized photo first, fall back to profile photo
+    const customizations = await db
+      .select({ digitalInvitationPhotoUrl: invitationCustomizations.digitalInvitationPhotoUrl })
+      .from(invitationCustomizations)
+      .where(eq(invitationCustomizations.profileId, rows[0].profileId))
       .limit(1);
 
-    const photoUrl = profiles[0]?.invitationPhotoUrl;
+    let photoUrl = customizations[0]?.digitalInvitationPhotoUrl;
+
+    if (!photoUrl) {
+      const profiles = await db
+        .select({ invitationPhotoUrl: weddingProfiles.invitationPhotoUrl })
+        .from(weddingProfiles)
+        .where(eq(weddingProfiles.id, rows[0].profileId))
+        .limit(1);
+      photoUrl = profiles[0]?.invitationPhotoUrl;
+    }
+
     if (!photoUrl) return res.status(404).end();
 
     const file = await objectStorageService.getObjectEntityFile(photoUrl);
@@ -481,6 +512,18 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: "Guest not found" });
     const guest = rows[0];
 
+    // Fetch invitation customizations
+    const customizationRows = await db
+      .select()
+      .from(invitationCustomizations)
+      .where(eq(invitationCustomizations.profileId, profile.id))
+      .limit(1);
+    const customization = customizationRows.length > 0 ? customizationRows[0] : null;
+
+    // Use customization colors or defaults
+    const colors = customization?.colorPalette || DEFAULT_COLORS;
+    const saveTheDatePhotoUrl = customization?.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl;
+
     const token = guest.rsvpToken ?? crypto.randomUUID();
     if (!guest.rsvpToken) {
       await db.update(guests).set({ rsvpToken: token, saveTheDateStatus: "sent" }).where(eq(guests.id, id));
@@ -511,7 +554,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
 
       const origin = buildOrigin(req);
 
-      const photoBlock = profile.saveTheDatePhotoUrl
+      const photoBlock = saveTheDatePhotoUrl
         ? `
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
@@ -550,28 +593,28 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
 
         <tr>
           <td style="padding:8px 48px 0;text-align:center;">
-            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#3d2e22;font-size:42px;font-weight:400;line-height:1.1;letter-spacing:2px;">Save the Date</h1>
+            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:42px;font-weight:400;line-height:1.1;letter-spacing:2px;">Save the Date</h1>
           </td>
         </tr>
 
         <tr>
           <td style="padding:20px 80px 0;text-align:center;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-              <td style="border-top:1px solid #e8ddd4;height:1px;font-size:1px;line-height:1px;">&nbsp;</td>
+              <td style="border-top:2px solid ${colors.accent};height:2px;font-size:1px;line-height:1px;">&nbsp;</td>
             </tr></table>
           </td>
         </tr>
 
         <tr>
           <td style="padding:20px 48px 0;text-align:center;">
-            <h2 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#3d2e22;font-size:26px;font-weight:400;">${couple}</h2>
+            <h2 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:26px;font-weight:400;">${couple}</h2>
           </td>
         </tr>
 
         ${weddingDateStr ? `
         <tr>
           <td style="padding:14px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:16px;">${weddingDateStr}</p>
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.secondary};font-size:16px;">${weddingDateStr}</p>
           </td>
         </tr>` : ""}
 
@@ -600,19 +643,19 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
 
         <tr>
           <td style="padding:28px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#c9a96e;font-size:14px;font-style:italic;letter-spacing:1px;">Formal invitation to follow</p>
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.accent};font-size:14px;font-style:italic;letter-spacing:1px;">Formal invitation to follow</p>
           </td>
         </tr>
 
         <tr>
           <td style="padding:16px 48px 0;text-align:center;">
-            <a href="${origin}/save-the-date/${token}" style="display:inline-block;background:#3d2e22;color:#c9a96e;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:12px 28px;border-radius:2px;">View &amp; Download</a>
+            <a href="${origin}/save-the-date/${token}" style="display:inline-block;background:${colors.primary};color:white;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:12px 28px;border-radius:2px;">View &amp; Download</a>
           </td>
         </tr>
 
         <tr><td style="height:36px;font-size:36px;line-height:36px;">&nbsp;</td></tr>
 
-        <tr><td style="height:5px;background:linear-gradient(90deg,#c9a96e,#e8c99a,#c9a96e);line-height:5px;font-size:5px;">&nbsp;</td></tr>
+        <tr><td style="height:5px;background:linear-gradient(90deg,${colors.primary},${colors.secondary},${colors.primary});line-height:5px;font-size:5px;">&nbsp;</td></tr>
 
         <tr>
           <td style="background:#faf7f4;padding:18px 48px;text-align:center;border-top:1px solid #f0ebe4;">
@@ -688,9 +731,17 @@ router.get("/save-the-date/:token/photo", async (req, res) => {
     const { token } = req.params;
     const rows = await db.select({ profileId: guests.profileId }).from(guests).where(eq(guests.rsvpToken, token)).limit(1);
     if (!rows.length) return res.status(404).end();
-    const profiles = await db.select({ saveTheDatePhotoUrl: weddingProfiles.saveTheDatePhotoUrl }).from(weddingProfiles).where(eq(weddingProfiles.id, rows[0].profileId)).limit(1);
-    if (!profiles.length) return res.status(404).end();
-    const photoUrl = (profiles[0] as any).saveTheDatePhotoUrl;
+
+    // Try to get customized photo first, fall back to profile photo
+    const customizations = await db.select({ saveTheDatePhotoUrl: invitationCustomizations.saveTheDatePhotoUrl }).from(invitationCustomizations).where(eq(invitationCustomizations.profileId, rows[0].profileId)).limit(1);
+    let photoUrl = customizations.length > 0 ? (customizations[0] as any).saveTheDatePhotoUrl : null;
+
+    if (!photoUrl) {
+      const profiles = await db.select({ saveTheDatePhotoUrl: weddingProfiles.saveTheDatePhotoUrl }).from(weddingProfiles).where(eq(weddingProfiles.id, rows[0].profileId)).limit(1);
+      if (!profiles.length) return res.status(404).end();
+      photoUrl = (profiles[0] as any).saveTheDatePhotoUrl;
+    }
+
     if (!photoUrl) return res.status(404).end();
     const file = await objectStorageService.getObjectEntityFile(photoUrl);
     const response = await objectStorageService.downloadObject(file, 3600);
