@@ -1,8 +1,8 @@
-import { useState, useEffect, useContext, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/react";
 import { useRoute } from "wouter";
-import { WorkspaceContext } from "@/contexts/WorkspaceContext";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { PhotoUploadSection } from "@/components/InvitationCustomization/PhotoUploadSection";
 import { ColorSystemSection } from "@/components/InvitationCustomization/ColorSystemSection";
 import { DesignOptionsSection } from "@/components/InvitationCustomization/DesignOptionsSection";
@@ -28,7 +28,7 @@ export default function InvitationCustomizationPage() {
   const { getToken } = useAuth();
   const { user } = useUser();
   const { toast } = useToast();
-  const { activeWorkspace } = useContext(WorkspaceContext);
+  const { activeWorkspace } = useWorkspace();
   const [, params] = useRoute<RouteParams>("/guests/:profileId");
 
   // Get profileId from route params or workspace context
