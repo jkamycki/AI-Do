@@ -1,0 +1,46 @@
+export interface ColorPalette {
+  primary: string;
+  secondary: string;
+  accent: string;
+  neutral: string;
+}
+
+export interface InvitationCustomization {
+  id?: number;
+  profileId: number;
+  primaryColor: string;
+  colorPalette: ColorPalette;
+  customColors: Partial<ColorPalette> | null;
+  selectedPalette: string | null;
+  backgroundColor: string | null;
+  saveTheDatePhotoUrl: string | null;
+  digitalInvitationPhotoUrl: string | null;
+  selectedFont: string;
+  selectedLayout: string;
+  backgroundImageUrl: string | null;
+  updatedAt?: string;
+  createdAt?: string;
+}
+
+export interface WeddingProfileData {
+  id: number;
+  partner1Name: string;
+  partner2Name: string;
+  weddingDate: string;
+  ceremonyTime: string;
+  receptionTime: string;
+  venue: string;
+  location: string;
+  venueCity?: string;
+  venueState?: string;
+  venueZip?: string;
+}
+
+export type PreviewTab = "saveTheDate" | "digitalInvitation";
+
+export interface ColorGenerationResponse {
+  primary: string;
+  secondary: string;
+  accent: string;
+  neutral: string;
+}
