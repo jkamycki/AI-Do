@@ -8,7 +8,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
 
 const FONTS = [
   "Georgia",
@@ -46,8 +45,6 @@ interface DesignOptionsSectionProps {
   onLayoutChange: (layout: string) => void;
   backgroundColor: string | null;
   onBackgroundColorChange: (hex: string) => void;
-  isSaving: boolean;
-  onSave: () => Promise<void>;
 }
 
 export function DesignOptionsSection({
@@ -57,8 +54,6 @@ export function DesignOptionsSection({
   onLayoutChange,
   backgroundColor,
   onBackgroundColorChange,
-  isSaving,
-  onSave,
 }: DesignOptionsSectionProps) {
   return (
     <Card>
@@ -136,18 +131,6 @@ export function DesignOptionsSection({
             />
           </div>
         </div>
-
-        {/* Save Button */}
-        <Button onClick={onSave} disabled={isSaving} className="w-full mt-4">
-          {isSaving ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Saving Customizations...
-            </>
-          ) : (
-            "Save Customizations"
-          )}
-        </Button>
       </CardContent>
     </Card>
   );
