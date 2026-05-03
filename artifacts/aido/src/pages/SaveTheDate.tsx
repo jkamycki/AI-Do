@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -39,6 +39,7 @@ export default function SaveTheDate() {
   const [, params] = useRoute("/save-the-date/:token");
   const token = params?.token ?? "";
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const { data: info, isLoading, isError } = useQuery({
     queryKey: ["save-the-date", token],
@@ -80,256 +81,29 @@ export default function SaveTheDate() {
     (info.ceremonyVenueName || info.ceremonyAddress || info.ceremonyCity)
   );
 
-  const blobToDataUrl = (blob: Blob): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("read failed"));
-      reader.readAsDataURL(blob);
-    });
-
-  const loadImageDims = (dataUrl: string): Promise<{ w: number; h: number }> =>
-    new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = () => reject(new Error("img load failed"));
-      img.src = dataUrl;
-    });
-
   const downloadPdf = async () => {
-    if (!info) return;
+    if (!info || !cardRef.current) return;
     setDownloadingPdf(true);
     try {
-      const { jsPDF } = await import("jspdf");
-      const doc = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
 
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#fdf9f0",
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
       const PAGE_W = 595;
-      const PAGE_H = 842;
-      const MARGIN = 50;
-      const CW = PAGE_W - 2 * MARGIN;
+      const imgW = PAGE_W;
+      const imgH = (canvas.height / canvas.width) * imgW;
 
-      // Palette: ivory bg, champagne accent, dark brown text, warm gray secondary
-      const [BG_R, BG_G, BG_B] = [253, 249, 240];
-      const [AC_R, AC_G, AC_B] = [201, 169, 110]; // champagne gold
-      const [TX_R, TX_G, TX_B] = [61, 46, 34];    // dark brown
-      const [MU_R, MU_G, MU_B] = [163, 140, 128]; // muted warm gray
-
-      doc.setFillColor(BG_R, BG_G, BG_B);
-      doc.rect(0, 0, PAGE_W, PAGE_H, "F");
-
-      // Top border bar — blush
-      doc.setFillColor(AC_R, AC_G, AC_B);
-      doc.rect(0, 0, PAGE_W, 6, "F");
-
-      let y = MARGIN + 16;
-
-      // Logo
-      try {
-        const logoRes = await fetch("/logo.png");
-        if (logoRes.ok) {
-          const logoData = await blobToDataUrl(await logoRes.blob());
-          const dims = await loadImageDims(logoData);
-          const logoH = 70;
-          const logoW = (dims.w / dims.h) * logoH;
-          doc.addImage(logoData, "PNG", (PAGE_W - logoW) / 2, y, logoW, logoH);
-          y += logoH + 18;
-        }
-      } catch { /* skip */ }
-
-      // "SAVE THE DATE" label — spaced caps in blush
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(AC_R, AC_G, AC_B);
-      doc.text("S A V E   T H E   D A T E", PAGE_W / 2, y, { align: "center" });
-      y += 20;
-
-      // Thin divider
-      doc.setDrawColor(AC_R, AC_G, AC_B);
-      doc.setLineWidth(0.5);
-      doc.line(MARGIN + 60, y, PAGE_W - MARGIN - 60, y);
-      y += 20;
-
-      // Couple names — large, helvetica italic, dark brown
-      doc.setFont("helvetica", "bolditalic");
-      doc.setFontSize(30);
-      doc.setTextColor(TX_R, TX_G, TX_B);
-      const coupleLines = doc.splitTextToSize(couple, CW);
-      doc.text(coupleLines, PAGE_W / 2, y, { align: "center" });
-      y += coupleLines.length * 32 + 4;
-
-      // Wedding date
-      if (weddingDateStr) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(13);
-        doc.setTextColor(TX_R, TX_G, TX_B);
-        doc.text(weddingDateStr, PAGE_W / 2, y, { align: "center" });
-        y += 22;
-      }
-
-      // Photo
-      if (info.hasPhoto) {
-        try {
-          const photoRes = await fetch(`/api/save-the-date/${token}/photo`);
-          if (photoRes.ok) {
-            const photoData = await blobToDataUrl(await photoRes.blob());
-            const dims = await loadImageDims(photoData);
-            const maxW = CW;
-            const maxH = 300;
-            const scale = Math.min(maxW / dims.w, maxH / dims.h);
-            const drawW = dims.w * scale;
-            const drawH = dims.h * scale;
-            y += 10;
-            doc.addImage(photoData, "JPEG", (PAGE_W - drawW) / 2, y, drawW, drawH);
-            y += drawH + 20;
-          }
-        } catch { /* skip */ }
-      }
-
-      // Ceremony / Reception times
-      if (hasSeparateCeremony) {
-        if (ceremonyTimeStr || info.ceremonyVenueName) {
-          y += 4;
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(8);
-          doc.setTextColor(AC_R, AC_G, AC_B);
-          doc.text("CEREMONY", PAGE_W / 2, y, { align: "center", charSpace: 2 });
-          y += 13;
-          if (ceremonyTimeStr) {
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(12);
-            doc.setTextColor(TX_R, TX_G, TX_B);
-            doc.text(ceremonyTimeStr, PAGE_W / 2, y, { align: "center" });
-            y += 15;
-          }
-          if (info.ceremonyVenueName) {
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(11);
-            doc.setTextColor(TX_R, TX_G, TX_B);
-            doc.text(info.ceremonyVenueName, PAGE_W / 2, y, { align: "center" });
-            y += 14;
-          }
-          if (info.ceremonyAddress) {
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-            doc.setTextColor(MU_R, MU_G, MU_B);
-            doc.text(info.ceremonyAddress, PAGE_W / 2, y, { align: "center" });
-            y += 13;
-          }
-          if (ceremonyCityStateZip) {
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-            doc.setTextColor(MU_R, MU_G, MU_B);
-            doc.text(ceremonyCityStateZip, PAGE_W / 2, y, { align: "center" });
-            y += 13;
-          }
-          y += 8;
-        }
-        if (receptionTimeStr || info.venue) {
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(8);
-          doc.setTextColor(AC_R, AC_G, AC_B);
-          doc.text("RECEPTION", PAGE_W / 2, y, { align: "center", charSpace: 2 });
-          y += 13;
-          if (receptionTimeStr) {
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(12);
-            doc.setTextColor(TX_R, TX_G, TX_B);
-            doc.text(receptionTimeStr, PAGE_W / 2, y, { align: "center" });
-            y += 15;
-          }
-          if (info.venue) {
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(11);
-            doc.setTextColor(TX_R, TX_G, TX_B);
-            doc.text(info.venue, PAGE_W / 2, y, { align: "center" });
-            y += 14;
-          }
-          if (info.venueAddress) {
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-            doc.setTextColor(MU_R, MU_G, MU_B);
-            doc.text(info.venueAddress, PAGE_W / 2, y, { align: "center" });
-            y += 13;
-          }
-          if (venueCityStateZip) {
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-            doc.setTextColor(MU_R, MU_G, MU_B);
-            doc.text(venueCityStateZip, PAGE_W / 2, y, { align: "center" });
-            y += 13;
-          }
-        }
-      } else {
-        // Same venue for ceremony and reception
-        if (info.venue) {
-          y += 4;
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(12);
-          doc.setTextColor(TX_R, TX_G, TX_B);
-          doc.text(info.venue, PAGE_W / 2, y, { align: "center" });
-          y += 16;
-        }
-        if (info.venueAddress) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(10);
-          doc.setTextColor(MU_R, MU_G, MU_B);
-          doc.text(info.venueAddress, PAGE_W / 2, y, { align: "center" });
-          y += 13;
-        }
-        if (venueCityStateZip) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(10);
-          doc.setTextColor(MU_R, MU_G, MU_B);
-          doc.text(venueCityStateZip, PAGE_W / 2, y, { align: "center" });
-          y += 13;
-        }
-        // Both times on same line
-        const timeParts: string[] = [];
-        if (ceremonyTimeStr) timeParts.push(`Ceremony  ${ceremonyTimeStr}`);
-        if (receptionTimeStr) timeParts.push(`Reception  ${receptionTimeStr}`);
-        if (timeParts.length) {
-          y += 6;
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(11);
-          doc.setTextColor(TX_R, TX_G, TX_B);
-          doc.text(timeParts.join("   ·   "), PAGE_W / 2, y, { align: "center" });
-          y += 16;
-        }
-      }
-
-      // Message
-      if (info.saveTheDateMessage) {
-        y += 14;
-        doc.setFont("helvetica", "italic");
-        doc.setFontSize(11);
-        doc.setTextColor(TX_R, TX_G, TX_B);
-        const msgLines = doc.splitTextToSize(`"${info.saveTheDateMessage}"`, CW - 60);
-        doc.text(msgLines, PAGE_W / 2, y, { align: "center" });
-        y += msgLines.length * 15;
-      }
-
-      // "Formal invitation to follow"
-      y += 16;
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(10);
-      doc.setTextColor(AC_R, AC_G, AC_B);
-      doc.text("Formal invitation to follow", PAGE_W / 2, y, { align: "center" });
-      y += 18;
-
-      // Bottom divider
-      doc.setDrawColor(AC_R, AC_G, AC_B);
-      doc.setLineWidth(0.5);
-      doc.line(MARGIN + 60, y, PAGE_W - MARGIN - 60, y);
-
-      // Footer
-      const footerY = PAGE_H - 30;
-      doc.setFillColor(AC_R, AC_G, AC_B);
-      doc.rect(0, PAGE_H - 6, PAGE_W, 6, "F");
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(MU_R, MU_G, MU_B);
-      const footerText = "Created with A.IDO — aidowedding.net";
-      doc.textWithLink(footerText, PAGE_W / 2, footerY, { align: "center", url: "https://aidowedding.net" });
+      const doc = new jsPDF({ orientation: "p", unit: "pt", format: [PAGE_W, imgH + 1] });
+      doc.addImage(imgData, "JPEG", 0, 0, imgW, imgH);
 
       const safeCouple = couple.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") || "wedding";
       doc.save(`${safeCouple}_save_the_date.pdf`);
@@ -387,7 +161,7 @@ export default function SaveTheDate() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center py-12 px-4">
-        <div className="max-w-xl w-full">
+        <div ref={cardRef} className="max-w-xl w-full">
 
           {/* Header block */}
           <div className="text-center" style={{ marginBottom: "2.5rem" }}>

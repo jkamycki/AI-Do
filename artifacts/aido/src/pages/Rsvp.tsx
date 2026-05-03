@@ -445,7 +445,7 @@ export default function Rsvp() {
               </div>
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: "Georgia, serif" }}>
+              <h2 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', Georgia, serif", fontStyle: "italic", fontWeight: 400, fontSize: "2rem" }}>
                 {accepted ? "See you there!" : "We'll miss you!"}
               </h2>
               <p className="text-white/60 text-sm leading-relaxed">
@@ -497,14 +497,14 @@ export default function Rsvp() {
               </div>
             </div>
             <div>
-              <p className="text-sm font-medium uppercase tracking-widest mb-2 text-primary">
+              <p style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", fontSize: "10px", fontWeight: 600, letterSpacing: "0.4em", textTransform: "uppercase", color: "hsl(var(--primary))", marginBottom: "0.75rem" }}>
                 Wedding RSVP
               </p>
-              <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight" style={{ fontFamily: "Georgia, serif" }}>
+              <h1 style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', Georgia, serif", fontSize: "clamp(2.2rem,7vw,3.2rem)", fontWeight: 400, fontStyle: "italic", color: "#fff", lineHeight: 1.15, letterSpacing: "0.02em" }}>
                 {couple}
               </h1>
               {weddingDateStr && (
-                <p className="text-base text-white/60 mt-1">{weddingDateStr}</p>
+                <p style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", fontSize: "12px", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginTop: "0.5rem" }}>{weddingDateStr}</p>
               )}
               {hasSeparateCeremony ? (
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto">
@@ -568,8 +568,8 @@ export default function Rsvp() {
                 </div>
               )}
               {info.invitationMessage && (
-                <p className="text-sm text-white/70 mt-4 leading-relaxed max-w-md mx-auto italic">
-                  "{info.invitationMessage}"
+                <p style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', Georgia, serif", fontSize: "18px", fontStyle: "italic", lineHeight: 1.7, color: "rgba(255,255,255,0.7)", marginTop: "1rem", maxWidth: "28rem", margin: "1rem auto 0" }}>
+                  &ldquo;{info.invitationMessage}&rdquo;
                 </p>
               )}
               <div className="pt-3 flex justify-center">

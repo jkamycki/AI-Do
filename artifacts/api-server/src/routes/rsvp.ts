@@ -95,31 +95,14 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           })()
         : null;
 
-      // Download photo and embed as base64 so it shows in all email clients
-      let photoBlock = "";
-      if (profile.invitationPhotoUrl) {
-        try {
-          const photoFile = await objectStorageService.getObjectEntityFile(profile.invitationPhotoUrl);
-          // Stream directly from GCS into a buffer, then base64-encode for embedding.
-          // Avoids double stream-conversion (toWeb → Response → fromWeb) that can silently fail.
-          const nodeStream = photoFile.createReadStream();
-          const chunks: Buffer[] = [];
-          for await (const chunk of nodeStream) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array));
-          }
-          const b64 = Buffer.concat(chunks).toString("base64");
-          const [meta] = await photoFile.getMetadata();
-          const mimeType = (meta.contentType as string | undefined) || "image/jpeg";
-          photoBlock = `
+      const photoBlock = profile.invitationPhotoUrl
+        ? `
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
-            <img src="data:${mimeType};base64,${b64}" alt="${couple}'s Wedding" width="560" style="width:100%;max-width:560px;height:auto;display:block;border-radius:0;"/>
+            <img src="${origin}/api/rsvp/${token}/photo" alt="${couple}'s Wedding" width="560" style="width:100%;max-width:560px;height:auto;display:block;border-radius:0;"/>
           </td>
-        </tr>`;
-        } catch (photoErr) {
-          req.log.warn(photoErr, "Could not embed invitation photo in email");
-        }
-      }
+        </tr>`
+        : "";
 
       const customMsg = profile.invitationMessage
         ? `<p style="font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:15px;line-height:1.8;margin:0 0 28px;font-style:italic;">&ldquo;${profile.invitationMessage}&rdquo;</p>`
