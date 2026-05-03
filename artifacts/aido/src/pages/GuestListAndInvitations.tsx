@@ -45,7 +45,7 @@ export default function GuestListAndInvitations() {
         </TabsContent>
 
         <TabsContent value="invitation-customization" className="mt-6">
-          <InvitationCustomization />
+          <InvitationCustomization profileId={profileId} />
         </TabsContent>
       </Tabs>
     </div>

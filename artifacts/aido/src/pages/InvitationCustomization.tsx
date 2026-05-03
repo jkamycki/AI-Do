@@ -24,17 +24,21 @@ interface RouteParams {
   profileId?: string;
 }
 
-export default function InvitationCustomizationPage() {
+interface InvitationCustomizationProps {
+  profileId?: number;
+}
+
+export default function InvitationCustomizationPage({ profileId: propProfileId }: InvitationCustomizationProps = {}) {
   const { getToken } = useAuth();
   const { user } = useUser();
   const { toast } = useToast();
   const { activeWorkspace } = useWorkspace();
   const [, params] = useRoute<RouteParams>("/guests/:profileId");
 
-  // Get profileId from route params or workspace context
-  const profileId = params?.profileId
+  // Get profileId from prop (when used as sub-component), route params, or workspace context
+  const profileId = propProfileId || (params?.profileId
     ? parseInt(params.profileId)
-    : activeWorkspace?.profileId;
+    : activeWorkspace?.profileId);
   const [previewTab, setPreviewTab] = useState<PreviewTab>("saveTheDate");
 
   // State for customizations
