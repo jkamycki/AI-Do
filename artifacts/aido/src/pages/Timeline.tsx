@@ -26,7 +26,7 @@ import {
   Pencil, Trash2, Plus, Save, GripVertical, MapPin,
   Camera, Music, Heart, Users, Car, AlertTriangle,
   Eye, Crown, Wine, PartyPopper, Check, X, ChevronDown,
-  ChevronUp,
+  ChevronUp, RotateCcw,
 } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "";
@@ -515,6 +515,23 @@ export default function Timeline() {
     onError: () => toast({ title: t("timeline.could_not_save"), variant: "destructive" }),
   });
 
+  const resetTimeline = useMutation({
+    mutationFn: async () => {
+      if (!timeline?.id) throw new Error("Timeline not found");
+      const r = await authFetch(`${API}/api/timeline/${timeline.id}/reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error((e as any)?.error ?? r.statusText); }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
+      setIsDirty(false);
+      toast({ title: t("timeline.reset_success"), description: t("timeline.reset_success_desc") });
+    },
+    onError: () => toast({ title: t("timeline.reset_failed"), variant: "destructive" }),
+  });
+
   const eventsRef = useRef<TimelineEvent[]>(localEvents);
   const dirtyRef = useRef(false);
   const timelineIdRef = useRef<number | null>(null);
@@ -715,6 +732,24 @@ export default function Timeline() {
               ? <><div className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />{t("timeline.crafting_magic")}</>
               : <><Wand2 className="h-3.5 w-3.5" />{hasTimeline ? t("timeline.regenerate_timeline") : t("timeline.generate_with_ai")}</>}
           </Button>
+          {hasTimeline && (
+            <Button
+              onClick={() => {
+                if (confirm(t("timeline.reset_confirm"))) {
+                  resetTimeline.mutate();
+                }
+              }}
+              disabled={resetTimeline.isPending}
+              variant="outline"
+              size="sm"
+              data-testid="btn-reset-timeline"
+              className="gap-1.5"
+            >
+              {resetTimeline.isPending
+                ? <><div className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />{t("timeline.resetting")}</>
+                : <><RotateCcw className="h-3.5 w-3.5" />{t("timeline.reset_button")}</>}
+            </Button>
+          )}
         </div>
       </div>
 

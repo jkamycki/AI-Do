@@ -236,4 +236,22 @@ router.post("/checklist/items", requireAuth, async (req, res) => {
   }
 });
 
+router.post("/checklist/reset", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Profile not found" });
+
+    await db.delete(checklistItems).where(eq(checklistItems.profileId, profile.id));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "Failed to reset checklist");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

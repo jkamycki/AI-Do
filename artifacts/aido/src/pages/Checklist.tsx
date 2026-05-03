@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckSquare, Wand2, ClipboardList, Pencil, Trash2, Plus, Check, X } from "lucide-react";
+import { CheckSquare, Wand2, ClipboardList, Pencil, Trash2, Plus, Check, X, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Progress } from "@/components/ui/progress";
 
@@ -89,6 +89,21 @@ export default function Checklist() {
       setNewDescription("");
     },
     onError: () => toast({ title: t("checklist.could_not_add"), variant: "destructive" }),
+  });
+
+  const resetChecklist = useMutation({
+    mutationFn: async () => {
+      const r = await authFetch(`${API}/api/checklist/reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error((e as any)?.error ?? r.statusText); }
+    },
+    onSuccess: () => {
+      invalidate();
+      toast({ title: t("checklist.reset_success"), description: t("checklist.reset_success_desc") });
+    },
+    onError: () => toast({ title: t("checklist.reset_failed"), variant: "destructive" }),
   });
 
   const handleGenerate = () => {
@@ -189,25 +204,52 @@ export default function Checklist() {
           </h1>
           <p className="text-lg text-muted-foreground mt-2">{t("checklist.subtitle")}</p>
         </div>
-        <Button
-          onClick={handleGenerate}
-          disabled={generateChecklist.isPending}
-          variant={hasChecklist ? "outline" : "default"}
-          size="lg"
-          data-testid="btn-generate-checklist"
-        >
-          {generateChecklist.isPending ? (
-            <span className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-              {t("checklist.generating")}
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <Wand2 className="h-4 w-4" />
-              {hasChecklist ? t("checklist.regenerate") : t("checklist.generate_button")}
-            </span>
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            onClick={handleGenerate}
+            disabled={generateChecklist.isPending}
+            variant={hasChecklist ? "outline" : "default"}
+            size="lg"
+            data-testid="btn-generate-checklist"
+          >
+            {generateChecklist.isPending ? (
+              <span className="flex items-center gap-2">
+                <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                {t("checklist.generating")}
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Wand2 className="h-4 w-4" />
+                {hasChecklist ? t("checklist.regenerate") : t("checklist.generate_button")}
+              </span>
+            )}
+          </Button>
+          {hasChecklist && (
+            <Button
+              onClick={() => {
+                if (confirm(t("checklist.reset_confirm"))) {
+                  resetChecklist.mutate();
+                }
+              }}
+              disabled={resetChecklist.isPending}
+              variant="outline"
+              size="lg"
+              data-testid="btn-reset-checklist"
+            >
+              {resetChecklist.isPending ? (
+                <span className="flex items-center gap-2">
+                  <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                  {t("checklist.resetting")}
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <RotateCcw className="h-4 w-4" />
+                  {t("checklist.reset_button")}
+                </span>
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
       </div>
 
       {!hasChecklist ? (

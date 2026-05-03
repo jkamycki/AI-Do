@@ -199,4 +199,35 @@ router.patch("/timeline/:id", requireAuth, async (req, res) => {
   }
 });
 
+router.post("/timeline/:id/reset", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const id = parseInt(String(req.params.id), 10);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(timelines)
+      .set({ events: [] })
+      .where(and(eq(timelines.id, id), eq(timelines.profileId, profile.id)))
+      .returning();
+
+    if (!updated) return res.status(404).json({ error: "Timeline not found" });
+
+    logActivity(profile.id, req.userId!, `Reset day-of timeline`, "timeline", {});
+
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "Failed to reset timeline");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
