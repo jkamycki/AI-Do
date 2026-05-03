@@ -134,7 +134,7 @@ export function ColorSystemSection({
   });
 
   const handlePrimaryColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
+    let value = e.target.value.trim();
 
     if (!value.startsWith("#")) {
       value = "#" + value;
@@ -145,7 +145,11 @@ export function ColorSystemSection({
 
     const hexRegex = /^#[0-9A-Fa-f]{6}$/;
     if (hexRegex.test(value)) {
+      setPrimaryError(null);
       generateColorMutation.mutate(value);
+    } else if (value.length >= 7 || value === "#") {
+      // Only show error if they've typed enough characters or cleared the field
+      setPrimaryError("Invalid hex color (use format #RRGGBB)");
     }
   };
 
