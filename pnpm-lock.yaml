@@ -190,6 +190,9 @@ importers:
       exceljs:
         specifier: ^4.4.0
         version: 4.4.0
+      html2canvas:
+        specifier: ^1.4.1
+        version: 1.4.1
       i18next:
         specifier: ^26.0.6
         version: 26.0.6(typescript@5.9.3)
@@ -7905,7 +7908,6 @@ snapshots:
     dependencies:
       css-line-break: 2.1.0
       text-segmentation: 1.0.3
-    optional: true
 
   http-errors@2.0.1:
     dependencies:
