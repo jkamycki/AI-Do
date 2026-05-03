@@ -440,3 +440,47 @@ export const supportTickets = pgTable("support_tickets", {
 
 export type SupportTicket = typeof supportTickets.$inferSelect;
 
+export const invitationCustomizations = pgTable("invitation_customizations", {
+  id: serial("id").primaryKey(),
+  profileId: integer("profile_id").notNull().unique(),
+
+  // Color System
+  primaryColor: text("primary_color").notNull().default("#D4A017"),
+  colorPalette: jsonb("color_palette").notNull().$type<{
+    primary: string;
+    secondary: string;
+    accent: string;
+    neutral: string;
+  }>().default({
+    primary: "#D4A017",
+    secondary: "#F5C842",
+    accent: "#7B2FBE",
+    neutral: "#666666",
+  }),
+  customColors: jsonb("custom_colors").$type<{
+    primary?: string;
+    secondary?: string;
+    accent?: string;
+    neutral?: string;
+  } | null>(),
+  selectedPalette: text("selected_palette"), // 'romantic', 'modern', 'luxury', 'minimalist', 'seasonal'
+  backgroundColor: text("background_color"),
+
+  // Photo URLs
+  saveTheDatePhotoUrl: text("save_the_date_photo_url"),
+  digitalInvitationPhotoUrl: text("digital_invitation_photo_url"),
+
+  // Design Options
+  selectedFont: text("selected_font").notNull().default("Georgia"),
+  selectedLayout: text("selected_layout").notNull().default("classic"),
+  backgroundImageUrl: text("background_image_url"),
+
+  // Metadata
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertInvitationCustomizationSchema = createInsertSchema(invitationCustomizations).omit({ id: true, updatedAt: true, createdAt: true });
+export type InsertInvitationCustomization = z.infer<typeof insertInvitationCustomizationSchema>;
+export type InvitationCustomization = typeof invitationCustomizations.$inferSelect;
+
