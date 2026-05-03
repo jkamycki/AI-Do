@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { AISupport } from "@/components/AISupport";
 import {
   HelpCircle, MessageSquare, Star, Send, CheckCircle2,
   ChevronDown, ChevronUp, Mail, Lightbulb, Bug, Heart,
@@ -102,7 +103,7 @@ export default function HelpPage() {
   const { getToken } = useAuth();
   const { user } = useUser();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"contact" | "feedback" | "faq">("contact");
+  const [activeTab, setActiveTab] = useState<"ai-support" | "contact" | "feedback" | "faq">("ai-support");
   const [contactSuccess, setContactSuccess] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
 
@@ -188,6 +189,7 @@ export default function HelpPage() {
 
       <div className="flex gap-1 p-1 bg-muted/40 rounded-xl w-fit">
         {([
+          ["ai-support", t("help.ai_support") || "AI Support", MessageSquare],
           ["contact", t("help.contact_us"), Mail],
           ["feedback", t("help.feedback"), Star],
           ["faq", t("help.faq"), BookOpen],
@@ -203,6 +205,10 @@ export default function HelpPage() {
           </button>
         ))}
       </div>
+
+      {activeTab === "ai-support" && (
+        <AISupport />
+      )}
 
       {activeTab === "contact" && (
         <Card className="border-none shadow-sm">
