@@ -24,104 +24,143 @@ export function PhotoCropDialog({
   onCropComplete,
 }: PhotoCropDialogProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const [zoom, setZoom] = useState(1);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [offsetX, setOffsetX] = useState(0);
+  const [offsetY, setOffsetY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
 
-  const handleCrop = async () => {
-    if (!canvasRef.current || !imageRef.current) return;
+  const PREVIEW_SIZE = 300;
 
+  useEffect(() => {
+    if (!open) return;
+
+    const img = imgRef.current;
+    if (!img) return;
+
+    const handleImageLoad = () => {
+      redrawCanvas();
+    };
+
+    img.addEventListener("load", handleImageLoad);
+    img.src = imageUrl;
+
+    return () => {
+      img.removeEventListener("load", handleImageLoad);
+    };
+  }, [open, imageUrl]);
+
+  const redrawCanvas = () => {
     const canvas = canvasRef.current;
-    const image = imageRef.current;
+    const img = imgRef.current;
+
+    if (!canvas || !img) return;
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const size = Math.min(canvas.width, canvas.height);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.width = PREVIEW_SIZE;
+    canvas.height = PREVIEW_SIZE;
+
+    // Clear canvas
+    ctx.fillStyle = "#f5f5f5";
+    ctx.fillRect(0, 0, PREVIEW_SIZE, PREVIEW_SIZE);
+
+    // Calculate scaled dimensions
+    const imgWidth = img.naturalWidth;
+    const imgHeight = img.naturalHeight;
+
+    let drawWidth = PREVIEW_SIZE * zoom;
+    let drawHeight = (imgHeight / imgWidth) * drawWidth;
+
+    if (drawHeight < PREVIEW_SIZE) {
+      drawHeight = PREVIEW_SIZE * zoom;
+      drawWidth = (imgWidth / imgHeight) * drawHeight;
+    }
+
+    // Draw the image
     ctx.drawImage(
-      image,
-      crop.x / zoom,
-      crop.y / zoom,
-      size / zoom,
-      size / zoom,
-      0,
-      0,
-      size,
-      size
+      img,
+      offsetX,
+      offsetY,
+      drawWidth,
+      drawHeight
     );
 
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const file = new File([blob], "cropped-photo.jpg", {
-          type: "image/jpeg",
-        });
-        onCropComplete(file);
-        onClose();
-      }
-    }, "image/jpeg");
+    // Draw crop border
+    ctx.strokeStyle = "rgba(255,255,255,0.8)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, PREVIEW_SIZE, PREVIEW_SIZE);
   };
+
+  useEffect(() => {
+    if (open) {
+      redrawCanvas();
+    }
+  }, [zoom, offsetX, offsetY, open]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDragging(true);
-    setDragStart({ x: e.clientX - crop.x, y: e.clientY - crop.y });
+    setDragStartPos({
+      x: e.clientX - offsetX,
+      y: e.clientY - offsetY,
+    });
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDragging) return;
 
-    const newCrop = {
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    };
+    const img = imgRef.current;
+    if (!img) return;
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const newOffsetX = e.clientX - dragStartPos.x;
+    const newOffsetY = e.clientY - dragStartPos.y;
 
-    const size = Math.min(canvas.width, canvas.height);
-    const maxX = (canvas.width - size) / zoom;
-    const maxY = (canvas.height - size) / zoom;
+    const imgWidth = img.naturalWidth;
+    const imgHeight = img.naturalHeight;
 
-    setCrop({
-      x: Math.max(Math.min(newCrop.x, 0), -maxX * zoom),
-      y: Math.max(Math.min(newCrop.y, 0), -maxY * zoom),
-    });
+    let maxDrawWidth = PREVIEW_SIZE * zoom;
+    let maxDrawHeight = (imgHeight / imgWidth) * maxDrawWidth;
+
+    if (maxDrawHeight < PREVIEW_SIZE) {
+      maxDrawHeight = PREVIEW_SIZE * zoom;
+      maxDrawWidth = (imgWidth / imgHeight) * maxDrawHeight;
+    }
+
+    const maxOffsetX = Math.max(0, maxDrawWidth - PREVIEW_SIZE);
+    const maxOffsetY = Math.max(0, maxDrawHeight - PREVIEW_SIZE);
+
+    setOffsetX(Math.max(-maxOffsetX, Math.min(0, newOffsetX)));
+    setOffsetY(Math.max(-maxOffsetY, Math.min(0, newOffsetY)));
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
   };
 
-  useEffect(() => {
-    if (!open || !imageRef.current || !canvasRef.current) return;
-
+  const handleCropClick = () => {
     const canvas = canvasRef.current;
-    const image = imageRef.current;
-    const size = 300;
+    if (!canvas) return;
 
-    canvas.width = size;
-    canvas.height = size;
-
-    image.onload = () => {
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      ctx.clearRect(0, 0, size, size);
-
-      const scale = Math.max(size / image.width, size / image.height) * zoom;
-      const x = (size - image.width * scale) / 2 + crop.x;
-      const y = (size - image.height * scale) / 2 + crop.y;
-
-      ctx.drawImage(image, x, y, image.width * scale, image.height * scale);
-
-      ctx.strokeStyle = "rgba(255,255,255,0.5)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(0, 0, size, size);
-    };
-
-    image.src = imageUrl;
-  }, [open, imageUrl, crop, zoom]);
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          const file = new File([blob], "cropped-photo.jpg", {
+            type: "image/jpeg",
+            lastModified: Date.now(),
+          });
+          onCropComplete(file);
+          // Reset state
+          setZoom(1);
+          setOffsetX(0);
+          setOffsetY(0);
+        }
+      },
+      "image/jpeg",
+      0.95
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -129,21 +168,32 @@ export function PhotoCropDialog({
         <DialogHeader>
           <DialogTitle>Crop Photo</DialogTitle>
           <DialogDescription>
-            Drag to move the image and use the slider to zoom
+            Drag to reposition, use zoom slider to scale
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="border-2 border-border rounded-lg overflow-hidden bg-muted">
+          <div className="border-2 border-border rounded-lg overflow-hidden bg-muted flex items-center justify-center">
             <canvas
               ref={canvasRef}
-              className="w-full cursor-move"
+              width={PREVIEW_SIZE}
+              height={PREVIEW_SIZE}
+              className="cursor-move bg-white"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              style={{ userSelect: "none" }}
             />
           </div>
+
+          <img
+            ref={imgRef}
+            src={imageUrl}
+            alt="crop"
+            className="hidden"
+            crossOrigin="anonymous"
+          />
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Zoom</label>
@@ -162,7 +212,7 @@ export function PhotoCropDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleCrop}>Crop & Use</Button>
+          <Button onClick={handleCropClick}>Crop & Use</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
