@@ -1269,8 +1269,8 @@ export default function Guests() {
                 <TableHeader className="bg-muted/10">
                   <TableRow>
                     <TableHead>{t("guests.col_name")}</TableHead>
-                    <TableHead className="hidden sm:table-cell">{t("guests.col_invitation")}</TableHead>
                     <TableHead className="hidden md:table-cell">{t("guests.col_save_the_date")}</TableHead>
+                    <TableHead className="hidden sm:table-cell">{t("guests.col_invitation")}</TableHead>
                     <TableHead className="hidden sm:table-cell">{t("guests.col_group")}</TableHead>
                     <TableHead>{t("guests.col_rsvp")}</TableHead>
                     <TableHead className="hidden md:table-cell">{t("guests.col_meal")}</TableHead>
@@ -1341,27 +1341,6 @@ export default function Guests() {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell text-sm">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${INVITATION_OPTIONS.find(o => o.value === g.invitationStatus)?.color ?? INVITATION_OPTIONS[0].color}`}>
-                                {t(`guests.invitation_${g.invitationStatus}`)}
-                                <ChevronDown className="h-2.5 w-2.5 opacity-60" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-36">
-                              {INVITATION_OPTIONS.map(opt => (
-                                <DropdownMenuItem
-                                  key={opt.value}
-                                  className={`text-xs font-medium cursor-pointer ${g.invitationStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
-                                  onClick={() => handleInvitationChange(g, opt.value)}
-                                >
-                                  {t(`guests.invitation_${opt.value}`)}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
                         <TableCell className="hidden md:table-cell text-sm">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1383,6 +1362,27 @@ export default function Guests() {
                               >
                                 {t("guests.save_the_date_sent")}
                               </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-sm">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${INVITATION_OPTIONS.find(o => o.value === g.invitationStatus)?.color ?? INVITATION_OPTIONS[0].color}`}>
+                                {t(`guests.invitation_${g.invitationStatus}`)}
+                                <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-36">
+                              {INVITATION_OPTIONS.map(opt => (
+                                <DropdownMenuItem
+                                  key={opt.value}
+                                  className={`text-xs font-medium cursor-pointer ${g.invitationStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
+                                  onClick={() => handleInvitationChange(g, opt.value)}
+                                >
+                                  {t(`guests.invitation_${opt.value}`)}
+                                </DropdownMenuItem>
+                              ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

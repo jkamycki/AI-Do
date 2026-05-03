@@ -133,13 +133,14 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
     });
 
     const totalPaidMilestones = Object.values(paidByVendor).reduce((s, v) => s + v, 0);
+    const totalPaid = vendorDetails.reduce((s, v) => s + v.totalPaid, 0);
 
     res.json({
       vendorCount: userVendors.length,
       totalCommitted,
       totalDeposits,
       totalPaidMilestones,
-      totalPaid: totalDeposits + totalPaidMilestones,
+      totalPaid,
       vendors: vendorDetails,
     });
   } catch (err) {

@@ -497,13 +497,26 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: "Guest not found" });
     const guest = rows[0];
 
-    await db
-      .update(guests)
-      .set({ saveTheDateStatus: "sent" })
-      .where(eq(guests.id, id));
+    const token = guest.rsvpToken ?? crypto.randomUUID();
+    if (!guest.rsvpToken) {
+      await db.update(guests).set({ rsvpToken: token, saveTheDateStatus: "sent" }).where(eq(guests.id, id));
+    } else {
+      await db.update(guests).set({ saveTheDateStatus: "sent" }).where(eq(guests.id, id));
+    }
 
     let emailSent = false;
     if (guest.email) {
+      const formatTime12h = (timeStr: string | null | undefined): string | null => {
+        if (!timeStr) return null;
+        const [h, m] = timeStr.split(":").map(Number);
+        if (Number.isNaN(h) || Number.isNaN(m)) return timeStr;
+        const ampm = h >= 12 ? "PM" : "AM";
+        const h12 = h % 12 || 12;
+        return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+      };
+      const ceremonyTimeStr = formatTime12h(profile.ceremonyTime);
+      const receptionTimeStr = formatTime12h(profile.receptionTime);
+
       const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
       const weddingDateStr = profile.weddingDate
         ? (() => {
@@ -512,29 +525,16 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           })()
         : null;
 
-      let photoBlock = "";
-      const stdPhotoUrl = profile.saveTheDatePhotoUrl;
-      if (stdPhotoUrl) {
-        try {
-          const photoFile = await objectStorageService.getObjectEntityFile(stdPhotoUrl);
-          const nodeStream = photoFile.createReadStream();
-          const chunks: Buffer[] = [];
-          for await (const chunk of nodeStream) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array));
-          }
-          const b64 = Buffer.concat(chunks).toString("base64");
-          const [meta] = await photoFile.getMetadata();
-          const mimeType = (meta.contentType as string | undefined) || "image/jpeg";
-          photoBlock = `
+      const origin = buildOrigin(req);
+
+      const photoBlock = profile.saveTheDatePhotoUrl
+        ? `
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
-            <img src="data:${mimeType};base64,${b64}" alt="Save the Date — ${couple}" width="560" style="width:100%;max-width:560px;height:auto;display:block;"/>
+            <img src="${origin}/api/save-the-date/${token}/photo" alt="Save the Date — ${couple}" width="560" style="width:100%;max-width:560px;height:auto;display:block;"/>
           </td>
-        </tr>`;
-        } catch (photoErr) {
-          req.log.warn(photoErr, "Could not embed save-the-date photo");
-        }
-      }
+        </tr>`
+        : "";
 
       const locationLine = [
         profile.venue,
@@ -598,6 +598,15 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           </td>
         </tr>` : ""}
 
+        ${(ceremonyTimeStr || receptionTimeStr) ? `
+        <tr>
+          <td style="padding:12px 48px 0;text-align:center;">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b8a898;font-size:11px;letter-spacing:1px;">
+              ${[ceremonyTimeStr ? `Ceremony ${ceremonyTimeStr}` : null, receptionTimeStr ? `Reception ${receptionTimeStr}` : null].filter(Boolean).join("&nbsp;&nbsp;·&nbsp;&nbsp;")}
+            </p>
+          </td>
+        </tr>` : ""}
+
         ${(profile as any).saveTheDateMessage ? `
         <tr>
           <td style="padding:20px 48px 0;text-align:center;">
@@ -606,10 +615,18 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         </tr>` : ""}
 
         <tr>
-          <td style="padding:28px 48px 36px;text-align:center;">
+          <td style="padding:28px 48px 0;text-align:center;">
             <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#c9a96e;font-size:14px;font-style:italic;letter-spacing:1px;">Formal invitation to follow</p>
           </td>
         </tr>
+
+        <tr>
+          <td style="padding:16px 48px 0;text-align:center;">
+            <a href="${origin}/save-the-date/${token}" style="display:inline-block;background:#3d2e22;color:#c9a96e;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:12px 28px;border-radius:2px;">View &amp; Download</a>
+          </td>
+        </tr>
+
+        <tr><td style="height:36px;font-size:36px;line-height:36px;">&nbsp;</td></tr>
 
         <tr><td style="height:5px;background:linear-gradient(90deg,#c9a96e,#e8c99a,#c9a96e);line-height:5px;font-size:5px;">&nbsp;</td></tr>
 
@@ -627,12 +644,13 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
 </body>
 </html>`;
 
+      const timesLine = [ceremonyTimeStr ? `Ceremony ${ceremonyTimeStr}` : null, receptionTimeStr ? `Reception ${receptionTimeStr}` : null].filter(Boolean).join(" · ");
       const result = await sendEmail({
         to: guest.email,
         replyTo: `noreply@aidowedding.net`,
         fromName: `${couple} via A.IDO`,
         subject: `Save the Date — ${couple}'s Wedding`,
-        text: `Save the Date!\n\n${couple}\n\n${weddingDateStr ?? ""}${locationLine ? `\n${locationLine}` : ""}\n\nFormal invitation to follow.\n\nWith love,\n${couple}`,
+        text: `Save the Date!\n\n${couple}\n\n${weddingDateStr ?? ""}${locationLine ? `\n${locationLine}` : ""}${timesLine ? `\n${timesLine}` : ""}\n\nFormal invitation to follow.\n\nView & Download your Save the Date:\n${origin}/save-the-date/${token}\n\nWith love,\n${couple}`,
         html,
       });
       emailSent = result.ok;
@@ -642,6 +660,71 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error(err, "Failed to send save-the-date");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/save-the-date/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const rows = await db.select().from(guests).where(eq(guests.rsvpToken, token)).limit(1);
+    if (!rows.length) return res.status(404).json({ error: "Not found" });
+    const guest = rows[0];
+    const profiles = await db.select().from(weddingProfiles).where(eq(weddingProfiles.id, guest.profileId)).limit(1);
+    if (!profiles.length) return res.status(404).json({ error: "Not found" });
+    const profile = profiles[0];
+    res.json({
+      guestName: guest.name,
+      partner1Name: profile.partner1Name,
+      partner2Name: profile.partner2Name,
+      weddingDate: profile.weddingDate,
+      venue: profile.venue,
+      venueAddress: profile.location,
+      venueCity: profile.venueCity,
+      venueState: profile.venueState,
+      venueZip: profile.venueZip,
+      ceremonyTime: profile.ceremonyTime,
+      receptionTime: profile.receptionTime,
+      ceremonyAtVenue: profile.ceremonyAtVenue,
+      ceremonyVenueName: profile.ceremonyVenueName,
+      ceremonyAddress: profile.ceremonyAddress,
+      ceremonyCity: profile.ceremonyCity,
+      ceremonyState: profile.ceremonyState,
+      ceremonyZip: profile.ceremonyZip,
+      saveTheDateMessage: (profile as any).saveTheDateMessage ?? null,
+      hasPhoto: !!(profile as any).saveTheDatePhotoUrl,
+    });
+  } catch (err) {
+    req.log.error(err, "Failed to get save-the-date info");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/save-the-date/:token/photo", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const rows = await db.select({ profileId: guests.profileId }).from(guests).where(eq(guests.rsvpToken, token)).limit(1);
+    if (!rows.length) return res.status(404).end();
+    const profiles = await db.select({ saveTheDatePhotoUrl: weddingProfiles.saveTheDatePhotoUrl }).from(weddingProfiles).where(eq(weddingProfiles.id, rows[0].profileId)).limit(1);
+    if (!profiles.length) return res.status(404).end();
+    const photoUrl = (profiles[0] as any).saveTheDatePhotoUrl;
+    if (!photoUrl) return res.status(404).end();
+    const file = await objectStorageService.getObjectEntityFile(photoUrl);
+    const response = await objectStorageService.downloadObject(file, 3600);
+    res.set("Content-Type", response.headers.get("Content-Type") || "image/jpeg");
+    res.set("Cache-Control", "public, max-age=3600");
+    const reader = response.body!.getReader();
+    const pump = async () => {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(value);
+      }
+      res.end();
+    };
+    await pump();
+  } catch (err) {
+    req.log.error(err, "Failed to serve save-the-date photo");
+    res.status(500).end();
   }
 });
 
