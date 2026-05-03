@@ -30,7 +30,7 @@ import GuestCollect from "@/pages/GuestCollect";
 import Rsvp from "@/pages/Rsvp";
 import SaveTheDate from "@/pages/SaveTheDate";
 import SharedWorkspace from "@/pages/SharedWorkspace";
-import Guests from "@/pages/Guests";
+import GuestListAndInvitations from "@/pages/GuestListAndInvitations";
 import Hotels from "@/pages/Hotels";
 import WeddingParty from "@/pages/WeddingParty";
 import Contracts from "@/pages/Contracts";
@@ -1394,7 +1394,7 @@ function Router() {
       <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
       <Route path="/operations-center" component={() => <ProtectedRoute component={OperationsCenter} />} />
       <Route path="/seating-chart" component={() => <ProtectedRoute component={SeatingChart} />} />
-      <Route path="/guests" component={() => <ProtectedRoute component={Guests} />} />
+      <Route path="/guests/:profileId?" component={() => <ProtectedRoute component={GuestListAndInvitations} />} />
       <Route path="/hotels" component={() => <ProtectedRoute component={Hotels} />} />
       <Route path="/wedding-party" component={() => <ProtectedRoute component={WeddingParty} />} />
       <Route path="/contracts" component={() => <ProtectedRoute component={Contracts} />} />

@@ -1,0 +1,46 @@
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Guests from "./Guests";
+import InvitationCustomization from "./InvitationCustomization";
+import { useRoute } from "wouter";
+
+interface RouteParams {
+  profileId?: string;
+}
+
+export default function GuestListAndInvitations() {
+  const [, params] = useRoute("/guests/:profileId");
+  const profileId = params?.profileId ? parseInt(params.profileId) : undefined;
+
+  const [activeTab, setActiveTab] = useState("guest-list");
+
+  if (!profileId) {
+    return <div className="p-4 text-center">Profile not found</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-serif font-bold">Guest List & Invitations</h1>
+        <p className="text-muted-foreground mt-1">
+          Manage your guests and customize your invitation designs
+        </p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="guest-list">Guest List</TabsTrigger>
+          <TabsTrigger value="invitation-customization">Invitation Customization</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="guest-list" className="mt-6">
+          <Guests />
+        </TabsContent>
+
+        <TabsContent value="invitation-customization" className="mt-6">
+          <InvitationCustomization />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

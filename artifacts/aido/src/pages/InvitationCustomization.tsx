@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/react";
 import { useRoute } from "wouter";
+import { WorkspaceContext } from "@/contexts/WorkspaceContext";
 import { PhotoUploadSection } from "@/components/InvitationCustomization/PhotoUploadSection";
 import { ColorSystemSection } from "@/components/InvitationCustomization/ColorSystemSection";
 import { DesignOptionsSection } from "@/components/InvitationCustomization/DesignOptionsSection";
@@ -26,9 +27,13 @@ export default function InvitationCustomizationPage() {
   const { getToken } = useAuth();
   const { user } = useUser();
   const { toast } = useToast();
+  const { activeWorkspace } = useContext(WorkspaceContext);
   const [, params] = useRoute<RouteParams>("/guests/:profileId");
 
-  const profileId = params?.profileId ? parseInt(params.profileId) : undefined;
+  // Get profileId from route params or workspace context
+  const profileId = params?.profileId
+    ? parseInt(params.profileId)
+    : activeWorkspace?.profileId;
   const [previewTab, setPreviewTab] = useState<PreviewTab>("saveTheDate");
 
   // State for customizations
