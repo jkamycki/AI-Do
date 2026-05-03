@@ -360,117 +360,122 @@ export default function SaveTheDate() {
     );
   }
 
+  const cormorant = "'Cormorant Garamond', Georgia, serif";
+  const jakarta = "'Plus Jakarta Sans', system-ui, sans-serif";
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fdf9f0" }}>
       {/* Top accent bar */}
-      <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg, #c9a96e, #e8c99a, #c9a96e)" }} />
+      <div className="h-1 w-full" style={{ background: "linear-gradient(90deg, #c9a96e, #e8c99a, #c9a96e)" }} />
 
       {/* Logo */}
-      <div className="w-full flex justify-center pt-8 px-4">
-        <img src="/logo.png" alt="A.IDO" className="h-20 sm:h-24 w-auto object-contain" />
+      <div className="w-full flex justify-center pt-10 px-4">
+        <img src="/logo.png" alt="A.IDO" className="h-16 sm:h-20 w-auto object-contain opacity-80" />
       </div>
 
       {/* Photo */}
       {info.hasPhoto && (
-        <div className="w-full flex justify-center pt-6 px-4">
+        <div className="w-full flex justify-center pt-8 px-4">
           <img
             src={`/api/save-the-date/${token}/photo`}
-            alt={`${couple}`}
-            className="w-full max-w-lg h-auto block rounded-2xl"
-            style={{ boxShadow: "0 8px 32px rgba(200,116,145,0.18)" }}
+            alt={couple}
+            className="w-full max-w-xl h-auto block"
+            style={{ borderRadius: "4px", boxShadow: "0 12px 48px rgba(61,46,34,0.14)" }}
           />
         </div>
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center py-10 px-4">
-        <div className="max-w-lg w-full space-y-8">
+      <div className="flex-1 flex flex-col items-center py-12 px-4">
+        <div className="max-w-xl w-full">
 
           {/* Header block */}
-          <div className="text-center space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "#c9a96e" }}>
+          <div className="text-center" style={{ marginBottom: "2.5rem" }}>
+            <p style={{ fontFamily: jakarta, fontSize: "10px", fontWeight: 600, letterSpacing: "0.45em", textTransform: "uppercase", color: "#c9a96e", marginBottom: "1rem" }}>
               Please
             </p>
-            <h1 className="text-5xl sm:text-6xl font-bold italic" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "#3d2e22", letterSpacing: "1px" }}>
+            <h1 style={{ fontFamily: cormorant, fontSize: "clamp(3.5rem,10vw,5.5rem)", fontWeight: 300, fontStyle: "italic", color: "#3d2e22", lineHeight: 1.1, letterSpacing: "0.02em", marginBottom: "1.25rem" }}>
               Save the Date
             </h1>
-            <div className="flex justify-center py-1">
-              <div className="h-px w-24" style={{ background: "#c9a96e" }} />
+            <div className="flex items-center justify-center gap-3" style={{ marginBottom: "1.25rem" }}>
+              <div style={{ height: "1px", width: "48px", background: "linear-gradient(to right, transparent, #c9a96e)" }} />
+              <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#c9a96e" }} />
+              <div style={{ height: "1px", width: "48px", background: "linear-gradient(to left, transparent, #c9a96e)" }} />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-medium" style={{ fontFamily: "Georgia, serif", color: "#3d2e22" }}>
+            <h2 style={{ fontFamily: cormorant, fontSize: "clamp(1.6rem,5vw,2.4rem)", fontWeight: 400, color: "#3d2e22", letterSpacing: "0.04em", marginBottom: "0.6rem" }}>
               {couple}
             </h2>
             {weddingDateStr && (
-              <p className="text-base" style={{ color: "#7a6a5a", fontFamily: "Georgia, serif" }}>
+              <p style={{ fontFamily: jakarta, fontSize: "13px", fontWeight: 400, letterSpacing: "0.12em", color: "#8a7560", textTransform: "uppercase" }}>
                 {weddingDateStr}
               </p>
             )}
           </div>
 
-          {/* Times + venue */}
-          <div className="rounded-2xl border p-6 space-y-4" style={{ borderColor: "#e8dcc8", background: "#fff" }}>
+          {/* Times + venue card */}
+          <div style={{ border: "1px solid #e8dcc8", borderRadius: "4px", background: "#fffdf8", padding: "1.75rem 2rem", marginBottom: "2rem" }}>
             {hasSeparateCeremony ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="text-center space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#c9a96e" }}>Ceremony</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="text-center space-y-2">
+                  <p style={{ fontFamily: jakarta, fontSize: "9px", fontWeight: 700, letterSpacing: "0.35em", textTransform: "uppercase", color: "#c9a96e" }}>Ceremony</p>
                   {ceremonyTimeStr && (
-                    <div className="flex items-center justify-center gap-1.5" style={{ color: "#3d2e22" }}>
+                    <div className="flex items-center justify-center gap-1.5">
                       <Clock className="h-3.5 w-3.5" style={{ color: "#c9a96e" }} />
-                      <span className="text-sm font-semibold">{ceremonyTimeStr}</span>
+                      <span style={{ fontFamily: jakarta, fontSize: "14px", fontWeight: 500, color: "#3d2e22" }}>{ceremonyTimeStr}</span>
                     </div>
                   )}
                   {info.ceremonyVenueName && (
-                    <div className="flex items-center justify-center gap-1" style={{ color: "#3d2e22" }}>
-                      <MapPin className="h-3.5 w-3.5" style={{ color: "#c9a96e" }} />
-                      <p className="text-sm font-medium">{info.ceremonyVenueName}</p>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" style={{ color: "#c9a96e" }} />
+                      <span style={{ fontFamily: cormorant, fontSize: "16px", fontWeight: 500, color: "#3d2e22" }}>{info.ceremonyVenueName}</span>
                     </div>
                   )}
-                  {info.ceremonyAddress && <p className="text-xs" style={{ color: "#a38c80" }}>{info.ceremonyAddress}</p>}
-                  {ceremonyCityStateZip && <p className="text-xs" style={{ color: "#a38c80" }}>{ceremonyCityStateZip}</p>}
+                  {info.ceremonyAddress && <p style={{ fontFamily: jakarta, fontSize: "12px", color: "#a38c80" }}>{info.ceremonyAddress}</p>}
+                  {ceremonyCityStateZip && <p style={{ fontFamily: jakarta, fontSize: "12px", color: "#a38c80" }}>{ceremonyCityStateZip}</p>}
                 </div>
-                <div className="text-center space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#c9a96e" }}>Reception</p>
+                <div className="text-center space-y-2">
+                  <p style={{ fontFamily: jakarta, fontSize: "9px", fontWeight: 700, letterSpacing: "0.35em", textTransform: "uppercase", color: "#c9a96e" }}>Reception</p>
                   {receptionTimeStr && (
-                    <div className="flex items-center justify-center gap-1.5" style={{ color: "#3d2e22" }}>
+                    <div className="flex items-center justify-center gap-1.5">
                       <Clock className="h-3.5 w-3.5" style={{ color: "#c9a96e" }} />
-                      <span className="text-sm font-semibold">{receptionTimeStr}</span>
+                      <span style={{ fontFamily: jakarta, fontSize: "14px", fontWeight: 500, color: "#3d2e22" }}>{receptionTimeStr}</span>
                     </div>
                   )}
                   {info.venue && (
-                    <div className="flex items-center justify-center gap-1" style={{ color: "#3d2e22" }}>
-                      <MapPin className="h-3.5 w-3.5" style={{ color: "#c9a96e" }} />
-                      <p className="text-sm font-medium">{info.venue}</p>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" style={{ color: "#c9a96e" }} />
+                      <span style={{ fontFamily: cormorant, fontSize: "16px", fontWeight: 500, color: "#3d2e22" }}>{info.venue}</span>
                     </div>
                   )}
-                  {info.venueAddress && <p className="text-xs" style={{ color: "#a38c80" }}>{info.venueAddress}</p>}
-                  {venueCityStateZip && <p className="text-xs" style={{ color: "#a38c80" }}>{venueCityStateZip}</p>}
+                  {info.venueAddress && <p style={{ fontFamily: jakarta, fontSize: "12px", color: "#a38c80" }}>{info.venueAddress}</p>}
+                  {venueCityStateZip && <p style={{ fontFamily: jakarta, fontSize: "12px", color: "#a38c80" }}>{venueCityStateZip}</p>}
                 </div>
               </div>
             ) : (
               <div className="text-center space-y-2">
                 {info.venue && (
                   <div className="flex items-center justify-center gap-1.5">
-                    <MapPin className="h-4 w-4" style={{ color: "#c9a96e" }} />
-                    <p className="font-semibold" style={{ color: "#3d2e22" }}>{info.venue}</p>
+                    <MapPin className="h-4 w-4 shrink-0" style={{ color: "#c9a96e" }} />
+                    <span style={{ fontFamily: cormorant, fontSize: "20px", fontWeight: 500, color: "#3d2e22" }}>{info.venue}</span>
                   </div>
                 )}
-                {info.venueAddress && <p className="text-sm" style={{ color: "#a38c80" }}>{info.venueAddress}</p>}
-                {venueCityStateZip && <p className="text-sm" style={{ color: "#a38c80" }}>{venueCityStateZip}</p>}
+                {info.venueAddress && <p style={{ fontFamily: jakarta, fontSize: "12px", color: "#a38c80" }}>{info.venueAddress}</p>}
+                {venueCityStateZip && <p style={{ fontFamily: jakarta, fontSize: "12px", color: "#a38c80" }}>{venueCityStateZip}</p>}
                 {(ceremonyTimeStr || receptionTimeStr) && (
-                  <div className="flex items-center justify-center gap-3 pt-1 flex-wrap">
+                  <div className="flex items-center justify-center gap-3 pt-2 flex-wrap">
                     {ceremonyTimeStr && (
-                      <div className="flex items-center gap-1.5" style={{ color: "#3d2e22" }}>
+                      <div className="flex items-center gap-1.5">
                         <Clock className="h-3.5 w-3.5" style={{ color: "#c9a96e" }} />
-                        <span className="text-sm">Ceremony {ceremonyTimeStr}</span>
+                        <span style={{ fontFamily: jakarta, fontSize: "13px", color: "#3d2e22" }}>Ceremony {ceremonyTimeStr}</span>
                       </div>
                     )}
                     {ceremonyTimeStr && receptionTimeStr && (
-                      <span className="text-sm" style={{ color: "#c9a96e" }}>·</span>
+                      <span style={{ color: "#c9a96e", fontSize: "16px" }}>·</span>
                     )}
                     {receptionTimeStr && (
-                      <div className="flex items-center gap-1.5" style={{ color: "#3d2e22" }}>
+                      <div className="flex items-center gap-1.5">
                         <Clock className="h-3.5 w-3.5" style={{ color: "#c9a96e" }} />
-                        <span className="text-sm">Reception {receptionTimeStr}</span>
+                        <span style={{ fontFamily: jakarta, fontSize: "13px", color: "#3d2e22" }}>Reception {receptionTimeStr}</span>
                       </div>
                     )}
                   </div>
@@ -481,27 +486,27 @@ export default function SaveTheDate() {
 
           {/* Message */}
           {info.saveTheDateMessage && (
-            <div className="text-center px-4">
-              <p className="text-base italic leading-relaxed" style={{ fontFamily: "Georgia, serif", color: "#7a6a5a" }}>
+            <div className="text-center" style={{ marginBottom: "2rem", padding: "0 1.5rem" }}>
+              <p style={{ fontFamily: cormorant, fontSize: "20px", fontWeight: 400, fontStyle: "italic", lineHeight: 1.7, color: "#7a6a5a" }}>
                 &ldquo;{info.saveTheDateMessage}&rdquo;
               </p>
             </div>
           )}
 
           {/* Formal invitation to follow */}
-          <div className="text-center">
-            <p className="text-sm italic tracking-wide" style={{ color: "#c9a96e", fontFamily: "Georgia, serif" }}>
+          <div className="text-center" style={{ marginBottom: "2.5rem" }}>
+            <p style={{ fontFamily: cormorant, fontSize: "18px", fontStyle: "italic", letterSpacing: "0.04em", color: "#c9a96e" }}>
               Formal invitation to follow
             </p>
           </div>
 
           {/* Download PDF */}
-          <div className="flex justify-center pt-2">
+          <div className="flex justify-center" style={{ marginBottom: "3rem" }}>
             <button
               onClick={downloadPdf}
               disabled={downloadingPdf}
-              className="flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
-              style={{ background: "#c9a96e", color: "#fff" }}
+              className="flex items-center gap-2 transition-opacity hover:opacity-80 disabled:opacity-50"
+              style={{ background: "#3d2e22", color: "#c9a96e", fontFamily: jakarta, fontSize: "11px", fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", padding: "0.85rem 2rem", borderRadius: "2px" }}
             >
               {downloadingPdf ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Generating PDF&hellip;</>
@@ -512,8 +517,8 @@ export default function SaveTheDate() {
           </div>
 
           {/* Footer */}
-          <div className="text-center pt-4 pb-8">
-            <p className="text-xs" style={{ color: "#c4b8ac" }}>
+          <div className="text-center pb-8">
+            <p style={{ fontFamily: jakarta, fontSize: "11px", color: "#c4b8ac" }}>
               Planning your own wedding?{" "}
               <a href="https://aidowedding.net" className="hover:underline" style={{ color: "#c9a96e" }}>
                 Try A.IDO free
@@ -525,7 +530,7 @@ export default function SaveTheDate() {
       </div>
 
       {/* Bottom accent bar */}
-      <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg, #c9a96e, #e8c99a, #c9a96e)" }} />
+      <div className="h-1 w-full" style={{ background: "linear-gradient(90deg, #c9a96e, #e8c99a, #c9a96e)" }} />
     </div>
   );
 }
