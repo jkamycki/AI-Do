@@ -159,7 +159,10 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
         }
       );
 
-      if (!r.ok) throw new Error("Upload failed");
+      if (!r.ok) {
+        const error = await r.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(error.error || `Upload failed with status ${r.status}`);
+      }
       return r.json() as Promise<{ url: string }>;
     },
     onSuccess: (data, variables) => {
@@ -169,10 +172,10 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
         setDigitalInvitationPhotoUrl(data.url);
       }
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Upload Failed",
-        description: "Failed to upload photo",
+        description: error instanceof Error ? error.message : "Failed to upload photo",
         variant: "destructive",
       });
     },
