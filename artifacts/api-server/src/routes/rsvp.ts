@@ -327,6 +327,7 @@ router.get("/rsvp/:token/photo", async (req, res) => {
     const cacheControl = response.headers.get("Cache-Control") ?? "public, max-age=86400";
     res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", cacheControl);
+    res.setHeader("Access-Control-Allow-Origin", "*");
 
     if (response.body) {
       const { Readable } = await import("stream");
