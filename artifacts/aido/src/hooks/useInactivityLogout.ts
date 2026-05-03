@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useAuth, useClerk } from "@clerk/react";
 
-const INACTIVITY_TIMEOUT = 2 * 60 * 1000; // 2 minutes in milliseconds
+const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 export function useInactivityLogout() {
   const { isSignedIn } = useAuth();
