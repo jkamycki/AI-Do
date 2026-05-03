@@ -94,6 +94,7 @@ export default function Rsvp() {
   const [finalStatus, setFinalStatus] = useState<"attending" | "declined" | null>(null);
   const [pendingData, setPendingData] = useState<FormData | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const { data: info, isLoading, isError } = useQuery({
@@ -194,6 +195,7 @@ export default function Rsvp() {
   const downloadInvitationPdf = async () => {
     if (!info || !cardRef.current) return;
     setDownloadingPdf(true);
+    setPdfError(false);
     try {
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import("html2canvas"),
@@ -203,6 +205,7 @@ export default function Rsvp() {
       const canvas = await html2canvas(cardRef.current, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: "#1a141f",
         logging: false,
       });
@@ -219,6 +222,7 @@ export default function Rsvp() {
       doc.save(`${safeCouple}_invitation.pdf`);
     } catch (err) {
       console.error("PDF generation failed", err);
+      setPdfError(true);
     } finally {
       setDownloadingPdf(false);
     }
@@ -394,13 +398,13 @@ export default function Rsvp() {
                     &ldquo;{info.invitationMessage}&rdquo;
                   </p>
                 )}
-                <div className="pt-3 flex justify-center">
+                <div className="pt-3 flex flex-col items-center gap-2">
                   <button
                     type="button"
                     onClick={downloadInvitationPdf}
                     disabled={downloadingPdf}
                     className="flex items-center gap-2 transition-opacity hover:opacity-80 disabled:opacity-50"
-                    style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)", fontFamily: jakarta, fontSize: "11px", fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", padding: "0.6rem 1.5rem", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.15)" }}
+                    style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)", fontFamily: jakarta, fontSize: "11px", fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", padding: "0.6rem 1.5rem", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer" }}
                   >
                     {downloadingPdf ? (
                       <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating PDF&hellip;</>
@@ -408,6 +412,11 @@ export default function Rsvp() {
                       <><Download className="h-3.5 w-3.5" /> Download Invitation (PDF)</>
                     )}
                   </button>
+                  {pdfError && (
+                    <p style={{ fontFamily: jakarta, fontSize: "11px", color: "#f87171" }}>
+                      PDF generation failed — please try refreshing the page.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
