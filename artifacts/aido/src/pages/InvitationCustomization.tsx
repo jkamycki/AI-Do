@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/react";
 import { useRoute } from "wouter";
@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Download, Loader2 } from "lucide-react";
 import type {
   InvitationCustomization,
   ColorPalette,
@@ -68,6 +69,10 @@ export default function InvitationCustomizationPage() {
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(
     null
   );
+
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const saveTheDatePreviewRef = useRef<HTMLDivElement>(null);
+  const digitalInvitationPreviewRef = useRef<HTMLDivElement>(null);
 
   const authedFetch = async (url: string, init: RequestInit = {}) => {
     const token = await getToken();
@@ -231,6 +236,63 @@ export default function InvitationCustomizationPage() {
     },
   });
 
+  // PDF download functions
+  const downloadPDF = async (refElement: HTMLDivElement | null, filename: string) => {
+    if (!refElement) {
+      toast({
+        title: "Error",
+        description: "Preview not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsDownloadingPDF(true);
+
+      // Dynamically import html2canvas and jsPDF
+      const html2canvas = (await import("html2canvas")).default;
+      const jsPDF = (await import("jspdf")).jsPDF;
+
+      // Create canvas from the preview element
+      const canvas = await html2canvas(refElement, {
+        backgroundColor: backgroundColor || "#FFFFFF",
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+      });
+
+      // Create PDF with A4 dimensions
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      const imgData = canvas.toDataURL("image/png");
+      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+
+      pdf.save(filename);
+
+      toast({
+        title: "Downloaded",
+        description: "Your invitation PDF has been downloaded.",
+      });
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloadingPDF(false);
+    }
+  };
+
   if (!profileId) {
     return <div className="p-4 text-center">Profile not found</div>;
   }
@@ -315,35 +377,60 @@ export default function InvitationCustomizationPage() {
             </div>
 
             <div className="flex-1 overflow-auto p-4">
-              {previewTab === "saveTheDate" ? (
-                <SaveTheDatePreview
-                  photoUrl={saveTheDatePhotoUrl}
-                  weddingDate={weddingProfile.weddingDate}
-                  colors={displayPalette}
-                  font={selectedFont}
-                  backgroundColor={backgroundColor}
-                />
-              ) : (
-                <DigitalInvitationPreview
-                  photoUrl={digitalInvitationPhotoUrl}
-                  venue={weddingProfile.venue}
-                  location={weddingProfile.location}
-                  ceremonyTime={weddingProfile.ceremonyTime}
-                  receptionTime={weddingProfile.receptionTime}
-                  guestName={user?.firstName || "Guest Name"}
-                  colors={displayPalette}
-                  font={selectedFont}
-                  backgroundColor={backgroundColor}
-                  partner1Name={weddingProfile.partner1Name}
-                  partner2Name={weddingProfile.partner2Name}
-                  weddingDate={weddingProfile.weddingDate}
-                />
-              )}
+              <div ref={previewTab === "saveTheDate" ? saveTheDatePreviewRef : digitalInvitationPreviewRef}>
+                {previewTab === "saveTheDate" ? (
+                  <SaveTheDatePreview
+                    photoUrl={saveTheDatePhotoUrl}
+                    weddingDate={weddingProfile.weddingDate}
+                    colors={displayPalette}
+                    font={selectedFont}
+                    backgroundColor={backgroundColor}
+                  />
+                ) : (
+                  <DigitalInvitationPreview
+                    photoUrl={digitalInvitationPhotoUrl}
+                    venue={weddingProfile.venue}
+                    location={weddingProfile.location}
+                    ceremonyTime={weddingProfile.ceremonyTime}
+                    receptionTime={weddingProfile.receptionTime}
+                    guestName={user?.firstName || "Guest Name"}
+                    colors={displayPalette}
+                    font={selectedFont}
+                    backgroundColor={backgroundColor}
+                    partner1Name={weddingProfile.partner1Name}
+                    partner2Name={weddingProfile.partner2Name}
+                    weddingDate={weddingProfile.weddingDate}
+                  />
+                )}
+              </div>
             </div>
 
             <div className="border-t p-4">
-              <Button className="w-full" variant="outline">
-                Download as PDF
+              <Button
+                onClick={() =>
+                  downloadPDF(
+                    previewTab === "saveTheDate"
+                      ? saveTheDatePreviewRef.current
+                      : digitalInvitationPreviewRef.current,
+                    previewTab === "saveTheDate"
+                      ? "save-the-date.pdf"
+                      : "digital-invitation.pdf"
+                  )
+                }
+                disabled={isDownloadingPDF}
+                className="w-full"
+              >
+                {isDownloadingPDF ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download as PDF
+                  </>
+                )}
               </Button>
             </div>
           </Card>
