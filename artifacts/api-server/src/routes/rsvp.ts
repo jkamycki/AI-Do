@@ -312,9 +312,12 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         html,
       });
       emailSent = result.ok;
+      if (!result.ok) {
+        req.log.error({ guestId: id, guestEmail: guest.email, error: result.error }, "Failed to send RSVP email");
+      }
     }
 
-    res.json({ rsvpUrl, emailSent });
+    res.json({ rsvpUrl, emailSent, error: !emailSent && guest.email ? "Failed to send email - please check configuration" : undefined });
   } catch (err) {
     req.log.error(err, "Failed to send RSVP");
     res.status(500).json({ error: "Internal server error" });
@@ -681,9 +684,12 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         html,
       });
       emailSent = result.ok;
+      if (!result.ok) {
+        req.log.error({ guestId: id, guestEmail: guest.email, error: result.error }, "Failed to send save-the-date email");
+      }
     }
 
-    res.json({ emailSent });
+    res.json({ emailSent, error: !emailSent && guest.email ? "Failed to send email - please check configuration" : undefined });
   } catch (err) {
     req.log.error(err, "Failed to send save-the-date");
     res.status(500).json({ error: "Internal server error" });
