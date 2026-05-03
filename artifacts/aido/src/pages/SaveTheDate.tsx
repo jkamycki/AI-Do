@@ -147,21 +147,22 @@ export default function SaveTheDate() {
         <img src="/logo.png" alt="A.IDO" className="h-16 sm:h-20 w-auto object-contain opacity-80" />
       </div>
 
-      {/* Photo */}
-      {info.hasPhoto && (
-        <div className="w-full flex justify-center pt-8 px-4">
-          <img
-            src={`/api/save-the-date/${token}/photo`}
-            alt={couple}
-            className="w-full max-w-xl h-auto block"
-            style={{ borderRadius: "4px", boxShadow: "0 12px 48px rgba(61,46,34,0.14)" }}
-          />
-        </div>
-      )}
-
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center py-12 px-4">
         <div ref={cardRef} className="max-w-xl w-full">
+
+          {/* Photo */}
+          {info.hasPhoto && (
+            <div className="w-full flex justify-center pb-8">
+              <img
+                src={`/api/save-the-date/${token}/photo`}
+                alt={couple}
+                crossOrigin="anonymous"
+                className="w-full h-auto block"
+                style={{ borderRadius: "4px", boxShadow: "0 12px 48px rgba(61,46,34,0.14)" }}
+              />
+            </div>
+          )}
 
           {/* Header block */}
           <div className="text-center" style={{ marginBottom: "2.5rem" }}>

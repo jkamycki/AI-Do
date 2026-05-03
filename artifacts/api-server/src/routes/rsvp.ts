@@ -695,6 +695,7 @@ router.get("/save-the-date/:token/photo", async (req, res) => {
     const response = await objectStorageService.downloadObject(file, 3600);
     res.set("Content-Type", response.headers.get("Content-Type") || "image/jpeg");
     res.set("Cache-Control", "public, max-age=3600");
+    res.set("Access-Control-Allow-Origin", "*");
     const reader = response.body!.getReader();
     const pump = async () => {
       while (true) {
