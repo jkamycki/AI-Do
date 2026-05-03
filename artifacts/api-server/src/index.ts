@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { scheduleBackups } from "./lib/backup";
 
 const rawPort = process.env["PORT"];
 
@@ -24,6 +25,7 @@ const server = app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
 
   void disableClerkBreachedPasswordCheck();
+  scheduleBackups();
 });
 
 // SSE connections stay open for the duration of an AI response.
