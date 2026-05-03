@@ -26,6 +26,30 @@ function buildOrigin(req: import("express").Request): string {
   return `${proto}://${host}`;
 }
 
+async function getImageAsBase64(photoUrl: string | null | undefined): Promise<string | null> {
+  if (!photoUrl) return null;
+  try {
+    const file = await objectStorageService.getObjectEntityFile(photoUrl);
+    const response = await objectStorageService.downloadObject(file, 86400);
+    if (!response.body) return null;
+
+    const chunks: Uint8Array[] = [];
+    const reader = response.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) chunks.push(value);
+    }
+
+    const buffer = Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
+    const base64 = buffer.toString("base64");
+    const contentType = response.headers.get("Content-Type") || "image/jpeg";
+    return `data:${contentType};base64,${base64}`;
+  } catch (err) {
+    return null;
+  }
+}
+
 router.get("/guests/:id/rsvp-link", requireAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -115,11 +139,13 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           })()
         : null;
 
-      const photoBlock = digitalInvitationPhotoUrl
+      // Fetch and embed photo as base64
+      const photoBase64 = await getImageAsBase64(digitalInvitationPhotoUrl);
+      const photoBlock = photoBase64
         ? `
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
-            <img src="${origin}/api/rsvp/${token}/photo" alt="${couple}'s Wedding" width="560" style="width:100%;max-width:560px;height:auto;display:block;border-radius:0;"/>
+            <img src="${photoBase64}" alt="${couple}'s Wedding" width="560" style="width:100%;max-width:560px;height:auto;display:block;border-radius:0;"/>
           </td>
         </tr>`
         : "";
@@ -554,11 +580,13 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
 
       const origin = buildOrigin(req);
 
-      const photoBlock = saveTheDatePhotoUrl
+      // Fetch and embed photo as base64
+      const photoBase64 = await getImageAsBase64(saveTheDatePhotoUrl);
+      const photoBlock = photoBase64
         ? `
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
-            <img src="${origin}/api/save-the-date/${token}/photo" alt="Save the Date — ${couple}" width="560" style="width:100%;max-width:560px;height:auto;display:block;"/>
+            <img src="${photoBase64}" alt="Save the Date — ${couple}" width="560" style="width:100%;max-width:560px;height:auto;display:block;"/>
           </td>
         </tr>`
         : "";
