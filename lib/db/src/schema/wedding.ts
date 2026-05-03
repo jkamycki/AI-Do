@@ -417,3 +417,26 @@ export const moodBoards = pgTable("mood_boards", {
 });
 
 export type MoodBoard = typeof moodBoards.$inferSelect;
+
+export const supportTickets = pgTable("support_tickets", {
+  id: serial("id").primaryKey(),
+  ticketNumber: text("ticket_number").notNull().unique(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  category: text("category").notNull(), // "bug", "feature", "general", "praise", "support"
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  status: text("status").notNull().default("open"), // "open", "in_progress", "resolved", "closed"
+  priority: text("priority").notNull().default("medium"), // "low", "medium", "high", "urgent"
+  userId: text("user_id"), // optional, if user was signed in
+  profileId: integer("profile_id"), // optional, if related to a specific wedding
+  followUpNotes: text("follow_up_notes"),
+  followUpEmail: text("follow_up_email"),
+  followUpSentAt: timestamp("follow_up_sent_at"),
+  followUpSentBy: text("follow_up_sent_by"), // admin user ID who sent follow-up
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type SupportTicket = typeof supportTickets.$inferSelect;
+
