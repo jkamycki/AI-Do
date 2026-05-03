@@ -58,7 +58,7 @@ export function AISupport() {
     mutationFn: async (userMessage: string) => {
       const updatedMessages = [...messages, { role: "user" as const, content: userMessage }];
 
-      const r = await authedFetch("/api/support/chat", {
+      const r = await authedFetch("/api/support/bot", {
         method: "POST",
         body: JSON.stringify({
           messages: updatedMessages,
