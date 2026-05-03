@@ -134,6 +134,33 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
     }
   }, [customization]);
 
+  // Auto-save when photos are uploaded
+  useEffect(() => {
+    if (!profileId || (!saveTheDatePhotoFile && !digitalInvitationPhotoFile)) return;
+
+    const autoSave = async () => {
+      if (saveTheDatePhotoFile) {
+        const result = await uploadPhotoMutation.mutateAsync({
+          file: saveTheDatePhotoFile,
+          type: "save-the-date",
+        });
+        setSaveTheDatePhotoUrl(result.url);
+        setSaveTheDatePhotoFile(null);
+      }
+
+      if (digitalInvitationPhotoFile) {
+        const result = await uploadPhotoMutation.mutateAsync({
+          file: digitalInvitationPhotoFile,
+          type: "digital-invitation",
+        });
+        setDigitalInvitationPhotoUrl(result.url);
+        setDigitalInvitationPhotoFile(null);
+      }
+    };
+
+    autoSave();
+  }, [saveTheDatePhotoFile, digitalInvitationPhotoFile, profileId, uploadPhotoMutation]);
+
   // Upload photo mutation
   const uploadPhotoMutation = useMutation({
     mutationFn: async ({
