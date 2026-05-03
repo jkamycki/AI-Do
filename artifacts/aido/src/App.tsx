@@ -23,6 +23,7 @@ import DayOf from "@/pages/DayOf";
 import Admin from "@/pages/Admin";
 import Settings from "@/pages/Settings";
 import Help from "@/pages/Help";
+import OperationsCenter from "@/pages/OperationsCenter";
 import SeatingChart from "@/pages/SeatingChart";
 import InviteAccept from "@/pages/InviteAccept";
 import GuestCollect from "@/pages/GuestCollect";
@@ -1391,6 +1392,7 @@ function Router() {
       <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
       <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
+      <Route path="/operations-center" component={() => <ProtectedRoute component={OperationsCenter} />} />
       <Route path="/seating-chart" component={() => <ProtectedRoute component={SeatingChart} />} />
       <Route path="/guests" component={() => <ProtectedRoute component={Guests} />} />
       <Route path="/hotels" component={() => <ProtectedRoute component={Hotels} />} />
