@@ -11,6 +11,8 @@ interface RsvpPagePreviewProps {
   venue: string;
   photoUrl: string | null;
   guestName?: string;
+  /** Render scale — 1.28 fills ~500 px (matches Digital Invitation width). */
+  scale?: number;
 }
 
 function isLightColor(hex: string): boolean {
@@ -33,7 +35,6 @@ function formatDate(dateStr: string): string {
   }
 }
 
-const SCALE = 0.48;
 const PREVIEW_W = 390;
 const PREVIEW_H = 780;
 
@@ -47,6 +48,7 @@ export function RsvpPagePreview({
   venue,
   photoUrl,
   guestName = "Guest Name",
+  scale = 1.28,
 }: RsvpPagePreviewProps) {
   const bg = backgroundColor || "#1E1A2E";
   const accent = colors.primary || "#D4A017";
@@ -65,8 +67,8 @@ export function RsvpPagePreview({
     <div
       className="relative mx-auto overflow-hidden rounded-xl shadow-2xl border"
       style={{
-        width: PREVIEW_W * SCALE,
-        height: PREVIEW_H * SCALE,
+        width: PREVIEW_W * scale,
+        height: PREVIEW_H * scale,
         borderColor: cardBorder,
       }}
     >
@@ -74,7 +76,7 @@ export function RsvpPagePreview({
         style={{
           width: PREVIEW_W,
           height: PREVIEW_H,
-          transform: `scale(${SCALE})`,
+          transform: `scale(${scale})`,
           transformOrigin: "top left",
           backgroundColor: bg,
           overflowY: "hidden",
