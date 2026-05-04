@@ -208,7 +208,7 @@ export function EditableText({
       }}
       data-editable-id={id}
     >
-      {text}
+      {override?.text ?? text}
     </div>
   );
 }
@@ -331,6 +331,7 @@ export function EditableImage({
 export interface EditableToolbarProps {
   override?: ElementOverride;
   defaults: { font: string; color: string; fontSize: number };
+  defaultText?: string;
   onChange: (patch: ElementOverride) => void;
   onReset: () => void;
   onClose: () => void;
@@ -343,6 +344,7 @@ export interface EditableToolbarProps {
 export function EditableToolbar({
   override,
   defaults,
+  defaultText,
   onChange,
   onReset,
   onClose,
@@ -354,99 +356,121 @@ export function EditableToolbar({
   const font = override?.font ?? defaults.font;
   const color = override?.color ?? defaults.color;
   const fontSize = override?.fontSize ?? defaults.fontSize;
+  const currentText = override?.text ?? defaultText ?? "";
   return (
     <div
-      className="rounded-lg shadow-lg p-2 flex items-center gap-2 flex-wrap"
+      className="rounded-lg shadow-lg p-2 flex flex-col gap-1.5"
       style={{
         background: "#2A2440",
         border: "1px solid rgba(212,160,23,0.35)",
         color: "#E8E0D0",
+        minWidth: 280,
       }}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      {label && (
-        <span className="text-xs font-medium px-1" style={{ color: "#b8a88a" }}>
-          {label}
-        </span>
-      )}
-      {showFont && (
-        <Select value={font} onValueChange={(v) => onChange({ font: v })}>
-          <SelectTrigger
-            className="h-8 w-[160px] text-xs"
-            style={{ background: "#1E1A2E", color: "#E8E0D0", borderColor: "rgba(212,160,23,0.3)" }}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent position="popper" sideOffset={6} className="z-[9999] max-h-72 overflow-y-auto">
-            {FONT_OPTIONS.map((f) => (
-              <SelectItem key={f} value={f} style={{ fontFamily: `"${f}"` }}>
-                {f}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-      {showColor && (
-        <input
-          type="color"
-          value={color}
-          onChange={(e) => onChange({ color: e.target.value })}
-          onFocus={(e) => e.target.blur()}
-          className="h-8 w-10 rounded cursor-pointer"
-          style={{ border: "1px solid rgba(212,160,23,0.4)" }}
-          tabIndex={-1}
-          aria-label="Text color"
+      <div className="flex items-center gap-2 flex-wrap">
+        {label && (
+          <span className="text-xs font-medium px-1" style={{ color: "#b8a88a" }}>
+            {label}
+          </span>
+        )}
+        {showFont && (
+          <Select value={font} onValueChange={(v) => onChange({ font: v })}>
+            <SelectTrigger
+              className="h-8 w-[160px] text-xs"
+              style={{ background: "#1E1A2E", color: "#E8E0D0", borderColor: "rgba(212,160,23,0.3)" }}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" sideOffset={6} className="z-[9999] max-h-72 overflow-y-auto">
+              {FONT_OPTIONS.map((f) => (
+                <SelectItem key={f} value={f} style={{ fontFamily: `"${f}"` }}>
+                  {f}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {showColor && (
+          <input
+            type="color"
+            value={color}
+            onChange={(e) => onChange({ color: e.target.value })}
+            onFocus={(e) => e.target.blur()}
+            className="h-8 w-10 rounded cursor-pointer"
+            style={{ border: "1px solid rgba(212,160,23,0.4)" }}
+            tabIndex={-1}
+            aria-label="Text color"
+          />
+        )}
+        {showFontSize && (
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 w-8 p-0"
+              style={{ background: "#1E1A2E", color: "#E8E0D0", borderColor: "rgba(212,160,23,0.3)" }}
+              onClick={() => onChange({ fontSize: Math.max(8, fontSize - 2) })}
+              aria-label="Decrease font size"
+            >
+              −
+            </Button>
+            <span className="text-xs w-8 text-center tabular-nums" style={{ color: "#E8E0D0" }}>{fontSize}</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 w-8 p-0"
+              style={{ background: "#1E1A2E", color: "#E8E0D0", borderColor: "rgba(212,160,23,0.3)" }}
+              onClick={() => onChange({ fontSize: fontSize + 2 })}
+              aria-label="Increase font size"
+            >
+              +
+            </Button>
+          </div>
+        )}
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-8 text-xs"
+          style={{ color: "#b8a88a" }}
+          onClick={onReset}
+        >
+          Reset
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          style={{ color: "#b8a88a" }}
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ×
+        </Button>
+      </div>
+      {defaultText !== undefined && (
+        <textarea
+          className="w-full rounded px-2 py-1 text-xs resize-none outline-none"
+          style={{
+            background: "#1E1A2E",
+            color: "#E8E0D0",
+            border: "1px solid rgba(212,160,23,0.3)",
+            minHeight: 52,
+            fontFamily: `"${font}"`,
+          }}
+          rows={2}
+          value={currentText}
+          onChange={(e) => onChange({ text: e.target.value })}
+          placeholder="Type to edit this text…"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         />
       )}
-      {showFontSize && (
-        <div className="flex items-center gap-1">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-8 w-8 p-0"
-            style={{ background: "#1E1A2E", color: "#E8E0D0", borderColor: "rgba(212,160,23,0.3)" }}
-            onClick={() => onChange({ fontSize: Math.max(8, fontSize - 2) })}
-            aria-label="Decrease font size"
-          >
-            −
-          </Button>
-          <span className="text-xs w-8 text-center tabular-nums" style={{ color: "#E8E0D0" }}>{fontSize}</span>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-8 w-8 p-0"
-            style={{ background: "#1E1A2E", color: "#E8E0D0", borderColor: "rgba(212,160,23,0.3)" }}
-            onClick={() => onChange({ fontSize: fontSize + 2 })}
-            aria-label="Increase font size"
-          >
-            +
-          </Button>
-        </div>
-      )}
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        className="h-8 text-xs"
-        style={{ color: "#b8a88a" }}
-        onClick={onReset}
-      >
-        Reset
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        className="h-8 w-8 p-0"
-        style={{ color: "#b8a88a" }}
-        onClick={onClose}
-        aria-label="Close"
-      >
-        ×
-      </Button>
     </div>
   );
 }

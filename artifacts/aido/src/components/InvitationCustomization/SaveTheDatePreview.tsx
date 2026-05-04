@@ -61,12 +61,14 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
   ) {
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
-    const dateObj = new Date(weddingDate);
-    const formattedDate = isNaN(dateObj.getTime())
-      ? weddingDate
-      : `${String(dateObj.getMonth() + 1).padStart(2, "0")}.${String(
-          dateObj.getDate(),
-        ).padStart(2, "0")}.${dateObj.getFullYear()}`;
+    const formattedDate = (() => {
+      const parts = weddingDate ? weddingDate.split("-").map(Number) : [];
+      if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
+        const [y, mo, d] = parts;
+        return `${String(mo).padStart(2, "0")}.${String(d).padStart(2, "0")}.${y}`;
+      }
+      return weddingDate || "";
+    })();
     const couple =
       partner1Name && partner2Name
         ? `${partner1Name} & ${partner2Name}`
@@ -153,7 +155,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
       <div className="flex flex-col items-center">
         {/* Toolbar lives outside the captured canvas so it never appears in PDF exports */}
         {editable && (
-          <div className="h-12 mb-2 flex items-center justify-center sticky top-0 z-10 bg-card">
+          <div className="min-h-[3rem] h-auto mb-2 flex items-center justify-center sticky top-0 z-10 bg-card py-1">
             {selectedEl ? (
               <EditableToolbar
                 override={textOverrides[selectedEl.id]}
@@ -162,6 +164,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
                   color: selectedEl.defaultColor,
                   fontSize: selectedEl.defaultFontSize,
                 }}
+                defaultText={textOverrides[selectedEl.id]?.text ?? selectedEl.text}
                 onChange={(patch) => updateOverride(selectedEl.id, patch)}
                 onReset={() =>
                   updateOverride(selectedEl.id, {
@@ -170,6 +173,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
                     font: undefined,
                     color: undefined,
                     fontSize: undefined,
+                    text: undefined,
                   })
                 }
                 onClose={() => setSelectedId(null)}

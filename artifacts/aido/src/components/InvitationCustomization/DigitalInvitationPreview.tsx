@@ -86,13 +86,16 @@ export const DigitalInvitationPreview = forwardRef<
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const formattedDate = (() => {
-    const d = new Date(weddingDate);
-    if (isNaN(d.getTime())) return weddingDate;
-    return d.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    const parts = weddingDate ? weddingDate.split("-").map(Number) : [];
+    if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
+      const [y, mo, d] = parts;
+      return new Date(y, mo - 1, d).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+    return weddingDate || "";
   })();
   const couple =
     partner1Name && partner2Name
@@ -301,7 +304,7 @@ export const DigitalInvitationPreview = forwardRef<
   return (
     <div className="flex flex-col items-center">
       {editable && (
-        <div className="h-12 mb-2 flex items-center justify-center sticky top-0 z-10 bg-card">
+        <div className="min-h-[3rem] h-auto mb-2 flex items-center justify-center sticky top-0 z-10 bg-card py-1">
           {selectedEl ? (
             <EditableToolbar
               override={textOverrides[selectedEl.id]}
@@ -310,6 +313,7 @@ export const DigitalInvitationPreview = forwardRef<
                 color: selectedEl.defaultColor,
                 fontSize: selectedEl.defaultFontSize,
               }}
+              defaultText={textOverrides[selectedEl.id]?.text ?? selectedEl.text}
               onChange={(patch) => updateOverride(selectedEl.id, patch)}
               onReset={() =>
                 updateOverride(selectedEl.id, {
@@ -318,6 +322,7 @@ export const DigitalInvitationPreview = forwardRef<
                   font: undefined,
                   color: undefined,
                   fontSize: undefined,
+                  text: undefined,
                 })
               }
               onClose={() => setSelectedId(null)}
