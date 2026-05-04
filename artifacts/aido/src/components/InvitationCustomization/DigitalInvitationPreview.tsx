@@ -15,6 +15,9 @@ interface DigitalInvitationPreviewProps {
   photoUrl: string | null;
   venue: string;
   location: string;
+  venueCity?: string;
+  venueState?: string;
+  venueZip?: string;
   ceremonyTime: string;
   receptionTime: string;
   guestName: string;
@@ -58,6 +61,9 @@ export const DigitalInvitationPreview = forwardRef<
     photoUrl,
     venue,
     location,
+    venueCity,
+    venueState,
+    venueZip,
     ceremonyTime,
     receptionTime,
     guestName,
@@ -74,6 +80,7 @@ export const DigitalInvitationPreview = forwardRef<
   },
   ref,
 ) {
+  const cityStateZip = [venueCity, [venueState, venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const formattedDate = (() => {
@@ -240,11 +247,20 @@ export const DigitalInvitationPreview = forwardRef<
       id: PREFIX + "location",
       text: location || "",
       defaultX: CANVAS_W / 2,
-      defaultY: 666,
+      defaultY: 660,
       defaultColor: colors.neutral,
       defaultFontSize: 14,
       defaultFont: font || "Cormorant Garamond",
     },
+    ...(cityStateZip ? [{
+      id: PREFIX + "city-state-zip",
+      text: cityStateZip,
+      defaultX: CANVAS_W / 2,
+      defaultY: 684,
+      defaultColor: colors.neutral,
+      defaultFontSize: 14,
+      defaultFont: font || "Cormorant Garamond",
+    }] : []),
     {
       id: PREFIX + "footer-label",
       text: "Together with their families",

@@ -52,6 +52,8 @@ export interface WeddingProfileData {
   venueCity?: string;
   venueState?: string;
   venueZip?: string;
+  saveTheDateMessage?: string;
+  invitationMessage?: string;
 }
 
 export type PreviewTab = "saveTheDate" | "digitalInvitation";

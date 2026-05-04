@@ -288,13 +288,13 @@ function ModernDec({ w, h, colors }: DecProps) {
 
 // ── Thumbnail wrapper (viewBox scales to fill card) ────────────────────────
 
-export function LayoutThumbnail({ layout, colors }: { layout: string; colors: ColorPalette }) {
+export function LayoutThumbnail({ layout, colors, backgroundColor = "#1E1A2E" }: { layout: string; colors: ColorPalette; backgroundColor?: string }) {
   const W = 500;
   const H = 680;
   const dec = getDecoration(layout, W, H, colors);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="xMidYMid slice">
-      <rect width={W} height={H} fill="white" />
+      <rect width={W} height={H} fill={backgroundColor} />
       {dec}
       {/* Representative content lines */}
       <text x={W / 2} y={H * 0.42} textAnchor="middle" fontFamily="Georgia,serif"

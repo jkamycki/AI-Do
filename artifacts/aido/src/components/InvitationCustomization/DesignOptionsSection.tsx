@@ -55,8 +55,8 @@ export function DesignOptionsSection({
                   ].join(" ")}
                 >
                   {/* Thumbnail */}
-                  <div className="aspect-[3/4] w-full overflow-hidden bg-white">
-                    <LayoutThumbnail layout={design.id} colors={colors} />
+                  <div className="aspect-[3/4] w-full overflow-hidden" style={{ backgroundColor: backgroundColor || "#1E1A2E" }}>
+                    <LayoutThumbnail layout={design.id} colors={colors} backgroundColor={backgroundColor || "#1E1A2E"} />
                   </div>
                   {/* Label */}
                   <div className={[

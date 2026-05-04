@@ -21,6 +21,9 @@ interface SaveTheDatePreviewProps {
   partner1Name?: string;
   partner2Name?: string;
   location?: string;
+  venueCity?: string;
+  venueState?: string;
+  venueZip?: string;
   textOverrides: TextOverrides;
   onTextOverridesChange: (next: TextOverrides) => void;
   editable?: boolean;
@@ -45,6 +48,9 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
       partner1Name,
       partner2Name,
       location,
+      venueCity,
+      venueState,
+      venueZip,
       textOverrides,
       onTextOverridesChange,
       editable = true,
@@ -63,6 +69,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
       partner1Name && partner2Name
         ? `${partner1Name} & ${partner2Name}`
         : partner1Name || partner2Name || "Couple Names";
+    const cityStateZip = [venueCity, [venueState, venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
     const dateLine = location ? `${formattedDate}  –  ${location}` : formattedDate;
 
     const updateOverride = (id: string, patch: ElementOverride) => {
@@ -97,7 +104,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
         id: PREFIX + "couple",
         text: couple,
         defaultX: CANVAS_W / 2,
-        defaultY: 380,
+        defaultY: 375,
         defaultColor: colors.primary,
         defaultFontSize: 36,
         defaultFont: "Great Vibes",
@@ -107,12 +114,22 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
         id: PREFIX + "date",
         text: dateLine,
         defaultX: CANVAS_W / 2,
-        defaultY: 470,
+        defaultY: 460,
         defaultColor: colors.accent,
         defaultFontSize: 20,
         defaultFont: "Cormorant Garamond",
         fontWeight: 500 as const,
       },
+      ...(cityStateZip ? [{
+        id: PREFIX + "city-state-zip",
+        text: cityStateZip,
+        defaultX: CANVAS_W / 2,
+        defaultY: 490,
+        defaultColor: colors.accent,
+        defaultFontSize: 16,
+        defaultFont: "Cormorant Garamond",
+        fontWeight: 400 as const,
+      }] : []),
     ];
 
     const photoId = PREFIX + "photo";

@@ -12,7 +12,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Loader2, RotateCcw, Sparkles, Paintbrush } from "lucide-react";
+import { Download, Loader2, RotateCcw, Sparkles, Paintbrush, ChevronDown, ChevronUp, RefreshCw, Save } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import type {
   InvitationCustomization,
   ColorPalette,
@@ -73,6 +74,17 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   // ── Invitation mode ───────────────────────────────────────────────────────
   // true = use AI-generated email template  |  false = use user's custom design
   const [useGeneratedInvitation, setUseGeneratedInvitation] = useState(true);
+
+  // ── Messages ──────────────────────────────────────────────────────────────
+  const [saveTheDateMessage, setSaveTheDateMessage] = useState("");
+  const [invitationMessage, setInvitationMessage] = useState("");
+  const [showStdAiPanel, setShowStdAiPanel] = useState(false);
+  const [stdAiDetails, setStdAiDetails] = useState("");
+  const [stdGenerating, setStdGenerating] = useState(false);
+  const [showDigAiPanel, setShowDigAiPanel] = useState(false);
+  const [digAiDetails, setDigAiDetails] = useState("");
+  const [digGenerating, setDigGenerating] = useState(false);
+  const [savingMessage, setSavingMessage] = useState(false);
 
   // ── Misc ──────────────────────────────────────────────────────────────────
   const skipNextAutoSave = useRef(true);
@@ -253,6 +265,25 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
     }
   }, [customization]);
 
+  // ── Load messages from wedding profile ────────────────────────────────────
+  useEffect(() => {
+    if (weddingProfile) {
+      const couple = [weddingProfile.partner1Name, weddingProfile.partner2Name].filter(Boolean).join(" & ");
+      setSaveTheDateMessage(
+        weddingProfile.saveTheDateMessage ||
+          (couple
+            ? `Mark your calendar! ${couple} are getting married and we'd love to celebrate with you. Formal invitation to follow.`
+            : "Mark your calendar! We're getting married and we'd love to celebrate with you. Formal invitation to follow.")
+      );
+      setInvitationMessage(
+        weddingProfile.invitationMessage ||
+          (couple
+            ? `Together with their families, ${couple} joyfully invite you to celebrate their wedding day with them.`
+            : "Together with their families, we joyfully invite you to celebrate our wedding day with us.")
+      );
+    }
+  }, [weddingProfile]);
+
   // ── Photo upload mutation ─────────────────────────────────────────────────
   const uploadPhotoMutation = useMutation({
     mutationFn: async ({ file, type }: { file: File; type: "save-the-date" | "digital-invitation" }) => {
@@ -338,6 +369,64 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
       toast({ title: "Error", description: "Failed to save customizations", variant: "destructive" });
     },
   });
+
+  // ── Message save + AI generate ───────────────────────────────────────────
+  const saveMessage = async (type: "saveTheDate" | "digitalInvitation") => {
+    setSavingMessage(true);
+    try {
+      const body = type === "saveTheDate"
+        ? { saveTheDateMessage }
+        : { invitationMessage };
+      const r = await authedFetch("/api/profile/invitation-settings", {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) throw new Error("Failed to save");
+      toast({ title: "Message saved" });
+    } catch {
+      toast({ title: "Failed to save message", variant: "destructive" });
+    } finally {
+      setSavingMessage(false);
+    }
+  };
+
+  const generateStdMessage = async () => {
+    setStdGenerating(true);
+    try {
+      const r = await authedFetch("/api/profile/generate-invitation-message", {
+        method: "POST",
+        body: JSON.stringify({ details: stdAiDetails }),
+      });
+      if (!r.ok) throw new Error("Failed");
+      const data = await r.json();
+      setSaveTheDateMessage((data.message || "").trim());
+      setStdAiDetails("");
+      setShowStdAiPanel(false);
+    } catch {
+      toast({ title: "Failed to generate message", variant: "destructive" });
+    } finally {
+      setStdGenerating(false);
+    }
+  };
+
+  const generateDigMessage = async () => {
+    setDigGenerating(true);
+    try {
+      const r = await authedFetch("/api/profile/generate-invitation-message", {
+        method: "POST",
+        body: JSON.stringify({ details: digAiDetails }),
+      });
+      if (!r.ok) throw new Error("Failed");
+      const data = await r.json();
+      setInvitationMessage((data.message || "").trim());
+      setDigAiDetails("");
+      setShowDigAiPanel(false);
+    } catch {
+      toast({ title: "Failed to generate message", variant: "destructive" });
+    } finally {
+      setDigGenerating(false);
+    }
+  };
 
   // ── Reset to brand colors ──────────────────────────────────────────────────
   const BRAND_PALETTE: ColorPalette = {
@@ -549,6 +638,122 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
             onBackgroundColorChange={isSTD ? setSaveTheDateBackground : setDigitalInvitationBackground}
             colors={displayPalette}
           />
+
+          {/* Message — AI generator + editable text */}
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">
+                  {isSTD ? "Save the Date Message" : "Invitation Message"}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-xs h-7 px-2.5 border-primary/30 text-primary hover:bg-primary/5"
+                  onClick={() => isSTD ? setShowStdAiPanel(v => !v) : setShowDigAiPanel(v => !v)}
+                >
+                  <Sparkles className="h-3 w-3" />
+                  AI Generate
+                  {(isSTD ? showStdAiPanel : showDigAiPanel) ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </Button>
+              </div>
+
+              {isSTD && showStdAiPanel && (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <Textarea
+                    placeholder="e.g. We're having an intimate outdoor ceremony in the mountains, and we want guests to feel the excitement before the formal invite arrives…"
+                    value={stdAiDetails}
+                    onChange={e => setStdAiDetails(e.target.value)}
+                    rows={3}
+                    className="resize-none text-sm bg-background"
+                  />
+                  <Button
+                    size="sm"
+                    className="gap-2 w-full"
+                    onClick={generateStdMessage}
+                    disabled={stdGenerating || !stdAiDetails.trim()}
+                  >
+                    {stdGenerating
+                      ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating…</>
+                      : <><Sparkles className="h-3.5 w-3.5" /> Generate Message</>
+                    }
+                  </Button>
+                </div>
+              )}
+
+              {!isSTD && showDigAiPanel && (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <Textarea
+                    placeholder="e.g. We're getting married in a garden at sunset, small intimate ceremony with close family and friends…"
+                    value={digAiDetails}
+                    onChange={e => setDigAiDetails(e.target.value)}
+                    rows={3}
+                    className="resize-none text-sm bg-background"
+                  />
+                  <Button
+                    size="sm"
+                    className="gap-2 w-full"
+                    onClick={generateDigMessage}
+                    disabled={digGenerating || !digAiDetails.trim()}
+                  >
+                    {digGenerating
+                      ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating…</>
+                      : <><Sparkles className="h-3.5 w-3.5" /> Generate Message</>
+                    }
+                  </Button>
+                </div>
+              )}
+
+              <Textarea
+                placeholder={isSTD
+                  ? "e.g. Mark your calendar! We're getting married…"
+                  : "e.g. Together with their families, we joyfully invite you…"
+                }
+                value={isSTD ? saveTheDateMessage : invitationMessage}
+                onChange={e => isSTD ? setSaveTheDateMessage(e.target.value) : setInvitationMessage(e.target.value)}
+                rows={4}
+                maxLength={400}
+                className="resize-none text-sm"
+              />
+
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => {
+                    const couple = [displayWeddingProfile.partner1Name, displayWeddingProfile.partner2Name]
+                      .filter(Boolean).join(" & ");
+                    if (isSTD) {
+                      setSaveTheDateMessage(couple
+                        ? `Mark your calendar! ${couple} are getting married and we'd love to celebrate with you. Formal invitation to follow.`
+                        : "Mark your calendar! We're getting married and we'd love to celebrate with you. Formal invitation to follow.");
+                    } else {
+                      setInvitationMessage(couple
+                        ? `Together with their families, ${couple} joyfully invite you to celebrate their wedding day with them.`
+                        : "Together with their families, we joyfully invite you to celebrate our wedding day with us.");
+                    }
+                  }}
+                >
+                  <RefreshCw className="inline h-3 w-3 mr-1" />Reset to template
+                </button>
+                <p className="text-xs text-muted-foreground">
+                  {(isSTD ? saveTheDateMessage : invitationMessage).length}/400
+                </p>
+              </div>
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => saveMessage(isSTD ? "saveTheDate" : "digitalInvitation")}
+                disabled={savingMessage}
+              >
+                {savingMessage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                {savingMessage ? "Saving…" : "Save Message"}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Right Panel — Preview */}
@@ -597,6 +802,9 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                   partner1Name={displayWeddingProfile.partner1Name}
                   partner2Name={displayWeddingProfile.partner2Name}
                   location={displayWeddingProfile.location}
+                  venueCity={displayWeddingProfile.venueCity}
+                  venueState={displayWeddingProfile.venueState}
+                  venueZip={displayWeddingProfile.venueZip}
                   textOverrides={stdTextOverrides}
                   onTextOverridesChange={setStdTextOverrides}
                 />
@@ -606,6 +814,9 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                   photoUrl={digitalInvitationPhotoUrl}
                   venue={displayWeddingProfile.venue}
                   location={displayWeddingProfile.location}
+                  venueCity={displayWeddingProfile.venueCity}
+                  venueState={displayWeddingProfile.venueState}
+                  venueZip={displayWeddingProfile.venueZip}
                   ceremonyTime={displayWeddingProfile.ceremonyTime}
                   receptionTime={displayWeddingProfile.receptionTime}
                   guestName={user?.firstName || "Guest Name"}

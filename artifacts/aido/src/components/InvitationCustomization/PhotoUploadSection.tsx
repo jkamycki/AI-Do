@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, X, AlertCircle } from "lucide-react";
+import { Upload, X, AlertCircle, Crop } from "lucide-react";
 import { InvitationCropDialog } from "@/components/InvitationCropDialog";
 
 interface PhotoUploadSectionProps {
@@ -140,12 +140,27 @@ export function PhotoUploadSection({
                     alt={`${label} preview`}
                     className="w-full h-40 object-cover rounded border"
                   />
-                  <button
-                    onClick={handleRemove}
-                    className="absolute top-2 right-2 p-1 bg-destructive text-white rounded-full hover:bg-destructive/90"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    <button
+                      onClick={() => {
+                        setCropImageUrl(previewUrl);
+                        setCropFileName(isSaveTheDate ? "save-the-date" : "invitation");
+                        setCropType(isSaveTheDate ? "save-the-date" : "digital-invitation");
+                        setCropOpen(true);
+                      }}
+                      className="p-1 bg-black/60 text-white rounded-full hover:bg-black/80"
+                      title="Re-crop photo"
+                    >
+                      <Crop className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={handleRemove}
+                      className="p-1 bg-destructive text-white rounded-full hover:bg-destructive/90"
+                      title="Remove photo"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
