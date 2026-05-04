@@ -170,7 +170,33 @@ QUERIES: overview→get_summary | vendors/payments→list_vendors | budget→lis
 
 SHORTCUTS: RSVP→update_guest(matchName, rsvpStatus). Seating→update_guest(matchName, tableAssignment). Payment paid→mark_vendor_payment_paid(vendorName).
 
+TOOL USE: Call tools silently and directly — never describe what you are about to call, never narrate "I'll call the list_checklist function", never output raw JSON function calls in your text. The tools work automatically; just use them.
+
 OUTPUT: Plans → numbered steps + brief summary. Query results → warm ≤100-word summary, never raw JSON.`;
+
+// Detect function-call JSON that some small Llama models emit as plain text
+// instead of using the structured tool_calls API. Matches the two most common
+// formats: {"name": "tool", "parameters": {...}} and {"name": "tool", "arguments": {...}}
+function extractTextBasedToolCalls(
+  text: string,
+  allowedTools: Array<{ function: { name: string } }>,
+): Array<{ id: string; name: string; args: string }> {
+  const allowedNames = new Set(allowedTools.map(t => t.function.name));
+  const results: Array<{ id: string; name: string; args: string }> = [];
+  // Handles nested objects one level deep (e.g. {"category": {"id": 1}})
+  const re = /\{[\s\r\n]*"name"\s*:\s*"([^"]+)"\s*,\s*"(?:parameters|arguments)"\s*:\s*(\{(?:[^{}]|\{[^{}]*\})*\})/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const toolName = m[1];
+    if (!allowedNames.has(toolName)) continue;
+    const argsJson = m[2];
+    try {
+      JSON.parse(argsJson);
+      results.push({ id: `txt-${Date.now()}-${results.length}`, name: toolName, args: argsJson });
+    } catch { /* malformed JSON — skip */ }
+  }
+  return results;
+}
 
 // Tools that write data — after these succeed we skip the second AI round-trip
 // and send an instant confirmation instead, saving ~1,000–2,000 tokens per call.
@@ -1603,10 +1629,14 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         const delta = choice.delta;
         if (!delta) continue;
 
-        // Stream text tokens straight to the client
+        // Stream text tokens straight to the client.
+        // For tool-equipped requests we BUFFER and do not send yet — this
+        // lets us intercept text-based function calls (some small Llama
+        // models emit {"name":"tool","parameters":{}} in the content field
+        // instead of using the tool_calls API) before anything reaches the UI.
         if (delta.content) {
           contentAccum += delta.content;
-          send({ type: "content", content: delta.content });
+          if (skipTools) send({ type: "content", content: delta.content });
         }
 
         // Accumulate tool-call argument fragments
@@ -1623,9 +1653,26 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         }
       }
 
-      const toolCalls = Object.values(toolCallsAccum).filter(tc => tc.name);
+      let toolCalls = Object.values(toolCallsAccum).filter(tc => tc.name);
+
+      // Fallback: detect text-based function calls emitted by the model in
+      // the content field instead of via the tool_calls API (a known quirk
+      // of some small Llama models). We intercepted the content without
+      // streaming it, so we can silently execute the tool and discard the
+      // raw JSON before it ever reaches the user.
+      if (!skipTools && toolCalls.length === 0 && contentAccum.includes('"name"')) {
+        const textCalls = extractTextBasedToolCalls(contentAccum, filteredTools);
+        if (textCalls.length > 0) {
+          toolCalls = textCalls;
+          contentAccum = ""; // discard raw text; JSON never reaches the user
+        }
+      }
 
       if (toolCalls.length === 0) {
+        // For buffered (tool-equipped) requests, flush the accumulated text now
+        // that we know the model produced a pure text response (no tool calls).
+        if (!skipTools && contentAccum) send({ type: "content", content: contentAccum });
+
         // If the model was cut off mid-response, add its partial reply to
         // the conversation and request a seamless continuation. The client
         // sees one unbroken stream — no gap, no "click to continue" needed.
@@ -1636,7 +1683,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
           // Don't count against toolLoops — this is a text continuation only.
           continue;
         }
-        // Pure text response — content was already streamed token by token
+        // Pure text response — done
         send({ type: "done", actions: performedActions.map(a => ({ name: a.name, ok: a.result.ok, error: a.result.ok ? undefined : a.result.error })) });
         res.write("data: [DONE]\n\n");
         res.end();
