@@ -5,6 +5,16 @@ export interface ColorPalette {
   neutral: string;
 }
 
+export interface ElementOverride {
+  x?: number;
+  y?: number;
+  font?: string;
+  color?: string;
+  fontSize?: number;
+}
+
+export type TextOverrides = Record<string, ElementOverride>;
+
 export interface InvitationCustomization {
   id?: number;
   profileId: number;
@@ -20,6 +30,7 @@ export interface InvitationCustomization {
   digitalInvitationFont?: string;
   selectedLayout: string;
   backgroundImageUrl: string | null;
+  textOverrides?: TextOverrides;
   updatedAt?: string;
   createdAt?: string;
 }

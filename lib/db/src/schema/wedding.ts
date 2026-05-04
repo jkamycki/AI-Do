@@ -476,6 +476,24 @@ export const invitationCustomizations = pgTable("invitation_customizations", {
   selectedLayout: text("selected_layout").notNull().default("classic"),
   backgroundImageUrl: text("background_image_url"),
 
+  // Per-element overrides keyed like "std:heading", "dig:couple".
+  // Each value: { x?, y?, font?, color?, fontSize? }
+  textOverrides: jsonb("text_overrides")
+    .notNull()
+    .$type<
+      Record<
+        string,
+        {
+          x?: number;
+          y?: number;
+          font?: string;
+          color?: string;
+          fontSize?: number;
+        }
+      >
+    >()
+    .default({}),
+
   // Metadata
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

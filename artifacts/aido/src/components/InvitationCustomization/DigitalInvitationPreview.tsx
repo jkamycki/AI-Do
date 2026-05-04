@@ -1,5 +1,14 @@
-import { useEffect } from "react";
-import type { ColorPalette } from "@/types/invitations";
+import { forwardRef, useState } from "react";
+import type {
+  ColorPalette,
+  TextOverrides,
+  ElementOverride,
+} from "@/types/invitations";
+import {
+  EditableText,
+  EditableImage,
+  EditableToolbar,
+} from "./EditableElements";
 
 interface DigitalInvitationPreviewProps {
   photoUrl: string | null;
@@ -14,193 +23,342 @@ interface DigitalInvitationPreviewProps {
   partner1Name: string;
   partner2Name: string;
   weddingDate: string;
+  textOverrides: TextOverrides;
+  onTextOverridesChange: (next: TextOverrides) => void;
+  editable?: boolean;
 }
 
-export function DigitalInvitationPreview({
-  photoUrl,
-  venue,
-  location,
-  ceremonyTime,
-  receptionTime,
-  guestName,
-  colors,
-  font,
-  backgroundColor,
-  partner1Name,
-  partner2Name,
-  weddingDate,
-}: DigitalInvitationPreviewProps) {
-  useEffect(() => {
-    const fontMap: Record<string, string> = {
-      "Playfair Display": "Playfair+Display:wght@400;700",
-      "Cormorant Garamond": "Cormorant+Garamond:wght@400;700",
-      "Great Vibes": "Great+Vibes:wght@400",
-      "Dancing Script": "Dancing+Script:wght@400;700",
-      "Montserrat": "Montserrat:wght@400;700",
-      "Open Sans": "Open+Sans:wght@400;700",
-      "Lora": "Lora:wght@400;700",
-      "Merriweather": "Merriweather:wght@400;700",
-      "Raleway": "Raleway:wght@400;700",
-      "Poppins": "Poppins:wght@400;700",
-      "Inter": "Inter:wght@400;700",
-      "Source Sans Pro": "Source+Sans+Pro:wght@400;700",
-    };
+const CANVAS_W = 500;
+const CANVAS_H = 920;
+const PHOTO_W = 460;
+const PHOTO_H = 180;
 
-    const fontKey = fontMap[font];
-    if (!fontKey) return;
+const PREFIX = "dig:";
 
-    const link = document.createElement("link");
-    link.href = `https://fonts.googleapis.com/css2?family=${fontKey}&display=swap`;
-    link.rel = "stylesheet";
-    document.head.appendChild(link);
+export const DigitalInvitationPreview = forwardRef<
+  HTMLDivElement,
+  DigitalInvitationPreviewProps
+>(function DigitalInvitationPreview(
+  {
+    photoUrl,
+    venue,
+    location,
+    ceremonyTime,
+    receptionTime,
+    guestName,
+    colors,
+    font,
+    backgroundColor,
+    partner1Name,
+    partner2Name,
+    weddingDate,
+    textOverrides,
+    onTextOverridesChange,
+    editable = true,
+  },
+  ref,
+) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-    return () => {
-      document.head.removeChild(link);
-    };
-  }, [font]);
+  const formattedDate = (() => {
+    const d = new Date(weddingDate);
+    if (isNaN(d.getTime())) return weddingDate;
+    return d.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  })();
+  const couple =
+    partner1Name && partner2Name
+      ? `${partner1Name} & ${partner2Name}`
+      : partner1Name || partner2Name || "Couple Names";
 
-  const previewStyles = {
-    backgroundColor: backgroundColor || "#FFFFFF",
-    fontFamily: font,
+  const updateOverride = (id: string, patch: ElementOverride) => {
+    const cur = textOverrides[id] || {};
+    const merged: ElementOverride = { ...cur, ...patch };
+    (Object.keys(merged) as (keyof ElementOverride)[]).forEach((k) => {
+      if (merged[k] === undefined) delete merged[k];
+    });
+    const next = { ...textOverrides };
+    if (Object.keys(merged).length === 0) {
+      delete next[id];
+    } else {
+      next[id] = merged;
+    }
+    onTextOverridesChange(next);
   };
 
-  const formattedDate = new Date(weddingDate).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  type El = {
+    id: string;
+    text: string;
+    defaultX: number;
+    defaultY: number;
+    defaultColor: string;
+    defaultFontSize: number;
+    defaultFont: string;
+    fontWeight?: number;
+    fontStyle?: "italic" | "normal";
+    uppercase?: boolean;
+    letterSpacing?: string;
+  };
+
+  const elements: El[] = [
+    {
+      id: PREFIX + "greeting",
+      text: `Dear ${guestName || "Guest"},`,
+      defaultX: CANVAS_W / 2,
+      defaultY: 230,
+      defaultColor: colors.neutral,
+      defaultFontSize: 18,
+      defaultFont: "Cormorant Garamond",
+      fontWeight: 500,
+    },
+    {
+      id: PREFIX + "request",
+      text: "request the honor of your presence",
+      defaultX: CANVAS_W / 2,
+      defaultY: 270,
+      defaultColor: colors.neutral,
+      defaultFontSize: 15,
+      defaultFont: "Cormorant Garamond",
+      fontStyle: "italic",
+    },
+    {
+      id: PREFIX + "couple",
+      text: couple,
+      defaultX: CANVAS_W / 2,
+      defaultY: 320,
+      defaultColor: colors.primary,
+      defaultFontSize: 36,
+      defaultFont: "Great Vibes",
+      fontWeight: 600,
+    },
+    {
+      id: PREFIX + "date-label",
+      text: "DATE",
+      defaultX: CANVAS_W / 2,
+      defaultY: 410,
+      defaultColor: colors.neutral,
+      defaultFontSize: 11,
+      defaultFont: font || "Montserrat",
+      fontWeight: 600,
+      uppercase: true,
+      letterSpacing: "0.2em",
+    },
+    {
+      id: PREFIX + "date-value",
+      text: formattedDate,
+      defaultX: CANVAS_W / 2,
+      defaultY: 432,
+      defaultColor: colors.primary,
+      defaultFontSize: 18,
+      defaultFont: font || "Cormorant Garamond",
+      fontWeight: 600,
+    },
+    {
+      id: PREFIX + "ceremony-label",
+      text: "CEREMONY",
+      defaultX: CANVAS_W / 2,
+      defaultY: 480,
+      defaultColor: colors.neutral,
+      defaultFontSize: 11,
+      defaultFont: font || "Montserrat",
+      fontWeight: 600,
+      uppercase: true,
+      letterSpacing: "0.2em",
+    },
+    {
+      id: PREFIX + "ceremony-value",
+      text: ceremonyTime || "",
+      defaultX: CANVAS_W / 2,
+      defaultY: 502,
+      defaultColor: colors.primary,
+      defaultFontSize: 16,
+      defaultFont: font || "Cormorant Garamond",
+    },
+    {
+      id: PREFIX + "reception-label",
+      text: "RECEPTION",
+      defaultX: CANVAS_W / 2,
+      defaultY: 548,
+      defaultColor: colors.neutral,
+      defaultFontSize: 11,
+      defaultFont: font || "Montserrat",
+      fontWeight: 600,
+      uppercase: true,
+      letterSpacing: "0.2em",
+    },
+    {
+      id: PREFIX + "reception-value",
+      text: receptionTime || "",
+      defaultX: CANVAS_W / 2,
+      defaultY: 570,
+      defaultColor: colors.primary,
+      defaultFontSize: 16,
+      defaultFont: font || "Cormorant Garamond",
+    },
+    {
+      id: PREFIX + "venue-label",
+      text: "VENUE",
+      defaultX: CANVAS_W / 2,
+      defaultY: 616,
+      defaultColor: colors.neutral,
+      defaultFontSize: 11,
+      defaultFont: font || "Montserrat",
+      fontWeight: 600,
+      uppercase: true,
+      letterSpacing: "0.2em",
+    },
+    {
+      id: PREFIX + "venue-value",
+      text: venue || "",
+      defaultX: CANVAS_W / 2,
+      defaultY: 638,
+      defaultColor: colors.primary,
+      defaultFontSize: 18,
+      defaultFont: font || "Cormorant Garamond",
+      fontWeight: 600,
+    },
+    {
+      id: PREFIX + "location",
+      text: location || "",
+      defaultX: CANVAS_W / 2,
+      defaultY: 666,
+      defaultColor: colors.neutral,
+      defaultFontSize: 14,
+      defaultFont: font || "Cormorant Garamond",
+    },
+    {
+      id: PREFIX + "footer-label",
+      text: "Together with their families",
+      defaultX: CANVAS_W / 2,
+      defaultY: 800,
+      defaultColor: colors.neutral,
+      defaultFontSize: 12,
+      defaultFont: font || "Cormorant Garamond",
+      fontStyle: "italic",
+    },
+    {
+      id: PREFIX + "footer-couple",
+      text: couple,
+      defaultX: CANVAS_W / 2,
+      defaultY: 825,
+      defaultColor: colors.primary,
+      defaultFontSize: 18,
+      defaultFont: "Great Vibes",
+    },
+  ];
+
+  const photoId = PREFIX + "photo";
+  const photoOverride = textOverrides[photoId];
+  const selectedEl = elements.find((e) => e.id === selectedId);
 
   return (
-    <div
-      className="w-full h-full p-6 overflow-y-auto rounded-lg border border-border space-y-4"
-      style={previewStyles}
-    >
-      {/* Photo */}
-      {photoUrl ? (
-        <div className="w-full h-32 rounded-lg overflow-hidden border border-border shadow-md">
-          <img
-            src={photoUrl}
-            alt="Invitation"
-            className="w-full h-full object-cover"
-          />
-        </div>
-      ) : (
-        <div
-          className="w-full h-32 rounded-lg border-2 border-dashed border-border flex items-center justify-center"
-          style={{ backgroundColor: colors.secondary + "20" }}
-        >
-          <p className="text-muted-foreground">Photo preview</p>
-        </div>
-      )}
-
-      {/* Guest Greeting */}
-      <div className="space-y-1">
-        <p style={{ color: colors.neutral }}>Dear {guestName || "Guest Name"},</p>
-      </div>
-
-      {/* Divider */}
-      <div
-        className="h-px"
-        style={{ backgroundColor: colors.accent }}
-      />
-
-      {/* Wedding Couple Names */}
-      <div className="text-center space-y-1">
-        <h2
-          className="text-xl font-bold"
-          style={{ color: colors.primary }}
-        >
-          {partner1Name} & {partner2Name}
-        </h2>
-        <p style={{ color: colors.neutral }}>request your presence</p>
-      </div>
-
-      {/* Wedding Details */}
-      <div
-        className="p-4 rounded-lg space-y-2"
-        style={{ backgroundColor: colors.secondary + "20" }}
-      >
-        <div>
-          <p className="text-xs font-medium" style={{ color: colors.neutral }}>
-            DATE
-          </p>
-          <p className="text-sm font-semibold">{formattedDate}</p>
-        </div>
-
-        <div>
-          <p className="text-xs font-medium" style={{ color: colors.neutral }}>
-            CEREMONY
-          </p>
-          <p className="text-sm">{ceremonyTime}</p>
-        </div>
-
-        <div>
-          <p className="text-xs font-medium" style={{ color: colors.neutral }}>
-            RECEPTION
-          </p>
-          <p className="text-sm">{receptionTime}</p>
-        </div>
-
-        <div>
-          <p className="text-xs font-medium" style={{ color: colors.neutral }}>
-            VENUE
-          </p>
-          <p className="text-sm font-semibold">{venue}</p>
-          <p className="text-xs text-muted-foreground">{location}</p>
-        </div>
-      </div>
-
-      {/* RSVP Section */}
-      <div className="space-y-3 pt-2">
-        <p className="text-sm font-semibold">RSVP</p>
-        <select
-          className="w-full px-3 py-2 border rounded text-sm"
-          style={{
-            borderColor: colors.accent,
-            backgroundColor: colors.secondary + "10",
-          }}
-        >
-          <option>Select your response...</option>
-          <option>Joyfully Accepts</option>
-          <option>Declines with Thanks</option>
-          <option>Unsure</option>
-        </select>
-
-        <div>
-          <label className="text-sm font-medium">Meal Choice</label>
-          <select
-            className="w-full px-3 py-2 border rounded text-sm mt-1"
-            style={{
-              borderColor: colors.accent,
-              backgroundColor: colors.secondary + "10",
+    <div className="flex flex-col items-center">
+      <div className="h-12 mb-2 flex items-center justify-center">
+        {editable && selectedEl ? (
+          <EditableToolbar
+            override={textOverrides[selectedEl.id]}
+            defaults={{
+              font: selectedEl.defaultFont,
+              color: selectedEl.defaultColor,
+              fontSize: selectedEl.defaultFontSize,
             }}
-          >
-            <option>Select meal preference...</option>
-            <option>Chicken</option>
-            <option>Fish</option>
-            <option>Vegetarian</option>
-            <option>Vegan</option>
-          </select>
-        </div>
-
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="rounded"
-            style={{ accentColor: colors.accent }}
+            onChange={(patch) => updateOverride(selectedEl.id, patch)}
+            onReset={() =>
+              updateOverride(selectedEl.id, {
+                x: undefined,
+                y: undefined,
+                font: undefined,
+                color: undefined,
+                fontSize: undefined,
+              })
+            }
+            onClose={() => setSelectedId(null)}
+            label="Text"
           />
-          I will bring a plus one
-        </label>
+        ) : editable && selectedId === photoId ? (
+          <EditableToolbar
+            override={photoOverride}
+            defaults={{ font: "", color: "", fontSize: 0 }}
+            showFont={false}
+            showColor={false}
+            showFontSize={false}
+            onChange={() => {}}
+            onReset={() =>
+              updateOverride(photoId, { x: undefined, y: undefined })
+            }
+            onClose={() => setSelectedId(null)}
+            label="Photo"
+          />
+        ) : editable ? (
+          <p className="text-xs text-muted-foreground">
+            Click any text or the photo to edit. Drag to reposition.
+          </p>
+        ) : null}
       </div>
 
-      {/* Footer */}
       <div
-        className="text-center pt-4 text-xs"
-        style={{ color: colors.neutral }}
+        ref={ref}
+        className="rounded-lg border border-border relative shadow-sm"
+        style={{
+          width: CANVAS_W,
+          height: CANVAS_H,
+          backgroundColor: backgroundColor || "#FFFFFF",
+        }}
+        onPointerDown={() => setSelectedId(null)}
       >
-        <p>Together with their families</p>
-        <p>{partner1Name} & {partner2Name}</p>
+        <EditableImage
+          id={photoId}
+          src={photoUrl}
+          width={PHOTO_W}
+          height={PHOTO_H}
+          defaultX={CANVAS_W / 2}
+          defaultY={20}
+          override={photoOverride}
+          selected={selectedId === photoId}
+          onSelect={setSelectedId}
+          onChange={updateOverride}
+          editable={editable}
+          fallbackBg={colors.secondary + "20"}
+        />
+
+        {/* Decorative divider — not draggable */}
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            left: CANVAS_W / 2 - 100,
+            top: 380,
+            width: 200,
+            height: 1,
+            backgroundColor: colors.accent,
+            opacity: 0.5,
+          }}
+        />
+
+        {elements.map((el) => (
+          <EditableText
+            key={el.id}
+            id={el.id}
+            text={el.text}
+            defaultX={el.defaultX}
+            defaultY={el.defaultY}
+            defaultColor={el.defaultColor}
+            defaultFontSize={el.defaultFontSize}
+            defaultFont={el.defaultFont}
+            fontWeight={el.fontWeight}
+            fontStyle={el.fontStyle}
+            uppercase={el.uppercase}
+            letterSpacing={el.letterSpacing}
+            override={textOverrides[el.id]}
+            selected={selectedId === el.id}
+            onSelect={setSelectedId}
+            onChange={updateOverride}
+            editable={editable}
+          />
+        ))}
       </div>
     </div>
   );
-}
+});

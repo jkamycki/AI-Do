@@ -1,5 +1,14 @@
-import { useEffect } from "react";
-import type { ColorPalette } from "@/types/invitations";
+import { forwardRef, useState } from "react";
+import type {
+  ColorPalette,
+  TextOverrides,
+  ElementOverride,
+} from "@/types/invitations";
+import {
+  EditableText,
+  EditableImage,
+  EditableToolbar,
+} from "./EditableElements";
 
 interface SaveTheDatePreviewProps {
   photoUrl: string | null;
@@ -10,114 +19,197 @@ interface SaveTheDatePreviewProps {
   partner1Name?: string;
   partner2Name?: string;
   location?: string;
+  textOverrides: TextOverrides;
+  onTextOverridesChange: (next: TextOverrides) => void;
+  editable?: boolean;
 }
 
-export function SaveTheDatePreview({
-  photoUrl,
-  weddingDate,
-  colors,
-  font,
-  backgroundColor,
-  partner1Name,
-  partner2Name,
-  location,
-}: SaveTheDatePreviewProps) {
-  useEffect(() => {
-    const fontMap: Record<string, string> = {
-      "Playfair Display": "Playfair+Display:wght@400;700",
-      "Cormorant Garamond": "Cormorant+Garamond:wght@400;700",
-      "Great Vibes": "Great+Vibes:wght@400",
-      "Dancing Script": "Dancing+Script:wght@400;700",
-      "Montserrat": "Montserrat:wght@400;700",
-      "Open Sans": "Open+Sans:wght@400;700",
-      "Lora": "Lora:wght@400;700",
-      "Merriweather": "Merriweather:wght@400;700",
-      "Raleway": "Raleway:wght@400;700",
-      "Poppins": "Poppins:wght@400;700",
-      "Inter": "Inter:wght@400;700",
-      "Source Sans Pro": "Source+Sans+Pro:wght@400;700",
+const CANVAS_W = 500;
+const CANVAS_H = 680;
+const PHOTO_W = 340;
+const PHOTO_H = 220;
+
+const PREFIX = "std:";
+
+export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewProps>(
+  function SaveTheDatePreview(
+    {
+      photoUrl,
+      weddingDate,
+      colors,
+      font,
+      backgroundColor,
+      partner1Name,
+      partner2Name,
+      location,
+      textOverrides,
+      onTextOverridesChange,
+      editable = true,
+    },
+    ref,
+  ) {
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+
+    const dateObj = new Date(weddingDate);
+    const formattedDate = isNaN(dateObj.getTime())
+      ? weddingDate
+      : `${String(dateObj.getMonth() + 1).padStart(2, "0")}.${String(
+          dateObj.getDate(),
+        ).padStart(2, "0")}.${dateObj.getFullYear()}`;
+    const couple =
+      partner1Name && partner2Name
+        ? `${partner1Name} & ${partner2Name}`
+        : partner1Name || partner2Name || "Couple Names";
+    const dateLine = location ? `${formattedDate}  –  ${location}` : formattedDate;
+
+    const updateOverride = (id: string, patch: ElementOverride) => {
+      const cur = textOverrides[id] || {};
+      const merged: ElementOverride = { ...cur, ...patch };
+      (Object.keys(merged) as (keyof ElementOverride)[]).forEach((k) => {
+        if (merged[k] === undefined) delete merged[k];
+      });
+      const next = { ...textOverrides };
+      if (Object.keys(merged).length === 0) {
+        delete next[id];
+      } else {
+        next[id] = merged;
+      }
+      onTextOverridesChange(next);
     };
 
-    const fontKey = fontMap[font];
-    if (!fontKey) return;
+    const elements = [
+      {
+        id: PREFIX + "heading",
+        text: "Save the Date",
+        defaultX: CANVAS_W / 2,
+        defaultY: 40,
+        defaultColor: colors.primary,
+        defaultFontSize: 38,
+        defaultFont: font || "Playfair Display",
+        fontWeight: 700 as const,
+        uppercase: true,
+        letterSpacing: "0.15em",
+      },
+      {
+        id: PREFIX + "couple",
+        text: couple,
+        defaultX: CANVAS_W / 2,
+        defaultY: 380,
+        defaultColor: colors.primary,
+        defaultFontSize: 36,
+        defaultFont: "Great Vibes",
+        fontWeight: 600 as const,
+      },
+      {
+        id: PREFIX + "date",
+        text: dateLine,
+        defaultX: CANVAS_W / 2,
+        defaultY: 470,
+        defaultColor: colors.accent,
+        defaultFontSize: 20,
+        defaultFont: "Cormorant Garamond",
+        fontWeight: 500 as const,
+      },
+    ];
 
-    const link = document.createElement("link");
-    link.href = `https://fonts.googleapis.com/css2?family=${fontKey}&display=swap`;
-    link.rel = "stylesheet";
-    document.head.appendChild(link);
+    const photoId = PREFIX + "photo";
+    const photoOverride = textOverrides[photoId];
+    const selectedEl = elements.find((e) => e.id === selectedId);
 
-    return () => {
-      document.head.removeChild(link);
-    };
-  }, [font]);
-
-  const previewStyles = {
-    backgroundColor: backgroundColor || "#FFFFFF",
-    fontFamily: font,
-  };
-
-  const dateObj = new Date(weddingDate);
-  const formattedDate = isNaN(dateObj.getTime())
-    ? weddingDate
-    : `${String(dateObj.getMonth() + 1).padStart(2, "0")}.${String(
-        dateObj.getDate(),
-      ).padStart(2, "0")}.${dateObj.getFullYear()}`;
-
-  const coupleNames =
-    partner1Name && partner2Name
-      ? `${partner1Name} & ${partner2Name}`
-      : partner1Name || partner2Name || "";
-
-  const dateLocation = location ? `${formattedDate} – ${location}` : formattedDate;
-
-  return (
-    <div
-      className="w-full h-full p-8 flex flex-col items-center justify-center space-y-6 rounded-lg border border-border"
-      style={previewStyles}
-    >
-      {/* Heading */}
-      <h1
-        className="text-4xl font-bold text-center tracking-wide uppercase"
-        style={{ color: colors.primary }}
-      >
-        Save the Date
-      </h1>
-
-      {/* Photo */}
-      {photoUrl ? (
-        <div className="w-full max-w-sm h-56 rounded-lg overflow-hidden border border-border shadow-md">
-          <img
-            src={photoUrl}
-            alt="Save the Date"
-            className="w-full h-full object-cover"
-          />
+    return (
+      <div className="flex flex-col items-center">
+        {/* Toolbar lives outside the captured canvas so it never appears in PDF exports */}
+        <div className="h-12 mb-2 flex items-center justify-center">
+          {editable && selectedEl ? (
+            <EditableToolbar
+              override={textOverrides[selectedEl.id]}
+              defaults={{
+                font: selectedEl.defaultFont,
+                color: selectedEl.defaultColor,
+                fontSize: selectedEl.defaultFontSize,
+              }}
+              onChange={(patch) => updateOverride(selectedEl.id, patch)}
+              onReset={() =>
+                updateOverride(selectedEl.id, {
+                  x: undefined,
+                  y: undefined,
+                  font: undefined,
+                  color: undefined,
+                  fontSize: undefined,
+                })
+              }
+              onClose={() => setSelectedId(null)}
+              label="Text"
+            />
+          ) : editable && selectedId === photoId ? (
+            <EditableToolbar
+              override={photoOverride}
+              defaults={{ font: "", color: "", fontSize: 0 }}
+              showFont={false}
+              showColor={false}
+              showFontSize={false}
+              onChange={() => {}}
+              onReset={() =>
+                updateOverride(photoId, { x: undefined, y: undefined })
+              }
+              onClose={() => setSelectedId(null)}
+              label="Photo"
+            />
+          ) : editable ? (
+            <p className="text-xs text-muted-foreground">
+              Click any text or the photo to edit. Drag to reposition.
+            </p>
+          ) : null}
         </div>
-      ) : (
+
+        {/* Canvas (this is the ref'd element captured by html2canvas) */}
         <div
-          className="w-full max-w-sm h-56 rounded-lg border-2 border-dashed border-border flex items-center justify-center"
-          style={{ backgroundColor: colors.secondary + "20" }}
+          ref={ref}
+          className="rounded-lg border border-border relative shadow-sm"
+          style={{
+            width: CANVAS_W,
+            height: CANVAS_H,
+            backgroundColor: backgroundColor || "#FFFFFF",
+          }}
+          onPointerDown={() => setSelectedId(null)}
         >
-          <p className="text-muted-foreground">Photo preview</p>
+          <EditableImage
+            id={photoId}
+            src={photoUrl}
+            width={PHOTO_W}
+            height={PHOTO_H}
+            defaultX={CANVAS_W / 2}
+            defaultY={120}
+            override={photoOverride}
+            selected={selectedId === photoId}
+            onSelect={setSelectedId}
+            onChange={updateOverride}
+            editable={editable}
+            fallbackBg={colors.secondary + "20"}
+          />
+
+          {elements.map((el) => (
+            <EditableText
+              key={el.id}
+              id={el.id}
+              text={el.text}
+              defaultX={el.defaultX}
+              defaultY={el.defaultY}
+              defaultColor={el.defaultColor}
+              defaultFontSize={el.defaultFontSize}
+              defaultFont={el.defaultFont}
+              fontWeight={el.fontWeight}
+              uppercase={el.uppercase}
+              letterSpacing={el.letterSpacing}
+              override={textOverrides[el.id]}
+              selected={selectedId === el.id}
+              onSelect={setSelectedId}
+              onChange={updateOverride}
+              editable={editable}
+            />
+          ))}
         </div>
-      )}
-
-      {/* Couple names */}
-      {coupleNames && (
-        <p
-          className="text-3xl font-semibold text-center"
-          style={{ color: colors.primary }}
-        >
-          {coupleNames}
-        </p>
-      )}
-
-      {/* Date – Location */}
-      <p
-        className="text-xl font-medium text-center"
-        style={{ color: colors.accent }}
-      >
-        {dateLocation}
-      </p>
-    </div>
-  );
-}
+      </div>
+    );
+  },
+);

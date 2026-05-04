@@ -71,6 +71,7 @@ router.get("/invitation-customizations", requireAuth, async (req, res) => {
         selectedFont: "Georgia",
         selectedLayout: "classic",
         backgroundImageUrl: null,
+        textOverrides: {},
       });
     }
 
@@ -99,6 +100,7 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
       selectedFont,
       selectedLayout,
       backgroundImageUrl,
+      textOverrides,
     } = req.body as {
       profileId: number;
       primaryColor?: string;
@@ -111,6 +113,10 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
       selectedFont?: string;
       selectedLayout?: string;
       backgroundImageUrl?: string | null;
+      textOverrides?: Record<
+        string,
+        { x?: number; y?: number; font?: string; color?: string; fontSize?: number }
+      >;
     };
 
     if (!profileId) {
@@ -160,6 +166,7 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
           ...(selectedFont && { selectedFont }),
           ...(selectedLayout && { selectedLayout }),
           ...(backgroundImageUrl !== undefined && { backgroundImageUrl }),
+          ...(textOverrides !== undefined && { textOverrides }),
           updatedAt: new Date(),
         })
         .where(eq(invitationCustomizations.profileId, profileId))
@@ -187,6 +194,7 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
           selectedFont: selectedFont || "Georgia",
           selectedLayout: selectedLayout || "classic",
           backgroundImageUrl: backgroundImageUrl || null,
+          textOverrides: textOverrides || {},
         })
         .returning();
       result = created;
