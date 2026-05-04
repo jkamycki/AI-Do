@@ -38,6 +38,7 @@ interface Customization {
 }
 
 interface Profile {
+  id?: number;
   partner1Name?: string | null;
   partner2Name?: string | null;
   weddingDate?: string | null;
@@ -613,14 +614,14 @@ export function InvitationSendModal({
   const [showRsvpSim, setShowRsvpSim] = useState(false);
 
   useEffect(() => {
-    if (!guest) {
+    if (!guest || !profile?.id) {
       setCustomization(null);
       setShowRsvpSim(false);
       setActiveTab("saveTheDate");
       return;
     }
     setLoadingCustomization(true);
-    authFetch("/api/invitation-customizations")
+    authFetch(`/api/invitation-customizations?profileId=${profile.id}`)
       .then(r => r.json())
       .then((data) => {
         setCustomization({
@@ -657,7 +658,7 @@ export function InvitationSendModal({
         });
       })
       .finally(() => setLoadingCustomization(false));
-  }, [guest?.id]);
+  }, [guest?.id, profile?.id]);
 
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 

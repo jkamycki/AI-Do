@@ -73,7 +73,18 @@ async function resolvePhotoFile(photoUrl: string) {
 
 async function getImageAsBase64(photoUrl: string | null | undefined): Promise<string | null> {
   if (!photoUrl) return null;
+  // Skip blob URLs — they only exist in the browser and cannot be fetched server-side.
+  if (photoUrl.startsWith("blob:")) return null;
   try {
+    // External HTTPS/HTTP URLs: fetch directly rather than going through object storage.
+    if (photoUrl.startsWith("https://") || photoUrl.startsWith("http://")) {
+      const resp = await fetch(photoUrl);
+      if (!resp.ok) return null;
+      const buffer = Buffer.from(await resp.arrayBuffer());
+      const contentType = resp.headers.get("Content-Type") || "image/jpeg";
+      return `data:${contentType};base64,${buffer.toString("base64")}`;
+    }
+
     const file = await resolvePhotoFile(photoUrl);
     const response = await objectStorageService.downloadObject(file, 86400);
     if (!response.body) return null;
