@@ -502,7 +502,7 @@ export default function Rsvp() {
                         )}
                       />
 
-                      {info.plusOneAllowed && (
+                      {(
                       <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-4">
                         <FormField
                           control={form.control}

@@ -26,10 +26,29 @@ function buildOrigin(req: import("express").Request): string {
   return `${proto}://${host}`;
 }
 
+/**
+ * Resolves a stored photo URL to an R2File regardless of whether the URL is in the
+ * legacy private `/objects/...` format or the newer public
+ * `/api/storage/public-objects/<folder>/<file>` format produced by uploadFile.
+ */
+async function resolvePhotoFile(photoUrl: string) {
+  const PUBLIC_PREFIX = "/api/storage/public-objects/";
+  const PUBLIC_PREFIX_NO_API = "/storage/public-objects/";
+  let publicPath: string | null = null;
+  if (photoUrl.startsWith(PUBLIC_PREFIX)) publicPath = photoUrl.slice(PUBLIC_PREFIX.length);
+  else if (photoUrl.startsWith(PUBLIC_PREFIX_NO_API)) publicPath = photoUrl.slice(PUBLIC_PREFIX_NO_API.length);
+  if (publicPath) {
+    const file = await objectStorageService.searchPublicObject(publicPath);
+    if (!file) throw new Error("Public photo not found: " + publicPath);
+    return file;
+  }
+  return objectStorageService.getObjectEntityFile(photoUrl);
+}
+
 async function getImageAsBase64(photoUrl: string | null | undefined): Promise<string | null> {
   if (!photoUrl) return null;
   try {
-    const file = await objectStorageService.getObjectEntityFile(photoUrl);
+    const file = await resolvePhotoFile(photoUrl);
     const response = await objectStorageService.downloadObject(file, 86400);
     if (!response.body) return null;
 
@@ -380,7 +399,7 @@ router.get("/rsvp/:token/photo", async (req, res) => {
 
     if (!photoUrl) return res.status(404).end();
 
-    const file = await objectStorageService.getObjectEntityFile(photoUrl);
+    const file = await resolvePhotoFile(photoUrl);
     const response = await objectStorageService.downloadObject(file, 86400);
 
     const contentType = response.headers.get("Content-Type") ?? "image/jpeg";
@@ -420,6 +439,17 @@ router.get("/rsvp/:token", async (req, res) => {
 
     const profile = profiles[0];
 
+    // Also pull customization to expose its photo (and to ensure hasPhoto reflects
+    // either the customization's digital invitation photo or the profile fallback).
+    const customizationRows = profile
+      ? await db
+          .select({ digitalInvitationPhotoUrl: invitationCustomizations.digitalInvitationPhotoUrl })
+          .from(invitationCustomizations)
+          .where(eq(invitationCustomizations.profileId, profile.id))
+          .limit(1)
+      : [];
+    const customizationPhoto = customizationRows[0]?.digitalInvitationPhotoUrl ?? null;
+
     res.json({
       guestName: guest.name,
       partner1Name: profile?.partner1Name ?? null,
@@ -439,8 +469,10 @@ router.get("/rsvp/:token", async (req, res) => {
       ceremonyState: profile?.ceremonyState ?? null,
       ceremonyZip: profile?.ceremonyZip ?? null,
       currentStatus: guest.rsvpStatus,
-      plusOneAllowed: !!guest.plusOne,
-      hasPhoto: !!(profile?.invitationPhotoUrl),
+      // Allow the guest themselves to choose whether to bring a plus-one,
+      // unless the planner explicitly disabled it. Default to allowed.
+      plusOneAllowed: true,
+      hasPhoto: !!(customizationPhoto || profile?.invitationPhotoUrl),
       invitationMessage: profile?.invitationMessage ?? null,
     });
   } catch (err) {
@@ -772,7 +804,7 @@ router.get("/save-the-date/:token/photo", async (req, res) => {
     }
 
     if (!photoUrl) return res.status(404).end();
-    const file = await objectStorageService.getObjectEntityFile(photoUrl);
+    const file = await resolvePhotoFile(photoUrl);
     const response = await objectStorageService.downloadObject(file, 3600);
     res.set("Content-Type", response.headers.get("Content-Type") || "image/jpeg");
     res.set("Cache-Control", "public, max-age=3600");
