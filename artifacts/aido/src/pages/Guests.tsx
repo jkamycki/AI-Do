@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, Phone, MapPin, Send, Loader2, Sparkles, X as XIcon, AlertTriangle } from "lucide-react";
+import { InvitationSendModal } from "@/components/GuestList/InvitationSendModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
 import { useTranslation } from "react-i18next";
@@ -605,10 +606,9 @@ export default function Guests() {
   const [duplicateGuestIds, setDuplicateGuestIds] = useState<Set<number>>(new Set());
   const [pendingGuestData, setPendingGuestData] = useState<GuestFormValues | null>(null);
 
-  const [linkDialogState, setLinkDialogState] = useState<{ guestId: number; name: string; url: string; copied: boolean; hasEmail: boolean } | null>(null);
-  const [fetchingLinkId, setFetchingLinkId] = useState<number | null>(null);
-  const [inviteTypeGuest, setInviteTypeGuest] = useState<Guest | null>(null);
+  const [sendModalGuest, setSendModalGuest] = useState<Guest | null>(null);
 
+  const { data: weddingProfile } = useGetProfile();
   const { data, isLoading, isError } = useGetGuests();
   const addGuest = useAddGuest();
   const updateGuest = useUpdateGuest();
@@ -634,7 +634,7 @@ export default function Guests() {
     onSuccess: (data: { emailSent?: boolean }, guestId) => {
       optimisticUpdate(guestId, { saveTheDateStatus: "sent" } as any);
       invalidate();
-      setInviteTypeGuest(null);
+      setSendModalGuest(null);
       if (data?.emailSent) {
         toast({ title: "Save the Date sent!", description: "Email delivered to guest." });
       } else {
@@ -658,29 +658,15 @@ export default function Guests() {
       // for the guest's actual response (attending / maybe / declined / pending).
       optimisticUpdate(guestId, { invitationStatus: "sent" });
       invalidate();
-      setLinkDialogState(null);
+      setSendModalGuest(null);
       if (data.emailSent) {
-        toast({ title: "RSVP sent!", description: "Email delivered to guest." });
+        toast({ title: "Digital Invitation sent!", description: "Email delivered to guest." });
       } else {
-        toast({ title: "RSVP marked as sent.", description: "Share the link directly with your guest." });
+        toast({ title: "Digital Invitation marked as sent.", description: "No email on file — status updated." });
       }
     },
-    onError: (err) => toast({ title: "Failed to send RSVP", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
+    onError: (err) => toast({ title: "Failed to send Digital Invitation", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
   });
-
-  const fetchRsvpLink = async (guest: Guest) => {
-    setFetchingLinkId(guest.id);
-    try {
-      const res = await authFetch(`/api/guests/${guest.id}/rsvp-link`);
-      if (!res.ok) throw new Error("Failed to generate link");
-      const { rsvpUrl } = await res.json() as { rsvpUrl: string };
-      setLinkDialogState({ guestId: guest.id, name: guest.name, url: rsvpUrl, copied: false, hasEmail: !!guest.email });
-    } catch {
-      toast({ title: "Could not generate RSVP link", variant: "destructive" });
-    } finally {
-      setFetchingLinkId(null);
-    }
-  };
 
   const allGuests = data?.guests ?? [];
   const summary = data?.summary ?? { total: 0, attending: 0, declined: 0, pending: 0, plusOnes: 0 };
@@ -1495,22 +1481,17 @@ export default function Guests() {
                               title={
                                 g.rsvpStatus === "attending" ? "RSVP confirmed" :
                                 g.rsvpStatus === "declined" ? "Declined" :
-                                "Send invitation"
+                                "Preview & Send invitation"
                               }
                               disabled={
-                                (g.rsvpStatus === "attending" || g.rsvpStatus === "declined") ||
-                                fetchingLinkId === g.id
+                                (g.rsvpStatus === "attending" || g.rsvpStatus === "declined")
                               }
                               onClick={() => {
                                 if (g.rsvpStatus === "attending" || g.rsvpStatus === "declined") return;
-                                setInviteTypeGuest(g);
+                                setSendModalGuest(g);
                               }}
                             >
-                              {fetchingLinkId === g.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Send className="h-3.5 w-3.5" />
-                              )}
+                              <Send className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               variant="ghost" size="icon" className="h-8 w-8"
@@ -1586,118 +1567,16 @@ export default function Guests() {
         </DialogContent>
       </Dialog>
 
-      {/* Invite type picker dialog */}
-      <Dialog open={!!inviteTypeGuest} onOpenChange={(open) => { if (!open) setInviteTypeGuest(null); }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-xl text-primary flex items-center gap-2">
-              <Send className="h-5 w-5" /> {t("guests.send_invite_title")}
-            </DialogTitle>
-            <DialogDescription>
-              {t("guests.send_invite_desc", { name: inviteTypeGuest?.name ?? "" })}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-3 pt-1">
-            <Button
-              variant="outline"
-              className="h-auto py-4 flex flex-col items-start gap-1 text-left"
-              onClick={() => {
-                if (inviteTypeGuest) sendSaveTheDate.mutate(inviteTypeGuest.id);
-              }}
-              disabled={sendSaveTheDate.isPending}
-            >
-              <span className="font-semibold text-foreground flex items-center gap-2">
-                {sendSaveTheDate.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                {t("guests.send_save_the_date_option")}
-              </span>
-              <span className="text-xs text-muted-foreground font-normal">{t("guests.send_save_the_date_option_desc")}</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-auto py-4 flex flex-col items-start gap-1 text-left"
-              onClick={() => {
-                if (inviteTypeGuest) {
-                  const g = inviteTypeGuest;
-                  setInviteTypeGuest(null);
-                  fetchRsvpLink(g);
-                }
-              }}
-              disabled={fetchingLinkId !== null}
-            >
-              <span className="font-semibold text-foreground flex items-center gap-2">
-                {fetchingLinkId !== null ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                {t("guests.send_digital_invite_option")}
-              </span>
-              <span className="text-xs text-muted-foreground font-normal">{t("guests.send_digital_invite_option_desc")}</span>
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* RSVP link preview + send confirmation dialog */}
-      <Dialog open={!!linkDialogState} onOpenChange={(open) => { if (!open) setLinkDialogState(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-xl text-primary flex items-center gap-2">
-              <Link2 className="h-5 w-5" /> RSVP Link for {linkDialogState?.name}
-            </DialogTitle>
-            <DialogDescription>
-              {linkDialogState?.hasEmail
-                ? "Copy this link or send it directly to your guest by email."
-                : "No email on file — copy and share this link directly with your guest."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex items-center gap-2 mt-1">
-            <Input
-              readOnly
-              value={linkDialogState?.url ?? ""}
-              className="font-mono text-xs bg-muted"
-            />
-            <Button
-              size="icon"
-              variant="outline"
-              title="Copy link"
-              onClick={() => {
-                if (!linkDialogState) return;
-                navigator.clipboard.writeText(linkDialogState.url).then(() => {
-                  setLinkDialogState(prev => prev ? { ...prev, copied: true } : null);
-                  setTimeout(() => setLinkDialogState(prev => prev ? { ...prev, copied: false } : null), 2000);
-                });
-              }}
-            >
-              {linkDialogState?.copied ? <CheckCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-            </Button>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            Do you want to send this link to your guest?
-            {linkDialogState?.hasEmail && " An email will be delivered to their inbox."}
-          </p>
-
-          <div className="flex justify-end gap-2 pt-1">
-            <Button
-              variant="outline"
-              onClick={() => setLinkDialogState(null)}
-            >
-              Not now
-            </Button>
-            <Button
-              onClick={() => {
-                if (linkDialogState) sendRsvp.mutate(linkDialogState.guestId);
-              }}
-              disabled={sendRsvp.isPending}
-              className="gap-2"
-            >
-              {sendRsvp.isPending ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</>
-              ) : (
-                <><Send className="h-4 w-4" /> {linkDialogState?.hasEmail ? "Send email" : "Mark as sent"}</>
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Invitation Preview & Send Modal */}
+      <InvitationSendModal
+        guest={sendModalGuest}
+        profile={weddingProfile ?? null}
+        onClose={() => setSendModalGuest(null)}
+        onSendSaveTheDate={(guestId) => sendSaveTheDate.mutate(guestId)}
+        onSendDigitalInvitation={(guestId) => sendRsvp.mutate(guestId)}
+        isSendingSaveTheDate={sendSaveTheDate.isPending}
+        isSendingDigital={sendRsvp.isPending}
+      />
     </div>
   );
 }
