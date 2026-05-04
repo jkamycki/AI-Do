@@ -104,6 +104,7 @@ export type ChecklistItem = typeof checklistItems.$inferSelect;
 
 export const vendors = pgTable("vendors", {
   id: serial("id").primaryKey(),
+  profileId: integer("profile_id"),
   userId: text("user_id").notNull().default(""),
   name: text("name").notNull(),
   category: text("category").notNull(),
@@ -143,6 +144,7 @@ export type VendorPayment = typeof vendorPayments.$inferSelect;
 
 export const manualExpenses = pgTable("manual_expenses", {
   id: serial("id").primaryKey(),
+  profileId: integer("profile_id"),
   userId: text("user_id").notNull(),
   name: text("name").notNull(),
   category: text("category").notNull().default("Other"),

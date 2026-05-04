@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, manualExpenses } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
-import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
+import { resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -40,11 +40,15 @@ router.get("/manual-expenses", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.json([]);
+      return;
+    }
     const rows = await db
       .select()
       .from(manualExpenses)
-      .where(eq(manualExpenses.userId, userId))
+      .where(eq(manualExpenses.profileId, profile.id))
       .orderBy(desc(manualExpenses.createdAt));
     res.json(rows.map(format));
   } catch (err) {
@@ -60,7 +64,11 @@ router.post("/manual-expenses", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(400).json({ error: "No wedding profile found" });
+      return;
+    }
     const { name, category, cost, amountPaid, notes, receiptUrl, receiptName } = req.body ?? {};
     if (!name || typeof name !== "string" || !name.trim()) {
       res.status(400).json({ error: "name is required" });
@@ -75,7 +83,8 @@ router.post("/manual-expenses", requireAuth, async (req, res) => {
     const [created] = await db
       .insert(manualExpenses)
       .values({
-        userId,
+        profileId: profile.id,
+        userId: profile.userId,
         name: name.trim().slice(0, 200),
         category: String(category ?? "Other").slice(0, 80),
         cost: String(costNum),
@@ -99,7 +108,11 @@ router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     const id = parseInt(String(req.params.id), 10);
     const { name, category, cost, amountPaid, notes, receiptUrl, receiptName } = req.body ?? {};
     const updates: Partial<typeof manualExpenses.$inferInsert> = {};
@@ -135,7 +148,7 @@ router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
     const [updated] = await db
       .update(manualExpenses)
       .set(updates)
-      .where(and(eq(manualExpenses.id, id), eq(manualExpenses.userId, userId)))
+      .where(and(eq(manualExpenses.id, id), eq(manualExpenses.profileId, profile.id)))
       .returning();
     if (!updated) {
       res.status(404).json({ error: "Not found" });
@@ -155,11 +168,15 @@ router.delete("/manual-expenses/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     const id = parseInt(String(req.params.id), 10);
     const result = await db
       .delete(manualExpenses)
-      .where(and(eq(manualExpenses.id, id), eq(manualExpenses.userId, userId)))
+      .where(and(eq(manualExpenses.id, id), eq(manualExpenses.profileId, profile.id)))
       .returning();
     if (!result.length) {
       res.status(404).json({ error: "Not found" });

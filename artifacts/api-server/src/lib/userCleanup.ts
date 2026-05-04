@@ -78,7 +78,9 @@ export async function snapshotUserData(
       snapshot.budgetPaymentLogs = [];
     }
 
-    const userVendors = await db.select().from(vendors).where(eq(vendors.userId, userId));
+    const userVendors = profile
+      ? await db.select().from(vendors).where(eq(vendors.profileId, profile.id))
+      : [];
     snapshot.vendors = userVendors;
     if (userVendors.length > 0) {
       const vendorIds = userVendors.map(v => v.id);
@@ -100,7 +102,9 @@ export async function snapshotUserData(
     snapshot.seatingCharts = await db.select().from(seatingCharts).where(eq(seatingCharts.userId, userId));
     snapshot.hotelBlocks = await db.select().from(hotelBlocks).where(eq(hotelBlocks.userId, userId));
     snapshot.weddingParty = await db.select().from(weddingParty).where(eq(weddingParty.userId, userId));
-    snapshot.manualExpenses = await db.select().from(manualExpenses).where(eq(manualExpenses.userId, userId));
+    snapshot.manualExpenses = profile
+      ? await db.select().from(manualExpenses).where(eq(manualExpenses.profileId, profile.id))
+      : [];
     snapshot.analyticsEvents = await db.select().from(analyticsEvents).where(eq(analyticsEvents.userId, userId));
 
     await db.insert(deletedUserArchive).values({
@@ -133,12 +137,14 @@ export async function purgeUserData(
     const userVendorRows = await db
       .select({ id: vendors.id })
       .from(vendors)
-      .where(eq(vendors.userId, userId));
+      .where(eq(vendors.profileId, profileId));
 
     if (userVendorRows.length > 0) {
       const vendorIds = userVendorRows.map(v => v.id);
       await db.delete(vendorPayments).where(inArray(vendorPayments.vendorId, vendorIds));
     }
+    await db.delete(vendors).where(eq(vendors.profileId, profileId));
+    await db.delete(manualExpenses).where(eq(manualExpenses.profileId, profileId));
 
     const userBudgetRows = await db
       .select({ id: budgets.id })
@@ -182,7 +188,6 @@ export async function purgeUserData(
   }
   await db.delete(vendorConversations).where(eq(vendorConversations.userId, userId));
 
-  await db.delete(manualExpenses).where(eq(manualExpenses.userId, userId));
   await db.delete(contactMessages).where(eq(contactMessages.userId, userId));
   await db.delete(feedbackSubmissions).where(eq(feedbackSubmissions.userId, userId));
   await db.delete(adminUsers).where(eq(adminUsers.userId, userId));
@@ -197,7 +202,6 @@ export async function purgeUserData(
       .where(inArray(workspaceCollaborators.inviteeEmail, inviteEmails));
   }
   await db.delete(workspaceActivity).where(eq(workspaceActivity.userId, userId));
-  await db.delete(vendors).where(eq(vendors.userId, userId));
   await db.delete(weddingParty).where(eq(weddingParty.userId, userId));
   await db.delete(vendorContracts).where(eq(vendorContracts.userId, userId));
   await db.delete(seatingCharts).where(eq(seatingCharts.userId, userId));

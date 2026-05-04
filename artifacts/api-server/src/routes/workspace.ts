@@ -190,8 +190,7 @@ router.get("/workspace/:profileId/vendors", requireAuth, async (req, res) => {
     if (!result) { res.status(403).json({ error: "Access denied." }); return; }
     if (!hasMinRole(result.role, "planner")) { res.status(403).json({ error: "Insufficient permissions." }); return; }
 
-    const ownerUserId = result.profile.userId;
-    const rows = await db.select().from(vendors).where(eq(vendors.userId, ownerUserId));
+    const rows = await db.select().from(vendors).where(eq(vendors.profileId, profileId));
     res.json({ vendors: rows.map(v => ({ id: v.id, name: v.name, category: v.category, contractSigned: v.contractSigned })), role: result.role });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });

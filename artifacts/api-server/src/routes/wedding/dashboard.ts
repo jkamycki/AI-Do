@@ -43,12 +43,11 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
     }
 
     // Compute budgetSpent the same way the Budget page does:
-    // vendor totalCost + manual expenses cost (filtered by the effective owner userId)
-    const scopeUserId = effectiveProfile?.userId ?? req.userId!;
+    // vendor totalCost + manual expenses cost (scoped by profileId)
     const [userVendors, userManualExpenses] = hasProfile
       ? await Promise.all([
-          db.select({ totalCost: vendors.totalCost }).from(vendors).where(eq(vendors.userId, scopeUserId)),
-          db.select({ cost: manualExpenses.cost }).from(manualExpenses).where(eq(manualExpenses.userId, scopeUserId)),
+          db.select({ totalCost: vendors.totalCost }).from(vendors).where(eq(vendors.profileId, profileId)),
+          db.select({ cost: manualExpenses.cost }).from(manualExpenses).where(eq(manualExpenses.profileId, profileId)),
         ])
       : [[], []];
     const budgetSpent =

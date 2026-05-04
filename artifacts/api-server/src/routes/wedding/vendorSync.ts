@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { db, vendors, vendorPayments } from "@workspace/db";
-import { eq, and, asc, inArray } from "drizzle-orm";
+import { eq, and, asc, inArray, isNull } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
-import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
+import { resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
@@ -41,11 +41,15 @@ router.get("/vendors", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.json([]);
+      return;
+    }
     const rows = await db
       .select()
       .from(vendors)
-      .where(eq(vendors.userId, userId))
+      .where(eq(vendors.profileId, profile.id))
       .orderBy(vendors.createdAt);
 
     const vendorIds = rows.map((v) => v.id);
@@ -81,20 +85,21 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.json({ vendorCount: 0, totalCommitted: 0, totalDeposits: 0, totalPaidMilestones: 0, totalPaid: 0, vendors: [] });
+      return;
+    }
     const userVendors = await db
       .select()
       .from(vendors)
-      .where(eq(vendors.userId, userId));
+      .where(eq(vendors.profileId, profile.id));
 
     const totalCommitted = userVendors.reduce((s, v) => s + Number(v.totalCost), 0);
     const totalDeposits = userVendors.reduce((s, v) => s + Number(v.depositAmount), 0);
 
     const vendorIds = userVendors.map((v) => v.id);
 
-    // Fetch all paid milestone payments grouped by vendorId
-    // Also track whether each vendor has an explicit "Deposit" milestone so we
-    // don't double-count the vendor.depositAmount field alongside the milestone.
     const paidByVendor: Record<number, number> = {};
     const vendorsWithDepositMilestone = new Set<number>();
     if (vendorIds.length > 0) {
@@ -115,7 +120,6 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
     const vendorDetails = userVendors.map((v) => {
       const deposit = Number(v.depositAmount);
       const milestones = paidByVendor[v.id] ?? 0;
-      // Only add depositAmount if there is no "Deposit" milestone already tracking it
       const totalPaid = (vendorsWithDepositMilestone.has(v.id) ? 0 : deposit) + milestones;
       const totalCost = Number(v.totalCost);
       return {
@@ -156,13 +160,18 @@ router.post("/vendors", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(400).json({ error: "No wedding profile found" });
+      return;
+    }
     const {
       name, category, email, phone, website, portalLink,
       notes, totalCost, depositAmount, contractSigned, nextPaymentDue,
     } = req.body;
     const [created] = await db.insert(vendors).values({
-      userId,
+      profileId: profile.id,
+      userId: profile.userId,
       name,
       category,
       email: email ?? null,
@@ -190,12 +199,15 @@ router.get("/vendors/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
     const vendorId = parseInt(String(req.params.id), 10);
     const [vendor] = await db
       .select()
       .from(vendors)
-      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)))
+      .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)))
       .limit(1);
     if (!vendor) {
       return res.status(404).json({ error: "Vendor not found" });
@@ -219,7 +231,10 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
     const vendorId = parseInt(String(req.params.id), 10);
     const {
       name, category, email, phone, website, portalLink,
@@ -242,7 +257,7 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
     const [updated] = await db
       .update(vendors)
       .set(updates)
-      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)))
+      .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)))
       .returning();
     if (!updated) {
       return res.status(404).json({ error: "Vendor not found" });
@@ -261,18 +276,21 @@ router.delete("/vendors/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
     const vendorId = parseInt(String(req.params.id), 10);
     const [vendor] = await db
       .select({ id: vendors.id })
       .from(vendors)
-      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)))
+      .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)))
       .limit(1);
     if (!vendor) {
       return res.status(404).json({ error: "Vendor not found" });
     }
     await db.delete(vendorPayments).where(eq(vendorPayments.vendorId, vendorId));
-    await db.delete(vendors).where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)));
+    await db.delete(vendors).where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)));
     res.json({ success: true });
   } catch (err) {
     req.log.error(err, "Failed to delete vendor");
@@ -287,12 +305,15 @@ router.post("/vendors/:id/payments", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
     const vendorId = parseInt(String(req.params.id), 10);
     const [vendor] = await db
       .select({ id: vendors.id })
       .from(vendors)
-      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)))
+      .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)))
       .limit(1);
     if (!vendor) {
       return res.status(404).json({ error: "Vendor not found" });
@@ -320,13 +341,16 @@ router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => 
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
     const vendorId = parseInt(String(req.params.id), 10);
     const paymentId = parseInt(String(req.params.paymentId), 10);
     const [vendor] = await db
       .select({ id: vendors.id })
       .from(vendors)
-      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)))
+      .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)))
       .limit(1);
     if (!vendor) {
       return res.status(404).json({ error: "Payment not found" });
@@ -363,13 +387,16 @@ router.delete("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) 
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
     const vendorId = parseInt(String(req.params.id), 10);
     const paymentId = parseInt(String(req.params.paymentId), 10);
     const [vendor] = await db
       .select({ id: vendors.id })
       .from(vendors)
-      .where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId)))
+      .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)))
       .limit(1);
     if (!vendor) {
       return res.status(404).json({ error: "Payment not found" });
@@ -399,8 +426,6 @@ router.post("/vendor/email/summarize", requireAuth, async (req, res) => {
       ? `\n\nIMPORTANT: Write your entire response in ${preferredLanguage}.`
       : "";
 
-    // Truncate vendor email input to ~4K chars (~1K tok). Long forwarded
-    // threads with quoted history were burning 3-5K input tokens per call.
     const MAX_EMAIL_CHARS = 4000;
     const trimmedEmail = emailText.length > MAX_EMAIL_CHARS
       ? emailText.slice(0, MAX_EMAIL_CHARS) + "\n\n[…truncated…]"
@@ -416,7 +441,6 @@ Return ONLY this JSON (no markdown):
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      // Was 2048. Summary JSON ≈ 300-500 tok; 800 covers verbose vendor emails.
       max_completion_tokens: 800,
       messages: [{ role: "user", content: prompt }],
     });

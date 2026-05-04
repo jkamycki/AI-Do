@@ -383,19 +383,19 @@ type FoundHotel = { ok: true; id: number; hotelName: string } | { ok: false; err
 type FoundBudgetItem = { ok: true; id: number; vendor: string; amountPaid: number; estimatedCost: number; actualCost: number } | { ok: false; error: string };
 type FoundExpense = { ok: true; id: number; name: string } | { ok: false; error: string };
 
-async function findVendor(userId: string, idArg: unknown, nameArg: unknown): Promise<FoundVendor> {
+async function findVendor(profileId: number, idArg: unknown, nameArg: unknown): Promise<FoundVendor> {
   if (idArg !== undefined && idArg !== null) {
     const idNum = Number(idArg);
     if (Number.isFinite(idNum)) {
       const [v] = await db.select({ id: vendors.id, name: vendors.name }).from(vendors)
-        .where(and(eq(vendors.id, idNum), eq(vendors.userId, userId))).limit(1);
+        .where(and(eq(vendors.id, idNum), eq(vendors.profileId, profileId))).limit(1);
       if (v) return { ok: true, id: v.id, name: v.name };
     }
   }
   if (nameArg) {
     const search = String(nameArg).trim();
     const matches = await db.select({ id: vendors.id, name: vendors.name }).from(vendors)
-      .where(and(eq(vendors.userId, userId), ilike(vendors.name, `%${search}%`)));
+      .where(and(eq(vendors.profileId, profileId), ilike(vendors.name, `%${search}%`)));
     if (matches.length === 0) return { ok: false, error: `No vendor found matching "${search}".` };
     if (matches.length > 1) {
       const exact = matches.find(m => m.name.toLowerCase() === search.toLowerCase());
@@ -407,18 +407,18 @@ async function findVendor(userId: string, idArg: unknown, nameArg: unknown): Pro
   return { ok: false, error: "Either vendorId or vendorName is required." };
 }
 
-async function findVendorPayment(userId: string, paymentIdArg: unknown, vendorNameArg: unknown, matchLabelArg: unknown): Promise<FoundVendorPayment> {
+async function findVendorPayment(profileId: number, paymentIdArg: unknown, vendorNameArg: unknown, matchLabelArg: unknown): Promise<FoundVendorPayment> {
   if (paymentIdArg !== undefined && paymentIdArg !== null) {
     const idNum = Number(paymentIdArg);
     if (Number.isFinite(idNum)) {
-      const [p] = await db.select({ id: vendorPayments.id, vendorId: vendorPayments.vendorId, label: vendorPayments.label, ownerId: vendors.userId })
+      const [p] = await db.select({ id: vendorPayments.id, vendorId: vendorPayments.vendorId, label: vendorPayments.label })
         .from(vendorPayments).innerJoin(vendors, eq(vendors.id, vendorPayments.vendorId))
-        .where(and(eq(vendorPayments.id, idNum), eq(vendors.userId, userId))).limit(1);
+        .where(and(eq(vendorPayments.id, idNum), eq(vendors.profileId, profileId))).limit(1);
       if (p) return { ok: true, id: p.id, vendorId: p.vendorId, label: p.label };
     }
     return { ok: false, error: "Payment not found or not yours." };
   }
-  const v = await findVendor(userId, undefined, vendorNameArg);
+  const v = await findVendor(profileId, undefined, vendorNameArg);
   if (!v.ok) return v;
   if (!matchLabelArg) return { ok: false, error: "matchLabel is required when looking up by vendorName." };
   const search = String(matchLabelArg).trim();
@@ -570,19 +570,19 @@ async function findBudgetItem(budgetId: number, idArg: unknown, vendorArg: unkno
   return { ok: false, error: "Either itemId or matchVendor is required." };
 }
 
-async function findExpense(userId: string, idArg: unknown, nameArg: unknown): Promise<FoundExpense> {
+async function findExpense(profileId: number, idArg: unknown, nameArg: unknown): Promise<FoundExpense> {
   if (idArg !== undefined && idArg !== null) {
     const idNum = Number(idArg);
     if (Number.isFinite(idNum)) {
       const [r] = await db.select({ id: manualExpenses.id, name: manualExpenses.name }).from(manualExpenses)
-        .where(and(eq(manualExpenses.id, idNum), eq(manualExpenses.userId, userId))).limit(1);
+        .where(and(eq(manualExpenses.id, idNum), eq(manualExpenses.profileId, profileId))).limit(1);
       if (r) return { ok: true, id: r.id, name: r.name };
     }
   }
   if (nameArg) {
     const search = String(nameArg).trim();
     const matches = await db.select({ id: manualExpenses.id, name: manualExpenses.name }).from(manualExpenses)
-      .where(and(eq(manualExpenses.userId, userId), ilike(manualExpenses.name, `%${search}%`)));
+      .where(and(eq(manualExpenses.profileId, profileId), ilike(manualExpenses.name, `%${search}%`)));
     if (matches.length === 0) return { ok: false, error: `No expense matching "${search}".` };
     if (matches.length > 1) {
       const exact = matches.find(m => m.name.toLowerCase() === search.toLowerCase());
@@ -597,14 +597,16 @@ async function findExpense(userId: string, idArg: unknown, nameArg: unknown): Pr
 async function executeTool(name: string, args: Record<string, unknown>, req: Request): Promise<ActionResult> {
   try {
     if (name === "add_vendor") {
-      const userId = await resolveScopeUserId(req);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile found." };
       const vendorName = String(args.name ?? "").trim();
       const category = normalizeCategory(String(args.category ?? "Other").trim());
       if (!vendorName) return { ok: false, error: "Vendor name is required" };
       const depositAmt = Number(args.depositAmount ?? 0);
       const todayISO = new Date().toISOString().slice(0, 10);
       const [created] = await db.insert(vendors).values({
-        userId,
+        profileId: profile.id,
+        userId: profile.userId,
         name: vendorName,
         category,
         email: args.email ? String(args.email) : null,
@@ -639,7 +641,8 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
     }
 
     if (name === "add_vendor_payment") {
-      const userId = await resolveScopeUserId(req);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile found." };
       const label = String(args.label ?? "").trim();
       const amountNum = Number(args.amount);
       const dueDate = String(args.dueDate ?? "").trim();
@@ -652,14 +655,14 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         const idNum = Number(args.vendorId);
         if (Number.isFinite(idNum)) {
           const [v] = await db.select({ id: vendors.id }).from(vendors)
-            .where(and(eq(vendors.id, idNum), eq(vendors.userId, userId))).limit(1);
+            .where(and(eq(vendors.id, idNum), eq(vendors.profileId, profile.id))).limit(1);
           if (v) vendorId = v.id;
         }
       }
       if (vendorId === null && args.vendorName) {
         const search = String(args.vendorName).trim();
         const matches = await db.select({ id: vendors.id, name: vendors.name }).from(vendors)
-          .where(and(eq(vendors.userId, userId), ilike(vendors.name, `%${search}%`)));
+          .where(and(eq(vendors.profileId, profile.id), ilike(vendors.name, `%${search}%`)));
         if (matches.length === 0) {
           return { ok: false, error: `No vendor found matching "${search}". Add the vendor first using add_vendor.` };
         }
@@ -735,8 +738,9 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
 
     // ===== VENDORS update/delete =====
     if (name === "update_vendor") {
-      const userId = await resolveScopeUserId(req);
-      const vendor = await findVendor(userId, args.vendorId, args.vendorName);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile found." };
+      const vendor = await findVendor(profile.id, args.vendorId, args.vendorName);
       if (!vendor.ok) return vendor;
       const updates: Partial<typeof vendors.$inferInsert> = {};
       if (args.name !== undefined) updates.name = String(args.name);
@@ -752,23 +756,25 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
       updates.updatedAt = new Date();
       const [updated] = await db.update(vendors).set(updates)
-        .where(and(eq(vendors.id, vendor.id), eq(vendors.userId, userId))).returning();
+        .where(and(eq(vendors.id, vendor.id), eq(vendors.profileId, profile.id))).returning();
       return { ok: true, data: { id: updated.id, name: updated.name, updated: Object.keys(updates).filter(k=>k!=="updatedAt") } };
     }
 
     if (name === "delete_vendor") {
-      const userId = await resolveScopeUserId(req);
-      const vendor = await findVendor(userId, args.vendorId, args.vendorName);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile found." };
+      const vendor = await findVendor(profile.id, args.vendorId, args.vendorName);
       if (!vendor.ok) return vendor;
       await db.delete(vendorPayments).where(eq(vendorPayments.vendorId, vendor.id));
-      await db.delete(vendors).where(and(eq(vendors.id, vendor.id), eq(vendors.userId, userId)));
+      await db.delete(vendors).where(and(eq(vendors.id, vendor.id), eq(vendors.profileId, profile.id)));
       return { ok: true, data: { deleted: vendor.name } };
     }
 
     // ===== VENDOR PAYMENTS update/mark/delete =====
     if (name === "update_vendor_payment" || name === "mark_vendor_payment_paid" || name === "delete_vendor_payment") {
-      const userId = await resolveScopeUserId(req);
-      const payment = await findVendorPayment(userId, args.paymentId, args.vendorName, args.matchLabel);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile found." };
+      const payment = await findVendorPayment(profile.id, args.paymentId, args.vendorName, args.matchLabel);
       if (!payment.ok) return payment;
       if (name === "delete_vendor_payment") {
         await db.delete(vendorPayments).where(eq(vendorPayments.id, payment.id));
@@ -1107,14 +1113,17 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
 
     // ===== EXPENSES =====
     if (name === "add_expense") {
-      const userId = await resolveScopeUserId(req);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile found." };
       const expName = String(args.name ?? "").trim();
       const category = String(args.category ?? "").trim() || "Other";
       const cost = Number(args.cost);
       if (!expName) return { ok: false, error: "name is required" };
       if (!Number.isFinite(cost)) return { ok: false, error: "cost must be a number" };
       const [created] = await db.insert(manualExpenses).values({
-        userId, name: expName, category,
+        profileId: profile.id,
+        userId: profile.userId,
+        name: expName, category,
         cost: String(cost),
         amountPaid: args.amountPaid !== undefined ? String(Number(args.amountPaid)) : "0",
         notes: args.notes ? String(args.notes) : null,
@@ -1123,11 +1132,12 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
     }
 
     if (name === "update_expense" || name === "delete_expense") {
-      const userId = await resolveScopeUserId(req);
-      const exp = await findExpense(userId, args.expenseId, args.matchName);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile found." };
+      const exp = await findExpense(profile.id, args.expenseId, args.matchName);
       if (!exp.ok) return exp;
       if (name === "delete_expense") {
-        await db.delete(manualExpenses).where(and(eq(manualExpenses.id, exp.id), eq(manualExpenses.userId, userId)));
+        await db.delete(manualExpenses).where(and(eq(manualExpenses.id, exp.id), eq(manualExpenses.profileId, profile.id)));
         return { ok: true, data: { deleted: exp.name } };
       }
       const updates: Partial<typeof manualExpenses.$inferInsert> = {};
@@ -1139,14 +1149,15 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
       updates.updatedAt = new Date();
       const [updated] = await db.update(manualExpenses).set(updates)
-        .where(and(eq(manualExpenses.id, exp.id), eq(manualExpenses.userId, userId))).returning();
+        .where(and(eq(manualExpenses.id, exp.id), eq(manualExpenses.profileId, profile.id))).returning();
       return { ok: true, data: { id: updated.id, name: updated.name } };
     }
 
     if (name === "list_expenses") {
-      const userId = await resolveScopeUserId(req);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: true, data: { expenses: [] } };
       const rows = await db.select({ id: manualExpenses.id, name: manualExpenses.name, category: manualExpenses.category, cost: manualExpenses.cost, amountPaid: manualExpenses.amountPaid })
-        .from(manualExpenses).where(eq(manualExpenses.userId, userId));
+        .from(manualExpenses).where(eq(manualExpenses.profileId, profile.id));
       return { ok: true, data: { expenses: rows.map(r => ({ ...r, cost: Number(r.cost), amountPaid: Number(r.amountPaid) })) } };
     }
 
@@ -1173,7 +1184,8 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
     }
 
     if (name === "list_vendors") {
-      const userId = await resolveScopeUserId(req);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: true, data: { vendors: [] } };
       const rows = await db
         .select({
           id: vendors.id,
@@ -1188,7 +1200,7 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
           nextPaymentDue: vendors.nextPaymentDue,
         })
         .from(vendors)
-        .where(eq(vendors.userId, userId));
+        .where(eq(vendors.profileId, profile.id));
 
       const vendorIds = rows.map(v => v.id);
       const paymentsByVendor: Record<number, Array<{ id: number; label: string; amount: string; dueDate: string; isPaid: boolean }>> = {};
@@ -1301,7 +1313,9 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       }
 
       // Vendors + upcoming payments
-      const allVendors = await db.select({ id: vendors.id, nextPaymentDue: vendors.nextPaymentDue, totalCost: vendors.totalCost }).from(vendors).where(eq(vendors.userId, userId));
+      const allVendors = profile
+        ? await db.select({ id: vendors.id, nextPaymentDue: vendors.nextPaymentDue, totalCost: vendors.totalCost }).from(vendors).where(eq(vendors.profileId, profile.id))
+        : [];
       const vendorIds = allVendors.map(v => v.id);
       let upcomingPayments = 0;
       let nextDue: string | null = null;

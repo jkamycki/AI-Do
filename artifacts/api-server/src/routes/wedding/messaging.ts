@@ -15,8 +15,11 @@ import { resolveProfile, resolveScopeUserId } from "../../lib/workspaceAccess";
 
 const router = Router();
 
-async function getOrCreateConversation(userId: string, vendorId: number) {
-  const [vendor] = await db.select().from(vendors).where(and(eq(vendors.id, vendorId), eq(vendors.userId, userId))).limit(1);
+async function getOrCreateConversation(userId: string, vendorId: number, profileId?: number) {
+  const whereClause = profileId !== undefined
+    ? and(eq(vendors.id, vendorId), eq(vendors.profileId, profileId))
+    : eq(vendors.id, vendorId);
+  const [vendor] = await db.select().from(vendors).where(whereClause).limit(1);
   if (!vendor) return null;
 
   const [existing] = await db.select().from(vendorConversations)
@@ -63,7 +66,8 @@ router.get("/messaging/conversations/by-vendor/:vendorId", requireAuth, async (r
   try {
     const userId = await resolveScopeUserId(req);
     const vendorId = Number(req.params.vendorId);
-    const r = await getOrCreateConversation(userId, vendorId);
+    const profile = await resolveProfile(req);
+    const r = await getOrCreateConversation(userId, vendorId, profile?.id);
     if (!r) return res.status(404).json({ error: "Vendor not found" });
     const { vendor, conversation } = r;
     res.json({
