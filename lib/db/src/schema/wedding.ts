@@ -473,6 +473,10 @@ export const invitationCustomizations = pgTable("invitation_customizations", {
   saveTheDatePhotoUrl: text("save_the_date_photo_url"),
   digitalInvitationPhotoUrl: text("digital_invitation_photo_url"),
 
+  // Photo positions (x/y as percent 0–100, default center 50/50)
+  saveTheDatePhotoPosition: jsonb("save_the_date_photo_position").$type<{ x: number; y: number } | null>(),
+  digitalInvitationPhotoPosition: jsonb("digital_invitation_photo_position").$type<{ x: number; y: number } | null>(),
+
   // Design Options — per-design font / layout / background
   selectedFont: text("selected_font").notNull().default("Playfair Display"),
   saveTheDateFont: text("save_the_date_font").default("Playfair Display"),

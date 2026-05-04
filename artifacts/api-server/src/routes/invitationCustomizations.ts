@@ -68,6 +68,8 @@ router.get("/invitation-customizations", requireAuth, async (req, res) => {
         backgroundColor: "#1E1A2E",
         saveTheDatePhotoUrl: null,
         digitalInvitationPhotoUrl: null,
+        saveTheDatePhotoPosition: null,
+        digitalInvitationPhotoPosition: null,
         selectedFont: "Georgia",
         saveTheDateFont: "Georgia",
         digitalInvitationFont: "Georgia",
@@ -104,6 +106,8 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
       backgroundColor,
       saveTheDatePhotoUrl,
       digitalInvitationPhotoUrl,
+      saveTheDatePhotoPosition,
+      digitalInvitationPhotoPosition,
       selectedFont,
       saveTheDateFont,
       digitalInvitationFont,
@@ -124,6 +128,8 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
       backgroundColor?: string | null;
       saveTheDatePhotoUrl?: string | null;
       digitalInvitationPhotoUrl?: string | null;
+      saveTheDatePhotoPosition?: { x: number; y: number } | null;
+      digitalInvitationPhotoPosition?: { x: number; y: number } | null;
       selectedFont?: string;
       saveTheDateFont?: string;
       digitalInvitationFont?: string;
@@ -180,6 +186,8 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
           ...(backgroundColor !== undefined && { backgroundColor }),
           ...(saveTheDatePhotoUrl !== undefined && { saveTheDatePhotoUrl }),
           ...(digitalInvitationPhotoUrl !== undefined && { digitalInvitationPhotoUrl }),
+          ...(saveTheDatePhotoPosition !== undefined && { saveTheDatePhotoPosition }),
+          ...(digitalInvitationPhotoPosition !== undefined && { digitalInvitationPhotoPosition }),
           ...(selectedFont && { selectedFont }),
           ...(saveTheDateFont !== undefined && { saveTheDateFont }),
           ...(digitalInvitationFont !== undefined && { digitalInvitationFont }),
@@ -213,6 +221,8 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
           backgroundColor: backgroundColor || null,
           saveTheDatePhotoUrl: saveTheDatePhotoUrl || null,
           digitalInvitationPhotoUrl: digitalInvitationPhotoUrl || null,
+          saveTheDatePhotoPosition: saveTheDatePhotoPosition ?? null,
+          digitalInvitationPhotoPosition: digitalInvitationPhotoPosition ?? null,
           selectedFont: selectedFont || "Georgia",
           saveTheDateFont: saveTheDateFont || "Georgia",
           digitalInvitationFont: digitalInvitationFont || "Georgia",
