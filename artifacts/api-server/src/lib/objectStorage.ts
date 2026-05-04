@@ -290,6 +290,9 @@ export class ObjectStorageService {
       }),
     );
 
-    return `/${folder}/${fileName}`;
+    // Return a URL that the public-objects route can actually serve.
+    // searchPublicObject() prepends the public prefix internally, so we only
+    // include the folder + fileName here.
+    return `/api/storage/public-objects/${folder}/${fileName}`;
   }
 }
