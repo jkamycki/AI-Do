@@ -1,0 +1,4 @@
+{
+  "plugins": ["security", "no-unsanitized"],
+  "extends": ["plugin:security/recommended"]
+}

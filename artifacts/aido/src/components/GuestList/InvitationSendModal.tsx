@@ -19,6 +19,7 @@ import type { Guest } from "@workspace/api-client-react";
 import type { TextOverrides, ColorPalette } from "@/types/invitations";
 import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
 import { DigitalInvitationPreview } from "@/components/InvitationCustomization/DigitalInvitationPreview";
+import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
 
 interface Customization {
   useGeneratedInvitation: boolean;
@@ -556,7 +557,15 @@ function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) 
   );
 }
 
-function BlockedScreen({ onGoToCustomization, onClose }: { onGoToCustomization: () => void; onClose: () => void }) {
+function BlockedScreen({
+  onGoToCustomization,
+  onClose,
+  missing,
+}: {
+  onGoToCustomization: () => void;
+  onClose: () => void;
+  missing: string[];
+}) {
   return (
     <div className="flex flex-col items-center text-center gap-6 py-6">
       <div className="h-16 w-16 rounded-full bg-amber-500/15 flex items-center justify-center ring-1 ring-amber-500/30">
@@ -567,9 +576,14 @@ function BlockedScreen({ onGoToCustomization, onClose }: { onGoToCustomization: 
         <p className="text-sm text-muted-foreground leading-relaxed">
           Your custom design is not finished. Please complete your customization or switch to an AI-generated design before sending.
         </p>
-        <div className="pt-1">
-          <p className="text-xs text-muted-foreground">A complete design requires a photo uploaded for each invitation type.</p>
-        </div>
+        {missing.length > 0 && (
+          <div className="pt-2 text-left rounded-md bg-amber-500/5 border border-amber-500/20 p-3">
+            <p className="text-xs font-medium text-amber-700 dark:text-amber-300 mb-1">Still needed:</p>
+            <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+              {missing.map((m) => <li key={m}>{m}</li>)}
+            </ul>
+          </div>
+        )}
       </div>
       <div className="flex flex-col gap-3 w-full max-w-xs">
         <Button onClick={onGoToCustomization} className="gap-2">
@@ -660,9 +674,31 @@ export function InvitationSendModal({
   };
 
   const isCustomMode = customization ? !customization.useGeneratedInvitation : false;
-  const stdPhotoComplete = isPhotoComplete(customization?.saveTheDatePhotoUrl);
-  const diPhotoComplete = isPhotoComplete(customization?.digitalInvitationPhotoUrl);
-  const customDesignComplete = stdPhotoComplete && diPhotoComplete;
+  const completeness = evaluateCustomDesignCompleteness({
+    customization: customization
+      ? {
+          saveTheDatePhotoUrl: customization.saveTheDatePhotoUrl,
+          digitalInvitationPhotoUrl: customization.digitalInvitationPhotoUrl,
+          colorPalette: customization.colorPalette,
+          selectedFont: customization.selectedFont ?? undefined,
+          saveTheDateFont: customization.saveTheDateFont,
+          digitalInvitationFont: customization.digitalInvitationFont,
+          selectedLayout: customization.selectedLayout ?? undefined,
+          saveTheDateLayout: customization.saveTheDateLayout,
+          digitalInvitationLayout: customization.digitalInvitationLayout,
+        }
+      : null,
+    profile: profile
+      ? {
+          partner1Name: profile.partner1Name ?? undefined,
+          partner2Name: profile.partner2Name ?? undefined,
+          weddingDate: profile.weddingDate ?? undefined,
+          venue: profile.venue ?? undefined,
+          ceremonyTime: profile.ceremonyTime ?? undefined,
+        }
+      : null,
+  });
+  const customDesignComplete = completeness.isComplete;
   const isBlocked = isCustomMode && !customDesignComplete;
 
   let title = "Preview & Send Invitation";
@@ -688,7 +724,11 @@ export function InvitationSendModal({
               <Loader2 className="h-7 w-7 animate-spin text-primary" />
             </div>
           ) : isBlocked ? (
-            <BlockedScreen onGoToCustomization={handleGoToCustomization} onClose={onClose} />
+            <BlockedScreen
+              onGoToCustomization={handleGoToCustomization}
+              onClose={onClose}
+              missing={completeness.missing}
+            />
           ) : isCustomMode ? (
             /* ── Custom Design — Complete ── */
             <div className="space-y-5">
