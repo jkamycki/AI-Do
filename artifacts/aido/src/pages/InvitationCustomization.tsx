@@ -892,9 +892,9 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
               ) : isRsvp ? (
                 <div className="flex flex-col items-center gap-4">
                   <RsvpPagePreview
-                    colors={displayPalette}
-                    font={digitalInvitationFont}
-                    backgroundColor={digitalInvitationBackground}
+                    colors={{ primary: "#D4A017", secondary: "#F5C842", accent: "#D4A017", neutral: "#E8E0D0" }}
+                    font={null}
+                    backgroundColor="#1E1A2E"
                     partner1Name={displayWeddingProfile.partner1Name}
                     partner2Name={displayWeddingProfile.partner2Name}
                     weddingDate={displayWeddingProfile.weddingDate}
@@ -909,7 +909,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                     invitationMessage={invitationMessage || weddingProfile?.invitationMessage}
                   />
                   <p className="text-xs text-muted-foreground text-center max-w-xs">
-                    The RSVP page uses your RSVP Invitation's colors, font, and background. Adjust those settings in the RSVP Invitation tab.
+                    This is exactly what your guests will see when they open their RSVP link.
                   </p>
                 </div>
               ) : (
