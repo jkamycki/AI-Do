@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { weddingProfiles, timelines, budgets, budgetItems, checklistItems, guests, vendors } from "@workspace/db";
+import { weddingProfiles, timelines, budgets, checklistItems, guests, vendors } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
@@ -42,22 +42,18 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       budgetTotal = parseFloat(budgetRows[0].totalBudget as string);
     }
 
-    // budgetSpent = vendor contracts (totalCost) + budget line items (actualCost).
-    // Manual expenses are ad-hoc costs tracked on the full Budget page and are
-    // intentionally excluded here so the dashboard tile only reflects formally
-    // committed vendor spend.
-    const budgetId = budgetRows.length ? budgetRows[0].id : -1;
-    const [userVendors, userBudgetItems] = hasProfile
-      ? await Promise.all([
-          db.select({ totalCost: vendors.totalCost }).from(vendors).where(eq(vendors.profileId, profileId)),
-          budgetId !== -1
-            ? db.select({ actualCost: budgetItems.actualCost }).from(budgetItems).where(eq(budgetItems.budgetId, budgetId))
-            : ([] as { actualCost: string }[]),
-        ])
-      : [[], [] as { actualCost: string }[]];
-    const budgetSpent =
-      (userVendors as { totalCost: string }[]).reduce((sum, v) => sum + Number(v.totalCost), 0) +
-      (userBudgetItems as { actualCost: string }[]).reduce((sum, i) => sum + Number(i.actualCost), 0);
+    // budgetSpent = vendor contracts (totalCost) only.
+    // Manual expenses and budget line items are ad-hoc costs tracked on the
+    // full Budget page and are intentionally excluded here so the dashboard
+    // tile only reflects formally committed vendor spend. With no vendors
+    // added, "spent" should be $0.
+    const userVendors = hasProfile
+      ? await db.select({ totalCost: vendors.totalCost }).from(vendors).where(eq(vendors.profileId, profileId))
+      : [];
+    const budgetSpent = (userVendors as { totalCost: string }[]).reduce(
+      (sum, v) => sum + Number(v.totalCost),
+      0,
+    );
 
     const allChecklistItems = hasProfile
       ? await db.select().from(checklistItems).where(eq(checklistItems.profileId, profileId))
