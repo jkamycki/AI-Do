@@ -701,13 +701,15 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
             onBackgroundColorChange={isSTD ? setSaveTheDateBackground : setDigitalInvitationBackground}
           />
 
-          {/* Layout / background — per-design, switches with the preview tab */}
+          {/* Layout / background / font — per-design, switches with the preview tab */}
           <DesignOptionsSection
             mode={previewTab}
             selectedLayout={isSTD ? saveTheDateLayout : digitalInvitationLayout}
             onLayoutChange={isSTD ? setSaveTheDateLayout : setDigitalInvitationLayout}
             backgroundColor={isSTD ? saveTheDateBackground : digitalInvitationBackground}
             onBackgroundColorChange={isSTD ? setSaveTheDateBackground : setDigitalInvitationBackground}
+            selectedFont={isSTD ? saveTheDateFont : digitalInvitationFont}
+            onFontChange={isSTD ? setSaveTheDateFont : setDigitalInvitationFont}
             colors={displayPalette}
           />
 

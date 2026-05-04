@@ -209,21 +209,34 @@ export const PRESET_PALETTES: Record<string, ColorPalette> = {
 };
 
 export const AVAILABLE_FONTS = [
-  "Georgia",
-  "Garamond",
-  "Playfair Display",
-  "Cormorant Garamond",
+  // Script & Calligraphy
   "Great Vibes",
   "Dancing Script",
-  "Montserrat",
-  "Roboto",
-  "Open Sans",
+  "Sacramento",
+  "Tangerine",
+  "Parisienne",
+  // Elegant Serif
+  "Playfair Display",
+  "Cormorant Garamond",
+  "Cinzel",
+  "EB Garamond",
   "Lora",
   "Merriweather",
+  "Libre Baskerville",
+  "Crimson Text",
+  // Modern Sans-Serif
+  "Montserrat",
   "Raleway",
   "Poppins",
   "Inter",
-  "Source Sans Pro",
+  "Open Sans",
+  "Josefin Sans",
+  "Quicksand",
+  // Classic
+  "Georgia",
+  "Garamond",
+  "Times New Roman",
+  "Arial",
 ];
 
 export const AVAILABLE_LAYOUTS = [

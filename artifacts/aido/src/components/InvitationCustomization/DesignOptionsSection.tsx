@@ -1,6 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { LAYOUT_DESIGNS, LayoutThumbnail } from "./LayoutDecorations";
+import { FONT_GROUPS, ensureFontsLoaded } from "./EditableElements";
 import type { ColorPalette } from "@/types/invitations";
+import { useEffect } from "react";
 
 interface DesignOptionsSectionProps {
   mode: "saveTheDate" | "digitalInvitation";
@@ -8,6 +19,8 @@ interface DesignOptionsSectionProps {
   onLayoutChange: (layout: string) => void;
   backgroundColor: string | null;
   onBackgroundColorChange: (hex: string) => void;
+  selectedFont: string;
+  onFontChange: (font: string) => void;
   colors?: ColorPalette;
 }
 
@@ -24,8 +37,14 @@ export function DesignOptionsSection({
   onLayoutChange,
   backgroundColor,
   onBackgroundColorChange,
+  selectedFont,
+  onFontChange,
   colors = DEFAULT_COLORS,
 }: DesignOptionsSectionProps) {
+  useEffect(() => {
+    ensureFontsLoaded();
+  }, []);
+
   const label = mode === "saveTheDate" ? "Save the Date" : "Digital Invitation";
 
   return (
@@ -34,6 +53,39 @@ export function DesignOptionsSection({
         <CardTitle className="text-lg">✨ Design Options</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
+
+        {/* Font picker */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">{label} Font</label>
+          <Select value={selectedFont} onValueChange={onFontChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue>
+                <span style={{ fontFamily: `"${selectedFont}", serif` }}>{selectedFont}</span>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent position="popper" sideOffset={6} className="z-[9999] max-h-72 overflow-y-auto">
+              {FONT_GROUPS.map((group) => (
+                <SelectGroup key={group.label}>
+                  <SelectLabel className="text-xs font-semibold text-muted-foreground px-2 py-1">
+                    {group.label}
+                  </SelectLabel>
+                  {group.fonts.map((f) => (
+                    <SelectItem
+                      key={f}
+                      value={f}
+                      style={{ fontFamily: `"${f}", serif` }}
+                    >
+                      {f}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Applies to all body text. Click any element in the preview to override individual fonts.
+          </p>
+        </div>
 
         {/* Layout grid */}
         <div className="space-y-2">
@@ -54,11 +106,9 @@ export function DesignOptionsSection({
                       : "border-border hover:border-primary/60 hover:shadow-sm",
                   ].join(" ")}
                 >
-                  {/* Thumbnail */}
                   <div className="aspect-[3/4] w-full overflow-hidden" style={{ backgroundColor: backgroundColor || "#1E1A2E" }}>
                     <LayoutThumbnail layout={design.id} colors={colors} backgroundColor={backgroundColor || "#1E1A2E"} />
                   </div>
-                  {/* Label */}
                   <div className={[
                     "px-1 py-1 text-center text-[10px] leading-tight font-medium transition-colors",
                     active

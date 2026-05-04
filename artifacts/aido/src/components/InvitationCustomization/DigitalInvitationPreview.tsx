@@ -139,7 +139,7 @@ export const DigitalInvitationPreview = forwardRef<
       defaultY: 230,
       defaultColor: colors.neutral,
       defaultFontSize: 18,
-      defaultFont: "Cormorant Garamond",
+      defaultFont: font || "Cormorant Garamond",
       fontWeight: 500,
     },
     {
@@ -149,7 +149,7 @@ export const DigitalInvitationPreview = forwardRef<
       defaultY: 270,
       defaultColor: colors.neutral,
       defaultFontSize: 15,
-      defaultFont: "Cormorant Garamond",
+      defaultFont: font || "Cormorant Garamond",
       fontStyle: "italic",
     },
     {

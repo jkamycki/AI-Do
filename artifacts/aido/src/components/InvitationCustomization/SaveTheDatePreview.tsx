@@ -121,7 +121,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
         defaultY: 460,
         defaultColor: colors.accent,
         defaultFontSize: 20,
-        defaultFont: "Cormorant Garamond",
+        defaultFont: font || "Cormorant Garamond",
         fontWeight: 500 as const,
       },
       ...(cityStateZip ? [{
@@ -131,7 +131,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
         defaultY: 490,
         defaultColor: colors.accent,
         defaultFontSize: 16,
-        defaultFont: "Cormorant Garamond",
+        defaultFont: font || "Cormorant Garamond",
         fontWeight: 400 as const,
       }] : []),
       ...(message ? [{
@@ -141,7 +141,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
         defaultY: 555,
         defaultColor: colors.primary,
         defaultFontSize: 15,
-        defaultFont: "Cormorant Garamond",
+        defaultFont: font || "Cormorant Garamond",
         fontWeight: 400 as const,
         fontStyle: "italic" as const,
       }] : []),
