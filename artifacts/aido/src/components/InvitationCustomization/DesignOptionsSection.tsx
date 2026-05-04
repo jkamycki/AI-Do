@@ -8,24 +8,6 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 
-const FONTS = [
-  "Georgia",
-  "Garamond",
-  "Playfair Display",
-  "Cormorant Garamond",
-  "Great Vibes",
-  "Dancing Script",
-  "Montserrat",
-  "Roboto",
-  "Open Sans",
-  "Lora",
-  "Merriweather",
-  "Raleway",
-  "Poppins",
-  "Inter",
-  "Source Sans Pro",
-];
-
 const LAYOUTS = [
   "classic",
   "modern",
@@ -39,8 +21,6 @@ const LAYOUTS = [
 
 interface DesignOptionsSectionProps {
   mode: "saveTheDate" | "digitalInvitation";
-  font: string;
-  onFontChange: (font: string) => void;
   selectedLayout: string;
   onLayoutChange: (layout: string) => void;
   backgroundColor: string | null;
@@ -49,8 +29,6 @@ interface DesignOptionsSectionProps {
 
 export function DesignOptionsSection({
   mode,
-  font,
-  onFontChange,
   selectedLayout,
   onLayoutChange,
   backgroundColor,
@@ -64,29 +42,6 @@ export function DesignOptionsSection({
         <CardTitle className="text-lg">✨ Design Options</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Font Selector */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">{label} Font</label>
-          <Select value={font} onValueChange={onFontChange}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {FONTS.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p
-            className="text-sm text-muted-foreground"
-            style={{ fontFamily: font }}
-          >
-            Preview of {font}
-          </p>
-        </div>
-
         {/* Layout Selector */}
         <div className="space-y-2">
           <label className="text-sm font-medium">{label} Layout</label>
