@@ -833,9 +833,9 @@ export function InvitationSendModal({
                   <div className="flex justify-center">
                     <RsvpPagePreview
                       scale={1.0}
-                      colors={palette}
-                      font={customization.digitalInvitationFont}
-                      backgroundColor={customization.digitalInvitationBackground}
+                      colors={{ primary: "#D4A017", secondary: "#F5C842", accent: "#D4A017", neutral: "#E8E0D0" }}
+                      font={null}
+                      backgroundColor="#1E1A2E"
                       partner1Name={profile?.partner1Name ?? ""}
                       partner2Name={profile?.partner2Name ?? ""}
                       weddingDate={profile?.weddingDate ?? ""}
