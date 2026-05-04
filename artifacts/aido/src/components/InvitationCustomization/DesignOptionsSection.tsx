@@ -45,7 +45,7 @@ export function DesignOptionsSection({
     ensureFontsLoaded();
   }, []);
 
-  const label = mode === "saveTheDate" ? "Save the Date" : "Digital Invitation";
+  const label = mode === "saveTheDate" ? "Save the Date" : "RSVP Invitation";
 
   return (
     <Card>

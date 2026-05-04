@@ -788,6 +788,7 @@
     "filtered": "(filtré)",
     "col_name": "Nom",
     "col_invitation": "Invitation",
+    "col_einvite_status": "Statut E-Invitation",
     "col_group": "Groupe",
     "col_rsvp": "RSVP",
     "col_meal": "Repas",

@@ -87,7 +87,7 @@ export function PhotoUploadSection({
   };
 
   const isSaveTheDate = mode === "saveTheDate";
-  const label = isSaveTheDate ? "Save the Date" : "Digital Invitation";
+  const label = isSaveTheDate ? "Save the Date" : "RSVP Invitation";
   const previewUrl = isSaveTheDate ? saveTheDatePreviewUrl : digitalInvitationPreviewUrl;
   const error = isSaveTheDate ? saveTheDateError : digitalInvitationError;
   const handleChange = isSaveTheDate ? handleSaveTheDateChange : handleDigitalInvitationChange;

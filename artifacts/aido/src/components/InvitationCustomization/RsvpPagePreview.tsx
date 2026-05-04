@@ -11,7 +11,7 @@ interface RsvpPagePreviewProps {
   venue: string;
   photoUrl: string | null;
   guestName?: string;
-  /** Render scale — 1.28 fills ~500 px (matches Digital Invitation width). */
+  /** Render scale — 1.28 fills ~500 px (matches RSVP Invitation width). */
   scale?: number;
 }
 

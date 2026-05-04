@@ -660,12 +660,12 @@ export default function Guests() {
       invalidate();
       setSendModalGuest(null);
       if (data.emailSent) {
-        toast({ title: "Digital Invitation sent!", description: "Email delivered to guest." });
+        toast({ title: "RSVP Invitation sent!", description: "Email delivered to guest." });
       } else {
-        toast({ title: "Digital Invitation marked as sent.", description: "No email on file — status updated." });
+        toast({ title: "RSVP Invitation marked as sent.", description: "No email on file — status updated." });
       }
     },
-    onError: (err) => toast({ title: "Failed to send Digital Invitation", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
+    onError: (err) => toast({ title: "Failed to send RSVP Invitation", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
   });
 
   const allGuests = data?.guests ?? [];
@@ -1259,8 +1259,7 @@ export default function Guests() {
                 <TableHeader className="bg-muted/10">
                   <TableRow>
                     <TableHead>{t("guests.col_name")}</TableHead>
-                    <TableHead className="hidden md:table-cell">{t("guests.col_save_the_date")}</TableHead>
-                    <TableHead className="hidden sm:table-cell">{t("guests.col_invitation")}</TableHead>
+                    <TableHead className="hidden sm:table-cell">{t("guests.col_einvite_status")}</TableHead>
                     <TableHead className="hidden sm:table-cell">{t("guests.col_group")}</TableHead>
                     <TableHead>{t("guests.col_rsvp")}</TableHead>
                     <TableHead className="hidden md:table-cell">{t("guests.col_meal")}</TableHead>
@@ -1331,50 +1330,56 @@ export default function Guests() {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-sm">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${(g as any).saveTheDateStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}>
-                                {(g as any).saveTheDateStatus === "sent" ? t("guests.save_the_date_sent") : t("guests.save_the_date_not_sent")}
-                                <ChevronDown className="h-2.5 w-2.5 opacity-60" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-36">
-                              <DropdownMenuItem
-                                className={`text-xs cursor-pointer ${(g as any).saveTheDateStatus !== "sent" ? "opacity-50 pointer-events-none" : ""}`}
-                                onClick={() => handleSaveDateChange(g, "not_sent")}
-                              >
-                                {t("guests.save_the_date_not_sent")}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className={`text-xs font-medium cursor-pointer ${(g as any).saveTheDateStatus === "sent" ? "opacity-50 pointer-events-none" : ""}`}
-                                onClick={() => handleSaveDateChange(g, "sent")}
-                              >
-                                {t("guests.save_the_date_sent")}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
                         <TableCell className="hidden sm:table-cell text-sm">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${INVITATION_OPTIONS.find(o => o.value === g.invitationStatus)?.color ?? INVITATION_OPTIONS[0].color}`}>
-                                {t(`guests.invitation_${g.invitationStatus}`)}
-                                <ChevronDown className="h-2.5 w-2.5 opacity-60" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-36">
-                              {INVITATION_OPTIONS.map(opt => (
-                                <DropdownMenuItem
-                                  key={opt.value}
-                                  className={`text-xs font-medium cursor-pointer ${g.invitationStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
-                                  onClick={() => handleInvitationChange(g, opt.value)}
-                                >
-                                  {t(`guests.invitation_${opt.value}`)}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">Save the Date</span>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${(g as any).saveTheDateStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}>
+                                    {(g as any).saveTheDateStatus === "sent" ? "Sent" : "Not Sent"}
+                                    <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-28">
+                                  <DropdownMenuItem
+                                    className={`text-xs cursor-pointer ${(g as any).saveTheDateStatus !== "sent" ? "opacity-50 pointer-events-none" : ""}`}
+                                    onClick={() => handleSaveDateChange(g, "not_sent")}
+                                  >
+                                    Not Sent
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className={`text-xs font-medium cursor-pointer ${(g as any).saveTheDateStatus === "sent" ? "opacity-50 pointer-events-none" : ""}`}
+                                    onClick={() => handleSaveDateChange(g, "sent")}
+                                  >
+                                    Sent
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">RSVP Invitation</span>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${g.invitationStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}>
+                                    {g.invitationStatus === "sent" ? "Sent" : "Not Sent"}
+                                    <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-28">
+                                  {INVITATION_OPTIONS.map(opt => (
+                                    <DropdownMenuItem
+                                      key={opt.value}
+                                      className={`text-xs font-medium cursor-pointer ${g.invitationStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
+                                      onClick={() => handleInvitationChange(g, opt.value)}
+                                    >
+                                      {opt.value === "sent" ? "Sent" : "Not Sent"}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           <DropdownMenu>

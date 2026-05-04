@@ -603,7 +603,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
       <div>
         <h1 className="text-3xl font-serif font-bold">Invitation Customization</h1>
         <p className="text-muted-foreground mt-1">
-          Customize your Save the Date and Digital Invitation designs
+          Customize your Save the Date and RSVP Invitation designs
         </p>
       </div>
 
@@ -824,7 +824,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                   variant="outline"
                   className="h-8 gap-1.5 text-xs"
                   onClick={handleResetToBrandColors}
-                  title={`Reset ${isSTD ? "Save the Date" : "Digital Invitation"} to brand colours`}
+                  title={`Reset ${isSTD ? "Save the Date" : "RSVP Invitation"} to brand colours`}
                   disabled={isRsvp}
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
@@ -838,7 +838,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
               >
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="saveTheDate">Save the Date</TabsTrigger>
-                  <TabsTrigger value="digitalInvitation">Digital Invitation</TabsTrigger>
+                  <TabsTrigger value="digitalInvitation">RSVP Invitation</TabsTrigger>
                   <TabsTrigger value="rsvpPage">RSVP Page</TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -888,7 +888,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                     guestName={user?.firstName || "Guest Name"}
                   />
                   <p className="text-xs text-muted-foreground text-center max-w-xs">
-                    The RSVP page uses your Digital Invitation's colors, font, and background. Adjust those settings in the Digital Invitation tab.
+                    The RSVP page uses your RSVP Invitation's colors, font, and background. Adjust those settings in the RSVP Invitation tab.
                   </p>
                 </div>
               ) : (

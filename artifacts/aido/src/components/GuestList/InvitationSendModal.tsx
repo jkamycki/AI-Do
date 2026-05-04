@@ -558,7 +558,7 @@ function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) 
   );
 }
 
-const PHOTO_LABELS = new Set(["Save the Date photo", "Digital Invitation photo"]);
+const PHOTO_LABELS = new Set(["Save the Date photo", "RSVP Invitation photo"]);
 
 function BlockedScreen({
   onGoToCustomization,
@@ -788,7 +788,7 @@ export function InvitationSendModal({
                     <Calendar className="h-3.5 w-3.5 mr-1.5" /> Save the Date
                   </TabsTrigger>
                   <TabsTrigger value="digitalInvitation" className="flex-1">
-                    <Heart className="h-3.5 w-3.5 mr-1.5" /> Digital Invitation
+                    <Heart className="h-3.5 w-3.5 mr-1.5" /> RSVP Invitation
                   </TabsTrigger>
                 </TabsList>
 
@@ -866,7 +866,7 @@ export function InvitationSendModal({
                   >
                     {isSendingDigital
                       ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send Digital Invitation email" : "Mark Digital Invitation as sent"}</>
+                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
                     }
                   </Button>
                   {!guest?.email && (
@@ -881,7 +881,7 @@ export function InvitationSendModal({
               <div className="rounded-lg bg-muted/50 border border-border p-3 flex items-start gap-2.5">
                 <Eye className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Review both designs below before sending. The Digital Invitation tab includes a live RSVP simulation — exactly what your guest will see.
+                  Review both designs below before sending. The RSVP Invitation tab includes a live RSVP simulation — exactly what your guest will see.
                 </p>
               </div>
 
@@ -891,7 +891,7 @@ export function InvitationSendModal({
                     <Calendar className="h-3.5 w-3.5 mr-1.5" /> Save the Date
                   </TabsTrigger>
                   <TabsTrigger value="digitalInvitation" className="flex-1">
-                    <Heart className="h-3.5 w-3.5 mr-1.5" /> Digital Invitation + RSVP
+                    <Heart className="h-3.5 w-3.5 mr-1.5" /> RSVP Invitation
                   </TabsTrigger>
                 </TabsList>
 
@@ -945,7 +945,7 @@ export function InvitationSendModal({
                         >
                           {isSendingDigital
                             ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                            : <><Send className="h-4 w-4" /> {guest?.email ? "Send Digital Invitation email" : "Mark Digital Invitation as sent"}</>
+                            : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
                           }
                         </Button>
                         {!guest?.email && (
@@ -970,7 +970,7 @@ export function InvitationSendModal({
                         >
                           {isSendingDigital
                             ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                            : <><Send className="h-4 w-4" /> {guest?.email ? "Send Digital Invitation email" : "Mark Digital Invitation as sent"}</>
+                            : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
                           }
                         </Button>
                         {!guest?.email && (

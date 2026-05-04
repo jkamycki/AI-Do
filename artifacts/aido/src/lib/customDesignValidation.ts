@@ -68,7 +68,7 @@ export function evaluateCustomDesignCompleteness(
 
   if (customization && profile) {
     if (isMissingPhoto(customization.saveTheDatePhotoUrl)) missing.push("Save the Date photo");
-    if (isMissingPhoto(customization.digitalInvitationPhotoUrl)) missing.push("Digital Invitation photo");
+    if (isMissingPhoto(customization.digitalInvitationPhotoUrl)) missing.push("RSVP Invitation photo");
 
     if (isMissingText(profile.partner1Name) || isMissingText(profile.partner2Name)) {
       missing.push("couple names");
