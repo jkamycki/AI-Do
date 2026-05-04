@@ -502,6 +502,9 @@ export const invitationCustomizations = pgTable("invitation_customizations", {
     >()
     .default({}),
 
+  // Sending mode: true = use the AI-generated email template, false = use user's custom design
+  useGeneratedInvitation: boolean("use_generated_invitation").notNull().default(true),
+
   // Metadata
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

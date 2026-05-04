@@ -78,6 +78,7 @@ router.get("/invitation-customizations", requireAuth, async (req, res) => {
         digitalInvitationBackground: "#1E1A2E",
         backgroundImageUrl: null,
         textOverrides: {},
+        useGeneratedInvitation: true,
       });
     }
 
@@ -113,6 +114,7 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
       saveTheDateBackground,
       digitalInvitationBackground,
       textOverrides,
+      useGeneratedInvitation,
     } = req.body as {
       profileId: number;
       primaryColor?: string;
@@ -135,6 +137,7 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
         string,
         { x?: number; y?: number; font?: string; color?: string; fontSize?: number }
       >;
+      useGeneratedInvitation?: boolean;
     };
 
     if (!profileId) {
@@ -187,6 +190,7 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
           ...(saveTheDateBackground !== undefined && { saveTheDateBackground }),
           ...(digitalInvitationBackground !== undefined && { digitalInvitationBackground }),
           ...(textOverrides !== undefined && { textOverrides }),
+          ...(useGeneratedInvitation !== undefined && { useGeneratedInvitation }),
           updatedAt: new Date(),
         })
         .where(eq(invitationCustomizations.profileId, profileId))
@@ -219,6 +223,7 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
           saveTheDateBackground: saveTheDateBackground || null,
           digitalInvitationBackground: digitalInvitationBackground || null,
           textOverrides: textOverrides || {},
+          useGeneratedInvitation: useGeneratedInvitation ?? true,
         })
         .returning();
       result = created;

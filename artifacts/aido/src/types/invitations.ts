@@ -35,6 +35,7 @@ export interface InvitationCustomization {
   saveTheDateBackground?: string | null;
   digitalInvitationBackground?: string | null;
   textOverrides?: TextOverrides;
+  useGeneratedInvitation?: boolean;
   updatedAt?: string;
   createdAt?: string;
 }

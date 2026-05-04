@@ -123,17 +123,27 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: "Guest not found" });
     const guest = rows[0];
 
-    // Fetch invitation customizations
-    const customizationRows = await db
-      .select()
-      .from(invitationCustomizations)
-      .where(eq(invitationCustomizations.profileId, profile.id))
-      .limit(1);
-    const customization = customizationRows.length > 0 ? customizationRows[0] : null;
+    // Fetch invitation customizations — wrapped in try/catch so a missing column
+    // or schema mismatch never blocks the email from sending.
+    let customization: typeof invitationCustomizations.$inferSelect | null = null;
+    try {
+      const customizationRows = await db
+        .select()
+        .from(invitationCustomizations)
+        .where(eq(invitationCustomizations.profileId, profile.id))
+        .limit(1);
+      customization = customizationRows.length > 0 ? customizationRows[0] : null;
+    } catch {
+      // Schema mismatch or missing columns — continue with defaults
+    }
 
-    // Use customization colors or defaults
-    const colors = customization?.colorPalette || DEFAULT_COLORS;
-    const digitalInvitationPhotoUrl = customization?.digitalInvitationPhotoUrl || profile.invitationPhotoUrl;
+    // When useGeneratedInvitation is true (or we couldn't load customization),
+    // skip custom colours/photo and use the AI-generated defaults.
+    const useGenerated = customization?.useGeneratedInvitation !== false;
+    const colors = (!useGenerated && customization?.colorPalette) ? customization.colorPalette : DEFAULT_COLORS;
+    const digitalInvitationPhotoUrl = (!useGenerated && customization?.digitalInvitationPhotoUrl)
+      ? customization.digitalInvitationPhotoUrl
+      : profile.invitationPhotoUrl;
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     const now = new Date();
@@ -573,17 +583,27 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: "Guest not found" });
     const guest = rows[0];
 
-    // Fetch invitation customizations
-    const customizationRows = await db
-      .select()
-      .from(invitationCustomizations)
-      .where(eq(invitationCustomizations.profileId, profile.id))
-      .limit(1);
-    const customization = customizationRows.length > 0 ? customizationRows[0] : null;
+    // Fetch invitation customizations — wrapped in try/catch so a missing column
+    // or schema mismatch never blocks the email from sending.
+    let customization: typeof invitationCustomizations.$inferSelect | null = null;
+    try {
+      const customizationRows = await db
+        .select()
+        .from(invitationCustomizations)
+        .where(eq(invitationCustomizations.profileId, profile.id))
+        .limit(1);
+      customization = customizationRows.length > 0 ? customizationRows[0] : null;
+    } catch {
+      // Schema mismatch or missing columns — continue with defaults
+    }
 
-    // Use customization colors or defaults
-    const colors = customization?.colorPalette || DEFAULT_COLORS;
-    const saveTheDatePhotoUrl = customization?.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl;
+    // When useGeneratedInvitation is true (or we couldn't load customization),
+    // skip custom colours/photo and use the AI-generated defaults.
+    const useGenerated = customization?.useGeneratedInvitation !== false;
+    const colors = (!useGenerated && customization?.colorPalette) ? customization.colorPalette : DEFAULT_COLORS;
+    const saveTheDatePhotoUrl = (!useGenerated && customization?.saveTheDatePhotoUrl)
+      ? customization.saveTheDatePhotoUrl
+      : profile.saveTheDatePhotoUrl;
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     if (!guest.rsvpToken) {
