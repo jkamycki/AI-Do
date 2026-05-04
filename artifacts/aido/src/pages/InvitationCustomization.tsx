@@ -108,7 +108,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
     queryKey: ["wedding-profile", profileId],
     queryFn: async () => {
       if (!profileId) return null;
-      const r = await authedFetch(`/api/wedding-profiles/${profileId}`);
+      const r = await authedFetch(`/api/profile`);
       if (!r.ok) throw new Error("Failed to fetch profile");
       return r.json() as Promise<WeddingProfileData>;
     },
