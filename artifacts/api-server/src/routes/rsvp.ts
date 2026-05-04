@@ -5,6 +5,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 import { sendEmail } from "../lib/resend";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { evaluateCustomDesignCompleteness } from "../lib/customDesignValidation";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import crypto from "crypto";
 
@@ -19,6 +20,31 @@ const DEFAULT_COLORS = {
   accent: "#D4A017",
   neutral: "#E8E0D0",
 };
+
+// Allow only known/safe font families in email HTML to avoid injection.
+const ALLOWED_FONTS = new Set([
+  "Georgia",
+  "Playfair Display",
+  "Cormorant Garamond",
+  "Great Vibes",
+  "Times New Roman",
+  "Arial",
+  "Helvetica",
+  "Plus Jakarta Sans",
+  "Inter",
+  "Lato",
+  "Montserrat",
+  "Merriweather",
+]);
+
+function sanitizeFont(font: string | null | undefined, fallback: string): string {
+  if (!font) return fallback;
+  return ALLOWED_FONTS.has(font) ? font : fallback;
+}
+
+function fontStack(font: string): string {
+  return `'${font}', Georgia, 'Times New Roman', serif`;
+}
 
 function buildOrigin(req: import("express").Request): string {
   const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() || req.protocol;
@@ -140,10 +166,25 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
     // When useGeneratedInvitation is true (or we couldn't load customization),
     // skip custom colours/photo and use the AI-generated defaults.
     const useGenerated = customization?.useGeneratedInvitation !== false;
+
+    if (!useGenerated) {
+      const completeness = evaluateCustomDesignCompleteness({ customization, profile });
+      if (!completeness.isComplete) {
+        return res.status(422).json({
+          error: "Your custom design is not finished. Please complete your customization or switch to an AI-generated design before sending.",
+          missing: completeness.missing,
+          code: "custom_design_incomplete",
+        });
+      }
+    }
+
     const colors = (!useGenerated && customization?.colorPalette) ? customization.colorPalette : DEFAULT_COLORS;
     const digitalInvitationPhotoUrl = (!useGenerated && customization?.digitalInvitationPhotoUrl)
       ? customization.digitalInvitationPhotoUrl
       : profile.invitationPhotoUrl;
+    const headingFont = !useGenerated
+      ? sanitizeFont(customization?.digitalInvitationFont || customization?.selectedFont, "Georgia")
+      : "Georgia";
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     const now = new Date();
@@ -259,7 +300,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         <!-- Couple's Wedding headline -->
         <tr>
           <td style="padding:0 32px 6px;text-align:center;background:${BG};">
-            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:34px;font-weight:400;line-height:1.25;letter-spacing:0.3px;">${couple}&rsquo;s Wedding</h1>
+            <h1 style="margin:0;font-family:${fontStack(headingFont)};color:${TEXT};font-size:34px;font-weight:400;line-height:1.25;letter-spacing:0.3px;">${couple}&rsquo;s Wedding</h1>
           </td>
         </tr>
 
@@ -275,8 +316,8 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         <!-- Date / Venue / Address / Times -->
         <tr>
           <td style="padding:0 48px 8px;text-align:center;background:${BG};">
-            ${monthDayYear ? `<p style="margin:0 0 10px;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:17px;font-weight:400;">${monthDayYear}</p>` : ""}
-            ${profile.venue ? `<p style="margin:0 0 10px;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:15px;font-weight:400;">${profile.venue}</p>` : ""}
+            ${monthDayYear ? `<p style="margin:0 0 10px;font-family:${fontStack(headingFont)};color:${TEXT};font-size:17px;font-weight:400;">${monthDayYear}</p>` : ""}
+            ${profile.venue ? `<p style="margin:0 0 10px;font-family:${fontStack(headingFont)};color:${TEXT};font-size:15px;font-weight:400;">${profile.venue}</p>` : ""}
             ${profile.location ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;line-height:1.6;">${profile.location}</p>` : ""}
             ${cityStateZip ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;line-height:1.6;">${cityStateZip}</p>` : ""}
             ${timesLine ? `<p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;letter-spacing:0.5px;">${timesLine}</p>` : ""}
@@ -600,10 +641,25 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
     // When useGeneratedInvitation is true (or we couldn't load customization),
     // skip custom colours/photo and use the AI-generated defaults.
     const useGenerated = customization?.useGeneratedInvitation !== false;
+
+    if (!useGenerated) {
+      const completeness = evaluateCustomDesignCompleteness({ customization, profile });
+      if (!completeness.isComplete) {
+        return res.status(422).json({
+          error: "Your custom design is not finished. Please complete your customization or switch to an AI-generated design before sending.",
+          missing: completeness.missing,
+          code: "custom_design_incomplete",
+        });
+      }
+    }
+
     const colors = (!useGenerated && customization?.colorPalette) ? customization.colorPalette : DEFAULT_COLORS;
     const saveTheDatePhotoUrl = (!useGenerated && customization?.saveTheDatePhotoUrl)
       ? customization.saveTheDatePhotoUrl
       : profile.saveTheDatePhotoUrl;
+    const headingFont = !useGenerated
+      ? sanitizeFont(customization?.saveTheDateFont || customization?.selectedFont, "Georgia")
+      : "Georgia";
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     if (!guest.rsvpToken) {
@@ -676,7 +732,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
 
         <tr>
           <td style="padding:0 48px;text-align:center;">
-            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:48px;font-weight:300;line-height:1.2;letter-spacing:1px;">${couple}</h1>
+            <h1 style="margin:0;font-family:${fontStack(headingFont)};color:${colors.primary};font-size:48px;font-weight:300;line-height:1.2;letter-spacing:1px;">${couple}</h1>
           </td>
         </tr>
 
@@ -691,7 +747,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         ${weddingDateStr ? `
         <tr>
           <td style="padding:28px 48px 8px;text-align:center;">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:20px;font-weight:400;letter-spacing:0.5px;">${weddingDateStr}</p>
+            <p style="margin:0;font-family:${fontStack(headingFont)};color:${colors.primary};font-size:20px;font-weight:400;letter-spacing:0.5px;">${weddingDateStr}</p>
           </td>
         </tr>` : ""}
 
