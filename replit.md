@@ -129,6 +129,22 @@ Full-stack AI-powered wedding planning application. pnpm workspace monorepo usin
 - **Endpoints**: `POST /api/pdf/timeline` and `POST /api/pdf/vendor-email`
 - **Frontend**: download buttons trigger `fetch()` with `credentials: "include"` and save the blob
 
+## React Query Cache Invalidation Rules
+
+The dashboard reads from `GET /api/dashboard/summary` (key: `getGetDashboardSummaryQueryKey()`), which sums vendor totalCost and aggregates payment status server-side. Whenever a mutation changes vendor or payment data, you MUST invalidate **both**:
+- `getListVendorsQueryKey()` — for the Vendors page list and the dashboard's vendor card (which reads `vendors.filter(v => v.isPaidOff)` directly).
+- `getGetDashboardSummaryQueryKey()` — for the dashboard Budget tile.
+
+In `artifacts/aido/src/pages/Vendors.tsx`, all 7 mutation success handlers (create vendor, update vendor, payment row toggle/edit via `PaymentRow.invalidate()`, createPayment, file upload, deletePayment, deleteVendor) invalidate both keys. Aria's `refreshAfterActions` (in `artifacts/aido/src/pages/Aria.tsx`) also invalidates the dashboard key after any write tool runs.
+
+## Aria Write-Flow Contract
+
+Aria (the AI planner) must use a strict 2-case write flow defined in the system prompt (`artifacts/api-server/src/routes/aria.ts`):
+- **CASE A** — user provided all REQUIRED fields up front: 3 turns total — Aria summarizes + asks "Reply yes to save" → user confirms → Aria saves.
+- **CASE B** — user is missing a REQUIRED field: 5 turns total — Aria asks ONE warm question for missing required fields only → user answers → Aria summarizes + asks yes → user confirms → Aria saves.
+
+Critical rules: (1) optional fields (email/phone/website/notes) NEVER block a save and Aria must never re-ask the user to "verify" an optional value they already gave; (2) Aria must never loop with multiple "could you confirm…" turns; (3) the "required" fields per tool come from the schema's `required` array — read them.
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages

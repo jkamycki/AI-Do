@@ -361,27 +361,29 @@ export type VendorWithPayments = Vendor & {
 export interface CreateVendorBody {
   name: string;
   category: string;
-  email?: string;
-  phone?: string;
-  website?: string;
-  portalLink?: string;
-  notes?: string;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  portalLink?: string | null;
+  notes?: string | null;
   totalCost?: number;
   depositAmount?: number;
   contractSigned?: boolean;
+  primaryContact?: string | null;
 }
 
 export interface UpdateVendorBody {
   name?: string;
   category?: string;
-  email?: string;
-  phone?: string;
-  website?: string;
-  portalLink?: string;
-  notes?: string;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  portalLink?: string | null;
+  notes?: string | null;
   totalCost?: number;
   depositAmount?: number;
   contractSigned?: boolean;
+  primaryContact?: string | null;
   files?: VendorFile[];
 }
 

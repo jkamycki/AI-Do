@@ -481,14 +481,15 @@ export const ListVendorsResponse = zod.array(ListVendorsResponseItem);
 export const CreateVendorBody = zod.object({
   name: zod.string(),
   category: zod.string(),
-  email: zod.string().optional(),
-  phone: zod.string().optional(),
-  website: zod.string().optional(),
-  portalLink: zod.string().optional(),
-  notes: zod.string().optional(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  website: zod.string().nullish(),
+  portalLink: zod.string().nullish(),
+  notes: zod.string().nullish(),
   totalCost: zod.number().optional(),
   depositAmount: zod.number().optional(),
   contractSigned: zod.boolean().optional(),
+  primaryContact: zod.string().nullish(),
 });
 
 /**
@@ -564,14 +565,15 @@ export const UpdateVendorParams = zod.object({
 export const UpdateVendorBody = zod.object({
   name: zod.string().optional(),
   category: zod.string().optional(),
-  email: zod.string().optional(),
-  phone: zod.string().optional(),
-  website: zod.string().optional(),
-  portalLink: zod.string().optional(),
-  notes: zod.string().optional(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  website: zod.string().nullish(),
+  portalLink: zod.string().nullish(),
+  notes: zod.string().nullish(),
   totalCost: zod.number().optional(),
   depositAmount: zod.number().optional(),
   contractSigned: zod.boolean().optional(),
+  primaryContact: zod.string().nullish(),
   files: zod
     .array(
       zod.object({

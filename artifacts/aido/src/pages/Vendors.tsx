@@ -15,6 +15,7 @@ import {
   useGetProfile,
   getListVendorsQueryKey,
   getGetVendorQueryKey,
+  getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
 import type { Vendor, VendorPayment } from "@workspace/api-client-react";
 import { useUpload } from "@workspace/object-storage-web";
@@ -197,6 +198,7 @@ function AddEditVendorDialog({
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
+        qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
         toast({ title: t("vendors.vendor_added") });
         onClose();
       },
@@ -218,6 +220,7 @@ function AddEditVendorDialog({
         }
         await qc.refetchQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
+        qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
         toast({ title: t("vendors.vendor_updated") });
         onClose();
       },
@@ -414,6 +417,7 @@ function PaymentRow({
     qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
     qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
     qc.invalidateQueries({ queryKey: ["vendor-financials"] });
+    qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
   };
 
   const toggleMutation = useUpdateVendorPayment({
@@ -574,6 +578,7 @@ function AddPaymentForm({
         qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
+        qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
         toast({ title: t("vendors.payment_added") });
         onDone();
       },
@@ -674,6 +679,7 @@ function FileUploadSection({
         qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendor.id) });
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
+        qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       },
       onError: () => toast({ title: t("vendors.failed_save_file"), variant: "destructive" }),
     },
@@ -771,6 +777,7 @@ function VendorDetailDialog({
         qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
+        qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
         setDeletingPaymentId(null);
         toast({ title: t("vendors.payment_removed") });
       },
@@ -1276,6 +1283,7 @@ export default function Vendors() {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
+        qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
         setDeletingVendorId(null);
         toast({ title: t("vendors.vendor_removed") });
       },

@@ -1675,20 +1675,28 @@ components:
           type: string
         email:
           type: string
+          nullable: true
         phone:
           type: string
+          nullable: true
         website:
           type: string
+          nullable: true
         portalLink:
           type: string
+          nullable: true
         notes:
           type: string
+          nullable: true
         totalCost:
           type: number
         depositAmount:
           type: number
         contractSigned:
           type: boolean
+        primaryContact:
+          type: string
+          nullable: true
       required:
         - name
         - category
@@ -1702,20 +1710,28 @@ components:
           type: string
         email:
           type: string
+          nullable: true
         phone:
           type: string
+          nullable: true
         website:
           type: string
+          nullable: true
         portalLink:
           type: string
+          nullable: true
         notes:
           type: string
+          nullable: true
         totalCost:
           type: number
         depositAmount:
           type: number
         contractSigned:
           type: boolean
+        primaryContact:
+          type: string
+          nullable: true
         files:
           type: array
           items:

@@ -168,22 +168,32 @@ router.post("/vendors", requireAuth, async (req, res) => {
     const {
       name, category, email, phone, website, portalLink,
       notes, totalCost, depositAmount, contractSigned, nextPaymentDue,
+      primaryContact,
     } = req.body;
+    if (!name || !String(name).trim()) {
+      res.status(400).json({ error: "name is required" });
+      return;
+    }
+    if (!category || !String(category).trim()) {
+      res.status(400).json({ error: "category is required" });
+      return;
+    }
     const [created] = await db.insert(vendors).values({
       profileId: profile.id,
       userId: profile.userId,
-      name,
-      category,
+      name: String(name).trim(),
+      category: String(category),
       email: email ?? null,
       phone: phone ?? null,
       website: website ?? null,
       portalLink: portalLink ?? null,
       notes: notes ?? null,
-      totalCost: String(totalCost ?? 0),
-      depositAmount: String(depositAmount ?? 0),
+      totalCost: String(Number(totalCost ?? 0) || 0),
+      depositAmount: String(Number(depositAmount ?? 0) || 0),
       contractSigned: contractSigned ?? false,
       nextPaymentDue: nextPaymentDue || null,
       files: [],
+      primaryContact: primaryContact ?? null,
     }).returning();
     res.status(201).json(formatVendor(created));
   } catch (err) {
