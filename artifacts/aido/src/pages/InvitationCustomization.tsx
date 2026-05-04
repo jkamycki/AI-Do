@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/react";
 import { useRoute } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
@@ -35,6 +35,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   const { user } = useUser();
   const { toast } = useToast();
   const { activeWorkspace } = useWorkspace();
+  const queryClient = useQueryClient();
   const [, params] = useRoute<RouteParams>("/guests/:profileId");
 
   const profileId = propProfileId || (params?.profileId
@@ -231,8 +232,16 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   const handleSelectDesignMode = useCallback((useAi: boolean) => {
     setUseGeneratedInvitation(useAi);
     skipNextAutoSave.current = true; // we are persisting directly here
+    // Keep the React Query cache in sync so navigating away and back
+    // doesn't reload the stale value (the customization query is cached
+    // with staleTime: Infinity).
+    queryClient.setQueryData(
+      ["invitation-customizations", profileId],
+      (old: InvitationCustomization | null | undefined) =>
+        old ? { ...old, useGeneratedInvitation: useAi } : old,
+    );
     void persistDesignMode(useAi);
-  }, [persistDesignMode]);
+  }, [persistDesignMode, queryClient, profileId]);
 
   const authedFetch = async (url: string, init: RequestInit = {}) => {
     const token = await getToken();
@@ -539,14 +548,23 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
 
     const timer = setTimeout(async () => {
       try {
+        const payload = buildPayload();
         const r = await authedFetch("/api/invitation-customizations", {
           method: "POST",
-          body: JSON.stringify(buildPayload()),
+          body: JSON.stringify(payload),
         });
         if (!r.ok) {
           const error = await r.json().catch(() => ({ error: "Unknown error" }));
           console.error("Auto-save failed:", error);
+          return;
         }
+        // Keep the React Query cache in sync so navigating away and back
+        // doesn't reload stale values (staleTime: Infinity).
+        queryClient.setQueryData(
+          ["invitation-customizations", profileId],
+          (old: InvitationCustomization | null | undefined) =>
+            old ? { ...old, ...payload } : old,
+        );
       } catch (error) {
         console.error("Auto-save error:", error);
       }
