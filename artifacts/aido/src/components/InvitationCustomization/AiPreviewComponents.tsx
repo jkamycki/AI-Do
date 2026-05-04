@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Heart, Mail, MapPin, Download } from "lucide-react";
 import type { ColorPalette } from "@/types/invitations";
 
@@ -16,15 +17,15 @@ export interface WeddingInfo {
   invitationMessage?: string | null;
 }
 
+export interface PhotoPosition { x: number; y: number }
+
 // ── A.IDO brand palette — matches the RSVP Page preview exactly ───────────────
-const BG        = "#1E1A2E";
-const GOLD      = "#D4A017";
-const WHITE     = "#ffffff";
-const MUTED     = "rgba(255,255,255,0.58)";
-const FAINT     = "rgba(255,255,255,0.32)";
-const CARD_BG   = "rgba(255,255,255,0.06)";
-const CARD_BDR  = "rgba(255,255,255,0.12)";
-const DOT_PAT   = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
+const BG       = "#1E1A2E";
+const GOLD     = "#D4A017";
+const WHITE    = "#ffffff";
+const MUTED    = "rgba(255,255,255,0.58)";
+const CARD_BDR = "rgba(255,255,255,0.12)";
+const DOT_PAT  = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
 
 const cormorant = "'Cormorant Garamond', 'Playfair Display', Georgia, serif";
 const jakarta   = "'Plus Jakarta Sans', system-ui, sans-serif";
@@ -33,8 +34,7 @@ function formatTime(t: string | null | undefined): string | null {
   if (!t) return null;
   const [h, m] = t.split(":").map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return t;
-  const ap = h >= 12 ? "PM" : "AM";
-  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${ap}`;
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
 }
 
 function formatDate(dateStr: string | null | undefined, opts?: Intl.DateTimeFormatOptions): string | null {
@@ -49,8 +49,8 @@ export function isPhotoComplete(url: string | null | undefined): boolean {
   return !!(url && !url.startsWith("blob:"));
 }
 
-// ── Shared badge circle (matches RSVP page heart circle) ─────────────────────
-function Badge({ children }: { children: React.ReactNode }) {
+// ── Badge circle ──────────────────────────────────────────────────────────────
+function Badge({ children }: { children: ReactNode }) {
   return (
     <div style={{
       width: 52, height: 52, borderRadius: "50%", margin: "0 auto",
@@ -62,8 +62,16 @@ function Badge({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── Shared wrapper: dark bg + dots + logo ─────────────────────────────────────
-function CardShell({ children, photoUrl }: { children: React.ReactNode; photoUrl?: string | null }) {
+// ── Shared card shell: dark bg + dots + logo + optional photo ─────────────────
+function CardShell({
+  children,
+  photoUrl,
+  photoPosition = { x: 50, y: 50 },
+}: {
+  children: ReactNode;
+  photoUrl?: string | null;
+  photoPosition?: PhotoPosition;
+}) {
   const hasPhoto = isPhotoComplete(photoUrl);
   return (
     <div
@@ -71,8 +79,11 @@ function CardShell({ children, photoUrl }: { children: React.ReactNode; photoUrl
       style={{ background: BG, borderColor: CARD_BDR }}
     >
       {/* A.IDO logo */}
-      <div style={{ display: "flex", justifyContent: "center", paddingTop: 20, paddingBottom: 4,
-                    backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
+      <div style={{
+        display: "flex", justifyContent: "center",
+        paddingTop: 20, paddingBottom: 4,
+        backgroundImage: DOT_PAT, backgroundSize: "22px 22px",
+      }}>
         <img src="/logo.png" alt="A.IDO" style={{ height: 48, width: "auto", objectFit: "contain" }} />
       </div>
 
@@ -82,19 +93,19 @@ function CardShell({ children, photoUrl }: { children: React.ReactNode; photoUrl
           <img
             src={photoUrl!}
             alt="Wedding photo"
-            style={{ width: "100%", height: 130, objectFit: "cover", borderRadius: 8,
-                     display: "block", boxShadow: "0 6px 30px rgba(0,0,0,0.5)" }}
+            style={{
+              width: "100%", height: 130, objectFit: "cover", borderRadius: 8,
+              display: "block", boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
+              objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
+            }}
           />
         </div>
       )}
 
-      {/* Main content area */}
+      {/* Main content */}
       <div style={{
-        backgroundImage: DOT_PAT,
-        backgroundSize: "22px 22px",
-        backgroundColor: BG,
-        padding: "16px 24px 28px",
-        textAlign: "center",
+        backgroundImage: DOT_PAT, backgroundSize: "22px 22px",
+        backgroundColor: BG, padding: "16px 24px 28px", textAlign: "center",
       }}>
         {children}
       </div>
@@ -109,54 +120,45 @@ export function AiSaveDatePreview({
   profile,
   palette: _palette,
   photoUrl,
+  photoPosition,
 }: {
   profile: WeddingInfo;
   palette: ColorPalette;
   photoUrl?: string | null;
+  photoPosition?: PhotoPosition;
 }) {
-  const couple   = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
-  const dateStr  = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  const cityLine = [
-    profile.venueCity,
-    [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
-  ].filter(Boolean).join(", ");
+  const couple    = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const cityLine  = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   const timesLine = [
     formatTime(profile.ceremonyTime)  && `Ceremony ${formatTime(profile.ceremonyTime)}`,
     formatTime(profile.receptionTime) && `Reception ${formatTime(profile.receptionTime)}`,
   ].filter(Boolean).join(" · ");
 
   return (
-    <CardShell photoUrl={photoUrl}>
-      {/* Mail badge */}
+    <CardShell photoUrl={photoUrl} photoPosition={photoPosition}>
       <Badge><Mail style={{ width: 22, height: 22, color: GOLD }} /></Badge>
 
-      {/* Label */}
       <p style={{ fontFamily: jakarta, fontSize: 11, fontWeight: 700,
                   letterSpacing: "0.42em", textTransform: "uppercase",
-                  color: GOLD, marginTop: 12, marginBottom: 0 }}>
+                  color: GOLD, marginTop: 12 }}>
         Save the Date
       </p>
 
-      {/* Couple names — gold italic serif */}
       <h2 style={{ fontFamily: cormorant, fontSize: "2.1rem", fontWeight: 400,
-                   fontStyle: "italic", color: GOLD, lineHeight: 1.2,
-                   margin: "8px 0 0", letterSpacing: "0.02em" }}>
+                   fontStyle: "italic", color: GOLD, lineHeight: 1.2, margin: "8px 0 0" }}>
         {couple}
       </h2>
 
-      {/* Divider */}
       <div style={{ height: 1, background: CARD_BDR, margin: "14px 16px" }} />
 
-      {/* Date — white uppercase */}
       {dateStr && (
         <p style={{ fontFamily: jakarta, fontSize: 10, fontWeight: 600,
-                    letterSpacing: "0.12em", textTransform: "uppercase",
-                    color: WHITE, marginBottom: 10 }}>
+                    letterSpacing: "0.12em", textTransform: "uppercase", color: WHITE, marginBottom: 10 }}>
           {dateStr}
         </p>
       )}
 
-      {/* Venue — gold with pin */}
       {profile.venue && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 4 }}>
           <MapPin style={{ width: 12, height: 12, color: GOLD, flexShrink: 0 }} />
@@ -166,7 +168,6 @@ export function AiSaveDatePreview({
         </div>
       )}
 
-      {/* Address — white */}
       {profile.venueAddress && (
         <p style={{ fontFamily: jakarta, fontSize: 10, color: WHITE, margin: "2px 0 0" }}>
           {profile.venueAddress}
@@ -177,15 +178,12 @@ export function AiSaveDatePreview({
           {cityLine}
         </p>
       )}
-
-      {/* Times — gold */}
       {timesLine && (
         <p style={{ fontFamily: jakarta, fontSize: 10, color: GOLD, margin: "6px 0 0" }}>
           {timesLine}
         </p>
       )}
 
-      {/* Message — white italic */}
       {profile.saveTheDateMessage && (
         <p style={{ fontFamily: cormorant, fontSize: "0.95rem", fontStyle: "italic",
                     color: WHITE, lineHeight: 1.7, margin: "14px 0 0" }}>
@@ -193,17 +191,15 @@ export function AiSaveDatePreview({
         </p>
       )}
 
-      {/* "Formal invitation to follow" */}
       <p style={{ fontFamily: cormorant, fontSize: 12, fontStyle: "italic",
-                  color: MUTED, margin: "12px 0 0", letterSpacing: "0.3px" }}>
+                  color: MUTED, margin: "12px 0 0" }}>
         Formal invitation to follow
       </p>
 
-      {/* Download CTA */}
       <div style={{ marginTop: 16 }}>
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 6,
-          background: CARD_BG, border: `1px solid ${CARD_BDR}`,
+          background: "rgba(255,255,255,0.06)", border: `1px solid ${CARD_BDR}`,
           color: MUTED, fontFamily: jakarta, fontSize: 10,
           fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase",
           padding: "8px 20px", borderRadius: 6,
@@ -223,51 +219,43 @@ export function AiDigitalInvitationPreview({
   profile,
   palette: _palette,
   photoUrl,
+  photoPosition,
 }: {
   profile: WeddingInfo;
   palette: ColorPalette;
   photoUrl?: string | null;
+  photoPosition?: PhotoPosition;
 }) {
-  const couple   = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
-  const dateStr  = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  const cityLine = [
-    profile.venueCity,
-    [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
-  ].filter(Boolean).join(", ");
+  const couple    = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const cityLine  = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   const timesLine = [
     formatTime(profile.ceremonyTime)  && `Ceremony ${formatTime(profile.ceremonyTime)}`,
     formatTime(profile.receptionTime) && `Reception ${formatTime(profile.receptionTime)}`,
   ].filter(Boolean).join(" · ");
 
   return (
-    <CardShell photoUrl={photoUrl}>
-      {/* Heart badge — matches RSVP page exactly */}
+    <CardShell photoUrl={photoUrl} photoPosition={photoPosition}>
       <Badge><Heart style={{ width: 22, height: 22, color: GOLD, fill: GOLD }} /></Badge>
 
-      {/* Label */}
       <p style={{ fontFamily: jakarta, fontSize: 11, fontWeight: 700,
                   letterSpacing: "0.42em", textTransform: "uppercase",
-                  color: GOLD, marginTop: 12, marginBottom: 0 }}>
+                  color: GOLD, marginTop: 12 }}>
         Wedding RSVP
       </p>
 
-      {/* Couple names — gold italic serif */}
       <h2 style={{ fontFamily: cormorant, fontSize: "2.1rem", fontWeight: 400,
-                   fontStyle: "italic", color: GOLD, lineHeight: 1.2,
-                   margin: "8px 0 0", letterSpacing: "0.02em" }}>
+                   fontStyle: "italic", color: GOLD, lineHeight: 1.2, margin: "8px 0 0" }}>
         {couple}
       </h2>
 
-      {/* Date — white uppercase */}
       {dateStr && (
         <p style={{ fontFamily: jakarta, fontSize: 10, fontWeight: 600,
-                    letterSpacing: "0.12em", textTransform: "uppercase",
-                    color: WHITE, margin: "12px 0 0" }}>
+                    letterSpacing: "0.12em", textTransform: "uppercase", color: WHITE, margin: "12px 0 0" }}>
           {dateStr}
         </p>
       )}
 
-      {/* Venue — gold with pin */}
       {profile.venue && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 10 }}>
           <MapPin style={{ width: 12, height: 12, color: GOLD, flexShrink: 0 }} />
@@ -277,7 +265,6 @@ export function AiDigitalInvitationPreview({
         </div>
       )}
 
-      {/* Address — white */}
       {profile.venueAddress && (
         <p style={{ fontFamily: jakarta, fontSize: 10, color: WHITE, margin: "4px 0 0" }}>
           {profile.venueAddress}
@@ -288,15 +275,12 @@ export function AiDigitalInvitationPreview({
           {cityLine}
         </p>
       )}
-
-      {/* Times — gold */}
       {timesLine && (
         <p style={{ fontFamily: jakarta, fontSize: 10, color: GOLD, margin: "6px 0 0" }}>
           {timesLine}
         </p>
       )}
 
-      {/* Message — white italic */}
       {profile.invitationMessage && (
         <p style={{ fontFamily: cormorant, fontSize: "0.95rem", fontStyle: "italic",
                     color: WHITE, lineHeight: 1.7, margin: "14px 0 0" }}>
@@ -304,16 +288,11 @@ export function AiDigitalInvitationPreview({
         </p>
       )}
 
-      {/* Divider */}
       <div style={{ height: 1, background: CARD_BDR, margin: "16px 8px" }} />
 
-      {/* RSVP Now button — gold, full width */}
-      <div style={{
-        background: GOLD, borderRadius: 8, padding: "12px",
-        textAlign: "center",
-      }}>
+      <div style={{ background: GOLD, borderRadius: 8, padding: "12px", textAlign: "center" }}>
         <span style={{ fontFamily: jakarta, fontSize: 12, fontWeight: 700,
-                       letterSpacing: "0.12em", textTransform: "uppercase", color: "#1E1A2E" }}>
+                       letterSpacing: "0.12em", textTransform: "uppercase", color: BG }}>
           RSVP Now
         </span>
       </div>

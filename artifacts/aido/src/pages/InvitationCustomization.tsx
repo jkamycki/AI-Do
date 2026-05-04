@@ -74,6 +74,10 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   const [digitalInvitationBackground, setDigitalInvitationBackground] = useState<string | null>("#1E1A2E");
   const [digTextOverrides, setDigTextOverrides] = useState<TextOverrides>({});
 
+  // ── Photo position (AI mode only — drag to reposition within frame) ─────────
+  const [saveTheDatePhotoPosition, setSaveTheDatePhotoPosition] = useState({ x: 50, y: 50 });
+  const [digitalInvitationPhotoPosition, setDigitalInvitationPhotoPosition] = useState({ x: 50, y: 50 });
+
   // ── Invitation mode ───────────────────────────────────────────────────────
   // true = use AI-generated email template  |  false = use user's custom design
   const [useGeneratedInvitation, setUseGeneratedInvitation] = useState(true);
@@ -386,6 +390,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   const handleSaveTheDatePhotoSelected = (file: File | null) => {
     if (saveTheDateBlobUrlRef.current) { URL.revokeObjectURL(saveTheDateBlobUrlRef.current); saveTheDateBlobUrlRef.current = null; }
     if (!file) { setSaveTheDatePhotoFile(null); setSaveTheDatePhotoUrl(null); return; }
+    setSaveTheDatePhotoPosition({ x: 50, y: 50 });
     const localUrl = URL.createObjectURL(file);
     saveTheDateBlobUrlRef.current = localUrl;
     setSaveTheDatePhotoFile(file);
@@ -396,6 +401,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   const handleDigitalInvitationPhotoSelected = (file: File | null) => {
     if (digitalInvitationBlobUrlRef.current) { URL.revokeObjectURL(digitalInvitationBlobUrlRef.current); digitalInvitationBlobUrlRef.current = null; }
     if (!file) { setDigitalInvitationPhotoFile(null); setDigitalInvitationPhotoUrl(null); return; }
+    setDigitalInvitationPhotoPosition({ x: 50, y: 50 });
     const localUrl = URL.createObjectURL(file);
     digitalInvitationBlobUrlRef.current = localUrl;
     setDigitalInvitationPhotoFile(file);
@@ -666,6 +672,10 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
             saveTheDatePreviewUrl={saveTheDatePhotoUrl}
             digitalInvitationPreviewUrl={digitalInvitationPhotoUrl}
             isLoading={uploadPhotoMutation.isPending || saveCustomizationsMutation.isPending}
+            saveTheDatePhotoPosition={useGeneratedInvitation ? saveTheDatePhotoPosition : undefined}
+            onSaveTheDatePositionChange={useGeneratedInvitation ? setSaveTheDatePhotoPosition : undefined}
+            digitalInvitationPhotoPosition={useGeneratedInvitation ? digitalInvitationPhotoPosition : undefined}
+            onDigitalInvitationPositionChange={useGeneratedInvitation ? setDigitalInvitationPhotoPosition : undefined}
           />
 
           {/* Brand-color palette — read-only swatches in AI mode, fully editable in custom mode */}
@@ -868,6 +878,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                     }}
                     palette={displayPalette}
                     photoUrl={saveTheDatePhotoUrl}
+                    photoPosition={saveTheDatePhotoPosition}
                   />
                 ) : (
                   <SaveTheDatePreview
@@ -929,6 +940,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                     }}
                     palette={displayPalette}
                     photoUrl={digitalInvitationPhotoUrl}
+                    photoPosition={digitalInvitationPhotoPosition}
                   />
                 ) : (
                   <DigitalInvitationPreview
