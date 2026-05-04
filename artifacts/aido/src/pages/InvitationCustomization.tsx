@@ -846,7 +846,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                   title={`Reset ${isSTD ? "Save the Date" : "Digital Invitation"} to brand colours`}
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                  Reset to Brand Colors
+                  Reset to Default
                 </Button>
               </div>
 

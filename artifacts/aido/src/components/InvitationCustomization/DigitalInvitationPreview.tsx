@@ -134,7 +134,7 @@ export const DigitalInvitationPreview = forwardRef<
   const elements: El[] = [
     {
       id: PREFIX + "greeting",
-      text: `Dear ${guestName || "Guest"},`,
+      text: `Dear Guest,`,
       defaultX: CANVAS_W / 2,
       defaultY: 230,
       defaultColor: colors.neutral,
