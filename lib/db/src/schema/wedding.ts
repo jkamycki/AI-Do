@@ -455,8 +455,8 @@ export const invitationCustomizations = pgTable("invitation_customizations", {
   }>().default({
     primary: "#D4A017",
     secondary: "#F5C842",
-    accent: "#7B2FBE",
-    neutral: "#666666",
+    accent: "#D4A017",
+    neutral: "#E8E0D0",
   }),
   customColors: jsonb("custom_colors").$type<{
     primary?: string;

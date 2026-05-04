@@ -35,6 +35,19 @@ const PHOTO_H = 180;
 
 const PREFIX = "dig:";
 
+/** Convert "17:30" or "5:30 PM" → "5:30 PM".  Passes through already-formatted strings. */
+function formatTime(t: string): string {
+  if (!t) return t;
+  const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m24) return t; // already 12-h or free-text
+  let h = parseInt(m24[1], 10);
+  const min = m24[2];
+  const period = h >= 12 ? "PM" : "AM";
+  if (h > 12) h -= 12;
+  if (h === 0) h = 12;
+  return `${h}:${min} ${period}`;
+}
+
 export const DigitalInvitationPreview = forwardRef<
   HTMLDivElement,
   DigitalInvitationPreviewProps
@@ -170,7 +183,7 @@ export const DigitalInvitationPreview = forwardRef<
     },
     {
       id: PREFIX + "ceremony-value",
-      text: ceremonyTime || "",
+      text: formatTime(ceremonyTime || ""),
       defaultX: CANVAS_W / 2,
       defaultY: 502,
       defaultColor: colors.primary,
@@ -191,7 +204,7 @@ export const DigitalInvitationPreview = forwardRef<
     },
     {
       id: PREFIX + "reception-value",
-      text: receptionTime || "",
+      text: formatTime(receptionTime || ""),
       defaultX: CANVAS_W / 2,
       defaultY: 570,
       defaultColor: colors.primary,
