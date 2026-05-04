@@ -139,48 +139,50 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
     return (
       <div className="flex flex-col items-center">
         {/* Toolbar lives outside the captured canvas so it never appears in PDF exports */}
-        <div className="h-12 mb-2 flex items-center justify-center sticky top-0 z-10 bg-card">
-          {editable && selectedEl ? (
-            <EditableToolbar
-              override={textOverrides[selectedEl.id]}
-              defaults={{
-                font: selectedEl.defaultFont,
-                color: selectedEl.defaultColor,
-                fontSize: selectedEl.defaultFontSize,
-              }}
-              onChange={(patch) => updateOverride(selectedEl.id, patch)}
-              onReset={() =>
-                updateOverride(selectedEl.id, {
-                  x: undefined,
-                  y: undefined,
-                  font: undefined,
-                  color: undefined,
-                  fontSize: undefined,
-                })
-              }
-              onClose={() => setSelectedId(null)}
-              label="Text"
-            />
-          ) : editable && selectedId === photoId ? (
-            <EditableToolbar
-              override={photoOverride}
-              defaults={{ font: "", color: "", fontSize: 0 }}
-              showFont={false}
-              showColor={false}
-              showFontSize={false}
-              onChange={() => {}}
-              onReset={() =>
-                updateOverride(photoId, { x: undefined, y: undefined, objectX: undefined, objectY: undefined })
-              }
-              onClose={() => setSelectedId(null)}
-              label="Photo — drag to reposition"
-            />
-          ) : editable ? (
-            <p className="text-xs text-muted-foreground">
-              Click any text to edit · Click &amp; drag the photo to reposition it in the frame
-            </p>
-          ) : null}
-        </div>
+        {editable && (
+          <div className="h-12 mb-2 flex items-center justify-center sticky top-0 z-10 bg-card">
+            {selectedEl ? (
+              <EditableToolbar
+                override={textOverrides[selectedEl.id]}
+                defaults={{
+                  font: selectedEl.defaultFont,
+                  color: selectedEl.defaultColor,
+                  fontSize: selectedEl.defaultFontSize,
+                }}
+                onChange={(patch) => updateOverride(selectedEl.id, patch)}
+                onReset={() =>
+                  updateOverride(selectedEl.id, {
+                    x: undefined,
+                    y: undefined,
+                    font: undefined,
+                    color: undefined,
+                    fontSize: undefined,
+                  })
+                }
+                onClose={() => setSelectedId(null)}
+                label="Text"
+              />
+            ) : selectedId === photoId ? (
+              <EditableToolbar
+                override={photoOverride}
+                defaults={{ font: "", color: "", fontSize: 0 }}
+                showFont={false}
+                showColor={false}
+                showFontSize={false}
+                onChange={() => {}}
+                onReset={() =>
+                  updateOverride(photoId, { x: undefined, y: undefined, objectX: undefined, objectY: undefined })
+                }
+                onClose={() => setSelectedId(null)}
+                label="Photo — drag to reposition"
+              />
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Click any text to edit · Click &amp; drag the photo to reposition it in the frame
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Canvas (this is the ref'd element captured by html2canvas) */}
         <div

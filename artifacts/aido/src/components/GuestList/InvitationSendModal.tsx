@@ -16,13 +16,9 @@ import {
 } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
 import type { Guest } from "@workspace/api-client-react";
-
-interface ColorPalette {
-  primary: string;
-  secondary: string;
-  accent: string;
-  neutral: string;
-}
+import type { TextOverrides, ColorPalette } from "@/types/invitations";
+import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
+import { DigitalInvitationPreview } from "@/components/InvitationCustomization/DigitalInvitationPreview";
 
 interface Customization {
   useGeneratedInvitation: boolean;
@@ -31,6 +27,13 @@ interface Customization {
   colorPalette: ColorPalette | null;
   selectedFont: string | null;
   selectedLayout: string | null;
+  saveTheDateFont: string;
+  digitalInvitationFont: string;
+  saveTheDateLayout: string;
+  digitalInvitationLayout: string;
+  saveTheDateBackground: string | null;
+  digitalInvitationBackground: string | null;
+  textOverrides: TextOverrides;
 }
 
 interface Profile {
@@ -110,7 +113,15 @@ function isPhotoComplete(url: string | null | undefined): boolean {
   return true;
 }
 
-function AiSaveDatePreview({ profile, palette }: { profile: Profile; palette: ColorPalette }) {
+function AiSaveDatePreview({
+  profile,
+  palette,
+  photoUrl,
+}: {
+  profile: Profile;
+  palette: ColorPalette;
+  photoUrl?: string | null;
+}) {
   const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
   const weddingDateStr = formatWeddingDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const locationLine = [
@@ -120,10 +131,16 @@ function AiSaveDatePreview({ profile, palette }: { profile: Profile; palette: Co
   ].filter(Boolean).join(" · ");
   const ceremonyTimeStr = formatTime(profile.ceremonyTime);
   const receptionTimeStr = formatTime(profile.receptionTime);
+  const hasPhoto = isPhotoComplete(photoUrl);
 
   return (
     <div className="rounded-lg overflow-hidden border border-border shadow-xl max-w-md mx-auto" style={{ background: "#faf8f5" }}>
       <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${palette.primary}, ${palette.secondary}, ${palette.accent})` }} />
+      {hasPhoto && (
+        <div style={{ height: 200, overflow: "hidden" }}>
+          <img src={photoUrl!} alt="Wedding photo" className="w-full h-full object-cover" />
+        </div>
+      )}
       <div className="p-8 text-center space-y-5">
         <p style={{ fontFamily: jakarta, fontSize: "11px", fontWeight: 600, letterSpacing: "0.4em", textTransform: "uppercase", color: palette.secondary }}>
           Save the Date
@@ -170,7 +187,15 @@ function AiSaveDatePreview({ profile, palette }: { profile: Profile; palette: Co
   );
 }
 
-function AiDigitalInvitationPreview({ profile, palette }: { profile: Profile; palette: ColorPalette }) {
+function AiDigitalInvitationPreview({
+  profile,
+  palette,
+  photoUrl,
+}: {
+  profile: Profile;
+  palette: ColorPalette;
+  photoUrl?: string | null;
+}) {
   const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
   const weddingDateStr = formatWeddingDate(profile.weddingDate, { year: "numeric", month: "long", day: "numeric" });
   const ceremonyTimeStr = formatTime(profile.ceremonyTime);
@@ -183,6 +208,7 @@ function AiDigitalInvitationPreview({ profile, palette }: { profile: Profile; pa
     ceremonyTimeStr && `Ceremony ${ceremonyTimeStr}`,
     receptionTimeStr && `Reception ${receptionTimeStr}`,
   ].filter(Boolean).join("  •  ");
+  const hasPhoto = isPhotoComplete(photoUrl);
 
   const BG = "#2c2622";
   const TEXT = "#e8dcc7";
@@ -192,6 +218,11 @@ function AiDigitalInvitationPreview({ profile, palette }: { profile: Profile; pa
 
   return (
     <div className="rounded-lg overflow-hidden border border-border shadow-xl max-w-md mx-auto" style={{ background: BG }}>
+      {hasPhoto && (
+        <div style={{ height: 200, overflow: "hidden" }}>
+          <img src={photoUrl!} alt="Wedding photo" className="w-full h-full object-cover" />
+        </div>
+      )}
       <div className="p-8 text-center space-y-4">
         <div className="text-center" style={{ color: ACCENT, fontSize: "12px", letterSpacing: "14px" }}>◆ ◆ ◆</div>
         <p style={{ fontFamily: jakarta, fontSize: "11px", letterSpacing: "4px", textTransform: "uppercase", color: MUTED, fontWeight: 500 }}>
@@ -467,12 +498,12 @@ function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) 
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-white/80 flex items-center gap-2">
-                                  <User className="h-3.5 w-3.5 text-white/50" /> Plus-one Meal Selection
+                                  <User className="h-3.5 w-3.5 text-white/50" /> Guest&apos;s Meal Selection
                                 </FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger className="bg-white/10 border-white/15 text-white">
-                                      <SelectValue placeholder="Select a meal for your guest" />
+                                      <SelectValue placeholder="Select a meal" />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
@@ -494,7 +525,7 @@ function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) 
                     name="dietaryRestrictions"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-white/80">Dietary Restrictions / Additional Notes</FormLabel>
+                        <FormLabel className="text-white/80">Dietary restrictions or notes</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="e.g. vegetarian, gluten-free, nut allergy — leave blank if none"
@@ -541,10 +572,7 @@ function BlockedScreen({ onGoToCustomization, onClose }: { onGoToCustomization: 
         </div>
       </div>
       <div className="flex flex-col gap-3 w-full max-w-xs">
-        <Button
-          onClick={onGoToCustomization}
-          className="gap-2"
-        >
+        <Button onClick={onGoToCustomization} className="gap-2">
           <Paintbrush className="h-4 w-4" /> Complete My Design
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -588,6 +616,13 @@ export function InvitationSendModal({
           colorPalette: data.colorPalette ?? null,
           selectedFont: data.selectedFont ?? null,
           selectedLayout: data.selectedLayout ?? null,
+          saveTheDateFont: data.saveTheDateFont || data.selectedFont || "Georgia",
+          digitalInvitationFont: data.digitalInvitationFont || data.selectedFont || "Georgia",
+          saveTheDateLayout: data.saveTheDateLayout || data.selectedLayout || "classic",
+          digitalInvitationLayout: data.digitalInvitationLayout || data.selectedLayout || "classic",
+          saveTheDateBackground: data.saveTheDateBackground ?? null,
+          digitalInvitationBackground: data.digitalInvitationBackground ?? null,
+          textOverrides: data.textOverrides ?? {},
         });
       })
       .catch(() => {
@@ -598,6 +633,13 @@ export function InvitationSendModal({
           colorPalette: null,
           selectedFont: null,
           selectedLayout: null,
+          saveTheDateFont: "Georgia",
+          digitalInvitationFont: "Georgia",
+          saveTheDateLayout: "classic",
+          digitalInvitationLayout: "classic",
+          saveTheDateBackground: null,
+          digitalInvitationBackground: null,
+          textOverrides: {},
         });
       })
       .finally(() => setLoadingCustomization(false));
@@ -607,12 +649,7 @@ export function InvitationSendModal({
 
   const handleGoToCustomization = () => {
     onClose();
-    const profileId = (profile as any)?.id;
-    if (profileId) {
-      window.location.href = `${base}/invitation-customization`;
-    } else {
-      window.location.href = `${base}/invitation-customization`;
-    }
+    window.location.href = `${base}/invitation-customization`;
   };
 
   const palette: ColorPalette = customization?.colorPalette ?? {
@@ -626,7 +663,6 @@ export function InvitationSendModal({
   const stdPhotoComplete = isPhotoComplete(customization?.saveTheDatePhotoUrl);
   const diPhotoComplete = isPhotoComplete(customization?.digitalInvitationPhotoUrl);
   const customDesignComplete = stdPhotoComplete && diPhotoComplete;
-
   const isBlocked = isCustomMode && !customDesignComplete;
 
   let title = "Preview & Send Invitation";
@@ -654,13 +690,15 @@ export function InvitationSendModal({
           ) : isBlocked ? (
             <BlockedScreen onGoToCustomization={handleGoToCustomization} onClose={onClose} />
           ) : isCustomMode ? (
-            /* Custom Design - Complete */
+            /* ── Custom Design — Complete ── */
             <div className="space-y-5">
               <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-4 flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Custom design is complete</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Your personalized design will be emailed to your guest exactly as you customized it.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Your personalized design will be emailed exactly as you customized it — fonts, colors, layout, and all.
+                  </p>
                 </div>
               </div>
 
@@ -675,48 +713,88 @@ export function InvitationSendModal({
                 </TabsList>
 
                 <TabsContent value="saveTheDate" className="pt-4 space-y-4">
-                  <div className="rounded-lg border border-border p-4 text-center space-y-2">
-                    <div className="h-32 rounded bg-muted flex items-center justify-center text-muted-foreground text-sm">
-                      {stdPhotoComplete ? (
-                        <img src={customization.saveTheDatePhotoUrl!} alt="STD preview" className="h-full w-full object-cover rounded" />
-                      ) : (
-                        "No photo uploaded"
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">Your custom Save the Date design will be sent as a pixel-accurate image</p>
+                  <p className="text-xs text-muted-foreground text-center">
+                    This is exactly what will be emailed to your guest
+                  </p>
+                  <div className="flex justify-center">
+                    <SaveTheDatePreview
+                      photoUrl={customization.saveTheDatePhotoUrl}
+                      weddingDate={profile?.weddingDate || ""}
+                      colors={palette}
+                      font={customization.saveTheDateFont}
+                      layout={customization.saveTheDateLayout}
+                      backgroundColor={customization.saveTheDateBackground}
+                      partner1Name={profile?.partner1Name ?? undefined}
+                      partner2Name={profile?.partner2Name ?? undefined}
+                      location={profile?.venue ?? undefined}
+                      venueCity={profile?.venueCity ?? undefined}
+                      venueState={profile?.venueState ?? undefined}
+                      venueZip={profile?.venueZip ?? undefined}
+                      textOverrides={customization.textOverrides}
+                      onTextOverridesChange={() => {}}
+                      editable={false}
+                    />
                   </div>
                   <Button
                     className="w-full gap-2"
                     onClick={() => guest && onSendSaveTheDate(guest.id)}
                     disabled={isSendingSaveTheDate}
                   >
-                    {isSendingSaveTheDate ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</> : <><Send className="h-4 w-4" /> Send Save the Date</>}
+                    {isSendingSaveTheDate
+                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send Save the Date email" : "Mark Save the Date as sent"}</>
+                    }
                   </Button>
+                  {!guest?.email && (
+                    <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="digitalInvitation" className="pt-4 space-y-4">
-                  <div className="rounded-lg border border-border p-4 text-center space-y-2">
-                    <div className="h-32 rounded bg-muted flex items-center justify-center text-muted-foreground text-sm">
-                      {diPhotoComplete ? (
-                        <img src={customization.digitalInvitationPhotoUrl!} alt="DI preview" className="h-full w-full object-cover rounded" />
-                      ) : (
-                        "No photo uploaded"
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">Your custom Digital Invitation design will be sent as a pixel-accurate image</p>
+                  <p className="text-xs text-muted-foreground text-center">
+                    This is exactly what will be emailed to your guest
+                  </p>
+                  <div className="flex justify-center">
+                    <DigitalInvitationPreview
+                      photoUrl={customization.digitalInvitationPhotoUrl}
+                      venue={profile?.venue || ""}
+                      location={profile?.venueAddress || profile?.venue || ""}
+                      venueCity={profile?.venueCity ?? undefined}
+                      venueState={profile?.venueState ?? undefined}
+                      venueZip={profile?.venueZip ?? undefined}
+                      ceremonyTime={profile?.ceremonyTime || ""}
+                      receptionTime={profile?.receptionTime || ""}
+                      guestName={guest?.name || "Guest"}
+                      colors={palette}
+                      font={customization.digitalInvitationFont}
+                      layout={customization.digitalInvitationLayout}
+                      backgroundColor={customization.digitalInvitationBackground}
+                      partner1Name={profile?.partner1Name || ""}
+                      partner2Name={profile?.partner2Name || ""}
+                      weddingDate={profile?.weddingDate || ""}
+                      textOverrides={customization.textOverrides}
+                      onTextOverridesChange={() => {}}
+                      editable={false}
+                    />
                   </div>
                   <Button
                     className="w-full gap-2"
                     onClick={() => guest && onSendDigitalInvitation(guest.id)}
                     disabled={isSendingDigital}
                   >
-                    {isSendingDigital ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</> : <><Send className="h-4 w-4" /> Send Digital Invitation</>}
+                    {isSendingDigital
+                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send Digital Invitation email" : "Mark Digital Invitation as sent"}</>
+                    }
                   </Button>
+                  {!guest?.email && (
+                    <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
+                  )}
                 </TabsContent>
               </Tabs>
             </div>
           ) : (
-            /* AI-Generated Mode */
+            /* ── AI-Generated Mode ── */
             <div className="space-y-4">
               <div className="rounded-lg bg-muted/50 border border-border p-3 flex items-start gap-2.5">
                 <Eye className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -737,7 +815,13 @@ export function InvitationSendModal({
 
                 <TabsContent value="saveTheDate" className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground text-center">Email preview — this is what your guest will receive in their inbox</p>
-                  {profile && <AiSaveDatePreview profile={profile} palette={palette} />}
+                  {profile && (
+                    <AiSaveDatePreview
+                      profile={profile}
+                      palette={palette}
+                      photoUrl={customization.saveTheDatePhotoUrl || profile.invitationPhotoUrl}
+                    />
+                  )}
                   <Button
                     className="w-full gap-2"
                     onClick={() => guest && onSendSaveTheDate(guest.id)}
@@ -757,7 +841,13 @@ export function InvitationSendModal({
                   {!showRsvpSim ? (
                     <>
                       <p className="text-xs text-muted-foreground text-center">Email preview — this is what your guest will receive in their inbox</p>
-                      {profile && <AiDigitalInvitationPreview profile={profile} palette={palette} />}
+                      {profile && (
+                        <AiDigitalInvitationPreview
+                          profile={profile}
+                          palette={palette}
+                          photoUrl={customization.digitalInvitationPhotoUrl || profile.invitationPhotoUrl}
+                        />
+                      )}
                       <div className="flex flex-col gap-2">
                         <Button
                           variant="outline"
