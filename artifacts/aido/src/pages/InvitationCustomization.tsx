@@ -903,9 +903,11 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
               ) : isRsvp ? (
                 <div className="flex flex-col items-center gap-4">
                   <RsvpPagePreview
-                    colors={{ primary: "#D4A017", secondary: "#F5C842", accent: "#D4A017", neutral: "#E8E0D0" }}
-                    font={null}
-                    backgroundColor="#1E1A2E"
+                    colors={useGeneratedInvitation
+                      ? { primary: "#D4A017", secondary: "#F5C842", accent: "#D4A017", neutral: "#E8E0D0" }
+                      : displayPalette}
+                    font={useGeneratedInvitation ? null : digitalInvitationFont}
+                    backgroundColor={useGeneratedInvitation ? "#1E1A2E" : digitalInvitationBackground}
                     partner1Name={displayWeddingProfile.partner1Name}
                     partner2Name={displayWeddingProfile.partner2Name}
                     weddingDate={displayWeddingProfile.weddingDate}
