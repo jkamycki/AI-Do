@@ -19,6 +19,7 @@ import type { Guest } from "@workspace/api-client-react";
 import type { TextOverrides, ColorPalette } from "@/types/invitations";
 import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
 import { DigitalInvitationPreview } from "@/components/InvitationCustomization/DigitalInvitationPreview";
+import { RsvpPagePreview } from "@/components/InvitationCustomization/RsvpPagePreview";
 import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
 
 interface Customization {
@@ -876,7 +877,21 @@ export function InvitationSendModal({
                 </TabsContent>
 
                 <TabsContent value="rsvpPage" className="pt-4 space-y-4">
-                  {guest && profile && <RsvpSimulation guest={guest} profile={profile} />}
+                  <p className="text-xs text-muted-foreground text-center">This is exactly what your guest will see when they open their RSVP link</p>
+                  <div className="flex justify-center">
+                    <RsvpPagePreview
+                      scale={1.0}
+                      colors={palette}
+                      font={customization.digitalInvitationFont}
+                      backgroundColor={customization.digitalInvitationBackground}
+                      partner1Name={profile?.partner1Name ?? ""}
+                      partner2Name={profile?.partner2Name ?? ""}
+                      weddingDate={profile?.weddingDate ?? ""}
+                      venue={profile?.venue ?? ""}
+                      photoUrl={customization.digitalInvitationPhotoUrl}
+                      guestName={guest?.name}
+                    />
+                  </div>
                   <Button
                     className="w-full gap-2"
                     onClick={() => guest && onSendDigitalInvitation(guest.id)}
@@ -958,7 +973,21 @@ export function InvitationSendModal({
                 </TabsContent>
 
                 <TabsContent value="rsvpPage" className="pt-4 space-y-4">
-                  {guest && profile && <RsvpSimulation guest={guest} profile={profile} />}
+                  <p className="text-xs text-muted-foreground text-center">This is exactly what your guest will see when they open their RSVP link</p>
+                  <div className="flex justify-center">
+                    <RsvpPagePreview
+                      scale={1.0}
+                      colors={palette}
+                      font={customization.digitalInvitationFont}
+                      backgroundColor={customization.digitalInvitationBackground}
+                      partner1Name={profile?.partner1Name ?? ""}
+                      partner2Name={profile?.partner2Name ?? ""}
+                      weddingDate={profile?.weddingDate ?? ""}
+                      venue={profile?.venue ?? ""}
+                      photoUrl={customization.digitalInvitationPhotoUrl}
+                      guestName={guest?.name}
+                    />
+                  </div>
                   <Button
                     className="w-full gap-2"
                     onClick={() => guest && onSendDigitalInvitation(guest.id)}
