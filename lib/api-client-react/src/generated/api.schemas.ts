@@ -496,6 +496,7 @@ export type DashboardSummaryProfile = {
   location: string;
   venueCity?: string;
   venueState?: string;
+  venueZip?: string;
   ceremonyTime: string;
   receptionTime: string;
   guestCount: number;

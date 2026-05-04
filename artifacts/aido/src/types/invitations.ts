@@ -28,6 +28,8 @@ export interface InvitationCustomization {
   backgroundColor: string | null;
   saveTheDatePhotoUrl: string | null;
   digitalInvitationPhotoUrl: string | null;
+  saveTheDatePhotoPosition?: { x: number; y: number } | null;
+  digitalInvitationPhotoPosition?: { x: number; y: number } | null;
   selectedFont: string;
   saveTheDateFont?: string;
   digitalInvitationFont?: string;

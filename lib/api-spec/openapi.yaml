@@ -2003,6 +2003,8 @@ components:
               type: string
             venueState:
               type: string
+            venueZip:
+              type: string
             ceremonyTime:
               type: string
             receptionTime:

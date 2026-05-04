@@ -27,6 +27,8 @@ interface Customization {
   useGeneratedInvitation: boolean;
   saveTheDatePhotoUrl: string | null;
   digitalInvitationPhotoUrl: string | null;
+  saveTheDatePhotoPosition: { x: number; y: number } | null;
+  digitalInvitationPhotoPosition: { x: number; y: number } | null;
   colorPalette: ColorPalette | null;
   selectedFont: string | null;
   selectedLayout: string | null;
@@ -514,6 +516,8 @@ export function InvitationSendModal({
           useGeneratedInvitation: data.useGeneratedInvitation !== false,
           saveTheDatePhotoUrl: data.saveTheDatePhotoUrl ?? null,
           digitalInvitationPhotoUrl: data.digitalInvitationPhotoUrl ?? null,
+          saveTheDatePhotoPosition: data.saveTheDatePhotoPosition ?? null,
+          digitalInvitationPhotoPosition: data.digitalInvitationPhotoPosition ?? null,
           colorPalette: data.colorPalette ?? null,
           selectedFont: data.selectedFont ?? null,
           selectedLayout: data.selectedLayout ?? null,
@@ -531,6 +535,8 @@ export function InvitationSendModal({
           useGeneratedInvitation: true,
           saveTheDatePhotoUrl: null,
           digitalInvitationPhotoUrl: null,
+          saveTheDatePhotoPosition: null,
+          digitalInvitationPhotoPosition: null,
           colorPalette: null,
           selectedFont: null,
           selectedLayout: null,
@@ -738,6 +744,7 @@ export function InvitationSendModal({
                       weddingDate={profile?.weddingDate ?? ""}
                       venue={profile?.venue ?? ""}
                       photoUrl={customization.digitalInvitationPhotoUrl}
+                      photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                       guestName={guest?.name}
                       venueAddress={profile?.venueAddress}
                       venueCity={profile?.venueCity}
@@ -787,6 +794,7 @@ export function InvitationSendModal({
                       profile={profile}
                       palette={palette}
                       photoUrl={customization.saveTheDatePhotoUrl || profile.invitationPhotoUrl}
+                      photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                     />
                   )}
                   <Button
@@ -811,6 +819,7 @@ export function InvitationSendModal({
                       profile={profile}
                       palette={palette}
                       photoUrl={customization.digitalInvitationPhotoUrl || profile.invitationPhotoUrl}
+                      photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                     />
                   )}
                   <Button
@@ -841,6 +850,7 @@ export function InvitationSendModal({
                       weddingDate={profile?.weddingDate ?? ""}
                       venue={profile?.venue ?? ""}
                       photoUrl={customization.digitalInvitationPhotoUrl}
+                      photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                       guestName={guest?.name}
                       venueAddress={profile?.venueAddress}
                       venueCity={profile?.venueCity}
