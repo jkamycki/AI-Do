@@ -244,16 +244,51 @@ export function EditableImage({
   fallbackBg,
   placeholder = "Photo preview",
 }: EditableImageProps) {
-  const drag = useDrag(id, editable, override, defaultX, defaultY, onSelect, onChange);
+  const x = override?.x ?? defaultX;
+  const y = override?.y ?? defaultY;
+  const objectX = override?.objectX ?? 50;
+  const objectY = override?.objectY ?? 50;
+
+  const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
+  const panMovedRef = useRef(false);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!editable) return;
+    e.stopPropagation();
+    onSelect(id);
+    panMovedRef.current = false;
+    panRef.current = { sx: e.clientX, sy: e.clientY, ox: objectX, oy: objectY };
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch { /* noop */ }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!panRef.current) return;
+    const dx = e.clientX - panRef.current.sx;
+    const dy = e.clientY - panRef.current.sy;
+    if (Math.abs(dx) + Math.abs(dy) > 2) panMovedRef.current = true;
+    if (panMovedRef.current) {
+      onChange(id, {
+        objectX: Math.max(0, Math.min(100, panRef.current.ox - dx * 0.15)),
+        objectY: Math.max(0, Math.min(100, panRef.current.oy - dy * 0.15)),
+      });
+    }
+  };
+
+  const handlePointerUp = () => {
+    panRef.current = null;
+  };
+
   return (
     <div
-      onPointerDown={drag.onPointerDown}
-      onPointerMove={drag.onPointerMove}
-      onPointerUp={drag.onPointerUp}
-      onPointerCancel={drag.onPointerUp}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       className={[
         "absolute overflow-hidden rounded-lg shadow-md select-none",
-        editable ? "cursor-move" : "",
+        editable ? "cursor-grab active:cursor-grabbing" : "",
         selected
           ? "ring-2 ring-blue-500 ring-offset-1"
           : editable
@@ -261,8 +296,8 @@ export function EditableImage({
             : "",
       ].join(" ")}
       style={{
-        left: drag.x,
-        top: drag.y,
+        left: x,
+        top: y,
         width,
         height,
         transform: "translateX(-50%)",
@@ -275,7 +310,13 @@ export function EditableImage({
         <img
           src={src}
           alt=""
-          className="w-full h-full object-cover pointer-events-none"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: `${objectX}% ${objectY}%`,
+            pointerEvents: "none",
+          }}
           draggable={false}
         />
       ) : (

@@ -11,6 +11,8 @@ export interface ElementOverride {
   font?: string;
   color?: string;
   fontSize?: number;
+  objectX?: number;
+  objectY?: number;
 }
 
 export type TextOverrides = Record<string, ElementOverride>;

@@ -319,14 +319,14 @@ export const DigitalInvitationPreview = forwardRef<
             showFontSize={false}
             onChange={() => {}}
             onReset={() =>
-              updateOverride(photoId, { x: undefined, y: undefined })
+              updateOverride(photoId, { x: undefined, y: undefined, objectX: undefined, objectY: undefined })
             }
             onClose={() => setSelectedId(null)}
-            label="Photo"
+            label="Photo — drag to reposition"
           />
         ) : editable ? (
           <p className="text-xs text-muted-foreground">
-            Click any text or the photo to edit. Drag to reposition.
+            Click any text to edit · Click &amp; drag the photo to reposition it in the frame
           </p>
         ) : null}
       </div>
