@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, X, AlertCircle } from "lucide-react";
-import { PhotoCropDialog } from "./PhotoCropDialog";
+import { InvitationCropDialog } from "@/components/InvitationCropDialog";
 
 interface PhotoUploadSectionProps {
   mode: "saveTheDate" | "digitalInvitation";
@@ -22,9 +22,14 @@ export function PhotoUploadSection({
 }: PhotoUploadSectionProps) {
   const [saveTheDateError, setSaveTheDateError] = useState<string | null>(null);
   const [digitalInvitationError, setDigitalInvitationError] = useState<string | null>(null);
+
   const [cropOpen, setCropOpen] = useState(false);
   const [cropType, setCropType] = useState<"save-the-date" | "digital-invitation" | null>(null);
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
+  const [cropFileName, setCropFileName] = useState<string>("photo");
+
+  // Incrementing this key resets the <input> so the same file can be selected again
+  const [inputKey, setInputKey] = useState(0);
 
   const validateFile = (file: File): string | null => {
     const allowedMimes = ["image/png", "image/jpeg", "image/webp"];
@@ -37,16 +42,21 @@ export function PhotoUploadSection({
     return null;
   };
 
+  const openCrop = (file: File, type: "save-the-date" | "digital-invitation") => {
+    const url = URL.createObjectURL(file);
+    setCropImageUrl(url);
+    setCropFileName(file.name);
+    setCropType(type);
+    setCropOpen(true);
+  };
+
   const handleSaveTheDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) { onSaveTheDatePhotoChange(null); setSaveTheDateError(null); return; }
     const error = validateFile(file);
     if (error) { setSaveTheDateError(error); onSaveTheDatePhotoChange(null); return; }
     setSaveTheDateError(null);
-    const url = URL.createObjectURL(file);
-    setCropImageUrl(url);
-    setCropType("save-the-date");
-    setCropOpen(true);
+    openCrop(file, "save-the-date");
   };
 
   const handleDigitalInvitationChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,18 +65,25 @@ export function PhotoUploadSection({
     const error = validateFile(file);
     if (error) { setDigitalInvitationError(error); onDigitalInvitationPhotoChange(null); return; }
     setDigitalInvitationError(null);
-    const url = URL.createObjectURL(file);
-    setCropImageUrl(url);
-    setCropType("digital-invitation");
-    setCropOpen(true);
+    openCrop(file, "digital-invitation");
   };
 
-  const handleCropComplete = (croppedFile: File) => {
+  const closeCrop = () => {
+    setCropOpen(false);
+    if (cropImageUrl) URL.revokeObjectURL(cropImageUrl);
+    setCropImageUrl(null);
+    setCropType(null);
+    setInputKey(k => k + 1);
+  };
+
+  const handleCropConfirm = (croppedFile: File) => {
     if (cropType === "save-the-date") onSaveTheDatePhotoChange(croppedFile);
     else if (cropType === "digital-invitation") onDigitalInvitationPhotoChange(croppedFile);
     setCropOpen(false);
+    if (cropImageUrl) URL.revokeObjectURL(cropImageUrl);
     setCropImageUrl(null);
     setCropType(null);
+    setInputKey(k => k + 1);
   };
 
   const isSaveTheDate = mode === "saveTheDate";
@@ -75,9 +92,11 @@ export function PhotoUploadSection({
   const error = isSaveTheDate ? saveTheDateError : digitalInvitationError;
   const handleChange = isSaveTheDate ? handleSaveTheDateChange : handleDigitalInvitationChange;
   const testId = isSaveTheDate ? "save-the-date-photo-input" : "digital-invitation-photo-input";
+
   const handleRemove = () => {
     if (isSaveTheDate) { onSaveTheDatePhotoChange(null); setSaveTheDateError(null); }
     else { onDigitalInvitationPhotoChange(null); setDigitalInvitationError(null); }
+    setInputKey(k => k + 1);
   };
 
   return (
@@ -94,6 +113,7 @@ export function PhotoUploadSection({
             </div>
             <label className="cursor-pointer block text-center">
               <input
+                key={inputKey}
                 data-testid={testId}
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
@@ -133,12 +153,12 @@ export function PhotoUploadSection({
         </div>
       </CardContent>
 
-      {cropImageUrl && (
-        <PhotoCropDialog
-          open={cropOpen}
-          onClose={() => { setCropOpen(false); setCropImageUrl(null); setCropType(null); }}
-          imageUrl={cropImageUrl}
-          onCropComplete={handleCropComplete}
+      {cropOpen && cropImageUrl && (
+        <InvitationCropDialog
+          imageSrc={cropImageUrl}
+          originalFileName={cropFileName}
+          onConfirm={handleCropConfirm}
+          onCancel={closeCrop}
         />
       )}
     </Card>

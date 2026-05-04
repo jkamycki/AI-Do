@@ -3,7 +3,7 @@ import Cropper, { type Area, type MediaSize } from "react-easy-crop";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { ZoomIn, ZoomOut, ArrowUp } from "lucide-react";
+import { ZoomIn, ZoomOut, ArrowUp, AlignCenter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface InvitationCropDialogProps {
@@ -14,10 +14,11 @@ interface InvitationCropDialogProps {
 }
 
 const ASPECT_OPTIONS = [
-  { label: "4:3", value: 4 / 3 },
-  { label: "16:9", value: 16 / 9 },
-  { label: "1:1", value: 1 },
-  { label: "3:4", value: 3 / 4 },
+  { label: "Square",    ratio: "1:1",  value: 1 },
+  { label: "Landscape", ratio: "4:3",  value: 4 / 3 },
+  { label: "Wide",      ratio: "16:9", value: 16 / 9 },
+  { label: "Portrait",  ratio: "3:4",  value: 3 / 4 },
+  { label: "Tall",      ratio: "2:3",  value: 2 / 3 },
 ] as const;
 
 /**
@@ -33,18 +34,30 @@ function computeInitialCropArea(
   const imageAsp = natW / natH;
 
   if (imageAsp >= asp) {
-    // Image is wider relative to the crop — crop fills full image height,
-    // center the crop horizontally.
     const w = (asp / imageAsp) * 100;
     return { x: (100 - w) / 2, y: 0, width: w, height: 100 };
   }
 
-  // Image is taller relative to the crop — crop fills full image width.
-  // Start near the top (~8 % down) so there is a small breathing space above
-  // heads/hair while still keeping faces in frame.
   const h = (imageAsp / asp) * 100;
   const y = Math.max(0, Math.min(8, 100 - h));
   return { x: 0, y, width: 100, height: h };
+}
+
+/** Compute a centered crop area (percentages) for the given image + aspect. */
+function computeCenteredCropArea(
+  natW: number,
+  natH: number,
+  asp: number,
+): { x: number; y: number; width: number; height: number } {
+  const imageAsp = natW / natH;
+
+  if (imageAsp >= asp) {
+    const w = (asp / imageAsp) * 100;
+    return { x: (100 - w) / 2, y: 0, width: w, height: 100 };
+  }
+
+  const h = (imageAsp / asp) * 100;
+  return { x: 0, y: (100 - h) / 2, width: 100, height: h };
 }
 
 async function getCroppedFile(
@@ -101,6 +114,10 @@ export function InvitationCropDialog({ imageSrc, originalFileName, onConfirm, on
   const [cropperKey, setCropperKey] = useState(0);
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
 
+  // Controls which initial area to use for the next remount.
+  // "top" = top-biased, "center" = centered, undefined = none (free drag)
+  const pendingInitMode = useRef<"top" | "center">("top");
+
   // Prevent the auto-position logic from triggering on every Cropper remount.
   const autoPositioned = useRef(false);
 
@@ -108,18 +125,12 @@ export function InvitationCropDialog({ imageSrc, originalFileName, onConfirm, on
     setCroppedAreaPixels(pixels);
   }, []);
 
-  /**
-   * Called once when the image element is ready. We grab the natural dimensions
-   * to compute a smart initial crop area, then remount the Cropper so that
-   * initialCroppedAreaPercentages is applied correctly.
-   */
   const handleMediaLoaded = useCallback((ms: MediaSize) => {
     if (autoPositioned.current) return;
     autoPositioned.current = true;
     setNaturalSize({ w: ms.naturalWidth, h: ms.naturalHeight });
     setCrop({ x: 0, y: 0 });
     setZoom(1);
-    // Remount so the computed initialCroppedAreaPercentages is respected.
     setCropperKey(k => k + 1);
   }, []);
 
@@ -127,14 +138,23 @@ export function InvitationCropDialog({ imageSrc, originalFileName, onConfirm, on
     setAspect(next);
     setCrop({ x: 0, y: 0 });
     setZoom(1);
-    // Remount so the new aspect ratio's smart initial area is applied.
+    pendingInitMode.current = "top";
     setCropperKey(k => k + 1);
   };
 
-  /** Snap the crop window back to the top-biased position. */
+  /** Snap crop back to the top-biased position. */
   const handleResetToTop = () => {
     setCrop({ x: 0, y: 0 });
     setZoom(1);
+    pendingInitMode.current = "top";
+    setCropperKey(k => k + 1);
+  };
+
+  /** Center the crop window on the image. */
+  const handleCenter = () => {
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    pendingInitMode.current = "center";
     setCropperKey(k => k + 1);
   };
 
@@ -155,20 +175,43 @@ export function InvitationCropDialog({ imageSrc, originalFileName, onConfirm, on
   };
 
   const initialCropArea = naturalSize
-    ? computeInitialCropArea(naturalSize.w, naturalSize.h, aspect)
+    ? pendingInitMode.current === "center"
+      ? computeCenteredCropArea(naturalSize.w, naturalSize.h, aspect)
+      : computeInitialCropArea(naturalSize.w, naturalSize.h, aspect)
     : undefined;
 
   return (
     <Dialog open onOpenChange={open => { if (!open) onCancel(); }}>
       <DialogContent className="max-w-md p-0 overflow-hidden gap-0">
         <DialogHeader className="px-5 pt-5 pb-2">
-          <DialogTitle className="font-serif text-primary text-lg">Crop invitation photo</DialogTitle>
+          <DialogTitle className="font-serif text-primary text-lg">Crop photo</DialogTitle>
           <DialogDescription className="text-xs">
-            The crop starts near the top to keep heads in frame. Drag to reposition, zoom to fill, or pick a different shape.
+            Choose a shape, drag to reposition, and zoom to fill. Use Center or Top to snap the photo into position.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative w-full bg-black" style={{ height: 320 }}>
+        {/* Aspect ratio buttons */}
+        <div className="px-5 pt-3 pb-2 flex flex-wrap gap-1.5">
+          {ASPECT_OPTIONS.map(opt => (
+            <button
+              key={opt.label}
+              type="button"
+              onClick={() => handleAspectChange(opt.value)}
+              className={[
+                "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md border text-xs transition-colors",
+                aspect === opt.value
+                  ? "bg-primary text-primary-foreground border-primary font-semibold"
+                  : "bg-background text-muted-foreground border-border hover:border-primary hover:text-foreground",
+              ].join(" ")}
+            >
+              <span className="font-medium">{opt.label}</span>
+              <span className="opacity-60 text-[10px]">{opt.ratio}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Crop area */}
+        <div className="relative w-full bg-black" style={{ height: 300 }}>
           <Cropper
             key={cropperKey}
             image={imageSrc}
@@ -189,35 +232,8 @@ export function InvitationCropDialog({ imageSrc, originalFileName, onConfirm, on
           />
         </div>
 
-        <div className="px-5 pt-3 pb-1 flex flex-wrap gap-1.5 justify-between items-center">
-          <div className="flex flex-wrap gap-1.5">
-            {ASPECT_OPTIONS.map(opt => (
-              <Button
-                key={opt.label}
-                type="button"
-                size="sm"
-                variant={aspect === opt.value ? "default" : "outline"}
-                className="text-xs h-7 px-3"
-                onClick={() => handleAspectChange(opt.value)}
-              >
-                {opt.label}
-              </Button>
-            ))}
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="text-xs h-7 px-2 text-muted-foreground hover:text-foreground gap-1"
-            title="Reset crop to top of image"
-            onClick={handleResetToTop}
-          >
-            <ArrowUp className="h-3 w-3" />
-            Reset to top
-          </Button>
-        </div>
-
-        <div className="px-5 pt-3 pb-2">
+        {/* Zoom slider */}
+        <div className="px-5 pt-3 pb-1">
           <div className="flex items-center gap-3">
             <ZoomOut className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
             <Slider
@@ -232,7 +248,31 @@ export function InvitationCropDialog({ imageSrc, originalFileName, onConfirm, on
           </div>
         </div>
 
-        <DialogFooter className="px-5 pb-5 pt-2 flex gap-2 sm:gap-2">
+        {/* Position shortcuts */}
+        <div className="px-5 pt-1 pb-2 flex gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="text-xs h-7 px-3 gap-1 text-muted-foreground hover:text-foreground"
+            onClick={handleCenter}
+          >
+            <AlignCenter className="h-3 w-3" />
+            Center
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="text-xs h-7 px-3 gap-1 text-muted-foreground hover:text-foreground"
+            onClick={handleResetToTop}
+          >
+            <ArrowUp className="h-3 w-3" />
+            Top
+          </Button>
+        </div>
+
+        <DialogFooter className="px-5 pb-5 pt-1 flex gap-2 sm:gap-2">
           <Button variant="outline" className="flex-1" onClick={onCancel} disabled={applying}>
             Cancel
           </Button>
