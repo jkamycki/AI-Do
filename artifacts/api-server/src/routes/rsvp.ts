@@ -23,18 +23,12 @@ const DEFAULT_COLORS = {
 
 // Allow only known/safe font families in email HTML to avoid injection.
 const ALLOWED_FONTS = new Set([
-  "Georgia",
-  "Playfair Display",
-  "Cormorant Garamond",
-  "Great Vibes",
-  "Times New Roman",
-  "Arial",
-  "Helvetica",
-  "Plus Jakarta Sans",
-  "Inter",
-  "Lato",
-  "Montserrat",
-  "Merriweather",
+  "Georgia", "Playfair Display", "Cormorant Garamond", "Great Vibes",
+  "Times New Roman", "Arial", "Helvetica", "Plus Jakarta Sans", "Inter",
+  "Lato", "Montserrat", "Merriweather", "Dancing Script", "Sacramento",
+  "Tangerine", "Parisienne", "Cinzel", "EB Garamond", "Libre Baskerville",
+  "Crimson Text", "Raleway", "Poppins", "Open Sans", "Josefin Sans",
+  "Quicksand", "Lora", "Garamond",
 ]);
 
 function sanitizeFont(font: string | null | undefined, fallback: string): string {
@@ -44,6 +38,15 @@ function sanitizeFont(font: string | null | undefined, fallback: string): string
 
 function fontStack(font: string): string {
   return `'${font}', Georgia, 'Times New Roman', serif`;
+}
+
+function isLightColor(hex: string): boolean {
+  const h = (hex || "").replace("#", "");
+  if (h.length !== 6) return true;
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5;
 }
 
 function buildOrigin(req: import("express").Request): string {
@@ -270,13 +273,21 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         .filter(Boolean)
         .join("  •  ");
 
-      // Brand palette inspired by the requested design.
-      const BG = "#2c2622";       // page + card background (dark warm charcoal)
-      const TEXT = "#e8dcc7";     // primary cream text
-      const MUTED = "#b6a890";    // muted cream
-      const ACCENT = "#c9a97e";   // gold accent for diamonds + divider
-      const BTN_BG = "#8a6a4f";   // brown RSVP button
-      const BTN_TXT = "#ffffff";
+      // Colors: custom design palette in custom mode, brand defaults in AI mode.
+      const rawBg = !useGenerated && customization?.digitalInvitationBackground
+        ? customization.digitalInvitationBackground : "#2c2622";
+      const bgIsLight = isLightColor(rawBg);
+      const PAGE_BG = !useGenerated ? rawBg : "#1a1614";
+      const BG = rawBg;
+      const TEXT = !useGenerated ? (bgIsLight ? colors.primary : (colors.neutral || "#e8dcc7")) : "#e8dcc7";
+      const MUTED = !useGenerated ? (bgIsLight ? "#555555" : "#b0a090") : "#b6a890";
+      const ACCENT = !useGenerated ? colors.accent : "#c9a97e";
+      const BTN_BG = !useGenerated ? colors.primary : "#8a6a4f";
+      const BTN_TXT = isLightColor(BTN_BG) ? "#000000" : "#ffffff";
+      const invitationMessage = !useGenerated
+        ? ((customization?.textOverrides as Record<string, { text?: string }> | null ?? {})?.["dig:message"]?.text
+            || profile.invitationMessage)
+        : profile.invitationMessage;
 
       const html = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -286,8 +297,8 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
   <meta name="x-apple-disable-message-reformatting"/>
   <title>Wedding Invitation — ${couple}</title>
 </head>
-<body style="margin:0;padding:0;background:#1a1614;-webkit-font-smoothing:antialiased;font-family:Georgia,'Times New Roman',serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#1a1614;padding:32px 16px;">
+<body style="margin:0;padding:0;background:${PAGE_BG};-webkit-font-smoothing:antialiased;font-family:Georgia,'Times New Roman',serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE_BG};padding:32px 16px;">
     <tr><td align="center">
 
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:${BG};border-radius:4px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.45);">
@@ -349,11 +360,11 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
 
         <!-- Custom italic message -->
         ${
-          profile.invitationMessage
+          invitationMessage
             ? `
         <tr>
           <td style="padding:14px 56px 8px;text-align:center;background:${BG};">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:15px;font-style:italic;line-height:1.7;">&ldquo;${profile.invitationMessage}&rdquo;</p>
+            <p style="margin:0;font-family:${fontStack(headingFont)};color:${TEXT};font-size:15px;font-style:italic;line-height:1.7;">&ldquo;${invitationMessage}&rdquo;</p>
           </td>
         </tr>`
             : monthDayYear || profile.venue
@@ -719,6 +730,19 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", "),
       ].filter(Boolean).join(" · ");
 
+      const STD_EMAIL_BG = !useGenerated && customization?.saveTheDateBackground
+        ? customization.saveTheDateBackground : "#ffffff";
+      const stdBgIsLight = isLightColor(STD_EMAIL_BG);
+      const STD_MUTED = !useGenerated ? (stdBgIsLight ? "#666666" : "#bbbbbb") : "#9a8a7e";
+      const STD_TIMES = !useGenerated ? (stdBgIsLight ? "#888888" : "#aaaaaa") : "#b0a09a";
+      const STD_ITALIC = !useGenerated ? (stdBgIsLight ? "#7a6a5a" : "#cccccc") : "#7a6a5a";
+      const STD_FOOTER_BG = !useGenerated ? (stdBgIsLight ? "#f5f0eb" : STD_EMAIL_BG) : "#f5f2ef";
+      const STD_FOOTER_TEXT = !useGenerated ? (stdBgIsLight ? "#a89890" : "#bbbbbb") : "#a89890";
+      const saveTheDateMessage = !useGenerated
+        ? ((customization?.textOverrides as Record<string, { text?: string }> | null ?? {})?.["std:message"]?.text
+            || (profile as any).saveTheDateMessage)
+        : (profile as any).saveTheDateMessage;
+
       const html = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -727,11 +751,11 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
   <meta name="x-apple-disable-message-reformatting"/>
   <title>Save the Date — ${couple}</title>
 </head>
-<body style="margin:0;padding:0;background:linear-gradient(135deg,#f5f1ec 0%,#faf7f4 100%);-webkit-font-smoothing:antialiased;font-family:Georgia,'Times New Roman',serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#f5f1ec 0%,#faf7f4 100%);padding:60px 16px;">
+<body style="margin:0;padding:0;background:${STD_EMAIL_BG};-webkit-font-smoothing:antialiased;font-family:Georgia,'Times New Roman',serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${STD_EMAIL_BG};padding:60px 16px;">
     <tr><td align="center">
 
-      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 8px 48px rgba(0,0,0,0.12);">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:${STD_EMAIL_BG};border-radius:8px;overflow:hidden;box-shadow:0 8px 48px rgba(0,0,0,0.12);">
 
         ${photoBlock}
 
@@ -765,23 +789,23 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         ${locationLine ? `
         <tr>
           <td style="padding:12px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#9a8a7e;font-size:13px;letter-spacing:0.5px;font-weight:400;">${locationLine}</p>
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${STD_MUTED};font-size:13px;letter-spacing:0.5px;font-weight:400;">${locationLine}</p>
           </td>
         </tr>` : ""}
 
         ${(ceremonyTimeStr || receptionTimeStr) ? `
         <tr>
           <td style="padding:8px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b0a09a;font-size:12px;letter-spacing:0.5px;">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${STD_TIMES};font-size:12px;letter-spacing:0.5px;">
               ${[ceremonyTimeStr ? `Ceremony at ${ceremonyTimeStr}` : null, receptionTimeStr ? `Reception at ${receptionTimeStr}` : null].filter(Boolean).join(" • ")}
             </p>
           </td>
         </tr>` : ""}
 
-        ${(profile as any).saveTheDateMessage ? `
+        ${saveTheDateMessage ? `
         <tr>
           <td style="padding:28px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#7a6a5a;font-size:16px;line-height:1.8;font-weight:300;font-style:italic;">"${(profile as any).saveTheDateMessage}"</p>
+            <p style="margin:0;font-family:${fontStack(headingFont)};color:${STD_ITALIC};font-size:16px;line-height:1.8;font-weight:300;font-style:italic;">"${saveTheDateMessage}"</p>
           </td>
         </tr>` : ""}
 
@@ -802,11 +826,11 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         <tr><td style="height:6px;background:linear-gradient(90deg,${colors.primary},${colors.secondary},${colors.accent},${colors.primary});line-height:6px;font-size:6px;opacity:0.8;">&nbsp;</td></tr>
 
         <tr>
-          <td style="background:linear-gradient(to bottom,#faf8f5,#f5f2ef);padding:24px 48px;text-align:center;border-top:1px solid #ede8e2;">
-            <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#a89890;letter-spacing:0.5px;font-weight:500;">
+          <td style="background:${STD_FOOTER_BG};padding:24px 48px;text-align:center;border-top:1px solid ${stdBgIsLight ? "#ede8e2" : "#333333"};">
+            <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${STD_FOOTER_TEXT};letter-spacing:0.5px;font-weight:500;">
               Planning your own wedding?
             </p>
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#c4b8ac;">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:${STD_FOOTER_TEXT};">
               <a href="https://aidowedding.net" style="color:${colors.primary};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
             </p>
           </td>

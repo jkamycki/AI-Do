@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Loader2, RotateCcw, Sparkles, Paintbrush, ChevronDown, ChevronUp, RefreshCw, Save } from "lucide-react";
+import { Loader2, RotateCcw, Sparkles, Paintbrush, ChevronDown, ChevronUp, RefreshCw, Save } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type {
   InvitationCustomization,
@@ -113,7 +113,6 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
     backgroundImageUrl,
     useGeneratedInvitation,
   });
-  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const saveTheDatePreviewRef = useRef<HTMLDivElement>(null);
   const digitalInvitationPreviewRef = useRef<HTMLDivElement>(null);
   const saveTheDateBlobUrlRef = useRef<string | null>(null);
@@ -579,28 +578,6 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
     backgroundImageUrl, useGeneratedInvitation,
   ]);
 
-  // ── PDF download ──────────────────────────────────────────────────────────
-  const downloadPDF = async (refElement: HTMLDivElement | null, filename: string) => {
-    if (!refElement) { toast({ title: "Error", description: "Preview not found", variant: "destructive" }); return; }
-    try {
-      setIsDownloadingPDF(true);
-      const html2canvas = (await import("html2canvas")).default;
-      const jsPDF = (await import("jspdf")).jsPDF;
-      const bgColor = previewTab === "saveTheDate" ? (saveTheDateBackground || "#FFFFFF") : (digitalInvitationBackground || "#FFFFFF");
-      const canvas = await html2canvas(refElement, { backgroundColor: bgColor, scale: 2, useCORS: true, allowTaint: true });
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, imgWidth, imgHeight);
-      pdf.save(filename);
-      toast({ title: "Downloaded", description: "Your invitation PDF has been downloaded." });
-    } catch (error) {
-      console.error("PDF generation error:", error);
-      toast({ title: "Error", description: "Failed to generate PDF. Please try again.", variant: "destructive" });
-    } finally {
-      setIsDownloadingPDF(false);
-    }
-  };
 
   if (!profileId) return <div className="p-4 text-center">Profile not found</div>;
 
@@ -909,24 +886,6 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
               )}
             </div>
 
-            <div className="border-t p-4">
-              <Button
-                onClick={() =>
-                  downloadPDF(
-                    isSTD ? saveTheDatePreviewRef.current : digitalInvitationPreviewRef.current,
-                    isSTD ? "save-the-date.pdf" : "digital-invitation.pdf"
-                  )
-                }
-                disabled={isDownloadingPDF}
-                className="w-full"
-              >
-                {isDownloadingPDF ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating PDF...</>
-                ) : (
-                  <><Download className="h-4 w-4 mr-2" />Download as PDF</>
-                )}
-              </Button>
-            </div>
           </Card>
         </div>
       </div>
