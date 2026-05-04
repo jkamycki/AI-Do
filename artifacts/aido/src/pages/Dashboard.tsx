@@ -810,7 +810,7 @@ export default function Dashboard() {
                       const parts = [
                         summary.profile.location,
                         summary.profile.venueCity,
-                        summary.profile.venueState,
+                        [summary.profile.venueState, summary.profile.venueZip].filter(Boolean).join(" "),
                       ].filter(Boolean);
                       return parts.length > 0 ? (
                         <p className="text-xs text-muted-foreground mt-0.5 leading-snug break-words">
