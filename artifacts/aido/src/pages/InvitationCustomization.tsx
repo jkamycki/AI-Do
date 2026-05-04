@@ -896,6 +896,12 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                     venue={displayWeddingProfile.venue}
                     photoUrl={digitalInvitationPhotoUrl}
                     guestName={user?.firstName || "Guest Name"}
+                    venueCity={displayWeddingProfile.venueCity}
+                    venueState={displayWeddingProfile.venueState}
+                    venueZip={displayWeddingProfile.venueZip}
+                    ceremonyTime={displayWeddingProfile.ceremonyTime}
+                    receptionTime={displayWeddingProfile.receptionTime}
+                    invitationMessage={invitationMessage || weddingProfile?.invitationMessage}
                   />
                   <p className="text-xs text-muted-foreground text-center max-w-xs">
                     The RSVP page uses your RSVP Invitation's colors, font, and background. Adjust those settings in the RSVP Invitation tab.
