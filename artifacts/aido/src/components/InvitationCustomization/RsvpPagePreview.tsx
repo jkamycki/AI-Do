@@ -11,7 +11,6 @@ interface RsvpPagePreviewProps {
   venue: string;
   photoUrl: string | null;
   guestName?: string;
-  /** Render scale — 1.28 fills ~500 px wide (matches RSVP Invitation width). */
   scale?: number;
   venueAddress?: string | null;
   venueCity?: string | null;
@@ -52,7 +51,7 @@ function formatTime(timeStr: string | null | undefined): string | null {
 }
 
 const PREVIEW_W = 390;
-const PREVIEW_H = 1200;
+const PREVIEW_H = 820;
 
 const jakarta = "'Plus Jakarta Sans', system-ui, sans-serif";
 
@@ -66,7 +65,7 @@ export function RsvpPagePreview({
   venue,
   photoUrl,
   guestName = "Guest Name",
-  scale = 1.28,
+  scale = 1.0,
   venueAddress,
   venueCity,
   venueState,
@@ -164,44 +163,44 @@ export function RsvpPagePreview({
             color: accent, marginBottom: 10,
           }}>Wedding RSVP</p>
 
-          {/* Couple names */}
+          {/* Couple names — gold */}
           <h1 style={{
             fontFamily: coupleFont,
             fontSize: 34, fontWeight: 400, fontStyle: "italic",
-            color: textColor, lineHeight: 1.15, letterSpacing: "0.02em",
+            color: accent, lineHeight: 1.15, letterSpacing: "0.02em",
             marginBottom: 8,
           }}>{couple}</h1>
 
-          {/* Date */}
+          {/* Date — white */}
           <p style={{
             fontFamily: jakarta, fontSize: 10, letterSpacing: "0.1em",
-            textTransform: "uppercase", color: textMuted, marginBottom: 8,
+            textTransform: "uppercase", color: textColor, marginBottom: 8,
           }}>{dateStr}</p>
 
-          {/* Venue */}
+          {/* Venue — gold; address — white; times — gold */}
           {venue && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <MapPin style={{ width: 12, height: 12, color: accent }} />
-                <p style={{ fontFamily: coupleFont, fontSize: 16, fontWeight: 500, color: textMuted }}>{venue}</p>
+                <p style={{ fontFamily: coupleFont, fontSize: 16, fontWeight: 500, color: accent }}>{venue}</p>
               </div>
               {venueAddress && (
-                <p style={{ fontFamily: jakarta, fontSize: 10, color: textFaint }}>{venueAddress}</p>
+                <p style={{ fontFamily: jakarta, fontSize: 10, color: textColor }}>{venueAddress}</p>
               )}
               {cityStateZip && (
-                <p style={{ fontFamily: jakarta, fontSize: 10, color: textFaint }}>{cityStateZip}</p>
+                <p style={{ fontFamily: jakarta, fontSize: 10, color: textColor }}>{cityStateZip}</p>
               )}
               {timesLine && (
-                <p style={{ fontFamily: jakarta, fontSize: 10, color: textMuted, marginTop: 3 }}>{timesLine}</p>
+                <p style={{ fontFamily: jakarta, fontSize: 10, color: accent, marginTop: 3 }}>{timesLine}</p>
               )}
             </div>
           )}
 
-          {/* Invitation message */}
+          {/* Invitation message — white */}
           {invitationMessage && (
             <p style={{
               fontFamily: coupleFont, fontSize: 15, fontStyle: "italic",
-              lineHeight: 1.7, color: textMuted,
+              lineHeight: 1.7, color: textColor,
               margin: "14px auto 0", maxWidth: 300,
             }}>
               &ldquo;{invitationMessage}&rdquo;
