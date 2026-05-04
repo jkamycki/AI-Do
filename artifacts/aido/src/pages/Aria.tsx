@@ -301,16 +301,44 @@ export default function Aria() {
   function refreshAfterActions(actions: ActionLog[]) {
     const names = new Set(actions.filter(a => a.status === "ok").map(a => a.name));
     const dashboardKey = getGetDashboardSummaryQueryKey();
-    if (names.has("add_vendor")) {
+
+    // Any vendor-shaped change affects: vendor list, dashboard's
+    // dedicated vendors-card query, budget page's vendor financials,
+    // and the dashboard summary tile (which sums vendor totalCost).
+    // We over-invalidate here on purpose — getting one of these wrong
+    // is what causes the "budget spent shows but vendors card is
+    // empty" desync the user reported.
+    const VENDOR_TOOLS = new Set([
+      "add_vendor", "update_vendor", "delete_vendor",
+      "add_vendor_payment", "update_vendor_payment",
+      "mark_vendor_payment_paid", "delete_vendor_payment",
+    ]);
+    if ([...names].some(n => VENDOR_TOOLS.has(n))) {
       queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ["vendors-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-financials"] });
       queryClient.invalidateQueries({ queryKey: dashboardKey });
     }
-    if (names.has("add_checklist_item")) {
+
+    // Budget/expense changes also feed the dashboard tile and the
+    // /budget page totals.
+    const BUDGET_TOOLS = new Set([
+      "add_budget_item", "update_budget_item", "delete_budget_item", "log_budget_payment",
+      "add_expense", "update_expense", "delete_expense",
+    ]);
+    if ([...names].some(n => BUDGET_TOOLS.has(n))) {
+      queryClient.invalidateQueries({ queryKey: ["vendor-financials"] });
+      queryClient.invalidateQueries({ queryKey: dashboardKey });
+    }
+
+    if (names.has("add_checklist_item") || names.has("update_checklist_item")
+        || names.has("toggle_checklist_item") || names.has("delete_checklist_item")) {
       queryClient.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
       queryClient.invalidateQueries({ queryKey: dashboardKey });
     }
-    if (names.has("add_timeline_event")) {
+    if (names.has("add_timeline_event") || names.has("update_timeline_event") || names.has("delete_timeline_event")) {
       queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
+      queryClient.invalidateQueries({ queryKey: dashboardKey });
     }
     if (names.has("update_profile")) {
       queryClient.invalidateQueries({ queryKey: getGetProfileQueryKey() });

@@ -1,4 +1,4 @@
-import { useGetDashboardSummary } from "@workspace/api-client-react";
+import { useGetDashboardSummary, getListVendorsQueryKey } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@clerk/react";
 import { useLocation } from "wouter";
@@ -514,8 +514,14 @@ export default function Dashboard() {
     },
     enabled: !!summary,
   });
+  // Use the generated `listVendors` query key so any invalidation
+  // from elsewhere (Aria writes, the /vendors page, etc.) automatically
+  // refreshes this card. Using a custom key ("vendors-dashboard") here
+  // caused the dashboard's vendor count to stay stale after Aria added
+  // a vendor, even though the budget tile correctly updated — making
+  // it look like "money was spent on a vendor that doesn't exist".
   const { data: vendors = [] } = useQuery<Vendor[]>({
-    queryKey: ["vendors-dashboard"],
+    queryKey: getListVendorsQueryKey(),
     queryFn: async () => {
       const r = await authFetch(`${API}/api/vendors`);
       if (!r.ok) throw new Error(r.statusText);
