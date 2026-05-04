@@ -731,8 +731,20 @@ function SaveTheDatePhotoCard() {
 
   const { uploadFile, isUploading } = useUpload({
     getToken,
-    onSuccess: (resp: { objectPath: string }) => {
+    onSuccess: async (resp: { objectPath: string }) => {
       setPhotoUrl(resp.objectPath);
+      // Auto-save the new photo URL to the profile so it persists across reloads.
+      try {
+        const res = await authFetch("/api/profile/invitation-settings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ saveTheDatePhotoUrl: resp.objectPath }),
+        });
+        if (!res.ok) throw new Error("Auto-save failed");
+        toast({ title: "Photo saved" });
+      } catch {
+        toast({ title: "Photo uploaded but couldn't be saved", description: "Please click Save Settings to keep it.", variant: "destructive" });
+      }
     },
     onError: (err: Error) => toast({ title: "Upload failed", description: err.message, variant: "destructive" }),
   });
@@ -1064,9 +1076,20 @@ function InvitationPhotoCard() {
 
   const { uploadFile, isUploading } = useUpload({
     getToken,
-    onSuccess: (resp: { objectPath: string }) => {
+    onSuccess: async (resp: { objectPath: string }) => {
       setPhotoUrl(resp.objectPath);
-      // previewSrc is already set to the (cropped or original) file before upload
+      // Auto-save the new photo URL to the profile so it persists across reloads.
+      try {
+        const res = await authFetch("/api/profile/invitation-settings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invitationPhotoUrl: resp.objectPath }),
+        });
+        if (!res.ok) throw new Error("Auto-save failed");
+        toast({ title: "Photo saved" });
+      } catch {
+        toast({ title: "Photo uploaded but couldn't be saved", description: "Please click Save Invitation Settings to keep it.", variant: "destructive" });
+      }
     },
     onError: (err: Error) => toast({ title: "Upload failed", description: err.message, variant: "destructive" }),
   });
