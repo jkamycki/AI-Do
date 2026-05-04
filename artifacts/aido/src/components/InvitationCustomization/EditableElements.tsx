@@ -392,8 +392,10 @@ export function EditableToolbar({
           type="color"
           value={color}
           onChange={(e) => onChange({ color: e.target.value })}
+          onFocus={(e) => e.target.blur()}
           className="h-8 w-10 rounded cursor-pointer"
           style={{ border: "1px solid rgba(212,160,23,0.4)" }}
+          tabIndex={-1}
           aria-label="Text color"
         />
       )}

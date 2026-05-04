@@ -88,6 +88,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
 
   // ── Misc ──────────────────────────────────────────────────────────────────
   const skipNextAutoSave = useRef(true);
+  const hasInitialized = useRef(false);
   // Holds the latest values for the unmount-save so we don't capture stale closures
   const latestValuesRef = useRef({
     profileId,
@@ -219,11 +220,14 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
       return r.json() as Promise<InvitationCustomization>;
     },
     enabled: !!profileId,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
   });
 
   // ── Load DB data into state ───────────────────────────────────────────────
   useEffect(() => {
-    if (customization) {
+    if (customization && !hasInitialized.current) {
+      hasInitialized.current = true;
       skipNextAutoSave.current = true;
 
       // Shared
