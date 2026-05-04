@@ -913,6 +913,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                     weddingDate={displayWeddingProfile.weddingDate}
                     venue={displayWeddingProfile.venue}
                     photoUrl={digitalInvitationPhotoUrl}
+                    photoPosition={useGeneratedInvitation ? digitalInvitationPhotoPosition : undefined}
                     guestName={user?.firstName || "Guest Name"}
                     venueCity={displayWeddingProfile.venueCity}
                     venueState={displayWeddingProfile.venueState}
