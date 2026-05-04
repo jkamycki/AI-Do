@@ -635,14 +635,17 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         userId: profile.userId,
         name: vendorName,
         category,
-        ...(args.email ? { email: String(args.email) } : {}),
-        ...(args.phone ? { phone: String(args.phone) } : {}),
-        ...(args.website ? { website: String(args.website) } : {}),
-        ...(args.notes ? { notes: String(args.notes) } : {}),
+        email: args.email ? String(args.email) : null,
+        phone: args.phone ? String(args.phone) : null,
+        website: args.website ? String(args.website) : null,
+        portalLink: null,
+        notes: args.notes ? String(args.notes) : null,
         totalCost: String(Number(args.totalCost ?? 0)),
         depositAmount: String(depositAmt),
         contractSigned: false,
+        nextPaymentDue: null,
         files: [],
+        primaryContact: null,
       }).returning();
 
       // Auto-create a Deposit payment milestone when a deposit amount is provided
