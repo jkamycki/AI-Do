@@ -7,6 +7,9 @@ interface SaveTheDatePreviewProps {
   colors: ColorPalette;
   font: string;
   backgroundColor: string | null;
+  partner1Name?: string;
+  partner2Name?: string;
+  location?: string;
 }
 
 export function SaveTheDatePreview({
@@ -15,6 +18,9 @@ export function SaveTheDatePreview({
   colors,
   font,
   backgroundColor,
+  partner1Name,
+  partner2Name,
+  location,
 }: SaveTheDatePreviewProps) {
   useEffect(() => {
     const fontMap: Record<string, string> = {
@@ -50,11 +56,19 @@ export function SaveTheDatePreview({
     fontFamily: font,
   };
 
-  const formattedDate = new Date(weddingDate).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const dateObj = new Date(weddingDate);
+  const formattedDate = isNaN(dateObj.getTime())
+    ? weddingDate
+    : `${String(dateObj.getMonth() + 1).padStart(2, "0")}.${String(
+        dateObj.getDate(),
+      ).padStart(2, "0")}.${dateObj.getFullYear()}`;
+
+  const coupleNames =
+    partner1Name && partner2Name
+      ? `${partner1Name} & ${partner2Name}`
+      : partner1Name || partner2Name || "";
+
+  const dateLocation = location ? `${formattedDate} – ${location}` : formattedDate;
 
   return (
     <div
@@ -63,7 +77,7 @@ export function SaveTheDatePreview({
     >
       {/* Heading */}
       <h1
-        className="text-4xl font-bold text-center"
+        className="text-4xl font-bold text-center tracking-wide uppercase"
         style={{ color: colors.primary }}
       >
         Save the Date
@@ -71,7 +85,7 @@ export function SaveTheDatePreview({
 
       {/* Photo */}
       {photoUrl ? (
-        <div className="w-full max-w-xs h-40 rounded-lg overflow-hidden border border-border shadow-md">
+        <div className="w-full max-w-sm h-56 rounded-lg overflow-hidden border border-border shadow-md">
           <img
             src={photoUrl}
             alt="Save the Date"
@@ -80,19 +94,29 @@ export function SaveTheDatePreview({
         </div>
       ) : (
         <div
-          className="w-full max-w-xs h-40 rounded-lg border-2 border-dashed border-border flex items-center justify-center"
+          className="w-full max-w-sm h-56 rounded-lg border-2 border-dashed border-border flex items-center justify-center"
           style={{ backgroundColor: colors.secondary + "20" }}
         >
           <p className="text-muted-foreground">Photo preview</p>
         </div>
       )}
 
-      {/* Wedding Date */}
+      {/* Couple names */}
+      {coupleNames && (
+        <p
+          className="text-3xl font-semibold text-center"
+          style={{ color: colors.primary }}
+        >
+          {coupleNames}
+        </p>
+      )}
+
+      {/* Date – Location */}
       <p
-        className="text-2xl font-semibold text-center"
+        className="text-xl font-medium text-center"
         style={{ color: colors.accent }}
       >
-        {formattedDate}
+        {dateLocation}
       </p>
     </div>
   );

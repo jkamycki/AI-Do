@@ -503,6 +503,9 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                     colors={displayPalette}
                     font={saveTheDateFont}
                     backgroundColor={backgroundColor}
+                    partner1Name={displayWeddingProfile.partner1Name}
+                    partner2Name={displayWeddingProfile.partner2Name}
+                    location={displayWeddingProfile.location}
                   />
                 ) : (
                   <DigitalInvitationPreview
