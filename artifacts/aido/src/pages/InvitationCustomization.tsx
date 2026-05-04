@@ -9,6 +9,7 @@ import { DesignOptionsSection } from "@/components/InvitationCustomization/Desig
 import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
 import { DigitalInvitationPreview } from "@/components/InvitationCustomization/DigitalInvitationPreview";
 import { RsvpPagePreview } from "@/components/InvitationCustomization/RsvpPagePreview";
+import { AiSaveDatePreview, AiDigitalInvitationPreview } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -845,35 +846,44 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
             </div>
 
             <div className="flex-1 overflow-auto p-4">
-              {/* AI-generated mode notice — shows when canvas won't be the one sent */}
-              {useGeneratedInvitation && !isRsvp && (
-                <div className="mb-3 rounded-lg bg-primary/10 border border-primary/20 p-3 flex items-start gap-2">
-                  <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    <span className="font-semibold text-primary">AI Generated mode</span> — the A.IDO email template will be sent, not this canvas. Switch to{" "}
-                    <span className="font-semibold text-foreground">Custom Design</span> above to send your personalized design.
-                  </p>
-                </div>
-              )}
               {isSTD ? (
-                <SaveTheDatePreview
-                  ref={saveTheDatePreviewRef}
-                  photoUrl={saveTheDatePhotoUrl}
-                  weddingDate={displayWeddingProfile.weddingDate}
-                  colors={displayPalette}
-                  font={saveTheDateFont}
-                  layout={saveTheDateLayout}
-                  backgroundColor={saveTheDateBackground}
-                  partner1Name={displayWeddingProfile.partner1Name}
-                  partner2Name={displayWeddingProfile.partner2Name}
-                  location={displayWeddingProfile.location}
-                  venueCity={displayWeddingProfile.venueCity}
-                  venueState={displayWeddingProfile.venueState}
-                  venueZip={displayWeddingProfile.venueZip}
-                  message={saveTheDateMessage || undefined}
-                  textOverrides={stdTextOverrides}
-                  onTextOverridesChange={setStdTextOverrides}
-                />
+                useGeneratedInvitation ? (
+                  <AiSaveDatePreview
+                    profile={{
+                      partner1Name: displayWeddingProfile.partner1Name,
+                      partner2Name: displayWeddingProfile.partner2Name,
+                      weddingDate: displayWeddingProfile.weddingDate,
+                      venue: displayWeddingProfile.venue,
+                      venueCity: displayWeddingProfile.venueCity,
+                      venueState: displayWeddingProfile.venueState,
+                      venueZip: displayWeddingProfile.venueZip,
+                      ceremonyTime: displayWeddingProfile.ceremonyTime,
+                      receptionTime: displayWeddingProfile.receptionTime,
+                      saveTheDateMessage: saveTheDateMessage || weddingProfile?.saveTheDateMessage,
+                    }}
+                    palette={displayPalette}
+                    photoUrl={saveTheDatePhotoUrl}
+                  />
+                ) : (
+                  <SaveTheDatePreview
+                    ref={saveTheDatePreviewRef}
+                    photoUrl={saveTheDatePhotoUrl}
+                    weddingDate={displayWeddingProfile.weddingDate}
+                    colors={displayPalette}
+                    font={saveTheDateFont}
+                    layout={saveTheDateLayout}
+                    backgroundColor={saveTheDateBackground}
+                    partner1Name={displayWeddingProfile.partner1Name}
+                    partner2Name={displayWeddingProfile.partner2Name}
+                    location={displayWeddingProfile.location}
+                    venueCity={displayWeddingProfile.venueCity}
+                    venueState={displayWeddingProfile.venueState}
+                    venueZip={displayWeddingProfile.venueZip}
+                    message={saveTheDateMessage || undefined}
+                    textOverrides={stdTextOverrides}
+                    onTextOverridesChange={setStdTextOverrides}
+                  />
+                )
               ) : isRsvp ? (
                 <div className="flex flex-col items-center gap-4">
                   <RsvpPagePreview
@@ -892,28 +902,47 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                   </p>
                 </div>
               ) : (
-                <DigitalInvitationPreview
-                  ref={digitalInvitationPreviewRef}
-                  photoUrl={digitalInvitationPhotoUrl}
-                  venue={displayWeddingProfile.venue}
-                  location={displayWeddingProfile.location}
-                  venueCity={displayWeddingProfile.venueCity}
-                  venueState={displayWeddingProfile.venueState}
-                  venueZip={displayWeddingProfile.venueZip}
-                  ceremonyTime={displayWeddingProfile.ceremonyTime}
-                  receptionTime={displayWeddingProfile.receptionTime}
-                  guestName={user?.firstName || "Guest Name"}
-                  colors={displayPalette}
-                  font={digitalInvitationFont}
-                  layout={digitalInvitationLayout}
-                  backgroundColor={digitalInvitationBackground}
-                  partner1Name={displayWeddingProfile.partner1Name}
-                  partner2Name={displayWeddingProfile.partner2Name}
-                  weddingDate={displayWeddingProfile.weddingDate}
-                  message={invitationMessage || undefined}
-                  textOverrides={digTextOverrides}
-                  onTextOverridesChange={setDigTextOverrides}
-                />
+                useGeneratedInvitation ? (
+                  <AiDigitalInvitationPreview
+                    profile={{
+                      partner1Name: displayWeddingProfile.partner1Name,
+                      partner2Name: displayWeddingProfile.partner2Name,
+                      weddingDate: displayWeddingProfile.weddingDate,
+                      venue: displayWeddingProfile.venue,
+                      venueCity: displayWeddingProfile.venueCity,
+                      venueState: displayWeddingProfile.venueState,
+                      venueZip: displayWeddingProfile.venueZip,
+                      ceremonyTime: displayWeddingProfile.ceremonyTime,
+                      receptionTime: displayWeddingProfile.receptionTime,
+                      invitationMessage: invitationMessage || weddingProfile?.invitationMessage,
+                    }}
+                    palette={displayPalette}
+                    photoUrl={digitalInvitationPhotoUrl}
+                  />
+                ) : (
+                  <DigitalInvitationPreview
+                    ref={digitalInvitationPreviewRef}
+                    photoUrl={digitalInvitationPhotoUrl}
+                    venue={displayWeddingProfile.venue}
+                    location={displayWeddingProfile.location}
+                    venueCity={displayWeddingProfile.venueCity}
+                    venueState={displayWeddingProfile.venueState}
+                    venueZip={displayWeddingProfile.venueZip}
+                    ceremonyTime={displayWeddingProfile.ceremonyTime}
+                    receptionTime={displayWeddingProfile.receptionTime}
+                    guestName={user?.firstName || "Guest Name"}
+                    colors={displayPalette}
+                    font={digitalInvitationFont}
+                    layout={digitalInvitationLayout}
+                    backgroundColor={digitalInvitationBackground}
+                    partner1Name={displayWeddingProfile.partner1Name}
+                    partner2Name={displayWeddingProfile.partner2Name}
+                    weddingDate={displayWeddingProfile.weddingDate}
+                    message={invitationMessage || undefined}
+                    textOverrides={digTextOverrides}
+                    onTextOverridesChange={setDigTextOverrides}
+                  />
+                )
               )}
             </div>
 
