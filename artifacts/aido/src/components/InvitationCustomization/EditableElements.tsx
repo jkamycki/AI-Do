@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 import type { ElementOverride } from "@/types/invitations";
 import { Button } from "@/components/ui/button";
 import {
@@ -159,6 +160,23 @@ export function EditableText({
   const color = override?.color ?? defaultColor;
   const fontSize = override?.fontSize ?? defaultFontSize;
 
+  // When the element has never been manually dragged (no x override), use full-width
+  // left:0/right:0 centering — this is pixel-perfect regardless of font metrics.
+  // Once the user drags it, switch to the explicit left+translateX mode.
+  const hasXOverride = override?.x !== undefined;
+
+  const positionStyle: CSSProperties = hasXOverride
+    ? {
+        left: drag.x,
+        top: drag.y,
+        transform: textAlign === "center" ? "translateX(-50%)" : undefined,
+      }
+    : {
+        left: 0,
+        right: 0,
+        top: drag.y,
+      };
+
   return (
     <div
       onPointerDown={drag.onPointerDown}
@@ -175,9 +193,7 @@ export function EditableText({
             : "",
       ].join(" ")}
       style={{
-        left: drag.x,
-        top: drag.y,
-        transform: textAlign === "center" ? "translateX(-50%)" : undefined,
+        ...positionStyle,
         color,
         fontFamily: `"${font}"`,
         fontSize,
@@ -186,7 +202,7 @@ export function EditableText({
         textAlign,
         textTransform: uppercase ? "uppercase" : undefined,
         letterSpacing,
-        maxWidth,
+        maxWidth: hasXOverride ? maxWidth : undefined,
         padding: "2px 6px",
         lineHeight: 1.2,
       }}
@@ -299,18 +315,26 @@ export function EditableToolbar({
   const fontSize = override?.fontSize ?? defaults.fontSize;
   return (
     <div
-      className="bg-white border rounded-lg shadow-md p-2 flex items-center gap-2 flex-wrap"
+      className="rounded-lg shadow-lg p-2 flex items-center gap-2 flex-wrap"
+      style={{
+        background: "#2A2440",
+        border: "1px solid rgba(212,160,23,0.35)",
+        color: "#E8E0D0",
+      }}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
       {label && (
-        <span className="text-xs font-medium text-muted-foreground px-1">
+        <span className="text-xs font-medium px-1" style={{ color: "#b8a88a" }}>
           {label}
         </span>
       )}
       {showFont && (
         <Select value={font} onValueChange={(v) => onChange({ font: v })}>
-          <SelectTrigger className="h-8 w-[160px] text-xs">
+          <SelectTrigger
+            className="h-8 w-[160px] text-xs"
+            style={{ background: "#1E1A2E", color: "#E8E0D0", borderColor: "rgba(212,160,23,0.3)" }}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -327,7 +351,8 @@ export function EditableToolbar({
           type="color"
           value={color}
           onChange={(e) => onChange({ color: e.target.value })}
-          className="h-8 w-10 rounded border cursor-pointer"
+          className="h-8 w-10 rounded cursor-pointer"
+          style={{ border: "1px solid rgba(212,160,23,0.4)" }}
           aria-label="Text color"
         />
       )}
@@ -338,17 +363,19 @@ export function EditableToolbar({
             size="sm"
             variant="outline"
             className="h-8 w-8 p-0"
+            style={{ background: "#1E1A2E", color: "#E8E0D0", borderColor: "rgba(212,160,23,0.3)" }}
             onClick={() => onChange({ fontSize: Math.max(8, fontSize - 2) })}
             aria-label="Decrease font size"
           >
             −
           </Button>
-          <span className="text-xs w-8 text-center tabular-nums">{fontSize}</span>
+          <span className="text-xs w-8 text-center tabular-nums" style={{ color: "#E8E0D0" }}>{fontSize}</span>
           <Button
             type="button"
             size="sm"
             variant="outline"
             className="h-8 w-8 p-0"
+            style={{ background: "#1E1A2E", color: "#E8E0D0", borderColor: "rgba(212,160,23,0.3)" }}
             onClick={() => onChange({ fontSize: fontSize + 2 })}
             aria-label="Increase font size"
           >
@@ -361,6 +388,7 @@ export function EditableToolbar({
         size="sm"
         variant="ghost"
         className="h-8 text-xs"
+        style={{ color: "#b8a88a" }}
         onClick={onReset}
       >
         Reset
@@ -370,6 +398,7 @@ export function EditableToolbar({
         size="sm"
         variant="ghost"
         className="h-8 w-8 p-0"
+        style={{ color: "#b8a88a" }}
         onClick={onClose}
         aria-label="Close"
       >

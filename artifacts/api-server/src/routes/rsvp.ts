@@ -16,8 +16,8 @@ const router = Router();
 const DEFAULT_COLORS = {
   primary: "#D4A017",
   secondary: "#F5C842",
-  accent: "#7B2FBE",
-  neutral: "#666666",
+  accent: "#D4A017",
+  neutral: "#E8E0D0",
 };
 
 function buildOrigin(req: import("express").Request): string {

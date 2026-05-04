@@ -626,16 +626,20 @@ export default function Guests() {
     mutationFn: async (guestId: number) => {
       const res = await authFetch(`/api/guests/${guestId}/send-save-the-date`, { method: "POST" });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? "Failed to send save-the-date");
+        const err = await res.json().catch(() => ({})) as { error?: string; details?: string };
+        throw new Error(err.details ?? err.error ?? "Failed to send save-the-date");
       }
       return res.json();
     },
-    onSuccess: (_, guestId) => {
+    onSuccess: (data: { emailSent?: boolean }, guestId) => {
       optimisticUpdate(guestId, { saveTheDateStatus: "sent" } as any);
       invalidate();
       setInviteTypeGuest(null);
-      toast({ title: "Save the Date sent!", description: "Email delivered to guest." });
+      if (data?.emailSent) {
+        toast({ title: "Save the Date sent!", description: "Email delivered to guest." });
+      } else {
+        toast({ title: "Save the Date marked as sent.", description: "No email on file — status updated." });
+      }
     },
     onError: (err) => toast({ title: "Failed to send Save the Date", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
   });
@@ -644,8 +648,8 @@ export default function Guests() {
     mutationFn: async (guestId: number) => {
       const res = await authFetch(`/api/guests/${guestId}/send-rsvp`, { method: "POST" });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? "Failed to send RSVP");
+        const err = await res.json().catch(() => ({})) as { error?: string; details?: string };
+        throw new Error(err.details ?? err.error ?? "Failed to send RSVP");
       }
       return res.json() as Promise<{ rsvpUrl: string; emailSent: boolean }>;
     },
