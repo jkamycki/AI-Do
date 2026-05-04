@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Send, Loader2, AlertTriangle, Eye, Heart, CheckCircle2, XCircle,
-  MapPin, Paintbrush, ChevronRight, ExternalLink, Calendar, User, ImageOff,
+  MapPin, Paintbrush, ChevronRight, Calendar, User, ImageOff,
 } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
 import type { Guest } from "@workspace/api-client-react";
@@ -646,14 +646,12 @@ export function InvitationSendModal({
 }: Props) {
   const [customization, setCustomization] = useState<Customization | null>(null);
   const [loadingCustomization, setLoadingCustomization] = useState(false);
-  const [activeTab, setActiveTab] = useState<"saveTheDate" | "digitalInvitation">("saveTheDate");
-  const [showRsvpSim, setShowRsvpSim] = useState(false);
+  const [activeTab, setActiveTab] = useState<"saveTheDate" | "digitalInvitation" | "rsvpPage">("saveTheDate");
   const [bypassBlock, setBypassBlock] = useState(false);
 
   useEffect(() => {
     if (!guest || !profile?.id) {
       setCustomization(null);
-      setShowRsvpSim(false);
       setActiveTab("saveTheDate");
       setBypassBlock(false);
       return;
@@ -782,13 +780,16 @@ export function InvitationSendModal({
                 </div>
               </div>
 
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "saveTheDate" | "digitalInvitation")}>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "saveTheDate" | "digitalInvitation" | "rsvpPage")}>
                 <TabsList className="w-full">
-                  <TabsTrigger value="saveTheDate" className="flex-1">
-                    <Calendar className="h-3.5 w-3.5 mr-1.5" /> Save the Date
+                  <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
+                    <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
                   </TabsTrigger>
-                  <TabsTrigger value="digitalInvitation" className="flex-1">
-                    <Heart className="h-3.5 w-3.5 mr-1.5" /> RSVP Invitation
+                  <TabsTrigger value="digitalInvitation" className="flex-1 text-xs">
+                    <Heart className="h-3.5 w-3.5 mr-1" /> RSVP Invitation
+                  </TabsTrigger>
+                  <TabsTrigger value="rsvpPage" className="flex-1 text-xs">
+                    <Eye className="h-3.5 w-3.5 mr-1" /> RSVP Page
                   </TabsTrigger>
                 </TabsList>
 
@@ -873,25 +874,38 @@ export function InvitationSendModal({
                     <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
                   )}
                 </TabsContent>
+
+                <TabsContent value="rsvpPage" className="pt-4 space-y-4">
+                  {guest && profile && <RsvpSimulation guest={guest} profile={profile} />}
+                  <Button
+                    className="w-full gap-2"
+                    onClick={() => guest && onSendDigitalInvitation(guest.id)}
+                    disabled={isSendingDigital}
+                  >
+                    {isSendingDigital
+                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
+                    }
+                  </Button>
+                  {!guest?.email && (
+                    <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
+                  )}
+                </TabsContent>
               </Tabs>
             </div>
           ) : (
             /* ── AI-Generated Mode ── */
             <div className="space-y-4">
-              <div className="rounded-lg bg-muted/50 border border-border p-3 flex items-start gap-2.5">
-                <Eye className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Review both designs below before sending. The RSVP Invitation tab includes a live RSVP simulation — exactly what your guest will see.
-                </p>
-              </div>
-
-              <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as "saveTheDate" | "digitalInvitation"); setShowRsvpSim(false); }}>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "saveTheDate" | "digitalInvitation" | "rsvpPage")}>
                 <TabsList className="w-full">
-                  <TabsTrigger value="saveTheDate" className="flex-1">
-                    <Calendar className="h-3.5 w-3.5 mr-1.5" /> Save the Date
+                  <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
+                    <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
                   </TabsTrigger>
-                  <TabsTrigger value="digitalInvitation" className="flex-1">
-                    <Heart className="h-3.5 w-3.5 mr-1.5" /> RSVP Invitation
+                  <TabsTrigger value="digitalInvitation" className="flex-1 text-xs">
+                    <Heart className="h-3.5 w-3.5 mr-1" /> RSVP Invitation
+                  </TabsTrigger>
+                  <TabsTrigger value="rsvpPage" className="flex-1 text-xs">
+                    <Eye className="h-3.5 w-3.5 mr-1" /> RSVP Page
                   </TabsTrigger>
                 </TabsList>
 
@@ -920,64 +934,43 @@ export function InvitationSendModal({
                 </TabsContent>
 
                 <TabsContent value="digitalInvitation" className="pt-4 space-y-4">
-                  {!showRsvpSim ? (
-                    <>
-                      <p className="text-xs text-muted-foreground text-center">Email preview — this is what your guest will receive in their inbox</p>
-                      {profile && (
-                        <AiDigitalInvitationPreview
-                          profile={profile}
-                          palette={palette}
-                          photoUrl={customization.digitalInvitationPhotoUrl || profile.invitationPhotoUrl}
-                        />
-                      )}
-                      <div className="flex flex-col gap-2">
-                        <Button
-                          variant="outline"
-                          className="w-full gap-2"
-                          onClick={() => setShowRsvpSim(true)}
-                        >
-                          <Eye className="h-4 w-4" /> Preview RSVP Experience
-                        </Button>
-                        <Button
-                          className="w-full gap-2"
-                          onClick={() => guest && onSendDigitalInvitation(guest.id)}
-                          disabled={isSendingDigital}
-                        >
-                          {isSendingDigital
-                            ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                            : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
-                          }
-                        </Button>
-                        {!guest?.email && (
-                          <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-foreground">RSVP Preview</p>
-                        <Button variant="ghost" size="sm" onClick={() => setShowRsvpSim(false)} className="text-xs gap-1.5">
-                          <ExternalLink className="h-3 w-3" /> Back to email preview
-                        </Button>
-                      </div>
-                      {guest && profile && <RsvpSimulation guest={guest} profile={profile} />}
-                      <div className="flex flex-col gap-2 pt-1">
-                        <Button
-                          className="w-full gap-2"
-                          onClick={() => guest && onSendDigitalInvitation(guest.id)}
-                          disabled={isSendingDigital}
-                        >
-                          {isSendingDigital
-                            ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                            : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
-                          }
-                        </Button>
-                        {!guest?.email && (
-                          <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
-                        )}
-                      </div>
-                    </>
+                  <p className="text-xs text-muted-foreground text-center">Email preview — this is what your guest will receive in their inbox</p>
+                  {profile && (
+                    <AiDigitalInvitationPreview
+                      profile={profile}
+                      palette={palette}
+                      photoUrl={customization.digitalInvitationPhotoUrl || profile.invitationPhotoUrl}
+                    />
+                  )}
+                  <Button
+                    className="w-full gap-2"
+                    onClick={() => guest && onSendDigitalInvitation(guest.id)}
+                    disabled={isSendingDigital}
+                  >
+                    {isSendingDigital
+                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
+                    }
+                  </Button>
+                  {!guest?.email && (
+                    <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="rsvpPage" className="pt-4 space-y-4">
+                  {guest && profile && <RsvpSimulation guest={guest} profile={profile} />}
+                  <Button
+                    className="w-full gap-2"
+                    onClick={() => guest && onSendDigitalInvitation(guest.id)}
+                    disabled={isSendingDigital}
+                  >
+                    {isSendingDigital
+                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
+                    }
+                  </Button>
+                  {!guest?.email && (
+                    <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
                   )}
                 </TabsContent>
               </Tabs>
