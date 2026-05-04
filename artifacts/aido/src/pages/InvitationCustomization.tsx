@@ -489,6 +489,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
             onLayoutChange={isSTD ? setSaveTheDateLayout : setDigitalInvitationLayout}
             backgroundColor={isSTD ? saveTheDateBackground : digitalInvitationBackground}
             onBackgroundColorChange={isSTD ? setSaveTheDateBackground : setDigitalInvitationBackground}
+            colors={displayPalette}
           />
         </div>
 
@@ -533,6 +534,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                   weddingDate={displayWeddingProfile.weddingDate}
                   colors={displayPalette}
                   font={saveTheDateFont}
+                  layout={saveTheDateLayout}
                   backgroundColor={saveTheDateBackground}
                   partner1Name={displayWeddingProfile.partner1Name}
                   partner2Name={displayWeddingProfile.partner2Name}
@@ -551,6 +553,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                   guestName={user?.firstName || "Guest Name"}
                   colors={displayPalette}
                   font={digitalInvitationFont}
+                  layout={digitalInvitationLayout}
                   backgroundColor={digitalInvitationBackground}
                   partner1Name={displayWeddingProfile.partner1Name}
                   partner2Name={displayWeddingProfile.partner2Name}

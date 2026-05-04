@@ -9,12 +9,14 @@ import {
   EditableImage,
   EditableToolbar,
 } from "./EditableElements";
+import { LayoutDecorations } from "./LayoutDecorations";
 
 interface SaveTheDatePreviewProps {
   photoUrl: string | null;
   weddingDate: string;
   colors: ColorPalette;
   font: string;
+  layout?: string;
   backgroundColor: string | null;
   partner1Name?: string;
   partner2Name?: string;
@@ -38,6 +40,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
       weddingDate,
       colors,
       font,
+      layout = "classic",
       backgroundColor,
       partner1Name,
       partner2Name,
@@ -165,7 +168,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
         {/* Canvas (this is the ref'd element captured by html2canvas) */}
         <div
           ref={ref}
-          className="rounded-lg border border-border relative shadow-sm"
+          className="rounded-lg border border-border relative shadow-sm overflow-hidden"
           style={{
             width: CANVAS_W,
             height: CANVAS_H,
@@ -173,6 +176,14 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
           }}
           onPointerDown={() => setSelectedId(null)}
         >
+          {/* Layout decoration overlay — rendered behind content */}
+          <LayoutDecorations
+            layout={layout}
+            colors={colors}
+            canvasW={CANVAS_W}
+            canvasH={CANVAS_H}
+          />
+
           <EditableImage
             id={photoId}
             src={photoUrl}

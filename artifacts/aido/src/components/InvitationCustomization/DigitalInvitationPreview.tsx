@@ -9,6 +9,7 @@ import {
   EditableImage,
   EditableToolbar,
 } from "./EditableElements";
+import { LayoutDecorations } from "./LayoutDecorations";
 
 interface DigitalInvitationPreviewProps {
   photoUrl: string | null;
@@ -19,6 +20,7 @@ interface DigitalInvitationPreviewProps {
   guestName: string;
   colors: ColorPalette;
   font: string;
+  layout?: string;
   backgroundColor: string | null;
   partner1Name: string;
   partner2Name: string;
@@ -39,7 +41,7 @@ const PREFIX = "dig:";
 function formatTime(t: string): string {
   if (!t) return t;
   const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
-  if (!m24) return t; // already 12-h or free-text
+  if (!m24) return t;
   let h = parseInt(m24[1], 10);
   const min = m24[2];
   const period = h >= 12 ? "PM" : "AM";
@@ -61,6 +63,7 @@ export const DigitalInvitationPreview = forwardRef<
     guestName,
     colors,
     font,
+    layout = "classic",
     backgroundColor,
     partner1Name,
     partner2Name,
@@ -314,7 +317,7 @@ export const DigitalInvitationPreview = forwardRef<
 
       <div
         ref={ref}
-        className="rounded-lg border border-border relative shadow-sm"
+        className="rounded-lg border border-border relative shadow-sm overflow-hidden"
         style={{
           width: CANVAS_W,
           height: CANVAS_H,
@@ -322,6 +325,14 @@ export const DigitalInvitationPreview = forwardRef<
         }}
         onPointerDown={() => setSelectedId(null)}
       >
+        {/* Layout decoration overlay — rendered behind content */}
+        <LayoutDecorations
+          layout={layout}
+          colors={colors}
+          canvasW={CANVAS_W}
+          canvasH={CANVAS_H}
+        />
+
         <EditableImage
           id={photoId}
           src={photoUrl}
