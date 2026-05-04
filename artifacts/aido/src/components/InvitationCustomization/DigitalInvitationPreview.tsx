@@ -288,7 +288,7 @@ export const DigitalInvitationPreview = forwardRef<
 
   return (
     <div className="flex flex-col items-center">
-      <div className="h-12 mb-2 flex items-center justify-center">
+      <div className="h-12 mb-2 flex items-center justify-center sticky top-0 z-10 bg-card">
         {editable && selectedEl ? (
           <EditableToolbar
             override={textOverrides[selectedEl.id]}

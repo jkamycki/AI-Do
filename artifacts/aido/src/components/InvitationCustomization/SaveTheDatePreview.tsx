@@ -139,7 +139,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
     return (
       <div className="flex flex-col items-center">
         {/* Toolbar lives outside the captured canvas so it never appears in PDF exports */}
-        <div className="h-12 mb-2 flex items-center justify-center">
+        <div className="h-12 mb-2 flex items-center justify-center sticky top-0 z-10 bg-card">
           {editable && selectedEl ? (
             <EditableToolbar
               override={textOverrides[selectedEl.id]}
