@@ -29,7 +29,11 @@ export interface InvitationCustomization {
   saveTheDateFont?: string;
   digitalInvitationFont?: string;
   selectedLayout: string;
+  saveTheDateLayout?: string;
+  digitalInvitationLayout?: string;
   backgroundImageUrl: string | null;
+  saveTheDateBackground?: string | null;
+  digitalInvitationBackground?: string | null;
   textOverrides?: TextOverrides;
   updatedAt?: string;
   createdAt?: string;

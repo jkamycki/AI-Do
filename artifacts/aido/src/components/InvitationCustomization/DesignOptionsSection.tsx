@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -39,10 +38,9 @@ const LAYOUTS = [
 ];
 
 interface DesignOptionsSectionProps {
-  saveTheDateFont: string;
-  onSaveTheDateFontChange: (font: string) => void;
-  digitalInvitationFont: string;
-  onDigitalInvitationFontChange: (font: string) => void;
+  mode: "saveTheDate" | "digitalInvitation";
+  font: string;
+  onFontChange: (font: string) => void;
   selectedLayout: string;
   onLayoutChange: (layout: string) => void;
   backgroundColor: string | null;
@@ -50,70 +48,48 @@ interface DesignOptionsSectionProps {
 }
 
 export function DesignOptionsSection({
-  saveTheDateFont,
-  onSaveTheDateFontChange,
-  digitalInvitationFont,
-  onDigitalInvitationFontChange,
+  mode,
+  font,
+  onFontChange,
   selectedLayout,
   onLayoutChange,
   backgroundColor,
   onBackgroundColorChange,
 }: DesignOptionsSectionProps) {
+  const label = mode === "saveTheDate" ? "Save the Date" : "Digital Invitation";
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">✨ Design Options</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Save the Date Font Selector */}
+        {/* Font Selector */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Save the Date Font</label>
-          <Select value={saveTheDateFont} onValueChange={onSaveTheDateFontChange}>
+          <label className="text-sm font-medium">{label} Font</label>
+          <Select value={font} onValueChange={onFontChange}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {FONTS.map((font) => (
-                <SelectItem key={font} value={font}>
-                  {font}
+              {FONTS.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {f}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <p
             className="text-sm text-muted-foreground"
-            style={{ fontFamily: saveTheDateFont }}
+            style={{ fontFamily: font }}
           >
-            Preview of {saveTheDateFont}
-          </p>
-        </div>
-
-        {/* Digital Invitation Font Selector */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Digital Invitation Font</label>
-          <Select value={digitalInvitationFont} onValueChange={onDigitalInvitationFontChange}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {FONTS.map((font) => (
-                <SelectItem key={font} value={font}>
-                  {font}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p
-            className="text-sm text-muted-foreground"
-            style={{ fontFamily: digitalInvitationFont }}
-          >
-            Preview of {digitalInvitationFont}
+            Preview of {font}
           </p>
         </div>
 
         {/* Layout Selector */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Layout / Theme</label>
+          <label className="text-sm font-medium">{label} Layout</label>
           <Select value={selectedLayout} onValueChange={onLayoutChange}>
             <SelectTrigger>
               <SelectValue />
@@ -128,7 +104,7 @@ export function DesignOptionsSection({
           </Select>
         </div>
 
-        {/* Background Color (optional) */}
+        {/* Background Color */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Background Color (Optional)</label>
           <div className="flex gap-2">
@@ -141,9 +117,7 @@ export function DesignOptionsSection({
             />
             <div
               className="w-10 h-10 rounded border border-border cursor-pointer"
-              style={{
-                backgroundColor: backgroundColor || "#FFFFFF",
-              }}
+              style={{ backgroundColor: backgroundColor || "#FFFFFF" }}
               onClick={() => {
                 const input = document.createElement("input");
                 input.type = "color";

@@ -471,10 +471,16 @@ export const invitationCustomizations = pgTable("invitation_customizations", {
   saveTheDatePhotoUrl: text("save_the_date_photo_url"),
   digitalInvitationPhotoUrl: text("digital_invitation_photo_url"),
 
-  // Design Options
+  // Design Options — per-design font / layout / background
   selectedFont: text("selected_font").notNull().default("Georgia"),
+  saveTheDateFont: text("save_the_date_font").default("Georgia"),
+  digitalInvitationFont: text("digital_invitation_font").default("Georgia"),
   selectedLayout: text("selected_layout").notNull().default("classic"),
+  saveTheDateLayout: text("save_the_date_layout").default("classic"),
+  digitalInvitationLayout: text("digital_invitation_layout").default("classic"),
   backgroundImageUrl: text("background_image_url"),
+  saveTheDateBackground: text("save_the_date_background"),
+  digitalInvitationBackground: text("digital_invitation_background"),
 
   // Per-element overrides keyed like "std:heading", "dig:couple".
   // Each value: { x?, y?, font?, color?, fontSize? }

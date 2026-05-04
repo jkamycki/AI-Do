@@ -98,8 +98,14 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
       saveTheDatePhotoUrl,
       digitalInvitationPhotoUrl,
       selectedFont,
+      saveTheDateFont,
+      digitalInvitationFont,
       selectedLayout,
+      saveTheDateLayout,
+      digitalInvitationLayout,
       backgroundImageUrl,
+      saveTheDateBackground,
+      digitalInvitationBackground,
       textOverrides,
     } = req.body as {
       profileId: number;
@@ -111,8 +117,14 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
       saveTheDatePhotoUrl?: string | null;
       digitalInvitationPhotoUrl?: string | null;
       selectedFont?: string;
+      saveTheDateFont?: string;
+      digitalInvitationFont?: string;
       selectedLayout?: string;
+      saveTheDateLayout?: string;
+      digitalInvitationLayout?: string;
       backgroundImageUrl?: string | null;
+      saveTheDateBackground?: string | null;
+      digitalInvitationBackground?: string | null;
       textOverrides?: Record<
         string,
         { x?: number; y?: number; font?: string; color?: string; fontSize?: number }
@@ -157,15 +169,17 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
           ...(customColors !== undefined && { customColors }),
           ...(selectedPalette !== undefined && { selectedPalette }),
           ...(backgroundColor !== undefined && { backgroundColor }),
-          ...(saveTheDatePhotoUrl !== undefined && {
-            saveTheDatePhotoUrl,
-          }),
-          ...(digitalInvitationPhotoUrl !== undefined && {
-            digitalInvitationPhotoUrl,
-          }),
+          ...(saveTheDatePhotoUrl !== undefined && { saveTheDatePhotoUrl }),
+          ...(digitalInvitationPhotoUrl !== undefined && { digitalInvitationPhotoUrl }),
           ...(selectedFont && { selectedFont }),
+          ...(saveTheDateFont !== undefined && { saveTheDateFont }),
+          ...(digitalInvitationFont !== undefined && { digitalInvitationFont }),
           ...(selectedLayout && { selectedLayout }),
+          ...(saveTheDateLayout !== undefined && { saveTheDateLayout }),
+          ...(digitalInvitationLayout !== undefined && { digitalInvitationLayout }),
           ...(backgroundImageUrl !== undefined && { backgroundImageUrl }),
+          ...(saveTheDateBackground !== undefined && { saveTheDateBackground }),
+          ...(digitalInvitationBackground !== undefined && { digitalInvitationBackground }),
           ...(textOverrides !== undefined && { textOverrides }),
           updatedAt: new Date(),
         })
@@ -178,22 +192,26 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
         .values({
           profileId,
           primaryColor: primaryColor || "#D4A017",
-          colorPalette:
-            colorPalette ||
-            {
-              primary: "#D4A017",
-              secondary: "#F5C842",
-              accent: "#7B2FBE",
-              neutral: "#666666",
-            },
+          colorPalette: colorPalette || {
+            primary: "#D4A017",
+            secondary: "#F5C842",
+            accent: "#7B2FBE",
+            neutral: "#666666",
+          },
           customColors: customColors || null,
           selectedPalette: selectedPalette || null,
           backgroundColor: backgroundColor || null,
           saveTheDatePhotoUrl: saveTheDatePhotoUrl || null,
           digitalInvitationPhotoUrl: digitalInvitationPhotoUrl || null,
           selectedFont: selectedFont || "Georgia",
+          saveTheDateFont: saveTheDateFont || "Georgia",
+          digitalInvitationFont: digitalInvitationFont || "Georgia",
           selectedLayout: selectedLayout || "classic",
+          saveTheDateLayout: saveTheDateLayout || "classic",
+          digitalInvitationLayout: digitalInvitationLayout || "classic",
           backgroundImageUrl: backgroundImageUrl || null,
+          saveTheDateBackground: saveTheDateBackground || null,
+          digitalInvitationBackground: digitalInvitationBackground || null,
           textOverrides: textOverrides || {},
         })
         .returning();
