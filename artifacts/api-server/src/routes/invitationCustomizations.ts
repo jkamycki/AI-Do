@@ -22,7 +22,7 @@ const storage = new ObjectStorageService();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // ─── GET /api/invitation-customizations ───────────────────────────────────
-router.get("/api/invitation-customizations", requireAuth, async (req, res) => {
+router.get("/invitation-customizations", requireAuth, async (req, res) => {
   try {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -82,7 +82,7 @@ router.get("/api/invitation-customizations", requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/invitation-customizations ──────────────────────────────────
-router.post("/api/invitation-customizations", requireAuth, async (req, res) => {
+router.post("/invitation-customizations", requireAuth, async (req, res) => {
   try {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -201,7 +201,7 @@ router.post("/api/invitation-customizations", requireAuth, async (req, res) => {
 
 // ─── POST /api/invitation-customizations/upload ────────────────────────────
 router.post(
-  "/api/invitation-customizations/upload",
+  "/invitation-customizations/upload",
   requireAuth,
   upload.single("file"),
   async (req, res) => {
@@ -257,7 +257,7 @@ router.post(
 );
 
 // ─── POST /api/color-palette/generate ───────────────────────────────────────
-router.post("/api/color-palette/generate", requireAuth, async (req, res) => {
+router.post("/color-palette/generate", requireAuth, async (req, res) => {
   try {
     const { primaryColor } = req.body as { primaryColor: string };
 
@@ -277,7 +277,7 @@ router.post("/api/color-palette/generate", requireAuth, async (req, res) => {
 });
 
 // ─── GET /api/color-palettes ──────────────────────────────────────────────
-router.get("/api/color-palettes", async (req, res) => {
+router.get("/color-palettes", async (req, res) => {
   try {
     const palettes = Object.entries(PRESET_PALETTES).map(([id, colors]) => ({
       id,
@@ -293,7 +293,7 @@ router.get("/api/color-palettes", async (req, res) => {
 });
 
 // ─── GET /api/invitation-options ──────────────────────────────────────────
-router.get("/api/invitation-options", async (req, res) => {
+router.get("/invitation-options", async (req, res) => {
   try {
     res.json({
       fonts: AVAILABLE_FONTS,

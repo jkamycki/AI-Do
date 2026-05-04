@@ -29,6 +29,7 @@ export function PhotoCropDialog({
   const [offsetX, setOffsetX] = useState(0);
   const [offsetY, setOffsetY] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
 
@@ -53,39 +54,36 @@ export function PhotoCropDialog({
   // Reset state whenever a new image is provided
   useEffect(() => {
     setImageLoaded(false);
+    setImageError(null);
     setZoom(1);
     setOffsetX(0);
     setOffsetY(0);
   }, [imageUrl]);
 
+  const handleImageLoad = () => {
+    const { drawWidth, drawHeight } = computeDrawSize(1);
+    setOffsetX(-(drawWidth - PREVIEW_SIZE) / 2);
+    setOffsetY(-(drawHeight - PREVIEW_SIZE) / 2);
+    setImageError(null);
+    setImageLoaded(true);
+  };
+
+  const handleImageError = () => {
+    console.error("PhotoCropDialog: image failed to load", imageUrl);
+    setImageError("Could not load image. Please try a different file.");
+  };
+
+  // If the image was already complete by the time React attached the ref
+  // (e.g. cached blob), the onLoad event won't fire — call the handler manually.
   useEffect(() => {
     if (!open) return;
-
     const img = imgRef.current;
     if (!img) return;
-
-    const handleImageLoad = () => {
-      const { drawWidth, drawHeight } = computeDrawSize(1);
-      // Center the image inside the crop box
-      setOffsetX(-(drawWidth - PREVIEW_SIZE) / 2);
-      setOffsetY(-(drawHeight - PREVIEW_SIZE) / 2);
-      setImageLoaded(true);
-    };
-
-    img.addEventListener("load", handleImageLoad);
-
-    // The <img> in JSX may already have src set; if it's already loaded the
-    // load event won't fire again, so trigger the handler manually.
-    if (img.complete && img.naturalWidth > 0) {
+    if (img.complete && img.naturalWidth > 0 && !imageLoaded) {
       handleImageLoad();
-    } else if (img.src !== imageUrl) {
-      img.src = imageUrl;
     }
-
-    return () => {
-      img.removeEventListener("load", handleImageLoad);
-    };
-  }, [open, imageUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, imageUrl, imageLoaded]);
 
   const redrawCanvas = () => {
     const canvas = canvasRef.current;
@@ -158,26 +156,52 @@ export function PhotoCropDialog({
     setIsDragging(false);
   };
 
+  const finishCrop = (file: File) => {
+    onCropComplete(file);
+    setZoom(1);
+    setOffsetX(0);
+    setOffsetY(0);
+    setImageLoaded(false);
+  };
+
   const handleCropClick = () => {
     const canvas = canvasRef.current;
     if (!canvas || !imageLoaded) return;
 
+    // Make sure the latest pixels are on the canvas before encoding.
+    redrawCanvas();
+
     canvas.toBlob(
       (blob) => {
-        if (!blob) return;
-        const file = new File([blob], "cropped-photo.jpg", {
-          type: "image/jpeg",
-          lastModified: Date.now(),
-        });
-        onCropComplete(file);
-        // Reset state
-        setZoom(1);
-        setOffsetX(0);
-        setOffsetY(0);
-        setImageLoaded(false);
+        if (blob) {
+          finishCrop(
+            new File([blob], "cropped-photo.jpg", {
+              type: "image/jpeg",
+              lastModified: Date.now(),
+            }),
+          );
+          return;
+        }
+        // Fallback: some browsers / canvas states return null from toBlob.
+        // Convert via toDataURL → Uint8Array so the crop still applies.
+        try {
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+          const base64 = dataUrl.split(",")[1] ?? "";
+          const binary = atob(base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          finishCrop(
+            new File([bytes], "cropped-photo.jpg", {
+              type: "image/jpeg",
+              lastModified: Date.now(),
+            }),
+          );
+        } catch (err) {
+          console.error("Crop encoding failed", err);
+        }
       },
       "image/jpeg",
-      0.95
+      0.95,
     );
   };
 
@@ -211,7 +235,15 @@ export function PhotoCropDialog({
             src={imageUrl}
             alt="crop"
             className="hidden"
+            onLoad={handleImageLoad}
+            onError={handleImageError}
           />
+
+          {imageError && (
+            <div className="text-sm text-destructive bg-destructive/10 p-2 rounded" data-testid="photo-crop-error">
+              {imageError}
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Zoom</label>
@@ -230,7 +262,7 @@ export function PhotoCropDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleCropClick}>Crop & Use</Button>
+          <Button onClick={handleCropClick} disabled={!imageLoaded} data-testid="photo-crop-confirm">Crop & Use</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

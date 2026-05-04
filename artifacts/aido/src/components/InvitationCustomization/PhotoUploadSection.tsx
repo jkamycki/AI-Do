@@ -115,6 +115,7 @@ export function PhotoUploadSection({
             </div>
             <label className="cursor-pointer block text-center">
               <input
+                data-testid="save-the-date-photo-input"
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={handleSaveTheDateChange}
@@ -166,6 +167,7 @@ export function PhotoUploadSection({
             </div>
             <label className="cursor-pointer block text-center">
               <input
+                data-testid="digital-invitation-photo-input"
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={handleDigitalInvitationChange}
