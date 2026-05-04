@@ -40,6 +40,22 @@ function fontStack(font: string): string {
   return `'${font}', Georgia, 'Times New Roman', serif`;
 }
 
+/**
+ * Escape user-provided text before interpolating into email HTML.
+ * Wedding profile text overrides are owner-controlled, but workspace
+ * collaborators can still author them — guests must not be exposed to
+ * arbitrary HTML/script injection from those fields.
+ */
+function escapeHtml(value: string | null | undefined): string {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function isLightColor(hex: string): boolean {
   const h = (hex || "").replace("#", "");
   if (h.length !== 6) return true;
@@ -193,12 +209,27 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
     }
 
     const colors = (!useGenerated && customization?.colorPalette) ? customization.colorPalette : DEFAULT_COLORS;
-    const digitalInvitationPhotoUrl = (!useGenerated && customization?.digitalInvitationPhotoUrl)
-      ? customization.digitalInvitationPhotoUrl
-      : profile.invitationPhotoUrl;
+    const digitalInvitationPhotoUrl =
+      (!useGenerated && customization?.digitalInvitationPhotoUrl)
+        ? customization.digitalInvitationPhotoUrl
+        : (profile.digitalInvitationPhotoUrl ?? profile.invitationPhotoUrl ?? null);
     const headingFont = !useGenerated
       ? sanitizeFont(customization?.digitalInvitationFont || customization?.selectedFont, "Playfair Display")
       : "Playfair Display";
+
+    // Pull text & photo overrides from the customization so the email mirrors
+    // exactly what the user sees in the DigitalInvitationPreview canvas.
+    const digOverrides = (!useGenerated
+      ? (customization?.textOverrides as Record<string, {
+          text?: string;
+          color?: string;
+          font?: string;
+          objectX?: number;
+          objectY?: number;
+        }> | null) ?? {}
+      : {}) as Record<string, { text?: string; color?: string; font?: string; objectX?: number; objectY?: number }>;
+    const digPhotoOverride = digOverrides["dig:photo"] ?? {};
+    const digPhotoObjectPos = `${digPhotoOverride.objectX ?? 50}% ${digPhotoOverride.objectY ?? 50}%`;
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     const now = new Date();
@@ -225,11 +256,15 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
 
       // Fetch and embed photo as base64
       const photoBase64 = await getImageAsBase64(digitalInvitationPhotoUrl);
+      // Honour the user's photo positioning from the canvas. Same approach as
+      // the Save the Date email — fixed-aspect frame with object-position.
       const photoBlock = photoBase64
         ? `
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
-            <img src="${photoBase64}" alt="${couple}'s Wedding" width="560" style="width:100%;max-width:560px;height:auto;display:block;border-radius:0;"/>
+            <div style="width:100%;max-width:560px;aspect-ratio:560/360;overflow:hidden;">
+              <img src="${photoBase64}" alt="${couple}'s Wedding" width="560" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${digPhotoObjectPos};"/>
+            </div>
           </td>
         </tr>`
         : "";
@@ -284,10 +319,32 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       const ACCENT = !useGenerated ? colors.accent : "#c9a97e";
       const BTN_BG = !useGenerated ? colors.primary : "#8a6a4f";
       const BTN_TXT = isLightColor(BTN_BG) ? "#000000" : "#ffffff";
-      const invitationMessage = !useGenerated
-        ? ((customization?.textOverrides as Record<string, { text?: string }> | null ?? {})?.["dig:message"]?.text
-            || profile.invitationMessage)
-        : profile.invitationMessage;
+      // Text overrides — honour the canvas edits for the headline, couple,
+      // date, location and message so the email reads exactly like the preview.
+      // Override IDs match those defined in DigitalInvitationPreview.tsx.
+      const digHeadingText = escapeHtml(
+        digOverrides["dig:greeting"]?.text || "You are cordially invited to",
+      );
+      const digCoupleText = escapeHtml(
+        digOverrides["dig:couple"]?.text || `${couple}'s Wedding`,
+      );
+      const digDateText = escapeHtml(
+        digOverrides["dig:date-value"]?.text || monthDayYear || "",
+      );
+      const digVenueText = escapeHtml(
+        digOverrides["dig:venue-value"]?.text || profile.venue || "",
+      );
+      const digLocationText = escapeHtml(
+        digOverrides["dig:location"]?.text || profile.location || "",
+      );
+      const digCityText = escapeHtml(
+        digOverrides["dig:city-state-zip"]?.text || cityStateZip || "",
+      );
+      const invitationMessage = escapeHtml(
+        !useGenerated
+          ? (digOverrides["dig:message"]?.text || profile.invitationMessage)
+          : profile.invitationMessage,
+      );
 
       const html = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -315,14 +372,14 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         <!-- "YOU ARE CORDIALLY INVITED TO" -->
         <tr>
           <td style="padding:0 48px 14px;text-align:center;background:${BG};">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:11px;letter-spacing:4px;text-transform:uppercase;font-weight:500;">You are cordially invited to</p>
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:11px;letter-spacing:4px;text-transform:uppercase;font-weight:500;">${digHeadingText}</p>
           </td>
         </tr>
 
         <!-- Couple's Wedding headline -->
         <tr>
           <td style="padding:0 32px 6px;text-align:center;background:${BG};">
-            <h1 style="margin:0;font-family:${fontStack(headingFont)};color:${TEXT};font-size:34px;font-weight:400;line-height:1.25;letter-spacing:0.3px;">${couple}&rsquo;s Wedding</h1>
+            <h1 style="margin:0;font-family:${fontStack(headingFont)};color:${TEXT};font-size:34px;font-weight:400;line-height:1.25;letter-spacing:0.3px;">${digCoupleText}</h1>
           </td>
         </tr>
 
@@ -338,10 +395,10 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         <!-- Date / Venue / Address / Times -->
         <tr>
           <td style="padding:0 48px 8px;text-align:center;background:${BG};">
-            ${monthDayYear ? `<p style="margin:0 0 10px;font-family:${fontStack(headingFont)};color:${TEXT};font-size:17px;font-weight:400;">${monthDayYear}</p>` : ""}
-            ${profile.venue ? `<p style="margin:0 0 10px;font-family:${fontStack(headingFont)};color:${TEXT};font-size:15px;font-weight:400;">${profile.venue}</p>` : ""}
-            ${profile.location ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;line-height:1.6;">${profile.location}</p>` : ""}
-            ${cityStateZip ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;line-height:1.6;">${cityStateZip}</p>` : ""}
+            ${digDateText ? `<p style="margin:0 0 10px;font-family:${fontStack(headingFont)};color:${TEXT};font-size:17px;font-weight:400;">${digDateText}</p>` : ""}
+            ${digVenueText ? `<p style="margin:0 0 10px;font-family:${fontStack(headingFont)};color:${TEXT};font-size:15px;font-weight:400;">${digVenueText}</p>` : ""}
+            ${digLocationText ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;line-height:1.6;">${digLocationText}</p>` : ""}
+            ${digCityText ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;line-height:1.6;">${digCityText}</p>` : ""}
             ${timesLine ? `<p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;letter-spacing:0.5px;">${timesLine}</p>` : ""}
           </td>
         </tr>
@@ -699,12 +756,27 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
     }
 
     const colors = (!useGenerated && customization?.colorPalette) ? customization.colorPalette : DEFAULT_COLORS;
-    const saveTheDatePhotoUrl = (!useGenerated && customization?.saveTheDatePhotoUrl)
-      ? customization.saveTheDatePhotoUrl
-      : profile.saveTheDatePhotoUrl;
+    const saveTheDatePhotoUrl =
+      (!useGenerated && customization?.saveTheDatePhotoUrl)
+        ? customization.saveTheDatePhotoUrl
+        : (profile.saveTheDatePhotoUrl ?? profile.invitationPhotoUrl ?? null);
     const headingFont = !useGenerated
       ? sanitizeFont(customization?.saveTheDateFont || customization?.selectedFont, "Playfair Display")
       : "Playfair Display";
+
+    // Pull text & photo overrides from the customization so the email mirrors
+    // exactly what the user sees in the SaveTheDatePreview canvas.
+    const stdOverrides = (!useGenerated
+      ? (customization?.textOverrides as Record<string, {
+          text?: string;
+          color?: string;
+          font?: string;
+          objectX?: number;
+          objectY?: number;
+        }> | null) ?? {}
+      : {}) as Record<string, { text?: string; color?: string; font?: string; objectX?: number; objectY?: number }>;
+    const stdPhotoOverride = stdOverrides["std:photo"] ?? {};
+    const stdPhotoObjectPos = `${stdPhotoOverride.objectX ?? 50}% ${stdPhotoOverride.objectY ?? 50}%`;
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     if (!guest.rsvpToken) {
@@ -738,11 +810,16 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
 
       // Fetch and embed photo as base64
       const photoBase64 = await getImageAsBase64(saveTheDatePhotoUrl);
+      // Honour the user's photo positioning from the canvas. We use a fixed
+      // aspect-ratio frame and `object-position` so the photo crops the same
+      // way as in the SaveTheDatePreview component.
       const photoBlock = photoBase64
         ? `
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
-            <img src="${photoBase64}" alt="Save the Date — ${couple}" width="560" style="width:100%;max-width:560px;height:auto;display:block;"/>
+            <div style="width:100%;max-width:560px;aspect-ratio:560/360;overflow:hidden;">
+              <img src="${photoBase64}" alt="Save the Date — ${couple}" width="560" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${stdPhotoObjectPos};"/>
+            </div>
           </td>
         </tr>`
         : "";
@@ -761,10 +838,29 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       const STD_ITALIC = !useGenerated ? (stdBgIsLight ? "#7a6a5a" : "#cccccc") : "#7a6a5a";
       const STD_FOOTER_BG = !useGenerated ? (stdBgIsLight ? "#f5f0eb" : STD_EMAIL_BG) : "#f5f2ef";
       const STD_FOOTER_TEXT = !useGenerated ? (stdBgIsLight ? "#a89890" : "#bbbbbb") : "#a89890";
-      const saveTheDateMessage = !useGenerated
-        ? ((customization?.textOverrides as Record<string, { text?: string }> | null ?? {})?.["std:message"]?.text
-            || (profile as any).saveTheDateMessage)
-        : (profile as any).saveTheDateMessage;
+
+      // Text overrides — the canvas lets the user edit the actual text of the
+      // headline, couple line, date, and message. Honour those edits here so
+      // the email reads exactly like the preview.
+      // Override IDs match those defined in SaveTheDatePreview.tsx.
+      const stdHeadingText = escapeHtml(
+        stdOverrides["std:heading"]?.text || "Save the Date",
+      );
+      const stdCoupleText = escapeHtml(
+        stdOverrides["std:couple"]?.text || couple,
+      );
+      const stdDateText = escapeHtml(
+        stdOverrides["std:date"]?.text || weddingDateStr || "",
+      );
+      const stdCityText = escapeHtml(
+        stdOverrides["std:city-state-zip"]?.text || "",
+      );
+      const stdLocationLine = escapeHtml(locationLine);
+      const saveTheDateMessage = escapeHtml(
+        !useGenerated
+          ? (stdOverrides["std:message"]?.text || (profile as any).saveTheDateMessage)
+          : (profile as any).saveTheDateMessage,
+      );
 
       const html = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -784,13 +880,13 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
 
         <tr>
           <td style="padding:48px 48px 24px;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${colors.secondary};font-size:11px;letter-spacing:4px;text-transform:uppercase;font-weight:500;">Save the Date</p>
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${colors.secondary};font-size:11px;letter-spacing:4px;text-transform:uppercase;font-weight:500;">${stdHeadingText}</p>
           </td>
         </tr>
 
         <tr>
           <td style="padding:0 48px;text-align:center;">
-            <h1 style="margin:0;font-family:${fontStack(headingFont)};color:${colors.primary};font-size:48px;font-weight:300;line-height:1.2;letter-spacing:1px;">${couple}</h1>
+            <h1 style="margin:0;font-family:${fontStack(headingFont)};color:${colors.primary};font-size:48px;font-weight:300;line-height:1.2;letter-spacing:1px;">${stdCoupleText}</h1>
           </td>
         </tr>
 
@@ -802,17 +898,17 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           </td>
         </tr>
 
-        ${weddingDateStr ? `
+        ${stdDateText ? `
         <tr>
           <td style="padding:28px 48px 8px;text-align:center;">
-            <p style="margin:0;font-family:${fontStack(headingFont)};color:${colors.primary};font-size:20px;font-weight:400;letter-spacing:0.5px;">${weddingDateStr}</p>
+            <p style="margin:0;font-family:${fontStack(headingFont)};color:${colors.primary};font-size:20px;font-weight:400;letter-spacing:0.5px;">${stdDateText}</p>
           </td>
         </tr>` : ""}
 
-        ${locationLine ? `
+        ${(stdCityText || stdLocationLine) ? `
         <tr>
           <td style="padding:12px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${STD_MUTED};font-size:13px;letter-spacing:0.5px;font-weight:400;">${locationLine}</p>
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${STD_MUTED};font-size:13px;letter-spacing:0.5px;font-weight:400;">${stdCityText || stdLocationLine}</p>
           </td>
         </tr>` : ""}
 

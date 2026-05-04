@@ -56,6 +56,8 @@ interface Profile {
   invitationMessage?: string | null;
   saveTheDateMessage?: string | null;
   invitationPhotoUrl?: string | null;
+  saveTheDatePhotoUrl?: string | null;
+  digitalInvitationPhotoUrl?: string | null;
   ceremonyAtVenue?: boolean;
   ceremonyVenueName?: string | null;
   ceremonyAddress?: string | null;
@@ -655,7 +657,12 @@ export function InvitationSendModal({
                   </p>
                   <div className="flex justify-center">
                     <SaveTheDatePreview
-                      photoUrl={customization.saveTheDatePhotoUrl}
+                      photoUrl={
+                        customization.saveTheDatePhotoUrl
+                        || profile?.saveTheDatePhotoUrl
+                        || profile?.invitationPhotoUrl
+                        || null
+                      }
                       weddingDate={profile?.weddingDate || ""}
                       colors={palette}
                       font={customization.saveTheDateFont}
@@ -694,7 +701,12 @@ export function InvitationSendModal({
                   </p>
                   <div className="flex justify-center">
                     <DigitalInvitationPreview
-                      photoUrl={customization.digitalInvitationPhotoUrl}
+                      photoUrl={
+                        customization.digitalInvitationPhotoUrl
+                        || profile?.digitalInvitationPhotoUrl
+                        || profile?.invitationPhotoUrl
+                        || null
+                      }
                       venue={profile?.venue || ""}
                       location={profile?.venueAddress || profile?.venue || ""}
                       venueCity={profile?.venueCity ?? undefined}
@@ -743,7 +755,12 @@ export function InvitationSendModal({
                       partner2Name={profile?.partner2Name ?? ""}
                       weddingDate={profile?.weddingDate ?? ""}
                       venue={profile?.venue ?? ""}
-                      photoUrl={customization.digitalInvitationPhotoUrl}
+                      photoUrl={
+                        customization.digitalInvitationPhotoUrl
+                        || profile?.digitalInvitationPhotoUrl
+                        || profile?.invitationPhotoUrl
+                        || null
+                      }
                       photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                       guestName={guest?.name}
                       venueAddress={profile?.venueAddress}
@@ -793,7 +810,11 @@ export function InvitationSendModal({
                     <AiSaveDatePreview
                       profile={profile}
                       palette={palette}
-                      photoUrl={customization.saveTheDatePhotoUrl || profile.invitationPhotoUrl}
+                      photoUrl={
+                        customization.saveTheDatePhotoUrl
+                        || profile.saveTheDatePhotoUrl
+                        || profile.invitationPhotoUrl
+                      }
                       photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                     />
                   )}
@@ -818,7 +839,11 @@ export function InvitationSendModal({
                     <AiDigitalInvitationPreview
                       profile={profile}
                       palette={palette}
-                      photoUrl={customization.digitalInvitationPhotoUrl || profile.invitationPhotoUrl}
+                      photoUrl={
+                        customization.digitalInvitationPhotoUrl
+                        || profile.digitalInvitationPhotoUrl
+                        || profile.invitationPhotoUrl
+                      }
                       photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                     />
                   )}
@@ -849,7 +874,12 @@ export function InvitationSendModal({
                       partner2Name={profile?.partner2Name ?? ""}
                       weddingDate={profile?.weddingDate ?? ""}
                       venue={profile?.venue ?? ""}
-                      photoUrl={customization.digitalInvitationPhotoUrl}
+                      photoUrl={
+                        customization.digitalInvitationPhotoUrl
+                        || profile?.digitalInvitationPhotoUrl
+                        || profile?.invitationPhotoUrl
+                        || null
+                      }
                       photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                       guestName={guest?.name}
                       venueAddress={profile?.venueAddress}
