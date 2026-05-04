@@ -166,53 +166,36 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       const ceremonyTimeStr = formatTime12h(profile.ceremonyTime);
       const receptionTimeStr = formatTime12h(profile.receptionTime);
 
-      const receptionCityStateZip = [
+      const cityStateZip = [
         profile.venueCity,
         [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
       ].filter(Boolean).join(", ");
 
-      const ceremonyCityStateZip = [
-        profile.ceremonyCity,
-        [profile.ceremonyState, profile.ceremonyZip].filter(Boolean).join(" "),
-      ].filter(Boolean).join(", ");
+      const monthDayYear = profile.weddingDate
+        ? (() => {
+            const [y, m, d] = profile.weddingDate.split("-").map(Number);
+            return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
+          })()
+        : null;
 
-      const hasSeparateCeremony = !profile.ceremonyAtVenue && !!(
-        profile.ceremonyVenueName || profile.ceremonyAddress || profile.ceremonyCity
-      );
+      const timesLine = [
+        ceremonyTimeStr ? `Ceremony ${ceremonyTimeStr}` : null,
+        receptionTimeStr ? `Reception ${receptionTimeStr}` : null,
+      ]
+        .filter(Boolean)
+        .join("  •  ");
 
-      const eventDetailsBlock = hasSeparateCeremony
-        ? `
-        <tr>
-          <td style="padding:18px 32px 0;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td width="50%" valign="top" style="padding:12px 8px;background:#faf7f4;border-radius:4px;text-align:center;">
-                  <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;color:#c9a96e;font-size:9px;letter-spacing:3px;text-transform:uppercase;">Ceremony</p>
-                  ${ceremonyTimeStr ? `<p style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;color:#3d2e22;font-size:15px;font-weight:bold;">${ceremonyTimeStr}</p>` : ""}
-                  ${profile.ceremonyVenueName ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#3d2e22;font-size:11px;font-weight:bold;">${profile.ceremonyVenueName}</p>` : ""}
-                  ${profile.ceremonyAddress ? `<p style="margin:2px 0 0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:10px;">${profile.ceremonyAddress}</p>` : ""}
-                  ${ceremonyCityStateZip ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:10px;">${ceremonyCityStateZip}</p>` : ""}
-                </td>
-                <td width="8" style="font-size:1px;line-height:1px;">&nbsp;</td>
-                <td width="50%" valign="top" style="padding:12px 8px;background:#faf7f4;border-radius:4px;text-align:center;">
-                  <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;color:#c9a96e;font-size:9px;letter-spacing:3px;text-transform:uppercase;">Reception</p>
-                  ${receptionTimeStr ? `<p style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;color:#3d2e22;font-size:15px;font-weight:bold;">${receptionTimeStr}</p>` : ""}
-                  ${profile.venue ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#3d2e22;font-size:11px;font-weight:bold;">${profile.venue}</p>` : ""}
-                  ${profile.location ? `<p style="margin:2px 0 0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:10px;">${profile.location}</p>` : ""}
-                  ${receptionCityStateZip ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:10px;">${receptionCityStateZip}</p>` : ""}
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>`
-        : `
-        <tr>
-          <td style="padding:8px 48px 0;text-align:center;">
-            ${profile.location ? `<p style="margin:4px 0 0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:11px;">${profile.location}</p>` : ""}
-            ${receptionCityStateZip ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:11px;">${receptionCityStateZip}</p>` : ""}
-            ${(ceremonyTimeStr || receptionTimeStr) ? `<p style="margin:10px 0 0;font-family:Arial,Helvetica,sans-serif;color:#7a6a5a;font-size:12px;">${[ceremonyTimeStr ? `Ceremony ${ceremonyTimeStr}` : null, receptionTimeStr ? `Reception ${receptionTimeStr}` : null].filter(Boolean).join(" &nbsp;&bull;&nbsp; ")}</p>` : ""}
-          </td>
-        </tr>`;
+      // Brand palette inspired by the requested design.
+      const BG = "#2c2622";       // page + card background (dark warm charcoal)
+      const TEXT = "#e8dcc7";     // primary cream text
+      const MUTED = "#b6a890";    // muted cream
+      const ACCENT = "#c9a97e";   // gold accent for diamonds + divider
+      const BTN_BG = "#8a6a4f";   // brown RSVP button
+      const BTN_TXT = "#ffffff";
 
       const html = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -222,93 +205,122 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
   <meta name="x-apple-disable-message-reformatting"/>
   <title>Wedding Invitation — ${couple}</title>
 </head>
-<body style="margin:0;padding:0;background:linear-gradient(135deg,#f5f1ec 0%,#faf7f4 100%);-webkit-font-smoothing:antialiased;font-family:Georgia,'Times New Roman',serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#f5f1ec 0%,#faf7f4 100%);padding:60px 16px;">
+<body style="margin:0;padding:0;background:#1a1614;-webkit-font-smoothing:antialiased;font-family:Georgia,'Times New Roman',serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#1a1614;padding:32px 16px;">
     <tr><td align="center">
 
-      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 8px 48px rgba(0,0,0,0.12);">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:${BG};border-radius:4px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.45);">
 
         ${photoBlock}
 
+        <!-- Diamond ornament -->
         <tr>
-          <td style="padding:48px 48px 24px;text-align:center;">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:20px;letter-spacing:6px;line-height:1.4;">✦  ✦  ✦</p>
+          <td style="padding:36px 48px 18px;text-align:center;background:${BG};">
+            <span style="display:inline-block;color:${ACCENT};font-size:12px;letter-spacing:14px;line-height:1;">&#9670; &#9670; &#9670;</span>
           </td>
         </tr>
 
+        <!-- "YOU ARE CORDIALLY INVITED TO" -->
         <tr>
-          <td style="padding:0 48px;text-align:center;">
-            <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;color:${colors.secondary};font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:500;">You are cordially invited to</p>
+          <td style="padding:0 48px 14px;text-align:center;background:${BG};">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:11px;letter-spacing:4px;text-transform:uppercase;font-weight:500;">You are cordially invited to</p>
           </td>
         </tr>
 
+        <!-- Couple's Wedding headline -->
         <tr>
-          <td style="padding:0 48px;text-align:center;">
-            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:40px;font-weight:300;line-height:1.2;letter-spacing:0.5px;">${couple}</h1>
+          <td style="padding:0 32px 6px;text-align:center;background:${BG};">
+            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:34px;font-weight:400;line-height:1.25;letter-spacing:0.3px;">${couple}&rsquo;s Wedding</h1>
           </td>
         </tr>
 
+        <!-- Divider -->
         <tr>
-          <td style="padding:8px 48px 0;text-align:center;">
-            <h2 style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.secondary};font-size:20px;font-weight:300;letter-spacing:1px;">Wedding Celebration</h2>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding:24px 80px 0;text-align:center;">
+          <td style="padding:18px 80px 18px;text-align:center;background:${BG};">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-              <td style="border-top:3px solid ${colors.accent};height:3px;font-size:1px;line-height:1px;">&nbsp;</td>
+              <td style="border-top:1px solid ${MUTED};opacity:0.55;height:1px;font-size:1px;line-height:1px;">&nbsp;</td>
             </tr></table>
           </td>
         </tr>
 
+        <!-- Date / Venue / Address / Times -->
         <tr>
-          <td style="padding:28px 48px 12px;text-align:center;">
-            ${weddingDateStr ? `<p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:18px;font-weight:400;">${weddingDateStr}</p>` : ""}
-            ${profile.venue && !hasSeparateCeremony ? `<p style="margin:4px 0 0;font-family:Arial,Helvetica,sans-serif;color:#9a8a7e;font-size:13px;letter-spacing:0.5px;">${profile.venue}</p>` : ""}
+          <td style="padding:0 48px 8px;text-align:center;background:${BG};">
+            ${monthDayYear ? `<p style="margin:0 0 10px;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:17px;font-weight:400;">${monthDayYear}</p>` : ""}
+            ${profile.venue ? `<p style="margin:0 0 10px;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:15px;font-weight:400;">${profile.venue}</p>` : ""}
+            ${profile.location ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;line-height:1.6;">${profile.location}</p>` : ""}
+            ${cityStateZip ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;line-height:1.6;">${cityStateZip}</p>` : ""}
+            ${timesLine ? `<p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;letter-spacing:0.5px;">${timesLine}</p>` : ""}
           </td>
         </tr>
 
-        ${eventDetailsBlock}
+        <!-- Spacer -->
+        <tr><td style="height:28px;line-height:28px;font-size:1px;background:${BG};">&nbsp;</td></tr>
 
+        <!-- Personal greeting -->
         <tr>
-          <td style="padding:32px 48px 12px;text-align:center;">
-            <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;color:#5a4a40;font-size:16px;font-weight:300;line-height:1.8;">
-              Dear <span style="color:${colors.primary};font-weight:500;">${guest.name}</span>,
-            </p>
-            ${customMsg}
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:#5a4a40;font-size:16px;font-weight:300;line-height:1.8;">
-              We would be deeply honored to celebrate with you. Please let us know if you can join us.
+          <td style="padding:0 48px 14px;text-align:center;background:${BG};">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:16px;font-weight:400;line-height:1.6;">
+              Dear <span style="font-weight:700;letter-spacing:0.5px;">${guest.name}</span>,
             </p>
           </td>
         </tr>
 
+        <!-- Custom italic message -->
+        ${
+          profile.invitationMessage
+            ? `
         <tr>
-          <td style="padding:36px 48px;text-align:center;">
-            <a href="${rsvpUrl}" style="display:inline-block;background:linear-gradient(135deg,${colors.primary},${colors.secondary});color:white;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:2px;text-transform:uppercase;padding:14px 40px;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-              RSVP
+          <td style="padding:14px 56px 8px;text-align:center;background:${BG};">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:15px;font-style:italic;line-height:1.7;">&ldquo;${profile.invitationMessage}&rdquo;</p>
+          </td>
+        </tr>`
+            : monthDayYear || profile.venue
+              ? `
+        <tr>
+          <td style="padding:14px 56px 8px;text-align:center;background:${BG};">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:15px;font-style:italic;line-height:1.7;">&ldquo;We&rsquo;re thrilled to share our special day with you${profile.venue ? ` at ${profile.venue}` : ""}${monthDayYear ? ` on ${monthDayYear}` : ""}.&rdquo;</p>
+          </td>
+        </tr>`
+              : ""
+        }
+
+        <!-- Body copy -->
+        <tr>
+          <td style="padding:18px 56px 8px;text-align:center;background:${BG};">
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:15px;font-weight:400;line-height:1.75;">
+              We would be deeply honoured to have you join us as we celebrate our love. Please take a moment to let us know if you&rsquo;ll be able to attend.
+            </p>
+          </td>
+        </tr>
+
+        <!-- RSVP Button -->
+        <tr>
+          <td style="padding:32px 48px 14px;text-align:center;background:${BG};">
+            <a href="${rsvpUrl}" style="display:inline-block;background:${BTN_BG};color:${BTN_TXT};font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;text-decoration:none;letter-spacing:4px;text-transform:uppercase;padding:16px 44px;border-radius:2px;">
+              RSVP Now
             </a>
-            <p style="margin:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#a89890;">
-              <a href="${rsvpUrl}" style="color:${colors.primary};text-decoration:none;">Respond to this invitation</a>
+            <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${MUTED};">
+              Button not working? <a href="${rsvpUrl}" style="color:${TEXT};text-decoration:underline;">Click here to RSVP</a>
             </p>
           </td>
         </tr>
 
+        <!-- Bottom diamond ornament -->
         <tr>
-          <td style="padding:0 48px 16px;text-align:center;">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.secondary};font-size:18px;letter-spacing:4px;">✦  ✦  ✦</p>
+          <td style="padding:24px 48px 36px;text-align:center;background:${BG};">
+            <span style="display:inline-block;color:${ACCENT};font-size:12px;letter-spacing:14px;line-height:1;">&#9670; &#9670; &#9670;</span>
           </td>
         </tr>
 
-        <tr><td style="height:6px;background:linear-gradient(90deg,${colors.primary},${colors.secondary},${colors.accent},${colors.primary});line-height:6px;font-size:6px;opacity:0.8;">&nbsp;</td></tr>
-
+        <!-- Footer -->
         <tr>
-          <td style="background:linear-gradient(to bottom,#faf8f5,#f5f2ef);padding:24px 48px;text-align:center;border-top:1px solid #ede8e2;">
-            <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#a89890;letter-spacing:0.5px;font-weight:500;">
+          <td style="background:#231d1a;padding:20px 48px;text-align:center;border-top:1px solid #3a322d;">
+            <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${MUTED};letter-spacing:0.5px;">
               Planning your own wedding?
             </p>
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#c4b8ac;">
-              <a href="https://aidowedding.net" style="color:${colors.primary};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${MUTED};">
+              <a href="https://aidowedding.net" style="color:${ACCENT};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
             </p>
           </td>
         </tr>
