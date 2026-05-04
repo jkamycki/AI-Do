@@ -51,6 +51,13 @@ const MEAL_OPTIONS = [
   { value: "none", label: "None / No preference" },
 ];
 
+interface ColorPalette {
+  primary: string;
+  secondary: string;
+  accent: string;
+  neutral: string;
+}
+
 interface RsvpInfo {
   guestName: string;
   partner1Name: string | null;
@@ -73,6 +80,11 @@ interface RsvpInfo {
   plusOneAllowed: boolean;
   hasPhoto: boolean;
   invitationMessage: string | null;
+  // Custom design theming (optional — falls back to defaults)
+  colorPalette: ColorPalette | null;
+  backgroundColor: string | null;
+  font: string | null;
+  layout: string | null;
 }
 
 function formatTime(timeStr: string | null | undefined) {
@@ -84,7 +96,18 @@ function formatTime(timeStr: string | null | undefined) {
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
-const cormorant = "'Cormorant Garamond', 'Playfair Display', Georgia, serif";
+const DEFAULT_BG = "#1E1A2E";
+const DEFAULT_ACCENT = "#D4A017";
+
+function isLightColor(hex: string): boolean {
+  const c = hex.replace("#", "");
+  if (c.length !== 6) return false;
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  return r * 0.299 + g * 0.587 + b * 0.114 > 160;
+}
+
 const jakarta = "'Plus Jakarta Sans', system-ui, sans-serif";
 
 export default function Rsvp() {
@@ -192,6 +215,20 @@ export default function Rsvp() {
     (info.ceremonyVenueName || info.ceremonyAddress || info.ceremonyCity)
   );
 
+  // ── Custom design theming ─────────────────────────────────────────────────
+  const bg = info?.backgroundColor || DEFAULT_BG;
+  const accent = info?.colorPalette?.primary || DEFAULT_ACCENT;
+  const coupleFont = info?.font
+    ? `'${info.font}', 'Cormorant Garamond', Georgia, serif`
+    : "'Cormorant Garamond', 'Playfair Display', Georgia, serif";
+  const light = isLightColor(bg);
+  const textColor = light ? "#1a1a1a" : "#ffffff";
+  const textMuted = light ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)";
+  const textFaint = light ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.35)";
+  const cardBg = light ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
+  const cardBorder = light ? "rgba(0,0,0,0.14)" : "rgba(255,255,255,0.10)";
+  const accentText = isLightColor(accent) ? "#1a1a1a" : "#ffffff";
+
   const downloadInvitationPdf = async () => {
     if (!info || !cardRef.current) return;
     setDownloadingPdf(true);
@@ -253,11 +290,11 @@ export default function Rsvp() {
   if (submitted) {
     const accepted = finalStatus === "attending";
     return (
-      <div className="dark min-h-screen flex flex-col items-center justify-center p-4 bg-[hsl(270,20%,10%)]"
-        style={{ backgroundImage: "radial-gradient(hsl(40 82% 42% / 0.07) 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
-        <Card className="max-w-md w-full text-center shadow-2xl border-white/10 bg-white/5 overflow-hidden">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4"
+        style={{ backgroundColor: bg, backgroundImage: `radial-gradient(${accent}11 1px, transparent 1px)`, backgroundSize: "22px 22px" }}>
+        <div className="max-w-md w-full text-center shadow-2xl overflow-hidden rounded-xl" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
           <div className="h-1.5 w-full" style={{ background: accepted ? "linear-gradient(90deg,#22c55e,#16a34a)" : "linear-gradient(90deg,#ef4444,#dc2626)" }} />
-          <CardContent className="pt-10 pb-10 space-y-5 px-8">
+          <div className="pt-10 pb-10 space-y-5 px-8">
             <div className="flex justify-center">
               <div className={`h-20 w-20 rounded-full flex items-center justify-center ring-1 ${accepted ? "bg-emerald-500/15 ring-emerald-500/30" : "bg-red-500/15 ring-red-500/30"}`}>
                 {accepted
@@ -267,34 +304,34 @@ export default function Rsvp() {
               </div>
             </div>
             <div>
-              <h2 style={{ fontFamily: cormorant, fontStyle: "italic", fontWeight: 400, fontSize: "2rem", color: "#fff", marginBottom: "0.5rem" }}>
+              <h2 style={{ fontFamily: coupleFont, fontStyle: "italic", fontWeight: 400, fontSize: "2rem", color: textColor, marginBottom: "0.5rem" }}>
                 {accepted ? "See you there!" : "We'll miss you!"}
               </h2>
-              <p className="text-white/60 text-sm leading-relaxed">
+              <p style={{ color: textMuted, fontSize: "0.875rem", lineHeight: 1.6 }}>
                 {accepted
-                  ? <>Thanks, <span className="text-white font-semibold">{info.guestName}</span>! Your attendance has been confirmed for <span className="text-white font-semibold">{couple}'s</span> wedding.</>
-                  : <>Thanks for letting us know, <span className="text-white font-semibold">{info.guestName}</span>. <span className="text-white font-semibold">{couple}</span> appreciate you responding.</>
+                  ? <><span>Thanks, </span><span style={{ color: textColor, fontWeight: 600 }}>{info.guestName}</span><span>! Your attendance has been confirmed for </span><span style={{ color: textColor, fontWeight: 600 }}>{couple}'s</span><span> wedding.</span></>
+                  : <><span>Thanks for letting us know, </span><span style={{ color: textColor, fontWeight: 600 }}>{info.guestName}</span><span>. </span><span style={{ color: textColor, fontWeight: 600 }}>{couple}</span><span> appreciate you responding.</span></>
                 }
               </p>
               {accepted && weddingDateStr && (
-                <p className="text-white/40 text-xs mt-3">{weddingDateStr}{info.venue ? ` · ${info.venue}` : ""}</p>
+                <p style={{ color: textFaint, fontSize: "0.75rem", marginTop: "0.75rem" }}>{weddingDateStr}{info.venue ? ` · ${info.venue}` : ""}</p>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="dark min-h-screen flex flex-col bg-[hsl(270,20%,10%)]"
-      style={{ backgroundImage: "radial-gradient(hsl(40 82% 42% / 0.07) 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
+    <div className="min-h-screen flex flex-col"
+      style={{ backgroundColor: bg, backgroundImage: `radial-gradient(${accent}11 1px, transparent 1px)`, backgroundSize: "22px 22px" }}>
 
       <div className="flex-1 flex flex-col items-center py-10 px-4">
         <div className="max-w-lg w-full space-y-6">
 
           {/* Invitation card — captured by html2canvas for PDF */}
-          <div ref={cardRef} style={{ background: "#1a141f" }}>
+          <div ref={cardRef} style={{ backgroundColor: bg }}>
 
             <div className="w-full flex justify-center pt-6 px-4">
               <img
@@ -318,73 +355,74 @@ export default function Rsvp() {
 
             <div className="text-center space-y-4 py-4 px-4">
               <div className="flex justify-center mb-2">
-                <div className="h-16 w-16 rounded-full flex items-center justify-center shadow-md bg-primary/15 ring-1 ring-primary/30">
-                  <Heart className="h-8 w-8 fill-primary text-primary" />
+                <div className="h-16 w-16 rounded-full flex items-center justify-center shadow-md"
+                  style={{ background: `${accent}22`, boxShadow: `0 0 0 1px ${accent}44` }}>
+                  <Heart className="h-8 w-8" style={{ color: accent, fill: accent }} />
                 </div>
               </div>
               <div>
-                <p style={{ fontFamily: jakarta, fontSize: "10px", fontWeight: 600, letterSpacing: "0.4em", textTransform: "uppercase", color: "hsl(var(--primary))", marginBottom: "0.75rem" }}>
+                <p style={{ fontFamily: jakarta, fontSize: "10px", fontWeight: 600, letterSpacing: "0.4em", textTransform: "uppercase", color: accent, marginBottom: "0.75rem" }}>
                   Wedding RSVP
                 </p>
-                <h1 style={{ fontFamily: cormorant, fontSize: "clamp(2.2rem,7vw,3.2rem)", fontWeight: 400, fontStyle: "italic", color: "#fff", lineHeight: 1.15, letterSpacing: "0.02em" }}>
+                <h1 style={{ fontFamily: coupleFont, fontSize: "clamp(2.2rem,7vw,3.2rem)", fontWeight: 400, fontStyle: "italic", color: textColor, lineHeight: 1.15, letterSpacing: "0.02em" }}>
                   {couple}
                 </h1>
                 {weddingDateStr && (
-                  <p style={{ fontFamily: jakarta, fontSize: "12px", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginTop: "0.5rem" }}>{weddingDateStr}</p>
+                  <p style={{ fontFamily: jakarta, fontSize: "12px", letterSpacing: "0.1em", textTransform: "uppercase", color: textMuted, marginTop: "0.5rem" }}>{weddingDateStr}</p>
                 )}
                 {hasSeparateCeremony ? (
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto">
-                    <div className="rounded-lg border border-white/10 p-3 text-center" style={{ background: "rgba(255,255,255,0.05)" }}>
-                      <p style={{ fontFamily: jakarta, fontSize: "9px", fontWeight: 700, letterSpacing: "0.35em", textTransform: "uppercase", color: "hsl(var(--primary))", marginBottom: "6px" }}>Ceremony</p>
+                    <div className="rounded-lg p-3 text-center" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+                      <p style={{ fontFamily: jakarta, fontSize: "9px", fontWeight: 700, letterSpacing: "0.35em", textTransform: "uppercase", color: accent, marginBottom: "6px" }}>Ceremony</p>
                       {ceremonyTimeStr && (
-                        <p style={{ fontFamily: jakarta, fontSize: "14px", fontWeight: 600, color: "#fff" }}>{ceremonyTimeStr}</p>
+                        <p style={{ fontFamily: jakarta, fontSize: "14px", fontWeight: 600, color: textColor }}>{ceremonyTimeStr}</p>
                       )}
                       {info.ceremonyVenueName && (
                         <div className="mt-1 flex items-center justify-center gap-1">
-                          <MapPin className="h-3 w-3 text-primary/80" />
-                          <p style={{ fontFamily: cormorant, fontSize: "15px", fontWeight: 500, color: "rgba(255,255,255,0.8)" }}>{info.ceremonyVenueName}</p>
+                          <MapPin className="h-3 w-3" style={{ color: accent }} />
+                          <p style={{ fontFamily: coupleFont, fontSize: "15px", fontWeight: 500, color: textMuted }}>{info.ceremonyVenueName}</p>
                         </div>
                       )}
                       {ceremonyAddressLine1 && (
-                        <p style={{ fontFamily: jakarta, fontSize: "11px", color: "rgba(255,255,255,0.5)", marginTop: "2px" }}>{ceremonyAddressLine1}</p>
+                        <p style={{ fontFamily: jakarta, fontSize: "11px", color: textFaint, marginTop: "2px" }}>{ceremonyAddressLine1}</p>
                       )}
                       {ceremonyCityStateZip && (
-                        <p style={{ fontFamily: jakarta, fontSize: "11px", color: "rgba(255,255,255,0.5)" }}>{ceremonyCityStateZip}</p>
+                        <p style={{ fontFamily: jakarta, fontSize: "11px", color: textFaint }}>{ceremonyCityStateZip}</p>
                       )}
                     </div>
-                    <div className="rounded-lg border border-white/10 p-3 text-center" style={{ background: "rgba(255,255,255,0.05)" }}>
-                      <p style={{ fontFamily: jakarta, fontSize: "9px", fontWeight: 700, letterSpacing: "0.35em", textTransform: "uppercase", color: "hsl(var(--primary))", marginBottom: "6px" }}>Reception</p>
+                    <div className="rounded-lg p-3 text-center" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+                      <p style={{ fontFamily: jakarta, fontSize: "9px", fontWeight: 700, letterSpacing: "0.35em", textTransform: "uppercase", color: accent, marginBottom: "6px" }}>Reception</p>
                       {receptionTimeStr && (
-                        <p style={{ fontFamily: jakarta, fontSize: "14px", fontWeight: 600, color: "#fff" }}>{receptionTimeStr}</p>
+                        <p style={{ fontFamily: jakarta, fontSize: "14px", fontWeight: 600, color: textColor }}>{receptionTimeStr}</p>
                       )}
                       {info.venue && (
                         <div className="mt-1 flex items-center justify-center gap-1">
-                          <MapPin className="h-3 w-3 text-primary/80" />
-                          <p style={{ fontFamily: cormorant, fontSize: "15px", fontWeight: 500, color: "rgba(255,255,255,0.8)" }}>{info.venue}</p>
+                          <MapPin className="h-3 w-3" style={{ color: accent }} />
+                          <p style={{ fontFamily: coupleFont, fontSize: "15px", fontWeight: 500, color: textMuted }}>{info.venue}</p>
                         </div>
                       )}
                       {receptionAddressLine1 && (
-                        <p style={{ fontFamily: jakarta, fontSize: "11px", color: "rgba(255,255,255,0.5)", marginTop: "2px" }}>{receptionAddressLine1}</p>
+                        <p style={{ fontFamily: jakarta, fontSize: "11px", color: textFaint, marginTop: "2px" }}>{receptionAddressLine1}</p>
                       )}
                       {receptionCityStateZip && (
-                        <p style={{ fontFamily: jakarta, fontSize: "11px", color: "rgba(255,255,255,0.5)" }}>{receptionCityStateZip}</p>
+                        <p style={{ fontFamily: jakarta, fontSize: "11px", color: textFaint }}>{receptionCityStateZip}</p>
                       )}
                     </div>
                   </div>
                 ) : info.venue && (
                   <div className="mt-2 flex flex-col items-center gap-0.5">
                     <div className="flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-primary/80" />
-                      <p style={{ fontFamily: cormorant, fontSize: "18px", fontWeight: 500, color: "rgba(255,255,255,0.8)" }}>{info.venue}</p>
+                      <MapPin className="h-3.5 w-3.5" style={{ color: accent }} />
+                      <p style={{ fontFamily: coupleFont, fontSize: "18px", fontWeight: 500, color: textMuted }}>{info.venue}</p>
                     </div>
                     {receptionAddressLine1 && (
-                      <p style={{ fontFamily: jakarta, fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>{receptionAddressLine1}</p>
+                      <p style={{ fontFamily: jakarta, fontSize: "12px", color: textFaint }}>{receptionAddressLine1}</p>
                     )}
                     {receptionCityStateZip && (
-                      <p style={{ fontFamily: jakarta, fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>{receptionCityStateZip}</p>
+                      <p style={{ fontFamily: jakarta, fontSize: "12px", color: textFaint }}>{receptionCityStateZip}</p>
                     )}
                     {(ceremonyTimeStr || receptionTimeStr) && (
-                      <p style={{ fontFamily: jakarta, fontSize: "12px", color: "rgba(255,255,255,0.6)", marginTop: "4px" }}>
+                      <p style={{ fontFamily: jakarta, fontSize: "12px", color: textMuted, marginTop: "4px" }}>
                         {[
                           ceremonyTimeStr && `Ceremony ${ceremonyTimeStr}`,
                           receptionTimeStr && `Reception ${receptionTimeStr}`,
@@ -394,7 +432,7 @@ export default function Rsvp() {
                   </div>
                 )}
                 {info.invitationMessage && (
-                  <p style={{ fontFamily: cormorant, fontSize: "18px", fontStyle: "italic", lineHeight: 1.7, color: "rgba(255,255,255,0.7)", marginTop: "1rem", maxWidth: "28rem", margin: "1rem auto 0" }}>
+                  <p style={{ fontFamily: coupleFont, fontSize: "18px", fontStyle: "italic", lineHeight: 1.7, color: textMuted, marginTop: "1rem", maxWidth: "28rem", margin: "1rem auto 0" }}>
                     &ldquo;{info.invitationMessage}&rdquo;
                   </p>
                 )}
@@ -404,7 +442,7 @@ export default function Rsvp() {
                     onClick={downloadInvitationPdf}
                     disabled={downloadingPdf}
                     className="flex items-center gap-2 transition-opacity hover:opacity-80 disabled:opacity-50"
-                    style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)", fontFamily: jakarta, fontSize: "11px", fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", padding: "0.6rem 1.5rem", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer" }}
+                    style={{ background: cardBg, color: textMuted, fontFamily: jakarta, fontSize: "11px", fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", padding: "0.6rem 1.5rem", borderRadius: "6px", border: `1px solid ${cardBorder}`, cursor: "pointer" }}
                   >
                     {downloadingPdf ? (
                       <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating PDF&hellip;</>
@@ -423,12 +461,16 @@ export default function Rsvp() {
 
           </div>{/* end cardRef */}
 
-          <Card className="shadow-2xl border-white/10 bg-white/5 overflow-hidden">
-            <div className="h-1.5 w-full bg-primary" />
-            <CardContent className="pt-7 pb-8 px-6 sm:px-8 space-y-6">
+          {/* Divider */}
+          <div style={{ height: 1, background: cardBorder, margin: "0 1rem" }} />
 
-              <p className="text-sm text-white/70 text-center">
-                Dear <span className="text-white font-semibold">{info.guestName}</span>, will you be joining us?
+          {/* RSVP form card */}
+          <div className="shadow-2xl overflow-hidden rounded-xl" style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+            <div className="h-1.5 w-full" style={{ background: accent }} />
+            <div className="pt-7 pb-8 px-6 sm:px-8 space-y-6">
+
+              <p className="text-sm text-center" style={{ color: textMuted }}>
+                Dear <span style={{ color: textColor, fontWeight: 600 }}>{info.guestName}</span>, will you be joining us?
               </p>
 
               <Form {...form}>
@@ -447,25 +489,25 @@ export default function Rsvp() {
                           <button
                             type="button"
                             onClick={() => field.onChange("attending")}
-                            className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                              field.value === "attending"
-                                ? "border-emerald-500 bg-emerald-500/15 text-emerald-300"
-                                : "border-white/15 bg-white/5 text-white/60 hover:border-white/30 hover:bg-white/8"
-                            }`}
+                            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all"
+                            style={field.value === "attending"
+                              ? { borderColor: "#22c55e", background: "rgba(34,197,94,0.12)", color: "#86efac" }
+                              : { borderColor: cardBorder, background: cardBg, color: textMuted }
+                            }
                           >
-                            <CheckCircle2 className={`h-7 w-7 ${field.value === "attending" ? "text-emerald-400" : "text-white/40"}`} />
+                            <CheckCircle2 className="h-7 w-7" style={{ color: field.value === "attending" ? "#4ade80" : textFaint }} />
                             <span className="font-semibold text-sm">Joyfully Accepts</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => field.onChange("declined")}
-                            className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                              field.value === "declined"
-                                ? "border-red-500 bg-red-500/15 text-red-300"
-                                : "border-white/15 bg-white/5 text-white/60 hover:border-white/30 hover:bg-white/8"
-                            }`}
+                            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all"
+                            style={field.value === "declined"
+                              ? { borderColor: "#ef4444", background: "rgba(239,68,68,0.12)", color: "#fca5a5" }
+                              : { borderColor: cardBorder, background: cardBg, color: textMuted }
+                            }
                           >
-                            <XCircle className={`h-7 w-7 ${field.value === "declined" ? "text-red-400" : "text-white/40"}`} />
+                            <XCircle className="h-7 w-7" style={{ color: field.value === "declined" ? "#f87171" : textFaint }} />
                             <span className="font-semibold text-sm">Declines with Regrets</span>
                           </button>
                         </div>
@@ -481,13 +523,13 @@ export default function Rsvp() {
                         name="mealChoice"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-white/80 flex items-center gap-2">
-                              <User className="h-3.5 w-3.5 text-white/50" />
+                            <FormLabel className="flex items-center gap-2" style={{ color: textMuted }}>
+                              <User className="h-3.5 w-3.5" style={{ color: textFaint }} />
                               Your Meal Selection
                             </FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
-                                <SelectTrigger className="bg-white/10 border-white/15 text-white">
+                                <SelectTrigger style={{ background: cardBg, borderColor: cardBorder, color: textColor }}>
                                   <SelectValue placeholder="Select a meal" />
                                 </SelectTrigger>
                               </FormControl>
@@ -503,36 +545,36 @@ export default function Rsvp() {
                       />
 
                       {(
-                      <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-4">
+                      <div className="rounded-xl p-4 space-y-4" style={{ border: `1px solid ${accent}33`, background: `${accent}0d` }}>
                         <FormField
                           control={form.control}
                           name="plusOne"
                           render={({ field }) => (
                             <FormItem className="space-y-3">
                               <div>
-                                <FormLabel className="text-white/90 text-base">Are you bringing a plus one?</FormLabel>
-                                <p className="text-xs text-white/50 mt-0.5">You're welcome to bring a guest with you.</p>
+                                <FormLabel className="text-base" style={{ color: textColor }}>Are you bringing a plus one?</FormLabel>
+                                <p className="text-xs mt-0.5" style={{ color: textFaint }}>You're welcome to bring a guest with you.</p>
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <button
                                   type="button"
                                   onClick={() => field.onChange(true)}
-                                  className={`px-4 py-2 rounded-lg border transition-colors text-sm font-medium ${
-                                    field.value
-                                      ? "bg-primary border-primary text-primary-foreground"
-                                      : "bg-white/5 border-white/15 text-white/80 hover:bg-white/10"
-                                  }`}
+                                  className="px-4 py-2 rounded-lg border transition-colors text-sm font-medium"
+                                  style={field.value
+                                    ? { background: accent, borderColor: accent, color: accentText }
+                                    : { background: cardBg, borderColor: cardBorder, color: textMuted }
+                                  }
                                 >
                                   Yes
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => field.onChange(false)}
-                                  className={`px-4 py-2 rounded-lg border transition-colors text-sm font-medium ${
-                                    !field.value
-                                      ? "bg-primary border-primary text-primary-foreground"
-                                      : "bg-white/5 border-white/15 text-white/80 hover:bg-white/10"
-                                  }`}
+                                  className="px-4 py-2 rounded-lg border transition-colors text-sm font-medium"
+                                  style={!field.value
+                                    ? { background: accent, borderColor: accent, color: accentText }
+                                    : { background: cardBg, borderColor: cardBorder, color: textMuted }
+                                  }
                                 >
                                   No
                                 </button>
@@ -549,11 +591,12 @@ export default function Rsvp() {
                                 name="plusOneFirstName"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel className="text-white/80">Guest first name</FormLabel>
+                                    <FormLabel style={{ color: textMuted }}>Guest first name</FormLabel>
                                     <FormControl>
                                       <Input
                                         placeholder="First name"
-                                        className="bg-white/10 border-white/15 text-white placeholder:text-white/30 focus:border-primary"
+                                        style={{ background: cardBg, borderColor: cardBorder, color: textColor }}
+                                        className="placeholder:opacity-40"
                                         {...field}
                                       />
                                     </FormControl>
@@ -566,11 +609,12 @@ export default function Rsvp() {
                                 name="plusOneLastName"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel className="text-white/80">Guest last name</FormLabel>
+                                    <FormLabel style={{ color: textMuted }}>Guest last name</FormLabel>
                                     <FormControl>
                                       <Input
                                         placeholder="Last name"
-                                        className="bg-white/10 border-white/15 text-white placeholder:text-white/30 focus:border-primary"
+                                        style={{ background: cardBg, borderColor: cardBorder, color: textColor }}
+                                        className="placeholder:opacity-40"
                                         {...field}
                                       />
                                     </FormControl>
@@ -585,13 +629,13 @@ export default function Rsvp() {
                               name="plusOneMealChoice"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-white/80 flex items-center gap-2">
-                                    <User className="h-3.5 w-3.5 text-white/50" />
+                                  <FormLabel className="flex items-center gap-2" style={{ color: textMuted }}>
+                                    <User className="h-3.5 w-3.5" style={{ color: textFaint }} />
                                     Plus-one Meal Selection
                                   </FormLabel>
                                   <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
-                                      <SelectTrigger className="bg-white/10 border-white/15 text-white">
+                                      <SelectTrigger style={{ background: cardBg, borderColor: cardBorder, color: textColor }}>
                                         <SelectValue placeholder="Select a meal for your guest" />
                                       </SelectTrigger>
                                     </FormControl>
@@ -615,13 +659,14 @@ export default function Rsvp() {
                         name="dietaryRestrictions"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-white/80">
+                            <FormLabel style={{ color: textMuted }}>
                               Dietary Restrictions / Additional Notes
                             </FormLabel>
                             <FormControl>
                               <Textarea
                                 placeholder="e.g. vegetarian, gluten-free, nut allergy — leave blank if none"
-                                className="bg-white/10 border-white/15 text-white placeholder:text-white/30 focus:border-primary resize-none min-h-[80px]"
+                                style={{ background: cardBg, borderColor: cardBorder, color: textColor }}
+                                className="placeholder:opacity-40 resize-none min-h-[80px]"
                                 {...field}
                               />
                             </FormControl>
@@ -639,72 +684,72 @@ export default function Rsvp() {
                     </p>
                   )}
 
-                  <Button
+                  <button
                     type="submit"
-                    className="w-full font-semibold py-5 rounded-xl"
                     disabled={submit.isPending || !attendance}
-                    size="lg"
+                    className="w-full flex items-center justify-center gap-2 font-semibold py-4 rounded-xl transition-opacity disabled:opacity-50"
+                    style={{ background: accent, color: accentText, fontSize: "1rem" }}
                   >
                     {submit.isPending ? (
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Submitting...</>
                     ) : (
                       <><Heart className="h-4 w-4 mr-2 fill-current" /> Submit RSVP</>
                     )}
-                  </Button>
+                  </button>
                 </form>
               </Form>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
         </div>
       </div>
 
       <AlertDialog open={!!pendingData} onOpenChange={(open) => { if (!open) setPendingData(null); }}>
-        <AlertDialogContent className="dark bg-[hsl(270,20%,12%)] border-white/10 text-white max-w-sm">
+        <AlertDialogContent className="max-w-sm" style={{ backgroundColor: bg, borderColor: cardBorder, color: textColor }}>
           <AlertDialogHeader>
-            <AlertDialogTitle style={{ fontFamily: cormorant, fontStyle: "italic", fontWeight: 400, fontSize: "1.4rem", color: "#fff", textAlign: "center" }}>
+            <AlertDialogTitle style={{ fontFamily: coupleFont, fontStyle: "italic", fontWeight: 400, fontSize: "1.4rem", color: textColor, textAlign: "center" }}>
               Confirm Your RSVP
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-3 text-white/70 text-sm text-center">
+              <div className="space-y-3 text-sm text-center" style={{ color: textMuted }}>
                 <p>
                   Please review your details before sending your RSVP to{" "}
-                  <span className="text-white font-semibold">{couple}</span>.
+                  <span style={{ color: textColor, fontWeight: 600 }}>{couple}</span>.
                 </p>
                 {pendingData && (
-                  <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-left space-y-1.5 text-xs">
+                  <div className="rounded-lg p-3 text-left space-y-1.5 text-xs" style={{ border: `1px solid ${cardBorder}`, background: cardBg }}>
                     <div className="flex justify-between">
-                      <span className="text-white/50">Guest</span>
-                      <span className="text-white font-medium">{info?.guestName}</span>
+                      <span style={{ color: textFaint }}>Guest</span>
+                      <span style={{ color: textColor, fontWeight: 500 }}>{info?.guestName}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-white/50">Response</span>
-                      <span className={`font-medium ${pendingData.attendance === "attending" ? "text-emerald-400" : "text-red-400"}`}>
+                      <span style={{ color: textFaint }}>Response</span>
+                      <span style={{ fontWeight: 500, color: pendingData.attendance === "attending" ? "#4ade80" : "#f87171" }}>
                         {pendingData.attendance === "attending" ? "Joyfully Accepts" : "Declines with Regrets"}
                       </span>
                     </div>
                     {pendingData.attendance === "attending" && pendingData.mealChoice && (
                       <div className="flex justify-between">
-                        <span className="text-white/50">Your Meal</span>
-                        <span className="text-white font-medium">{mealLabel(pendingData.mealChoice)}</span>
+                        <span style={{ color: textFaint }}>Your Meal</span>
+                        <span style={{ color: textColor, fontWeight: 500 }}>{mealLabel(pendingData.mealChoice)}</span>
                       </div>
                     )}
                     {pendingData.plusOne && (pendingData.plusOneFirstName || pendingData.plusOneLastName) && (
                       <div className="flex justify-between">
-                        <span className="text-white/50">Plus-one</span>
-                        <span className="text-white font-medium">{[pendingData.plusOneFirstName, pendingData.plusOneLastName].filter(Boolean).join(" ")}</span>
+                        <span style={{ color: textFaint }}>Plus-one</span>
+                        <span style={{ color: textColor, fontWeight: 500 }}>{[pendingData.plusOneFirstName, pendingData.plusOneLastName].filter(Boolean).join(" ")}</span>
                       </div>
                     )}
                     {pendingData.plusOne && pendingData.plusOneMealChoice && (
                       <div className="flex justify-between">
-                        <span className="text-white/50">Their Meal</span>
-                        <span className="text-white font-medium">{mealLabel(pendingData.plusOneMealChoice)}</span>
+                        <span style={{ color: textFaint }}>Their Meal</span>
+                        <span style={{ color: textColor, fontWeight: 500 }}>{mealLabel(pendingData.plusOneMealChoice)}</span>
                       </div>
                     )}
                     {pendingData.dietaryRestrictions && (
-                      <div className="flex flex-col gap-0.5 pt-1 border-t border-white/10 mt-1">
-                        <span className="text-white/50">Dietary / Notes</span>
-                        <span className="text-white font-medium">{pendingData.dietaryRestrictions}</span>
+                      <div className="flex flex-col gap-0.5 pt-1 border-t mt-1" style={{ borderColor: cardBorder }}>
+                        <span style={{ color: textFaint }}>Dietary / Notes</span>
+                        <span style={{ color: textColor, fontWeight: 500 }}>{pendingData.dietaryRestrictions}</span>
                       </div>
                     )}
                   </div>
@@ -714,13 +759,13 @@ export default function Rsvp() {
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
             <AlertDialogCancel
-              className="border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+              style={{ borderColor: cardBorder, background: cardBg, color: textMuted }}
               onClick={() => setPendingData(null)}
             >
               Go Back
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-primary hover:bg-primary/90 text-white"
+              style={{ background: accent, color: accentText }}
               onClick={() => { if (pendingData) submit.mutate(pendingData); }}
               disabled={submit.isPending}
             >

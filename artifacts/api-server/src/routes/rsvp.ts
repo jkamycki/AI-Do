@@ -516,12 +516,26 @@ router.get("/rsvp/:token", async (req, res) => {
     // either the customization's digital invitation photo or the profile fallback).
     const customizationRows = profile
       ? await db
-          .select({ digitalInvitationPhotoUrl: invitationCustomizations.digitalInvitationPhotoUrl })
+          .select({
+            digitalInvitationPhotoUrl: invitationCustomizations.digitalInvitationPhotoUrl,
+            colorPalette: invitationCustomizations.colorPalette,
+            customColors: invitationCustomizations.customColors,
+            digitalInvitationBackground: invitationCustomizations.digitalInvitationBackground,
+            digitalInvitationFont: invitationCustomizations.digitalInvitationFont,
+            digitalInvitationLayout: invitationCustomizations.digitalInvitationLayout,
+          })
           .from(invitationCustomizations)
           .where(eq(invitationCustomizations.profileId, profile.id))
           .limit(1)
       : [];
-    const customizationPhoto = customizationRows[0]?.digitalInvitationPhotoUrl ?? null;
+    const c = customizationRows[0] ?? null;
+    const customizationPhoto = c?.digitalInvitationPhotoUrl ?? null;
+
+    // Merge customColors on top of the palette (same logic as the frontend)
+    const basePalette = c?.colorPalette ?? DEFAULT_COLORS;
+    const mergedPalette = c?.customColors
+      ? { ...basePalette, ...c.customColors }
+      : basePalette;
 
     res.json({
       guestName: guest.name,
@@ -542,11 +556,14 @@ router.get("/rsvp/:token", async (req, res) => {
       ceremonyState: profile?.ceremonyState ?? null,
       ceremonyZip: profile?.ceremonyZip ?? null,
       currentStatus: guest.rsvpStatus,
-      // Allow the guest themselves to choose whether to bring a plus-one,
-      // unless the planner explicitly disabled it. Default to allowed.
       plusOneAllowed: true,
       hasPhoto: !!(customizationPhoto || profile?.invitationPhotoUrl),
       invitationMessage: profile?.invitationMessage ?? null,
+      // Custom design theming — used to style the RSVP page
+      colorPalette: mergedPalette,
+      backgroundColor: c?.digitalInvitationBackground ?? null,
+      font: c?.digitalInvitationFont ?? null,
+      layout: c?.digitalInvitationLayout ?? null,
     });
   } catch (err) {
     req.log.error(err, "Failed to get RSVP info");

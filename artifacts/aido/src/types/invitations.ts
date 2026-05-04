@@ -59,7 +59,7 @@ export interface WeddingProfileData {
   invitationMessage?: string;
 }
 
-export type PreviewTab = "saveTheDate" | "digitalInvitation";
+export type PreviewTab = "saveTheDate" | "digitalInvitation" | "rsvpPage";
 
 export interface ColorGenerationResponse {
   primary: string;
