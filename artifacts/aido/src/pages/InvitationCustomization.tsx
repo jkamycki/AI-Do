@@ -154,6 +154,8 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
         fetch("/api/invitation-customizations", {
           method: "POST",
           credentials: "include",
+          // keepalive lets the request finish even if the page is unloading
+          keepalive: true,
           headers: {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -184,6 +186,35 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // empty deps — fires only on unmount
+
+  // Persist a single field immediately, surviving navigation via keepalive.
+  // Used for the design-mode toggle so leaving the page right after clicking
+  // doesn't lose the choice (the 1s debounce wouldn't have fired yet).
+  const persistDesignMode = useCallback(async (useAi: boolean) => {
+    const v = latestValuesRef.current;
+    if (!v.profileId) return;
+    try {
+      const token = await getToken();
+      await fetch("/api/invitation-customizations", {
+        method: "POST",
+        credentials: "include",
+        keepalive: true,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ profileId: v.profileId, useGeneratedInvitation: useAi }),
+      });
+    } catch {
+      // best-effort — the autosave/unmount-save will retry on next render
+    }
+  }, [getToken]);
+
+  const handleSelectDesignMode = useCallback((useAi: boolean) => {
+    setUseGeneratedInvitation(useAi);
+    skipNextAutoSave.current = true; // we are persisting directly here
+    void persistDesignMode(useAi);
+  }, [persistDesignMode]);
 
   const authedFetch = async (url: string, init: RequestInit = {}) => {
     const token = await getToken();
@@ -570,7 +601,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setUseGeneratedInvitation(true)}
+                  onClick={() => handleSelectDesignMode(true)}
                   className={`flex flex-col items-center gap-2 rounded-lg border-2 p-3 text-left transition-colors ${
                     useGeneratedInvitation
                       ? "border-primary bg-primary/5"
@@ -589,7 +620,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                 </button>
                 <button
                   type="button"
-                  onClick={() => setUseGeneratedInvitation(false)}
+                  onClick={() => handleSelectDesignMode(false)}
                   className={`flex flex-col items-center gap-2 rounded-lg border-2 p-3 text-left transition-colors ${
                     !useGeneratedInvitation
                       ? "border-primary bg-primary/5"
