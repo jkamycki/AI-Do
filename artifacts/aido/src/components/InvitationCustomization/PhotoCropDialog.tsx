@@ -28,10 +28,35 @@ export function PhotoCropDialog({
   const [zoom, setZoom] = useState(1);
   const [offsetX, setOffsetX] = useState(0);
   const [offsetY, setOffsetY] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
 
   const PREVIEW_SIZE = 300;
+
+  const computeDrawSize = (zoomLevel: number) => {
+    const img = imgRef.current;
+    if (!img || !img.naturalWidth || !img.naturalHeight) {
+      return { drawWidth: PREVIEW_SIZE * zoomLevel, drawHeight: PREVIEW_SIZE * zoomLevel };
+    }
+    const imgWidth = img.naturalWidth;
+    const imgHeight = img.naturalHeight;
+    let drawWidth = PREVIEW_SIZE * zoomLevel;
+    let drawHeight = (imgHeight / imgWidth) * drawWidth;
+    if (drawHeight < PREVIEW_SIZE * zoomLevel) {
+      drawHeight = PREVIEW_SIZE * zoomLevel;
+      drawWidth = (imgWidth / imgHeight) * drawHeight;
+    }
+    return { drawWidth, drawHeight };
+  };
+
+  // Reset state whenever a new image is provided
+  useEffect(() => {
+    setImageLoaded(false);
+    setZoom(1);
+    setOffsetX(0);
+    setOffsetY(0);
+  }, [imageUrl]);
 
   useEffect(() => {
     if (!open) return;
@@ -40,11 +65,22 @@ export function PhotoCropDialog({
     if (!img) return;
 
     const handleImageLoad = () => {
-      redrawCanvas();
+      const { drawWidth, drawHeight } = computeDrawSize(1);
+      // Center the image inside the crop box
+      setOffsetX(-(drawWidth - PREVIEW_SIZE) / 2);
+      setOffsetY(-(drawHeight - PREVIEW_SIZE) / 2);
+      setImageLoaded(true);
     };
 
     img.addEventListener("load", handleImageLoad);
-    img.src = imageUrl;
+
+    // The <img> in JSX may already have src set; if it's already loaded the
+    // load event won't fire again, so trigger the handler manually.
+    if (img.complete && img.naturalWidth > 0) {
+      handleImageLoad();
+    } else if (img.src !== imageUrl) {
+      img.src = imageUrl;
+    }
 
     return () => {
       img.removeEventListener("load", handleImageLoad);
@@ -56,6 +92,7 @@ export function PhotoCropDialog({
     const img = imgRef.current;
 
     if (!canvas || !img) return;
+    if (!img.complete || !img.naturalWidth) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -67,26 +104,10 @@ export function PhotoCropDialog({
     ctx.fillStyle = "#f5f5f5";
     ctx.fillRect(0, 0, PREVIEW_SIZE, PREVIEW_SIZE);
 
-    // Calculate scaled dimensions
-    const imgWidth = img.naturalWidth;
-    const imgHeight = img.naturalHeight;
-
-    let drawWidth = PREVIEW_SIZE * zoom;
-    let drawHeight = (imgHeight / imgWidth) * drawWidth;
-
-    if (drawHeight < PREVIEW_SIZE) {
-      drawHeight = PREVIEW_SIZE * zoom;
-      drawWidth = (imgWidth / imgHeight) * drawHeight;
-    }
+    const { drawWidth, drawHeight } = computeDrawSize(zoom);
 
     // Draw the image
-    ctx.drawImage(
-      img,
-      offsetX,
-      offsetY,
-      drawWidth,
-      drawHeight
-    );
+    ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
 
     // Draw crop border
     ctx.strokeStyle = "rgba(255,255,255,0.8)";
@@ -94,11 +115,21 @@ export function PhotoCropDialog({
     ctx.strokeRect(0, 0, PREVIEW_SIZE, PREVIEW_SIZE);
   };
 
+  // Clamp offsets within bounds whenever zoom changes so the image stays inside the frame.
   useEffect(() => {
-    if (open) {
+    if (!imageLoaded) return;
+    const { drawWidth, drawHeight } = computeDrawSize(zoom);
+    const maxOffsetX = Math.max(0, drawWidth - PREVIEW_SIZE);
+    const maxOffsetY = Math.max(0, drawHeight - PREVIEW_SIZE);
+    setOffsetX((prev) => Math.max(-maxOffsetX, Math.min(0, prev)));
+    setOffsetY((prev) => Math.max(-maxOffsetY, Math.min(0, prev)));
+  }, [zoom, imageLoaded]);
+
+  useEffect(() => {
+    if (open && imageLoaded) {
       redrawCanvas();
     }
-  }, [zoom, offsetX, offsetY, open]);
+  }, [zoom, offsetX, offsetY, open, imageLoaded]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDragging(true);
@@ -110,26 +141,14 @@ export function PhotoCropDialog({
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDragging) return;
-
-    const img = imgRef.current;
-    if (!img) return;
+    if (!imageLoaded) return;
 
     const newOffsetX = e.clientX - dragStartPos.x;
     const newOffsetY = e.clientY - dragStartPos.y;
 
-    const imgWidth = img.naturalWidth;
-    const imgHeight = img.naturalHeight;
-
-    let maxDrawWidth = PREVIEW_SIZE * zoom;
-    let maxDrawHeight = (imgHeight / imgWidth) * maxDrawWidth;
-
-    if (maxDrawHeight < PREVIEW_SIZE) {
-      maxDrawHeight = PREVIEW_SIZE * zoom;
-      maxDrawWidth = (imgWidth / imgHeight) * maxDrawHeight;
-    }
-
-    const maxOffsetX = Math.max(0, maxDrawWidth - PREVIEW_SIZE);
-    const maxOffsetY = Math.max(0, maxDrawHeight - PREVIEW_SIZE);
+    const { drawWidth, drawHeight } = computeDrawSize(zoom);
+    const maxOffsetX = Math.max(0, drawWidth - PREVIEW_SIZE);
+    const maxOffsetY = Math.max(0, drawHeight - PREVIEW_SIZE);
 
     setOffsetX(Math.max(-maxOffsetX, Math.min(0, newOffsetX)));
     setOffsetY(Math.max(-maxOffsetY, Math.min(0, newOffsetY)));
@@ -141,21 +160,21 @@ export function PhotoCropDialog({
 
   const handleCropClick = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !imageLoaded) return;
 
     canvas.toBlob(
       (blob) => {
-        if (blob) {
-          const file = new File([blob], "cropped-photo.jpg", {
-            type: "image/jpeg",
-            lastModified: Date.now(),
-          });
-          onCropComplete(file);
-          // Reset state
-          setZoom(1);
-          setOffsetX(0);
-          setOffsetY(0);
-        }
+        if (!blob) return;
+        const file = new File([blob], "cropped-photo.jpg", {
+          type: "image/jpeg",
+          lastModified: Date.now(),
+        });
+        onCropComplete(file);
+        // Reset state
+        setZoom(1);
+        setOffsetX(0);
+        setOffsetY(0);
+        setImageLoaded(false);
       },
       "image/jpeg",
       0.95
@@ -192,7 +211,6 @@ export function PhotoCropDialog({
             src={imageUrl}
             alt="crop"
             className="hidden"
-            crossOrigin="anonymous"
           />
 
           <div className="space-y-2">
