@@ -1262,7 +1262,7 @@ export default function Vendors() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data: vendors = [], isLoading } = useListVendors();
+  const { data: vendors = [], isLoading, error: vendorsError } = useListVendors();
   const { data: profile } = useGetProfile();
 
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -1307,6 +1307,30 @@ export default function Vendors() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-48 rounded-2xl" />)}
         </div>
+      </div>
+    );
+  }
+
+  if (vendorsError) {
+    const status = (vendorsError as { status?: number }).status;
+    const message = (vendorsError as { message?: string }).message ?? String(vendorsError);
+    return (
+      <div className="space-y-4 max-w-3xl mx-auto p-6 rounded-2xl border border-destructive/40 bg-destructive/5">
+        <h2 className="text-xl font-serif text-foreground">Couldn't load vendors</h2>
+        <p className="text-sm text-muted-foreground">
+          The server returned an error{status ? ` (HTTP ${status})` : ""}. Your saved vendors are still
+          in the database — this is a connection issue, not data loss.
+        </p>
+        <pre className="text-xs bg-background/50 p-3 rounded-lg overflow-auto whitespace-pre-wrap break-all">
+          {message}
+        </pre>
+        <p className="text-sm text-muted-foreground">
+          If you recently rotated the database password, update <code>DATABASE_URL</code> on the
+          Render web service and redeploy.
+        </p>
+        <Button onClick={() => qc.invalidateQueries({ queryKey: getListVendorsQueryKey() })}>
+          Retry
+        </Button>
       </div>
     );
   }
