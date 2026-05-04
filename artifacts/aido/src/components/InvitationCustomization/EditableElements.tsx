@@ -378,7 +378,7 @@ export function EditableToolbar({
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent position="popper" sideOffset={6} className="z-[9999] max-h-72 overflow-y-auto">
             {FONT_OPTIONS.map((f) => (
               <SelectItem key={f} value={f} style={{ fontFamily: `"${f}"` }}>
                 {f}

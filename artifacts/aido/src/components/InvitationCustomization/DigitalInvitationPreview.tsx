@@ -28,6 +28,7 @@ interface DigitalInvitationPreviewProps {
   partner1Name: string;
   partner2Name: string;
   weddingDate: string;
+  message?: string;
   textOverrides: TextOverrides;
   onTextOverridesChange: (next: TextOverrides) => void;
   editable?: boolean;
@@ -74,6 +75,7 @@ export const DigitalInvitationPreview = forwardRef<
     partner1Name,
     partner2Name,
     weddingDate,
+    message,
     textOverrides,
     onTextOverridesChange,
     editable = true,
@@ -260,6 +262,16 @@ export const DigitalInvitationPreview = forwardRef<
       defaultColor: colors.neutral,
       defaultFontSize: 14,
       defaultFont: font || "Cormorant Garamond",
+    }] : []),
+    ...(message ? [{
+      id: PREFIX + "message",
+      text: message,
+      defaultX: CANVAS_W / 2,
+      defaultY: 730,
+      defaultColor: colors.neutral,
+      defaultFontSize: 14,
+      defaultFont: font || "Cormorant Garamond",
+      fontStyle: "italic" as const,
     }] : []),
     {
       id: PREFIX + "footer-label",

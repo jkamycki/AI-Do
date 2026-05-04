@@ -730,6 +730,7 @@ export function InvitationSendModal({
                       venueCity={profile?.venueCity ?? undefined}
                       venueState={profile?.venueState ?? undefined}
                       venueZip={profile?.venueZip ?? undefined}
+                      message={profile?.saveTheDateMessage ?? undefined}
                       textOverrides={customization.textOverrides}
                       onTextOverridesChange={() => {}}
                       editable={false}
@@ -772,6 +773,7 @@ export function InvitationSendModal({
                       partner1Name={profile?.partner1Name || ""}
                       partner2Name={profile?.partner2Name || ""}
                       weddingDate={profile?.weddingDate || ""}
+                      message={profile?.invitationMessage ?? undefined}
                       textOverrides={customization.textOverrides}
                       onTextOverridesChange={() => {}}
                       editable={false}

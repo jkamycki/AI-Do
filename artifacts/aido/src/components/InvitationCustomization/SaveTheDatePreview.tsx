@@ -24,6 +24,7 @@ interface SaveTheDatePreviewProps {
   venueCity?: string;
   venueState?: string;
   venueZip?: string;
+  message?: string;
   textOverrides: TextOverrides;
   onTextOverridesChange: (next: TextOverrides) => void;
   editable?: boolean;
@@ -51,6 +52,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
       venueCity,
       venueState,
       venueZip,
+      message,
       textOverrides,
       onTextOverridesChange,
       editable = true,
@@ -129,6 +131,17 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
         defaultFontSize: 16,
         defaultFont: "Cormorant Garamond",
         fontWeight: 400 as const,
+      }] : []),
+      ...(message ? [{
+        id: PREFIX + "message",
+        text: message,
+        defaultX: CANVAS_W / 2,
+        defaultY: 555,
+        defaultColor: colors.primary,
+        defaultFontSize: 15,
+        defaultFont: "Cormorant Garamond",
+        fontWeight: 400 as const,
+        fontStyle: "italic" as const,
       }] : []),
     ];
 

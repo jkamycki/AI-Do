@@ -809,6 +809,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                   venueCity={displayWeddingProfile.venueCity}
                   venueState={displayWeddingProfile.venueState}
                   venueZip={displayWeddingProfile.venueZip}
+                  message={saveTheDateMessage || undefined}
                   textOverrides={stdTextOverrides}
                   onTextOverridesChange={setStdTextOverrides}
                 />
@@ -831,6 +832,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                   partner1Name={displayWeddingProfile.partner1Name}
                   partner2Name={displayWeddingProfile.partner2Name}
                   weddingDate={displayWeddingProfile.weddingDate}
+                  message={invitationMessage || undefined}
                   textOverrides={digTextOverrides}
                   onTextOverridesChange={setDigTextOverrides}
                 />
