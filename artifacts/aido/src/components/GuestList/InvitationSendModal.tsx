@@ -842,6 +842,13 @@ export function InvitationSendModal({
                       venue={profile?.venue ?? ""}
                       photoUrl={customization.digitalInvitationPhotoUrl}
                       guestName={guest?.name}
+                      venueAddress={profile?.venueAddress}
+                      venueCity={profile?.venueCity}
+                      venueState={profile?.venueState}
+                      venueZip={profile?.venueZip}
+                      ceremonyTime={profile?.ceremonyTime}
+                      receptionTime={profile?.receptionTime}
+                      invitationMessage={profile?.invitationMessage}
                     />
                   </div>
                   <Button
