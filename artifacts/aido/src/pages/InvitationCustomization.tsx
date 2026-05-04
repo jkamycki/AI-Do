@@ -60,7 +60,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   // ── Save the Date ─────────────────────────────────────────────────────────
   const [saveTheDatePhotoFile, setSaveTheDatePhotoFile] = useState<File | null>(null);
   const [saveTheDatePhotoUrl, setSaveTheDatePhotoUrl] = useState<string | null>(null);
-  const [saveTheDateFont, setSaveTheDateFont] = useState("Georgia");
+  const [saveTheDateFont, setSaveTheDateFont] = useState("Playfair Display");
   const [saveTheDateLayout, setSaveTheDateLayout] = useState("classic");
   const [saveTheDateBackground, setSaveTheDateBackground] = useState<string | null>("#1E1A2E");
   const [stdTextOverrides, setStdTextOverrides] = useState<TextOverrides>({});
@@ -68,7 +68,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   // ── Digital Invitation ────────────────────────────────────────────────────
   const [digitalInvitationPhotoFile, setDigitalInvitationPhotoFile] = useState<File | null>(null);
   const [digitalInvitationPhotoUrl, setDigitalInvitationPhotoUrl] = useState<string | null>(null);
-  const [digitalInvitationFont, setDigitalInvitationFont] = useState("Georgia");
+  const [digitalInvitationFont, setDigitalInvitationFont] = useState("Playfair Display");
   const [digitalInvitationLayout, setDigitalInvitationLayout] = useState("classic");
   const [digitalInvitationBackground, setDigitalInvitationBackground] = useState<string | null>("#1E1A2E");
   const [digTextOverrides, setDigTextOverrides] = useState<TextOverrides>({});
@@ -845,6 +845,16 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
             </div>
 
             <div className="flex-1 overflow-auto p-4">
+              {/* AI-generated mode notice — shows when canvas won't be the one sent */}
+              {useGeneratedInvitation && !isRsvp && (
+                <div className="mb-3 rounded-lg bg-primary/10 border border-primary/20 p-3 flex items-start gap-2">
+                  <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    <span className="font-semibold text-primary">AI Generated mode</span> — the A.IDO email template will be sent, not this canvas. Switch to{" "}
+                    <span className="font-semibold text-foreground">Custom Design</span> above to send your personalized design.
+                  </p>
+                </div>
+              )}
               {isSTD ? (
                 <SaveTheDatePreview
                   ref={saveTheDatePreviewRef}

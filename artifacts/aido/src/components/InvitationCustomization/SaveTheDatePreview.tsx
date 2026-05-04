@@ -220,6 +220,18 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
             canvasH={CANVAS_H}
           />
 
+          {/* A.IDO logo — always visible at top of canvas */}
+          <div
+            className="absolute pointer-events-none"
+            style={{ top: 8, left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 10 }}
+          >
+            <img
+              src="/logo.png"
+              alt="A.IDO"
+              style={{ height: 36, width: "auto", objectFit: "contain", opacity: 0.85 }}
+            />
+          </div>
+
           <EditableImage
             id={photoId}
             src={photoUrl}

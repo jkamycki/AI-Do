@@ -474,9 +474,9 @@ export const invitationCustomizations = pgTable("invitation_customizations", {
   digitalInvitationPhotoUrl: text("digital_invitation_photo_url"),
 
   // Design Options — per-design font / layout / background
-  selectedFont: text("selected_font").notNull().default("Georgia"),
-  saveTheDateFont: text("save_the_date_font").default("Georgia"),
-  digitalInvitationFont: text("digital_invitation_font").default("Georgia"),
+  selectedFont: text("selected_font").notNull().default("Playfair Display"),
+  saveTheDateFont: text("save_the_date_font").default("Playfair Display"),
+  digitalInvitationFont: text("digital_invitation_font").default("Playfair Display"),
   selectedLayout: text("selected_layout").notNull().default("classic"),
   saveTheDateLayout: text("save_the_date_layout").default("classic"),
   digitalInvitationLayout: text("digital_invitation_layout").default("classic"),

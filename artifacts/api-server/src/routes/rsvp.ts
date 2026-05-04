@@ -197,8 +197,8 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       ? customization.digitalInvitationPhotoUrl
       : profile.invitationPhotoUrl;
     const headingFont = !useGenerated
-      ? sanitizeFont(customization?.digitalInvitationFont || customization?.selectedFont, "Georgia")
-      : "Georgia";
+      ? sanitizeFont(customization?.digitalInvitationFont || customization?.selectedFont, "Playfair Display")
+      : "Playfair Display";
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     const now = new Date();
@@ -537,6 +537,11 @@ router.get("/rsvp/:token", async (req, res) => {
       ? { ...basePalette, ...c.customColors }
       : basePalette;
 
+    // Resolve the best available photo URL — prefer the digital invitation
+    // customization photo, then fall back to the profile's invitation photo.
+    // We return it directly so the guest page can load it without a proxy hop.
+    const resolvedPhotoUrl = customizationPhoto || profile?.invitationPhotoUrl || null;
+
     res.json({
       guestName: guest.name,
       partner1Name: profile?.partner1Name ?? null,
@@ -557,7 +562,8 @@ router.get("/rsvp/:token", async (req, res) => {
       ceremonyZip: profile?.ceremonyZip ?? null,
       currentStatus: guest.rsvpStatus,
       plusOneAllowed: true,
-      hasPhoto: !!(customizationPhoto || profile?.invitationPhotoUrl),
+      hasPhoto: !!resolvedPhotoUrl,
+      photoUrl: resolvedPhotoUrl,
       invitationMessage: profile?.invitationMessage ?? null,
       // Custom design theming — used to style the RSVP page
       colorPalette: mergedPalette,
@@ -697,8 +703,8 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       ? customization.saveTheDatePhotoUrl
       : profile.saveTheDatePhotoUrl;
     const headingFont = !useGenerated
-      ? sanitizeFont(customization?.saveTheDateFont || customization?.selectedFont, "Georgia")
-      : "Georgia";
+      ? sanitizeFont(customization?.saveTheDateFont || customization?.selectedFont, "Playfair Display")
+      : "Playfair Display";
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     if (!guest.rsvpToken) {

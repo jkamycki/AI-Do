@@ -79,6 +79,7 @@ interface RsvpInfo {
   currentStatus: string;
   plusOneAllowed: boolean;
   hasPhoto: boolean;
+  photoUrl: string | null;
   invitationMessage: string | null;
   // Custom design theming (optional — falls back to defaults)
   colorPalette: ColorPalette | null;
@@ -341,12 +342,11 @@ export default function Rsvp() {
               />
             </div>
 
-            {info.hasPhoto && (
+            {info.photoUrl && (
               <div className="w-full flex justify-center pt-6 px-4">
                 <img
-                  src={`/api/rsvp/${token}/photo`}
+                  src={info.photoUrl}
                   alt={`${couple}'s wedding`}
-                  crossOrigin="anonymous"
                   className="w-full max-w-md h-auto block rounded-lg"
                   style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }}
                 />
