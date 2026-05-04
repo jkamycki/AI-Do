@@ -668,7 +668,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
             isLoading={uploadPhotoMutation.isPending || saveCustomizationsMutation.isPending}
           />
 
-          {/* Brand-color palette — shared, but each design uses it independently */}
+          {/* Brand-color palette — read-only swatches in AI mode, fully editable in custom mode */}
           <ColorSystemSection
             primaryColor={primaryColor}
             onPrimaryColorChange={setPrimaryColor}
@@ -679,19 +679,22 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
             onPaletteSelect={setSelectedPalette}
             backgroundColor={isSTD ? saveTheDateBackground : digitalInvitationBackground}
             onBackgroundColorChange={isSTD ? setSaveTheDateBackground : setDigitalInvitationBackground}
+            readOnly={useGeneratedInvitation}
           />
 
-          {/* Layout / background / font — per-design, switches with the preview tab */}
-          <DesignOptionsSection
-            mode={isRsvp ? "digitalInvitation" : previewTab}
-            selectedLayout={isSTD ? saveTheDateLayout : digitalInvitationLayout}
-            onLayoutChange={isSTD ? setSaveTheDateLayout : setDigitalInvitationLayout}
-            backgroundColor={isSTD ? saveTheDateBackground : digitalInvitationBackground}
-            onBackgroundColorChange={isSTD ? setSaveTheDateBackground : setDigitalInvitationBackground}
-            selectedFont={isSTD ? saveTheDateFont : digitalInvitationFont}
-            onFontChange={isSTD ? setSaveTheDateFont : setDigitalInvitationFont}
-            colors={displayPalette}
-          />
+          {/* Layout / background / font — hidden in AI mode, only relevant for custom designs */}
+          {!useGeneratedInvitation && (
+            <DesignOptionsSection
+              mode={isRsvp ? "digitalInvitation" : previewTab}
+              selectedLayout={isSTD ? saveTheDateLayout : digitalInvitationLayout}
+              onLayoutChange={isSTD ? setSaveTheDateLayout : setDigitalInvitationLayout}
+              backgroundColor={isSTD ? saveTheDateBackground : digitalInvitationBackground}
+              onBackgroundColorChange={isSTD ? setSaveTheDateBackground : setDigitalInvitationBackground}
+              selectedFont={isSTD ? saveTheDateFont : digitalInvitationFont}
+              onFontChange={isSTD ? setSaveTheDateFont : setDigitalInvitationFont}
+              colors={displayPalette}
+            />
+          )}
 
           {/* Message — AI generator + editable text */}
           <Card>
@@ -819,18 +822,20 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
                 <p className="text-xs text-muted-foreground">
                   Preview — click any element to customise
                 </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8 gap-1.5 text-xs"
-                  onClick={handleResetToBrandColors}
-                  title={`Reset ${isSTD ? "Save the Date" : "RSVP Invitation"} to brand colours`}
-                  disabled={isRsvp}
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Reset to Default
-                </Button>
+                {!useGeneratedInvitation && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1.5 text-xs"
+                    onClick={handleResetToBrandColors}
+                    title={`Reset ${isSTD ? "Save the Date" : "RSVP Invitation"} to brand colours`}
+                    disabled={isRsvp}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Reset to Default
+                  </Button>
+                )}
               </div>
 
               <Tabs

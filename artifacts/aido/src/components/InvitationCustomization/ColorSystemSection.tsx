@@ -77,6 +77,7 @@ interface ColorSystemSectionProps {
   onPaletteSelect: (palette: string) => void;
   backgroundColor: string | null;
   onBackgroundColorChange: (hex: string) => void;
+  readOnly?: boolean;
 }
 
 export function ColorSystemSection({
@@ -89,6 +90,7 @@ export function ColorSystemSection({
   onPaletteSelect,
   backgroundColor,
   onBackgroundColorChange,
+  readOnly = false,
 }: ColorSystemSectionProps) {
   const { getToken } = useAuth();
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -183,6 +185,35 @@ export function ColorSystemSection({
       setDisplayPalette(palette.colors);
     }
   };
+
+  // ── Read-only mode: palette swatches only (shown in AI generated mode) ──────
+  if (readOnly) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">🎨 Color Palette</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground mb-3">
+            Your wedding palette — switch to Custom design to edit colors.
+          </p>
+          <div className="grid grid-cols-4 gap-2">
+            {(["primary", "secondary", "accent", "neutral"] as const).map((key) => (
+              <div key={key} className="space-y-1">
+                <div
+                  className="w-full h-12 rounded border border-border"
+                  style={{ backgroundColor: displayPalette[key] }}
+                  title={displayPalette[key]}
+                />
+                <p className="text-[10px] text-center font-mono truncate">{displayPalette[key]}</p>
+                <p className="text-[10px] text-center text-muted-foreground capitalize">{key}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
