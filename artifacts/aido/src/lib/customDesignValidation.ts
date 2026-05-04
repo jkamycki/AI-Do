@@ -75,7 +75,6 @@ export function evaluateCustomDesignCompleteness(
     }
     if (isMissingText(profile.weddingDate)) missing.push("wedding date");
     if (isMissingText(profile.venue)) missing.push("venue");
-    if (isMissingText(profile.ceremonyTime)) missing.push("ceremony time");
 
     const stdFont = customization.saveTheDateFont || customization.selectedFont;
     const diFont = customization.digitalInvitationFont || customization.selectedFont;

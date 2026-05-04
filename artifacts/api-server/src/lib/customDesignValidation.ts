@@ -69,9 +69,6 @@ export function evaluateCustomDesignCompleteness(input: CustomDesignInput): Cust
   if (!profile) missing.push("wedding details");
 
   if (customization && profile) {
-    if (isMissingPhoto(customization.saveTheDatePhotoUrl)) missing.push("Save the Date photo");
-    if (isMissingPhoto(customization.digitalInvitationPhotoUrl)) missing.push("Digital Invitation photo");
-
     if (isMissingText(profile.partner1Name) || isMissingText(profile.partner2Name)) {
       missing.push("couple names");
     }

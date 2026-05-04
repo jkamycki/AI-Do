@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Send, Loader2, AlertTriangle, Eye, Heart, CheckCircle2, XCircle,
-  MapPin, Paintbrush, ChevronRight, ExternalLink, Calendar, User,
+  MapPin, Paintbrush, ChevronRight, ExternalLink, Calendar, User, ImageOff,
 } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
 import type { Guest } from "@workspace/api-client-react";
@@ -558,15 +558,46 @@ function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) 
   );
 }
 
+const PHOTO_LABELS = new Set(["Save the Date photo", "Digital Invitation photo"]);
+
 function BlockedScreen({
   onGoToCustomization,
   onClose,
   missing,
+  onContinueWithoutPhotos,
 }: {
   onGoToCustomization: () => void;
   onClose: () => void;
   missing: string[];
+  onContinueWithoutPhotos: () => void;
 }) {
+  const [showPhotoConfirm, setShowPhotoConfirm] = useState(false);
+  const onlyPhotosMissing = missing.length > 0 && missing.every((m) => PHOTO_LABELS.has(m));
+
+  if (showPhotoConfirm) {
+    return (
+      <div className="flex flex-col items-center text-center gap-6 py-6">
+        <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center ring-1 ring-border">
+          <ImageOff className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <div className="space-y-2 max-w-sm">
+          <h3 className="text-lg font-semibold text-foreground">Continue without photos?</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Your invitation will be sent without a photo. You can always add photos later from the Invitation Customization page.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <Button onClick={onContinueWithoutPhotos} className="gap-2">
+            <Send className="h-4 w-4" /> Yes, send without photos
+          </Button>
+          <Button variant="outline" onClick={onGoToCustomization} className="gap-2">
+            <Paintbrush className="h-4 w-4" /> No, add photos instead
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center text-center gap-6 py-6">
       <div className="h-16 w-16 rounded-full bg-amber-500/15 flex items-center justify-center ring-1 ring-amber-500/30">
@@ -591,7 +622,12 @@ function BlockedScreen({
           <Paintbrush className="h-4 w-4" /> Complete My Design
           <ChevronRight className="h-4 w-4" />
         </Button>
-        <Button variant="outline" onClick={onClose}>
+        {onlyPhotosMissing && (
+          <Button variant="outline" onClick={() => setShowPhotoConfirm(true)} className="gap-2">
+            <Send className="h-4 w-4" /> Continue without photos
+          </Button>
+        )}
+        <Button variant="ghost" onClick={onClose}>
           Cancel
         </Button>
       </div>
@@ -612,12 +648,14 @@ export function InvitationSendModal({
   const [loadingCustomization, setLoadingCustomization] = useState(false);
   const [activeTab, setActiveTab] = useState<"saveTheDate" | "digitalInvitation">("saveTheDate");
   const [showRsvpSim, setShowRsvpSim] = useState(false);
+  const [bypassBlock, setBypassBlock] = useState(false);
 
   useEffect(() => {
     if (!guest || !profile?.id) {
       setCustomization(null);
       setShowRsvpSim(false);
       setActiveTab("saveTheDate");
+      setBypassBlock(false);
       return;
     }
     setLoadingCustomization(true);
@@ -700,10 +738,10 @@ export function InvitationSendModal({
       : null,
   });
   const customDesignComplete = completeness.isComplete;
-  const isBlocked = isCustomMode && !customDesignComplete;
+  const isBlocked = isCustomMode && !customDesignComplete && !bypassBlock;
 
   let title = "Preview & Send Invitation";
-  if (isCustomMode && !customDesignComplete) title = "Design Incomplete";
+  if (isBlocked) title = "Design Incomplete";
   else if (isCustomMode) title = "Review & Send Custom Design";
 
   return (
@@ -729,6 +767,7 @@ export function InvitationSendModal({
               onGoToCustomization={handleGoToCustomization}
               onClose={onClose}
               missing={completeness.missing}
+              onContinueWithoutPhotos={() => setBypassBlock(true)}
             />
           ) : isCustomMode ? (
             /* ── Custom Design — Complete ── */
