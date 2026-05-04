@@ -15,15 +15,15 @@ export interface WeddingInfo {
   invitationMessage?: string | null;
 }
 
-// ── A.IDO brand palette (fixed for all AI-generated previews) ─────────────────
-const BRAND_BG      = "#100b1e";   // deep purple-black (matches app background)
-const BRAND_GOLD    = "#D4A017";   // gold accent (matches app CTA / brand)
-const BRAND_GOLD_DIM = "rgba(212,160,23,0.55)"; // dimmed gold for dividers
-const BRAND_WHITE   = "#ffffff";
-const BRAND_MUTED   = "rgba(255,255,255,0.62)";
-const BRAND_FAINT   = "rgba(255,255,255,0.35)";
-const BRAND_CARD_BG = "rgba(255,255,255,0.05)";
-const BRAND_BORDER  = "rgba(255,255,255,0.10)";
+// ── Color palette matching the RSVP Page preview card (light / elegant) ───────
+const CARD_BG      = "#ffffff";
+const CARD_DOTS    = "radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px)";
+const GOLD         = "#D4A017";
+const GOLD_LIGHT   = "#f5e6b0";
+const DARK         = "#1a1425";           // couple names — deep dark
+const BODY         = "#3a3350";           // venue, body text
+const MUTED        = "#8b82a0";           // secondary / date
+const DIVIDER      = "rgba(0,0,0,0.08)";
 
 const cormorant = "'Cormorant Garamond', 'Playfair Display', Georgia, serif";
 const jakarta   = "'Plus Jakarta Sans', system-ui, sans-serif";
@@ -52,6 +52,21 @@ export function isPhotoComplete(url: string | null | undefined): boolean {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Shared gold heart badge (matches RSVP page preview icon)
+// ─────────────────────────────────────────────────────────────────────────────
+function GoldBadge({ icon }: { icon: string }) {
+  return (
+    <div style={{
+      width: 56, height: 56, borderRadius: "50%", margin: "0 auto",
+      background: GOLD_LIGHT, display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: 22,
+    }}>
+      {icon}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Save the Date — AI preview
 // ─────────────────────────────────────────────────────────────────────────────
 export function AiSaveDatePreview({
@@ -63,84 +78,141 @@ export function AiSaveDatePreview({
   palette: ColorPalette;
   photoUrl?: string | null;
 }) {
-  const couple         = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
-  const weddingDateStr = formatWeddingDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  const locationLine   = [
-    profile.venue,
+  const couple        = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const weddingDateFull = formatWeddingDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const weddingDateShort = formatWeddingDate(profile.weddingDate, { year: "numeric", month: "long", day: "numeric" });
+  const cityStateZip  = [
     profile.venueCity,
     [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
+  ].filter(Boolean).join(", ");
+  const ceremonyTimeStr  = formatTime(profile.ceremonyTime);
+  const receptionTimeStr = formatTime(profile.receptionTime);
+  const timesLine = [
+    ceremonyTimeStr  && `Ceremony ${ceremonyTimeStr}`,
+    receptionTimeStr && `Reception ${receptionTimeStr}`,
   ].filter(Boolean).join(" · ");
-  const ceremonyTimeStr   = formatTime(profile.ceremonyTime);
-  const receptionTimeStr  = formatTime(profile.receptionTime);
-  const hasPhoto          = isPhotoComplete(photoUrl);
+  const hasPhoto = isPhotoComplete(photoUrl);
 
   return (
     <div
-      className="rounded-lg overflow-hidden border shadow-xl max-w-md mx-auto"
-      style={{ background: BRAND_BG, borderColor: BRAND_BORDER }}
+      className="rounded-xl overflow-hidden shadow-lg max-w-md mx-auto border"
+      style={{ background: CARD_BG, borderColor: DIVIDER }}
     >
-      {/* Gold top bar */}
-      <div style={{ height: 4, background: `linear-gradient(90deg, ${BRAND_GOLD}, #f0c842, ${BRAND_GOLD})` }} />
+      {/* Gold top accent bar */}
+      <div style={{ height: 4, background: `linear-gradient(90deg, ${GOLD}, #f0c842, ${GOLD})` }} />
 
       {hasPhoto && (
-        <div style={{ height: 200, overflow: "hidden" }}>
+        <div style={{ height: 180, overflow: "hidden" }}>
           <img src={photoUrl!} alt="Wedding photo" className="w-full h-full object-cover" />
         </div>
       )}
 
-      <div className="p-8 text-center space-y-5">
-        {/* "SAVE THE DATE" label */}
-        <p style={{ fontFamily: jakarta, fontSize: "11px", fontWeight: 700, letterSpacing: "0.45em", textTransform: "uppercase", color: BRAND_WHITE }}>
+      {/* Card body — dot pattern background matching RSVP page */}
+      <div style={{
+        background: `${CARD_DOTS} 0 0 / 16px 16px, ${CARD_BG}`,
+        padding: "32px 32px 28px",
+        textAlign: "center",
+      }}>
+        {/* Badge */}
+        <GoldBadge icon="💌" />
+
+        {/* "SAVE THE DATE" label — gold, uppercase spaced */}
+        <p style={{
+          fontFamily: jakarta,
+          fontSize: "11px",
+          fontWeight: 700,
+          letterSpacing: "0.45em",
+          textTransform: "uppercase",
+          color: GOLD,
+          marginTop: 16,
+        }}>
           Save the Date
         </p>
 
-        {/* Couple names — gold */}
-        <div>
-          <h2 style={{ fontFamily: cormorant, fontSize: "2.5rem", fontWeight: 300, color: BRAND_GOLD, lineHeight: 1.2, letterSpacing: "0.5px" }}>
-            {couple}
-          </h2>
-          <div className="mt-3 mx-8 h-px" style={{ background: BRAND_GOLD_DIM }} />
-        </div>
+        {/* Couple names — dark, large serif italic */}
+        <h2 style={{
+          fontFamily: cormorant,
+          fontSize: "2.4rem",
+          fontWeight: 400,
+          fontStyle: "italic",
+          color: DARK,
+          lineHeight: 1.2,
+          margin: "10px 0 0",
+        }}>
+          {couple}
+        </h2>
 
-        {/* Date — white */}
-        {weddingDateStr && (
-          <p style={{ fontFamily: cormorant, fontSize: "1.15rem", color: BRAND_WHITE, fontWeight: 400 }}>
-            {weddingDateStr}
+        {/* Divider */}
+        <div style={{ height: 1, background: DIVIDER, margin: "16px 24px" }} />
+
+        {/* Date — muted uppercase */}
+        {(weddingDateFull || weddingDateShort) && (
+          <p style={{
+            fontFamily: jakarta,
+            fontSize: "11px",
+            fontWeight: 600,
+            letterSpacing: "2px",
+            textTransform: "uppercase",
+            color: MUTED,
+          }}>
+            {weddingDateFull ?? weddingDateShort}
           </p>
         )}
 
-        {/* Location */}
-        {locationLine && (
-          <p style={{ fontFamily: jakarta, fontSize: "12px", letterSpacing: "0.5px", color: BRAND_MUTED }}>
-            {locationLine}
+        {/* Venue */}
+        {profile.venue && (
+          <p style={{ fontFamily: cormorant, fontSize: "1.1rem", color: BODY, marginTop: 10, fontWeight: 500 }}>
+            <span style={{ color: GOLD, marginRight: 4 }}>📍</span>
+            {profile.venue}
+          </p>
+        )}
+
+        {/* City / State */}
+        {cityStateZip && (
+          <p style={{ fontFamily: jakarta, fontSize: "11px", color: MUTED, marginTop: 2 }}>
+            {cityStateZip}
           </p>
         )}
 
         {/* Times */}
-        {(ceremonyTimeStr || receptionTimeStr) && (
-          <p style={{ fontFamily: jakarta, fontSize: "11px", color: BRAND_FAINT, letterSpacing: "0.5px" }}>
-            {[ceremonyTimeStr && `Ceremony at ${ceremonyTimeStr}`, receptionTimeStr && `Reception at ${receptionTimeStr}`].filter(Boolean).join(" • ")}
+        {timesLine && (
+          <p style={{ fontFamily: jakarta, fontSize: "11px", color: MUTED, marginTop: 4 }}>
+            {timesLine}
           </p>
         )}
 
-        {/* Personal message */}
+        {/* Message */}
         {profile.saveTheDateMessage && (
-          <p style={{ fontFamily: cormorant, fontSize: "1.05rem", fontStyle: "italic", color: BRAND_MUTED, lineHeight: 1.7, fontWeight: 300 }}>
+          <p style={{
+            fontFamily: cormorant,
+            fontSize: "1.05rem",
+            fontStyle: "italic",
+            color: BODY,
+            lineHeight: 1.7,
+            marginTop: 14,
+          }}>
             &ldquo;{profile.saveTheDateMessage}&rdquo;
           </p>
         )}
 
-        {/* "Formal invitation to follow" — gold italic */}
-        <p style={{ fontFamily: cormorant, fontSize: "13px", fontStyle: "italic", letterSpacing: "1px", color: BRAND_GOLD, fontWeight: 300 }}>
+        {/* "Formal invitation to follow" */}
+        <p style={{
+          fontFamily: cormorant,
+          fontSize: "13px",
+          fontStyle: "italic",
+          letterSpacing: "0.5px",
+          color: MUTED,
+          marginTop: 14,
+        }}>
           Formal invitation to follow
         </p>
 
-        {/* CTA button */}
-        <div className="pt-1">
+        {/* CTA */}
+        <div style={{ marginTop: 20 }}>
           <span style={{
             display: "inline-block",
-            background: BRAND_GOLD,
-            color: "#0f0b1e",
+            background: GOLD,
+            color: "#fff",
             fontFamily: jakarta,
             fontSize: "11px",
             letterSpacing: "2px",
@@ -154,8 +226,8 @@ export function AiSaveDatePreview({
         </div>
       </div>
 
-      {/* Gold bottom bar */}
-      <div style={{ height: 4, background: `linear-gradient(90deg, ${BRAND_GOLD}, #f0c842, ${BRAND_GOLD})`, opacity: 0.6 }} />
+      {/* Gold bottom accent */}
+      <div style={{ height: 4, background: `linear-gradient(90deg, ${GOLD}, #f0c842, ${GOLD})`, opacity: 0.5 }} />
     </div>
   );
 }
@@ -173,79 +245,131 @@ export function AiDigitalInvitationPreview({
   photoUrl?: string | null;
 }) {
   const couple         = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
-  const weddingDateStr = formatWeddingDate(profile.weddingDate, { year: "numeric", month: "long", day: "numeric" });
-  const ceremonyTimeStr   = formatTime(profile.ceremonyTime);
-  const receptionTimeStr  = formatTime(profile.receptionTime);
-  const cityStateZip = [
+  const weddingDateFull = formatWeddingDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const cityStateZip   = [
     profile.venueCity,
     [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
   ].filter(Boolean).join(", ");
+  const ceremonyTimeStr  = formatTime(profile.ceremonyTime);
+  const receptionTimeStr = formatTime(profile.receptionTime);
   const timesLine = [
-    ceremonyTimeStr && `Ceremony ${ceremonyTimeStr}`,
+    ceremonyTimeStr  && `Ceremony ${ceremonyTimeStr}`,
     receptionTimeStr && `Reception ${receptionTimeStr}`,
-  ].filter(Boolean).join("  •  ");
+  ].filter(Boolean).join(" · ");
   const hasPhoto = isPhotoComplete(photoUrl);
 
   return (
     <div
-      className="rounded-lg overflow-hidden border shadow-xl max-w-md mx-auto"
-      style={{ background: BRAND_BG, borderColor: BRAND_BORDER }}
+      className="rounded-xl overflow-hidden shadow-lg max-w-md mx-auto border"
+      style={{ background: CARD_BG, borderColor: DIVIDER }}
     >
       {hasPhoto && (
-        <div style={{ height: 200, overflow: "hidden" }}>
+        <div style={{ height: 180, overflow: "hidden" }}>
           <img src={photoUrl!} alt="Wedding photo" className="w-full h-full object-cover" />
         </div>
       )}
 
-      <div className="p-8 text-center space-y-4">
-        {/* Gold diamond ornament */}
-        <div style={{ color: BRAND_GOLD, fontSize: "12px", letterSpacing: "14px" }}>◆ ◆ ◆</div>
+      {/* Card body — dot pattern background matching RSVP page */}
+      <div style={{
+        background: `${CARD_DOTS} 0 0 / 16px 16px, ${CARD_BG}`,
+        padding: "32px 32px 28px",
+        textAlign: "center",
+      }}>
+        {/* Badge */}
+        <GoldBadge icon="💛" />
 
-        {/* "You are cordially invited" — white */}
-        <p style={{ fontFamily: jakarta, fontSize: "11px", letterSpacing: "4px", textTransform: "uppercase", color: BRAND_MUTED, fontWeight: 500 }}>
-          You are cordially invited to
+        {/* "WEDDING RSVP" label — gold, uppercase (matching RSVP page exactly) */}
+        <p style={{
+          fontFamily: jakarta,
+          fontSize: "11px",
+          fontWeight: 700,
+          letterSpacing: "0.45em",
+          textTransform: "uppercase",
+          color: GOLD,
+          marginTop: 16,
+        }}>
+          Wedding RSVP
         </p>
 
-        {/* Couple names — gold */}
-        <h2 style={{ fontFamily: cormorant, fontSize: "2.1rem", fontWeight: 400, color: BRAND_GOLD, lineHeight: 1.25, letterSpacing: "0.3px" }}>
-          {couple}&rsquo;s Wedding
+        {/* Couple names — dark, large serif italic */}
+        <h2 style={{
+          fontFamily: cormorant,
+          fontSize: "2.4rem",
+          fontWeight: 400,
+          fontStyle: "italic",
+          color: DARK,
+          lineHeight: 1.2,
+          margin: "10px 0 0",
+        }}>
+          {couple}
         </h2>
 
         {/* Divider */}
-        <div className="mx-10 h-px" style={{ borderTop: `1px solid ${BRAND_BORDER}` }} />
+        <div style={{ height: 1, background: DIVIDER, margin: "16px 24px" }} />
 
-        {/* Details — white */}
-        <div className="space-y-1.5">
-          {weddingDateStr && (
-            <p style={{ fontFamily: cormorant, fontSize: "1.05rem", color: BRAND_WHITE, fontWeight: 400 }}>{weddingDateStr}</p>
-          )}
-          {profile.venue && (
-            <p style={{ fontFamily: cormorant, fontSize: "0.9rem", color: BRAND_WHITE, fontWeight: 400 }}>{profile.venue}</p>
-          )}
-          {profile.venueAddress && (
-            <p style={{ fontFamily: jakarta, fontSize: "11px", color: BRAND_MUTED }}>{profile.venueAddress}</p>
-          )}
-          {cityStateZip && (
-            <p style={{ fontFamily: jakarta, fontSize: "11px", color: BRAND_MUTED }}>{cityStateZip}</p>
-          )}
-          {timesLine && (
-            <p style={{ fontFamily: jakarta, fontSize: "11px", color: BRAND_MUTED, marginTop: "4px" }}>{timesLine}</p>
-          )}
-        </div>
+        {/* Date */}
+        {weddingDateFull && (
+          <p style={{
+            fontFamily: jakarta,
+            fontSize: "11px",
+            fontWeight: 600,
+            letterSpacing: "2px",
+            textTransform: "uppercase",
+            color: MUTED,
+          }}>
+            {weddingDateFull}
+          </p>
+        )}
 
-        {/* Personal message */}
+        {/* Venue */}
+        {profile.venue && (
+          <p style={{ fontFamily: cormorant, fontSize: "1.1rem", color: BODY, marginTop: 10, fontWeight: 500 }}>
+            <span style={{ color: GOLD, marginRight: 4 }}>📍</span>
+            {profile.venue}
+          </p>
+        )}
+
+        {/* Address */}
+        {profile.venueAddress && (
+          <p style={{ fontFamily: jakarta, fontSize: "11px", color: MUTED, marginTop: 2 }}>
+            {profile.venueAddress}
+          </p>
+        )}
+
+        {/* City / State */}
+        {cityStateZip && (
+          <p style={{ fontFamily: jakarta, fontSize: "11px", color: MUTED, marginTop: 1 }}>
+            {cityStateZip}
+          </p>
+        )}
+
+        {/* Times */}
+        {timesLine && (
+          <p style={{ fontFamily: jakarta, fontSize: "11px", color: MUTED, marginTop: 4 }}>
+            {timesLine}
+          </p>
+        )}
+
+        {/* Message */}
         {profile.invitationMessage && (
-          <p style={{ fontFamily: cormorant, fontSize: "0.95rem", fontStyle: "italic", color: BRAND_MUTED, lineHeight: 1.7 }}>
+          <p style={{
+            fontFamily: cormorant,
+            fontSize: "1.05rem",
+            fontStyle: "italic",
+            color: BODY,
+            lineHeight: 1.7,
+            marginTop: 14,
+          }}>
             &ldquo;{profile.invitationMessage}&rdquo;
           </p>
         )}
 
         {/* RSVP button — gold */}
-        <div className="pt-1">
+        <div style={{ marginTop: 20 }}>
           <span style={{
             display: "inline-block",
-            background: BRAND_GOLD,
-            color: "#0f0b1e",
+            background: GOLD,
+            color: "#fff",
             fontFamily: jakarta,
             fontSize: "11px",
             letterSpacing: "2px",
@@ -257,9 +381,6 @@ export function AiDigitalInvitationPreview({
             RSVP Now
           </span>
         </div>
-
-        {/* Gold diamond ornament (footer) */}
-        <div style={{ color: BRAND_GOLD_DIM, fontSize: "10px", letterSpacing: "14px" }}>◆ ◆ ◆</div>
       </div>
     </div>
   );
