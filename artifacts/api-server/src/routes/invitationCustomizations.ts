@@ -294,8 +294,11 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
     res.json(result);
   } catch (err) {
     req.log.error(err, "invitation-customizations POST");
-    const detail = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ error: `Failed to save customizations: ${detail}` });
+    const cause = err instanceof Error
+      ? ((err as Error & { cause?: unknown }).cause ?? err)
+      : err;
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    res.status(500).json({ error: `DB error: ${detail}` });
   }
 });
 
