@@ -138,9 +138,6 @@ function ActionPill({ action }: { action: ActionLog }) {
     <div className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-full border ${colorClass}`}>
       <Icon className={`h-3 w-3 ${action.status === "running" ? "animate-spin" : ""}`} />
       <span>{actionLabel(action.name, action.args)}</span>
-      {action.status === "error" && action.error && (
-        <span className="ml-1 opacity-80">— {action.error}</span>
-      )}
     </div>
   );
 }
