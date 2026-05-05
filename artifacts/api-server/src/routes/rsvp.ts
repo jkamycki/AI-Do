@@ -659,12 +659,14 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
 
       // Colors: custom design palette in custom mode, brand defaults in AI mode.
       const rawBg = !useGenerated && customization?.digitalInvitationBackground
-        ? customization.digitalInvitationBackground : "#2c2622";
+        ? customization.digitalInvitationBackground : "#1E1A2E";
       const bgIsLight = isLightColor(rawBg);
       const PAGE_BG = !useGenerated ? rawBg : "#1a1614";
       const BG = rawBg;
-      const TEXT = !useGenerated ? (bgIsLight ? colors.primary : (colors.neutral || "#e8dcc7")) : "#e8dcc7";
-      const MUTED = !useGenerated ? (bgIsLight ? "#555555" : "#b0a090") : "#b6a890";
+      // Mirror the DigitalInvitationPreview component: primary for main content,
+      // neutral for labels/heading text.
+      const TEXT = !useGenerated ? colors.primary : "#e8dcc7";
+      const MUTED = !useGenerated ? (colors.neutral || "#e8dcc7") : "#b6a890";
       const ACCENT = !useGenerated ? colors.accent : "#c9a97e";
       const BTN_BG = !useGenerated ? colors.primary : "#8a6a4f";
       const BTN_TXT = isLightColor(BTN_BG) ? "#000000" : "#ffffff";
@@ -1294,7 +1296,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
 
         <tr>
           <td style="padding:48px 48px 24px;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${colors.secondary};font-size:11px;letter-spacing:4px;text-transform:uppercase;font-weight:500;">${stdHeadingText}</p>
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${colors.primary};font-size:11px;letter-spacing:4px;text-transform:uppercase;font-weight:500;">${stdHeadingText}</p>
           </td>
         </tr>
 
@@ -1315,14 +1317,14 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         ${stdDateText ? `
         <tr>
           <td style="padding:28px 48px 8px;text-align:center;">
-            <p style="margin:0;font-family:${fontStack(headingFont)};color:${colors.primary};font-size:20px;font-weight:400;letter-spacing:0.5px;">${stdDateText}</p>
+            <p style="margin:0;font-family:${fontStack(headingFont)};color:${colors.accent};font-size:20px;font-weight:400;letter-spacing:0.5px;">${stdDateText}</p>
           </td>
         </tr>` : ""}
 
         ${(stdCityText || stdLocationLine) ? `
         <tr>
           <td style="padding:12px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${STD_MUTED};font-size:13px;letter-spacing:0.5px;font-weight:400;">${stdCityText || stdLocationLine}</p>
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${colors.accent};font-size:13px;letter-spacing:0.5px;font-weight:400;">${stdCityText || stdLocationLine}</p>
           </td>
         </tr>` : ""}
 
@@ -1330,7 +1332,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         <tr>
           <td style="padding:8px 48px 0;text-align:center;">
             <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${STD_TIMES};font-size:12px;letter-spacing:0.5px;">
-              ${[ceremonyTimeStr ? `Ceremony at ${ceremonyTimeStr}` : null, receptionTimeStr ? `Reception at ${receptionTimeStr}` : null].filter(Boolean).join(" • ")}
+              <span style="color:${colors.accent};">${[ceremonyTimeStr ? `Ceremony at ${ceremonyTimeStr}` : null, receptionTimeStr ? `Reception at ${receptionTimeStr}` : null].filter(Boolean).join(" • ")}</span>
             </p>
           </td>
         </tr>` : ""}
@@ -1338,13 +1340,13 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         ${saveTheDateMessage ? `
         <tr>
           <td style="padding:28px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:${fontStack(headingFont)};color:${STD_ITALIC};font-size:16px;line-height:1.8;font-weight:300;font-style:italic;">"${saveTheDateMessage}"</p>
+            <p style="margin:0;font-family:${fontStack(headingFont)};color:${colors.primary};font-size:16px;line-height:1.8;font-weight:300;font-style:italic;">"${saveTheDateMessage}"</p>
           </td>
         </tr>` : ""}
 
         <tr>
           <td style="padding:32px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.secondary};font-size:13px;font-style:italic;letter-spacing:1px;font-weight:300;">Formal invitation to follow</p>
+            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:13px;font-style:italic;letter-spacing:1px;font-weight:300;">Formal invitation to follow</p>
           </td>
         </tr>
 
