@@ -187,12 +187,12 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
         useGeneratedInvitation: v.useGeneratedInvitation,
       });
 
-      // Fire synchronously so navigation/unload doesn't tear us down first.
-      // Use the cached bearer token if we have one; otherwise fall back to
-      // sendBeacon which authenticates via the Clerk session cookie.
+      const apiBase = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+      const saveUrl = `${apiBase}/api/invitation-customizations`;
+
       const cachedToken = tokenRef.current;
       if (cachedToken) {
-        fetch("/api/invitation-customizations", {
+        fetch(saveUrl, {
           method: "POST",
           credentials: "include",
           keepalive: true,
@@ -205,7 +205,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
       } else if (typeof navigator !== "undefined" && navigator.sendBeacon) {
         try {
           navigator.sendBeacon(
-            "/api/invitation-customizations",
+            saveUrl,
             new Blob([body], { type: "application/json" }),
           );
         } catch {
@@ -225,7 +225,8 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
     try {
       const token = await getToken();
       if (token) tokenRef.current = token;
-      await fetch("/api/invitation-customizations", {
+      const apiBase = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+      await fetch(`${apiBase}/api/invitation-customizations`, {
         method: "POST",
         credentials: "include",
         keepalive: true,
@@ -435,6 +436,27 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
           textOverrides: resetPhotoObjectPosition(old.textOverrides, "dig:photo"),
         } : old);
       }
+
+      // Persist the full customization immediately so navigating away before
+      // the debounced auto-save fires doesn't lose the uploaded photo URL.
+      // Use the server URL for the just-uploaded photo; strip any blob URLs
+      // for the other photo slot (upload still in-flight) so we don't
+      // overwrite an already-persisted value in the DB.
+      skipNextAutoSave.current = true;
+      const isSaveTheDate = variables.type === "save-the-date";
+      const stdUrl = isSaveTheDate ? data.url : saveTheDatePhotoUrl;
+      const digUrl = !isSaveTheDate ? data.url : digitalInvitationPhotoUrl;
+      const payload: Record<string, unknown> = buildPayload(stdUrl, digUrl);
+      if (typeof payload.saveTheDatePhotoUrl === "string" && payload.saveTheDatePhotoUrl.startsWith("blob:")) {
+        delete payload.saveTheDatePhotoUrl;
+      }
+      if (typeof payload.digitalInvitationPhotoUrl === "string" && payload.digitalInvitationPhotoUrl.startsWith("blob:")) {
+        delete payload.digitalInvitationPhotoUrl;
+      }
+      authedFetch("/api/invitation-customizations", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }).catch(() => {});
     },
     onError: (error) => {
       toast({ title: "Upload Failed", description: error instanceof Error ? error.message : "Failed to upload photo", variant: "destructive" });
