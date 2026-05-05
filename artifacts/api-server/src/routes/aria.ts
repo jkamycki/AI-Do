@@ -157,7 +157,7 @@ SMALL TALK: For greetings, thanks, "how are you?", or chitchat → reply warmly 
 
 #1 RULE — NEVER INVENT. If REQUIRED tool fields are missing, ASK first. Never substitute a category word for a business name. Never fill in placeholder names. Never assume defaults. Required fields are listed in each tool's schema (look at the "required" array) — read them.
 
-#1a VENDOR RULE — add_vendor REQUIRES a real business name. "Photographer", "Florist", "DJ", "Caterer", "Vendor", "New Vendor" are CATEGORIES, NOT names. If the user says "add a vendor" or "add a photographer" without giving a business name, ASK: "What's the business name?" NEVER call add_vendor until you have a specific business name (e.g. "Bloom & Co", "Happy Clicks Studio"). Category words WILL be rejected by the server.
+#1a VENDOR RULE — add_vendor REQUIRES a real business name typed by the user in THIS conversation. "Photographer", "Florist", "DJ", "Caterer", "Vendor", "New Vendor" are CATEGORIES, NOT names. NEVER invent, assume, or reuse any name — not from examples, not from memory, not from anywhere. If the user has not typed a specific business name in THIS message thread, you MUST ask "What's the business name?" and wait for their reply BEFORE calling add_vendor. Do NOT call add_vendor in the same turn you ask for the name.
 
 #2 RULE — OPTIONAL FIELDS NEVER BLOCK A SAVE. If the schema doesn't list a field in "required", it is optional. NEVER ask for it as a precondition. NEVER ask the user to "confirm" or "verify" an optional value they already gave (e.g. if they said "total cost 2500", USE 2500 — do not ask "could you confirm the total cost?"). The user can always edit the record later.
 
@@ -178,9 +178,10 @@ CASE B — user is missing one or more required fields (e.g. said "add a vendor"
   Turn 5 (you): IMMEDIATELY call the tool.
 
 Examples:
-  • User: "Add vendor Bloom & Co, Florist, total cost 5000" → You: "Saving Bloom & Co (Florist) with a total cost of $5,000. Reply 'yes' to save." → User: "yes" → You: [calls add_vendor immediately, no extra text].
-  • User: "Add a vendor for me" → You: "Of course! What's the business name and category (photographer, florist, caterer, DJ, etc.)?" → User: "Bloom & Co, Florist" → You: "Saving Bloom & Co (Florist). Reply 'yes' to save." → User: "yes" → You: [calls add_vendor immediately].
-  • User: "Add a photographer" → You: "Great! What's the photographer's business name?" → User: "Happy Clicks Studio" → You: "Saving Happy Clicks Studio (Photographer). Reply 'yes' to save." → User: "yes" → You: [calls add_vendor immediately].
+  • User: "Add vendor [Name], Florist, total cost 5000" → You: "Saving [Name] (Florist) with a total cost of $5,000. Reply 'yes' to save." → User: "yes" → You: [calls add_vendor immediately, no extra text].
+  • User: "Add a vendor" → You: "Of course! What's the business name and category (photographer, florist, caterer, DJ, etc.)?" — STOP. Do NOT call add_vendor yet.
+  • User: "Add a vendor for me" → You: "Of course! What's the business name and category?" — STOP. Do NOT call add_vendor yet.
+  • User: "Add a photographer" → You: "Great! What's the photographer's business name?" — STOP. Do NOT call add_vendor yet.
 
 Exception: toggle_checklist_item needs no confirmation. DELETE: state exactly what will be deleted (incl. cascades). UPDATE: confirm which fields change.
 
@@ -361,7 +362,7 @@ function buildConfirmation(actions: ActionRecord[]): string {
 }
 
 const TOOLS = [
-  { type:"function" as const, function:{ name:"add_vendor", description:"Add a new vendor to the user's wedding. ONLY call this AFTER the user has explicitly confirmed they want to save (replied 'yes' or similar to your confirmation message). Both 'name' and 'category' MUST be provided EXPLICITLY by the user — never invent them. 'name' must be a specific business or person name (e.g. 'Bloom & Co', 'Sarah Lee Photography'), NEVER a category word like 'Florist' or 'Photographer'. If you don't have these exact values from the user, ASK them first.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific business name provided by the user. Never a category word."}, category:{type:"string", enum:["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Hair & Makeup","Transportation","Cake & Desserts","Invitations","Lighting & AV","Photo Booth","Wedding Planner","Other"], description:"Vendor category. Must come from the user."}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, depositPaid:{type:"boolean"} }, required:["name","category"] } } },
+  { type:"function" as const, function:{ name:"add_vendor", description:"Add a new vendor to the user's wedding. ONLY call this AFTER: (1) the user has typed a specific business name in this conversation, AND (2) the user has confirmed with 'yes' or similar. NEVER invent a vendor name — not from examples, not from your training. NEVER call this tool in the same turn you ask for the vendor name. If the user just says 'add a vendor' or 'add a photographer' with no business name, ask for the name first and wait.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Exact business name the user typed. Never invent one."}, category:{type:"string", enum:["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Hair & Makeup","Transportation","Cake & Desserts","Invitations","Lighting & AV","Photo Booth","Wedding Planner","Other"], description:"Vendor category."}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, depositPaid:{type:"boolean"} }, required:["name","category"] } } },
   { type:"function" as const, function:{ name:"update_vendor", description:"Update vendor fields. Pass vendorId or vendorName.", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"}, name:{type:"string"}, category:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, portalLink:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, contractSigned:{type:"boolean"} } } } },
   { type:"function" as const, function:{ name:"delete_vendor", description:"Delete vendor. Pass vendorId or vendorName.", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_vendors", description:"List all vendors.", parameters:{ type:"object", properties:{} } } },
@@ -660,10 +661,15 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       ]);
       const lowerName = vendorName.toLowerCase();
       if (VENDOR_CATEGORY_WORDS.has(lowerName)) {
-        return { ok: false, error: `"${vendorName}" is a vendor category, not a business name. Ask the user: "What's the specific business name?" (e.g. "Bloom & Co", "Happy Clicks Studio"), then call add_vendor again with the real name.` };
+        return { ok: false, error: `"${vendorName}" is a vendor category, not a business name. Ask the user: "What's the specific business name?" then call add_vendor again with the real name.` };
       }
       if (/^(vendor\s*\d*|new vendor|sample vendor|test vendor|unnamed|unknown vendor|n\/a|none|tbd|placeholder|my vendor|the vendor)$/i.test(lowerName)) {
         return { ok: false, error: `"${vendorName}" looks like a placeholder. Ask the user for the actual business name, then call add_vendor again.` };
+      }
+      // Reject names that match the system prompt examples — the model sometimes
+      // uses these as defaults when the user hasn't provided a real name.
+      if (/^(bloom\s*&?\s*co|happy clicks studio|sarah lee photography)$/i.test(lowerName)) {
+        return { ok: false, error: `"${vendorName}" is an example name, not a name the user provided. Ask the user: "What's the specific business name?" then call add_vendor with their real answer.` };
       }
       const depositAmt = Number(args.depositAmount ?? 0);
       const todayISO = new Date().toISOString().slice(0, 10);
