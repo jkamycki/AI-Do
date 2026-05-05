@@ -213,6 +213,7 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
     ? `'${opts.overrideCoupleFont}',${AI_CORMORANT}` : AI_CORMORANT;
   const FOOTER_BG = opts.overrideBg ? BG : "#15121d";
   const BTN_TXT  = isLightColor(ACCENT) ? "#000000" : (opts.overrideBg ? TEXT_COL : AI_BG);
+  const COLOR_SCHEME = isLightColor(BG) ? "light" : "dark";
 
   const timesLine = [
     opts.ceremonyTimeStr ? `Ceremony ${opts.ceremonyTimeStr}` : null,
@@ -224,18 +225,25 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="${COLOR_SCHEME}" />
+  <meta name="supported-color-schemes" content="${COLOR_SCHEME}" />
   <meta name="x-apple-disable-message-reformatting" />
   <meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no" />
   <title>Wedding Invitation — ${escapeHtml(opts.couple)}</title>
   <style>
+    :root { color-scheme: ${COLOR_SCHEME} only; }
     a[x-apple-data-detectors], u + #body a { color: inherit !important; text-decoration: none !important; }
+    @media (prefers-color-scheme: dark) {
+      body, #body { background-color: ${PAGE_BG} !important; background: ${PAGE_BG} !important; }
+      .dig-card { background-color: ${BG} !important; background: ${BG} !important; }
+    }
   </style>
 </head>
 <body id="body" bgcolor="${PAGE_BG}" style="margin:0;padding:0;background:${PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${PAGE_BG}" style="background:${PAGE_BG};padding:32px 16px;">
     <tr><td bgcolor="${PAGE_BG}" align="center">
 
-      <table role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${BG}" style="max-width:420px;width:100%;background:${BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
+      <table class="dig-card" role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${BG}" style="max-width:420px;width:100%;background:${BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:20px 0 6px;text-align:center;">
@@ -384,24 +392,34 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
   const SERIF    = opts.overrideCoupleFont
     ? `'${opts.overrideCoupleFont}',${AI_CORMORANT}` : AI_CORMORANT;
   const FOOTER_BG = opts.overrideBg ? BG : "#15121d";
+  // Declare colour scheme so email clients (Gmail, Apple Mail) don't auto-invert
+  // a light custom design into a dark one.
+  const COLOR_SCHEME = isLightColor(BG) ? "light" : "dark";
 
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="${COLOR_SCHEME}" />
+  <meta name="supported-color-schemes" content="${COLOR_SCHEME}" />
   <meta name="x-apple-disable-message-reformatting" />
   <meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no" />
   <title>Save the Date — ${escapeHtml(opts.couple)}</title>
   <style>
+    :root { color-scheme: ${COLOR_SCHEME} only; }
     a[x-apple-data-detectors], u + #body a { color: inherit !important; text-decoration: none !important; }
+    @media (prefers-color-scheme: dark) {
+      body, #body { background-color: ${PAGE_BG} !important; background: ${PAGE_BG} !important; }
+      .std-card { background-color: ${BG} !important; background: ${BG} !important; }
+    }
   </style>
 </head>
 <body id="body" bgcolor="${PAGE_BG}" style="margin:0;padding:0;background:${PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${PAGE_BG}" style="background:${PAGE_BG};padding:32px 16px;">
     <tr><td bgcolor="${PAGE_BG}" align="center">
 
-      <table role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${BG}" style="max-width:420px;width:100%;background:${BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
+      <table class="std-card" role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${BG}" style="max-width:420px;width:100%;background:${BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:20px 0 6px;text-align:center;">
@@ -1255,6 +1273,52 @@ router.get("/save-the-date/:token", async (req, res) => {
     const profiles = await db.select().from(weddingProfiles).where(eq(weddingProfiles.id, guest.profileId)).limit(1);
     if (!profiles.length) return res.status(404).json({ error: "Not found" });
     const profile = profiles[0];
+
+    // Load customization so the web page can mirror the same design used in the email
+    let customizationData: {
+      useGeneratedInvitation: boolean;
+      backgroundColor: string | null;
+      accentColor: string | null;
+      fontFamily: string | null;
+      textOverrides: Record<string, unknown>;
+      photoObjectPosition: string;
+    } = {
+      useGeneratedInvitation: true,
+      backgroundColor: null,
+      accentColor: null,
+      fontFamily: null,
+      textOverrides: {},
+      photoObjectPosition: "50% 50%",
+    };
+    try {
+      const custRows = await db
+        .select()
+        .from(invitationCustomizations)
+        .where(eq(invitationCustomizations.profileId, profile.id))
+        .limit(1);
+      if (custRows.length > 0) {
+        const cust = custRows[0];
+        const useGenerated = cust.useGeneratedInvitation !== false;
+        const palette = (cust.colorPalette ?? {}) as Record<string, string>;
+        const customColors = (cust.customColors ?? {}) as Record<string, string>;
+        const mergedAccent = customColors.accent ?? palette.accent ?? null;
+        const stdOverrides = ((cust.textOverrides ?? {}) as Record<string, Record<string, unknown>>);
+        const photoOverride = stdOverrides["std:photo"] ?? {};
+        const ox = (photoOverride.objectX as number | undefined) ?? 50;
+        const oy = (photoOverride.objectY as number | undefined) ?? 50;
+        customizationData = {
+          useGeneratedInvitation: useGenerated,
+          backgroundColor: useGenerated ? null : (cust.saveTheDateBackground ?? null),
+          accentColor: useGenerated ? null : mergedAccent,
+          fontFamily: useGenerated ? null : (cust.saveTheDateFont ?? cust.selectedFont ?? null),
+          textOverrides: useGenerated ? {} : stdOverrides,
+          photoObjectPosition: `${ox}% ${oy}%`,
+        };
+      }
+    } catch {
+      // best-effort — fall back to AI defaults
+    }
+
     res.json({
       guestName: guest.name,
       partner1Name: profile.partner1Name,
@@ -1275,6 +1339,13 @@ router.get("/save-the-date/:token", async (req, res) => {
       ceremonyZip: profile.ceremonyZip,
       saveTheDateMessage: (profile as any).saveTheDateMessage ?? null,
       hasPhoto: !!(profile as any).saveTheDatePhotoUrl,
+      // Custom design colours — null values mean "use the AI-generated dark theme"
+      useGeneratedInvitation: customizationData.useGeneratedInvitation,
+      customBackgroundColor: customizationData.backgroundColor,
+      customAccentColor: customizationData.accentColor,
+      customFontFamily: customizationData.fontFamily,
+      customTextOverrides: customizationData.textOverrides,
+      photoObjectPosition: customizationData.photoObjectPosition,
     });
   } catch (err) {
     req.log.error(err, "Failed to get save-the-date info");
