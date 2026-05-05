@@ -1,6 +1,16 @@
 import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, X, AlertCircle, Crop, Move, Crosshair } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Upload,
+  X,
+  AlertCircle,
+  Crop,
+  Move,
+  Crosshair,
+  Loader2,
+  Save,
+} from "lucide-react";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 import { InvitationCropDialog } from "@/components/InvitationCropDialog";
 import type { PhotoPosition } from "@/components/InvitationCustomization/AiPreviewComponents";
@@ -12,6 +22,9 @@ interface PhotoUploadSectionProps {
   saveTheDatePreviewUrl: string | null;
   digitalInvitationPreviewUrl: string | null;
   isLoading?: boolean;
+  isUploadingPhoto?: boolean;
+  isSavingPhoto?: boolean;
+  onSavePhoto?: () => void;
   /** Position props — only passed in AI generated mode */
   saveTheDatePhotoPosition?: PhotoPosition;
   onSaveTheDatePositionChange?: (pos: PhotoPosition) => void;
@@ -26,16 +39,23 @@ export function PhotoUploadSection({
   saveTheDatePreviewUrl,
   digitalInvitationPreviewUrl,
   isLoading = false,
+  isUploadingPhoto = false,
+  isSavingPhoto = false,
+  onSavePhoto,
   saveTheDatePhotoPosition,
   onSaveTheDatePositionChange,
   digitalInvitationPhotoPosition,
   onDigitalInvitationPositionChange,
 }: PhotoUploadSectionProps) {
   const [saveTheDateError, setSaveTheDateError] = useState<string | null>(null);
-  const [digitalInvitationError, setDigitalInvitationError] = useState<string | null>(null);
+  const [digitalInvitationError, setDigitalInvitationError] = useState<
+    string | null
+  >(null);
 
   const [cropOpen, setCropOpen] = useState(false);
-  const [cropType, setCropType] = useState<"save-the-date" | "digital-invitation" | null>(null);
+  const [cropType, setCropType] = useState<
+    "save-the-date" | "digital-invitation" | null
+  >(null);
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
   const [cropFileName, setCropFileName] = useState<string>("photo");
   const [inputKey, setInputKey] = useState(0);
@@ -50,28 +70,47 @@ export function PhotoUploadSection({
 
   // Keep position + onChange in refs so pointer move handler always sees latest values
   const isSaveTheDate = mode === "saveTheDate";
-  const position = isSaveTheDate ? saveTheDatePhotoPosition : digitalInvitationPhotoPosition;
-  const onPositionChange = isSaveTheDate ? onSaveTheDatePositionChange : onDigitalInvitationPositionChange;
+  const position = isSaveTheDate
+    ? saveTheDatePhotoPosition
+    : digitalInvitationPhotoPosition;
+  const onPositionChange = isSaveTheDate
+    ? onSaveTheDatePositionChange
+    : onDigitalInvitationPositionChange;
   const hasReposition = !!(position && onPositionChange);
   const posRef = useRef<PhotoPosition>({ x: 50, y: 50 });
-  const onChangeRef = useRef<((p: PhotoPosition) => void) | undefined>(undefined);
+  const onChangeRef = useRef<((p: PhotoPosition) => void) | undefined>(
+    undefined,
+  );
   if (position) posRef.current = position;
   onChangeRef.current = onPositionChange;
 
   const label = isSaveTheDate ? "Save the Date" : "RSVP Invitation";
-  const previewUrl = isSaveTheDate ? saveTheDatePreviewUrl : digitalInvitationPreviewUrl;
+  const previewUrl = isSaveTheDate
+    ? saveTheDatePreviewUrl
+    : digitalInvitationPreviewUrl;
   const error = isSaveTheDate ? saveTheDateError : digitalInvitationError;
-  const handleChange = isSaveTheDate ? handleSaveTheDateChange : handleDigitalInvitationChange;
-  const testId = isSaveTheDate ? "save-the-date-photo-input" : "digital-invitation-photo-input";
+  const handleChange = isSaveTheDate
+    ? handleSaveTheDateChange
+    : handleDigitalInvitationChange;
+  const testId = isSaveTheDate
+    ? "save-the-date-photo-input"
+    : "digital-invitation-photo-input";
+  const isBlobPreview = previewUrl?.startsWith("blob:") ?? false;
+  const isSaveDisabled =
+    isLoading || isUploadingPhoto || isSavingPhoto || isBlobPreview;
 
   const validateFile = (file: File): string | null => {
     const allowedMimes = ["image/png", "image/jpeg", "image/webp"];
-    if (!allowedMimes.includes(file.type)) return "Only PNG, JPG, and WebP images are supported";
+    if (!allowedMimes.includes(file.type))
+      return "Only PNG, JPG, and WebP images are supported";
     if (file.size > 5 * 1024 * 1024) return "Image must be smaller than 5MB";
     return null;
   };
 
-  const openCrop = (file: File, type: "save-the-date" | "digital-invitation") => {
+  const openCrop = (
+    file: File,
+    type: "save-the-date" | "digital-invitation",
+  ) => {
     const url = URL.createObjectURL(file);
     setCropImageUrl(url);
     setCropFileName(file.name);
@@ -81,18 +120,36 @@ export function PhotoUploadSection({
 
   function handleSaveTheDateChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (!file) { onSaveTheDatePhotoChange(null); setSaveTheDateError(null); return; }
+    if (!file) {
+      onSaveTheDatePhotoChange(null);
+      setSaveTheDateError(null);
+      return;
+    }
     const err = validateFile(file);
-    if (err) { setSaveTheDateError(err); onSaveTheDatePhotoChange(null); return; }
+    if (err) {
+      setSaveTheDateError(err);
+      onSaveTheDatePhotoChange(null);
+      return;
+    }
     setSaveTheDateError(null);
     openCrop(file, "save-the-date");
   }
 
-  function handleDigitalInvitationChange(event: React.ChangeEvent<HTMLInputElement>) {
+  function handleDigitalInvitationChange(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
     const file = event.target.files?.[0];
-    if (!file) { onDigitalInvitationPhotoChange(null); setDigitalInvitationError(null); return; }
+    if (!file) {
+      onDigitalInvitationPhotoChange(null);
+      setDigitalInvitationError(null);
+      return;
+    }
     const err = validateFile(file);
-    if (err) { setDigitalInvitationError(err); onDigitalInvitationPhotoChange(null); return; }
+    if (err) {
+      setDigitalInvitationError(err);
+      onDigitalInvitationPhotoChange(null);
+      return;
+    }
     setDigitalInvitationError(null);
     openCrop(file, "digital-invitation");
   }
@@ -102,23 +159,29 @@ export function PhotoUploadSection({
     if (cropImageUrl) URL.revokeObjectURL(cropImageUrl);
     setCropImageUrl(null);
     setCropType(null);
-    setInputKey(k => k + 1);
+    setInputKey((k) => k + 1);
   };
 
   const handleCropConfirm = (croppedFile: File) => {
     if (cropType === "save-the-date") onSaveTheDatePhotoChange(croppedFile);
-    else if (cropType === "digital-invitation") onDigitalInvitationPhotoChange(croppedFile);
+    else if (cropType === "digital-invitation")
+      onDigitalInvitationPhotoChange(croppedFile);
     setCropOpen(false);
     if (cropImageUrl) URL.revokeObjectURL(cropImageUrl);
     setCropImageUrl(null);
     setCropType(null);
-    setInputKey(k => k + 1);
+    setInputKey((k) => k + 1);
   };
 
   const handleRemove = () => {
-    if (isSaveTheDate) { onSaveTheDatePhotoChange(null); setSaveTheDateError(null); }
-    else { onDigitalInvitationPhotoChange(null); setDigitalInvitationError(null); }
-    setInputKey(k => k + 1);
+    if (isSaveTheDate) {
+      onSaveTheDatePhotoChange(null);
+      setSaveTheDateError(null);
+    } else {
+      onDigitalInvitationPhotoChange(null);
+      setDigitalInvitationError(null);
+    }
+    setInputKey((k) => k + 1);
   };
 
   // ── Drag-to-reposition handlers ────────────────────────────────────────────
@@ -183,7 +246,11 @@ export function PhotoUploadSection({
             <div className="space-y-1.5">
               <div
                 className={`relative w-full select-none group rounded overflow-hidden${hasReposition ? " touch-none" : ""}`}
-                style={hasReposition ? { cursor: isDragging ? "grabbing" : "grab" } : {}}
+                style={
+                  hasReposition
+                    ? { cursor: isDragging ? "grabbing" : "grab" }
+                    : {}
+                }
                 onPointerDown={hasReposition ? handlePointerDown : undefined}
                 onPointerMove={hasReposition ? handlePointerMove : undefined}
                 onPointerUp={hasReposition ? handlePointerUp : undefined}
@@ -193,9 +260,15 @@ export function PhotoUploadSection({
                   src={previewUrl}
                   alt={`${label} preview`}
                   className="w-full h-40 object-cover border rounded"
-                  style={hasReposition && position
-                    ? { objectPosition: `${position.x}% ${position.y}%`, userSelect: "none", pointerEvents: "none" }
-                    : { pointerEvents: "none" }}
+                  style={
+                    hasReposition && position
+                      ? {
+                          objectPosition: `${position.x}% ${position.y}%`,
+                          userSelect: "none",
+                          pointerEvents: "none",
+                        }
+                      : { pointerEvents: "none" }
+                  }
                   draggable={false}
                 />
 
@@ -224,8 +297,12 @@ export function PhotoUploadSection({
                     onClick={(e) => {
                       e.stopPropagation();
                       setCropImageUrl(previewUrl);
-                      setCropFileName(isSaveTheDate ? "save-the-date" : "invitation");
-                      setCropType(isSaveTheDate ? "save-the-date" : "digital-invitation");
+                      setCropFileName(
+                        isSaveTheDate ? "save-the-date" : "invitation",
+                      );
+                      setCropType(
+                        isSaveTheDate ? "save-the-date" : "digital-invitation",
+                      );
                       setCropOpen(true);
                     }}
                     className="p-1 bg-black/60 text-white rounded-full hover:bg-black/80"
@@ -234,7 +311,10 @@ export function PhotoUploadSection({
                     <Crop className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
                     className="p-1 bg-black/60 text-white rounded-full hover:bg-black/80"
                     title="Change photo"
                     disabled={isLoading}
@@ -242,7 +322,10 @@ export function PhotoUploadSection({
                     <Upload className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleRemove(); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemove();
+                    }}
                     className="p-1 bg-destructive text-white rounded-full hover:bg-destructive/90"
                     title="Remove photo"
                   >
@@ -258,11 +341,15 @@ export function PhotoUploadSection({
                   <button
                     type="button"
                     className="underline hover:text-foreground transition-colors"
-                    onClick={() => { const c = { x: 50, y: 50 }; posRef.current = c; onChangeRef.current?.(c); }}
+                    onClick={() => {
+                      const c = { x: 50, y: 50 };
+                      posRef.current = c;
+                      onChangeRef.current?.(c);
+                    }}
                   >
                     Center
-                  </button>
-                  {" "}·{" "}
+                  </button>{" "}
+                  ·{" "}
                   <button
                     type="button"
                     className="underline hover:text-foreground transition-colors"
@@ -282,8 +369,8 @@ export function PhotoUploadSection({
                     onClick={() => fileInputRef.current?.click()}
                   >
                     Change photo
-                  </button>
-                  {" "}·{" "}
+                  </button>{" "}
+                  ·{" "}
                   <button
                     type="button"
                     className="underline hover:text-foreground transition-colors text-destructive/70 hover:text-destructive"
@@ -292,6 +379,27 @@ export function PhotoUploadSection({
                     Remove
                   </button>
                 </p>
+              )}
+
+              {onSavePhoto && (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="w-full gap-2"
+                  onClick={onSavePhoto}
+                  disabled={isSaveDisabled}
+                >
+                  {isUploadingPhoto || isSavingPhoto ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Save className="h-3.5 w-3.5" />
+                  )}
+                  {isUploadingPhoto
+                    ? "Uploading..."
+                    : isSavingPhoto
+                      ? "Saving..."
+                      : "Save Photo"}
+                </Button>
               )}
             </div>
           ) : (
@@ -305,7 +413,9 @@ export function PhotoUploadSection({
                 onClick={() => fileInputRef.current?.click()}
               >
                 <p className="text-sm font-medium">Click to upload</p>
-                <p className="text-xs text-muted-foreground">PNG, JPG, or WebP • Max 5MB</p>
+                <p className="text-xs text-muted-foreground">
+                  PNG, JPG, or WebP • Max 5MB
+                </p>
               </div>
 
               {error && (
