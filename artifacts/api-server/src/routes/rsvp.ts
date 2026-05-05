@@ -205,9 +205,13 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="x-apple-disable-message-reformatting" />
+  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no" />
   <title>Wedding Invitation — ${escapeHtml(opts.couple)}</title>
+  <style>
+    a[x-apple-data-detectors], u + #body a { color: inherit !important; text-decoration: none !important; }
+  </style>
 </head>
-<body bgcolor="${AI_PAGE_BG}" style="margin:0;padding:0;background:${AI_PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
+<body id="body" bgcolor="${AI_PAGE_BG}" style="margin:0;padding:0;background:${AI_PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${AI_PAGE_BG}" style="background:${AI_PAGE_BG};padding:32px 16px;">
     <tr><td bgcolor="${AI_PAGE_BG}" align="center">
 
@@ -354,9 +358,13 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="x-apple-disable-message-reformatting" />
+  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no" />
   <title>Save the Date — ${escapeHtml(opts.couple)}</title>
+  <style>
+    a[x-apple-data-detectors], u + #body a { color: inherit !important; text-decoration: none !important; }
+  </style>
 </head>
-<body bgcolor="${AI_PAGE_BG}" style="margin:0;padding:0;background:${AI_PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
+<body id="body" bgcolor="${AI_PAGE_BG}" style="margin:0;padding:0;background:${AI_PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${AI_PAGE_BG}" style="background:${AI_PAGE_BG};padding:32px 16px;">
     <tr><td bgcolor="${AI_PAGE_BG}" align="center">
 
