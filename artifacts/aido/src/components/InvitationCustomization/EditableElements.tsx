@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import type { ElementOverride } from "@/types/invitations";
 import { Button } from "@/components/ui/button";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import {
   Select,
   SelectContent,
@@ -268,6 +269,7 @@ export function EditableImage({
   const y = override?.y ?? defaultY;
   const objectX = override?.objectX ?? 50;
   const objectY = override?.objectY ?? 50;
+  const resolvedSrc = resolveMediaUrl(src);
 
   const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const panMovedRef = useRef(false);
@@ -326,9 +328,9 @@ export function EditableImage({
       }}
       data-editable-id={id}
     >
-      {src ? (
+      {resolvedSrc ? (
         <img
-          src={src}
+          src={resolvedSrc}
           alt=""
           style={{
             width: "100%",

@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { apiFetch } from "@/lib/authFetch";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -345,7 +346,7 @@ export default function Rsvp() {
             {info.photoUrl && (
               <div className="w-full flex justify-center pt-6 px-4">
                 <img
-                  src={info.photoUrl}
+                  src={resolveMediaUrl(info.photoUrl) ?? ""}
                   alt={`${couple}'s wedding`}
                   className="w-full max-w-md h-auto block rounded-lg"
                   style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }}
