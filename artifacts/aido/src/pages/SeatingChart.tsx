@@ -429,6 +429,10 @@ export default function SeatingChartPage() {
       case "brides_coworkers":
       case "grooms_coworkers":
         return "Colleagues";
+      case "maid_of_honor": return "Maid of Honor";
+      case "bridesmaid": return "Bridesmaid";
+      case "best_man": return "Best Man";
+      case "groomsmen": return "Groomsmen";
       case "other": return "Other";
       default: return "Other";
     }

@@ -64,6 +64,10 @@ const GROUP_OPTIONS = [
   { value: "grooms_friends", label: "Groom's Friends" },
   { value: "brides_coworkers", label: "Bride's Coworkers" },
   { value: "grooms_coworkers", label: "Groom's Coworkers" },
+  { value: "maid_of_honor", label: "Maid of Honor" },
+  { value: "bridesmaid", label: "Bridesmaid" },
+  { value: "best_man", label: "Best Man" },
+  { value: "groomsmen", label: "Groomsmen" },
   { value: "other", label: "Other" },
 ];
 
@@ -80,6 +84,10 @@ const GROUP_COLORS: Record<string, string> = {
   grooms_friends: "bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200 border-orange-300 dark:border-orange-700",
   brides_coworkers: "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700",
   grooms_coworkers: "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700",
+  maid_of_honor: "bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700",
+  bridesmaid: "bg-pink-100 dark:bg-pink-900/40 text-pink-800 dark:text-pink-200 border-pink-300 dark:border-pink-700",
+  best_man: "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700",
+  groomsmen: "bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-200 border-sky-300 dark:border-sky-700",
   other: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700",
 };
 
