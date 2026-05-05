@@ -358,7 +358,7 @@ function buildConfirmation(actions: ActionRecord[]): string {
 }
 
 const TOOLS = [
-  { type:"function" as const, function:{ name:"add_vendor", description:"Add a new vendor to the user's wedding. ONLY call this AFTER the user has explicitly confirmed they want to save (replied 'yes' or similar to your confirmation message). Both 'name' and 'category' MUST be provided EXPLICITLY by the user — never invent them. 'name' must be a specific business or person name (e.g. 'Bloom & Co', 'Sarah Lee Photography'), NEVER a category word like 'Florist' or 'Photographer'. If you don't have these exact values from the user, ASK them first.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific business name provided by the user. Never a category word."}, category:{type:"string", enum:["Photography","Videography","Catering","Florist","DJ/Band","Venue","Officiant","Hair & Makeup","Transportation","Cake/Desserts","Stationery","Rentals","Planner","Other"], description:"Vendor category. Must come from the user."}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, depositPaid:{type:"boolean"} }, required:["name","category"] } } },
+  { type:"function" as const, function:{ name:"add_vendor", description:"Add a new vendor to the user's wedding. ONLY call this AFTER the user has explicitly confirmed they want to save (replied 'yes' or similar to your confirmation message). Both 'name' and 'category' MUST be provided EXPLICITLY by the user — never invent them. 'name' must be a specific business or person name (e.g. 'Bloom & Co', 'Sarah Lee Photography'), NEVER a category word like 'Florist' or 'Photographer'. If you don't have these exact values from the user, ASK them first.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific business name provided by the user. Never a category word."}, category:{type:"string", enum:["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Hair & Makeup","Transportation","Cake & Desserts","Invitations","Lighting & AV","Photo Booth","Wedding Planner","Other"], description:"Vendor category. Must come from the user."}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, depositPaid:{type:"boolean"} }, required:["name","category"] } } },
   { type:"function" as const, function:{ name:"update_vendor", description:"Update vendor fields. Pass vendorId or vendorName.", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"}, name:{type:"string"}, category:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, portalLink:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, contractSigned:{type:"boolean"} } } } },
   { type:"function" as const, function:{ name:"delete_vendor", description:"Delete vendor. Pass vendorId or vendorName.", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_vendors", description:"List all vendors.", parameters:{ type:"object", properties:{} } } },
@@ -404,9 +404,10 @@ const TOOLS = [
 ];
 
 const ALLOWED_VENDOR_CATEGORIES = [
-  "Photography", "Videography", "Catering", "Florist", "DJ/Band", "Venue",
-  "Officiant", "Hair & Makeup", "Transportation", "Cake/Desserts",
-  "Stationery", "Rentals", "Planner", "Other",
+  "Venue", "Caterer", "Photographer", "Videographer", "Florist",
+  "DJ / Band", "Officiant", "Hair & Makeup", "Transportation",
+  "Cake & Desserts", "Invitations", "Lighting & AV", "Photo Booth",
+  "Wedding Planner", "Other",
 ];
 
 function normalizeCategory(c: string): string {

@@ -202,7 +202,23 @@ function AddEditVendorDialog({
         toast({ title: t("vendors.vendor_added") });
         onClose();
       },
-      onError: () => toast({ title: t("vendors.failed_save"), variant: "destructive" }),
+      onError: (err: unknown) => {
+        const apiErr = err as { data?: { error?: string }; status?: number } | undefined;
+        const serverMsg = apiErr?.data?.error;
+        if (serverMsg?.toLowerCase().includes("no wedding profile")) {
+          toast({
+            title: t("vendors.no_profile_title", "Wedding profile required"),
+            description: t("vendors.no_profile_desc", "Please complete your wedding profile setup on the Dashboard before adding vendors."),
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: t("vendors.failed_save"),
+            description: serverMsg || undefined,
+            variant: "destructive",
+          });
+        }
+      },
     },
   });
 
@@ -224,7 +240,14 @@ function AddEditVendorDialog({
         toast({ title: t("vendors.vendor_updated") });
         onClose();
       },
-      onError: () => toast({ title: t("vendors.failed_update"), variant: "destructive" }),
+      onError: (err: unknown) => {
+        const apiErr = err as { data?: { error?: string } } | undefined;
+        toast({
+          title: t("vendors.failed_update"),
+          description: apiErr?.data?.error || undefined,
+          variant: "destructive",
+        });
+      },
     },
   });
 
@@ -1270,13 +1293,25 @@ export default function Vendors() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: vendors = [], isLoading } = useListVendors();
-  const { data: profile } = useGetProfile();
+  const { data: profile, isLoading: profileLoading } = useGetProfile();
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [viewingVendorId, setViewingVendorId] = useState<number | null>(null);
   const [deletingVendorId, setDeletingVendorId] = useState<number | null>(null);
   const [showSummarize, setShowSummarize] = useState(false);
+
+  const handleAddVendor = () => {
+    if (!profileLoading && !profile) {
+      toast({
+        title: t("vendors.no_profile_title", "Wedding profile required"),
+        description: t("vendors.no_profile_desc", "Please complete your wedding profile setup on the Dashboard before adding vendors."),
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowAddDialog(true);
+  };
 
   const deleteMutation = useDeleteVendor({
     mutation: {
@@ -1338,7 +1373,7 @@ export default function Vendors() {
           </Button>
           <Button
             size="sm"
-            onClick={() => setShowAddDialog(true)}
+            onClick={handleAddVendor}
             data-testid="btn-add-vendor"
           >
             <Plus className="h-4 w-4 mr-1.5" />
@@ -1382,7 +1417,7 @@ export default function Vendors() {
           <p className="text-muted-foreground max-w-sm mb-6">
             {t("vendors.no_vendors_desc")}
           </p>
-          <Button onClick={() => setShowAddDialog(true)} data-testid="btn-add-first-vendor">
+          <Button onClick={handleAddVendor} data-testid="btn-add-first-vendor">
             <Plus className="h-4 w-4 mr-2" />
             {t("vendors.add_first_vendor")}
           </Button>
@@ -1399,7 +1434,7 @@ export default function Vendors() {
             />
           ))}
           <button
-            onClick={() => setShowAddDialog(true)}
+            onClick={handleAddVendor}
             className="border-2 border-dashed border-border/60 rounded-2xl p-5 flex flex-col items-center justify-center gap-2 hover:border-primary/30 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary min-h-[160px]"
             data-testid="btn-add-vendor-card"
           >
