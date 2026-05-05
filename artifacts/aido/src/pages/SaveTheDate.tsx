@@ -216,16 +216,8 @@ export default function SaveTheDate() {
             </div>
           )}
 
-          {info.venueAddress && (
-            <p style={{ fontFamily: jakarta, fontSize: 11, color: WHITE, margin: "3px 0 0" }}>{info.venueAddress}</p>
-          )}
           {venueCityStateZip && (
-            <p style={{ fontFamily: jakarta, fontSize: 11, color: WHITE, margin: "2px 0 0" }}>{venueCityStateZip}</p>
-          )}
-
-          {/* Times */}
-          {timesLine && (
-            <p style={{ fontFamily: jakarta, fontSize: 11, color: GOLD, margin: "8px 0 0" }}>{timesLine}</p>
+            <p style={{ fontFamily: jakarta, fontSize: 11, color: WHITE, margin: "3px 0 0" }}>{venueCityStateZip}</p>
           )}
 
           {/* Message */}
