@@ -124,7 +124,13 @@ function actionLabel(name: string, args?: Record<string, unknown>): string {
     case "update_profile": return "Updating wedding profile";
     case "list_vendors": return "Reading your vendor list";
     case "get_profile": return "Reading your wedding profile";
-    default: return name;
+    case "generate_seating": return "Generating seating chart";
+    case "delete_seating_chart": return "Deleting seating chart";
+    case "list_seating_charts": return "Reading seating charts";
+    case "invite_collaborator": return `Inviting${args?.email ? ` ${args.email}` : " collaborator"}`;
+    case "remove_collaborator": return "Removing collaborator";
+    case "list_collaborators": return "Reading collaborators";
+    default: return name.replace(/_/g, " ");
   }
 }
 
