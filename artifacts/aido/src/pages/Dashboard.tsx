@@ -68,13 +68,6 @@ interface Vendor {
   isPaidOff?: boolean;
 }
 
-interface WeddingPartyMember {
-  id: number;
-  name: string;
-  role: string;
-  side: string;
-}
-
 
 function getGreetingKey() {
   const h = new Date().getHours();
@@ -524,15 +517,6 @@ export default function Dashboard() {
     queryKey: getListVendorsQueryKey(),
     queryFn: async () => {
       const r = await authFetch(`${API}/api/vendors`);
-      if (!r.ok) throw new Error(r.statusText);
-      return r.json();
-    },
-    enabled: !!summary,
-  });
-  const { data: weddingParty = [] } = useQuery<WeddingPartyMember[]>({
-    queryKey: ["wedding-party-dashboard"],
-    queryFn: async () => {
-      const r = await authFetch(`${API}/api/wedding-party`);
       if (!r.ok) throw new Error(r.statusText);
       return r.json();
     },
@@ -1017,44 +1001,7 @@ export default function Dashboard() {
 
             ),
           },
-          {
-            id: "weddingParty",
-            node: (
-        <Link href="/wedding-party">
-          <div className="bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer h-full">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <LayoutGrid className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">{t("dashboard.wedding_party_label")}</span>
-              </div>
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-            </div>
-            {weddingParty.length > 0 ? (
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-2xl font-serif font-semibold text-foreground">{weddingParty.length}</span>
-                  <div className="text-xs text-muted-foreground leading-tight">
-                    <div>{t("dashboard.bride_side_count", { n: weddingParty.filter(m => m.side === "bride").length })}</div>
-                    <div>{t("dashboard.groom_side_count", { n: weddingParty.filter(m => m.side === "groom").length })}</div>
-                  </div>
-                </div>
-                {weddingParty.slice(0, 3).map(m => (
-                  <div key={m.id} className="flex items-center justify-between">
-                    <span className="text-xs text-foreground truncate max-w-[120px]">{m.name}</span>
-                    <span className="text-[10px] text-muted-foreground capitalize">{m.role}</span>
-                  </div>
-                ))}
-                {weddingParty.length > 3 && (
-                  <p className="text-[10px] text-muted-foreground">+{weddingParty.length - 3} more</p>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">{t("dashboard.no_members_added")}</p>
-            )}
-          </div>
-        </Link>
-            ),
-          },
+
         ]}
       />
 

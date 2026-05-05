@@ -32,7 +32,6 @@ import SaveTheDate from "@/pages/SaveTheDate";
 import SharedWorkspace from "@/pages/SharedWorkspace";
 import GuestListAndInvitations from "@/pages/GuestListAndInvitations";
 import Hotels from "@/pages/Hotels";
-import WeddingParty from "@/pages/WeddingParty";
 import Contracts from "@/pages/Contracts";
 import MoodBoard from "@/pages/MoodBoard";
 import Aria from "@/pages/Aria";
@@ -1396,7 +1395,6 @@ function Router() {
       <Route path="/seating-chart" component={() => <ProtectedRoute component={SeatingChart} />} />
       <Route path="/guests/:profileId?" component={() => <ProtectedRoute component={GuestListAndInvitations} />} />
       <Route path="/hotels" component={() => <ProtectedRoute component={Hotels} />} />
-      <Route path="/wedding-party" component={() => <ProtectedRoute component={WeddingParty} />} />
       <Route path="/contracts" component={() => <ProtectedRoute component={Contracts} />} />
       <Route path="/mood-board" component={() => <ProtectedRoute component={MoodBoard} />} />
       <Route path="/aria" component={() => <ProtectedRoute component={Aria} />} />
