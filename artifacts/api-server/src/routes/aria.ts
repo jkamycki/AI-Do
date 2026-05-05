@@ -155,7 +155,9 @@ const SYSTEM_PROMPT = `You are Aria, the warm AI wedding planner inside A.IDO. T
 
 SMALL TALK: For greetings, thanks, "how are you?", or chitchat → reply warmly in 1-2 sentences. Don't force a planning topic. Example: "Hi" → "Hi there! 💕 Ready to dive in, or just chat?"
 
-#1 RULE — NEVER INVENT. If REQUIRED tool fields are missing, ASK first. Never substitute a category word for a business name. Never assume defaults. Required fields are listed in each tool's schema (look at the "required" array) — read them.
+#1 RULE — NEVER INVENT. If REQUIRED tool fields are missing, ASK first. Never substitute a category word for a business name. Never fill in placeholder names. Never assume defaults. Required fields are listed in each tool's schema (look at the "required" array) — read them.
+
+#1a VENDOR RULE — add_vendor REQUIRES a real business name. "Photographer", "Florist", "DJ", "Caterer", "Vendor", "New Vendor" are CATEGORIES, NOT names. If the user says "add a vendor" or "add a photographer" without giving a business name, ASK: "What's the business name?" NEVER call add_vendor until you have a specific business name (e.g. "Bloom & Co", "Happy Clicks Studio"). Category words WILL be rejected by the server.
 
 #2 RULE — OPTIONAL FIELDS NEVER BLOCK A SAVE. If the schema doesn't list a field in "required", it is optional. NEVER ask for it as a precondition. NEVER ask the user to "confirm" or "verify" an optional value they already gave (e.g. if they said "total cost 2500", USE 2500 — do not ask "could you confirm the total cost?"). The user can always edit the record later.
 
@@ -163,14 +165,14 @@ SMALL TALK: For greetings, thanks, "how are you?", or chitchat → reply warmly 
 
 WRITE/UPDATE/DELETE FLOW — exactly ONE summary turn and exactly ONE save turn:
 
-CASE A — user provided all required fields up front:
+CASE A — user provided all required fields up front (real business name + category):
   Turn 1 (you): one-line summary using their values as-given (no re-asking to verify). End with: Reply "yes" to save.
   Turn 2 (user): yes / confirm / ok / save it / go ahead / do it.
   Turn 3 (you): IMMEDIATELY call the tool. No more text, no more questions.
 
-CASE B — user is missing one or more required fields:
+CASE B — user is missing one or more required fields (e.g. said "add a vendor" with no name):
   Turn 1 (you): ask ONE warm question covering only the missing REQUIRED fields. Do not include optional fields. Do not summarize yet.
-  Turn 2 (user): answers.
+  Turn 2 (user): answers with the missing info.
   Turn 3 (you): one-line summary + Reply "yes" to save. (Same as Case A turn 1.)
   Turn 4 (user): yes.
   Turn 5 (you): IMMEDIATELY call the tool.
@@ -178,6 +180,7 @@ CASE B — user is missing one or more required fields:
 Examples:
   • User: "Add vendor Bloom & Co, Florist, total cost 5000" → You: "Saving Bloom & Co (Florist) with a total cost of $5,000. Reply 'yes' to save." → User: "yes" → You: [calls add_vendor immediately, no extra text].
   • User: "Add a vendor for me" → You: "Of course! What's the business name and category (photographer, florist, caterer, DJ, etc.)?" → User: "Bloom & Co, Florist" → You: "Saving Bloom & Co (Florist). Reply 'yes' to save." → User: "yes" → You: [calls add_vendor immediately].
+  • User: "Add a photographer" → You: "Great! What's the photographer's business name?" → User: "Happy Clicks Studio" → You: "Saving Happy Clicks Studio (Photographer). Reply 'yes' to save." → User: "yes" → You: [calls add_vendor immediately].
 
 Exception: toggle_checklist_item needs no confirmation. DELETE: state exactly what will be deleted (incl. cascades). UPDATE: confirm which fields change.
 
@@ -645,7 +648,23 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       if (!profile) return { ok: false, error: "No wedding profile found." };
       const vendorName = String(args.name ?? "").trim();
       const category = normalizeCategory(String(args.category ?? "Other").trim());
-      if (!vendorName) return { ok: false, error: "Vendor name is required" };
+      if (!vendorName) return { ok: false, error: "Vendor name is required. Ask the user for the specific business name." };
+
+      // Reject category words and placeholders used as vendor names
+      const VENDOR_CATEGORY_WORDS = new Set([
+        "vendor", "photographer", "videographer", "florist", "caterer", "catering",
+        "dj", "band", "musician", "officiant", "hair", "makeup", "transportation",
+        "transport", "limo", "cake", "baker", "bakery", "stationery", "invitations",
+        "rental", "rentals", "planner", "venue", "lighting", "photo booth",
+        "wedding planner", "coordinator", "other", "misc", "miscellaneous",
+      ]);
+      const lowerName = vendorName.toLowerCase();
+      if (VENDOR_CATEGORY_WORDS.has(lowerName)) {
+        return { ok: false, error: `"${vendorName}" is a vendor category, not a business name. Ask the user: "What's the specific business name?" (e.g. "Bloom & Co", "Happy Clicks Studio"), then call add_vendor again with the real name.` };
+      }
+      if (/^(vendor\s*\d*|new vendor|sample vendor|test vendor|unnamed|unknown vendor|n\/a|none|tbd|placeholder|my vendor|the vendor)$/i.test(lowerName)) {
+        return { ok: false, error: `"${vendorName}" looks like a placeholder. Ask the user for the actual business name, then call add_vendor again.` };
+      }
       const depositAmt = Number(args.depositAmount ?? 0);
       const todayISO = new Date().toISOString().slice(0, 10);
       const [created] = await db.insert(vendors).values({
@@ -1752,10 +1771,13 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         });
       }
 
-      // Fast path: if every tool was a write action, skip the second AI call
-      // and send an instant confirmation. This halves token usage and never fails.
+      // Fast path: if every tool was a write action AND all succeeded, skip the
+      // second AI call and send an instant confirmation. When any action failed,
+      // fall through so the LLM can respond conversationally to the error message
+      // (e.g. ask for the real business name after a category-word rejection).
       const allActionTools = toolCalls.every(tc => ACTION_TOOLS.has(tc.name));
-      if (allActionTools) {
+      const allSucceeded = results.every(r => r.ok);
+      if (allActionTools && allSucceeded) {
         const confirmation = buildConfirmation(performedActions);
         send({ type: "content", content: confirmation });
         send({ type: "done", actions: performedActions.map(a => ({ name: a.name, ok: a.result.ok, error: a.result.ok ? undefined : a.result.error })) });

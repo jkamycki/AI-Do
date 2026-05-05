@@ -197,7 +197,7 @@ export function ColorSystemSection({
           <p className="text-xs text-muted-foreground mb-3">
             Your wedding palette — switch to Custom design to edit colors.
           </p>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {(["primary", "secondary", "accent", "neutral"] as const).map((key) => (
               <div key={key} className="space-y-1">
                 <div
@@ -264,7 +264,7 @@ export function ColorSystemSection({
         {/* Auto-Generated Palette Display */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Auto-Generated Palette</label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {(["primary", "secondary", "accent", "neutral"] as const).map(
               (key) => (
                 <div key={key} className="space-y-1">

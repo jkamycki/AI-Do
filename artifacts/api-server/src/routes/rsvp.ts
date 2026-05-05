@@ -155,21 +155,22 @@ const AI_CARD_BDR = "rgba(255,255,255,0.12)";
 const AI_CORMORANT = "'Cormorant Garamond','Playfair Display',Georgia,serif";
 const AI_JAKARTA = "'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif";
 
-function aiLogoBlock(logoBase64: string | null): string {
+function aiLogoBlock(logoBase64: string | null, accent = AI_GOLD): string {
   return logoBase64
     ? `<img src="${logoBase64}" alt="A.IDO" width="48" style="height:48px;width:auto;display:inline-block;border:0;outline:none;text-decoration:none;" />`
-    : `<span style="font-family:${AI_CORMORANT};font-size:22px;font-style:italic;color:${AI_GOLD};letter-spacing:1px;">A.IDO</span>`;
+    : `<span style="font-family:${AI_CORMORANT};font-size:22px;font-style:italic;color:${accent};letter-spacing:1px;">A.IDO</span>`;
 }
 
 function aiPhotoBlock(
   photoSrc: string | null,
   alt: string,
   objectPos: string,
+  bg = AI_BG,
 ): string {
   if (!photoSrc) return "";
   return `
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:0 20px 12px;line-height:0;font-size:0;">
+          <td bgcolor="${bg}" style="background:${bg};padding:0 20px 12px;line-height:0;font-size:0;">
             <div style="width:100%;aspect-ratio:520/200;border-radius:8px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,0.5);">
               <img src="${photoSrc}" alt="${escapeHtml(alt)}" width="520" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${objectPos};border:0;outline:none;text-decoration:none;" />
             </div>
@@ -191,9 +192,28 @@ interface AiDigitalInviteOpts {
   photoImgSrc: string | null;
   photoObjectPos: string;
   logoBase64: string | null;
+  // Optional color overrides for custom design mode; omit to use default navy/gold brand palette
+  overrideBg?: string;
+  overridePageBg?: string;
+  overrideAccent?: string;
+  overrideText?: string;
+  overrideMuted?: string;
+  overrideCardBdr?: string;
+  overrideCoupleFont?: string;
 }
 
 function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
+  const BG       = opts.overrideBg       ?? AI_BG;
+  const PAGE_BG  = opts.overridePageBg   ?? AI_PAGE_BG;
+  const ACCENT   = opts.overrideAccent   ?? AI_GOLD;
+  const TEXT_COL = opts.overrideText     ?? AI_WHITE;
+  const MUTED    = opts.overrideMuted    ?? AI_MUTED;
+  const CARD_BDR = opts.overrideCardBdr  ?? AI_CARD_BDR;
+  const SERIF    = opts.overrideCoupleFont
+    ? `'${opts.overrideCoupleFont}',${AI_CORMORANT}` : AI_CORMORANT;
+  const FOOTER_BG = opts.overrideBg ? BG : "#15121d";
+  const BTN_TXT  = isLightColor(ACCENT) ? "#000000" : (opts.overrideBg ? TEXT_COL : AI_BG);
+
   const timesLine = [
     opts.ceremonyTimeStr ? `Ceremony ${opts.ceremonyTimeStr}` : null,
     opts.receptionTimeStr ? `Reception ${opts.receptionTimeStr}` : null,
@@ -211,114 +231,114 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
     a[x-apple-data-detectors], u + #body a { color: inherit !important; text-decoration: none !important; }
   </style>
 </head>
-<body id="body" bgcolor="${AI_PAGE_BG}" style="margin:0;padding:0;background:${AI_PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${AI_PAGE_BG}" style="background:${AI_PAGE_BG};padding:32px 16px;">
-    <tr><td bgcolor="${AI_PAGE_BG}" align="center">
+<body id="body" bgcolor="${PAGE_BG}" style="margin:0;padding:0;background:${PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${PAGE_BG}" style="background:${PAGE_BG};padding:32px 16px;">
+    <tr><td bgcolor="${PAGE_BG}" align="center">
 
-      <table role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${AI_BG}" style="max-width:420px;width:100%;background:${AI_BG};border-radius:12px;overflow:hidden;border:1px solid ${AI_CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
+      <table role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${BG}" style="max-width:420px;width:100%;background:${BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:20px 0 6px;text-align:center;">
-            ${aiLogoBlock(opts.logoBase64)}
+          <td bgcolor="${BG}" style="background:${BG};padding:20px 0 6px;text-align:center;">
+            ${aiLogoBlock(opts.logoBase64, ACCENT)}
           </td>
         </tr>
 
-        ${aiPhotoBlock(opts.photoImgSrc, opts.couple, opts.photoObjectPos)}
+        ${aiPhotoBlock(opts.photoImgSrc, opts.couple, opts.photoObjectPos, BG)}
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 0 4px;text-align:center;">
+          <td bgcolor="${BG}" style="background:${BG};padding:14px 0 4px;text-align:center;">
             <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
-              <td width="52" height="52" align="center" valign="middle" style="background:${AI_GOLD}22;border:1px solid ${AI_GOLD}44;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:24px;color:${AI_GOLD};">&hearts;</td>
+              <td width="52" height="52" align="center" valign="middle" style="background:${ACCENT}22;border:1px solid ${ACCENT}44;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:24px;color:${ACCENT};">&hearts;</td>
             </tr></table>
           </td>
         </tr>
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:700;letter-spacing:4.5px;text-transform:uppercase;color:${AI_GOLD};">Wedding RSVP</p>
+          <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:700;letter-spacing:4.5px;text-transform:uppercase;color:${ACCENT};">Wedding RSVP</p>
           </td>
         </tr>
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
-            <h1 style="margin:0;font-family:${AI_CORMORANT};font-size:32px;font-weight:400;font-style:italic;color:${AI_GOLD};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
+          <td bgcolor="${BG}" style="background:${BG};padding:8px 24px 0;text-align:center;">
+            <h1 style="margin:0;font-family:${SERIF};font-size:32px;font-weight:400;font-style:italic;color:${ACCENT};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
           </td>
         </tr>
 
         ${opts.weddingDateStr ? `
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${AI_WHITE};">${escapeHtml(opts.weddingDateStr)}</p>
+          <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${TEXT_COL};">${escapeHtml(opts.weddingDateStr)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.venue ? `
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:12px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_CORMORANT};font-size:16px;font-weight:500;color:${AI_GOLD};">
-              <span style="color:${AI_GOLD};font-size:13px;">&#9679;</span>&nbsp;${escapeHtml(opts.venue)}
+          <td bgcolor="${BG}" style="background:${BG};padding:12px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${SERIF};font-size:16px;font-weight:500;color:${ACCENT};">
+              <span style="color:${ACCENT};font-size:13px;">&#9679;</span>&nbsp;${escapeHtml(opts.venue)}
             </p>
           </td>
         </tr>` : ""}
 
         ${opts.venueAddress ? `
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:4px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${AI_WHITE};">${escapeHtml(opts.venueAddress)}</p>
+          <td bgcolor="${BG}" style="background:${BG};padding:4px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${TEXT_COL};">${escapeHtml(opts.venueAddress)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.cityStateZip ? `
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:2px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${AI_WHITE};">${escapeHtml(opts.cityStateZip)}</p>
+          <td bgcolor="${BG}" style="background:${BG};padding:2px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${TEXT_COL};">${escapeHtml(opts.cityStateZip)}</p>
           </td>
         </tr>` : ""}
 
         ${timesLine ? `
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${AI_GOLD};">${escapeHtml(timesLine)}</p>
+          <td bgcolor="${BG}" style="background:${BG};padding:8px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${ACCENT};">${escapeHtml(timesLine)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.invitationMessage ? `
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:18px 28px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_CORMORANT};font-size:15px;font-style:italic;color:${AI_WHITE};line-height:1.7;">&ldquo;${escapeHtml(opts.invitationMessage)}&rdquo;</p>
+          <td bgcolor="${BG}" style="background:${BG};padding:18px 28px 0;text-align:center;">
+            <p style="margin:0;font-family:${SERIF};font-size:15px;font-style:italic;color:${TEXT_COL};line-height:1.7;">&ldquo;${escapeHtml(opts.invitationMessage)}&rdquo;</p>
           </td>
         </tr>` : ""}
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:18px 28px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:13px;color:${AI_MUTED};">
-              Dear <span style="color:${AI_WHITE};font-weight:600;">${escapeHtml(opts.guestName)}</span>, will you be joining us?
+          <td bgcolor="${BG}" style="background:${BG};padding:18px 28px 0;text-align:center;">
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:13px;color:${MUTED};">
+              Dear <span style="color:${TEXT_COL};font-weight:600;">${escapeHtml(opts.guestName)}</span>, will you be joining us?
             </p>
           </td>
         </tr>
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:18px 32px 0;">
+          <td bgcolor="${BG}" style="background:${BG};padding:18px 32px 0;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-              <td style="border-top:1px solid ${AI_CARD_BDR};height:1px;font-size:1px;line-height:1px;">&nbsp;</td>
+              <td style="border-top:1px solid ${CARD_BDR};height:1px;font-size:1px;line-height:1px;">&nbsp;</td>
             </tr></table>
           </td>
         </tr>
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:18px 24px 28px;text-align:center;">
-            <a href="${opts.rsvpUrl}" style="display:block;background:${AI_GOLD};color:${AI_BG};font-family:${AI_JAKARTA};font-size:13px;font-weight:700;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;padding:14px 24px;border-radius:8px;">RSVP NOW</a>
-            <p style="margin:12px 0 0;font-family:${AI_JAKARTA};font-size:10px;color:${AI_MUTED};">
-              Button not working? <a href="${opts.rsvpUrl}" style="color:${AI_GOLD};text-decoration:underline;">Open your RSVP</a>
+          <td bgcolor="${BG}" style="background:${BG};padding:18px 24px 28px;text-align:center;">
+            <a href="${opts.rsvpUrl}" style="display:block;background:${ACCENT};color:${BTN_TXT};font-family:${AI_JAKARTA};font-size:13px;font-weight:700;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;padding:14px 24px;border-radius:8px;">RSVP NOW</a>
+            <p style="margin:12px 0 0;font-family:${AI_JAKARTA};font-size:10px;color:${MUTED};">
+              Button not working? <a href="${opts.rsvpUrl}" style="color:${ACCENT};text-decoration:underline;">Open your RSVP</a>
             </p>
           </td>
         </tr>
 
         <tr>
-          <td bgcolor="#15121d" style="background:#15121d;padding:16px 24px;text-align:center;border-top:1px solid ${AI_CARD_BDR};">
-            <p style="margin:0 0 4px;font-family:${AI_JAKARTA};font-size:10px;color:${AI_MUTED};letter-spacing:0.5px;">Planning your own wedding?</p>
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:10px;color:${AI_MUTED};">
-              <a href="https://aidowedding.net" style="color:${AI_GOLD};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
+          <td bgcolor="${FOOTER_BG}" style="background:${FOOTER_BG};padding:16px 24px;text-align:center;border-top:1px solid ${CARD_BDR};">
+            <p style="margin:0 0 4px;font-family:${AI_JAKARTA};font-size:10px;color:${MUTED};letter-spacing:0.5px;">Planning your own wedding?</p>
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:10px;color:${MUTED};">
+              <a href="https://aidowedding.net" style="color:${ACCENT};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
             </p>
           </td>
         </tr>
@@ -344,13 +364,26 @@ interface AiSaveTheDateOpts {
   photoImgSrc: string | null;
   photoObjectPos: string;
   logoBase64: string | null;
+  // Optional color overrides for custom design mode; omit to use default navy/gold brand palette
+  overrideBg?: string;
+  overridePageBg?: string;
+  overrideAccent?: string;
+  overrideText?: string;
+  overrideMuted?: string;
+  overrideCardBdr?: string;
+  overrideCoupleFont?: string;
 }
 
 function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
-  const timesLine = [
-    opts.ceremonyTimeStr ? `Ceremony ${opts.ceremonyTimeStr}` : null,
-    opts.receptionTimeStr ? `Reception ${opts.receptionTimeStr}` : null,
-  ].filter(Boolean).join(" · ");
+  const BG       = opts.overrideBg       ?? AI_BG;
+  const PAGE_BG  = opts.overridePageBg   ?? AI_PAGE_BG;
+  const ACCENT   = opts.overrideAccent   ?? AI_GOLD;
+  const TEXT_COL = opts.overrideText     ?? AI_WHITE;
+  const MUTED    = opts.overrideMuted    ?? AI_MUTED;
+  const CARD_BDR = opts.overrideCardBdr  ?? AI_CARD_BDR;
+  const SERIF    = opts.overrideCoupleFont
+    ? `'${opts.overrideCoupleFont}',${AI_CORMORANT}` : AI_CORMORANT;
+  const FOOTER_BG = opts.overrideBg ? BG : "#15121d";
 
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -364,79 +397,79 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
     a[x-apple-data-detectors], u + #body a { color: inherit !important; text-decoration: none !important; }
   </style>
 </head>
-<body id="body" bgcolor="${AI_PAGE_BG}" style="margin:0;padding:0;background:${AI_PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${AI_PAGE_BG}" style="background:${AI_PAGE_BG};padding:32px 16px;">
-    <tr><td bgcolor="${AI_PAGE_BG}" align="center">
+<body id="body" bgcolor="${PAGE_BG}" style="margin:0;padding:0;background:${PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${PAGE_BG}" style="background:${PAGE_BG};padding:32px 16px;">
+    <tr><td bgcolor="${PAGE_BG}" align="center">
 
-      <table role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${AI_BG}" style="max-width:420px;width:100%;background:${AI_BG};border-radius:12px;overflow:hidden;border:1px solid ${AI_CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
+      <table role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${BG}" style="max-width:420px;width:100%;background:${BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:20px 0 6px;text-align:center;">
-            ${aiLogoBlock(opts.logoBase64)}
+          <td bgcolor="${BG}" style="background:${BG};padding:20px 0 6px;text-align:center;">
+            ${aiLogoBlock(opts.logoBase64, ACCENT)}
           </td>
         </tr>
 
-        ${aiPhotoBlock(opts.photoImgSrc, `Save the Date — ${opts.couple}`, opts.photoObjectPos)}
+        ${aiPhotoBlock(opts.photoImgSrc, `Save the Date — ${opts.couple}`, opts.photoObjectPos, BG)}
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 0 4px;text-align:center;">
+          <td bgcolor="${BG}" style="background:${BG};padding:14px 0 4px;text-align:center;">
             <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
-              <td width="52" height="52" align="center" valign="middle" style="background:${AI_GOLD}22;border:1px solid ${AI_GOLD}44;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:22px;color:${AI_GOLD};">&#9993;</td>
+              <td width="52" height="52" align="center" valign="middle" style="background:${ACCENT}22;border:1px solid ${ACCENT}44;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:22px;color:${ACCENT};">&#9993;</td>
             </tr></table>
           </td>
         </tr>
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:700;letter-spacing:4.5px;text-transform:uppercase;color:${AI_GOLD};">Save the Date</p>
+          <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:700;letter-spacing:4.5px;text-transform:uppercase;color:${ACCENT};">Save the Date</p>
           </td>
         </tr>
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
-            <h1 style="margin:0;font-family:${AI_CORMORANT};font-size:32px;font-weight:400;font-style:italic;color:${AI_GOLD};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
+          <td bgcolor="${BG}" style="background:${BG};padding:8px 24px 0;text-align:center;">
+            <h1 style="margin:0;font-family:${SERIF};font-size:32px;font-weight:400;font-style:italic;color:${ACCENT};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
           </td>
         </tr>
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 40px 0;">
+          <td bgcolor="${BG}" style="background:${BG};padding:14px 40px 0;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-              <td style="border-top:1px solid ${AI_CARD_BDR};height:1px;font-size:1px;line-height:1px;">&nbsp;</td>
+              <td style="border-top:1px solid ${CARD_BDR};height:1px;font-size:1px;line-height:1px;">&nbsp;</td>
             </tr></table>
           </td>
         </tr>
 
         ${opts.weddingDateStr ? `
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${AI_WHITE};">${escapeHtml(opts.weddingDateStr)}</p>
+          <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${TEXT_COL};">${escapeHtml(opts.weddingDateStr)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.saveTheDateMessage ? `
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:18px 28px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_CORMORANT};font-size:15px;font-style:italic;color:${AI_WHITE};line-height:1.7;">&ldquo;${escapeHtml(opts.saveTheDateMessage)}&rdquo;</p>
+          <td bgcolor="${BG}" style="background:${BG};padding:18px 28px 0;text-align:center;">
+            <p style="margin:0;font-family:${SERIF};font-size:15px;font-style:italic;color:${TEXT_COL};line-height:1.7;">&ldquo;${escapeHtml(opts.saveTheDateMessage)}&rdquo;</p>
           </td>
         </tr>` : ""}
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_CORMORANT};font-size:13px;font-style:italic;color:${AI_MUTED};">Formal invitation to follow</p>
+          <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${SERIF};font-size:13px;font-style:italic;color:${MUTED};">Formal invitation to follow</p>
           </td>
         </tr>
 
         <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:18px 24px 28px;text-align:center;">
-            <a href="${opts.viewUrl}" style="display:inline-block;background:rgba(255,255,255,0.06);border:1px solid ${AI_CARD_BDR};color:${AI_MUTED};font-family:${AI_JAKARTA};font-size:11px;font-weight:600;text-decoration:none;letter-spacing:2px;text-transform:uppercase;padding:12px 28px;border-radius:6px;">&darr;&nbsp;View &amp; Download</a>
+          <td bgcolor="${BG}" style="background:${BG};padding:18px 24px 28px;text-align:center;">
+            <a href="${opts.viewUrl}" style="display:inline-block;background:${ACCENT}1a;border:1px solid ${CARD_BDR};color:${MUTED};font-family:${AI_JAKARTA};font-size:11px;font-weight:600;text-decoration:none;letter-spacing:2px;text-transform:uppercase;padding:12px 28px;border-radius:6px;">&darr;&nbsp;View &amp; Download</a>
           </td>
         </tr>
 
         <tr>
-          <td bgcolor="#15121d" style="background:#15121d;padding:16px 24px;text-align:center;border-top:1px solid ${AI_CARD_BDR};">
-            <p style="margin:0 0 4px;font-family:${AI_JAKARTA};font-size:10px;color:${AI_MUTED};letter-spacing:0.5px;">Planning your own wedding?</p>
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:10px;color:${AI_MUTED};">
-              <a href="https://aidowedding.net" style="color:${AI_GOLD};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
+          <td bgcolor="${FOOTER_BG}" style="background:${FOOTER_BG};padding:16px 24px;text-align:center;border-top:1px solid ${CARD_BDR};">
+            <p style="margin:0 0 4px;font-family:${AI_JAKARTA};font-size:10px;color:${MUTED};letter-spacing:0.5px;">Planning your own wedding?</p>
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:10px;color:${MUTED};">
+              <a href="https://aidowedding.net" style="color:${ACCENT};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
             </p>
           </td>
         </tr>
@@ -687,12 +720,11 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           : profile.invitationMessage,
       );
 
-      // ── AI-generated mode ─────────────────────────────────────────────
-      // Render the navy + gold layout that mirrors AiDigitalInvitationPreview
-      // so what the planner sees in the modal is what the guest receives.
+      // ── Render the email — both AI and custom modes use the same A.IDO template
+      // structure; custom mode swaps in the user's color palette.
+      const logoBase64 = await getImageAsBase64(`${origin}/logo.png`);
       let html: string;
       if (useGenerated) {
-        const logoBase64 = await getImageAsBase64(`${origin}/logo.png`);
         html = aiDigitalInvitationHtml({
           couple,
           guestName: guest.name,
@@ -709,139 +741,28 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           logoBase64,
         });
       } else {
-        html = `<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <meta name="x-apple-disable-message-reformatting"/>
-  <title>Wedding Invitation — ${couple}</title>
-</head>
-<body style="margin:0;padding:0;background:${PAGE_BG};-webkit-font-smoothing:antialiased;font-family:Georgia,'Times New Roman',serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE_BG};padding:32px 16px;">
-    <tr><td align="center">
-
-      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:${BG};border-radius:4px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.45);">
-
-        ${photoBlock}
-
-        <!-- Diamond ornament -->
-        <tr>
-          <td style="padding:36px 48px 18px;text-align:center;background:${BG};">
-            <span style="display:inline-block;color:${ACCENT};font-size:12px;letter-spacing:14px;line-height:1;">&#9670; &#9670; &#9670;</span>
-          </td>
-        </tr>
-
-        <!-- "YOU ARE CORDIALLY INVITED TO" -->
-        <tr>
-          <td style="padding:0 48px 14px;text-align:center;background:${BG};">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:11px;letter-spacing:4px;text-transform:uppercase;font-weight:500;">${digHeadingText}</p>
-          </td>
-        </tr>
-
-        <!-- Couple's Wedding headline -->
-        <tr>
-          <td style="padding:0 32px 6px;text-align:center;background:${BG};">
-            <h1 style="margin:0;font-family:${fontStack(headingFont)};color:${TEXT};font-size:34px;font-weight:400;line-height:1.25;letter-spacing:0.3px;">${digCoupleText}</h1>
-          </td>
-        </tr>
-
-        <!-- Divider -->
-        <tr>
-          <td style="padding:18px 80px 18px;text-align:center;background:${BG};">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-              <td style="border-top:1px solid ${MUTED};opacity:0.55;height:1px;font-size:1px;line-height:1px;">&nbsp;</td>
-            </tr></table>
-          </td>
-        </tr>
-
-        <!-- Date / Venue / Address / Times -->
-        <tr>
-          <td style="padding:0 48px 8px;text-align:center;background:${BG};">
-            ${digDateText ? `<p style="margin:0 0 10px;font-family:${fontStack(headingFont)};color:${TEXT};font-size:17px;font-weight:400;">${digDateText}</p>` : ""}
-            ${digVenueText ? `<p style="margin:0 0 10px;font-family:${fontStack(headingFont)};color:${TEXT};font-size:15px;font-weight:400;">${digVenueText}</p>` : ""}
-            ${digLocationText ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;line-height:1.6;">${digLocationText}</p>` : ""}
-            ${digCityText ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;line-height:1.6;">${digCityText}</p>` : ""}
-            ${timesLine ? `<p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;color:${MUTED};font-size:12px;letter-spacing:0.5px;">${timesLine}</p>` : ""}
-          </td>
-        </tr>
-
-        <!-- Spacer -->
-        <tr><td style="height:28px;line-height:28px;font-size:1px;background:${BG};">&nbsp;</td></tr>
-
-        <!-- Personal greeting -->
-        <tr>
-          <td style="padding:0 48px 14px;text-align:center;background:${BG};">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:16px;font-weight:400;line-height:1.6;">
-              Dear <span style="font-weight:700;letter-spacing:0.5px;">${guest.name}</span>,
-            </p>
-          </td>
-        </tr>
-
-        <!-- Custom italic message -->
-        ${
-          invitationMessage
-            ? `
-        <tr>
-          <td style="padding:14px 56px 8px;text-align:center;background:${BG};">
-            <p style="margin:0;font-family:${fontStack(headingFont)};color:${TEXT};font-size:15px;font-style:italic;line-height:1.7;">&ldquo;${invitationMessage}&rdquo;</p>
-          </td>
-        </tr>`
-            : monthDayYear || profile.venue
-              ? `
-        <tr>
-          <td style="padding:14px 56px 8px;text-align:center;background:${BG};">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:15px;font-style:italic;line-height:1.7;">&ldquo;We&rsquo;re thrilled to share our special day with you${profile.venue ? ` at ${profile.venue}` : ""}${monthDayYear ? ` on ${monthDayYear}` : ""}.&rdquo;</p>
-          </td>
-        </tr>`
-              : ""
-        }
-
-        <!-- Body copy -->
-        <tr>
-          <td style="padding:18px 56px 8px;text-align:center;background:${BG};">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${TEXT};font-size:15px;font-weight:400;line-height:1.75;">
-              We would be deeply honoured to have you join us as we celebrate our love. Please take a moment to let us know if you&rsquo;ll be able to attend.
-            </p>
-          </td>
-        </tr>
-
-        <!-- RSVP Button -->
-        <tr>
-          <td style="padding:32px 48px 14px;text-align:center;background:${BG};">
-            <a href="${rsvpUrl}" style="display:inline-block;background:${BTN_BG};color:${BTN_TXT};font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;text-decoration:none;letter-spacing:4px;text-transform:uppercase;padding:16px 44px;border-radius:2px;">
-              RSVP Now
-            </a>
-            <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${MUTED};">
-              Button not working? <a href="${rsvpUrl}" style="color:${TEXT};text-decoration:underline;">Click here to RSVP</a>
-            </p>
-          </td>
-        </tr>
-
-        <!-- Bottom diamond ornament -->
-        <tr>
-          <td style="padding:24px 48px 36px;text-align:center;background:${BG};">
-            <span style="display:inline-block;color:${ACCENT};font-size:12px;letter-spacing:14px;line-height:1;">&#9670; &#9670; &#9670;</span>
-          </td>
-        </tr>
-
-        <!-- Footer -->
-        <tr>
-          <td style="background:#231d1a;padding:20px 48px;text-align:center;border-top:1px solid #3a322d;">
-            <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${MUTED};letter-spacing:0.5px;">
-              Planning your own wedding?
-            </p>
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${MUTED};">
-              <a href="https://aidowedding.net" style="color:${ACCENT};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
-            </p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+        html = aiDigitalInvitationHtml({
+          couple: digOverrides["dig:couple"]?.text || `${couple}'s Wedding`,
+          guestName: guest.name,
+          weddingDateStr: digOverrides["dig:date-value"]?.text || weddingDateStr,
+          venue: digOverrides["dig:venue-value"]?.text || profile.venue || null,
+          venueAddress: digOverrides["dig:location"]?.text || profile.location || null,
+          cityStateZip: digOverrides["dig:city-state-zip"]?.text || cityStateZip,
+          ceremonyTimeStr,
+          receptionTimeStr,
+          invitationMessage: digOverrides["dig:message"]?.text || profile.invitationMessage || null,
+          rsvpUrl,
+          photoImgSrc,
+          photoObjectPos: digPhotoObjectPos,
+          logoBase64,
+          overrideBg: BG,
+          overridePageBg: PAGE_BG,
+          overrideAccent: ACCENT,
+          overrideText: bgIsLight ? "#1a1a1a" : "#ffffff",
+          overrideMuted: bgIsLight ? "rgba(0,0,0,0.58)" : "rgba(255,255,255,0.58)",
+          overrideCardBdr: bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
+          overrideCoupleFont: headingFont,
+        });
       }
 
       const result = await sendEmail({
@@ -1246,19 +1167,21 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       // ── AI-generated mode ─────────────────────────────────────────────
       // Render the navy + gold layout that mirrors AiSaveDatePreview so what
       // the planner sees in the modal is what the guest receives.
+      // ── Render the email — both AI and custom modes use the same A.IDO template
+      // structure; custom mode swaps in the user's color palette.
+      const logoBase64 = await getImageAsBase64(`${origin}/logo.png`);
+      const stdCityStateZip = [
+        profile.venueCity,
+        [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
+      ].filter(Boolean).join(", ");
       let html: string;
       if (useGenerated) {
-        const logoBase64 = await getImageAsBase64(`${origin}/logo.png`);
-        const cityStateZip = [
-          profile.venueCity,
-          [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
-        ].filter(Boolean).join(", ");
         html = aiSaveTheDateHtml({
           couple,
           weddingDateStr,
           venue: profile.venue,
           venueAddress: profile.location,
-          cityStateZip,
+          cityStateZip: stdCityStateZip,
           ceremonyTimeStr,
           receptionTimeStr,
           saveTheDateMessage: (profile as any).saveTheDateMessage ?? null,
@@ -1268,104 +1191,27 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           logoBase64,
         });
       } else {
-        html = `<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <meta name="x-apple-disable-message-reformatting"/>
-  <title>Save the Date — ${couple}</title>
-</head>
-<body style="margin:0;padding:0;background:${STD_EMAIL_BG};-webkit-font-smoothing:antialiased;font-family:Georgia,'Times New Roman',serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${STD_EMAIL_BG};padding:60px 16px;">
-    <tr><td align="center">
-
-      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:${STD_EMAIL_BG};border-radius:8px;overflow:hidden;box-shadow:0 8px 48px rgba(0,0,0,0.12);">
-
-        ${photoBlock}
-
-        <tr>
-          <td style="padding:48px 48px 24px;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${colors.primary};font-size:11px;letter-spacing:4px;text-transform:uppercase;font-weight:500;">${stdHeadingText}</p>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding:0 48px;text-align:center;">
-            <h1 style="margin:0;font-family:${fontStack(headingFont)};color:${colors.primary};font-size:48px;font-weight:300;line-height:1.2;letter-spacing:1px;">${stdCoupleText}</h1>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding:24px 80px 0;text-align:center;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-              <td style="border-top:3px solid ${colors.accent};height:3px;font-size:1px;line-height:1px;">&nbsp;</td>
-            </tr></table>
-          </td>
-        </tr>
-
-        ${stdDateText ? `
-        <tr>
-          <td style="padding:28px 48px 8px;text-align:center;">
-            <p style="margin:0;font-family:${fontStack(headingFont)};color:${colors.accent};font-size:20px;font-weight:400;letter-spacing:0.5px;">${stdDateText}</p>
-          </td>
-        </tr>` : ""}
-
-        ${(stdCityText || stdLocationLine) ? `
-        <tr>
-          <td style="padding:12px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${colors.accent};font-size:13px;letter-spacing:0.5px;font-weight:400;">${stdCityText || stdLocationLine}</p>
-          </td>
-        </tr>` : ""}
-
-        ${(ceremonyTimeStr || receptionTimeStr) ? `
-        <tr>
-          <td style="padding:8px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:${STD_TIMES};font-size:12px;letter-spacing:0.5px;">
-              <span style="color:${colors.accent};">${[ceremonyTimeStr ? `Ceremony at ${ceremonyTimeStr}` : null, receptionTimeStr ? `Reception at ${receptionTimeStr}` : null].filter(Boolean).join(" • ")}</span>
-            </p>
-          </td>
-        </tr>` : ""}
-
-        ${saveTheDateMessage ? `
-        <tr>
-          <td style="padding:28px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:${fontStack(headingFont)};color:${colors.primary};font-size:16px;line-height:1.8;font-weight:300;font-style:italic;">"${saveTheDateMessage}"</p>
-          </td>
-        </tr>` : ""}
-
-        <tr>
-          <td style="padding:32px 48px 0;text-align:center;">
-            <p style="margin:0;font-family:Georgia,'Times New Roman',serif;color:${colors.primary};font-size:13px;font-style:italic;letter-spacing:1px;font-weight:300;">Formal invitation to follow</p>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding:28px 48px 0;text-align:center;">
-            <a href="${origin}/save-the-date/${token}" style="display:inline-block;background:linear-gradient(135deg,${colors.primary},${colors.secondary});color:white;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:14px 36px;border-radius:4px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:all 0.3s ease;">View &amp; Download</a>
-          </td>
-        </tr>
-
-        <tr><td style="height:48px;font-size:48px;line-height:48px;">&nbsp;</td></tr>
-
-        <tr><td style="height:6px;background:linear-gradient(90deg,${colors.primary},${colors.secondary},${colors.accent},${colors.primary});line-height:6px;font-size:6px;opacity:0.8;">&nbsp;</td></tr>
-
-        <tr>
-          <td style="background:${STD_FOOTER_BG};padding:24px 48px;text-align:center;border-top:1px solid ${stdBgIsLight ? "#ede8e2" : "#333333"};">
-            <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${STD_FOOTER_TEXT};letter-spacing:0.5px;font-weight:500;">
-              Planning your own wedding?
-            </p>
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:${STD_FOOTER_TEXT};">
-              <a href="https://aidowedding.net" style="color:${colors.primary};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
-            </p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+        html = aiSaveTheDateHtml({
+          couple: stdOverrides["std:couple"]?.text || couple,
+          weddingDateStr: stdOverrides["std:date"]?.text || weddingDateStr,
+          venue: null,
+          venueAddress: null,
+          cityStateZip: "",
+          ceremonyTimeStr: null,
+          receptionTimeStr: null,
+          saveTheDateMessage: stdOverrides["std:message"]?.text || (profile as any).saveTheDateMessage || null,
+          viewUrl: `${origin}/save-the-date/${token}`,
+          photoImgSrc,
+          photoObjectPos: stdPhotoObjectPos,
+          logoBase64,
+          overrideBg: STD_EMAIL_BG,
+          overridePageBg: STD_EMAIL_BG,
+          overrideAccent: colors.accent,
+          overrideText: stdBgIsLight ? "#1a1a1a" : "#ffffff",
+          overrideMuted: stdBgIsLight ? "rgba(0,0,0,0.58)" : "rgba(255,255,255,0.58)",
+          overrideCardBdr: stdBgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
+          overrideCoupleFont: headingFont,
+        });
       }
 
       const timesLine = [ceremonyTimeStr ? `Ceremony ${ceremonyTimeStr}` : null, receptionTimeStr ? `Reception ${receptionTimeStr}` : null].filter(Boolean).join(" · ");
