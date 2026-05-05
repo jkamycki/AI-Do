@@ -1,8 +1,8 @@
 import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, X, AlertCircle, Crop, Move, Crosshair } from "lucide-react";
+import { AuthMediaImage } from "@/components/AuthMediaImage";
 import { InvitationCropDialog } from "@/components/InvitationCropDialog";
-import { resolveMediaUrl } from "@/lib/mediaUrl";
 import type { PhotoPosition } from "@/components/InvitationCustomization/AiPreviewComponents";
 
 interface PhotoUploadSectionProps {
@@ -189,8 +189,8 @@ export function PhotoUploadSection({
                 onPointerUp={hasReposition ? handlePointerUp : undefined}
                 onPointerCancel={hasReposition ? handlePointerUp : undefined}
               >
-                <img
-                  src={resolveMediaUrl(previewUrl) ?? undefined}
+                <AuthMediaImage
+                  src={previewUrl}
                   alt={`${label} preview`}
                   className="w-full h-40 object-cover border rounded"
                   style={hasReposition && position

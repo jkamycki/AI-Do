@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Heart, Mail, MapPin, Download } from "lucide-react";
 import type { ColorPalette } from "@/types/invitations";
+import { AuthMediaImage } from "@/components/AuthMediaImage";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 export interface WeddingInfo {
@@ -92,8 +93,8 @@ function CardShell({
       {/* Optional photo */}
       {hasPhoto && (
         <div style={{ padding: "0 20px 10px", backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
-          <img
-            src={resolvedPhotoUrl!}
+          <AuthMediaImage
+            src={photoUrl!}
             alt="Wedding photo"
             style={{
               width: "100%", height: 130, objectFit: "cover", borderRadius: 8,
