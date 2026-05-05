@@ -694,13 +694,28 @@ export default function InvitationCustomizationPage({
   const saveCustomizationsMutation = useMutation({
     mutationFn: async () => {
       if (!profileId) throw new Error("Profile ID required");
+
+      // Build payload then strip any blob: URLs — they are browser-session-only
+      // and must never be written to the database.  Omitting the field (rather
+      // than nulling it) leaves the existing DB value untouched so a concurrently
+      // completing upload is not overwritten.
+      const payload = buildPayload(saveTheDatePhotoUrl, digitalInvitationPhotoUrl);
+      const body: Record<string, unknown> = { ...payload };
+      if (typeof body.saveTheDatePhotoUrl === "string" && (body.saveTheDatePhotoUrl as string).startsWith("blob:")) {
+        delete body.saveTheDatePhotoUrl;
+      }
+      if (typeof body.digitalInvitationPhotoUrl === "string" && (body.digitalInvitationPhotoUrl as string).startsWith("blob:")) {
+        delete body.digitalInvitationPhotoUrl;
+      }
+
       const r = await authedFetch("/api/invitation-customizations", {
         method: "POST",
-        body: JSON.stringify(
-          buildPayload(saveTheDatePhotoUrl, digitalInvitationPhotoUrl),
-        ),
+        body: JSON.stringify(body),
       });
-      if (!r.ok) throw new Error("Failed to save");
+      if (!r.ok) {
+        const errBody = await r.json().catch(() => ({ error: "Failed to save" }));
+        throw new Error((errBody as { error?: string }).error || "Failed to save");
+      }
       return r.json();
     },
     onSuccess: (savedCustomization: InvitationCustomization) => {
@@ -713,10 +728,10 @@ export default function InvitationCustomizationPage({
         description: "Your invitation customizations have been saved.",
       });
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to save customizations",
+        description: error instanceof Error ? error.message : "Failed to save customizations",
         variant: "destructive",
       });
     },
