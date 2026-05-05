@@ -17,10 +17,8 @@ import {
 import { authFetch } from "@/lib/authFetch";
 import type { Guest } from "@workspace/api-client-react";
 import type { TextOverrides, ColorPalette } from "@/types/invitations";
-import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
-import { DigitalInvitationPreview } from "@/components/InvitationCustomization/DigitalInvitationPreview";
 import { RsvpPagePreview } from "@/components/InvitationCustomization/RsvpPagePreview";
-import { AiSaveDatePreview, AiDigitalInvitationPreview } from "@/components/InvitationCustomization/AiPreviewComponents";
+import { AiSaveDatePreview, AiDigitalInvitationPreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
 
 interface Customization {
@@ -569,6 +567,27 @@ export function InvitationSendModal({
   };
 
   const isCustomMode = customization ? !customization.useGeneratedInvitation : false;
+
+  // Custom color palettes for email previews — derived from the user's chosen background + accent
+  const makeCustomColors = (bg: string | null | undefined, accent: string): CustomColors => {
+    const bgHex = bg || "#1E1A2E";
+    const isLight = (() => {
+      const c = bgHex.replace("#", "");
+      if (c.length !== 6) return false;
+      const r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
+      return r * 0.299 + g * 0.587 + b * 0.114 > 160;
+    })();
+    return {
+      bg: bgHex,
+      accent,
+      text: isLight ? "#1a1a1a" : "#ffffff",
+      muted: isLight ? "rgba(0,0,0,0.58)" : "rgba(255,255,255,0.58)",
+      cardBdr: isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
+    };
+  };
+  const stdCustomColors  = makeCustomColors(customization?.saveTheDateBackground,    palette.accent || "#D4A017");
+  const digCustomColors  = makeCustomColors(customization?.digitalInvitationBackground, palette.accent || "#D4A017");
+
   const completeness = evaluateCustomDesignCompleteness({
     customization: customization
       ? {
@@ -656,29 +675,20 @@ export function InvitationSendModal({
                     This is exactly what will be emailed to your guest
                   </p>
                   <div className="flex justify-center">
-                    <SaveTheDatePreview
-                      photoUrl={
-                        customization.saveTheDatePhotoUrl
-                        || profile?.saveTheDatePhotoUrl
-                        || profile?.invitationPhotoUrl
-                        || null
-                      }
-                      weddingDate={profile?.weddingDate || ""}
-                      colors={palette}
-                      font={customization.saveTheDateFont}
-                      layout={customization.saveTheDateLayout}
-                      backgroundColor={customization.saveTheDateBackground}
-                      partner1Name={profile?.partner1Name ?? undefined}
-                      partner2Name={profile?.partner2Name ?? undefined}
-                      location={profile?.venue ?? undefined}
-                      venueCity={profile?.venueCity ?? undefined}
-                      venueState={profile?.venueState ?? undefined}
-                      venueZip={profile?.venueZip ?? undefined}
-                      message={profile?.saveTheDateMessage ?? undefined}
-                      textOverrides={customization.textOverrides}
-                      onTextOverridesChange={() => {}}
-                      editable={false}
-                    />
+                    {profile && (
+                      <AiSaveDatePreview
+                        profile={profile}
+                        palette={palette}
+                        photoUrl={
+                          customization.saveTheDatePhotoUrl
+                          || profile.saveTheDatePhotoUrl
+                          || profile.invitationPhotoUrl
+                          || null
+                        }
+                        photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
+                        customColors={stdCustomColors}
+                      />
+                    )}
                   </div>
                   <Button
                     className="w-full gap-2"
@@ -700,33 +710,23 @@ export function InvitationSendModal({
                     This is exactly what will be emailed to your guest
                   </p>
                   <div className="flex justify-center">
-                    <DigitalInvitationPreview
-                      photoUrl={
-                        customization.digitalInvitationPhotoUrl
-                        || profile?.digitalInvitationPhotoUrl
-                        || profile?.invitationPhotoUrl
-                        || null
-                      }
-                      venue={profile?.venue || ""}
-                      location={profile?.venueAddress || profile?.venue || ""}
-                      venueCity={profile?.venueCity ?? undefined}
-                      venueState={profile?.venueState ?? undefined}
-                      venueZip={profile?.venueZip ?? undefined}
-                      ceremonyTime={profile?.ceremonyTime || ""}
-                      receptionTime={profile?.receptionTime || ""}
-                      guestName={guest?.name || "Guest"}
-                      colors={palette}
-                      font={customization.digitalInvitationFont}
-                      layout={customization.digitalInvitationLayout}
-                      backgroundColor={customization.digitalInvitationBackground}
-                      partner1Name={profile?.partner1Name || ""}
-                      partner2Name={profile?.partner2Name || ""}
-                      weddingDate={profile?.weddingDate || ""}
-                      message={profile?.invitationMessage ?? undefined}
-                      textOverrides={customization.textOverrides}
-                      onTextOverridesChange={() => {}}
-                      editable={false}
-                    />
+                    {profile && (
+                      <AiDigitalInvitationPreview
+                        profile={{
+                          ...profile,
+                          venueAddress: profile.venueAddress ?? profile.venue ?? undefined,
+                        }}
+                        palette={palette}
+                        photoUrl={
+                          customization.digitalInvitationPhotoUrl
+                          || profile.digitalInvitationPhotoUrl
+                          || profile.invitationPhotoUrl
+                          || null
+                        }
+                        photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
+                        customColors={digCustomColors}
+                      />
+                    )}
                   </div>
                   <Button
                     className="w-full gap-2"
