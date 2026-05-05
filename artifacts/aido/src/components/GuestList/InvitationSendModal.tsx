@@ -28,6 +28,7 @@ interface Customization {
   saveTheDatePhotoPosition: { x: number; y: number } | null;
   digitalInvitationPhotoPosition: { x: number; y: number } | null;
   colorPalette: ColorPalette | null;
+  customColors: Partial<ColorPalette> | null;
   selectedFont: string | null;
   selectedLayout: string | null;
   saveTheDateFont: string;
@@ -519,6 +520,7 @@ export function InvitationSendModal({
           saveTheDatePhotoPosition: data.saveTheDatePhotoPosition ?? null,
           digitalInvitationPhotoPosition: data.digitalInvitationPhotoPosition ?? null,
           colorPalette: data.colorPalette ?? null,
+          customColors: data.customColors ?? null,
           selectedFont: data.selectedFont ?? null,
           selectedLayout: data.selectedLayout ?? null,
           saveTheDateFont: data.saveTheDateFont || data.selectedFont || "Playfair Display",
@@ -538,6 +540,7 @@ export function InvitationSendModal({
           saveTheDatePhotoPosition: null,
           digitalInvitationPhotoPosition: null,
           colorPalette: null,
+          customColors: null,
           selectedFont: null,
           selectedLayout: null,
           saveTheDateFont: "Playfair Display",
@@ -559,11 +562,14 @@ export function InvitationSendModal({
     window.location.href = `${base}/invitation-customization`;
   };
 
-  const palette: ColorPalette = customization?.colorPalette ?? {
-    primary: "#D4A017",
-    secondary: "#F5C842",
-    accent: "#D4A017",
-    neutral: "#E8E0D0",
+  const palette: ColorPalette = {
+    ...(customization?.colorPalette ?? {
+      primary: "#D4A017",
+      secondary: "#F5C842",
+      accent: "#D4A017",
+      neutral: "#E8E0D0",
+    }),
+    ...(customization?.customColors ?? {}),
   };
 
   const isCustomMode = customization ? !customization.useGeneratedInvitation : false;
