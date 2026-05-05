@@ -294,8 +294,13 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
     res.json(result);
   } catch (err) {
     req.log.error(err, "invitation-customizations POST");
-    const detail = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ error: `Failed to save customizations: ${detail}` });
+    // Drizzle wraps the actual DB error in err.cause; prefer that over the
+    // full "Failed query: <entire SQL>" string which is too long to read.
+    const cause = err instanceof Error
+      ? ((err as Error & { cause?: unknown }).cause ?? err)
+      : err;
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    res.status(500).json({ error: `DB error: ${detail}` });
   }
 });
 
