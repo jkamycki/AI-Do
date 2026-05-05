@@ -3,7 +3,7 @@ import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import {
   db, vendors, vendorPayments, checklistItems, weddingProfiles, timelines,
   guests, weddingParty, hotelBlocks, manualExpenses, budgets, budgetItems, budgetPaymentLogs,
-  vendorContracts,
+  vendorContracts, seatingCharts, workspaceCollaborators,
 } from "@workspace/db";
 import { eq, desc, and, asc, ilike, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -99,6 +99,8 @@ const TOOL_GROUPS: Record<string, string[]> = {
   budget: ["add_budget_item","update_budget_item","delete_budget_item","log_budget_payment","list_budget","add_expense","update_expense","delete_expense","list_expenses"],
   profile: ["update_profile","get_profile"],
   contract: ["list_contracts","get_contract"],
+  seating: ["generate_seating","list_seating_charts","delete_seating_chart"],
+  collaborator: ["invite_collaborator","list_collaborators","remove_collaborator"],
 };
 const GROUP_KEYWORDS: Record<string, RegExp> = {
   vendor: /\b(vendors?|photographers?|videographers?|florists?|caterer|catering|djs?|bands?|musician|officiant|hair|makeup|transport|limo|cake|baker|stationery|invitation|rental|planner|venue|deposit)\b/i,
@@ -110,6 +112,8 @@ const GROUP_KEYWORDS: Record<string, RegExp> = {
   budget: /\b(budget|expenses?|cost|price|payment|paid|spend|spent|money|dollars?|owe|left to spend|remaining|\$)/i,
   profile: /\b(profile|partner|vibe|theme|wedding date|guest count|total budget)\b/i,
   contract: /\b(contracts?|agreements?)\b/i,
+  seating: /\b(seating chart|seat(ing)?|table assign|arrange guests|generate seat|seating plan)\b/i,
+  collaborator: /\b(collaborat|invite|partner access|planner access|vendor access|remove access|team member|workspace)\b/i,
 };
 function pickToolsForMessages(messages: Array<{ role: string; content: string }>) {
   // Scan recent text (both the user's latest message and Aria's prior
@@ -157,7 +161,7 @@ SMALL TALK: For greetings, thanks, "how are you?", or chitchat → reply warmly 
 
 #1 RULE — NEVER INVENT. If REQUIRED tool fields are missing, ASK first. Never substitute a category word for a business name. Never fill in placeholder names. Never assume defaults. Required fields are listed in each tool's schema (look at the "required" array) — read them.
 
-#1a VENDOR RULE — add_vendor REQUIRES a real business name typed by the user in THIS conversation. "Photographer", "Florist", "DJ", "Caterer", "Vendor", "New Vendor" are CATEGORIES, NOT names. NEVER invent, assume, or reuse any name — not from examples, not from memory, not from anywhere. If the user has not typed a specific business name in THIS message thread, you MUST ask "What's the business name?" and wait for their reply BEFORE calling add_vendor. Do NOT call add_vendor in the same turn you ask for the name.
+#1a VENDOR RULE — add_vendor REQUIRES a real business name typed by the user in THIS conversation. "Photographer", "Florist", "DJ", "Caterer", "Vendor", "New Vendor" are CATEGORIES, NOT names. NEVER invent, assume, or reuse any name — not from examples, not from memory, not from anywhere. If the user has not typed a specific business name in THIS message thread, ask the gathering question (see VENDOR GATHERING QUESTION below) and wait for their reply BEFORE calling add_vendor. Do NOT call add_vendor in the same turn you ask for details.
 
 #2 RULE — OPTIONAL FIELDS NEVER BLOCK A SAVE. If the schema doesn't list a field in "required", it is optional. NEVER ask for it as a precondition. NEVER ask the user to "confirm" or "verify" an optional value they already gave (e.g. if they said "total cost 2500", USE 2500 — do not ask "could you confirm the total cost?"). The user can always edit the record later.
 
@@ -170,24 +174,27 @@ CASE A — user provided all required fields up front (real business name + cate
   Turn 2 (user): yes / confirm / ok / save it / go ahead / do it.
   Turn 3 (you): IMMEDIATELY call the tool. No more text, no more questions.
 
-CASE B — user is missing one or more required fields (e.g. said "add a vendor" with no name):
-  Turn 1 (you): ask ONE warm question covering only the missing REQUIRED fields. Do not include optional fields. Do not summarize yet.
-  Turn 2 (user): answers with the missing info.
+CASE B — user is missing the vendor name (e.g. said "add a vendor" or "add a photographer" with no business name):
+  Turn 1 (you): ask the VENDOR GATHERING QUESTION (below). Do not summarize yet. Do NOT call add_vendor.
+  Turn 2 (user): answers with their details.
   Turn 3 (you): one-line summary + Reply "yes" to save. (Same as Case A turn 1.)
   Turn 4 (user): yes.
   Turn 5 (you): IMMEDIATELY call the tool.
 
+VENDOR GATHERING QUESTION — use this exact style whenever the user wants to add a vendor but hasn't given a name:
+  "What's the vendor's name and category (florist, photographer, caterer, DJ, etc.)? Feel free to also share the total cost, deposit amount, or any other details — only the name is needed to get started!"
+
 Examples:
   • User: "Add vendor [Name], Florist, total cost 5000" → You: "Saving [Name] (Florist) with a total cost of $5,000. Reply 'yes' to save." → User: "yes" → You: [calls add_vendor immediately, no extra text].
-  • User: "Add a vendor" → You: "Of course! What's the business name and category (photographer, florist, caterer, DJ, etc.)?" — STOP. Do NOT call add_vendor yet.
-  • User: "Add a vendor for me" → You: "Of course! What's the business name and category?" — STOP. Do NOT call add_vendor yet.
-  • User: "Add a photographer" → You: "Great! What's the photographer's business name?" — STOP. Do NOT call add_vendor yet.
+  • User: "Add a vendor" → You: "What's the vendor's name and category (florist, photographer, caterer, DJ, etc.)? Feel free to also share the total cost, deposit amount, or any other details — only the name is needed to get started!" — STOP. Do NOT call add_vendor yet.
+  • User: "Add a vendor for me" → same VENDOR GATHERING QUESTION — STOP. Do NOT call add_vendor yet.
+  • User: "Add a photographer" → You: "What's the photographer's business name? Feel free to also share the total cost, deposit, or any other details — only the name is needed!" — STOP. Do NOT call add_vendor yet.
 
 Exception: toggle_checklist_item needs no confirmation. DELETE: state exactly what will be deleted (incl. cascades). UPDATE: confirm which fields change.
 
 AFTER A SUCCESSFUL WRITE: stop. The system auto-emits a confirmation + follow-up — don't add text.
 
-QUERIES: overview→get_summary | vendors/payments→list_vendors | budget→list_budget+list_expenses | guests/RSVP→list_guests | party→list_party | day-of→list_timeline | checklist→list_checklist | hotels→list_hotels | date/venue/vibe→get_profile | contracts→list_contracts then get_contract(id). General advice ("typical day-of timeline?") → answer directly, no tool.
+QUERIES: overview→get_summary | vendors/payments→list_vendors | budget→list_budget+list_expenses | guests/RSVP→list_guests | party→list_party | day-of→list_timeline | checklist→list_checklist | hotels→list_hotels | date/venue/vibe→get_profile | contracts→list_contracts then get_contract(id) | seating charts→list_seating_charts | collaborators→list_collaborators. General advice ("typical day-of timeline?") → answer directly, no tool.
 
 SHORTCUTS: RSVP→update_guest(matchName, rsvpStatus). Seating→update_guest(matchName, tableAssignment). Payment paid→mark_vendor_payment_paid(vendorName).
 
@@ -232,6 +239,8 @@ const ACTION_TOOLS = new Set([
   "add_expense", "update_expense", "delete_expense",
   "add_budget_item", "update_budget_item", "delete_budget_item", "log_budget_payment",
   "update_profile",
+  "generate_seating", "delete_seating_chart",
+  "invite_collaborator", "remove_collaborator",
 ]);
 
 // Build a friendly confirmation + proactive follow-up question from tool
@@ -353,6 +362,21 @@ function buildConfirmation(actions: ActionRecord[]): string {
         lines.push(`✅ Profile updated`);
         followUp = `Anything else about your wedding details I should update?`;
         break;
+      case "generate_seating":
+        lines.push(`✅ Seating chart generated${d.savedAs ? ` and saved as **${d.savedAs}**` : ""} — ${d.totalSeated ?? "?"} guests seated`);
+        if ((d.warnings as string[] | undefined)?.length) followUp = `⚠️ Heads up: ${(d.warnings as string[]).join("; ")}`;
+        else followUp = `Want me to save this chart, adjust table sizes, or reassign any guests?`;
+        break;
+      case "delete_seating_chart":
+        lines.push(`✅ Seating chart removed`);
+        break;
+      case "invite_collaborator":
+        lines.push(`✅ Invite sent to **${d.email ?? ""}** as ${d.role ?? ""}`);
+        followUp = `They'll receive an email to accept. Want to invite anyone else?`;
+        break;
+      case "remove_collaborator":
+        lines.push(`✅ Removed **${d.removed ?? "collaborator"}** from your workspace`);
+        break;
       default:
         lines.push(`✅ Done`);
     }
@@ -405,6 +429,12 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"list_contracts", description:"List uploaded contracts.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"get_contract", description:"Get full contract analysis. Required: contractId.", parameters:{ type:"object", properties:{ contractId:{type:"number"} }, required:["contractId"] } } },
   { type:"function" as const, function:{ name:"get_summary", description:"Get a compact overview of the couple's wedding planning progress: profile, guest counts, vendor count, budget totals, checklist completion, upcoming payments.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"generate_seating", description:"Generate an AI seating chart using the current guest list. Required: tableCount (number of tables), seatsPerTable (seats per table). Optionally provide saveName to save the chart, and additionalNotes for special considerations.", parameters:{ type:"object", properties:{ tableCount:{type:"number",description:"Number of tables"}, seatsPerTable:{type:"number",description:"Maximum seats per table"}, additionalNotes:{type:"string",description:"Optional special instructions (e.g. keep family X away from family Y)"}, saveName:{type:"string",description:"If provided, saves the chart with this name"} }, required:["tableCount","seatsPerTable"] } } },
+  { type:"function" as const, function:{ name:"list_seating_charts", description:"List all saved seating charts.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"delete_seating_chart", description:"Delete a saved seating chart. Pass chartId or matchName.", parameters:{ type:"object", properties:{ chartId:{type:"number"}, matchName:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"invite_collaborator", description:"Invite someone to collaborate on the wedding planning. Required: email, role (partner / planner / vendor).", parameters:{ type:"object", properties:{ email:{type:"string",description:"Email address to invite"}, role:{type:"string",enum:["partner","planner","vendor"],description:"Collaborator role"} }, required:["email","role"] } } },
+  { type:"function" as const, function:{ name:"list_collaborators", description:"List all current collaborators and pending invites.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"remove_collaborator", description:"Remove a collaborator or cancel a pending invite. Pass collaboratorId or matchEmail.", parameters:{ type:"object", properties:{ collaboratorId:{type:"number"}, matchEmail:{type:"string"} } } } },
 ];
 
 const ALLOWED_VENDOR_CATEGORIES = [
@@ -1426,6 +1456,152 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         budget: { estimated: budgetEstimated, paid: budgetPaid, remaining: budgetEstimated - budgetPaid },
         checklist: { total: checklistTotal, completed: checklistDone, remaining: checklistTotal - checklistDone },
       } };
+    }
+
+    // ===== SEATING CHARTS =====
+    if (name === "generate_seating") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const tableCount = Number(args.tableCount);
+      const seatsPerTable = Number(args.seatsPerTable);
+      if (!Number.isFinite(tableCount) || tableCount < 1) return { ok: false, error: "tableCount must be a positive number." };
+      if (!Number.isFinite(seatsPerTable) || seatsPerTable < 1) return { ok: false, error: "seatsPerTable must be a positive number." };
+
+      const allGuests = await db
+        .select({ id: guests.id, name: guests.name, guestGroup: guests.guestGroup, plusOne: guests.plusOne, notes: guests.notes })
+        .from(guests).where(and(eq(guests.profileId, profile.id)));
+      if (allGuests.length === 0) return { ok: false, error: "No guests found. Add guests first." };
+
+      const guestList = allGuests.map(g =>
+        `- ${g.name} (Group: ${g.guestGroup || "General"}${g.plusOne ? ", +1" : ""}${g.notes ? `, Notes: ${g.notes}` : ""})`
+      ).join("\n");
+
+      const prompt = `You are an expert wedding planner creating a harmonious seating chart.
+GUESTS (${allGuests.length} total):
+${guestList}
+SETUP: ${tableCount} tables, ${seatsPerTable} seats per table max
+${args.additionalNotes ? `ADDITIONAL NOTES: ${args.additionalNotes}` : ""}
+Rules:
+1. Group family members and friend groups together
+2. Keep plus-ones with their partners
+3. Distribute guests evenly across tables
+Return ONLY valid JSON: { "tables": [{ "tableNumber": 1, "tableName": "Table 1", "guests": ["name",...], "theme": "brief note" }], "insights": ["..."], "warnings": ["..."], "totalSeated": number }`;
+
+      const completion = await openai.chat.completions.create({
+        model: getModel(),
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        max_tokens: 1500,
+      });
+      const raw = completion.choices[0]?.message?.content ?? "{}";
+      let result: { tables: unknown[]; insights: string[]; warnings: string[]; totalSeated: number };
+      try { result = JSON.parse(raw); } catch { return { ok: false, error: "AI returned invalid seating data. Please try again." }; }
+
+      if (args.saveName) {
+        const saveName = String(args.saveName).trim();
+        const userId = await resolveScopeUserId(req);
+        const [saved] = await db.insert(seatingCharts).values({
+          profileId: profile.id,
+          userId,
+          name: saveName,
+          guests: allGuests,
+          tables: result.tables,
+          tableCount,
+          seatsPerTable,
+        }).returning({ id: seatingCharts.id });
+        return { ok: true, data: { ...result, savedAs: saveName, chartId: saved.id } };
+      }
+      return { ok: true, data: result };
+    }
+
+    if (name === "list_seating_charts") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: true, data: { charts: [] } };
+      const rows = await db
+        .select({ id: seatingCharts.id, name: seatingCharts.name, tableCount: seatingCharts.tableCount, seatsPerTable: seatingCharts.seatsPerTable, createdAt: seatingCharts.createdAt })
+        .from(seatingCharts).where(eq(seatingCharts.profileId, profile.id))
+        .orderBy(desc(seatingCharts.createdAt));
+      return { ok: true, data: { charts: rows } };
+    }
+
+    if (name === "delete_seating_chart") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      if (args.chartId) {
+        const chartId = Number(args.chartId);
+        const [deleted] = await db.delete(seatingCharts)
+          .where(and(eq(seatingCharts.id, chartId), eq(seatingCharts.profileId, profile.id))).returning({ name: seatingCharts.name });
+        if (!deleted) return { ok: false, error: "Chart not found." };
+        return { ok: true, data: { deleted: deleted.name } };
+      }
+      if (args.matchName) {
+        const search = String(args.matchName).trim();
+        const [row] = await db.select({ id: seatingCharts.id, name: seatingCharts.name }).from(seatingCharts)
+          .where(and(eq(seatingCharts.profileId, profile.id), ilike(seatingCharts.name, `%${search}%`))).limit(1);
+        if (!row) return { ok: false, error: `No seating chart matching "${search}".` };
+        await db.delete(seatingCharts).where(eq(seatingCharts.id, row.id));
+        return { ok: true, data: { deleted: row.name } };
+      }
+      return { ok: false, error: "Pass chartId or matchName to delete a chart." };
+    }
+
+    // ===== COLLABORATORS =====
+    if (name === "invite_collaborator") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "Create your wedding profile first before inviting collaborators." };
+      const role = await resolveWorkspaceRole(req.userId!, profile.id);
+      if (!hasMinRole(role, "partner")) return { ok: false, error: "Only owners and partners can invite collaborators." };
+      const email = String(args.email ?? "").trim().toLowerCase();
+      const inviteRole = String(args.role ?? "").trim().toLowerCase();
+      if (!email) return { ok: false, error: "email is required." };
+      if (!["partner", "planner", "vendor"].includes(inviteRole)) return { ok: false, error: "role must be partner, planner, or vendor." };
+      const existing = await db.select({ id: workspaceCollaborators.id }).from(workspaceCollaborators)
+        .where(and(eq(workspaceCollaborators.profileId, profile.id), eq(workspaceCollaborators.inviteeEmail, email))).limit(1);
+      if (existing.length) return { ok: false, error: `${email} is already a collaborator or has a pending invite.` };
+      const { randomUUID } = await import("crypto");
+      const [collab] = await db.insert(workspaceCollaborators).values({
+        profileId: profile.id,
+        inviterUserId: req.userId!,
+        inviteeEmail: email,
+        role: inviteRole,
+        status: "pending",
+        inviteToken: randomUUID(),
+      }).returning({ id: workspaceCollaborators.id, inviteeEmail: workspaceCollaborators.inviteeEmail, role: workspaceCollaborators.role });
+      return { ok: true, data: { id: collab.id, email: collab.inviteeEmail, role: collab.role, status: "pending" } };
+    }
+
+    if (name === "list_collaborators") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: true, data: { collaborators: [] } };
+      const rows = await db
+        .select({ id: workspaceCollaborators.id, email: workspaceCollaborators.inviteeEmail, role: workspaceCollaborators.role, status: workspaceCollaborators.status, invitedAt: workspaceCollaborators.invitedAt })
+        .from(workspaceCollaborators).where(eq(workspaceCollaborators.profileId, profile.id))
+        .orderBy(desc(workspaceCollaborators.invitedAt));
+      return { ok: true, data: { collaborators: rows } };
+    }
+
+    if (name === "remove_collaborator") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const callerRole = await resolveWorkspaceRole(req.userId!, profile.id);
+      if (!hasMinRole(callerRole, "partner")) return { ok: false, error: "Only owners and partners can remove collaborators." };
+      if (args.collaboratorId) {
+        const cid = Number(args.collaboratorId);
+        const [deleted] = await db.delete(workspaceCollaborators)
+          .where(and(eq(workspaceCollaborators.id, cid), eq(workspaceCollaborators.profileId, profile.id)))
+          .returning({ email: workspaceCollaborators.inviteeEmail });
+        if (!deleted) return { ok: false, error: "Collaborator not found." };
+        return { ok: true, data: { removed: deleted.email } };
+      }
+      if (args.matchEmail) {
+        const search = String(args.matchEmail).trim().toLowerCase();
+        const [row] = await db.select({ id: workspaceCollaborators.id, email: workspaceCollaborators.inviteeEmail }).from(workspaceCollaborators)
+          .where(and(eq(workspaceCollaborators.profileId, profile.id), ilike(workspaceCollaborators.inviteeEmail, `%${search}%`))).limit(1);
+        if (!row) return { ok: false, error: `No collaborator matching "${search}".` };
+        await db.delete(workspaceCollaborators).where(eq(workspaceCollaborators.id, row.id));
+        return { ok: true, data: { removed: row.email } };
+      }
+      return { ok: false, error: "Pass collaboratorId or matchEmail to remove a collaborator." };
     }
 
     return { ok: false, error: `Unknown tool: ${name}` };

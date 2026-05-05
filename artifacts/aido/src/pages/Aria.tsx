@@ -124,7 +124,13 @@ function actionLabel(name: string, args?: Record<string, unknown>): string {
     case "update_profile": return "Updating wedding profile";
     case "list_vendors": return "Reading your vendor list";
     case "get_profile": return "Reading your wedding profile";
-    default: return name;
+    case "generate_seating": return "Generating seating chart";
+    case "delete_seating_chart": return "Deleting seating chart";
+    case "list_seating_charts": return "Reading seating charts";
+    case "invite_collaborator": return `Inviting${args?.email ? ` ${args.email}` : " collaborator"}`;
+    case "remove_collaborator": return "Removing collaborator";
+    case "list_collaborators": return "Reading collaborators";
+    default: return name.replace(/_/g, " ");
   }
 }
 
@@ -138,9 +144,6 @@ function ActionPill({ action }: { action: ActionLog }) {
     <div className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-full border ${colorClass}`}>
       <Icon className={`h-3 w-3 ${action.status === "running" ? "animate-spin" : ""}`} />
       <span>{actionLabel(action.name, action.args)}</span>
-      {action.status === "error" && action.error && (
-        <span className="ml-1 opacity-80">— {action.error}</span>
-      )}
     </div>
   );
 }
