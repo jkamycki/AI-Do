@@ -565,7 +565,13 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       }
     }
 
-    const colors = (!useGenerated && customization?.colorPalette) ? customization.colorPalette : DEFAULT_COLORS;
+    // Merge customColors on top of colorPalette — mirrors the frontend's displayPalette computation.
+    const basePalette = (!useGenerated && customization?.colorPalette)
+      ? customization.colorPalette as typeof DEFAULT_COLORS
+      : DEFAULT_COLORS;
+    const colors = !useGenerated && customization?.customColors
+      ? { ...basePalette, ...(customization.customColors as Partial<typeof DEFAULT_COLORS>) }
+      : basePalette;
     // Photo URL: prefer the customization photo regardless of mode (the modal
     // preview uses the same fallback), then the profile's invitation photos.
     const digitalInvitationPhotoUrl =
@@ -1041,7 +1047,13 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       }
     }
 
-    const colors = (!useGenerated && customization?.colorPalette) ? customization.colorPalette : DEFAULT_COLORS;
+    // Merge customColors on top of colorPalette — mirrors the frontend's displayPalette computation.
+    const basePalette = (!useGenerated && customization?.colorPalette)
+      ? customization.colorPalette as typeof DEFAULT_COLORS
+      : DEFAULT_COLORS;
+    const colors = !useGenerated && customization?.customColors
+      ? { ...basePalette, ...(customization.customColors as Partial<typeof DEFAULT_COLORS>) }
+      : basePalette;
     // Photo URL: prefer the customization photo regardless of mode (the modal
     // preview uses the same fallback), then the profile's save-the-date /
     // invitation photo as a fallback.
