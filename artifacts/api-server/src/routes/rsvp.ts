@@ -121,6 +121,7 @@ async function getImageAsBase64(photoUrl: string | null | undefined): Promise<st
     const contentType = response.headers.get("Content-Type") || "image/jpeg";
     return `data:${contentType};base64,${base64}`;
   } catch (err) {
+    console.error("[getImageAsBase64] failed for URL:", photoUrl, err);
     return null;
   }
 }
@@ -1101,9 +1102,10 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         .where(eq(invitationCustomizations.profileId, profile.id))
         .limit(1);
       customization = customizationRows.length > 0 ? customizationRows[0] : null;
-    } catch {
-      // Schema mismatch or missing columns — continue with defaults
+    } catch (custErr) {
+      console.error("[send-save-the-date] customization SELECT failed:", custErr);
     }
+    console.log("[send-save-the-date] photoUrl =", customization?.saveTheDatePhotoUrl ?? "(null/missing)");
 
     // When useGeneratedInvitation is true (or we couldn't load customization),
     // skip custom colours/photo and use the AI-generated defaults.
