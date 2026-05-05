@@ -350,7 +350,6 @@ router.post(
           })
           .from(invitationCustomizations)
           .where(eq(invitationCustomizations.profileId, profileId));
-        const photoPosition = { x: 50, y: 50 };
         const photoId = type === "save-the-date" ? "std:photo" : "dig:photo";
         const textOverrides = resetPhotoObjectPosition(
           existing?.textOverrides as StoredTextOverrides | null | undefined,
@@ -366,13 +365,11 @@ router.post(
               type === "save-the-date"
                 ? {
                     saveTheDatePhotoUrl: url,
-                    saveTheDatePhotoPosition: photoPosition,
                     textOverrides,
                     updatedAt: new Date(),
                   }
                 : {
                     digitalInvitationPhotoUrl: url,
-                    digitalInvitationPhotoPosition: photoPosition,
                     textOverrides,
                     updatedAt: new Date(),
                   },
@@ -386,13 +383,11 @@ router.post(
                 ? {
                     profileId,
                     saveTheDatePhotoUrl: url,
-                    saveTheDatePhotoPosition: photoPosition,
                     textOverrides,
                   }
                 : {
                     profileId,
                     digitalInvitationPhotoUrl: url,
-                    digitalInvitationPhotoPosition: photoPosition,
                     textOverrides,
                   },
             );

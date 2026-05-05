@@ -26,6 +26,7 @@ import type {
 } from "@/types/invitations";
 
 interface RouteParams {
+  [key: string]: string | undefined;
   profileId?: string;
 }
 
