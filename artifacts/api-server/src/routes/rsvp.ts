@@ -94,36 +94,48 @@ async function getImageAsBase64(photoUrl: string | null | undefined): Promise<st
   if (!photoUrl) return null;
   // Skip blob URLs — they only exist in the browser and cannot be fetched server-side.
   if (photoUrl.startsWith("blob:")) return null;
-  try {
-    // External HTTPS/HTTP URLs: fetch directly rather than going through object storage.
-    if (photoUrl.startsWith("https://") || photoUrl.startsWith("http://")) {
-      const resp = await fetch(photoUrl);
-      if (!resp.ok) return null;
-      const buffer = Buffer.from(await resp.arrayBuffer());
-      const contentType = resp.headers.get("Content-Type") || "image/jpeg";
-      return `data:${contentType};base64,${buffer.toString("base64")}`;
+
+  const TIMEOUT_MS = 8_000;
+
+  async function doFetch(): Promise<string | null> {
+    try {
+      // External HTTPS/HTTP URLs: fetch directly rather than going through object storage.
+      if (photoUrl!.startsWith("https://") || photoUrl!.startsWith("http://")) {
+        const resp = await fetch(photoUrl!, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+        if (!resp.ok) return null;
+        const buffer = Buffer.from(await resp.arrayBuffer());
+        const contentType = resp.headers.get("Content-Type") || "image/jpeg";
+        return `data:${contentType};base64,${buffer.toString("base64")}`;
+      }
+
+      const file = await resolvePhotoFile(photoUrl!);
+      const response = await objectStorageService.downloadObject(file, 86400);
+      if (!response.body) return null;
+
+      const chunks: Uint8Array[] = [];
+      const reader = response.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) chunks.push(value);
+      }
+
+      const buffer = Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
+      const base64 = buffer.toString("base64");
+      const contentType = response.headers.get("Content-Type") || "image/jpeg";
+      return `data:${contentType};base64,${base64}`;
+    } catch (err) {
+      console.error("[getImageAsBase64] failed for URL:", photoUrl, err);
+      return null;
     }
-
-    const file = await resolvePhotoFile(photoUrl);
-    const response = await objectStorageService.downloadObject(file, 86400);
-    if (!response.body) return null;
-
-    const chunks: Uint8Array[] = [];
-    const reader = response.body.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value) chunks.push(value);
-    }
-
-    const buffer = Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
-    const base64 = buffer.toString("base64");
-    const contentType = response.headers.get("Content-Type") || "image/jpeg";
-    return `data:${contentType};base64,${base64}`;
-  } catch (err) {
-    console.error("[getImageAsBase64] failed for URL:", photoUrl, err);
-    return null;
   }
+
+  // Race the fetch against a hard timeout so a slow/hanging object-storage
+  // connection never blocks the entire email-send request.
+  return Promise.race([
+    doFetch(),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), TIMEOUT_MS)),
+  ]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
