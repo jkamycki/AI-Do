@@ -94,36 +94,48 @@ async function getImageAsBase64(photoUrl: string | null | undefined): Promise<st
   if (!photoUrl) return null;
   // Skip blob URLs — they only exist in the browser and cannot be fetched server-side.
   if (photoUrl.startsWith("blob:")) return null;
-  try {
-    // External HTTPS/HTTP URLs: fetch directly rather than going through object storage.
-    if (photoUrl.startsWith("https://") || photoUrl.startsWith("http://")) {
-      const resp = await fetch(photoUrl);
-      if (!resp.ok) return null;
-      const buffer = Buffer.from(await resp.arrayBuffer());
-      const contentType = resp.headers.get("Content-Type") || "image/jpeg";
-      return `data:${contentType};base64,${buffer.toString("base64")}`;
+
+  const TIMEOUT_MS = 8_000;
+
+  async function doFetch(): Promise<string | null> {
+    try {
+      // External HTTPS/HTTP URLs: fetch directly rather than going through object storage.
+      if (photoUrl!.startsWith("https://") || photoUrl!.startsWith("http://")) {
+        const resp = await fetch(photoUrl!, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+        if (!resp.ok) return null;
+        const buffer = Buffer.from(await resp.arrayBuffer());
+        const contentType = resp.headers.get("Content-Type") || "image/jpeg";
+        return `data:${contentType};base64,${buffer.toString("base64")}`;
+      }
+
+      const file = await resolvePhotoFile(photoUrl!);
+      const response = await objectStorageService.downloadObject(file, 86400);
+      if (!response.body) return null;
+
+      const chunks: Uint8Array[] = [];
+      const reader = response.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) chunks.push(value);
+      }
+
+      const buffer = Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
+      const base64 = buffer.toString("base64");
+      const contentType = response.headers.get("Content-Type") || "image/jpeg";
+      return `data:${contentType};base64,${base64}`;
+    } catch (err) {
+      console.error("[getImageAsBase64] failed for URL:", photoUrl, err);
+      return null;
     }
-
-    const file = await resolvePhotoFile(photoUrl);
-    const response = await objectStorageService.downloadObject(file, 86400);
-    if (!response.body) return null;
-
-    const chunks: Uint8Array[] = [];
-    const reader = response.body.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value) chunks.push(value);
-    }
-
-    const buffer = Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
-    const base64 = buffer.toString("base64");
-    const contentType = response.headers.get("Content-Type") || "image/jpeg";
-    return `data:${contentType};base64,${base64}`;
-  } catch (err) {
-    console.error("[getImageAsBase64] failed for URL:", photoUrl, err);
-    return null;
   }
+
+  // Race the fetch against a hard timeout so a slow/hanging object-storage
+  // connection never blocks the entire email-send request.
+  return Promise.race([
+    doFetch(),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), TIMEOUT_MS)),
+  ]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -150,16 +162,16 @@ function aiLogoBlock(logoBase64: string | null): string {
 }
 
 function aiPhotoBlock(
-  photoBase64: string | null,
+  photoSrc: string | null,
   alt: string,
   objectPos: string,
 ): string {
-  if (!photoBase64) return "";
+  if (!photoSrc) return "";
   return `
         <tr>
-          <td style="background:${AI_BG};padding:0 20px 12px;line-height:0;font-size:0;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:0 20px 12px;line-height:0;font-size:0;">
             <div style="width:100%;aspect-ratio:520/200;border-radius:8px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,0.5);">
-              <img src="${photoBase64}" alt="${escapeHtml(alt)}" width="520" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${objectPos};border:0;outline:none;text-decoration:none;" />
+              <img src="${photoSrc}" alt="${escapeHtml(alt)}" width="520" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${objectPos};border:0;outline:none;text-decoration:none;" />
             </div>
           </td>
         </tr>`;
@@ -176,7 +188,7 @@ interface AiDigitalInviteOpts {
   receptionTimeStr: string | null;
   invitationMessage: string | null;
   rsvpUrl: string;
-  photoBase64: string | null;
+  photoImgSrc: string | null;
   photoObjectPos: string;
   logoBase64: string | null;
 }
@@ -195,22 +207,22 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
   <meta name="x-apple-disable-message-reformatting" />
   <title>Wedding Invitation — ${escapeHtml(opts.couple)}</title>
 </head>
-<body style="margin:0;padding:0;background:${AI_PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${AI_PAGE_BG};padding:32px 16px;">
-    <tr><td align="center">
+<body bgcolor="${AI_PAGE_BG}" style="margin:0;padding:0;background:${AI_PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${AI_PAGE_BG}" style="background:${AI_PAGE_BG};padding:32px 16px;">
+    <tr><td bgcolor="${AI_PAGE_BG}" align="center">
 
-      <table role="presentation" width="420" cellpadding="0" cellspacing="0" style="max-width:420px;width:100%;background:${AI_BG};border-radius:12px;overflow:hidden;border:1px solid ${AI_CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
+      <table role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${AI_BG}" style="max-width:420px;width:100%;background:${AI_BG};border-radius:12px;overflow:hidden;border:1px solid ${AI_CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
 
         <tr>
-          <td style="background:${AI_BG};padding:20px 0 6px;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:20px 0 6px;text-align:center;">
             ${aiLogoBlock(opts.logoBase64)}
           </td>
         </tr>
 
-        ${aiPhotoBlock(opts.photoBase64, opts.couple, opts.photoObjectPos)}
+        ${aiPhotoBlock(opts.photoImgSrc, opts.couple, opts.photoObjectPos)}
 
         <tr>
-          <td style="background:${AI_BG};padding:14px 0 4px;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 0 4px;text-align:center;">
             <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
               <td width="52" height="52" align="center" valign="middle" style="background:${AI_GOLD}22;border:1px solid ${AI_GOLD}44;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:24px;color:${AI_GOLD};">&hearts;</td>
             </tr></table>
@@ -218,27 +230,27 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
         </tr>
 
         <tr>
-          <td style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:700;letter-spacing:4.5px;text-transform:uppercase;color:${AI_GOLD};">Wedding RSVP</p>
           </td>
         </tr>
 
         <tr>
-          <td style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
             <h1 style="margin:0;font-family:${AI_CORMORANT};font-size:32px;font-weight:400;font-style:italic;color:${AI_GOLD};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
           </td>
         </tr>
 
         ${opts.weddingDateStr ? `
         <tr>
-          <td style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${AI_WHITE};">${escapeHtml(opts.weddingDateStr)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.venue ? `
         <tr>
-          <td style="background:${AI_BG};padding:12px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:12px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_CORMORANT};font-size:16px;font-weight:500;color:${AI_GOLD};">
               <span style="color:${AI_GOLD};font-size:13px;">&#9679;</span>&nbsp;${escapeHtml(opts.venue)}
             </p>
@@ -247,34 +259,34 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
 
         ${opts.venueAddress ? `
         <tr>
-          <td style="background:${AI_BG};padding:4px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:4px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${AI_WHITE};">${escapeHtml(opts.venueAddress)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.cityStateZip ? `
         <tr>
-          <td style="background:${AI_BG};padding:2px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:2px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${AI_WHITE};">${escapeHtml(opts.cityStateZip)}</p>
           </td>
         </tr>` : ""}
 
         ${timesLine ? `
         <tr>
-          <td style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${AI_GOLD};">${escapeHtml(timesLine)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.invitationMessage ? `
         <tr>
-          <td style="background:${AI_BG};padding:18px 28px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:18px 28px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_CORMORANT};font-size:15px;font-style:italic;color:${AI_WHITE};line-height:1.7;">&ldquo;${escapeHtml(opts.invitationMessage)}&rdquo;</p>
           </td>
         </tr>` : ""}
 
         <tr>
-          <td style="background:${AI_BG};padding:18px 28px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:18px 28px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:13px;color:${AI_MUTED};">
               Dear <span style="color:${AI_WHITE};font-weight:600;">${escapeHtml(opts.guestName)}</span>, will you be joining us?
             </p>
@@ -282,7 +294,7 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
         </tr>
 
         <tr>
-          <td style="background:${AI_BG};padding:18px 32px 0;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:18px 32px 0;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
               <td style="border-top:1px solid ${AI_CARD_BDR};height:1px;font-size:1px;line-height:1px;">&nbsp;</td>
             </tr></table>
@@ -290,7 +302,7 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
         </tr>
 
         <tr>
-          <td style="background:${AI_BG};padding:18px 24px 28px;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:18px 24px 28px;text-align:center;">
             <a href="${opts.rsvpUrl}" style="display:block;background:${AI_GOLD};color:${AI_BG};font-family:${AI_JAKARTA};font-size:13px;font-weight:700;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;padding:14px 24px;border-radius:8px;">RSVP NOW</a>
             <p style="margin:12px 0 0;font-family:${AI_JAKARTA};font-size:10px;color:${AI_MUTED};">
               Button not working? <a href="${opts.rsvpUrl}" style="color:${AI_GOLD};text-decoration:underline;">Open your RSVP</a>
@@ -299,7 +311,7 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
         </tr>
 
         <tr>
-          <td style="background:#15121d;padding:16px 24px;text-align:center;border-top:1px solid ${AI_CARD_BDR};">
+          <td bgcolor="#15121d" style="background:#15121d;padding:16px 24px;text-align:center;border-top:1px solid ${AI_CARD_BDR};">
             <p style="margin:0 0 4px;font-family:${AI_JAKARTA};font-size:10px;color:${AI_MUTED};letter-spacing:0.5px;">Planning your own wedding?</p>
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:10px;color:${AI_MUTED};">
               <a href="https://aidowedding.net" style="color:${AI_GOLD};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
@@ -325,7 +337,7 @@ interface AiSaveTheDateOpts {
   receptionTimeStr: string | null;
   saveTheDateMessage: string | null;
   viewUrl: string;
-  photoBase64: string | null;
+  photoImgSrc: string | null;
   photoObjectPos: string;
   logoBase64: string | null;
 }
@@ -344,22 +356,22 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
   <meta name="x-apple-disable-message-reformatting" />
   <title>Save the Date — ${escapeHtml(opts.couple)}</title>
 </head>
-<body style="margin:0;padding:0;background:${AI_PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${AI_PAGE_BG};padding:32px 16px;">
-    <tr><td align="center">
+<body bgcolor="${AI_PAGE_BG}" style="margin:0;padding:0;background:${AI_PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${AI_PAGE_BG}" style="background:${AI_PAGE_BG};padding:32px 16px;">
+    <tr><td bgcolor="${AI_PAGE_BG}" align="center">
 
-      <table role="presentation" width="420" cellpadding="0" cellspacing="0" style="max-width:420px;width:100%;background:${AI_BG};border-radius:12px;overflow:hidden;border:1px solid ${AI_CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
+      <table role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${AI_BG}" style="max-width:420px;width:100%;background:${AI_BG};border-radius:12px;overflow:hidden;border:1px solid ${AI_CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
 
         <tr>
-          <td style="background:${AI_BG};padding:20px 0 6px;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:20px 0 6px;text-align:center;">
             ${aiLogoBlock(opts.logoBase64)}
           </td>
         </tr>
 
-        ${aiPhotoBlock(opts.photoBase64, `Save the Date — ${opts.couple}`, opts.photoObjectPos)}
+        ${aiPhotoBlock(opts.photoImgSrc, `Save the Date — ${opts.couple}`, opts.photoObjectPos)}
 
         <tr>
-          <td style="background:${AI_BG};padding:14px 0 4px;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 0 4px;text-align:center;">
             <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
               <td width="52" height="52" align="center" valign="middle" style="background:${AI_GOLD}22;border:1px solid ${AI_GOLD}44;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:22px;color:${AI_GOLD};">&#9993;</td>
             </tr></table>
@@ -367,19 +379,19 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
         </tr>
 
         <tr>
-          <td style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:700;letter-spacing:4.5px;text-transform:uppercase;color:${AI_GOLD};">Save the Date</p>
           </td>
         </tr>
 
         <tr>
-          <td style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
             <h1 style="margin:0;font-family:${AI_CORMORANT};font-size:32px;font-weight:400;font-style:italic;color:${AI_GOLD};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
           </td>
         </tr>
 
         <tr>
-          <td style="background:${AI_BG};padding:14px 40px 0;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 40px 0;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
               <td style="border-top:1px solid ${AI_CARD_BDR};height:1px;font-size:1px;line-height:1px;">&nbsp;</td>
             </tr></table>
@@ -388,14 +400,14 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
 
         ${opts.weddingDateStr ? `
         <tr>
-          <td style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${AI_WHITE};">${escapeHtml(opts.weddingDateStr)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.venue ? `
         <tr>
-          <td style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_CORMORANT};font-size:16px;font-weight:500;color:${AI_GOLD};">
               <span style="color:${AI_GOLD};font-size:13px;">&#9679;</span>&nbsp;${escapeHtml(opts.venue)}
             </p>
@@ -404,46 +416,46 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
 
         ${opts.venueAddress ? `
         <tr>
-          <td style="background:${AI_BG};padding:4px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:4px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${AI_WHITE};">${escapeHtml(opts.venueAddress)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.cityStateZip ? `
         <tr>
-          <td style="background:${AI_BG};padding:2px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:2px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${AI_WHITE};">${escapeHtml(opts.cityStateZip)}</p>
           </td>
         </tr>` : ""}
 
         ${timesLine ? `
         <tr>
-          <td style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${AI_GOLD};">${escapeHtml(timesLine)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.saveTheDateMessage ? `
         <tr>
-          <td style="background:${AI_BG};padding:18px 28px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:18px 28px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_CORMORANT};font-size:15px;font-style:italic;color:${AI_WHITE};line-height:1.7;">&ldquo;${escapeHtml(opts.saveTheDateMessage)}&rdquo;</p>
           </td>
         </tr>` : ""}
 
         <tr>
-          <td style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:14px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_CORMORANT};font-size:13px;font-style:italic;color:${AI_MUTED};">Formal invitation to follow</p>
           </td>
         </tr>
 
         <tr>
-          <td style="background:${AI_BG};padding:18px 24px 28px;text-align:center;">
+          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:18px 24px 28px;text-align:center;">
             <a href="${opts.viewUrl}" style="display:inline-block;background:rgba(255,255,255,0.06);border:1px solid ${AI_CARD_BDR};color:${AI_MUTED};font-family:${AI_JAKARTA};font-size:11px;font-weight:600;text-decoration:none;letter-spacing:2px;text-transform:uppercase;padding:12px 28px;border-radius:6px;">&darr;&nbsp;View &amp; Download</a>
           </td>
         </tr>
 
         <tr>
-          <td style="background:#15121d;padding:16px 24px;text-align:center;border-top:1px solid ${AI_CARD_BDR};">
+          <td bgcolor="#15121d" style="background:#15121d;padding:16px 24px;text-align:center;border-top:1px solid ${AI_CARD_BDR};">
             <p style="margin:0 0 4px;font-family:${AI_JAKARTA};font-size:10px;color:${AI_MUTED};letter-spacing:0.5px;">Planning your own wedding?</p>
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:10px;color:${AI_MUTED};">
               <a href="https://aidowedding.net" style="color:${AI_GOLD};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
@@ -714,7 +726,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           receptionTimeStr,
           invitationMessage: profile.invitationMessage,
           rsvpUrl,
-          photoBase64,
+          photoImgSrc,
           photoObjectPos: digPhotoObjectPos,
           logoBase64,
         });
@@ -1273,7 +1285,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           receptionTimeStr,
           saveTheDateMessage: (profile as any).saveTheDateMessage ?? null,
           viewUrl: `${origin}/save-the-date/${token}`,
-          photoBase64,
+          photoImgSrc,
           photoObjectPos: stdPhotoObjectPos,
           logoBase64,
         });
