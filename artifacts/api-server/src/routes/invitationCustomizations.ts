@@ -197,6 +197,14 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
       }
     }
 
+    // Reject blob: URLs — they are local browser-session URLs and cannot be persisted
+    if (typeof saveTheDatePhotoUrl === "string" && saveTheDatePhotoUrl.startsWith("blob:")) {
+      return res.status(400).json({ error: "Cannot save a blob URL for saveTheDatePhotoUrl" });
+    }
+    if (typeof digitalInvitationPhotoUrl === "string" && digitalInvitationPhotoUrl.startsWith("blob:")) {
+      return res.status(400).json({ error: "Cannot save a blob URL for digitalInvitationPhotoUrl" });
+    }
+
     // Check if customization already exists
     const [existing] = await db
       .select({ id: invitationCustomizations.id })
@@ -266,6 +274,21 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
         })
         .returning();
       result = created;
+    }
+
+    // .returning() returns an empty array when no row matched the WHERE clause.
+    // Guard against sending an empty body (which would cause the client's
+    // r.json() to throw a SyntaxError even on a 200 response).
+    if (!result) {
+      const [fetched] = await db
+        .select()
+        .from(invitationCustomizations)
+        .where(eq(invitationCustomizations.profileId, profileId));
+      result = fetched;
+    }
+
+    if (!result) {
+      return res.status(500).json({ error: "Failed to retrieve saved customization" });
     }
 
     res.json(result);
