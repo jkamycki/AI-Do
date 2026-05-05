@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/react";
 import { useRoute } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { authFetch } from "@/lib/authFetch";
 import { PhotoUploadSection } from "@/components/InvitationCustomization/PhotoUploadSection";
 import { ColorSystemSection } from "@/components/InvitationCustomization/ColorSystemSection";
 import { DesignOptionsSection } from "@/components/InvitationCustomization/DesignOptionsSection";
@@ -59,7 +60,6 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
 
   // ── Save the Date ─────────────────────────────────────────────────────────
-  const [saveTheDatePhotoFile, setSaveTheDatePhotoFile] = useState<File | null>(null);
   const [saveTheDatePhotoUrl, setSaveTheDatePhotoUrl] = useState<string | null>(null);
   const [saveTheDateFont, setSaveTheDateFont] = useState("Playfair Display");
   const [saveTheDateLayout, setSaveTheDateLayout] = useState("classic");
@@ -67,7 +67,6 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   const [stdTextOverrides, setStdTextOverrides] = useState<TextOverrides>({});
 
   // ── Digital Invitation ────────────────────────────────────────────────────
-  const [digitalInvitationPhotoFile, setDigitalInvitationPhotoFile] = useState<File | null>(null);
   const [digitalInvitationPhotoUrl, setDigitalInvitationPhotoUrl] = useState<string | null>(null);
   const [digitalInvitationFont, setDigitalInvitationFont] = useState("Playfair Display");
   const [digitalInvitationLayout, setDigitalInvitationLayout] = useState("classic");
@@ -257,15 +256,39 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   const authedFetch = async (url: string, init: RequestInit = {}) => {
     const token = await getToken();
     if (token) tokenRef.current = token;
-    return fetch(url, {
+    return authFetch(url, {
       ...init,
       credentials: "include",
       headers: {
-        "Content-Type": "application/json",
+        ...(!(init.body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
         ...(init.headers ?? {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
+  };
+
+  const setCustomizationCache = useCallback((
+    updater: (old: InvitationCustomization | null | undefined) => InvitationCustomization | null | undefined,
+  ) => {
+    if (!profileId) return;
+    queryClient.setQueryData(["invitation-customizations", profileId], updater);
+  }, [profileId, queryClient]);
+
+  const resetPhotoObjectPosition = (
+    overrides: TextOverrides | undefined,
+    id: "std:photo" | "dig:photo",
+  ): TextOverrides => {
+    if (!overrides?.[id]) return overrides ?? {};
+    const rest = { ...overrides[id] };
+    delete rest.objectX;
+    delete rest.objectY;
+    const next = { ...overrides };
+    if (Object.keys(rest).length === 0) {
+      delete next[id];
+    } else {
+      next[id] = rest;
+    }
+    return next;
   };
 
   // ── Queries ───────────────────────────────────────────────────────────────
@@ -369,12 +392,14 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   // ── Photo upload mutation ─────────────────────────────────────────────────
   const uploadPhotoMutation = useMutation({
     mutationFn: async ({ file, type }: { file: File; type: "save-the-date" | "digital-invitation" }) => {
+      if (!profileId) throw new Error("Profile ID required");
       const formData = new FormData();
       formData.append("file", file);
       const token = await getToken();
-      const r = await fetch(`/api/invitation-customizations/upload?type=${type}`, {
+      if (token) tokenRef.current = token;
+      const params = new URLSearchParams({ type, profileId: String(profileId) });
+      const r = await authFetch(`/api/invitation-customizations/upload?${params}`, {
         method: "POST",
-        credentials: "include",
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: formData,
       });
@@ -388,11 +413,25 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
       if (variables.type === "save-the-date") {
         if (saveTheDateBlobUrlRef.current) { URL.revokeObjectURL(saveTheDateBlobUrlRef.current); saveTheDateBlobUrlRef.current = null; }
         setSaveTheDatePhotoUrl(data.url);
-        setSaveTheDatePhotoFile(null);
+        setSaveTheDatePhotoPosition({ x: 50, y: 50 });
+        setStdTextOverrides((old) => resetPhotoObjectPosition(old, "std:photo"));
+        setCustomizationCache((old) => old ? {
+          ...old,
+          saveTheDatePhotoUrl: data.url,
+          saveTheDatePhotoPosition: { x: 50, y: 50 },
+          textOverrides: resetPhotoObjectPosition(old.textOverrides, "std:photo"),
+        } : old);
       } else {
         if (digitalInvitationBlobUrlRef.current) { URL.revokeObjectURL(digitalInvitationBlobUrlRef.current); digitalInvitationBlobUrlRef.current = null; }
         setDigitalInvitationPhotoUrl(data.url);
-        setDigitalInvitationPhotoFile(null);
+        setDigitalInvitationPhotoPosition({ x: 50, y: 50 });
+        setDigTextOverrides((old) => resetPhotoObjectPosition(old, "dig:photo"));
+        setCustomizationCache((old) => old ? {
+          ...old,
+          digitalInvitationPhotoUrl: data.url,
+          digitalInvitationPhotoPosition: { x: 50, y: 50 },
+          textOverrides: resetPhotoObjectPosition(old.textOverrides, "dig:photo"),
+        } : old);
       }
     },
     onError: (error) => {
@@ -403,22 +442,20 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   // ── Photo selection handlers ──────────────────────────────────────────────
   const handleSaveTheDatePhotoSelected = (file: File | null) => {
     if (saveTheDateBlobUrlRef.current) { URL.revokeObjectURL(saveTheDateBlobUrlRef.current); saveTheDateBlobUrlRef.current = null; }
-    if (!file) { setSaveTheDatePhotoFile(null); setSaveTheDatePhotoUrl(null); return; }
+    if (!file) { setSaveTheDatePhotoUrl(null); return; }
     setSaveTheDatePhotoPosition({ x: 50, y: 50 });
     const localUrl = URL.createObjectURL(file);
     saveTheDateBlobUrlRef.current = localUrl;
-    setSaveTheDatePhotoFile(file);
     setSaveTheDatePhotoUrl(localUrl);
     uploadPhotoMutation.mutate({ file, type: "save-the-date" });
   };
 
   const handleDigitalInvitationPhotoSelected = (file: File | null) => {
     if (digitalInvitationBlobUrlRef.current) { URL.revokeObjectURL(digitalInvitationBlobUrlRef.current); digitalInvitationBlobUrlRef.current = null; }
-    if (!file) { setDigitalInvitationPhotoFile(null); setDigitalInvitationPhotoUrl(null); return; }
+    if (!file) { setDigitalInvitationPhotoUrl(null); return; }
     setDigitalInvitationPhotoPosition({ x: 50, y: 50 });
     const localUrl = URL.createObjectURL(file);
     digitalInvitationBlobUrlRef.current = localUrl;
-    setDigitalInvitationPhotoFile(file);
     setDigitalInvitationPhotoUrl(localUrl);
     uploadPhotoMutation.mutate({ file, type: "digital-invitation" });
   };
@@ -427,27 +464,15 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
   const saveCustomizationsMutation = useMutation({
     mutationFn: async () => {
       if (!profileId) throw new Error("Profile ID required");
-      let finalSaveTheDateUrl = saveTheDatePhotoUrl;
-      let finalDigitalInvitationUrl = digitalInvitationPhotoUrl;
-      if (saveTheDatePhotoFile) {
-        const result = await uploadPhotoMutation.mutateAsync({ file: saveTheDatePhotoFile, type: "save-the-date" });
-        finalSaveTheDateUrl = result.url;
-      }
-      if (digitalInvitationPhotoFile) {
-        const result = await uploadPhotoMutation.mutateAsync({ file: digitalInvitationPhotoFile, type: "digital-invitation" });
-        finalDigitalInvitationUrl = result.url;
-      }
       const r = await authedFetch("/api/invitation-customizations", {
         method: "POST",
-        body: JSON.stringify(buildPayload(finalSaveTheDateUrl, finalDigitalInvitationUrl)),
+        body: JSON.stringify(buildPayload(saveTheDatePhotoUrl, digitalInvitationPhotoUrl)),
       });
       if (!r.ok) throw new Error("Failed to save");
       return r.json();
     },
     onSuccess: () => {
       toast({ title: "Saved", description: "Your invitation customizations have been saved." });
-      setSaveTheDatePhotoFile(null);
-      setDigitalInvitationPhotoFile(null);
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to save customizations", variant: "destructive" });
