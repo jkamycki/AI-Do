@@ -1,6 +1,7 @@
 import { CheckCircle2, XCircle, Heart, MapPin, Download } from "lucide-react";
 import type { ColorPalette } from "@/types/invitations";
 import type { PhotoPosition } from "@/components/InvitationCustomization/AiPreviewComponents";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 interface RsvpPagePreviewProps {
   colors: ColorPalette;
@@ -77,6 +78,7 @@ export function RsvpPagePreview({
   receptionTime,
   invitationMessage,
 }: RsvpPagePreviewProps) {
+  const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const bg = backgroundColor || "#1E1A2E";
   const accent = colors.primary || "#D4A017";
   const isLight = isLightColor(bg);
@@ -136,10 +138,10 @@ export function RsvpPagePreview({
         </div>
 
         {/* Photo */}
-        {photoUrl && (
+        {resolvedPhotoUrl && (
           <div style={{ padding: "0 20px 12px" }}>
             <img
-              src={photoUrl}
+              src={resolvedPhotoUrl}
               alt={`${couple}'s wedding`}
               style={{
                 width: "100%", height: 140, objectFit: "cover",

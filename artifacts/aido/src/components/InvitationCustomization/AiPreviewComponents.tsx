@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Heart, Mail, MapPin, Download } from "lucide-react";
 import type { ColorPalette } from "@/types/invitations";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 export interface WeddingInfo {
   partner1Name?: string | null;
@@ -72,7 +73,8 @@ function CardShell({
   photoUrl?: string | null;
   photoPosition?: PhotoPosition;
 }) {
-  const hasPhoto = isPhotoComplete(photoUrl);
+  const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
+  const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
   return (
     <div
       className="rounded-xl overflow-hidden shadow-2xl max-w-sm mx-auto border"
@@ -91,7 +93,7 @@ function CardShell({
       {hasPhoto && (
         <div style={{ padding: "0 20px 10px", backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
           <img
-            src={photoUrl!}
+            src={resolvedPhotoUrl!}
             alt="Wedding photo"
             style={{
               width: "100%", height: 130, objectFit: "cover", borderRadius: 8,

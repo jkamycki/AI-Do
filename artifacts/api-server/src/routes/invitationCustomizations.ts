@@ -21,6 +21,35 @@ const router = Router();
 const storage = new ObjectStorageService();
 const upload = multer({ storage: multer.memoryStorage() });
 
+type StoredElementOverride = {
+  x?: number;
+  y?: number;
+  font?: string;
+  color?: string;
+  fontSize?: number;
+  objectX?: number;
+  objectY?: number;
+  text?: string;
+};
+type StoredTextOverrides = Record<string, StoredElementOverride>;
+
+function resetPhotoObjectPosition(
+  overrides: StoredTextOverrides | null | undefined,
+  photoId: "std:photo" | "dig:photo",
+): StoredTextOverrides {
+  if (!overrides?.[photoId]) return overrides ?? {};
+  const rest = { ...overrides[photoId] };
+  delete rest.objectX;
+  delete rest.objectY;
+  const next = { ...overrides };
+  if (Object.keys(rest).length === 0) {
+    delete next[photoId];
+  } else {
+    next[photoId] = rest;
+  }
+  return next;
+}
+
 // ─── GET /api/invitation-customizations ───────────────────────────────────
 router.get("/invitation-customizations", requireAuth, async (req, res) => {
   try {
@@ -267,6 +296,13 @@ router.post(
           .json({ error: "Invalid type parameter (use save-the-date or digital-invitation)" });
       }
 
+      const profileId = req.query.profileId
+        ? parseInt(req.query.profileId as string, 10)
+        : undefined;
+      if (req.query.profileId && (!profileId || Number.isNaN(profileId))) {
+        return res.status(400).json({ error: "Invalid profileId parameter" });
+      }
+
       // Validate file type
       const allowedMimes = ["image/png", "image/jpeg", "image/webp"];
       if (!allowedMimes.includes(req.file.mimetype)) {
@@ -285,6 +321,17 @@ router.post(
           .json({ error: "File is too large. Maximum size is 5MB." });
       }
 
+      if (profileId) {
+        const [profile] = await db
+          .select({ id: weddingProfiles.id })
+          .from(weddingProfiles)
+          .where(eq(weddingProfiles.id, profileId));
+
+        if (!profile) {
+          return res.status(404).json({ error: "Profile not found" });
+        }
+      }
+
       // Upload to object storage
       const fileName = `invitation-${type}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
       const folder = `invitations/${userId}`;
@@ -294,6 +341,58 @@ router.post(
         req.file.mimetype,
         folder
       );
+
+      if (profileId) {
+        const [existing] = await db
+          .select({
+            id: invitationCustomizations.id,
+            textOverrides: invitationCustomizations.textOverrides,
+          })
+          .from(invitationCustomizations)
+          .where(eq(invitationCustomizations.profileId, profileId));
+        const photoId = type === "save-the-date" ? "std:photo" : "dig:photo";
+        const textOverrides = resetPhotoObjectPosition(
+          existing?.textOverrides as StoredTextOverrides | null | undefined,
+          photoId,
+        );
+        // Persist the new storage URL before the UI can switch back to Guest List;
+        // otherwise the send modal may fetch the previous saved photo.
+
+        if (existing) {
+          await db
+            .update(invitationCustomizations)
+            .set(
+              type === "save-the-date"
+                ? {
+                    saveTheDatePhotoUrl: url,
+                    textOverrides,
+                    updatedAt: new Date(),
+                  }
+                : {
+                    digitalInvitationPhotoUrl: url,
+                    textOverrides,
+                    updatedAt: new Date(),
+                  },
+            )
+            .where(eq(invitationCustomizations.profileId, profileId));
+        } else {
+          await db
+            .insert(invitationCustomizations)
+            .values(
+              type === "save-the-date"
+                ? {
+                    profileId,
+                    saveTheDatePhotoUrl: url,
+                    textOverrides,
+                  }
+                : {
+                    profileId,
+                    digitalInvitationPhotoUrl: url,
+                    textOverrides,
+                  },
+            );
+        }
+      }
 
       res.json({ url });
     } catch (err) {
