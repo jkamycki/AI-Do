@@ -413,36 +413,6 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
           </td>
         </tr>` : ""}
 
-        ${opts.venue ? `
-        <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_CORMORANT};font-size:16px;font-weight:500;color:${AI_GOLD};">
-              <span style="color:${AI_GOLD};font-size:13px;">&#9679;</span>&nbsp;${escapeHtml(opts.venue)}
-            </p>
-          </td>
-        </tr>` : ""}
-
-        ${opts.venueAddress ? `
-        <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:4px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${AI_WHITE};">${escapeHtml(opts.venueAddress)}</p>
-          </td>
-        </tr>` : ""}
-
-        ${opts.cityStateZip ? `
-        <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:2px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${AI_WHITE};">${escapeHtml(opts.cityStateZip)}</p>
-          </td>
-        </tr>` : ""}
-
-        ${timesLine ? `
-        <tr>
-          <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:8px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${AI_GOLD};">${escapeHtml(timesLine)}</p>
-          </td>
-        </tr>` : ""}
-
         ${opts.saveTheDateMessage ? `
         <tr>
           <td bgcolor="${AI_BG}" style="background:${AI_BG};padding:18px 28px 0;text-align:center;">
