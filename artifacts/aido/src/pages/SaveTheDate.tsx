@@ -24,16 +24,31 @@ interface SaveTheDateInfo {
   ceremonyZip: string | null;
   saveTheDateMessage: string | null;
   hasPhoto: boolean;
+  useGeneratedInvitation: boolean;
+  customBackgroundColor: string | null;
+  customAccentColor: string | null;
+  customFontFamily: string | null;
+  customTextOverrides: Record<string, Record<string, unknown>>;
+  photoObjectPosition: string;
 }
 
-const BG       = "#1E1A2E";
-const GOLD     = "#D4A017";
-const WHITE    = "#ffffff";
-const MUTED    = "rgba(255,255,255,0.58)";
-const CARD_BDR = "rgba(255,255,255,0.12)";
-const DOT_PAT  = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
+const AI_BG    = "#1E1A2E";
+const AI_GOLD  = "#D4A017";
+const AI_WHITE = "#ffffff";
+const AI_MUTED = "rgba(255,255,255,0.58)";
+const AI_CARD_BDR = "rgba(255,255,255,0.12)";
+const AI_DOT_PAT = `radial-gradient(${AI_GOLD}22 1px, transparent 1px)`;
 const cormorant = "'Cormorant Garamond', 'Playfair Display', Georgia, serif";
 const jakarta   = "'Plus Jakarta Sans', system-ui, sans-serif";
+
+function isLightHex(hex: string): boolean {
+  const c = hex.replace("#", "");
+  if (c.length !== 6) return false;
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  return r * 0.299 + g * 0.587 + b * 0.114 > 160;
+}
 
 export default function SaveTheDate() {
   const [, params] = useRoute("/save-the-date/:token");
@@ -67,6 +82,27 @@ export default function SaveTheDate() {
     info?.venueCity,
     [info?.venueState, info?.venueZip].filter(Boolean).join(" "),
   ].filter(Boolean).join(", ");
+
+  // Derive theme from custom design or fall back to AI dark theme
+  const useCustom = info && !info.useGeneratedInvitation && !!info.customBackgroundColor;
+  const BG       = useCustom ? (info.customBackgroundColor!) : AI_BG;
+  const GOLD     = useCustom ? (info.customAccentColor ?? AI_GOLD) : AI_GOLD;
+  const isLight  = useCustom ? isLightHex(BG) : false;
+  const WHITE    = isLight ? "#1a1a1a" : AI_WHITE;
+  const MUTED    = isLight ? "rgba(0,0,0,0.58)" : AI_MUTED;
+  const CARD_BDR = isLight ? "rgba(0,0,0,0.12)" : AI_CARD_BDR;
+  const PAGE_BG  = BG;
+  const DOT_PAT  = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
+  const SERIF    = info?.customFontFamily
+    ? `'${info.customFontFamily}', ${cormorant}`
+    : cormorant;
+
+  // Respect any text overrides from the custom canvas design
+  const overrides = info?.customTextOverrides ?? {};
+  const coupleText = (overrides["std:couple"]?.text as string | undefined) || couple;
+  const dateText   = (overrides["std:date"]?.text as string | undefined) || weddingDateStr || "";
+  const msgText    = (overrides["std:message"]?.text as string | undefined) || info?.saveTheDateMessage || null;
+  const photoPos   = info?.photoObjectPosition ?? "50% 50%";
 
   const downloadPdf = async () => {
     if (!info || !cardRef.current) return;
@@ -103,26 +139,26 @@ export default function SaveTheDate() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: BG }}>
-        <Loader2 className="h-8 w-8 animate-spin" style={{ color: GOLD }} />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: AI_BG }}>
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: AI_GOLD }} />
       </div>
     );
   }
 
   if (isError || !info) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: BG, backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
-        <div className="max-w-md w-full text-center rounded-2xl p-10 space-y-4" style={{ border: `1px solid ${CARD_BDR}`, background: BG }}>
-          <AlertCircle className="h-12 w-12 mx-auto" style={{ color: GOLD }} />
-          <h2 className="text-xl font-semibold" style={{ fontFamily: cormorant, color: WHITE }}>This link is no longer valid</h2>
-          <p className="text-sm" style={{ fontFamily: jakarta, color: MUTED }}>Please contact the couple directly.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: AI_BG, backgroundImage: AI_DOT_PAT, backgroundSize: "22px 22px" }}>
+        <div className="max-w-md w-full text-center rounded-2xl p-10 space-y-4" style={{ border: `1px solid ${AI_CARD_BDR}`, background: AI_BG }}>
+          <AlertCircle className="h-12 w-12 mx-auto" style={{ color: AI_GOLD }} />
+          <h2 className="text-xl font-semibold" style={{ fontFamily: cormorant, color: AI_WHITE }}>This link is no longer valid</h2>
+          <p className="text-sm" style={{ fontFamily: jakarta, color: AI_MUTED }}>Please contact the couple directly.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center py-10 px-4" style={{ background: BG, backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
+    <div className="min-h-screen flex flex-col items-center py-10 px-4" style={{ background: PAGE_BG, backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
 
       {/* Card — this is what gets captured for the PDF */}
       <div
@@ -148,6 +184,7 @@ export default function SaveTheDate() {
               crossOrigin="anonymous"
               style={{
                 width: "100%", height: 200, objectFit: "cover",
+                objectPosition: photoPos,
                 borderRadius: 8, display: "block",
                 boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
               }}
@@ -175,17 +212,17 @@ export default function SaveTheDate() {
           </p>
 
           {/* Couple name */}
-          <h1 style={{ fontFamily: cormorant, fontSize: "2.3rem", fontWeight: 400, fontStyle: "italic", color: GOLD, lineHeight: 1.2, margin: "0 0 16px" }}>
-            {couple}
+          <h1 style={{ fontFamily: SERIF, fontSize: "2.3rem", fontWeight: 400, fontStyle: "italic", color: GOLD, lineHeight: 1.2, margin: "0 0 16px" }}>
+            {coupleText}
           </h1>
 
           {/* Divider */}
           <div style={{ height: 1, background: CARD_BDR, margin: "0 20px 16px" }} />
 
           {/* Date */}
-          {weddingDateStr && (
+          {dateText && (
             <p style={{ fontFamily: jakarta, fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: WHITE, margin: "0 0 10px" }}>
-              {weddingDateStr}
+              {dateText}
             </p>
           )}
 
@@ -193,7 +230,7 @@ export default function SaveTheDate() {
           {info.venue && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, margin: "0 0 4px" }}>
               <MapPin style={{ width: 13, height: 13, color: GOLD, flexShrink: 0 }} />
-              <p style={{ fontFamily: cormorant, fontSize: "1.1rem", fontWeight: 500, color: GOLD, margin: 0 }}>
+              <p style={{ fontFamily: SERIF, fontSize: "1.1rem", fontWeight: 500, color: GOLD, margin: 0 }}>
                 {info.venue}
               </p>
             </div>
@@ -204,14 +241,14 @@ export default function SaveTheDate() {
           )}
 
           {/* Message */}
-          {info.saveTheDateMessage && (
-            <p style={{ fontFamily: cormorant, fontSize: "1rem", fontStyle: "italic", color: WHITE, lineHeight: 1.7, margin: "16px 0 0" }}>
-              &ldquo;{info.saveTheDateMessage}&rdquo;
+          {msgText && (
+            <p style={{ fontFamily: SERIF, fontSize: "1rem", fontStyle: "italic", color: WHITE, lineHeight: 1.7, margin: "16px 0 0" }}>
+              &ldquo;{msgText}&rdquo;
             </p>
           )}
 
           {/* Formal invitation to follow */}
-          <p style={{ fontFamily: cormorant, fontSize: 13, fontStyle: "italic", color: MUTED, margin: "14px 0 0" }}>
+          <p style={{ fontFamily: SERIF, fontSize: 13, fontStyle: "italic", color: MUTED, margin: "14px 0 0" }}>
             Formal invitation to follow
           </p>
 
