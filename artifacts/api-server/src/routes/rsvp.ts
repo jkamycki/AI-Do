@@ -597,16 +597,22 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           })()
         : null;
 
-      // Fetch and embed photo as base64
+      // Fetch and embed photo as base64; fall back to a direct HTTPS URL so the
+      // photo still renders in email clients that load external images.
       const photoBase64 = await getImageAsBase64(digitalInvitationPhotoUrl);
+      const photoImgSrc: string | null = photoBase64 ?? (
+        digitalInvitationPhotoUrl && !digitalInvitationPhotoUrl.startsWith("blob:")
+          ? (digitalInvitationPhotoUrl.startsWith("http") ? digitalInvitationPhotoUrl : `${origin}${digitalInvitationPhotoUrl}`)
+          : null
+      );
       // Honour the user's photo positioning from the canvas. Same approach as
       // the Save the Date email — fixed-aspect frame with object-position.
-      const photoBlock = photoBase64
+      const photoBlock = photoImgSrc
         ? `
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
             <div style="width:100%;max-width:560px;aspect-ratio:560/360;overflow:hidden;">
-              <img src="${photoBase64}" alt="${couple}'s Wedding" width="560" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${digPhotoObjectPos};"/>
+              <img src="${photoImgSrc}" alt="${couple}'s Wedding" width="560" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${digPhotoObjectPos};"/>
             </div>
           </td>
         </tr>`
@@ -1185,17 +1191,23 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
 
       const origin = buildOrigin(req);
 
-      // Fetch and embed photo as base64
+      // Fetch and embed photo as base64; fall back to a direct HTTPS URL so the
+      // photo still renders in email clients that load external images.
       const photoBase64 = await getImageAsBase64(saveTheDatePhotoUrl);
+      const photoImgSrc: string | null = photoBase64 ?? (
+        saveTheDatePhotoUrl && !saveTheDatePhotoUrl.startsWith("blob:")
+          ? (saveTheDatePhotoUrl.startsWith("http") ? saveTheDatePhotoUrl : `${origin}${saveTheDatePhotoUrl}`)
+          : null
+      );
       // Honour the user's photo positioning from the canvas. We use a fixed
       // aspect-ratio frame and `object-position` so the photo crops the same
       // way as in the SaveTheDatePreview component.
-      const photoBlock = photoBase64
+      const photoBlock = photoImgSrc
         ? `
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
             <div style="width:100%;max-width:560px;aspect-ratio:560/360;overflow:hidden;">
-              <img src="${photoBase64}" alt="Save the Date — ${couple}" width="560" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${stdPhotoObjectPos};"/>
+              <img src="${photoImgSrc}" alt="Save the Date — ${couple}" width="560" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${stdPhotoObjectPos};"/>
             </div>
           </td>
         </tr>`
