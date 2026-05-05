@@ -35,15 +35,6 @@ const DOT_PAT  = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
 const cormorant = "'Cormorant Garamond', 'Playfair Display', Georgia, serif";
 const jakarta   = "'Plus Jakarta Sans', system-ui, sans-serif";
 
-function formatTime(timeStr: string | null | undefined) {
-  if (!timeStr) return null;
-  const [h, m] = timeStr.split(":").map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return timeStr;
-  const ampm = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 || 12;
-  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
-}
-
 export default function SaveTheDate() {
   const [, params] = useRoute("/save-the-date/:token");
   const token = params?.token ?? "";
@@ -72,18 +63,10 @@ export default function SaveTheDate() {
       })()
     : null;
 
-  const ceremonyTimeStr = formatTime(info?.ceremonyTime);
-  const receptionTimeStr = formatTime(info?.receptionTime);
-
   const venueCityStateZip = [
     info?.venueCity,
     [info?.venueState, info?.venueZip].filter(Boolean).join(" "),
   ].filter(Boolean).join(", ");
-
-  const timesLine = [
-    ceremonyTimeStr && `Ceremony ${ceremonyTimeStr}`,
-    receptionTimeStr && `Reception ${receptionTimeStr}`,
-  ].filter(Boolean).join("  ·  ");
 
   const downloadPdf = async () => {
     if (!info || !cardRef.current) return;
