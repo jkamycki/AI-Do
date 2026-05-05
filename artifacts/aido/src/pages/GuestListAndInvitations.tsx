@@ -40,11 +40,11 @@ export default function GuestListAndInvitations() {
           <TabsTrigger value="invitation-customization">Invitation Customization</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="guest-list" className="mt-6">
+        <TabsContent value="guest-list" forceMount className="mt-6 data-[state=inactive]:hidden">
           <Guests />
         </TabsContent>
 
-        <TabsContent value="invitation-customization" className="mt-6">
+        <TabsContent value="invitation-customization" forceMount className="mt-6 data-[state=inactive]:hidden">
           <InvitationCustomization profileId={profileId} />
         </TabsContent>
       </Tabs>

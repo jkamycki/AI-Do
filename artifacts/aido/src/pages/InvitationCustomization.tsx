@@ -314,8 +314,9 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
       return r.json() as Promise<InvitationCustomization>;
     },
     enabled: !!profileId,
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   // ── Load DB data into state ───────────────────────────────────────────────
