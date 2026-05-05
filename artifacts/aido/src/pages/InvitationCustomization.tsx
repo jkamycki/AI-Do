@@ -322,7 +322,9 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
 
   // ── Load DB data into state ───────────────────────────────────────────────
   useEffect(() => {
-    if (customization && !hasInitialized.current) {
+    if (!customization) return;
+
+    if (!hasInitialized.current) {
       hasInitialized.current = true;
       skipNextAutoSave.current = true;
 
@@ -370,6 +372,37 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
 
       // Invitation mode — default to true if field isn't stored yet
       setUseGeneratedInvitation(customization.useGeneratedInvitation ?? true);
+    } else {
+      // After the first full init, still sync photo URLs from subsequent DB
+      // fetches (e.g. background refetch on window focus). We only apply the
+      // DB value when our current state is null / a blob (meaning the upload
+      // hasn't completed yet and the DB already has the canonical URL), or
+      // when the DB returns a URL that's different from what we have in state
+      // — which can happen when the upload route persisted the URL but the
+      // subsequent full-save was cancelled by navigation.
+      // We never overwrite a real (non-blob) URL in state with a null from DB
+      // to avoid flashing the upload area while a fresh refetch is in flight.
+      const latestStd = latestValuesRef.current.saveTheDatePhotoUrl;
+      const latestDig = latestValuesRef.current.digitalInvitationPhotoUrl;
+
+      const stdFromDb = customization.saveTheDatePhotoUrl;
+      const digFromDb = customization.digitalInvitationPhotoUrl;
+
+      // Apply DB URL when: our state is empty/blob AND db has a real URL
+      if (stdFromDb && (!latestStd || latestStd.startsWith("blob:"))) {
+        skipNextAutoSave.current = true;
+        setSaveTheDatePhotoUrl(stdFromDb);
+        if (customization.saveTheDatePhotoPosition) {
+          setSaveTheDatePhotoPosition(customization.saveTheDatePhotoPosition);
+        }
+      }
+      if (digFromDb && (!latestDig || latestDig.startsWith("blob:"))) {
+        skipNextAutoSave.current = true;
+        setDigitalInvitationPhotoUrl(digFromDb);
+        if (customization.digitalInvitationPhotoPosition) {
+          setDigitalInvitationPhotoPosition(customization.digitalInvitationPhotoPosition);
+        }
+      }
     }
   }, [customization]);
 
@@ -415,6 +448,10 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
     onSuccess: (data, variables) => {
       if (variables.type === "save-the-date") {
         if (saveTheDateBlobUrlRef.current) { URL.revokeObjectURL(saveTheDateBlobUrlRef.current); saveTheDateBlobUrlRef.current = null; }
+        // Update the ref immediately so the unmount save (which reads the ref
+        // synchronously) sees the real URL even before React re-renders.
+        latestValuesRef.current.saveTheDatePhotoUrl = data.url;
+        latestValuesRef.current.saveTheDatePhotoPosition = { x: 50, y: 50 };
         setSaveTheDatePhotoUrl(data.url);
         setSaveTheDatePhotoPosition({ x: 50, y: 50 });
         setStdTextOverrides((old) => resetPhotoObjectPosition(old, "std:photo"));
@@ -426,6 +463,10 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
         } : old);
       } else {
         if (digitalInvitationBlobUrlRef.current) { URL.revokeObjectURL(digitalInvitationBlobUrlRef.current); digitalInvitationBlobUrlRef.current = null; }
+        // Update the ref immediately so the unmount save (which reads the ref
+        // synchronously) sees the real URL even before React re-renders.
+        latestValuesRef.current.digitalInvitationPhotoUrl = data.url;
+        latestValuesRef.current.digitalInvitationPhotoPosition = { x: 50, y: 50 };
         setDigitalInvitationPhotoUrl(data.url);
         setDigitalInvitationPhotoPosition({ x: 50, y: 50 });
         setDigTextOverrides((old) => resetPhotoObjectPosition(old, "dig:photo"));
@@ -442,6 +483,7 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
       // Use the server URL for the just-uploaded photo; strip any blob URLs
       // for the other photo slot (upload still in-flight) so we don't
       // overwrite an already-persisted value in the DB.
+      // Use keepalive so the request survives same-page navigation.
       skipNextAutoSave.current = true;
       const isSaveTheDate = variables.type === "save-the-date";
       const stdUrl = isSaveTheDate ? data.url : saveTheDatePhotoUrl;
@@ -453,10 +495,20 @@ export default function InvitationCustomizationPage({ profileId: propProfileId }
       if (typeof payload.digitalInvitationPhotoUrl === "string" && payload.digitalInvitationPhotoUrl.startsWith("blob:")) {
         delete payload.digitalInvitationPhotoUrl;
       }
-      authedFetch("/api/invitation-customizations", {
+      const apiBase = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+      const cachedToken = tokenRef.current;
+      fetch(`${apiBase}/api/invitation-customizations`, {
         method: "POST",
+        keepalive: true,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(cachedToken ? { Authorization: `Bearer ${cachedToken}` } : {}),
+        },
         body: JSON.stringify(payload),
-      }).catch(() => {});
+      }).catch((err) => {
+        console.error("[InvitationCustomization] post-upload save failed:", err);
+      });
     },
     onError: (error) => {
       toast({ title: "Upload Failed", description: error instanceof Error ? error.message : "Failed to upload photo", variant: "destructive" });
