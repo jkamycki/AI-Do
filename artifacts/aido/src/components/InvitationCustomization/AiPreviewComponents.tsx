@@ -130,13 +130,9 @@ export function AiSaveDatePreview({
   photoUrl?: string | null;
   photoPosition?: PhotoPosition;
 }) {
-  const couple    = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
-  const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  const cityLine  = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-  const timesLine = [
-    formatTime(profile.ceremonyTime)  && `Ceremony ${formatTime(profile.ceremonyTime)}`,
-    formatTime(profile.receptionTime) && `Reception ${formatTime(profile.receptionTime)}`,
-  ].filter(Boolean).join(" · ");
+  const couple   = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const dateStr  = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const cityLine = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
 
   return (
     <CardShell photoUrl={photoUrl} photoPosition={photoPosition}>
@@ -171,19 +167,9 @@ export function AiSaveDatePreview({
         </div>
       )}
 
-      {profile.venueAddress && (
-        <p style={{ fontFamily: jakarta, fontSize: 10, color: WHITE, margin: "2px 0 0" }}>
-          {profile.venueAddress}
-        </p>
-      )}
       {cityLine && (
-        <p style={{ fontFamily: jakarta, fontSize: 10, color: WHITE, margin: "1px 0 0" }}>
+        <p style={{ fontFamily: jakarta, fontSize: 10, color: WHITE, margin: "2px 0 0" }}>
           {cityLine}
-        </p>
-      )}
-      {timesLine && (
-        <p style={{ fontFamily: jakarta, fontSize: 10, color: GOLD, margin: "6px 0 0" }}>
-          {timesLine}
         </p>
       )}
 
