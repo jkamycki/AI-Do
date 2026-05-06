@@ -644,14 +644,21 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           })()
         : null;
 
-      // Fetch and embed photo as base64; fall back to a direct HTTPS URL so the
-      // photo still renders in email clients that load external images.
-      const photoBase64 = await getImageAsBase64(digitalInvitationPhotoUrl);
-      const photoImgSrc: string | null = photoBase64 ?? (
-        digitalInvitationPhotoUrl && !digitalInvitationPhotoUrl.startsWith("blob:")
-          ? (digitalInvitationPhotoUrl.startsWith("http") ? digitalInvitationPhotoUrl : `${origin}${digitalInvitationPhotoUrl}`)
-          : null
-      );
+      // Prefer a direct HTTPS URL for the photo — base64 data URIs are blocked
+      // or truncated by some email clients (Gmail mobile, Outlook). Only fall
+      // back to base64 for legacy private object URLs that aren't web-fetchable.
+      const photoPublicUrl: string | null = (() => {
+        if (!digitalInvitationPhotoUrl || digitalInvitationPhotoUrl.startsWith("blob:")) return null;
+        if (digitalInvitationPhotoUrl.startsWith("http")) return digitalInvitationPhotoUrl;
+        if (
+          digitalInvitationPhotoUrl.startsWith("/api/storage/public-objects/") ||
+          digitalInvitationPhotoUrl.startsWith("/storage/public-objects/")
+        ) {
+          return `${origin}${digitalInvitationPhotoUrl}`;
+        }
+        return null;
+      })();
+      const photoImgSrc: string | null = photoPublicUrl ?? await getImageAsBase64(digitalInvitationPhotoUrl);
       // Honour the user's photo positioning from the canvas. Same approach as
       // the Save the Date email — fixed-aspect frame with object-position.
       const photoBlock = photoImgSrc
@@ -750,7 +757,10 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
 
       // ── Render the email — both AI and custom modes use the same A.IDO template
       // structure; custom mode swaps in the user's color palette.
-      const logoBase64 = await getImageAsBase64(`${origin}/logo.png`);
+      // Use a direct public URL for the logo. Base64 data URIs are blocked or
+      // truncated by some email clients (Gmail mobile, Outlook), so a public
+      // HTTPS URL is more reliable.
+      const logoBase64 = `${origin}/logo.png`;
       let html: string;
       if (useGenerated) {
         html = aiDigitalInvitationHtml({
@@ -1138,14 +1148,21 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
 
       const origin = buildOrigin(req);
 
-      // Fetch and embed photo as base64; fall back to a direct HTTPS URL so the
-      // photo still renders in email clients that load external images.
-      const photoBase64 = await getImageAsBase64(saveTheDatePhotoUrl);
-      const photoImgSrc: string | null = photoBase64 ?? (
-        saveTheDatePhotoUrl && !saveTheDatePhotoUrl.startsWith("blob:")
-          ? (saveTheDatePhotoUrl.startsWith("http") ? saveTheDatePhotoUrl : `${origin}${saveTheDatePhotoUrl}`)
-          : null
-      );
+      // Prefer a direct HTTPS URL for the photo — base64 data URIs are blocked
+      // or truncated by some email clients (Gmail mobile, Outlook). Only fall
+      // back to base64 for legacy private object URLs that aren't web-fetchable.
+      const photoPublicUrl: string | null = (() => {
+        if (!saveTheDatePhotoUrl || saveTheDatePhotoUrl.startsWith("blob:")) return null;
+        if (saveTheDatePhotoUrl.startsWith("http")) return saveTheDatePhotoUrl;
+        if (
+          saveTheDatePhotoUrl.startsWith("/api/storage/public-objects/") ||
+          saveTheDatePhotoUrl.startsWith("/storage/public-objects/")
+        ) {
+          return `${origin}${saveTheDatePhotoUrl}`;
+        }
+        return null;
+      })();
+      const photoImgSrc: string | null = photoPublicUrl ?? await getImageAsBase64(saveTheDatePhotoUrl);
       // Honour the user's photo positioning from the canvas. We use a fixed
       // aspect-ratio frame and `object-position` so the photo crops the same
       // way as in the SaveTheDatePreview component.
@@ -1203,7 +1220,10 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       // the planner sees in the modal is what the guest receives.
       // ── Render the email — both AI and custom modes use the same A.IDO template
       // structure; custom mode swaps in the user's color palette.
-      const logoBase64 = await getImageAsBase64(`${origin}/logo.png`);
+      // Use a direct public URL for the logo. Base64 data URIs are blocked or
+      // truncated by some email clients (Gmail mobile, Outlook), so a public
+      // HTTPS URL is more reliable.
+      const logoBase64 = `${origin}/logo.png`;
       const stdCityStateZip = [
         profile.venueCity,
         [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
