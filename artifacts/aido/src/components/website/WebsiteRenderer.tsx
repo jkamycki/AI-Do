@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon } from "lucide-react";
 import { EditableText } from "./EditableText";
+import { RsvpFlow } from "./RsvpFlow";
 
 // camelCase section id <-> kebab-case URL slug
 const SECTION_TO_URL: Record<string, string> = {
@@ -14,6 +15,7 @@ const SECTION_TO_URL: Record<string, string> = {
   weddingParty: "wedding-party",
   gallery: "gallery",
   faq: "faq",
+  rsvp: "rsvp",
 };
 const URL_TO_SECTION: Record<string, string> = Object.fromEntries(
   Object.entries(SECTION_TO_URL).map(([k, v]) => [v, k])
@@ -705,6 +707,8 @@ function TopNav({
   if (data.sectionsEnabled.weddingParty) items.push({ id: "weddingParty", label: "Wedding Party" });
   if (data.sectionsEnabled.gallery) items.push({ id: "gallery", label: "Gallery" });
   if (data.sectionsEnabled.faq) items.push({ id: "faq", label: "FAQ" });
+  // RSVP is always available — it's the whole point of the site for guests.
+  items.push({ id: "rsvp", label: "RSVP" });
 
   // Anchor-scroll mode (used by editor preview): track the visible section
   // with IntersectionObserver to underline the right item.
@@ -804,6 +808,7 @@ export function WebsiteRenderer({
   onTextChange,
   currentSection,
   slug,
+  password,
 }: {
   data: WebsiteRendererPayload;
   scrollContainer?: HTMLElement | null;
@@ -815,6 +820,10 @@ export function WebsiteRenderer({
   currentSection?: string;
   // Slug for building per-section URLs in TopNav links.
   slug?: string;
+  // Optional password to forward to the RSVP API (the public guest endpoint
+  // is password-gated; if a guest already entered the password to view the
+  // site, we re-use it for RSVP search/submit).
+  password?: string | null;
 }) {
   const ctx: EditCtx = editable && onTextChange
     ? { editable: true, onTextChange }
@@ -842,6 +851,9 @@ export function WebsiteRenderer({
       {show("weddingParty", data.sectionsEnabled.weddingParty) && <WeddingParty data={data} ctx={ctx} />}
       {show("faq", data.sectionsEnabled.faq) && <Faq data={data} ctx={ctx} />}
       {show("gallery", data.sectionsEnabled.gallery) && <Gallery data={data} ctx={ctx} />}
+      {(showAll || currentSection === "rsvp") && slug && (
+        <RsvpFlow data={data} slug={slug} password={password ?? undefined} />
+      )}
       <Footer data={data} ctx={ctx} />
     </div>
   );

@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { db, weddingWebsites, weddingProfiles, timelines } from "@workspace/db";
+import { db, weddingWebsites, weddingProfiles, timelines, guests } from "@workspace/db";
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile } from "../lib/workspaceAccess";
 
@@ -287,6 +287,171 @@ router.get("/website/public/:slug", async (req, res) => {
     });
   } catch (err) {
     req.log.error(err, "publicWebsite failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------- Public RSVP integration ----------
+//
+// Guests on the wedding website RSVP without a personalized token. They type
+// their name, we look them up in the guest list scoped to this site's profile,
+// and submit updates the matched guest record (same fields the existing
+// /rsvp/:token POST writes). The published flag must be true and the password
+// (if set) must match — same gating as the public site itself.
+
+async function resolvePublishedSite(slug: string, password: string | undefined) {
+  const [row] = await db
+    .select()
+    .from(weddingWebsites)
+    .where(eq(weddingWebsites.slug, slug.toLowerCase()))
+    .limit(1);
+  if (!row || !row.published) return { ok: false as const, status: 404 };
+  if (row.password && row.password !== (password ?? "")) {
+    return { ok: false as const, status: 401 };
+  }
+  return { ok: true as const, site: row };
+}
+
+// GET /api/website/public/:slug/guests/search?q=name&password=...
+// Returns guests on this wedding's list whose name fuzzy-matches the query.
+// Limit 10 to keep the page responsive and reduce enumeration risk.
+router.get("/website/public/:slug/guests/search", async (req, res) => {
+  try {
+    const slug = String(req.params.slug ?? "").toLowerCase();
+    const q = String(req.query.q ?? "").trim();
+    const password = req.query.password ? String(req.query.password) : undefined;
+    if (q.length < 2) return res.json({ matches: [] });
+
+    const r = await resolvePublishedSite(slug, password);
+    if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
+
+    const rows = await db
+      .select({
+        id: guests.id,
+        name: guests.name,
+        rsvpStatus: guests.rsvpStatus,
+        plusOne: guests.plusOne,
+      })
+      .from(guests)
+      .where(and(eq(guests.profileId, r.site.profileId), ilike(guests.name, `%${q.replace(/[%_]/g, "\\$&")}%`)))
+      .limit(10);
+
+    res.json({ matches: rows });
+  } catch (err) {
+    req.log.error(err, "websiteRsvpSearch failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/website/public/:slug/guests/:guestId — fetch the single guest's
+// current RSVP details so the form can pre-fill (for guests editing their reply).
+router.get("/website/public/:slug/guests/:guestId", async (req, res) => {
+  try {
+    const slug = String(req.params.slug ?? "").toLowerCase();
+    const guestId = parseInt(String(req.params.guestId), 10);
+    const password = req.query.password ? String(req.query.password) : undefined;
+    if (!Number.isFinite(guestId)) return res.status(400).json({ error: "Bad guest id" });
+
+    const r = await resolvePublishedSite(slug, password);
+    if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
+
+    const [guest] = await db
+      .select()
+      .from(guests)
+      .where(and(eq(guests.id, guestId), eq(guests.profileId, r.site.profileId)))
+      .limit(1);
+    if (!guest) return res.status(404).json({ error: "Guest not found" });
+
+    res.json({
+      id: guest.id,
+      name: guest.name,
+      rsvpStatus: guest.rsvpStatus,
+      mealChoice: guest.mealChoice,
+      dietaryNotes: guest.dietaryNotes,
+      plusOne: guest.plusOne,
+      plusOneName: guest.plusOneName,
+      plusOneMealChoice: guest.plusOneMealChoice,
+    });
+  } catch (err) {
+    req.log.error(err, "websiteRsvpGetGuest failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/website/public/:slug/rsvp — submit/update RSVP for a guest.
+// Same write semantics as POST /rsvp/:token but identifies the guest by
+// guestId (returned from the search endpoint) instead of a token.
+router.post("/website/public/:slug/rsvp", async (req, res) => {
+  try {
+    const slug = String(req.params.slug ?? "").toLowerCase();
+    const password = req.body?.password ? String(req.body.password) : undefined;
+    const r = await resolvePublishedSite(slug, password);
+    if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
+
+    const {
+      guestId,
+      attendance,
+      mealChoice,
+      plusOne,
+      plusOneName,
+      plusOneMealChoice,
+      dietaryRestrictions,
+    } = (req.body ?? {}) as {
+      guestId?: number;
+      attendance?: string;
+      mealChoice?: string;
+      plusOne?: boolean;
+      plusOneName?: string;
+      plusOneMealChoice?: string;
+      dietaryRestrictions?: string;
+    };
+
+    if (!guestId || !Number.isFinite(guestId)) return res.status(400).json({ error: "Missing guestId" });
+    if (attendance !== "attending" && attendance !== "declined") {
+      return res.status(400).json({ error: "Please select Attending or Declined." });
+    }
+
+    const [guest] = await db
+      .select()
+      .from(guests)
+      .where(and(eq(guests.id, guestId), eq(guests.profileId, r.site.profileId)))
+      .limit(1);
+    if (!guest) return res.status(404).json({ error: "Guest not found on this guest list." });
+
+    const normalizeMeal = (val: unknown): string | null => {
+      if (typeof val !== "string") return null;
+      const trimmed = val.trim().toLowerCase();
+      if (!trimmed || trimmed === "none" || trimmed === "no_preference") return null;
+      return val.trim();
+    };
+
+    const updateData: Partial<typeof guests.$inferInsert> = {
+      rsvpStatus: attendance,
+      dietaryNotes: typeof dietaryRestrictions === "string" && dietaryRestrictions.trim()
+        ? dietaryRestrictions.trim()
+        : null,
+    };
+
+    if (attendance === "attending") {
+      updateData.mealChoice = normalizeMeal(mealChoice);
+      if (plusOne !== undefined) {
+        updateData.plusOne = !!plusOne;
+        const finalName = typeof plusOneName === "string" ? plusOneName.trim() : "";
+        updateData.plusOneName = plusOne && finalName ? finalName : null;
+        updateData.plusOneMealChoice = plusOne ? normalizeMeal(plusOneMealChoice) : null;
+      }
+    } else {
+      updateData.plusOne = false;
+      updateData.plusOneName = null;
+      updateData.plusOneMealChoice = null;
+      updateData.mealChoice = null;
+    }
+
+    await db.update(guests).set(updateData).where(eq(guests.id, guest.id));
+
+    res.json({ success: true, status: attendance });
+  } catch (err) {
+    req.log.error(err, "websiteRsvpSubmit failed");
     res.status(500).json({ error: "Internal server error" });
   }
 });

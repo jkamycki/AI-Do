@@ -204,5 +204,5 @@ export default function PublicWebsite() {
     window.scrollTo(0, 0);
   }, [currentSection]);
 
-  return <WebsiteRenderer data={data} currentSection={currentSection} slug={slug} />;
+  return <WebsiteRenderer data={data} currentSection={currentSection} slug={slug} password={password} />;
 }
