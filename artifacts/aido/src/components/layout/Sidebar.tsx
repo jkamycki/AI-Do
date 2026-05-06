@@ -54,8 +54,8 @@ const navSections = [
   {
     labelKey: "nav.budget_vendors",
     items: [
-      { href: "/budget", labelKey: "nav.budget", icon: DollarSign },
       { href: "/vendors", labelKey: "nav.vendors", icon: Store },
+      { href: "/budget", labelKey: "nav.budget", icon: DollarSign },
       { href: "/contracts", labelKey: "nav.contracts", icon: FileText },
     ],
   },
