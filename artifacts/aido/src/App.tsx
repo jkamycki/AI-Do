@@ -30,6 +30,7 @@ import InviteAccept from "@/pages/InviteAccept";
 import GuestCollect from "@/pages/GuestCollect";
 import Rsvp from "@/pages/Rsvp";
 import SaveTheDate from "@/pages/SaveTheDate";
+import PublicWebsite from "@/pages/PublicWebsite";
 import SharedWorkspace from "@/pages/SharedWorkspace";
 import GuestListAndInvitations from "@/pages/GuestListAndInvitations";
 import Hotels from "@/pages/Hotels";
@@ -1382,6 +1383,7 @@ function Router() {
       <Route path="/collect/:token" component={GuestCollect} />
       <Route path="/rsvp/:token" component={Rsvp} />
       <Route path="/save-the-date/:token" component={SaveTheDate} />
+      <Route path="/w/:slug" component={PublicWebsite} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
       <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} />} />
