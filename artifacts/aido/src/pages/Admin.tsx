@@ -1430,6 +1430,14 @@ function MessagesSection() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-messages"] }),
   });
 
+  const deleteMessageMutation = useMutation({
+    mutationFn: async ({ type, id }: { type: "contact" | "feedback"; id: number }) => {
+      const r = await authedFetch(`/api/help/messages/${type}/${id}`, { method: "DELETE" });
+      if (!r.ok) throw new Error("Failed to delete");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-messages"] }),
+  });
+
   const handleExpand = (id: number, type: "contact" | "feedback") => {
     setExpanded(prev => {
       if (prev === id) return null;
@@ -1557,7 +1565,17 @@ function MessagesSection() {
                     <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3">
                       {msg.message}
                     </p>
-                    <div className="mt-3 flex justify-end">
+                    <div className="mt-3 flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={e => { e.stopPropagation(); if (confirm("Delete this message? This cannot be undone.")) deleteMessageMutation.mutate({ type: "contact", id: msg.id }); }}
+                        disabled={deleteMessageMutation.isPending}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </Button>
                       <Button
                         size="sm"
                         variant={msg.isResolved ? "outline" : "default"}
@@ -1641,16 +1659,28 @@ function MessagesSection() {
                         <p className="text-xs text-muted-foreground">
                           Submitted: {new Date(item.createdAt).toLocaleString()}
                         </p>
-                        <Button
-                          size="sm"
-                          variant={item.isResolved ? "outline" : "default"}
-                          className={`gap-1.5 ${item.isResolved ? "" : "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"}`}
-                          onClick={e => { e.stopPropagation(); resolveMutation.mutate({ type: "feedback", id: item.id, resolved: !item.isResolved }); }}
-                          disabled={resolveMutation.isPending}
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          {item.isResolved ? "Mark as Open" : "Mark as Resolved"}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={e => { e.stopPropagation(); if (confirm("Delete this feedback? This cannot be undone.")) deleteMessageMutation.mutate({ type: "feedback", id: item.id }); }}
+                            disabled={deleteMessageMutation.isPending}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={item.isResolved ? "outline" : "default"}
+                            className={`gap-1.5 ${item.isResolved ? "" : "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"}`}
+                            onClick={e => { e.stopPropagation(); resolveMutation.mutate({ type: "feedback", id: item.id, resolved: !item.isResolved }); }}
+                            disabled={resolveMutation.isPending}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            {item.isResolved ? "Mark as Open" : "Mark as Resolved"}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )}

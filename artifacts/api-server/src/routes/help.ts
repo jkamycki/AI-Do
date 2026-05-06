@@ -381,6 +381,32 @@ router.patch("/help/support-tickets/:id/status", requireAuth, async (req, res) =
   }
 });
 
+router.delete("/help/messages/contact/:id", requireAuth, async (req, res) => {
+  try {
+    const admin = await isAdmin(req.userId!);
+    if (!admin) return res.status(403).json({ error: "Access denied." });
+    const id = parseInt(String(req.params["id"] ?? "0"), 10);
+    await db.delete(contactMessages).where(eq(contactMessages.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "Failed to delete contact message");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/help/messages/feedback/:id", requireAuth, async (req, res) => {
+  try {
+    const admin = await isAdmin(req.userId!);
+    if (!admin) return res.status(403).json({ error: "Access denied." });
+    const id = parseInt(String(req.params["id"] ?? "0"), 10);
+    await db.delete(feedbackSubmissions).where(eq(feedbackSubmissions.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "Failed to delete feedback submission");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.delete("/help/support-tickets/:id", requireAuth, async (req, res) => {
   try {
     const admin = await isAdmin(req.userId!);

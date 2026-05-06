@@ -7,6 +7,7 @@ import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 import {
   buildInboundAddress,
+  buildVendorFromAddress,
   cleanInboundText,
   randomToken,
   sendEmail,
@@ -143,6 +144,11 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
     const coupleNames = profile ? `${profile.partner1Name} & ${profile.partner2Name}` : "";
     const finalSubject = subject?.trim() || conv.subject || `Wedding planning — ${vendor.name}`;
     const replyTo = buildInboundAddress(conv.id, conv.inboundToken);
+    // Use routing address as From so vendor replies to either From or Reply-To
+    // land on the same domain and get routed back to this conversation.
+    // buildVendorFromAddress uses the verified SENDING domain (not the inbound
+    // subdomain) so Resend can actually send it.
+    const vendorFrom = buildVendorFromAddress(conv.id, conv.inboundToken);
 
     // Validate attachments: must be either a Replit object-storage path (/objects/...)
     // or an https URL (e.g. inbound vendor attachment hosted by Resend).
@@ -211,6 +217,7 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
 
       result = await sendEmail({
         to: vendor.email,
+        from: vendorFrom,
         replyTo,
         cc,
         subject: finalSubject,
