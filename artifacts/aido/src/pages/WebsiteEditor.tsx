@@ -561,80 +561,11 @@ export default function WebsiteEditor() {
           </div>
         </Section>
 
-        {/* Hero text overrides */}
-        <Section icon={<FileText className="h-4 w-4" />} title="Hero">
-          <div className="space-y-2">
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Tagline (above your names)</Label>
-              <Input
-                value={record.customText._heroTagline ?? ""}
-                onChange={(e) => update({ customText: { ...record.customText, _heroTagline: e.target.value } })}
-                placeholder="We're getting married"
-                className="text-sm"
-              />
-            </div>
-          </div>
-        </Section>
-
-        {/* Section text editors — each with title, subtitle, body */}
-        <Section icon={<FileText className="h-4 w-4" />} title="Section Text">
-          <p className="text-[11px] text-muted-foreground mb-3">
-            Leave any field blank to use the default. Body text is required for the section to show on the site.
+        {/* Inline-edit hint */}
+        <Section icon={<FileText className="h-4 w-4" />} title="Edit Text">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Click any heading or paragraph in the preview to edit it directly. Press <strong>Enter</strong> on a heading or click outside to commit. Use this sidebar for theme, layout, photos, and section toggles.
           </p>
-          {SECTION_TEXT_KEYS.map((s) => (
-            <details key={s.key} className="mb-2 last:mb-0 rounded-md border border-border overflow-hidden group">
-              <summary className="px-3 py-2 cursor-pointer text-sm font-medium hover:bg-muted/50 transition-colors flex items-center justify-between">
-                <span>{s.label}</span>
-                <span className="text-[11px] text-muted-foreground">
-                  {record.customText[s.key]?.trim() ? "edited" : "default"}
-                </span>
-              </summary>
-              <div className="p-3 pt-0 space-y-2 bg-muted/20">
-                <div>
-                  <Label className="text-[11px] text-muted-foreground mb-1 block">Title (small chip)</Label>
-                  <Input
-                    value={record.customText[`${s.key}_title`] ?? ""}
-                    onChange={(e) => update({ customText: { ...record.customText, [`${s.key}_title`]: e.target.value } })}
-                    placeholder={s.defaultTitle}
-                    className="text-sm h-8"
-                  />
-                </div>
-                {s.defaultSubtitle !== undefined && (
-                  <div>
-                    <Label className="text-[11px] text-muted-foreground mb-1 block">Heading</Label>
-                    <Input
-                      value={record.customText[`${s.key}_subtitle`] ?? ""}
-                      onChange={(e) => update({ customText: { ...record.customText, [`${s.key}_subtitle`]: e.target.value } })}
-                      placeholder={s.defaultSubtitle}
-                      className="text-sm h-8"
-                    />
-                  </div>
-                )}
-                {(s.key === "welcome" || s.key === "story" || s.key === "travel" || s.key === "registry" || s.key === "faq") && (
-                  <div>
-                    <Label className="text-[11px] text-muted-foreground mb-1 block">Body</Label>
-                    <Textarea
-                      value={record.customText[s.key] ?? ""}
-                      onChange={(e) => update({ customText: { ...record.customText, [s.key]: e.target.value } })}
-                      placeholder={`Tell guests about ${s.label.toLowerCase()}...`}
-                      className="min-h-[80px] resize-y text-sm"
-                    />
-                  </div>
-                )}
-              </div>
-            </details>
-          ))}
-        </Section>
-
-        {/* Footer */}
-        <Section icon={<FileText className="h-4 w-4" />} title="Footer">
-          <Label className="text-xs text-muted-foreground mb-1 block">Footer text (under couple names)</Label>
-          <Input
-            value={record.customText._footerText ?? ""}
-            onChange={(e) => update({ customText: { ...record.customText, _footerText: e.target.value } })}
-            placeholder="(defaults to wedding date)"
-            className="text-sm"
-          />
         </Section>
 
         {/* Hero image */}
@@ -740,7 +671,11 @@ export default function WebsiteEditor() {
           Live preview — changes appear here instantly. Click <strong>Save changes</strong> when you're happy.
         </div>
         <div className="bg-white">
-          <WebsiteRenderer data={livePreview} />
+          <WebsiteRenderer
+            data={livePreview}
+            editable
+            onTextChange={(key, value) => update({ customText: { ...record.customText, [key]: value } })}
+          />
         </div>
       </main>
 
