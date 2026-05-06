@@ -156,6 +156,18 @@ export default function InvitationCustomizationPage({
   const saveTheDatePreviewRef = useRef<HTMLDivElement>(null);
   const saveTheDateBlobUrlRef = useRef<string | null>(null);
   const digitalInvitationBlobUrlRef = useRef<string | null>(null);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+  const [previewContainerWidth, setPreviewContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const el = previewContainerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      setPreviewContainerWidth(entries[0]?.contentRect.width ?? 0);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Keep ref current on every render so the unmount effect always has latest values
   latestValuesRef.current = {
@@ -1296,7 +1308,7 @@ export default function InvitationCustomizationPage({
               </Tabs>
             </div>
 
-            <div className="flex-1 overflow-auto p-3 sm:p-4">
+            <div ref={previewContainerRef} className="flex-1 overflow-auto p-3 sm:p-4">
               {isSTD ? (
                 useGeneratedInvitation ? (
                   <AiSaveDatePreview
