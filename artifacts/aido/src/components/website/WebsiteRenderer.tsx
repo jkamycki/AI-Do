@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon } from "lucide-react";
 
 export interface WebsiteRendererPayload {
@@ -66,6 +67,7 @@ function Hero({ data }: { data: WebsiteRendererPayload }) {
   const dateStr = formatWeddingDate(data.couple.weddingDate);
   return (
     <section
+      id="home"
       className="relative min-h-[80vh] flex items-center justify-center text-center px-6 py-24"
       style={{
         background: data.heroImage
@@ -310,9 +312,88 @@ function Footer({ data }: { data: WebsiteRendererPayload }) {
   );
 }
 
-export function WebsiteRenderer({ data }: { data: WebsiteRendererPayload }) {
+function TopNav({ data, scrollContainer }: { data: WebsiteRendererPayload; scrollContainer?: HTMLElement | null }) {
+  const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
+  const [active, setActive] = useState<string>("home");
+
+  // Build the ordered list of nav items only for sections that are enabled.
+  const items: Array<{ id: string; label: string }> = [{ id: "home", label: "Home" }];
+  if (data.sectionsEnabled.story) items.push({ id: "story", label: "Our Story" });
+  if (data.sectionsEnabled.schedule) items.push({ id: "schedule", label: "Schedule" });
+  if (data.sectionsEnabled.travel) items.push({ id: "travel", label: "Travel" });
+  if (data.sectionsEnabled.registry) items.push({ id: "registry", label: "Registry" });
+  if (data.sectionsEnabled.gallery) items.push({ id: "gallery", label: "Gallery" });
+  if (data.sectionsEnabled.faq) items.push({ id: "faq", label: "FAQ" });
+
+  // Track which section is currently in view to underline the right nav item.
+  useEffect(() => {
+    const root = scrollContainer ?? null;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Pick the entry that's most visible.
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]) setActive(visible[0].target.id);
+      },
+      { root, rootMargin: "-30% 0px -50% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+    items.forEach((it) => {
+      const el = document.getElementById(it.id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.sectionsEnabled, scrollContainer]);
+
+  const scrollTo = (id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setActive(id);
+  };
+
+  return (
+    <nav
+      className="sticky top-0 z-30 backdrop-blur-md border-b"
+      style={{
+        background: `${data.colorPalette.background}ee`,
+        borderColor: `${data.colorPalette.primary}22`,
+      }}
+    >
+      <div className="max-w-5xl mx-auto px-4 py-3 sm:py-4 flex flex-col items-center gap-2">
+        <button
+          onClick={() => scrollTo("home")}
+          className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
+          style={{ fontFamily: fontStack(data.font), color: data.colorPalette.primary }}
+        >
+          {couple}
+        </button>
+        <div className="flex flex-wrap items-center justify-center gap-x-5 sm:gap-x-7 gap-y-1 text-xs sm:text-sm">
+          {items.map((it) => (
+            <button
+              key={it.id}
+              onClick={() => scrollTo(it.id)}
+              className={`relative pb-1 transition-colors hover:opacity-80 ${active === it.id ? "" : "opacity-70"}`}
+              style={{
+                color: data.colorPalette.text,
+                borderBottom: active === it.id ? `2px solid ${data.colorPalette.primary}` : "2px solid transparent",
+                fontFamily: fontStack(data.font),
+              }}
+            >
+              {it.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+export function WebsiteRenderer({ data, scrollContainer }: { data: WebsiteRendererPayload; scrollContainer?: HTMLElement | null }) {
   return (
     <div style={{ background: data.colorPalette.background, color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <TopNav data={data} scrollContainer={scrollContainer} />
       <Hero data={data} />
       {data.sectionsEnabled.welcome && <Welcome data={data} />}
       {data.sectionsEnabled.story && <Story data={data} />}
