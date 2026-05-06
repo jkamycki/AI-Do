@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@clerk/react";
 import { setWorkspaceProfileId } from "@workspace/api-client-react";
 import { setAuthFetchWorkspaceProfileId } from "@/lib/authFetch";
@@ -69,7 +69,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   // it. This is the key guard that prevents a previous account's shared
   // workspace from leaking into a freshly-signed-up user's session in the
   // same browser.
-  useEffect(() => {
+  //
+  // useLayoutEffect (not useEffect) so the workspace is resolved synchronously
+  // before the browser paints. useEffect fires *after* paint, which lets
+  // Dashboard render once with activeWorkspace=null, briefly show cached data,
+  // then re-render with a non-owner workspace and return null — the "glitch".
+  useLayoutEffect(() => {
     if (!isLoaded) return;
     const stored = readStored();
 
