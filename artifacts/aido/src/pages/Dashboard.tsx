@@ -526,6 +526,14 @@ function DraggableStatsRow({ chips }: { chips: Record<StatKey, StatChipDef> }) {
 }
 
 export default function Dashboard() {
+  return (
+    <DashboardErrorBoundary>
+      <DashboardContent />
+    </DashboardErrorBoundary>
+  );
+}
+
+function DashboardContent() {
   const { t } = useTranslation();
   const { data: summary, isLoading, isError, refetch } = useGetDashboardSummary();
   const qc = useQueryClient();
