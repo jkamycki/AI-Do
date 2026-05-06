@@ -33,6 +33,7 @@ import {
   ImagePlus,
   Trash2,
   Pencil,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -49,6 +50,7 @@ const navSections = [
       { href: "/mood-board", labelKey: "nav.mood_board", icon: ImagePlus },
       { href: "/timeline", labelKey: "nav.timeline", icon: CalendarDays },
       { href: "/checklist", labelKey: "nav.checklist", icon: CheckSquare },
+      { href: "/website-editor", labelKey: "nav.website", icon: Globe },
     ],
   },
   {

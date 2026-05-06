@@ -31,6 +31,7 @@ import GuestCollect from "@/pages/GuestCollect";
 import Rsvp from "@/pages/Rsvp";
 import SaveTheDate from "@/pages/SaveTheDate";
 import PublicWebsite from "@/pages/PublicWebsite";
+import WebsiteEditor from "@/pages/WebsiteEditor";
 import SharedWorkspace from "@/pages/SharedWorkspace";
 import GuestListAndInvitations from "@/pages/GuestListAndInvitations";
 import Hotels from "@/pages/Hotels";
@@ -1401,6 +1402,7 @@ function Router() {
       <Route path="/contracts" component={() => <ProtectedRoute component={Contracts} />} />
       <Route path="/mood-board" component={() => <ProtectedRoute component={MoodBoard} />} />
       <Route path="/aria" component={() => <ProtectedRoute component={Aria} />} />
+      <Route path="/website-editor" component={() => <ProtectedRoute component={WebsiteEditor} />} />
       <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} />} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
