@@ -116,8 +116,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Other": "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
 };
 
-function formatCurrency(n: number) {
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+function formatCurrency(n: number | null | undefined) {
+  return `$${(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function formatDate(dateStr: string) {
