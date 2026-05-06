@@ -432,10 +432,13 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
   );
 }
 
+export type WeddingPartySide = "groom" | "bride" | "family";
+
 export interface WeddingPartyMember {
   photo: string;
   name: string;
   role: string;
+  side?: WeddingPartySide;
 }
 
 export function parseWeddingPartyMembers(raw: string | undefined): WeddingPartyMember[] {
@@ -449,15 +452,44 @@ export function parseWeddingPartyMembers(raw: string | undefined): WeddingPartyM
         photo: typeof m.photo === "string" ? m.photo : "",
         name: typeof m.name === "string" ? m.name : "",
         role: typeof m.role === "string" ? m.role : "",
+        side: m.side === "groom" || m.side === "bride" || m.side === "family" ? m.side : undefined,
       }));
   } catch {
     return [];
   }
 }
 
+function PartyMemberCard({ data, member }: { data: WebsiteRendererPayload; member: WeddingPartyMember }) {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div
+        className="w-32 h-32 sm:w-36 sm:h-36 rounded-full overflow-hidden mb-4 flex items-center justify-center"
+        style={{ background: `${data.colorPalette.primary}15`, border: `1px solid ${data.colorPalette.primary}33` }}
+      >
+        {member.photo ? (
+          <img src={imageUrl(member.photo)} alt={member.name} className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <Heart className="h-8 w-8 opacity-30" style={{ color: data.colorPalette.primary }} />
+        )}
+      </div>
+      <div className="text-2xl sm:text-3xl mb-1" style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}>
+        {member.name || "Name"}
+      </div>
+      <div className="text-sm opacity-80" style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}>
+        {member.role || "Role"}
+      </div>
+    </div>
+  );
+}
+
 function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const members = parseWeddingPartyMembers(data.customText._weddingPartyMembers);
   if (members.length === 0 && !ctx.editable) return null;
+
+  const groomSide = members.filter((m) => m.side === "groom");
+  const brideSide = members.filter((m) => m.side === "bride");
+  const familySide = members.filter((m) => m.side === "family" || !m.side);
+
   return (
     <SectionShell id="weddingParty" titleKey="weddingParty_title" defaultTitle="Wedding Party" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx}>
       <EditableText
@@ -474,27 +506,83 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
           No wedding party members yet — add some from the sidebar.
         </p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10 max-w-3xl mx-auto">
-          {members.map((m, i) => (
-            <div key={i} className="flex flex-col items-center text-center">
-              <div
-                className="w-32 h-32 sm:w-36 sm:h-36 rounded-full overflow-hidden mb-4 flex items-center justify-center"
-                style={{ background: `${data.colorPalette.primary}15`, border: `1px solid ${data.colorPalette.primary}33` }}
-              >
-                {m.photo ? (
-                  <img src={imageUrl(m.photo)} alt={m.name} className="w-full h-full object-cover" loading="lazy" />
+        <div className="space-y-16">
+          {(groomSide.length > 0 || brideSide.length > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-0 max-w-5xl mx-auto relative">
+              {/* Groom's side */}
+              <div className="md:pr-12 md:border-r" style={{ borderColor: `${data.colorPalette.primary}33` }}>
+                <h3
+                  className="text-center text-2xl sm:text-3xl mb-10"
+                  style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+                >
+                  <EditableText
+                    editable={ctx.editable}
+                    value={data.customText.weddingParty_groomLabel ?? ""}
+                    defaultValue="Groom's Party"
+                    onCommit={(v) => ctx.onTextChange("weddingParty_groomLabel", v)}
+                  />
+                </h3>
+                {groomSide.length === 0 ? (
+                  <p className="text-center text-xs opacity-50" style={{ color: data.colorPalette.text }}>
+                    {ctx.editable ? "Add members from the sidebar with side set to “Groom”" : ""}
+                  </p>
                 ) : (
-                  <Heart className="h-8 w-8 opacity-30" style={{ color: data.colorPalette.primary }} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10">
+                    {groomSide.map((m, i) => (
+                      <PartyMemberCard key={`g-${i}`} data={data} member={m} />
+                    ))}
+                  </div>
                 )}
               </div>
-              <div className="text-2xl sm:text-3xl mb-1" style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}>
-                {m.name || "Name"}
-              </div>
-              <div className="text-sm opacity-80" style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}>
-                {m.role || "Role"}
+
+              {/* Bride's side */}
+              <div className="md:pl-12">
+                <h3
+                  className="text-center text-2xl sm:text-3xl mb-10"
+                  style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+                >
+                  <EditableText
+                    editable={ctx.editable}
+                    value={data.customText.weddingParty_brideLabel ?? ""}
+                    defaultValue="Bride's Party"
+                    onCommit={(v) => ctx.onTextChange("weddingParty_brideLabel", v)}
+                  />
+                </h3>
+                {brideSide.length === 0 ? (
+                  <p className="text-center text-xs opacity-50" style={{ color: data.colorPalette.text }}>
+                    {ctx.editable ? "Add members from the sidebar with side set to “Bride”" : ""}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10">
+                    {brideSide.map((m, i) => (
+                      <PartyMemberCard key={`b-${i}`} data={data} member={m} />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+          )}
+
+          {familySide.length > 0 && (
+            <div className="max-w-4xl mx-auto">
+              <h3
+                className="text-center text-2xl sm:text-3xl mb-10"
+                style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+              >
+                <EditableText
+                  editable={ctx.editable}
+                  value={data.customText.weddingParty_familyLabel ?? ""}
+                  defaultValue="Family & Friends"
+                  onCommit={(v) => ctx.onTextChange("weddingParty_familyLabel", v)}
+                />
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
+                {familySide.map((m, i) => (
+                  <PartyMemberCard key={`f-${i}`} data={data} member={m} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </SectionShell>
@@ -600,11 +688,12 @@ function TopNav({
   const active = pageMode ? currentSection : scrollActive;
 
   const renderItem = (it: { id: string; label: string }) => {
-    const className = `relative pb-1 transition-colors hover:opacity-80 ${active === it.id ? "" : "opacity-70"}`;
+    const className = `relative pb-1 font-semibold transition-colors hover:opacity-80 ${active === it.id ? "" : "opacity-70"}`;
     const style = {
       color: data.colorPalette.text,
       borderBottom: active === it.id ? `2px solid ${data.colorPalette.primary}` : "2px solid transparent",
       fontFamily: fontStack(headingFont(data)),
+      fontWeight: 600,
     };
     if (pageMode && slug) {
       const seg = urlSegmentForSection(it.id);

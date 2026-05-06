@@ -15,7 +15,7 @@ import {
   QrCode, Download,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { WebsiteRenderer, type WebsiteRendererPayload, parseWeddingPartyMembers, type WeddingPartyMember } from "@/components/website/WebsiteRenderer";
+import { WebsiteRenderer, type WebsiteRendererPayload, parseWeddingPartyMembers, type WeddingPartyMember, type WeddingPartySide } from "@/components/website/WebsiteRenderer";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
@@ -804,6 +804,15 @@ function WeddingPartyEditor({
                 placeholder="Role (e.g. Bridesmaid, Best Man)"
                 className="h-8 text-sm"
               />
+              <select
+                value={m.side ?? ""}
+                onChange={(e) => updateMember(i, { side: (e.target.value || undefined) as WeddingPartySide | undefined })}
+                className="w-full h-8 rounded-md border border-border bg-background px-2 text-xs"
+              >
+                <option value="">Family & Friends</option>
+                <option value="groom">Groom's party</option>
+                <option value="bride">Bride's party</option>
+              </select>
             </div>
             <button
               onClick={() => removeMember(i)}
