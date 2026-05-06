@@ -1351,7 +1351,7 @@ export default function InvitationCustomizationPage({
                 )
               ) : (
                 <RsvpPagePreview
-                  colors={displayPalette}
+                  colors={useGeneratedInvitation ? { ...displayPalette, accent: "#D4A017", primary: "#D4A017" } : displayPalette}
                   font={useGeneratedInvitation ? null : digitalInvitationFont}
                   backgroundColor={useGeneratedInvitation ? null : digitalInvitationBackground}
                   partner1Name={displayWeddingProfile.partner1Name}

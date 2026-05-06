@@ -730,7 +730,7 @@ export function InvitationSendModal({
                   <div className="flex justify-center overflow-hidden">
                     {profile && (
                       <RsvpPagePreview
-                        colors={palette}
+                        colors={isCustomMode ? palette : { ...palette, accent: "#D4A017", primary: "#D4A017" }}
                         font={customization.digitalInvitationFont}
                         backgroundColor={customization.digitalInvitationBackground}
                         partner1Name={profile.partner1Name ?? ""}
@@ -738,7 +738,9 @@ export function InvitationSendModal({
                         weddingDate={profile.weddingDate ?? ""}
                         venue={profile.venue ?? ""}
                         photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
-                        photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
+                        photoPosition={isCustomMode
+                          ? { x: (customization.textOverrides as Record<string, Record<string, number>>)?.["dig:photo"]?.objectX ?? 50, y: (customization.textOverrides as Record<string, Record<string, number>>)?.["dig:photo"]?.objectY ?? 50 }
+                          : customization.digitalInvitationPhotoPosition ?? undefined}
                         guestName={guest?.name ?? "Guest"}
                         venueAddress={profile.location ?? profile.venueAddress ?? ""}
                         venueCity={profile.venueCity ?? ""}
