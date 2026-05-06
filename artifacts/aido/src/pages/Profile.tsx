@@ -19,6 +19,7 @@ import { CalendarIcon, Save, RotateCcw, Loader2, RefreshCw } from "lucide-react"
 import { useTranslation } from "react-i18next";
 import { COUNTRIES } from "@/lib/countries";
 import { getAddressFormat } from "@/lib/addressFormat";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
 const NO_COUNTRY = "__none__";
 
@@ -331,7 +332,19 @@ export default function Profile() {
                   <FormItem>
                     <FormLabel>{t("profile.street_address")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="123 Magnolia Lane" {...field} data-testid="input-location" className="bg-background" />
+                      <AddressAutocomplete
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onSelect={(s) => {
+                          field.onChange(s.street);
+                          form.setValue("venueCity", s.city, { shouldDirty: true });
+                          form.setValue("venueState", s.state, { shouldDirty: true });
+                          form.setValue("venueZip", s.zip, { shouldDirty: true });
+                        }}
+                        placeholder="123 Magnolia Lane"
+                        id="input-location"
+                        className="bg-background"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -437,7 +450,19 @@ export default function Profile() {
                         <FormItem>
                           <FormLabel>{t("profile.ceremony_street_address")}</FormLabel>
                           <FormControl>
-                            <Input placeholder="200 Broad Street" {...field} data-testid="input-ceremony-address" className="bg-background" />
+                            <AddressAutocomplete
+                              value={field.value ?? ""}
+                              onChange={field.onChange}
+                              onSelect={(s) => {
+                                field.onChange(s.street);
+                                form.setValue("ceremonyCity", s.city, { shouldDirty: true });
+                                form.setValue("ceremonyState", s.state, { shouldDirty: true });
+                                form.setValue("ceremonyZip", s.zip, { shouldDirty: true });
+                              }}
+                              placeholder="200 Broad Street"
+                              id="input-ceremony-address"
+                              className="bg-background"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
