@@ -1106,7 +1106,7 @@ export default function InvitationCustomizationPage({
                 isSTD ? setSaveTheDateFont : setDigitalInvitationFont
               }
               colors={displayPalette}
-              showLayout={isSTD}
+              showLayout={false}
             />
           )}
 
@@ -1274,7 +1274,7 @@ export default function InvitationCustomizationPage({
               {/* Reset button — clears only the active design's overrides */}
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-muted-foreground">
-                  Preview — click any element to customise
+                  Preview
                 </p>
                 {!useGeneratedInvitation && (
                   <Button
@@ -1337,7 +1337,7 @@ export default function InvitationCustomizationPage({
                     weddingDate={displayWeddingProfile.weddingDate}
                     colors={displayPalette}
                     font={saveTheDateFont}
-                    layout={saveTheDateLayout}
+                    layout="classic"
                     backgroundColor={saveTheDateBackground}
                     partner1Name={displayWeddingProfile.partner1Name}
                     partner2Name={displayWeddingProfile.partner2Name}
@@ -1346,7 +1346,8 @@ export default function InvitationCustomizationPage({
                     venueZip={displayWeddingProfile.venueZip}
                     message={saveTheDateMessage || undefined}
                     textOverrides={stdTextOverrides}
-                    onTextOverridesChange={setStdTextOverrides}
+                    onTextOverridesChange={() => {}}
+                    editable={false}
                   />
                 )
               ) : (
