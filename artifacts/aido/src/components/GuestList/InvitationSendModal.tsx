@@ -19,7 +19,7 @@ import type { Guest } from "@workspace/api-client-react";
 import type { TextOverrides, ColorPalette } from "@/types/invitations";
 import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
 import { RsvpPagePreview } from "@/components/InvitationCustomization/RsvpPagePreview";
-import { AiSaveDatePreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
+import { AiSaveDatePreview, AiDigitalInvitationPreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
 
 interface Customization {
