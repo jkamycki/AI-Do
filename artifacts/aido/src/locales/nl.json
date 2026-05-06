@@ -372,7 +372,9 @@
     "add_task_to": "Taak toevoegen aan {{month}}",
     "could_not_update": "Kon de taak niet bijwerken",
     "could_not_delete": "Kon de taak niet verwijderen",
-    "could_not_add": "Kon de taak niet toevoegen"
+    "could_not_add": "Kon de taak niet toevoegen",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "vendors": {
     "title": "Leveranciers",

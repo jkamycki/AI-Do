@@ -461,7 +461,9 @@
     "add_task_to": "{{month}}にタスクを追加",
     "could_not_update": "タスクを更新できませんでした",
     "could_not_delete": "タスクを削除できませんでした",
-    "could_not_add": "タスクを追加できませんでした"
+    "could_not_add": "タスクを追加できませんでした",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "vendors": {
     "title": "ベンダー",
@@ -866,7 +868,9 @@
     "pdf_failed_desc": "PDFを生成できませんでした。もう一度お試しください。",
     "could_not_save": "タイムラインを保存できませんでした",
     "edit_event_title": "このイベントを編集",
-    "delete_event_title": "このイベントを削除"
+    "delete_event_title": "このイベントを削除",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "hotels": {
     "title": "ホテルブロック",

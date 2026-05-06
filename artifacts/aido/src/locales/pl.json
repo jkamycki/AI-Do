@@ -372,7 +372,9 @@
     "add_task_to": "Dodaj zadanie do {{month}}",
     "could_not_update": "Nie udało się zaktualizować zadania",
     "could_not_delete": "Nie udało się usunąć zadania",
-    "could_not_add": "Nie udało się dodać zadania"
+    "could_not_add": "Nie udało się dodać zadania",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "vendors": {
     "title": "Dostawcy",

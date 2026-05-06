@@ -461,7 +461,9 @@
     "add_task_to": "Adicionar tarefa a {{month}}",
     "could_not_update": "Não foi possível atualizar a tarefa",
     "could_not_delete": "Não foi possível excluir a tarefa",
-    "could_not_add": "Não foi possível adicionar a tarefa"
+    "could_not_add": "Não foi possível adicionar a tarefa",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "vendors": {
     "title": "Fornecedores",
@@ -866,7 +868,9 @@
     "pdf_failed_desc": "Não foi possível gerar o PDF. Por favor, tente novamente.",
     "could_not_save": "Não foi possível guardar a agenda",
     "edit_event_title": "Editar este evento",
-    "delete_event_title": "Eliminar este evento"
+    "delete_event_title": "Eliminar este evento",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "hotels": {
     "title": "Blocos de Hotel",

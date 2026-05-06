@@ -461,7 +461,9 @@
     "add_task_to": "Aufgabe zu {{month}} hinzufügen",
     "could_not_update": "Aufgabe konnte nicht aktualisiert werden",
     "could_not_delete": "Aufgabe konnte nicht gelöscht werden",
-    "could_not_add": "Aufgabe konnte nicht hinzugefügt werden"
+    "could_not_add": "Aufgabe konnte nicht hinzugefügt werden",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "vendors": {
     "title": "Anbieter",
@@ -867,7 +869,9 @@
     "pdf_failed_desc": "PDF konnte nicht erstellt werden. Bitte erneut versuchen.",
     "could_not_save": "Zeitplan konnte nicht gespeichert werden",
     "edit_event_title": "Dieses Ereignis bearbeiten",
-    "delete_event_title": "Dieses Ereignis löschen"
+    "delete_event_title": "Dieses Ereignis löschen",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "hotels": {
     "title": "Hotelkontingente",

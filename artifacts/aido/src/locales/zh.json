@@ -461,7 +461,9 @@
     "add_task_to": "将任务添加至 {{month}}",
     "could_not_update": "无法更新任务",
     "could_not_delete": "无法删除任务",
-    "could_not_add": "无法添加任务"
+    "could_not_add": "无法添加任务",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "vendors": {
     "title": "供应商",
@@ -866,7 +868,9 @@
     "pdf_failed_desc": "无法生成 PDF，请重试。",
     "could_not_save": "无法保存时间表",
     "edit_event_title": "编辑此事项",
-    "delete_event_title": "删除此事项"
+    "delete_event_title": "删除此事项",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "hotels": {
     "title": "酒店预留",
