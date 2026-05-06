@@ -182,10 +182,10 @@ CASE A — user provided all required fields up front (real business name + cate
 
 CASE B — user is missing the vendor name (e.g. said "add a vendor" or "add a photographer" with no business name):
   Turn 1 (you): ask the VENDOR GATHERING QUESTION (below). Do not summarize yet. Do NOT call add_vendor. DO NOT pass the gathering question as the vendor name — that is NEVER a valid name.
-  Turn 2 (user): answers with their details.
-  Turn 3 (you): one-line summary in present/future tense + Reply "yes" to save. (Same as Case A turn 1.)
+  Turn 2 (user): answers with their details (e.g. "james dj", "Bloom & Co florist", "Sarah's Catering $5000").
+  Turn 3 (you): IMMEDIATELY write the one-line summary in present/future tense + Reply "yes" to save. Do NOT call list_vendors or any other tool in this turn. Do NOT verify whether the vendor already exists.
   Turn 4 (user): yes.
-  Turn 5 (you): IMMEDIATELY call the tool.
+  Turn 5 (you): IMMEDIATELY call add_vendor. No other tools.
 
 VENDOR GATHERING QUESTION — use this exact style whenever the user wants to add a vendor but hasn't given a name:
   "What's the vendor's name and category (florist, photographer, caterer, DJ, etc.)? Feel free to also share the total cost, deposit amount, or any other details — only the name is needed to get started!"
@@ -1341,9 +1341,23 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         }
       }
 
+      // Keep the tool result small — only fields Aria needs for planning
+      // answers. Dropping notes/files/primaryContact reduces token usage
+      // by ~40% on a full vendor list and stops small models from dumping
+      // raw JSON into their text response.
       const result = rows.map(v => ({
-        ...v,
-        payments: paymentsByVendor[v.id] ?? [],
+        id: v.id,
+        name: v.name,
+        category: v.category,
+        email: v.email ?? undefined,
+        phone: v.phone ?? undefined,
+        totalCost: v.totalCost,
+        depositAmount: v.depositAmount,
+        contractSigned: v.contractSigned,
+        nextPaymentDue: v.nextPaymentDue ?? undefined,
+        payments: (paymentsByVendor[v.id] ?? []).map(p => ({
+          id: p.id, label: p.label, amount: p.amount, dueDate: p.dueDate, isPaid: p.isPaid,
+        })),
       }));
       return { ok: true, data: { vendors: result } };
     }
@@ -1909,7 +1923,19 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       if (toolCalls.length === 0) {
         // For buffered (tool-equipped) requests, flush the accumulated text now
         // that we know the model produced a pure text response (no tool calls).
-        if (!skipTools && contentAccum) send({ type: "content", content: contentAccum });
+        // Strip any raw JSON blobs the small model may have echoed from a tool
+        // result — detected by a { ... } block with multiple "key": value pairs.
+        if (!skipTools && contentAccum) {
+          const sanitized = contentAccum
+            .replace(/\{[^{}]{80,}\}/g, (blob) => {
+              // Only strip if it looks like serialised data (3+ "key": patterns)
+              const keyCount = (blob.match(/"[^"]+"\s*:/g) ?? []).length;
+              return keyCount >= 3 ? "" : blob;
+            })
+            .replace(/\n{3,}/g, "\n\n")
+            .trim();
+          if (sanitized) send({ type: "content", content: sanitized });
+        }
 
         // If the model was cut off mid-response, add its partial reply to
         // the conversation and request a seamless continuation. The client
