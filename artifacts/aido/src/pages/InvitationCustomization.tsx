@@ -1083,8 +1083,8 @@ export default function InvitationCustomizationPage({
             readOnly={useGeneratedInvitation}
           />
 
-          {/* Layout / background / font — hidden in AI mode and on RSVP Page tab (no layout support) */}
-          {!useGeneratedInvitation && !isRsvp && (
+          {/* Layout / background / font — hidden in AI mode */}
+          {!useGeneratedInvitation && (
             <DesignOptionsSection
               mode={previewTab}
               selectedLayout={
@@ -1106,6 +1106,7 @@ export default function InvitationCustomizationPage({
                 isSTD ? setSaveTheDateFont : setDigitalInvitationFont
               }
               colors={displayPalette}
+              showLayout={isSTD}
             />
           )}
 
