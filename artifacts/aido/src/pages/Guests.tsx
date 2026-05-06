@@ -26,7 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, Tag, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, Phone, MapPin, Send, Loader2, Sparkles, X as XIcon, AlertTriangle } from "lucide-react";
+import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, Phone, MapPin, Send, Loader2, Sparkles, X as XIcon, AlertTriangle } from "lucide-react";
 import { InvitationSendModal } from "@/components/GuestList/InvitationSendModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
@@ -56,40 +56,6 @@ const MEAL_OPTIONS = [
   { value: "kids", label: "Kids Meal" },
   { value: "other", label: "Other" },
 ];
-
-const GROUP_OPTIONS = [
-  { value: "brides_family", label: "Bride's Family" },
-  { value: "grooms_family", label: "Groom's Family" },
-  { value: "brides_friends", label: "Bride's Friends" },
-  { value: "grooms_friends", label: "Groom's Friends" },
-  { value: "brides_coworkers", label: "Bride's Coworkers" },
-  { value: "grooms_coworkers", label: "Groom's Coworkers" },
-  { value: "maid_of_honor", label: "Maid of Honor" },
-  { value: "bridesmaid", label: "Bridesmaid" },
-  { value: "best_man", label: "Best Man" },
-  { value: "groomsmen", label: "Groomsmen" },
-  { value: "other", label: "Other" },
-];
-
-function getGroupLabel(value: string | null | undefined): string {
-  if (!value) return "";
-  const opt = GROUP_OPTIONS.find(o => o.value === value);
-  return opt ? opt.label : value;
-}
-
-const GROUP_COLORS: Record<string, string> = {
-  brides_family: "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700",
-  grooms_family: "bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700",
-  brides_friends: "bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 border-purple-300 dark:border-purple-700",
-  grooms_friends: "bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200 border-orange-300 dark:border-orange-700",
-  brides_coworkers: "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700",
-  grooms_coworkers: "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700",
-  maid_of_honor: "bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700",
-  bridesmaid: "bg-pink-100 dark:bg-pink-900/40 text-pink-800 dark:text-pink-200 border-pink-300 dark:border-pink-700",
-  best_man: "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700",
-  groomsmen: "bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-200 border-sky-300 dark:border-sky-700",
-  other: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700",
-};
 
 const guestSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -197,37 +163,20 @@ function GuestForm({
           </FormItem>
         )} />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField control={form.control} name="rsvpStatus" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("guests.rsvp_status")}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {RSVP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.rsvp_${o.value}`)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="guestGroup" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("guests.group_category")}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger><SelectValue placeholder={t("guests.select_group")} /></SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">{t("guests.no_group")}</SelectItem>
-                  {GROUP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.group_${o.value}`)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )} />
-        </div>
+        <FormField control={form.control} name="rsvpStatus" render={({ field }) => (
+          <FormItem>
+            <FormLabel>{t("guests.rsvp_status")}</FormLabel>
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <FormControl>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {RSVP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.rsvp_${o.value}`)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField control={form.control} name="mealChoice" render={({ field }) => (
@@ -407,12 +356,11 @@ function GuestForm({
 }
 
 function exportCSV(guestList: Guest[]) {
-  const headers = ["Name", "Email", "Invitation Sent", "Group", "RSVP", "Meal", "Plus One", "Plus One Name", "Table", "Street Address", "Apt/Unit", "City", "State", "ZIP", "Country", "Notes"];
+  const headers = ["Name", "Email", "Invitation Sent", "RSVP", "Meal", "Plus One", "Plus One Name", "Table", "Street Address", "Apt/Unit", "City", "State", "ZIP", "Country", "Notes"];
   const rows = guestList.map(g => [
     g.name,
     g.email ?? "",
     g.invitationStatus === "sent" ? "Sent" : "Not Sent",
-    getGroupLabel(g.guestGroup),
     g.rsvpStatus,
     g.mealChoice ?? "",
     g.plusOne ? "Yes" : "No",
@@ -607,7 +555,6 @@ export default function Guests() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [rsvpFilter, setRsvpFilter] = useState<string>("all");
-  const [groupFilter, setGroupFilter] = useState<string>("all");
   const [isAdding, setIsAdding] = useState(false);
   const [editGuest, setEditGuest] = useState<Guest | null>(null);
 
@@ -714,14 +661,11 @@ export default function Guests() {
     });
   };
 
-  const usedGroups = [...new Set(allGuests.map(g => g.guestGroup).filter(Boolean))] as string[];
-
   const filtered = allGuests
     .filter(g => {
       const matchesSearch = !search || g.name.toLowerCase().includes(search.toLowerCase()) || (g.email ?? "").toLowerCase().includes(search.toLowerCase());
       const matchesRsvp = rsvpFilter === "all" || g.rsvpStatus === rsvpFilter;
-      const matchesGroup = groupFilter === "all" || g.guestGroup === groupFilter;
-      return matchesSearch && matchesRsvp && matchesGroup;
+      return matchesSearch && matchesRsvp;
     })
     .slice()
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" }));
@@ -785,32 +729,6 @@ export default function Guests() {
       onError: () => {
         optimisticUpdate(guest.id, { invitationStatus: guest.invitationStatus ?? "pending" });
         toast({ title: "Failed to update invitation status", variant: "destructive" });
-      },
-    });
-  }
-
-  function handleGroupChange(guest: Guest, newGroup: string) {
-    const val = newGroup === "none" ? null : newGroup;
-    optimisticUpdate(guest.id, { guestGroup: val });
-    updateGuest.mutate({
-      id: guest.id,
-      data: {
-        name: guest.name,
-        email: guest.email ?? undefined,
-        invitationStatus: guest.invitationStatus ?? "pending",
-        rsvpStatus: guest.rsvpStatus as "pending" | "attending" | "maybe" | "declined",
-        mealChoice: guest.mealChoice ?? undefined,
-        guestGroup: val ?? undefined,
-        plusOne: guest.plusOne,
-        plusOneName: guest.plusOneName ?? undefined,
-        tableAssignment: guest.tableAssignment ?? undefined,
-        notes: guest.notes ?? undefined,
-      },
-    }, {
-      onSuccess: () => invalidate(),
-      onError: () => {
-        optimisticUpdate(guest.id, { guestGroup: guest.guestGroup });
-        toast({ title: "Failed to update group", variant: "destructive" });
       },
     });
   }
@@ -1090,34 +1008,6 @@ export default function Guests() {
         ))}
       </div>
 
-      {/* Group breakdown pills (if groups are used) */}
-      {usedGroups.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {usedGroups.map(grp => {
-            const count = allGuests.filter(g => g.guestGroup === grp).length;
-            const colorClass = GROUP_COLORS[grp] ?? "bg-gray-100 text-gray-700 border-gray-200";
-            return (
-              <button
-                key={grp}
-                onClick={() => setGroupFilter(groupFilter === grp ? "all" : grp)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all ${colorClass} ${groupFilter === grp ? "ring-2 ring-offset-1 ring-primary/40" : "opacity-80 hover:opacity-100"}`}
-              >
-                <Tag className="h-3 w-3" />
-                {getGroupLabel(grp)} · {count}
-              </button>
-            );
-          })}
-          {groupFilter !== "all" && (
-            <button
-              onClick={() => setGroupFilter("all")}
-              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border border-dashed border-muted-foreground/40 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {t("guests.clear_filter")}
-            </button>
-          )}
-        </div>
-      )}
-
       {/* New guests alert — recently self-added via collector link */}
       {newGuests.length > 0 && (
         <Card className="border-amber-300/60 bg-amber-50/70 dark:bg-amber-900/15 dark:border-amber-700/50 shadow-sm">
@@ -1223,15 +1113,6 @@ export default function Guests() {
             {RSVP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.rsvp_${o.value}`)}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={groupFilter} onValueChange={setGroupFilter}>
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder={t("guests.all_groups")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("guests.all_groups")}</SelectItem>
-            {GROUP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.group_${o.value}`)}</SelectItem>)}
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Empty state */}
@@ -1258,7 +1139,7 @@ export default function Guests() {
         <Card className="border-border/60 shadow-sm">
           <CardHeader className="pb-0">
             <CardTitle className="text-base font-medium text-muted-foreground">
-              {filtered.length === 1 ? t("guests.guest_count", { count: filtered.length }) : t("guests.guests_count", { count: filtered.length })} {rsvpFilter !== "all" || groupFilter !== "all" || search ? t("guests.filtered") : ""}
+              {filtered.length === 1 ? t("guests.guest_count", { count: filtered.length }) : t("guests.guests_count", { count: filtered.length })} {rsvpFilter !== "all" || search ? t("guests.filtered") : ""}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -1268,7 +1149,6 @@ export default function Guests() {
                   <TableRow>
                     <TableHead>{t("guests.col_name")}</TableHead>
                     <TableHead className="hidden sm:table-cell">{t("guests.col_einvite_status")}</TableHead>
-                    <TableHead className="hidden sm:table-cell">{t("guests.col_group")}</TableHead>
                     <TableHead>{t("guests.col_rsvp")}</TableHead>
                     <TableHead className="hidden md:table-cell">{t("guests.col_meal")}</TableHead>
                     <TableHead className="hidden md:table-cell">{t("guests.col_table")}</TableHead>
@@ -1279,8 +1159,6 @@ export default function Guests() {
                 <TableBody>
                   {filtered.map(g => {
                     const badge = getRsvpBadge(g.rsvpStatus);
-                    const grpLabel = g.guestGroup ? t(`guests.group_${g.guestGroup}`, getGroupLabel(g.guestGroup)) : "";
-                    const grpColor = g.guestGroup ? (GROUP_COLORS[g.guestGroup] ?? "bg-gray-100 text-gray-700 border-gray-200") : "";
                     const isNew = newGuestIds.has(g.id);
                     const isDuplicate = duplicateGuestIds.has(g.id);
                     return (
@@ -1332,11 +1210,6 @@ export default function Guests() {
                             </div>
                           )}
                           {g.notes && <div className="text-xs text-muted-foreground italic truncate max-w-[180px] mt-0.5" title={g.notes}>{g.notes}</div>}
-                          {grpLabel && (
-                            <span className={`sm:hidden inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium border ${grpColor}`}>
-                              {grpLabel}
-                            </span>
-                          )}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-sm">
                           <div className="flex flex-col gap-1.5">
@@ -1388,33 +1261,6 @@ export default function Guests() {
                               </DropdownMenu>
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border transition-opacity hover:opacity-80 cursor-pointer ${grpLabel ? grpColor : "border-border/50 text-muted-foreground bg-transparent"}`}>
-                                {grpLabel || "—"}
-                                <ChevronDown className="h-2.5 w-2.5 opacity-60" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-44">
-                              <DropdownMenuItem
-                                className={`text-xs cursor-pointer ${!g.guestGroup ? "opacity-50 pointer-events-none" : ""}`}
-                                onClick={() => handleGroupChange(g, "none")}
-                              >
-                                <span className="text-muted-foreground">— No group</span>
-                              </DropdownMenuItem>
-                              {GROUP_OPTIONS.map(opt => (
-                                <DropdownMenuItem
-                                  key={opt.value}
-                                  className={`text-xs font-medium cursor-pointer ${g.guestGroup === opt.value ? "opacity-50 pointer-events-none" : ""}`}
-                                  onClick={() => handleGroupChange(g, opt.value)}
-                                >
-                                  {t(`guests.group_${opt.value}`, opt.label)}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
