@@ -109,8 +109,8 @@ export function DesignOptionsSection({
                         : "border-border hover:border-primary/60 hover:shadow-sm",
                     ].join(" ")}
                   >
-                    <div className="aspect-[3/4] w-full overflow-hidden" style={{ backgroundColor: backgroundColor || "#1E1A2E" }}>
-                      <LayoutThumbnail layout={design.id} colors={colors} backgroundColor={backgroundColor || "#1E1A2E"} />
+                    <div className="aspect-[3/4] w-full overflow-hidden" style={{ backgroundColor: backgroundColor || "#FFFFFF" }}>
+                      <LayoutThumbnail layout={design.id} colors={colors} backgroundColor={backgroundColor || "#FFFFFF"} />
                     </div>
                     <div className={[
                       "px-1 py-1 text-center text-[10px] leading-tight font-medium transition-colors",
@@ -133,11 +133,11 @@ export function DesignOptionsSection({
           <div className="flex gap-2 items-center">
             <div
               className="w-10 h-10 rounded border-2 border-border cursor-pointer flex-shrink-0 transition-transform hover:scale-105"
-              style={{ backgroundColor: backgroundColor || "#1E1A2E" }}
+              style={{ backgroundColor: backgroundColor || "#FFFFFF" }}
               onClick={() => {
                 const input = document.createElement("input");
                 input.type = "color";
-                input.value = backgroundColor || "#1E1A2E";
+                input.value = backgroundColor || "#FFFFFF";
                 input.onchange = (e) => {
                   if (e.target instanceof HTMLInputElement) {
                     onBackgroundColorChange(e.target.value);
@@ -148,7 +148,7 @@ export function DesignOptionsSection({
               title="Click to pick a color"
             />
             <div className="flex flex-wrap gap-1.5 flex-1">
-              {["#0F1A2E", "#1E1A2E", "#FBEFEF", "#F4F1EA", "#FAF7F2", "#F8E8D5"].map((hex) => (
+              {["#FFFFFF", "#FDF8F2", "#1E1A2E", "#0F172A", "#FFF5F5", "#F0F4F8"].map((hex) => (
                 <button
                   key={hex}
                   type="button"
