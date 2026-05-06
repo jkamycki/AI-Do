@@ -78,7 +78,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
     query: {
       queryKey: getListMessagesQueryKey(conversationId ?? 0),
       enabled: !!conversationId,
-      refetchInterval: 15000,
+      refetchInterval: 5000,
     },
   });
 
