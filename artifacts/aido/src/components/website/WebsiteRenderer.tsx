@@ -480,17 +480,40 @@ function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
   const dateStr = formatWeddingDate(data.couple.weddingDate);
   return (
-    <footer className="py-12 px-6 text-center" style={{ background: data.colorPalette.primary, color: "#fff" }}>
-      <div className="text-2xl mb-2" style={{ fontFamily: fontStack(headingFont(data)) }}>{couple}</div>
-      <EditableText
-        as="div"
-        editable={ctx.editable}
-        value={data.customText._footerText ?? ""}
-        defaultValue={dateStr}
-        onCommit={(v) => ctx.onTextChange("_footerText", v)}
-        className="text-sm opacity-80 whitespace-pre-line"
-      />
-    </footer>
+    <>
+      <footer className="py-12 px-6 text-center" style={{ background: data.colorPalette.primary, color: "#fff" }}>
+        <div className="text-2xl mb-2" style={{ fontFamily: fontStack(headingFont(data)) }}>{couple}</div>
+        <EditableText
+          as="div"
+          editable={ctx.editable}
+          value={data.customText._footerText ?? ""}
+          defaultValue={dateStr}
+          onCommit={(v) => ctx.onTextChange("_footerText", v)}
+          className="text-sm opacity-80 whitespace-pre-line"
+        />
+      </footer>
+      <BrandingFooter />
+    </>
+  );
+}
+
+function BrandingFooter() {
+  return (
+    <div className="py-6 px-6 text-center bg-[#1E1A2E] text-white/80">
+      <a
+        href="https://aidowedding.net?utm_source=wedding_website&utm_medium=footer"
+        target="_blank"
+        rel="noopener"
+        className="inline-flex items-center gap-2 text-xs hover:text-white transition-colors group"
+      >
+        <span className="opacity-70">Built with</span>
+        <img src="/logo.png" alt="A.IDO" className="h-5 w-5 rounded-full" />
+        <span className="font-medium tracking-wide" style={{ color: "#D4A017" }}>
+          A.IDO
+        </span>
+        <span className="opacity-50 group-hover:opacity-80 transition-opacity">— Plan your wedding too →</span>
+      </a>
+    </div>
   );
 }
 
