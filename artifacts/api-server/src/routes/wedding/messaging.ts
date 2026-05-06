@@ -319,6 +319,25 @@ Write a friendly, professional reply the couple can send. Keep it concise (2-4 s
   }
 });
 
+router.delete("/messaging/conversations/:id/messages", requireAuth, async (req, res) => {
+  try {
+    const userId = await resolveScopeUserId(req);
+    const id = Number(req.params.id);
+    const conv = await ownConversation(userId, id);
+    if (!conv) return res.status(404).json({ error: "Conversation not found" });
+    await db.delete(vendorMessages).where(eq(vendorMessages.conversationId, id));
+    await db.update(vendorConversations).set({
+      lastMessageAt: new Date(),
+      lastMessagePreview: "",
+      unreadCount: 0,
+    }).where(eq(vendorConversations.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "clearConversation failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.post("/messaging/conversations/:id/read", requireAuth, async (req, res) => {
   try {
     const userId = await resolveScopeUserId(req);

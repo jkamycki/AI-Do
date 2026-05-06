@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@clerk/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useGetOrCreateConversationByVendor,
   useListMessages,
@@ -35,7 +35,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Sparkles, Paperclip, X, Mail, AlertCircle, CheckCircle2, Inbox, Check } from "lucide-react";
+import { Send, Sparkles, Paperclip, X, Mail, AlertCircle, CheckCircle2, Inbox, Check, Trash2 } from "lucide-react";
 
 interface Props {
   vendorId: number;
@@ -109,6 +109,28 @@ export function VendorMessagesTab({ vendorId }: Props) {
   });
 
   const markReadMutation = useMarkConversationRead();
+
+  const clearConvoMutation = useMutation({
+    mutationFn: async () => {
+      if (!conversationId) throw new Error("No conversation");
+      const token = await getToken();
+      const r = await fetch(`/api/messaging/conversations/${conversationId}/messages`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!r.ok) throw new Error("Failed to clear conversation");
+      return r.json();
+    },
+    onSuccess: () => {
+      if (conversationId) {
+        qc.invalidateQueries({ queryKey: getListMessagesQueryKey(conversationId) });
+        qc.invalidateQueries({ queryKey: getListConversationsQueryKey() });
+      }
+      toast({ title: "Conversation cleared." });
+    },
+    onError: () => toast({ title: "Failed to clear conversation", variant: "destructive" }),
+  });
 
   const { data: profile } = useGetProfile();
   const savedCcRaw = (profile as { vendorBccEmail?: string | null } | undefined)?.vendorBccEmail ?? "";
@@ -341,9 +363,25 @@ export function VendorMessagesTab({ vendorId }: Props) {
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2 items-center text-xs text-muted-foreground">
-        <Mail className="h-3.5 w-3.5" />
-        <span>{t("vendors.msg_replies_from", { email: conv.vendorEmail ?? conv.vendorEmail })}</span>
+      <div className="flex flex-wrap gap-2 items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <Mail className="h-3.5 w-3.5" />
+          <span>{t("vendors.msg_replies_from", { email: conv.vendorEmail ?? conv.vendorEmail })}</span>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+          onClick={() => {
+            if (confirm("Clear this conversation? All messages will be permanently deleted.")) {
+              clearConvoMutation.mutate();
+            }
+          }}
+          disabled={clearConvoMutation.isPending || !messages || messages.length === 0}
+        >
+          <Trash2 className="h-3.5 w-3.5 mr-1" />
+          Clear conversation
+        </Button>
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-3 py-2 text-xs flex items-start gap-2">
