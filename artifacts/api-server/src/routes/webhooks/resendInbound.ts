@@ -9,18 +9,23 @@ import { Webhook } from "svix";
 const router = Router();
 
 // In-memory ring buffer of the last 20 inbound webhook attempts (resets on restart)
-const recentHits: Array<{ ts: string; result: string; conversationId?: number; senderEmail?: string; reason?: string }> = [];
-function logHit(result: string, extra: { conversationId?: number; senderEmail?: string; reason?: string } = {}) {
+const recentHits: Array<{ ts: string; result: string; conversationId?: number; senderEmail?: string; recipient?: string; reason?: string }> = [];
+function logHit(result: string, extra: { conversationId?: number; senderEmail?: string; recipient?: string; reason?: string } = {}) {
   recentHits.unshift({ ts: new Date().toISOString(), result, ...extra });
   if (recentHits.length > 20) recentHits.pop();
 }
+
+// Last raw payload received (truncated) for debugging
+let lastPayload: { ts: string; recipients?: string[]; from?: string; subject?: string; bodyPreview?: string } | null = null;
 
 // GET /api/webhooks/resend/status — config check + recent hit log (no auth needed, safe info only)
 router.get("/webhooks/resend/status", (_req, res) => {
   res.json({
     secretConfigured: !!process.env.RESEND_WEBHOOK_SECRET,
     inboundDomain: process.env.INBOUND_EMAIL_DOMAIN ?? "mail.aidowedding.net (default)",
+    fromEmail: process.env.RESEND_FROM_EMAIL ?? "(default)",
     recentHits,
+    lastPayload,
   });
 });
 
@@ -96,6 +101,13 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
 
     const data = event.data ?? {};
     const recipients = extractRecipient(data.to);
+    lastPayload = {
+      ts: new Date().toISOString(),
+      recipients,
+      from: typeof data.from === "string" ? data.from : data.from?.email,
+      subject: data.subject,
+      bodyPreview: ((data.text ?? "") || (data.html ?? "")).slice(0, 1000),
+    };
     let conversationId: number | null = null;
     let token: string | null = null;
     for (const r of recipients) {

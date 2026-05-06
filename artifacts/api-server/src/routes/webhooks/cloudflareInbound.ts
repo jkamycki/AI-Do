@@ -8,6 +8,32 @@ import { logger } from "../../lib/logger";
 
 const router = Router();
 
+// Ring buffer of the last 20 Cloudflare inbound webhook attempts.
+const cfRecentHits: Array<{
+  ts: string;
+  result: string;
+  conversationId?: number;
+  senderEmail?: string;
+  recipient?: string;
+  reason?: string;
+}> = [];
+function logCfHit(result: string, extra: { conversationId?: number; senderEmail?: string; recipient?: string; reason?: string } = {}) {
+  cfRecentHits.unshift({ ts: new Date().toISOString(), result, ...extra });
+  if (cfRecentHits.length > 20) cfRecentHits.pop();
+}
+
+// Stores the last raw payload received (truncated) so admins can inspect
+// what an inbound vendor reply actually looks like.
+let lastCfPayload: { ts: string; to?: string; from?: string; subject?: string; bodyPreview?: string } | null = null;
+
+router.get("/webhooks/cloudflare/status", (_req, res) => {
+  res.json({
+    secretConfigured: !!process.env.CLOUDFLARE_INBOUND_SECRET,
+    recentHits: cfRecentHits,
+    lastPayload: lastCfPayload,
+  });
+});
+
 interface CloudflareInboundPayload {
   to?: string;
   from?: string;
@@ -36,10 +62,18 @@ router.post("/webhooks/cloudflare/inbound", json({ limit: "20mb" }), async (req,
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
     if (token !== secret) {
       logger.warn({ ip: req.ip }, "Cloudflare inbound webhook auth failed");
+      logCfHit("error:invalid_auth");
       return res.status(401).json({ error: "Invalid auth" });
     }
 
     const payload = (req.body ?? {}) as CloudflareInboundPayload;
+    lastCfPayload = {
+      ts: new Date().toISOString(),
+      to: payload.to,
+      from: payload.from,
+      subject: undefined,
+      bodyPreview: payload.rawMime?.slice(0, 1000),
+    };
 
     // Parse the raw MIME on our side (so the worker stays dependency-free)
     let parsedMime: Awaited<ReturnType<InstanceType<typeof PostalMime>["parse"]>> | null = null;
@@ -73,6 +107,7 @@ router.post("/webhooks/cloudflare/inbound", json({ limit: "20mb" }), async (req,
 
     if (!parsed) {
       logger.warn({ recipient }, "Cloudflare inbound: no routing match");
+      logCfHit("ignored:no_routing_match", { recipient });
       return res.status(200).json({ ignored: true, reason: "no routing match" });
     }
     const { conversationId, token: inboundToken } = parsed;
@@ -84,6 +119,7 @@ router.post("/webhooks/cloudflare/inbound", json({ limit: "20mb" }), async (req,
       .limit(1);
     if (!conv) {
       logger.warn({ conversationId }, "Cloudflare inbound: token mismatch");
+      logCfHit("ignored:token_mismatch", { conversationId });
       return res.status(200).json({ ignored: true, reason: "token mismatch" });
     }
 
@@ -97,6 +133,7 @@ router.post("/webhooks/cloudflare/inbound", json({ limit: "20mb" }), async (req,
         .where(and(eq(vendorMessages.conversationId, conv.id), eq(vendorMessages.inboundMessageId, messageId)))
         .limit(1);
       if (existing) {
+        logCfHit("ignored:duplicate", { conversationId: conv.id });
         return res.status(200).json({ ok: true, deduped: true });
       }
     }
@@ -166,8 +203,10 @@ router.post("/webhooks/cloudflare/inbound", json({ limit: "20mb" }), async (req,
       })
       .where(eq(vendorConversations.id, conv.id));
 
+    logCfHit("saved", { conversationId: conv.id, senderEmail: sender.email });
     res.json({ ok: true, conversationId: conv.id });
   } catch (err) {
+    logCfHit("error:exception");
     logger.error(err, "cloudflare inbound webhook failed");
     res.status(500).json({ error: "Internal server error" });
   }
