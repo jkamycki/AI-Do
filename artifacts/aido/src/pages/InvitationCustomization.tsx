@@ -831,19 +831,7 @@ export default function InvitationCustomizationPage({
         <div className="lg:col-span-2">
           <Card className="flex flex-col lg:h-[90vh]">
             <div className="border-b p-3 sm:p-4 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground">Preview</p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8 gap-1.5 text-xs"
-                  onClick={handleResetToDefault}
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Reset to Default
-                </Button>
-              </div>
+              <p className="text-xs text-muted-foreground">Preview</p>
               <Tabs
                 value={previewTab}
                 onValueChange={(value) => setPreviewTab(value as PreviewTab)}
