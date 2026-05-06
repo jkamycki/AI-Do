@@ -782,8 +782,8 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           overrideBg: BG,
           overridePageBg: PAGE_BG,
           overrideAccent: ACCENT,
-          overrideText: bgIsLight ? "#1a1a1a" : "#ffffff",
-          overrideMuted: bgIsLight ? "rgba(0,0,0,0.58)" : "rgba(255,255,255,0.58)",
+          overrideText: TEXT,
+          overrideMuted: MUTED,
           overrideCardBdr: bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
           overrideCoupleFont: headingFont,
         });
