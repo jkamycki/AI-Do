@@ -169,9 +169,9 @@ function StatChip({
   return (
     <Link href={href}>
       <div className="bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer group">
-        <div className="flex items-center gap-2 text-muted-foreground mb-3">
-          <Icon className="h-4 w-4" />
-          <span className="text-xs font-medium uppercase tracking-wider">{label}</span>
+        <div className="flex items-center gap-2 mb-3">
+          <Icon className="h-4 w-4 text-primary" />
+          <span className="text-xs font-medium uppercase tracking-wider text-primary">{label}</span>
         </div>
         <div className="text-2xl font-serif font-semibold text-foreground">{value}</div>
         {sub && <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>}
@@ -824,7 +824,7 @@ function DashboardContent() {
                   id: "dateTime",
                   node: (
               <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5 h-full">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{t("dashboard.date_time_label")}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">{t("dashboard.date_time_label")}</p>
                 <div className="flex items-start gap-2">
                   <CalendarDays className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                   <div>
@@ -856,7 +856,7 @@ function DashboardContent() {
                   id: "venue",
                   node: (
               <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5 h-full">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{t("dashboard.venue_location")}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">{t("dashboard.venue_location")}</p>
                 <div className="flex items-start gap-2">
                   <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                   <div className="min-w-0">
@@ -901,7 +901,7 @@ function DashboardContent() {
                   id: "details",
                   node: (
               <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-2.5 h-full">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{t("dashboard.details")}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">{t("dashboard.details")}</p>
                 <div className="flex items-center gap-2">
                   <UsersRound className="h-4 w-4 text-primary flex-shrink-0" />
                   <span className="text-sm text-foreground"><strong>{summary.profile.guestCount}</strong> {t("dashboard.expected_guests")}</span>
@@ -985,9 +985,9 @@ function DashboardContent() {
         <Link href="/guests">
           <div className="bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer h-full">
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Users className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">{t("dashboard.guest_rsvps")}</span>
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                <span className="text-xs font-medium uppercase tracking-wider text-primary">{t("dashboard.guest_rsvps")}</span>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
             </div>
@@ -1028,9 +1028,9 @@ function DashboardContent() {
         <Link href="/vendors">
           <div className="bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer h-full">
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Building2 className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wider">{t("dashboard.vendors")}</span>
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" />
+                <span className="text-xs font-medium uppercase tracking-wider text-primary">{t("dashboard.vendors")}</span>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
             </div>
@@ -1092,7 +1092,7 @@ function DashboardContent() {
 
       {/* Feature Cards — drag to reorder */}
       <div>
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("dashboard.planning_tools")}</h2>
+        <h2 className="text-sm font-medium text-primary uppercase tracking-wider mb-3">{t("dashboard.planning_tools")}</h2>
         <DraggableRow
           storageKey="aido:dashboard:planningToolsOrder"
           gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
