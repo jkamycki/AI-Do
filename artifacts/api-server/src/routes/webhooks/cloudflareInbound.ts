@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { vendorConversations, vendorMessages, vendors } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
 import PostalMime from "postal-mime";
-import { cleanInboundText, htmlToText, parseInboundAddress } from "../../lib/resend";
+import { cleanInboundText, findRoutingAddressInText, htmlToText, parseInboundAddress } from "../../lib/resend";
 import { logger } from "../../lib/logger";
 
 const router = Router();
@@ -52,7 +52,25 @@ router.post("/webhooks/cloudflare/inbound", json({ limit: "20mb" }), async (req,
     }
 
     const recipient = payload.to ?? parsedMime?.to?.[0]?.address ?? "";
-    const parsed = parseInboundAddress(recipient);
+    let parsed = parseInboundAddress(recipient);
+
+    // Fallback: vendor replied to From (not Reply-To) and the To header
+    // doesn't contain routing info. Scan the email body — the routing
+    // address typically appears in the quoted original message.
+    if (!parsed) {
+      const allRecipients = [
+        recipient,
+        ...(parsedMime?.to ?? []).map((t) => t.address ?? ""),
+        ...(parsedMime?.cc ?? []).map((t) => t.address ?? ""),
+      ].join(" ");
+      parsed = parseInboundAddress(allRecipients)
+        ?? findRoutingAddressInText(parsedMime?.text ?? "")
+        ?? findRoutingAddressInText(parsedMime?.html ?? "");
+      if (parsed) {
+        logger.info({ recipient, source: "fallback" }, "Cloudflare inbound: routing matched via body fallback");
+      }
+    }
+
     if (!parsed) {
       logger.warn({ recipient }, "Cloudflare inbound: no routing match");
       return res.status(200).json({ ignored: true, reason: "no routing match" });

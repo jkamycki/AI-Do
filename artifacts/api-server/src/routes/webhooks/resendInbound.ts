@@ -2,7 +2,7 @@ import { Router, raw } from "express";
 import { db } from "@workspace/db";
 import { vendorConversations, vendorMessages, vendors } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
-import { cleanInboundText, htmlToText, parseInboundAddress, getEmail } from "../../lib/resend";
+import { cleanInboundText, findRoutingAddressInText, htmlToText, parseInboundAddress, getEmail } from "../../lib/resend";
 import { logger } from "../../lib/logger";
 import { Webhook } from "svix";
 
@@ -104,6 +104,27 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
         conversationId = parsed.conversationId;
         token = parsed.token;
         break;
+      }
+    }
+
+    // Fallback: vendor replied to From (not Reply-To) so the To header has
+    // no routing info. Fetch the body if needed and scan it for the routing
+    // address — it typically appears in the quoted original message.
+    if (!conversationId || !token) {
+      let fbText = (data.text && data.text.trim()) || "";
+      let fbHtml = data.html || "";
+      if (!fbText && !fbHtml && data.email_id) {
+        const full = await getEmail(data.email_id);
+        fbText = full?.text?.trim() || "";
+        fbHtml = full?.html || "";
+      }
+      const found =
+        findRoutingAddressInText(fbText) ??
+        findRoutingAddressInText(fbHtml);
+      if (found) {
+        conversationId = found.conversationId;
+        token = found.token;
+        logger.info({ recipients, source: "fallback" }, "Inbound: routing matched via body fallback");
       }
     }
 

@@ -137,6 +137,20 @@ export function parseInboundAddress(addr: string): { conversationId: number; tok
   return { conversationId: Number(m[1]), token: m[2] };
 }
 
+/**
+ * Find a routing address anywhere in the supplied text. Used as a fallback
+ * when the recipient (To) header doesn't contain a routing match — e.g. a
+ * vendor's email client replied to From instead of Reply-To. The routing
+ * address typically still appears in the quoted original message at the
+ * bottom of the reply.
+ */
+export function findRoutingAddressInText(text: string): { conversationId: number; token: string } | null {
+  if (!text) return null;
+  const m = text.match(/messages\+(\d+)\.([A-Za-z0-9_-]+)@[A-Za-z0-9.-]+/);
+  if (!m) return null;
+  return { conversationId: Number(m[1]), token: m[2] };
+}
+
 const SIG_MARKERS = [
   /^--\s*$/m,
   /^sent from my (iphone|android|ipad|samsung|mobile)/im,

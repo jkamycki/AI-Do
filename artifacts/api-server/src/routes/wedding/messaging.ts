@@ -182,7 +182,11 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
         ? `\n\nAttachments:\n${safeAttachments.map((a) => `- ${a.name}: ${toAbsolute(a.url)}`).join("\n")}`
         : "";
       const signature = coupleNames ? `\n\nThanks,\n${coupleNames}` : "";
-      const text = `${body}${attachmentsLine}${signature}`;
+      // Hidden routing reference — guarantees the routing address survives in
+      // the body even if the vendor's email client strips quoted history. We
+      // scan the body for this on inbound when the To header lacks routing.
+      const routingFooter = `\n\n--\nReply-tracking ID: ${replyTo}`;
+      const text = `${body}${attachmentsLine}${signature}${routingFooter}`;
 
       // Simple plain-style HTML — mirrors the text closely so spam filters
       // see a consistent text/html ratio. Avoids images, bright colors, and
@@ -198,7 +202,8 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
       const sigHtml = coupleNames
         ? `<p style="margin:16px 0 0 0;">Thanks,<br>${esc(coupleNames)}</p>`
         : "";
-      const html = `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#222;"><div>${bodyHtml}</div>${attHtml}${sigHtml}</body></html>`;
+      const footerHtml = `<p style="margin:24px 0 0 0;font-size:11px;color:#999;">Reply-tracking ID: ${esc(replyTo)}</p>`;
+      const html = `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#222;"><div>${bodyHtml}</div>${attHtml}${sigHtml}${footerHtml}</body></html>`;
 
       const fromName = coupleNames || undefined;
 
