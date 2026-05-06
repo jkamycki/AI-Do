@@ -1385,6 +1385,7 @@ function Router() {
       <Route path="/rsvp/:token" component={Rsvp} />
       <Route path="/save-the-date/:token" component={SaveTheDate} />
       <Route path="/w/:slug" component={PublicWebsite} />
+      <Route path="/w/:slug/:section" component={PublicWebsite} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
       <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} />} />

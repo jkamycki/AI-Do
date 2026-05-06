@@ -1,6 +1,31 @@
 import { useEffect, useState } from "react";
+import { Link } from "wouter";
 import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon } from "lucide-react";
 import { EditableText } from "./EditableText";
+
+// camelCase section id <-> kebab-case URL slug
+const SECTION_TO_URL: Record<string, string> = {
+  home: "",
+  welcome: "welcome",
+  story: "story",
+  schedule: "schedule",
+  travel: "travel",
+  registry: "registry",
+  weddingParty: "wedding-party",
+  gallery: "gallery",
+  faq: "faq",
+};
+const URL_TO_SECTION: Record<string, string> = Object.fromEntries(
+  Object.entries(SECTION_TO_URL).map(([k, v]) => [v, k])
+);
+URL_TO_SECTION[""] = "home";
+
+export function urlSegmentForSection(id: string): string {
+  return SECTION_TO_URL[id] ?? id;
+}
+export function sectionFromUrlSegment(seg: string | undefined): string {
+  return URL_TO_SECTION[seg ?? ""] ?? "home";
+}
 
 export interface WebsiteRendererPayload {
   theme: string;
@@ -82,6 +107,21 @@ function bodyFont(data: WebsiteRendererPayload): string {
   return (data.customText._bodyFont || "").trim() || "Inter";
 }
 
+// Returns the override font for an editable text element, or undefined to
+// use the theme default. Used by EditableText's per-element font picker.
+function elementFont(data: WebsiteRendererPayload, key: string): string | undefined {
+  const v = (data.customText[`${key}_font`] || "").trim();
+  return v || undefined;
+}
+
+// Compose a fontFamily string. If the element has its own override, use it.
+// Otherwise fall back to the supplied default (heading or body).
+function elementFontStack(data: WebsiteRendererPayload, key: string, fallbackFont: string, fallbackKind: "heading" | "body"): string {
+  const own = elementFont(data, key);
+  const f = own || fallbackFont;
+  return fallbackKind === "heading" ? fontStack(f) : bodyFontStack(f);
+}
+
 
 function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
@@ -104,8 +144,11 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           value={data.customText._heroTagline ?? ""}
           defaultValue="We're getting married"
           onCommit={(v) => ctx.onTextChange("_heroTagline", v)}
+          fontKey="_heroTagline_font"
+          fontValue={elementFont(data, "_heroTagline")}
+          onFontCommit={(v) => ctx.onTextChange("_heroTagline_font", v)}
           className="uppercase tracking-[0.3em] text-xs sm:text-sm mb-6 opacity-80"
-          style={{ color: data.heroImage ? "#fff" : data.colorPalette.primary }}
+          style={{ color: data.heroImage ? "#fff" : data.colorPalette.primary, fontFamily: elementFont(data, "_heroTagline") ? bodyFontStack(elementFont(data, "_heroTagline")!) : undefined }}
         />
         <h1 className="text-5xl sm:text-7xl md:text-8xl mb-6 leading-tight" style={{ fontFamily: fontStack(headingFont(data)) }}>
           {couple}
@@ -198,8 +241,11 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={data.customText.story_subtitle ?? ""}
         defaultValue="How we got here"
         onCommit={(v) => ctx.onTextChange("story_subtitle", v)}
+        fontKey="story_subtitle_font"
+        fontValue={elementFont(data, "story_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("story_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
-        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "story_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
       />
       <EditableText
         as="div"
@@ -227,8 +273,11 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
         value={data.customText.schedule_subtitle ?? ""}
         defaultValue="The day of"
         onCommit={(v) => ctx.onTextChange("schedule_subtitle", v)}
+        fontKey="schedule_subtitle_font"
+        fontValue={elementFont(data, "schedule_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("schedule_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-10"
-        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "schedule_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
       />
       <div className="space-y-5 max-w-2xl mx-auto">
         {events.length > 0 ? (
@@ -289,8 +338,11 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={data.customText.travel_subtitle ?? ""}
         defaultValue="Where & how to get there"
         onCommit={(v) => ctx.onTextChange("travel_subtitle", v)}
+        fontKey="travel_subtitle_font"
+        fontValue={elementFont(data, "travel_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("travel_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
-        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "travel_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
       />
       {data.couple.venue && (
         <div className="text-center mb-6">
@@ -327,8 +379,11 @@ function Registry({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
         value={data.customText.registry_subtitle ?? ""}
         defaultValue="With love"
         onCommit={(v) => ctx.onTextChange("registry_subtitle", v)}
+        fontKey="registry_subtitle_font"
+        fontValue={elementFont(data, "registry_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("registry_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
-        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "registry_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
       />
       <EditableText
         as="div"
@@ -355,8 +410,11 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={data.customText.faq_subtitle ?? ""}
         defaultValue="Good to know"
         onCommit={(v) => ctx.onTextChange("faq_subtitle", v)}
+        fontKey="faq_subtitle_font"
+        fontValue={elementFont(data, "faq_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("faq_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
-        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "faq_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
       />
       <EditableText
         as="div"
@@ -383,8 +441,11 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         value={data.customText.gallery_subtitle ?? ""}
         defaultValue="Moments"
         onCommit={(v) => ctx.onTextChange("gallery_subtitle", v)}
+        fontKey="gallery_subtitle_font"
+        fontValue={elementFont(data, "gallery_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("gallery_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-10"
-        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "gallery_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {images.map((img, i) => (
@@ -407,10 +468,16 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
   );
 }
 
+export type WeddingPartySide = "groom" | "bride" | "family";
+
 export interface WeddingPartyMember {
   photo: string;
   name: string;
   role: string;
+  side?: WeddingPartySide;
+  // Photo focal point as percentages 0–100. Defaults to 50/50 (centered).
+  photoX?: number;
+  photoY?: number;
 }
 
 export function parseWeddingPartyMembers(raw: string | undefined): WeddingPartyMember[] {
@@ -424,15 +491,52 @@ export function parseWeddingPartyMembers(raw: string | undefined): WeddingPartyM
         photo: typeof m.photo === "string" ? m.photo : "",
         name: typeof m.name === "string" ? m.name : "",
         role: typeof m.role === "string" ? m.role : "",
+        side: m.side === "groom" || m.side === "bride" || m.side === "family" ? m.side : undefined,
+        photoX: typeof m.photoX === "number" ? Math.max(0, Math.min(100, m.photoX)) : undefined,
+        photoY: typeof m.photoY === "number" ? Math.max(0, Math.min(100, m.photoY)) : undefined,
       }));
   } catch {
     return [];
   }
 }
 
+function PartyMemberCard({ data, member }: { data: WebsiteRendererPayload; member: WeddingPartyMember }) {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div
+        className="w-32 h-32 sm:w-36 sm:h-36 rounded-full overflow-hidden mb-4 flex items-center justify-center"
+        style={{ background: `${data.colorPalette.primary}15`, border: `1px solid ${data.colorPalette.primary}33` }}
+      >
+        {member.photo ? (
+          <img
+            src={imageUrl(member.photo)}
+            alt={member.name}
+            className="w-full h-full object-cover"
+            style={{ objectPosition: `${member.photoX ?? 50}% ${member.photoY ?? 50}%` }}
+            loading="lazy"
+          />
+        ) : (
+          <Heart className="h-8 w-8 opacity-30" style={{ color: data.colorPalette.primary }} />
+        )}
+      </div>
+      <div className="text-2xl sm:text-3xl mb-1" style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}>
+        {member.name || "Name"}
+      </div>
+      <div className="text-sm opacity-80" style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}>
+        {member.role || "Role"}
+      </div>
+    </div>
+  );
+}
+
 function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const members = parseWeddingPartyMembers(data.customText._weddingPartyMembers);
   if (members.length === 0 && !ctx.editable) return null;
+
+  const groomSide = members.filter((m) => m.side === "groom");
+  const brideSide = members.filter((m) => m.side === "bride");
+  const familySide = members.filter((m) => m.side === "family" || !m.side);
+
   return (
     <SectionShell id="weddingParty" titleKey="weddingParty_title" defaultTitle="Wedding Party" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx}>
       <EditableText
@@ -441,35 +545,94 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
         value={data.customText.weddingParty_subtitle ?? ""}
         defaultValue="Meet our family & friends standing with us"
         onCommit={(v) => ctx.onTextChange("weddingParty_subtitle", v)}
+        fontKey="weddingParty_subtitle_font"
+        fontValue={elementFont(data, "weddingParty_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("weddingParty_subtitle_font", v)}
         className="block text-center text-base sm:text-lg max-w-2xl mx-auto mb-12 opacity-80"
-        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+        style={{ color: data.colorPalette.text, fontFamily: elementFontStack(data, "weddingParty_subtitle", bodyFont(data), "body") }}
       />
       {members.length === 0 ? (
         <p className="text-center text-sm opacity-60" style={{ color: data.colorPalette.text }}>
           No wedding party members yet — add some from the sidebar.
         </p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10 max-w-3xl mx-auto">
-          {members.map((m, i) => (
-            <div key={i} className="flex flex-col items-center text-center">
-              <div
-                className="w-32 h-32 sm:w-36 sm:h-36 rounded-full overflow-hidden mb-4 flex items-center justify-center"
-                style={{ background: `${data.colorPalette.primary}15`, border: `1px solid ${data.colorPalette.primary}33` }}
-              >
-                {m.photo ? (
-                  <img src={imageUrl(m.photo)} alt={m.name} className="w-full h-full object-cover" loading="lazy" />
+        <div className="space-y-16">
+          {(groomSide.length > 0 || brideSide.length > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-0 max-w-5xl mx-auto relative">
+              {/* Groom's side */}
+              <div className="md:pr-12 md:border-r" style={{ borderColor: `${data.colorPalette.primary}33` }}>
+                <h3
+                  className="text-center text-2xl sm:text-3xl mb-10"
+                  style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+                >
+                  <EditableText
+                    editable={ctx.editable}
+                    value={data.customText.weddingParty_groomLabel ?? ""}
+                    defaultValue="Groom's Party"
+                    onCommit={(v) => ctx.onTextChange("weddingParty_groomLabel", v)}
+                  />
+                </h3>
+                {groomSide.length === 0 ? (
+                  <p className="text-center text-xs opacity-50" style={{ color: data.colorPalette.text }}>
+                    {ctx.editable ? "Add members from the sidebar with side set to “Groom”" : ""}
+                  </p>
                 ) : (
-                  <Heart className="h-8 w-8 opacity-30" style={{ color: data.colorPalette.primary }} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10">
+                    {groomSide.map((m, i) => (
+                      <PartyMemberCard key={`g-${i}`} data={data} member={m} />
+                    ))}
+                  </div>
                 )}
               </div>
-              <div className="text-2xl sm:text-3xl mb-1" style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}>
-                {m.name || "Name"}
-              </div>
-              <div className="text-sm opacity-80" style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}>
-                {m.role || "Role"}
+
+              {/* Bride's side */}
+              <div className="md:pl-12">
+                <h3
+                  className="text-center text-2xl sm:text-3xl mb-10"
+                  style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+                >
+                  <EditableText
+                    editable={ctx.editable}
+                    value={data.customText.weddingParty_brideLabel ?? ""}
+                    defaultValue="Bride's Party"
+                    onCommit={(v) => ctx.onTextChange("weddingParty_brideLabel", v)}
+                  />
+                </h3>
+                {brideSide.length === 0 ? (
+                  <p className="text-center text-xs opacity-50" style={{ color: data.colorPalette.text }}>
+                    {ctx.editable ? "Add members from the sidebar with side set to “Bride”" : ""}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10">
+                    {brideSide.map((m, i) => (
+                      <PartyMemberCard key={`b-${i}`} data={data} member={m} />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+          )}
+
+          {familySide.length > 0 && (
+            <div className="max-w-4xl mx-auto">
+              <h3
+                className="text-center text-2xl sm:text-3xl mb-10"
+                style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+              >
+                <EditableText
+                  editable={ctx.editable}
+                  value={data.customText.weddingParty_familyLabel ?? ""}
+                  defaultValue="Family & Friends"
+                  onCommit={(v) => ctx.onTextChange("weddingParty_familyLabel", v)}
+                />
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
+                {familySide.map((m, i) => (
+                  <PartyMemberCard key={`f-${i}`} data={data} member={m} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </SectionShell>
@@ -517,9 +680,21 @@ function BrandingFooter() {
   );
 }
 
-function TopNav({ data, scrollContainer }: { data: WebsiteRendererPayload; scrollContainer?: HTMLElement | null }) {
+function TopNav({
+  data,
+  scrollContainer,
+  pageMode,
+  slug,
+  currentSection,
+}: {
+  data: WebsiteRendererPayload;
+  scrollContainer?: HTMLElement | null;
+  pageMode: boolean;
+  slug?: string;
+  currentSection: string;
+}) {
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
-  const [active, setActive] = useState<string>("home");
+  const [scrollActive, setScrollActive] = useState<string>("home");
 
   // Build the ordered list of nav items only for sections that are enabled.
   const items: Array<{ id: string; label: string }> = [{ id: "home", label: "Home" }];
@@ -531,16 +706,17 @@ function TopNav({ data, scrollContainer }: { data: WebsiteRendererPayload; scrol
   if (data.sectionsEnabled.gallery) items.push({ id: "gallery", label: "Gallery" });
   if (data.sectionsEnabled.faq) items.push({ id: "faq", label: "FAQ" });
 
-  // Track which section is currently in view to underline the right nav item.
+  // Anchor-scroll mode (used by editor preview): track the visible section
+  // with IntersectionObserver to underline the right item.
   useEffect(() => {
+    if (pageMode) return;
     const root = scrollContainer ?? null;
     const observer = new IntersectionObserver(
       (entries) => {
-        // Pick the entry that's most visible.
         const visible = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible[0]) setActive(visible[0].target.id);
+        if (visible[0]) setScrollActive(visible[0].target.id);
       },
       { root, rootMargin: "-30% 0px -50% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
     );
@@ -550,14 +726,42 @@ function TopNav({ data, scrollContainer }: { data: WebsiteRendererPayload; scrol
     });
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.sectionsEnabled, scrollContainer]);
+  }, [pageMode, data.sectionsEnabled, scrollContainer]);
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
-    setActive(id);
+    setScrollActive(id);
   };
+
+  const active = pageMode ? currentSection : scrollActive;
+
+  const renderItem = (it: { id: string; label: string }) => {
+    const className = `relative pb-1 font-semibold transition-colors hover:opacity-80 ${active === it.id ? "" : "opacity-70"}`;
+    const style = {
+      color: data.colorPalette.text,
+      borderBottom: active === it.id ? `2px solid ${data.colorPalette.primary}` : "2px solid transparent",
+      fontFamily: fontStack(headingFont(data)),
+      fontWeight: 600,
+    };
+    if (pageMode && slug) {
+      const seg = urlSegmentForSection(it.id);
+      const href = seg ? `/w/${slug}/${seg}` : `/w/${slug}`;
+      return (
+        <Link key={it.id} href={href} className={className} style={style}>
+          {it.label}
+        </Link>
+      );
+    }
+    return (
+      <button key={it.id} onClick={() => scrollTo(it.id)} className={className} style={style}>
+        {it.label}
+      </button>
+    );
+  };
+
+  const homeHref = pageMode && slug ? `/w/${slug}` : undefined;
 
   return (
     <nav
@@ -568,28 +772,25 @@ function TopNav({ data, scrollContainer }: { data: WebsiteRendererPayload; scrol
       }}
     >
       <div className="max-w-5xl mx-auto px-4 py-3 sm:py-4 flex flex-col items-center gap-2">
-        <button
-          onClick={() => scrollTo("home")}
-          className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
-          style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
-        >
-          {couple}
-        </button>
+        {homeHref ? (
+          <Link
+            href={homeHref}
+            className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
+            style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
+          >
+            {couple}
+          </Link>
+        ) : (
+          <button
+            onClick={() => scrollTo("home")}
+            className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
+            style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
+          >
+            {couple}
+          </button>
+        )}
         <div className="flex flex-wrap items-center justify-center gap-x-5 sm:gap-x-7 gap-y-1 text-xs sm:text-sm">
-          {items.map((it) => (
-            <button
-              key={it.id}
-              onClick={() => scrollTo(it.id)}
-              className={`relative pb-1 transition-colors hover:opacity-80 ${active === it.id ? "" : "opacity-70"}`}
-              style={{
-                color: data.colorPalette.text,
-                borderBottom: active === it.id ? `2px solid ${data.colorPalette.primary}` : "2px solid transparent",
-                fontFamily: fontStack(headingFont(data)),
-              }}
-            >
-              {it.label}
-            </button>
-          ))}
+          {items.map(renderItem)}
         </div>
       </div>
     </nav>
@@ -601,27 +802,46 @@ export function WebsiteRenderer({
   scrollContainer,
   editable = false,
   onTextChange,
+  currentSection,
+  slug,
 }: {
   data: WebsiteRendererPayload;
   scrollContainer?: HTMLElement | null;
   editable?: boolean;
   onTextChange?: (key: string, value: string) => void;
+  // When set, render only the matching section (page-per-section mode for
+  // the public site). When undefined, render every section in one scroll
+  // (the editor preview mode).
+  currentSection?: string;
+  // Slug for building per-section URLs in TopNav links.
+  slug?: string;
 }) {
   const ctx: EditCtx = editable && onTextChange
     ? { editable: true, onTextChange }
     : NOOP_CTX;
+  const pageMode = !!currentSection;
+  const showAll = !pageMode;
+  const show = (id: string, enabled: boolean) =>
+    enabled && (showAll || currentSection === id);
+
   return (
     <div style={{ background: data.colorPalette.background, color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <TopNav data={data} scrollContainer={scrollContainer} />
-      <Hero data={data} ctx={ctx} />
-      {data.sectionsEnabled.welcome && <Welcome data={data} ctx={ctx} />}
-      {data.sectionsEnabled.story && <Story data={data} ctx={ctx} />}
-      {data.sectionsEnabled.schedule && <Schedule data={data} ctx={ctx} />}
-      {data.sectionsEnabled.travel && <Travel data={data} ctx={ctx} />}
-      {data.sectionsEnabled.registry && <Registry data={data} ctx={ctx} />}
-      {data.sectionsEnabled.weddingParty && <WeddingParty data={data} ctx={ctx} />}
-      {data.sectionsEnabled.faq && <Faq data={data} ctx={ctx} />}
-      {data.sectionsEnabled.gallery && <Gallery data={data} ctx={ctx} />}
+      <TopNav
+        data={data}
+        scrollContainer={scrollContainer}
+        pageMode={pageMode}
+        slug={slug}
+        currentSection={currentSection ?? "home"}
+      />
+      {(showAll || currentSection === "home") && <Hero data={data} ctx={ctx} />}
+      {show("welcome", data.sectionsEnabled.welcome) && <Welcome data={data} ctx={ctx} />}
+      {show("story", data.sectionsEnabled.story) && <Story data={data} ctx={ctx} />}
+      {show("schedule", data.sectionsEnabled.schedule) && <Schedule data={data} ctx={ctx} />}
+      {show("travel", data.sectionsEnabled.travel) && <Travel data={data} ctx={ctx} />}
+      {show("registry", data.sectionsEnabled.registry) && <Registry data={data} ctx={ctx} />}
+      {show("weddingParty", data.sectionsEnabled.weddingParty) && <WeddingParty data={data} ctx={ctx} />}
+      {show("faq", data.sectionsEnabled.faq) && <Faq data={data} ctx={ctx} />}
+      {show("gallery", data.sectionsEnabled.gallery) && <Gallery data={data} ctx={ctx} />}
       <Footer data={data} ctx={ctx} />
     </div>
   );
