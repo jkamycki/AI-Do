@@ -875,7 +875,6 @@ export default function InvitationCustomizationPage({
                   palette={displayPalette}
                   photoUrl={saveTheDatePhotoUrl}
                   photoPosition={saveTheDatePhotoPosition}
-                  onPhotoPositionChange={setSaveTheDatePhotoPosition}
                 />
               ) : (
                 <RsvpPagePreview
