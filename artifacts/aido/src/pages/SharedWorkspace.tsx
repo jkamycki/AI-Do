@@ -332,8 +332,8 @@ export default function SharedWorkspacePage() {
                     <DollarSign className="h-4 w-4" />
                     <span className="text-xs font-medium uppercase tracking-wider">Budget</span>
                   </div>
-                  <div className="text-2xl font-serif font-semibold text-foreground">${totalSpent.toLocaleString()}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{budget ? `of $${budget.totalBudget.toLocaleString()} spent` : "not set"}</div>
+                  <div className="text-2xl font-serif font-semibold text-foreground">${(totalSpent ?? 0).toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{budget ? `of $${(budget.totalBudget ?? 0).toLocaleString()} spent` : "not set"}</div>
                   {budget && <Progress value={budgetPct} className="h-1 mt-2" />}
                 </div>
               </>
@@ -511,15 +511,15 @@ export default function SharedWorkspacePage() {
                       <div className="space-y-3">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Total Budget</span>
-                          <span className="font-semibold">${budget.totalBudget.toLocaleString()}</span>
+                          <span className="font-semibold">${(budget.totalBudget ?? 0).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Spent</span>
-                          <span className="font-semibold text-rose-600">${totalSpent.toLocaleString()}</span>
+                          <span className="font-semibold text-rose-600">${(totalSpent ?? 0).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Remaining</span>
-                          <span className="font-semibold text-emerald-600">${(budget.totalBudget - totalSpent).toLocaleString()}</span>
+                          <span className="font-semibold text-emerald-600">${((budget.totalBudget ?? 0) - (totalSpent ?? 0)).toLocaleString()}</span>
                         </div>
                         <div className="h-2 bg-muted rounded-full overflow-hidden">
                           <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${budgetPct}%` }} />

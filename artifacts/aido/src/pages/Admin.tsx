@@ -538,7 +538,7 @@ function DropoffAnalysisTab({ totalSignups, onboardedUsers }: { totalSignups: nu
           <React.Fragment key={step.label}>
             <div className="flex-1 min-w-[110px] bg-card border border-border/60 rounded-xl p-4 text-center shadow-sm">
               <div className={`w-2 h-2 rounded-full ${step.color} mx-auto mb-2`} />
-              <p className="text-2xl font-bold font-serif">{step.value.toLocaleString()}</p>
+              <p className="text-2xl font-bold font-serif">{(step.value ?? 0).toLocaleString()}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{step.label}</p>
               {i === 1 && (
                 <p className="text-xs font-semibold text-red-500 mt-1">{dropoffRate}% drop-off</p>
@@ -1038,7 +1038,7 @@ function OverviewSection({ metrics }: { metrics: AdminMetrics }) {
               <div key={step.label}>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-sm font-medium">{step.label}</span>
-                  <span className="text-sm font-bold tabular-nums">{step.value.toLocaleString()}</span>
+                  <span className="text-sm font-bold tabular-nums">{(step.value ?? 0).toLocaleString()}</span>
                 </div>
                 <div className="h-8 bg-muted rounded-lg overflow-hidden relative">
                   <div
@@ -1212,9 +1212,9 @@ function MoneySection({ metrics }: { metrics: AdminMetrics }) {
       </Card>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {[
-          { title: "Total Revenue", value: `$${moneyMetrics.totalRevenue.toLocaleString()}` },
-          { title: "MRR", value: `$${moneyMetrics.mrr.toLocaleString()}` },
-          { title: "ARR", value: `$${moneyMetrics.arr.toLocaleString()}` },
+          { title: "Total Revenue", value: `$${(moneyMetrics.totalRevenue ?? 0).toLocaleString()}` },
+          { title: "MRR", value: `$${(moneyMetrics.mrr ?? 0).toLocaleString()}` },
+          { title: "ARR", value: `$${(moneyMetrics.arr ?? 0).toLocaleString()}` },
           { title: "ARPU", value: `$${moneyMetrics.arpu.toFixed(2)}` },
           { title: "LTV", value: `$${moneyMetrics.ltv.toFixed(2)}` },
           { title: "Churn Rate", value: `${moneyMetrics.churnRate}%` },
