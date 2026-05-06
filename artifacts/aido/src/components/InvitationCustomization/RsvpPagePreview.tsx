@@ -187,12 +187,14 @@ export function RsvpPagePreview({
           }}>{dateStr}</p>
 
           {/* Venue — gold; address — white; times — gold */}
-          {venue && (
+          {(venue || venueAddress || cityStateZip || timesLine) && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <MapPin style={{ width: 12, height: 12, color: accent }} />
-                <p style={{ fontFamily: coupleFont, fontSize: 16, fontWeight: 500, color: accent }}>{venue}</p>
-              </div>
+              {venue && (
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <MapPin style={{ width: 12, height: 12, color: accent }} />
+                  <p style={{ fontFamily: coupleFont, fontSize: 16, fontWeight: 500, color: accent }}>{venue}</p>
+                </div>
+              )}
               {venueAddress && (
                 <p style={{ fontFamily: jakarta, fontSize: 10, color: textColor }}>{venueAddress}</p>
               )}
