@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Guests from "./Guests";
 import InvitationCustomization from "./InvitationCustomization";
+import WeddingParty from "./WeddingParty";
 import { useRoute } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useGetProfile } from "@workspace/api-client-react";
@@ -35,9 +36,10 @@ export default function GuestListAndInvitations() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="guest-list">Guest List</TabsTrigger>
           <TabsTrigger value="invitation-customization">Invitation Customization</TabsTrigger>
+          <TabsTrigger value="wedding-party">Wedding Party</TabsTrigger>
         </TabsList>
 
         <TabsContent value="guest-list" forceMount className="mt-6 data-[state=inactive]:hidden">
@@ -46,6 +48,10 @@ export default function GuestListAndInvitations() {
 
         <TabsContent value="invitation-customization" forceMount className="mt-6 data-[state=inactive]:hidden">
           <InvitationCustomization profileId={profileId} />
+        </TabsContent>
+
+        <TabsContent value="wedding-party" forceMount className="mt-6 data-[state=inactive]:hidden">
+          <WeddingParty />
         </TabsContent>
       </Tabs>
     </div>
