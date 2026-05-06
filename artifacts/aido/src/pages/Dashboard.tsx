@@ -906,10 +906,10 @@ function DashboardContent() {
                   <UsersRound className="h-4 w-4 text-primary flex-shrink-0" />
                   <span className="text-sm text-foreground"><strong>{summary.profile.guestCount}</strong> {t("dashboard.expected_guests")}</span>
                 </div>
-                {summary.profile.totalBudget > 0 && (
+                {(summary.profile.totalBudget ?? 0) > 0 && (
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-primary flex-shrink-0" />
-                    <span className="text-sm text-foreground">${summary.profile.totalBudget.toLocaleString()} {t("dashboard.budget").toLowerCase()}</span>
+                    <span className="text-sm text-foreground">${(summary.profile.totalBudget ?? 0).toLocaleString()} {t("dashboard.budget").toLowerCase()}</span>
                   </div>
                 )}
               </div>
@@ -943,8 +943,8 @@ function DashboardContent() {
           budget: {
             icon: DollarSign,
             label: t("dashboard.tile_budget"),
-            value: `$${summary.budgetSpent.toLocaleString()}`,
-            sub: `${t("dashboard.spent_of")} $${summary.budgetTotal.toLocaleString()}`,
+            value: `$${(summary.budgetSpent ?? 0).toLocaleString()}`,
+            sub: `${t("dashboard.spent_of")} $${(summary.budgetTotal ?? 0).toLocaleString()}`,
             progress: budgetPct,
             href: "/budget",
           },
@@ -1126,7 +1126,7 @@ function DashboardContent() {
                   stat={
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>${summary.budgetSpent.toLocaleString()}</span>
+                        <span>${(summary.budgetSpent ?? 0).toLocaleString()}</span>
                         <span>{budgetPct}%</span>
                       </div>
                       <Progress value={budgetPct} className="h-1.5" />
