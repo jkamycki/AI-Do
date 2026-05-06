@@ -730,7 +730,7 @@ export function InvitationSendModal({
                   <div className="flex justify-center overflow-hidden">
                     {profile && (
                       <RsvpPagePreview
-                        colors={palette}
+                        colors={isCustomMode ? palette : { ...palette, accent: "#D4A017", primary: "#D4A017" }}
                         font={customization.digitalInvitationFont}
                         backgroundColor={customization.digitalInvitationBackground}
                         partner1Name={profile.partner1Name ?? ""}
