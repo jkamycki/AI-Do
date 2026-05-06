@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -563,7 +564,7 @@ export default function Guests() {
 
   const [sendModalGuest, setSendModalGuest] = useState<Guest | null>(null);
 
-  const { data: weddingProfile } = useGetProfile();
+  const { data: weddingProfile, isLoading: profileLoading } = useGetProfile();
   const { data, isLoading, isError } = useGetGuests();
   const addGuest = useAddGuest();
   const updateGuest = useUpdateGuest();
@@ -895,6 +896,25 @@ export default function Guests() {
       },
       onError: () => toast({ title: "Failed to remove guest", variant: "destructive" }),
     });
+  }
+
+  if (!profileLoading && !weddingProfile) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4 max-w-md mx-auto px-4">
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+          <Sparkles className="h-7 w-7 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-serif font-semibold">Complete Your Wedding Profile</h2>
+          <p className="text-muted-foreground mt-2 text-sm">
+            You need to set up your wedding profile before you can manage guests and invitations.
+          </p>
+        </div>
+        <Link href="/profile">
+          <Button>Set Up Wedding Profile</Button>
+        </Link>
+      </div>
+    );
   }
 
   if (isLoading) {

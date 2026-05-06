@@ -2,9 +2,11 @@ import { useState, lazy, Suspense, Component } from "react";
 import type { ReactNode } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useRoute } from "wouter";
+import { Button } from "@/components/ui/button";
+import { useRoute, Link } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useGetProfile } from "@workspace/api-client-react";
+import { Sparkles } from "lucide-react";
 
 const Guests = lazy(() => import("./Guests"));
 const InvitationCustomization = lazy(() => import("./InvitationCustomization"));
@@ -69,7 +71,7 @@ interface RouteParams {
 export default function GuestListAndInvitations() {
   const [, params] = useRoute("/guests/:profileId");
   const { activeWorkspace } = useWorkspace();
-  const { data: profile } = useGetProfile();
+  const { data: profile, isLoading: profileLoading } = useGetProfile();
 
   const profileId = params?.profileId
     ? parseInt(params.profileId)
@@ -78,7 +80,32 @@ export default function GuestListAndInvitations() {
   const [activeTab, setActiveTab] = useState("guest-list");
 
   if (!profileId) {
-    return <div className="p-4 text-center">Loading profile...</div>;
+    if (profileLoading) {
+      return (
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-64" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-36 rounded-xl" />)}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4 max-w-md mx-auto px-4">
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+          <Sparkles className="h-7 w-7 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-serif font-semibold">Complete Your Wedding Profile</h2>
+          <p className="text-muted-foreground mt-2 text-sm">
+            You need to set up your wedding profile before you can manage guests and invitations.
+          </p>
+        </div>
+        <Link href="/profile">
+          <Button>Set Up Wedding Profile</Button>
+        </Link>
+      </div>
+    );
   }
 
   return (
