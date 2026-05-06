@@ -1171,12 +1171,12 @@ export default function Guests() {
               <Table>
                 <TableHeader className="bg-muted/10">
                   <TableRow>
-                    <TableHead>{t("guests.col_name")}</TableHead>
-                    <TableHead className="hidden sm:table-cell">{t("guests.col_einvite_status")}</TableHead>
-                    <TableHead>{t("guests.col_rsvp")}</TableHead>
-                    <TableHead className="hidden md:table-cell">{t("guests.col_meal")}</TableHead>
-                    <TableHead className="hidden md:table-cell">{t("guests.col_table")}</TableHead>
-                    <TableHead className="hidden lg:table-cell">{t("guests.col_plus_one")}</TableHead>
+                    <TableHead className="text-primary">{t("guests.col_name")}</TableHead>
+                    <TableHead className="hidden sm:table-cell text-primary">{t("guests.col_einvite_status")}</TableHead>
+                    <TableHead className="text-primary">{t("guests.col_rsvp")}</TableHead>
+                    <TableHead className="hidden md:table-cell text-primary">{t("guests.col_meal")}</TableHead>
+                    <TableHead className="hidden md:table-cell text-primary">{t("guests.col_table")}</TableHead>
+                    <TableHead className="hidden lg:table-cell text-primary">{t("guests.col_plus_one")}</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
