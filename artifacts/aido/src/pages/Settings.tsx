@@ -473,7 +473,7 @@ export default function SettingsPage() {
       const body = encodeURIComponent(
         `Hi there!\n\nYou've been invited to collaborate on ${workspaceName}'s wedding workspace as a ${role} on A.IDO.\n\nAccept your invitation by clicking the link below:\n\n${link}\n\n(If the link doesn't appear clickable, copy and paste it into your browser.)\n\nSee you there!\n${workspaceName}`
       );
-      window.location.href = `mailto:${inviteEmail}?subject=${subject}&body=${body}`;
+      window.location.href = `mailto:${encodeURIComponent(inviteEmail)}?subject=${subject}&body=${body}`;
 
       setInviteEmail("");
       toast({ title: t("settings.invite_ready"), description: t("settings.invite_ready_desc") });

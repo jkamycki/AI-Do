@@ -35,8 +35,11 @@ function extractRecipient(to: unknown): string[] {
 function extractSender(from: unknown): { email: string; name?: string } {
   if (!from) return { email: "" };
   if (typeof from === "string") {
-    const m = from.match(/^(.*?)<(.+?)>$/);
-    if (m) return { name: m[1].trim().replace(/"/g, ""), email: m[2].trim() };
+    const lt = from.indexOf("<");
+    const gt = from.lastIndexOf(">");
+    if (lt >= 0 && gt > lt) {
+      return { name: from.slice(0, lt).trim().replace(/"/g, ""), email: from.slice(lt + 1, gt).trim() };
+    }
     return { email: from.trim() };
   }
   const f = from as { email?: string; name?: string };

@@ -197,15 +197,15 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
       // CC the user's personal email(s). Two sources merged:
       // 1. The live CC list sent with this request (ccOverride) — used even if not yet saved to profile.
       // 2. The profile's saved vendorBccEmail (legacy field name) as fallback / supplement.
-      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const isValidEmail = (e: string) => { const at = e.indexOf("@"); return at > 0 && at < e.length - 1 && e.indexOf(".", at) > at + 1; };
       const ccRaw = profile?.vendorBccEmail?.trim() ?? "";
       const savedCcList = ccRaw
         .split(/[,;\s]+/)
         .map((e) => e.trim())
-        .filter((e) => EMAIL_RE.test(e))
+        .filter((e) => isValidEmail(e))
         .map((e) => e.toLowerCase());
       const requestCcList = Array.isArray(ccOverride)
-        ? ccOverride.map((e) => e.trim().toLowerCase()).filter((e) => EMAIL_RE.test(e))
+        ? ccOverride.map((e) => e.trim().toLowerCase()).filter((e) => isValidEmail(e))
         : [];
       const ccList = Array.from(new Set([...requestCcList, ...savedCcList]));
       const cc = ccList.length > 0 ? ccList : undefined;

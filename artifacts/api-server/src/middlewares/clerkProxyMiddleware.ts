@@ -67,7 +67,7 @@ export function clerkProxyMiddleware(): RequestHandler {
 
         const url = (req as any).url || "";
         if (url.includes("sign_up")) {
-          logger.debug({ proxyUrl, secretPrefix: secretKey.substring(0, 15) }, "[Clerk Proxy] sign_up request");
+          logger.debug({ proxyUrl }, "[Clerk Proxy] sign_up request");
         }
       },
       proxyRes: (proxyRes: IncomingMessage, req: IncomingMessage) => {

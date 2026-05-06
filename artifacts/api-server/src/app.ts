@@ -7,6 +7,7 @@ import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxy
 import { generalLimiter } from "./middlewares/rateLimiter";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { isAllowedOrigin } from "./lib/allowedOrigins";
 
 const app: Express = express();
 app.set("etag", false);
@@ -20,7 +21,9 @@ app.set("trust proxy", 1);
 // crossOriginResourcePolicy is loosened so the Vercel frontend can fetch responses.
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    // This is a JSON API; restrict everything by default. The frontend owns
+    // its own CSP — this header here only applies to any HTML error pages.
+    contentSecurityPolicy: { directives: { defaultSrc: ["'none'"] } },
     crossOriginResourcePolicy: { policy: "cross-origin" },
   }),
 );
@@ -71,27 +74,32 @@ if (process.env.NODE_ENV === "production") {
 
     type FetchHeaders = Record<string, string>;
 
+    const FAPI_BASE = "https://frontend-api.clerk.dev";
+    const BAPI_BASE = "https://api.clerk.com";
+
     const fapiFetch = (
       path: string,
       method: "POST" | "GET",
       headers: FetchHeaders,
       body?: string,
-    ) =>
-      fetch(`https://frontend-api.clerk.dev${path}`, {
+    ) => {
+      const url = new URL(path, FAPI_BASE);
+      if (url.origin !== FAPI_BASE) throw new Error("Invalid Clerk FAPI path");
+      return fetch(url.toString(), {
         method,
-        headers: {
-          ...headers,
-          "Clerk-Secret-Key": secretKey,
-        },
+        headers: { ...headers, "Clerk-Secret-Key": secretKey },
         body,
       });
+    };
 
     const bapiFetch = (
       path: string,
       method: "POST" | "GET",
       jsonBody?: unknown,
-    ) =>
-      fetch(`https://api.clerk.com${path}`, {
+    ) => {
+      const url = new URL(path, BAPI_BASE);
+      if (url.origin !== BAPI_BASE) throw new Error("Invalid Clerk BAPI path");
+      return fetch(url.toString(), {
         method,
         headers: {
           Authorization: `Bearer ${secretKey}`,
@@ -99,6 +107,7 @@ if (process.env.NODE_ENV === "production") {
         },
         body: jsonBody === undefined ? undefined : JSON.stringify(jsonBody),
       });
+    };
 
     // Properly forward upstream response (handles multi-value Set-Cookie)
     const forwardResponse = (
@@ -234,7 +243,7 @@ if (process.env.NODE_ENV === "production") {
     // forwarded as-is so that Clerk's normal 2FA flow proceeds.
     app.post(
       new RegExp(
-        `^${CLERK_PROXY_PATH.replace(/\//g, "\\/")}\\/v1\\/client\\/sign_ins\\/([^\\/]+)\\/attempt_first_factor$`,
+        `^${CLERK_PROXY_PATH.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\/v1\\/client\\/sign_ins\\/([^\\/]+)\\/attempt_first_factor$`,
       ),
       express.raw({ type: "*/*", limit: "4mb" }),
       async (req, res) => {
@@ -331,18 +340,6 @@ if (process.env.NODE_ENV === "production") {
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-const ALLOWED_ORIGINS = new Set([
-  "https://aidowedding.net",
-  "https://www.aidowedding.net",
-  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
-  ...(process.env.PUBLIC_APP_URL ? [process.env.PUBLIC_APP_URL] : []),
-]);
-
-const ALLOWED_ORIGIN_PATTERNS = [
-  /^https:\/\/ai-do-aido[a-z0-9-]*\.vercel\.app$/,
-  /^https:\/\/[a-z0-9-]+-kamyckijoseph[a-z0-9-]*\.vercel\.app$/,
-];
-
 app.use(
   cors({
     credentials: true,
@@ -359,8 +356,7 @@ app.use(
       ) {
         return callback(null, true);
       }
-      if (ALLOWED_ORIGINS.has(origin)) return callback(null, true);
-      if (ALLOWED_ORIGIN_PATTERNS.some(pattern => pattern.test(origin))) return callback(null, true);
+      if (isAllowedOrigin(origin)) return callback(null, true);
       callback(new Error(`CORS: origin not allowed — ${origin}`));
     },
   }),

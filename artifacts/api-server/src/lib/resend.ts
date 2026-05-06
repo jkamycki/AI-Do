@@ -1,5 +1,6 @@
 import { logger } from "./logger";
 import * as crypto from "crypto";
+import he from "he";
 
 const RESEND_API = "https://api.resend.com";
 
@@ -38,6 +39,8 @@ export interface RetrievedEmail {
 export async function getEmail(emailId: string): Promise<RetrievedEmail | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return null;
+  // Validate emailId to prevent SSRF — Resend IDs are alphanumeric with hyphens/underscores
+  if (!/^[a-zA-Z0-9_-]{1,200}$/.test(emailId)) return null;
   const candidates = [
     `${RESEND_API}/inbound/emails/${emailId}`,
     `${RESEND_API}/inbound/${emailId}`,
@@ -149,22 +152,35 @@ export function cleanInboundText(text: string): string {
   return cleaned;
 }
 
-/** Strip HTML tags safely (very conservative - we surface text, not rendered HTML). */
+/** Strip HTML tags and decode entities — output is plain text, not HTML. */
 export function htmlToText(html: string): string {
   if (!html) return "";
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim();
+
+  // Remove <style> and <script> blocks using indexOf to avoid ReDoS
+  let s = html;
+  for (const [open, close] of [["<style", "</style>"], ["<script", "</script>"]] as const) {
+    let i: number;
+    while ((i = s.toLowerCase().indexOf(open)) >= 0) {
+      const j = s.toLowerCase().indexOf(close, i);
+      if (j < 0) { s = s.slice(0, i); break; }
+      s = s.slice(0, i) + s.slice(j + close.length);
+    }
+  }
+
+  // Insert newlines for block-level breaks before stripping tags
+  s = s.replace(/<br\s*\/?>/gi, "\n").replace(/<\/p\s*>/gi, "\n\n");
+
+  // Strip tags character-by-character (handles > inside attribute values safely)
+  let result = "";
+  let inTag = false;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "<") { inTag = true; continue; }
+    if (s[i] === ">" && inTag) { inTag = false; continue; }
+    if (!inTag) result += s[i];
+  }
+
+  // Decode HTML entities properly using the `he` library
+  return he.decode(result).replace(/\n{3,}/g, "\n\n").trim();
 }
 
 export function randomToken(bytes = 18): string {

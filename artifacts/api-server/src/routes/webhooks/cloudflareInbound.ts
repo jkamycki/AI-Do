@@ -16,8 +16,12 @@ interface CloudflareInboundPayload {
 
 function parseFromHeader(from: string | undefined): { email: string; name?: string } {
   if (!from) return { email: "" };
-  const m = from.match(/^\s*"?([^"<]*?)"?\s*<(.+?)>\s*$/);
-  if (m) return { name: m[1].trim() || undefined, email: m[2].trim() };
+  const lt = from.indexOf("<");
+  const gt = from.lastIndexOf(">");
+  if (lt >= 0 && gt > lt) {
+    const name = from.slice(0, lt).trim().replace(/^"|"$/g, "") || undefined;
+    return { name, email: from.slice(lt + 1, gt).trim() };
+  }
   return { email: from.trim() };
 }
 

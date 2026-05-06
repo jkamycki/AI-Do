@@ -53,6 +53,7 @@ export function mockupPreviewPlugin(): Plugin {
 
   function generateSource(components: Array<DiscoveredComponent>): string {
     const entries = components
+      .filter((c) => /^[a-zA-Z0-9_./@-]+$/.test(c.importPath))
       .map(
         (c) =>
           `  ${JSON.stringify(c.globKey)}: () => import(${JSON.stringify(c.importPath)})`,
