@@ -353,7 +353,7 @@ export default function WebsiteEditor() {
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] -m-6 lg:-m-8">
       {/* Sidebar */}
-      <aside className="w-full lg:w-[420px] lg:flex-shrink-0 border-r bg-background overflow-y-auto">
+      <aside className="w-full lg:w-[340px] lg:flex-shrink-0 border-r bg-background overflow-y-auto">
         <div className="p-5 border-b sticky top-0 bg-background z-10">
           <div className="flex items-center justify-between gap-2 mb-3">
             <h2 className="text-xl font-serif font-bold">Website Editor</h2>
@@ -586,7 +586,7 @@ export default function WebsiteEditor() {
         <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs text-muted-foreground">
           Live preview — changes appear here instantly. Click <strong>Save changes</strong> when you're happy.
         </div>
-        <div className="border shadow-sm m-4 rounded-lg overflow-hidden bg-white">
+        <div className="bg-white">
           <WebsiteRenderer data={livePreview} />
         </div>
       </main>
