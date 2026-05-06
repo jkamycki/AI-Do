@@ -1,11 +1,11 @@
 import { useState, lazy, Suspense } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Guests from "./Guests";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRoute } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useGetProfile } from "@workspace/api-client-react";
 
+const Guests = lazy(() => import("./Guests"));
 const InvitationCustomization = lazy(() => import("./InvitationCustomization"));
 const WeddingParty = lazy(() => import("./WeddingParty"));
 
@@ -56,7 +56,9 @@ export default function GuestListAndInvitations() {
         </TabsList>
 
         <TabsContent value="guest-list" forceMount className="mt-6 data-[state=inactive]:hidden">
-          <Guests />
+          <Suspense fallback={<TabSkeleton />}>
+            <Guests />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="invitation-customization" forceMount className="mt-6 data-[state=inactive]:hidden">
