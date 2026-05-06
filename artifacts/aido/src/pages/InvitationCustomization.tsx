@@ -8,7 +8,6 @@ import { PhotoUploadSection } from "@/components/InvitationCustomization/PhotoUp
 import { ColorSystemSection } from "@/components/InvitationCustomization/ColorSystemSection";
 import { DesignOptionsSection } from "@/components/InvitationCustomization/DesignOptionsSection";
 import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
-import { DigitalInvitationPreview } from "@/components/InvitationCustomization/DigitalInvitationPreview";
 import { RsvpPagePreview } from "@/components/InvitationCustomization/RsvpPagePreview";
 import {
   AiSaveDatePreview,
@@ -1371,27 +1370,25 @@ export default function InvitationCustomizationPage({
                   photoPosition={digitalInvitationPhotoPosition}
                 />
               ) : (
-                <DigitalInvitationPreview
-                  photoUrl={digitalInvitationPhotoUrl}
-                  venue={displayWeddingProfile.venue}
-                  location={displayWeddingProfile.location ?? ""}
-                  venueCity={displayWeddingProfile.venueCity}
-                  venueState={displayWeddingProfile.venueState}
-                  venueZip={displayWeddingProfile.venueZip}
-                  ceremonyTime={displayWeddingProfile.ceremonyTime ?? ""}
-                  receptionTime={displayWeddingProfile.receptionTime ?? ""}
-                  guestName={user?.firstName || "Guest Name"}
+                <RsvpPagePreview
                   colors={displayPalette}
-                  font={digitalInvitationFont ?? ""}
-                  layout={digitalInvitationLayout ?? undefined}
+                  font={digitalInvitationFont}
                   backgroundColor={digitalInvitationBackground}
                   partner1Name={displayWeddingProfile.partner1Name}
                   partner2Name={displayWeddingProfile.partner2Name}
                   weddingDate={displayWeddingProfile.weddingDate}
-                  message={invitationMessage || weddingProfile?.invitationMessage || undefined}
-                  textOverrides={digTextOverrides}
-                  onTextOverridesChange={setDigTextOverrides}
-                  editable
+                  venue={displayWeddingProfile.venue}
+                  photoUrl={digitalInvitationPhotoUrl}
+                  photoPosition={digPhotoPos}
+                  onPhotoPositionChange={handleDigPhotoPositionChange}
+                  guestName={user?.firstName || "Guest Name"}
+                  venueAddress={displayWeddingProfile.location}
+                  venueCity={displayWeddingProfile.venueCity}
+                  venueState={displayWeddingProfile.venueState}
+                  venueZip={displayWeddingProfile.venueZip}
+                  ceremonyTime={displayWeddingProfile.ceremonyTime}
+                  receptionTime={displayWeddingProfile.receptionTime}
+                  invitationMessage={invitationMessage || weddingProfile?.invitationMessage}
                 />
               )}
             </div>

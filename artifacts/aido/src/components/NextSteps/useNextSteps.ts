@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useGetDashboardSummary, useListVendors } from "@workspace/api-client-react";
+import { useAuth } from "@clerk/react";
 import { authFetch } from "@/lib/authFetch";
 import { useQuery } from "@tanstack/react-query";
 import { STEPS, STEP_BY_ID, type NextStepsData, type StepId, type StepDefinition } from "./steps";
@@ -33,11 +34,20 @@ const ACTIVE_STEPS_MIN = 3;
  * sections.
  */
 export function useNextSteps() {
-  const [overrides, setOverrides] = useState<NextStepsOverrides>(() => loadOverrides());
+  const { userId } = useAuth();
+  const uid = userId ?? "anonymous";
+
+  const [overrides, setOverrides] = useState<NextStepsOverrides>(() => loadOverrides(uid));
+
+  // Re-load overrides when the logged-in user changes (e.g. switching accounts)
+  useEffect(() => {
+    setOverrides(loadOverrides(uid));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid]);
 
   useEffect(() => {
-    saveOverrides(overrides);
-  }, [overrides]);
+    saveOverrides(overrides, uid);
+  }, [overrides, uid]);
 
   const { data: summary } = useGetDashboardSummary();
   const { data: vendorsData } = useListVendors();
@@ -99,6 +109,10 @@ export function useNextSteps() {
 
   const resolveStatus = useCallback(
     (step: StepDefinition): StepStatus => {
+      // Nothing beyond the profile step can count as done until a profile exists
+      if (!data.hasProfile && step.id !== "profile") {
+        return "not_started";
+      }
       const auto = step.isAutoComplete?.(data) ?? false;
       const manual = overrides.manuallyDone[step.id] ?? false;
       if (auto || manual) return "done";

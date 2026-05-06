@@ -1326,16 +1326,23 @@ router.get("/save-the-date/:token", async (req, res) => {
         const palette = (cust.colorPalette ?? {}) as Record<string, string>;
         const customColors = (cust.customColors ?? {}) as Record<string, string>;
         const mergedAccent = customColors.accent ?? palette.accent ?? null;
-        const stdOverrides = ((cust.textOverrides ?? {}) as Record<string, Record<string, unknown>>);
-        const photoOverride = stdOverrides["std:photo"] ?? {};
-        const ox = (photoOverride.objectX as number | undefined) ?? 50;
-        const oy = (photoOverride.objectY as number | undefined) ?? 50;
+        const allOverrides = ((cust.textOverrides ?? {}) as Record<string, Record<string, unknown>>);
+        // RSVP page shows the digital invitation photo — use dig:photo position
+        // (custom mode) or digitalInvitationPhotoPosition (AI mode).
+        const aiDigPos = (cust.digitalInvitationPhotoPosition as { x?: number; y?: number } | null) ?? null;
+        const digPhotoOverride = allOverrides["dig:photo"] ?? {};
+        const ox = useGenerated
+          ? (aiDigPos?.x ?? 50)
+          : ((digPhotoOverride.objectX as number | undefined) ?? 50);
+        const oy = useGenerated
+          ? (aiDigPos?.y ?? 50)
+          : ((digPhotoOverride.objectY as number | undefined) ?? 50);
         customizationData = {
           useGeneratedInvitation: useGenerated,
-          backgroundColor: useGenerated ? null : (cust.saveTheDateBackground ?? null),
+          backgroundColor: useGenerated ? null : (cust.digitalInvitationBackground ?? cust.saveTheDateBackground ?? null),
           accentColor: useGenerated ? null : mergedAccent,
-          fontFamily: useGenerated ? null : (cust.saveTheDateFont ?? cust.selectedFont ?? null),
-          textOverrides: useGenerated ? {} : stdOverrides,
+          fontFamily: useGenerated ? null : (cust.digitalInvitationFont ?? cust.selectedFont ?? null),
+          textOverrides: useGenerated ? {} : allOverrides,
           photoObjectPosition: `${ox}% ${oy}%`,
         };
       }
