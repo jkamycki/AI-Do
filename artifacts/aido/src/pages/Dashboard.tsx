@@ -1,5 +1,5 @@
-import { useGetDashboardSummary, getListVendorsQueryKey } from "@workspace/api-client-react";
-import { useQuery } from "@tanstack/react-query";
+import { useGetDashboardSummary, getListVendorsQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@clerk/react";
 import { useLocation } from "wouter";
 import { useEffect, useMemo, useState, useRef } from "react";
@@ -493,10 +493,23 @@ function DraggableStatsRow({ chips }: { chips: Record<StatKey, StatChipDef> }) {
 
 export default function Dashboard() {
   const { t } = useTranslation();
-  const { data: summary, isLoading, isError } = useGetDashboardSummary();
+  const { data: summary, isLoading, isError, refetch } = useGetDashboardSummary();
+  const qc = useQueryClient();
   const { user } = useUser();
   const { activeWorkspace } = useWorkspace();
   const [, setLocation] = useLocation();
+  const [autoRetryCount, setAutoRetryCount] = useState(0);
+
+  // Auto-retry once after 8 seconds when dashboard errors — handles Render cold starts
+  // where the first request times out but the server is warm by the second attempt.
+  useEffect(() => {
+    if (!isError || autoRetryCount >= 1) return;
+    const id = setTimeout(() => {
+      setAutoRetryCount((c) => c + 1);
+      qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    }, 8000);
+    return () => clearTimeout(id);
+  }, [isError, autoRetryCount, qc]);
   const { data: hotels = [] } = useQuery<HotelBlock[]>({
     queryKey: ["hotels"],
     queryFn: async () => {
@@ -602,8 +615,18 @@ export default function Dashboard() {
       <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
         <AlertCircle className="h-12 w-12 text-destructive" />
         <h2 className="text-2xl font-serif">{t("dashboard.something_went_wrong")}</h2>
-        <p className="text-muted-foreground">{t("common.error")}</p>
-        <Button onClick={() => window.location.reload()} data-testid="btn-retry">{t("dashboard.try_again")}</Button>
+        <p className="text-muted-foreground">
+          {autoRetryCount < 1 ? "Retrying in a moment…" : t("common.error")}
+        </p>
+        <Button
+          onClick={() => {
+            setAutoRetryCount(0);
+            qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          }}
+          data-testid="btn-retry"
+        >
+          {t("dashboard.try_again")}
+        </Button>
       </div>
     );
   }
