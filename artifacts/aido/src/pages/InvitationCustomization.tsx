@@ -11,7 +11,6 @@ import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveThe
 import { RsvpPagePreview } from "@/components/InvitationCustomization/RsvpPagePreview";
 import {
   AiSaveDatePreview,
-  AiDigitalInvitationPreview,
 } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1349,31 +1348,11 @@ export default function InvitationCustomizationPage({
                     onTextOverridesChange={setStdTextOverrides}
                   />
                 )
-              ) : useGeneratedInvitation ? (
-                <AiDigitalInvitationPreview
-                  profile={{
-                    partner1Name: displayWeddingProfile.partner1Name,
-                    partner2Name: displayWeddingProfile.partner2Name,
-                    weddingDate: displayWeddingProfile.weddingDate,
-                    venue: displayWeddingProfile.venue,
-                    venueAddress: displayWeddingProfile.location,
-                    venueCity: displayWeddingProfile.venueCity,
-                    venueState: displayWeddingProfile.venueState,
-                    venueZip: displayWeddingProfile.venueZip,
-                    ceremonyTime: displayWeddingProfile.ceremonyTime,
-                    receptionTime: displayWeddingProfile.receptionTime,
-                    invitationMessage:
-                      invitationMessage || weddingProfile?.invitationMessage,
-                  }}
-                  palette={displayPalette}
-                  photoUrl={digitalInvitationPhotoUrl}
-                  photoPosition={digitalInvitationPhotoPosition}
-                />
               ) : (
                 <RsvpPagePreview
                   colors={displayPalette}
-                  font={digitalInvitationFont}
-                  backgroundColor={digitalInvitationBackground}
+                  font={useGeneratedInvitation ? null : digitalInvitationFont}
+                  backgroundColor={useGeneratedInvitation ? null : digitalInvitationBackground}
                   partner1Name={displayWeddingProfile.partner1Name}
                   partner2Name={displayWeddingProfile.partner2Name}
                   weddingDate={displayWeddingProfile.weddingDate}
@@ -1389,6 +1368,7 @@ export default function InvitationCustomizationPage({
                   ceremonyTime={displayWeddingProfile.ceremonyTime}
                   receptionTime={displayWeddingProfile.receptionTime}
                   invitationMessage={invitationMessage || weddingProfile?.invitationMessage}
+                  scale={rsvpScale}
                 />
               )}
             </div>
