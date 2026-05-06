@@ -84,7 +84,12 @@ export default function GuestListAndInvitations() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-serif font-bold">Guest List & Invitations</h1>
+        <h1 className="text-3xl font-serif font-bold">
+          Guest List & Invitations
+          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40 align-middle">
+            v2
+          </span>
+        </h1>
         <p className="text-muted-foreground mt-1">
           Manage your guests and customize your invitation designs
         </p>
