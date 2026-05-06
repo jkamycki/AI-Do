@@ -461,7 +461,9 @@
     "add_task_to": "Ajouter une tâche à {{month}}",
     "could_not_update": "Impossible de mettre à jour la tâche",
     "could_not_delete": "Impossible de supprimer la tâche",
-    "could_not_add": "Impossible d'ajouter la tâche"
+    "could_not_add": "Impossible d'ajouter la tâche",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "vendors": {
     "title": "Prestataires",
@@ -867,7 +869,9 @@
     "pdf_failed_desc": "Impossible de générer le PDF. Veuillez réessayer.",
     "could_not_save": "Impossible de sauvegarder le calendrier",
     "edit_event_title": "Modifier cet événement",
-    "delete_event_title": "Supprimer cet événement"
+    "delete_event_title": "Supprimer cet événement",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "hotels": {
     "title": "Blocs Hôteliers",

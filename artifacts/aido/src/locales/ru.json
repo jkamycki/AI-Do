@@ -372,7 +372,9 @@
     "add_task_to": "Добавить задачу в {{month}}",
     "could_not_update": "Не удалось обновить задачу",
     "could_not_delete": "Не удалось удалить задачу",
-    "could_not_add": "Не удалось добавить задачу"
+    "could_not_add": "Не удалось добавить задачу",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "vendors": {
     "title": "Поставщики",

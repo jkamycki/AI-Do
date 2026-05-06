@@ -474,7 +474,9 @@
     "add_task_to": "Add task to {{month}}",
     "could_not_update": "Could not update task",
     "could_not_delete": "Could not delete task",
-    "could_not_add": "Could not add task"
+    "could_not_add": "Could not add task",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "vendors": {
     "title": "Vendors",
@@ -889,7 +891,9 @@
     "pdf_failed_desc": "Could not generate the PDF. Please try again.",
     "could_not_save": "Could not save timeline",
     "edit_event_title": "Edit this event",
-    "delete_event_title": "Delete this event"
+    "delete_event_title": "Delete this event",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "hotels": {
     "title": "Hotel Blocks",

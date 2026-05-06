@@ -372,7 +372,9 @@
     "add_task_to": "إضافة مهمة إلى {{month}}",
     "could_not_update": "تعذّر تحديث المهمة",
     "could_not_delete": "تعذّر حذف المهمة",
-    "could_not_add": "تعذّر إضافة المهمة"
+    "could_not_add": "تعذّر إضافة المهمة",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "vendors": {
     "title": "الموردون",

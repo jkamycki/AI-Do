@@ -372,7 +372,9 @@
     "add_task_to": "{{month}} में कार्य जोड़ें",
     "could_not_update": "कार्य अपडेट नहीं किया जा सका",
     "could_not_delete": "कार्य हटाया नहीं जा सका",
-    "could_not_add": "कार्य जोड़ा नहीं जा सका"
+    "could_not_add": "कार्य जोड़ा नहीं जा सका",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "vendors": {
     "title": "विक्रेता",

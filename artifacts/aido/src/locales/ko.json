@@ -372,7 +372,9 @@
     "add_task_to": "{{month}}에 할 일 추가",
     "could_not_update": "할 일을 수정할 수 없습니다",
     "could_not_delete": "할 일을 삭제할 수 없습니다",
-    "could_not_add": "할 일을 추가할 수 없습니다"
+    "could_not_add": "할 일을 추가할 수 없습니다",
+    "reset_button": "Reset",
+    "resetting": "Resetting…"
   },
   "vendors": {
     "title": "업체",
