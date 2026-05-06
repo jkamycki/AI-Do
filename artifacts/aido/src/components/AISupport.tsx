@@ -8,8 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Send, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface Message {
+  id?: string;
   role: "user" | "assistant";
   content: string;
+  streaming?: boolean;
 }
 
 export function AISupport() {
@@ -28,10 +30,19 @@ export function AISupport() {
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitterInfo, setSubmitterInfo] = useState({
-    name: user?.firstName ? `${user.firstName} ${user.lastName ?? ""}`.trim() : "",
-    email: user?.emailAddresses[0]?.emailAddress ?? "",
+    name: "",
+    email: "",
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (user && (!submitterInfo.name || !submitterInfo.email)) {
+      setSubmitterInfo({
+        name: user.firstName ? `${user.firstName} ${user.lastName ?? ""}`.trim() : "",
+        email: user.emailAddresses[0]?.emailAddress ?? "",
+      });
+    }
+  }, [user]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -71,43 +82,69 @@ export function AISupport() {
       const reader = r.body?.getReader();
       if (!reader) throw new Error("No response body");
 
-      let assistantMessage = "";
+      // Add streaming placeholder immediately so the user sees Aria typing
+      const placeholderId = `stream-${Date.now()}`;
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant" as const, content: "", streaming: true, id: placeholderId },
+      ]);
+
+      let accumulated = "";
       const decoder = new TextDecoder();
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
 
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
-
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.content) {
-                assistantMessage += parsed.content;
-              }
-              if (parsed.error) {
-                throw new Error(parsed.error);
-              }
-            } catch (e) {
-              // Skip parse errors
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.content) {
+              accumulated += parsed.content;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === placeholderId
+                    ? { ...m, content: accumulated }
+                    : m
+                )
+              );
             }
+            if (parsed.error) {
+              accumulated = String(parsed.error);
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === placeholderId
+                    ? { ...m, content: accumulated }
+                    : m
+                )
+              );
+            }
+          } catch {
+            // skip malformed lines
           }
         }
       }
 
-      return assistantMessage;
+      // Finalize — remove streaming flag
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === placeholderId
+            ? { ...m, streaming: false }
+            : m
+        )
+      );
+
+      return accumulated;
     },
-    onSuccess: (assistantMessage) => {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: assistantMessage },
-      ]);
+    onSuccess: () => {
       setInput("");
     },
     onError: () => {
@@ -217,7 +254,15 @@ export function AISupport() {
                         : "bg-muted text-foreground rounded-bl-none"
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    {msg.streaming && !msg.content ? (
+                      <span className="flex gap-1 items-center py-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce [animation-delay:0ms]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce [animation-delay:150ms]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce [animation-delay:300ms]" />
+                      </span>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    )}
                   </div>
                 </div>
               ))}
