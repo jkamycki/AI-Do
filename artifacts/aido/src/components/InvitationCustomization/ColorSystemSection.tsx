@@ -24,6 +24,7 @@ const PRESET_PALETTES = {
       accent: "#D4A017",
       neutral: "#8B7B8F",
     },
+    background: "#FFF0F5",
   },
   modern: {
     name: "Modern",
@@ -34,16 +35,18 @@ const PRESET_PALETTES = {
       accent: "#C0C0C0",
       neutral: "#808080",
     },
+    background: "#F5F5F5",
   },
   luxury: {
     name: "Luxury",
-    description: "Deep jewel tones, gold, and emerald",
+    description: "Burgundy, champagne gold, and warm taupe",
     colors: {
-      primary: "#1A472A",
-      secondary: "#2E8B57",
-      accent: "#FFD700",
-      neutral: "#696969",
+      primary: "#722F37",
+      secondary: "#A4243B",
+      accent: "#D4AF37",
+      neutral: "#8B7355",
     },
+    background: "#1A1014",
   },
   minimalist: {
     name: "Minimalist",
@@ -54,6 +57,7 @@ const PRESET_PALETTES = {
       accent: "#D3D3D3",
       neutral: "#A9A9A9",
     },
+    background: "#FFFFFF",
   },
   seasonal: {
     name: "Seasonal",
@@ -64,6 +68,7 @@ const PRESET_PALETTES = {
       accent: "#8B4513",
       neutral: "#D2B48C",
     },
+    background: "#FAF3E7",
   },
 };
 
@@ -183,6 +188,7 @@ export function ColorSystemSection({
       onPrimaryColorChange(palette.colors.primary);
       onCustomColorsChange(palette.colors);
       setDisplayPalette(palette.colors);
+      onBackgroundColorChange(palette.background);
     }
   };
 
