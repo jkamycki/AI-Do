@@ -111,7 +111,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
         defaultY: 375,
         defaultColor: colors.primary,
         defaultFontSize: 36,
-        defaultFont: "Great Vibes",
+        defaultFont: "Dancing Script",
         fontWeight: 600 as const,
       },
       {

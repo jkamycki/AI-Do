@@ -710,13 +710,17 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       const bgIsLight = isLightColor(rawBg);
       const PAGE_BG = !useGenerated ? rawBg : "#1a1614";
       const BG = rawBg;
-      // Mirror the DigitalInvitationPreview component: primary for main content,
-      // neutral for labels/heading text.
-      const TEXT = !useGenerated ? colors.primary : "#e8dcc7";
-      const MUTED = !useGenerated ? (colors.neutral || "#e8dcc7") : "#b6a890";
-      const ACCENT = !useGenerated ? colors.accent : "#c9a97e";
-      const BTN_BG = !useGenerated ? colors.primary : "#8a6a4f";
-      const BTN_TXT = isLightColor(BTN_BG) ? "#000000" : "#ffffff";
+      // Mirror RsvpPagePreview: the user's primary colour drives the gold
+      // "accent" in the design, and body text is plain black/white that
+      // contrasts the chosen background.
+      const ACCENT = !useGenerated ? (colors.primary || "#D4A017") : "#c9a97e";
+      const TEXT = !useGenerated
+        ? (bgIsLight ? "#1a1a1a" : "#ffffff")
+        : "#e8dcc7";
+      const MUTED = !useGenerated
+        ? (bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)")
+        : "#b6a890";
+      const BTN_TXT = isLightColor(ACCENT) ? "#000000" : "#ffffff";
       // Text overrides — honour the canvas edits for the headline, couple,
       // date, location and message so the email reads exactly like the preview.
       // Override IDs match those defined in DigitalInvitationPreview.tsx.
