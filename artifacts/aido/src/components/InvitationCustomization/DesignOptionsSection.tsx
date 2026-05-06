@@ -133,11 +133,11 @@ export function DesignOptionsSection({
           <div className="flex gap-2 items-center">
             <div
               className="w-10 h-10 rounded border-2 border-border cursor-pointer flex-shrink-0 transition-transform hover:scale-105"
-              style={{ backgroundColor: backgroundColor || "#1E1A2E" }}
+              style={{ backgroundColor: backgroundColor || "#2D1B5E" }}
               onClick={() => {
                 const input = document.createElement("input");
                 input.type = "color";
-                input.value = backgroundColor || "#1E1A2E";
+                input.value = backgroundColor || "#2D1B5E";
                 input.onchange = (e) => {
                   if (e.target instanceof HTMLInputElement) {
                     onBackgroundColorChange(e.target.value);
@@ -148,7 +148,7 @@ export function DesignOptionsSection({
               title="Click to pick a color"
             />
             <div className="flex flex-wrap gap-1.5 flex-1">
-              {["#1E1A2E", "#0F1A2E", "#FBEFEF", "#F4F1EA", "#FAF7F2", "#F8E8D5"].map((hex) => (
+              {["#2D1B5E", "#1E1A2E", "#FBEFEF", "#F4F1EA", "#FAF7F2", "#F8E8D5"].map((hex) => (
                 <button
                   key={hex}
                   type="button"
@@ -166,7 +166,7 @@ export function DesignOptionsSection({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Current: <span className="font-mono">{backgroundColor || "#1E1A2E"}</span>
+            Current: <span className="font-mono">{backgroundColor || "#2D1B5E"}</span>
           </p>
         </div>
 

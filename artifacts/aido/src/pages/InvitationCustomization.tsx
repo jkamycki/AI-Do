@@ -86,7 +86,7 @@ export default function InvitationCustomizationPage({
   const [saveTheDateLayout, setSaveTheDateLayout] = useState("classic");
   const [saveTheDateBackground, setSaveTheDateBackground] = useState<
     string | null
-  >("#1E1A2E");
+  >("#2D1B5E");
   const [stdTextOverrides, setStdTextOverrides] = useState<TextOverrides>({});
 
   // ── Digital Invitation ────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ export default function InvitationCustomizationPage({
   const [digitalInvitationLayout, setDigitalInvitationLayout] =
     useState("classic");
   const [digitalInvitationBackground, setDigitalInvitationBackground] =
-    useState<string | null>("#1E1A2E");
+    useState<string | null>("#2D1B5E");
   const [digTextOverrides, setDigTextOverrides] = useState<TextOverrides>({});
 
   // ── Photo position (AI mode only — drag to reposition within frame) ─────────
@@ -816,10 +816,10 @@ export default function InvitationCustomizationPage({
     setCustomColors(null);
     setSelectedPalette(null);
     if (previewTab === "saveTheDate") {
-      setSaveTheDateBackground("#1E1A2E");
+      setSaveTheDateBackground("#2D1B5E");
       setStdTextOverrides({});
     } else {
-      setDigitalInvitationBackground("#1E1A2E");
+      setDigitalInvitationBackground("#2D1B5E");
       setDigTextOverrides({});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
