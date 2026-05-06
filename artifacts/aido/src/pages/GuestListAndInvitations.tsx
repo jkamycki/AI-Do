@@ -1,24 +1,13 @@
 import { useState, lazy, Suspense } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Guests from "./Guests";
+import InvitationCustomization from "./InvitationCustomization";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRoute } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useGetProfile } from "@workspace/api-client-react";
 
-const Guests = lazy(() => import("./Guests"));
-const InvitationCustomization = lazy(() => import("./InvitationCustomization"));
 const WeddingParty = lazy(() => import("./WeddingParty"));
-
-function TabSkeleton() {
-  return (
-    <div className="space-y-4">
-      <Skeleton className="h-10 w-64" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-36 rounded-xl" />)}
-      </div>
-    </div>
-  );
-}
 
 interface RouteParams {
   profileId?: string;
@@ -55,20 +44,23 @@ export default function GuestListAndInvitations() {
           <TabsTrigger value="wedding-party">Wedding Party</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="guest-list" className="mt-6">
-          <Suspense fallback={<TabSkeleton />}>
-            <Guests />
-          </Suspense>
+        <TabsContent value="guest-list" forceMount className="mt-6 data-[state=inactive]:hidden">
+          <Guests />
         </TabsContent>
 
-        <TabsContent value="invitation-customization" className="mt-6">
-          <Suspense fallback={<TabSkeleton />}>
-            <InvitationCustomization profileId={profileId} />
-          </Suspense>
+        <TabsContent value="invitation-customization" forceMount className="mt-6 data-[state=inactive]:hidden">
+          <InvitationCustomization profileId={profileId} />
         </TabsContent>
 
         <TabsContent value="wedding-party" className="mt-6">
-          <Suspense fallback={<TabSkeleton />}>
+          <Suspense fallback={
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-64" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-36 rounded-xl" />)}
+              </div>
+            </div>
+          }>
             <WeddingParty />
           </Suspense>
         </TabsContent>
