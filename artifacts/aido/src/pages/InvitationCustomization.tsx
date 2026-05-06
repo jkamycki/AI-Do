@@ -1379,6 +1379,8 @@ export default function InvitationCustomizationPage({
                   weddingDate={displayWeddingProfile.weddingDate}
                   venue={displayWeddingProfile.venue}
                   photoUrl={digitalInvitationPhotoUrl}
+                  photoPosition={digPhotoPos}
+                  onPhotoPositionChange={handleDigPhotoPositionChange}
                   guestName={user?.firstName || "Guest Name"}
                   venueAddress={displayWeddingProfile.location}
                   venueCity={displayWeddingProfile.venueCity}
