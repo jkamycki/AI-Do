@@ -87,14 +87,19 @@ function formatTime(timeStr: string | null | undefined) {
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
-const BG       = "#1E1A2E";
-const GOLD     = "#D4A017";
-const WHITE    = "#ffffff";
-const MUTED    = "rgba(255,255,255,0.58)";
-const CARD_BDR = "rgba(255,255,255,0.12)";
-const DOT_PAT  = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
+const DEFAULT_BG   = "#1E1A2E";
+const DEFAULT_GOLD = "#D4A017";
 const cormorant = "'Cormorant Garamond', 'Playfair Display', Georgia, serif";
 const jakarta   = "'Plus Jakarta Sans', system-ui, sans-serif";
+
+function isLightHex(hex: string): boolean {
+  const c = (hex || "").replace("#", "");
+  if (c.length !== 6) return false;
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  return r * 0.299 + g * 0.587 + b * 0.114 > 160;
+}
 
 export default function Rsvp() {
   const [, params] = useRoute("/rsvp/:token");
@@ -167,6 +172,17 @@ export default function Rsvp() {
       setPendingData(null);
     },
   });
+
+  // Pull the planner's custom design colours through to the public RSVP page —
+  // background and accent come from the saved customization; text/muted/border
+  // are derived from background lightness so contrast is correct on light or dark.
+  const BG = info?.backgroundColor || DEFAULT_BG;
+  const GOLD = info?.colorPalette?.primary || DEFAULT_GOLD;
+  const _bgIsLight = isLightHex(BG);
+  const WHITE = _bgIsLight ? "#1a1a1a" : "#ffffff";
+  const MUTED = _bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)";
+  const CARD_BDR = _bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)";
+  const DOT_PAT = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
 
   const couple = [info?.partner1Name, info?.partner2Name].filter(Boolean).join(" & ") || "The Couple";
 
