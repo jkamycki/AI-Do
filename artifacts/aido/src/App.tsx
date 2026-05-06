@@ -1460,14 +1460,23 @@ function ClerkProviderWithRoutes() {
 
 class AppErrorBoundary extends Component<
   { children: ReactNode },
-  { hasError: boolean }
+  { hasError: boolean; message: string; stack: string; componentStack: string }
 > {
   constructor(props: { children: ReactNode }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, message: "", stack: "", componentStack: "" };
   }
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return {
+      hasError: true,
+      message: error?.message || String(error),
+      stack: error?.stack || "",
+      componentStack: "",
+    };
+  }
+  componentDidCatch(error: Error, info: { componentStack?: string | null }) {
+    console.error("[AppErrorBoundary]", error, info);
+    this.setState({ componentStack: info?.componentStack || "" });
   }
   render() {
     if (this.state.hasError) {
@@ -1483,6 +1492,16 @@ class AppErrorBoundary extends Component<
           >
             Reload page
           </button>
+          <details className="max-w-2xl text-left text-xs text-muted-foreground/80 bg-muted/20 rounded-lg p-3 mt-4">
+            <summary className="cursor-pointer font-medium">Error details</summary>
+            <p className="mt-2 font-mono text-destructive break-all">{this.state.message}</p>
+            {this.state.stack && (
+              <pre className="mt-2 whitespace-pre-wrap break-all max-h-48 overflow-auto">{this.state.stack}</pre>
+            )}
+            {this.state.componentStack && (
+              <pre className="mt-2 whitespace-pre-wrap break-all max-h-48 overflow-auto">{this.state.componentStack}</pre>
+            )}
+          </details>
         </div>
       );
     }
