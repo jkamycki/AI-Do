@@ -526,6 +526,14 @@ function DraggableStatsRow({ chips }: { chips: Record<StatKey, StatChipDef> }) {
 }
 
 export default function Dashboard() {
+  return (
+    <DashboardErrorBoundary>
+      <DashboardContent />
+    </DashboardErrorBoundary>
+  );
+}
+
+function DashboardContent() {
   const { t } = useTranslation();
   const { data: summary, isLoading, isError, refetch } = useGetDashboardSummary();
   const qc = useQueryClient();
@@ -670,7 +678,6 @@ export default function Dashboard() {
     : 0;
 
   return (
-    <DashboardErrorBoundary>
     <div className="space-y-6 max-w-5xl mx-auto">
       <OnboardingWizard open={showOnboarding} onDismiss={dismissOnboarding} />
       {cropSrc && (
@@ -1190,6 +1197,5 @@ export default function Dashboard() {
         />
       </div>
     </div>
-    </DashboardErrorBoundary>
   );
 }
