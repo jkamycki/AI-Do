@@ -71,20 +71,20 @@ export default function Terms() {
             </p>
           </section>
 
-          <section className="space-y-3 rounded-xl border border-border/60 bg-muted/30 p-5">
+          <section className="space-y-3">
             <h2 className="font-serif text-xl font-semibold text-foreground">6. Data Storage, Backups, and Loss of Data</h2>
             <p>
-              <strong>You are solely responsible for maintaining your own backups of any User Content you submit
-              to the Service.</strong> While we take commercially reasonable measures to store your data securely
-              and reliably, A.IDO <strong>does not guarantee</strong> the availability, accuracy, integrity, or
+              <span className="font-semibold text-foreground">You are solely responsible for maintaining your own backups of any User Content you submit
+              to the Service.</span> While we take commercially reasonable measures to store your data securely
+              and reliably, A.IDO <span className="font-semibold text-foreground">does not guarantee</span> the availability, accuracy, integrity, or
               continued retention of any User Content, and we expressly disclaim any obligation to act as a
               backup, archival, or recovery service.
             </p>
             <p>
               You acknowledge and agree that User Content — including but not limited to wedding profiles, guest
               lists, vendor records, budgets, contracts, photos, messages, seating charts, checklists, timelines,
-              uploaded files, and AI-generated content — <strong>may be lost, corrupted, deleted, modified, or
-              rendered inaccessible</strong> as a result of, without limitation:
+              uploaded files, and AI-generated content — <span className="font-semibold text-foreground">may be lost, corrupted, deleted, modified, or
+              rendered inaccessible</span> as a result of, without limitation:
             </p>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>your own actions or those of any collaborator, guest, or third party with access to your account or workspace;</li>
@@ -96,12 +96,12 @@ export default function Terms() {
               <li>force majeure events, natural disasters, governmental actions, or any cause outside our reasonable control.</li>
             </ul>
             <p>
-              <strong>To the maximum extent permitted by applicable law, A.IDO and its owners, operators,
+              <span className="font-semibold text-foreground">To the maximum extent permitted by applicable law, A.IDO and its owners, operators,
               employees, agents, contractors, and licensors shall have no liability whatsoever to you or any
               third party for any loss, deletion, corruption, or unavailability of User Content, or for any
               direct, indirect, incidental, consequential, special, punitive, or exemplary damages arising from
               or relating to such loss, including but not limited to loss of revenue, lost profits, lost business
-              opportunities, emotional distress, missed deadlines, or wedding-related disruption.</strong>
+              opportunities, emotional distress, missed deadlines, or wedding-related disruption.</span>
             </p>
             <p>
               We strongly recommend that you regularly export and retain your own copies of any wedding-related
@@ -118,7 +118,7 @@ export default function Terms() {
               The Service allows the account owner ("Owner") of a wedding workspace to invite additional users
               ("Collaborators") to view, edit, or otherwise interact with the Owner's wedding data, subject to
               the role and permissions assigned by the Owner. By inviting a Collaborator, the Owner authorizes
-              that person to access, modify, add, or — depending on their role — <strong>delete</strong> data
+              that person to access, modify, add, or — depending on their role — <span className="font-semibold text-foreground">delete</span> data
               within the shared workspace.
             </p>
             <p>
@@ -154,56 +154,56 @@ export default function Terms() {
             </ul>
           </section>
 
-          <section className="space-y-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
+          <section className="space-y-3">
             <h2 className="font-serif text-xl font-semibold text-foreground">9. Contract Analysis — Not Legal Advice</h2>
             <p>
               A.IDO offers a contract analysis feature ("Contract Analyzer") that uses artificial intelligence to
               review uploaded vendor contracts and surface potential issues, key terms, red flags, missing clauses,
-              and other observations. <strong>This feature is provided for informational and planning purposes
-              only and does not constitute legal advice of any kind.</strong>
+              and other observations. <span className="font-semibold text-foreground">This feature is provided for informational and planning purposes
+              only and does not constitute legal advice of any kind.</span>
             </p>
             <p>By using the Contract Analyzer, you expressly acknowledge and agree that:</p>
             <ul className="list-disc pl-5 space-y-2">
               <li>
-                <strong>No attorney-client relationship is created.</strong> A.IDO is not a law firm. No use of the Contract
+                <span className="font-semibold text-foreground">No attorney-client relationship is created.</span> A.IDO is not a law firm. No use of the Contract
                 Analyzer creates, or should be construed to create, an attorney-client relationship between you and A.IDO
                 or any of its owners, employees, or contractors.
               </li>
               <li>
-                <strong>AI analysis is not a substitute for legal counsel.</strong> The output generated by the Contract
+                <span className="font-semibold text-foreground">AI analysis is not a substitute for legal counsel.</span> The output generated by the Contract
                 Analyzer is produced by an artificial intelligence model and has not been reviewed or verified by a
                 licensed attorney. It may contain errors, omissions, misinterpretations, or incomplete analysis.
               </li>
               <li>
-                <strong>Jurisdictional limitations.</strong> Contract law varies significantly by country, state, and
+                <span className="font-semibold text-foreground">Jurisdictional limitations.</span> Contract law varies significantly by country, state, and
                 locality. The Contract Analyzer does not account for the specific laws, regulations, or judicial
                 interpretations applicable in your jurisdiction. Analysis that appears favorable or unfavorable under
                 one jurisdiction's law may be assessed differently under another.
               </li>
               <li>
-                <strong>You must obtain independent legal review.</strong> Before signing any vendor contract —
+                <span className="font-semibold text-foreground">You must obtain independent legal review.</span> Before signing any vendor contract —
                 regardless of what the Contract Analyzer indicates — you are strongly advised to have the contract
                 reviewed by a qualified, licensed attorney in your jurisdiction. Do not rely solely on the Contract
                 Analyzer when making any legal or financial decision.
               </li>
               <li>
-                <strong>No guarantee of completeness or accuracy.</strong> The Contract Analyzer may fail to identify
+                <span className="font-semibold text-foreground">No guarantee of completeness or accuracy.</span> The Contract Analyzer may fail to identify
                 issues present in your contract, may flag issues that are not actually problematic, or may assess risk
                 incorrectly. A.IDO makes no warranty regarding the accuracy, completeness, or fitness for purpose of
                 any contract analysis output.
               </li>
               <li>
-                <strong>You assume full responsibility.</strong> Any decision to sign, modify, reject, or otherwise act
+                <span className="font-semibold text-foreground">You assume full responsibility.</span> Any decision to sign, modify, reject, or otherwise act
                 upon a contract based on the Contract Analyzer's output is made entirely at your own risk. A.IDO shall
                 have no liability whatsoever for any loss, damage, legal claim, or adverse outcome arising from your
                 reliance on contract analysis output.
               </li>
             </ul>
             <p>
-              <strong>To the maximum extent permitted by applicable law, A.IDO and its owners, operators, employees,
+              <span className="font-semibold text-foreground">To the maximum extent permitted by applicable law, A.IDO and its owners, operators, employees,
               agents, and licensors expressly disclaim all liability arising from or related to your use of the
               Contract Analyzer feature, including but not limited to any claims arising from a contract you signed,
-              modified, or declined based on AI-generated analysis.</strong>
+              modified, or declined based on AI-generated analysis.</span>
             </p>
           </section>
 
@@ -211,9 +211,9 @@ export default function Terms() {
             <h2 className="font-serif text-xl font-semibold text-foreground">10. Financial Planning Tools — Not Financial Advice</h2>
             <p>
               A.IDO provides budget tracking, spend categorization, vendor payment management, and financial
-              summaries (collectively, "Financial Tools") to assist with wedding planning. <strong>These
+              summaries (collectively, "Financial Tools") to assist with wedding planning. <span className="font-semibold text-foreground">These
               tools are provided for personal organizational and planning purposes only and do not constitute
-              professional financial, accounting, tax, or investment advice of any kind.</strong>
+              professional financial, accounting, tax, or investment advice of any kind.</span>
             </p>
             <p>By using the Financial Tools, you acknowledge and agree that:</p>
             <ul className="list-disc pl-5 space-y-1.5">
@@ -232,11 +232,11 @@ export default function Terms() {
               vendor emails, and receive AI-generated email drafts and vendor communication suggestions.
             </p>
             <ul className="list-disc pl-5 space-y-1.5">
-              <li><strong>No endorsement of vendors.</strong> A.IDO does not vet, certify, recommend, or endorse any vendor listed or managed within the Service. The presence of a vendor in the Service does not imply any approval or guarantee of their quality, reliability, or suitability.</li>
-              <li><strong>No responsibility for vendor conduct.</strong> A.IDO is not a party to any contract or agreement between you and a vendor. We are not responsible for any vendor's acts, omissions, pricing, cancellations, or failure to deliver services.</li>
-              <li><strong>AI-drafted emails are not reviewed or guaranteed.</strong> Emails drafted or summarized by AI within the Service are generated automatically and have not been reviewed for accuracy, appropriateness, or legal effect. You are solely responsible for reviewing and approving any communication before it is sent. A.IDO is not liable for the content of any communication you send using AI-generated drafts.</li>
-              <li><strong>No legal review of vendor communications.</strong> AI-summarized or analyzed vendor emails do not constitute legal advice regarding the content, enforceability, or interpretation of any communication or agreement.</li>
-              <li><strong>Third-party vendor contacts.</strong> When you send emails to vendors through the Service or use vendor contact information stored in the Service, you represent that you have the right to communicate with those third parties and that your communications comply with applicable law, including anti-spam and data protection regulations.</li>
+              <li><span className="font-semibold text-foreground">No endorsement of vendors.</span> A.IDO does not vet, certify, recommend, or endorse any vendor listed or managed within the Service. The presence of a vendor in the Service does not imply any approval or guarantee of their quality, reliability, or suitability.</li>
+              <li><span className="font-semibold text-foreground">No responsibility for vendor conduct.</span> A.IDO is not a party to any contract or agreement between you and a vendor. We are not responsible for any vendor's acts, omissions, pricing, cancellations, or failure to deliver services.</li>
+              <li><span className="font-semibold text-foreground">AI-drafted emails are not reviewed or guaranteed.</span> Emails drafted or summarized by AI within the Service are generated automatically and have not been reviewed for accuracy, appropriateness, or legal effect. You are solely responsible for reviewing and approving any communication before it is sent. A.IDO is not liable for the content of any communication you send using AI-generated drafts.</li>
+              <li><span className="font-semibold text-foreground">No legal review of vendor communications.</span> AI-summarized or analyzed vendor emails do not constitute legal advice regarding the content, enforceability, or interpretation of any communication or agreement.</li>
+              <li><span className="font-semibold text-foreground">Third-party vendor contacts.</span> When you send emails to vendors through the Service or use vendor contact information stored in the Service, you represent that you have the right to communicate with those third parties and that your communications comply with applicable law, including anti-spam and data protection regulations.</li>
             </ul>
           </section>
 
@@ -244,9 +244,9 @@ export default function Terms() {
             <h2 className="font-serif text-xl font-semibold text-foreground">12. Day-Of Coordination & Wedding Timeline Tools</h2>
             <p>
               A.IDO provides tools to create and manage wedding day schedules, event timelines, and day-of
-              coordination checklists (collectively, "Day-Of Tools"). <strong>These tools are provided as
+              coordination checklists (collectively, "Day-Of Tools"). <span className="font-semibold text-foreground">These tools are provided as
               planning aids only and do not constitute professional event planning, coordination, or
-              management services.</strong>
+              management services.</span>
             </p>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>A.IDO is not a licensed event planner or coordinator. Use of the Day-Of Tools does not create a professional service relationship of any kind.</li>
@@ -264,19 +264,19 @@ export default function Terms() {
               accommodation preferences.
             </p>
             <ul className="list-disc pl-5 space-y-1.5">
-              <li><strong>You are the data controller for your guests' data.</strong> When you enter guest information into A.IDO, you act as the data controller for that personal information. You represent that you have the right and, where required by applicable law, the consent of each individual to collect and process their personal information using a third-party service.</li>
-              <li><strong>AI-generated seating arrangements</strong> are provided as suggestions only. Seating assignments, table configurations, and related recommendations are not guaranteed to be appropriate, socially acceptable, or conflict-free. You are solely responsible for reviewing and approving all seating before your event.</li>
-              <li><strong>Guest communication.</strong> Any messages sent to guests using contact information stored in the Service are your responsibility. You agree to comply with all applicable laws regarding electronic communications, including anti-spam laws.</li>
-              <li><strong>Third-party privacy.</strong> You agree not to enter any personal information into the Service without a lawful basis to do so, and to inform affected individuals about how their data is being used if required by applicable law.</li>
+              <li><span className="font-semibold text-foreground">You are the data controller for your guests' data.</span> When you enter guest information into A.IDO, you act as the data controller for that personal information. You represent that you have the right and, where required by applicable law, the consent of each individual to collect and process their personal information using a third-party service.</li>
+              <li><span className="font-semibold text-foreground">AI-generated seating arrangements</span> are provided as suggestions only. Seating assignments, table configurations, and related recommendations are not guaranteed to be appropriate, socially acceptable, or conflict-free. You are solely responsible for reviewing and approving all seating before your event.</li>
+              <li><span className="font-semibold text-foreground">Guest communication.</span> Any messages sent to guests using contact information stored in the Service are your responsibility. You agree to comply with all applicable laws regarding electronic communications, including anti-spam laws.</li>
+              <li><span className="font-semibold text-foreground">Third-party privacy.</span> You agree not to enter any personal information into the Service without a lawful basis to do so, and to inform affected individuals about how their data is being used if required by applicable law.</li>
             </ul>
           </section>
 
           <section className="space-y-3">
             <h2 className="font-serif text-xl font-semibold text-foreground">14. No Guarantee of Wedding Outcomes or Suitability</h2>
             <p>
-              A.IDO is a planning and organizational tool. <strong>We make no guarantee, representation, or
+              A.IDO is a planning and organizational tool. <span className="font-semibold text-foreground">We make no guarantee, representation, or
               warranty that use of the Service will result in a successful, problem-free, or satisfactory
-              wedding event.</strong> Planning involves variables — weather, vendor performance, personal
+              wedding event.</span> Planning involves variables — weather, vendor performance, personal
               circumstances, and unforeseen events — that are entirely outside A.IDO's control.
             </p>
             <ul className="list-disc pl-5 space-y-1.5">
