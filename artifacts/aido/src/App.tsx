@@ -1492,7 +1492,7 @@ class AppErrorBoundary extends Component<
           >
             Reload page
           </button>
-          <details className="max-w-2xl text-left text-xs text-muted-foreground/80 bg-muted/20 rounded-lg p-3 mt-4">
+          <details open className="max-w-2xl text-left text-xs text-muted-foreground/80 bg-muted/20 rounded-lg p-3 mt-4">
             <summary className="cursor-pointer font-medium">Error details</summary>
             <p className="mt-2 font-mono text-destructive break-all">{this.state.message}</p>
             {this.state.stack && (
