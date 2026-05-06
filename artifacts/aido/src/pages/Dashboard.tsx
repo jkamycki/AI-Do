@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { OnboardingWizard, useOnboardingWizard } from "@/components/OnboardingWizard";
+import { NextStepsCard } from "@/components/NextSteps/NextStepsCard";
 import { authFetch } from "@/lib/authFetch";
 import {
   CalendarDays,
@@ -716,6 +717,9 @@ export default function Dashboard() {
           </Link>
         </div>
       )}
+
+      {/* Next Steps — calm, paced guidance through the planning journey */}
+      <NextStepsCard />
 
       {/* Wedding Profile Overview */}
       {summary.hasProfile && summary.profile ? (
