@@ -8,21 +8,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LAYOUT_DESIGNS, LayoutThumbnail } from "./LayoutDecorations";
 import { FONT_GROUPS, ensureFontsLoaded } from "./EditableElements";
 import type { ColorPalette } from "@/types/invitations";
 import { useEffect } from "react";
 
 interface DesignOptionsSectionProps {
   mode: "saveTheDate" | "digitalInvitation";
-  selectedLayout: string;
-  onLayoutChange: (layout: string) => void;
   backgroundColor: string | null;
   onBackgroundColorChange: (hex: string) => void;
   selectedFont: string;
   onFontChange: (font: string) => void;
   colors?: ColorPalette;
-  showLayout?: boolean;
 }
 
 const DEFAULT_COLORS: ColorPalette = {
@@ -34,14 +30,10 @@ const DEFAULT_COLORS: ColorPalette = {
 
 export function DesignOptionsSection({
   mode,
-  selectedLayout,
-  onLayoutChange,
   backgroundColor,
   onBackgroundColorChange,
   selectedFont,
   onFontChange,
-  colors = DEFAULT_COLORS,
-  showLayout = true,
 }: DesignOptionsSectionProps) {
   useEffect(() => {
     ensureFontsLoaded();
@@ -88,44 +80,6 @@ export function DesignOptionsSection({
             Applies to all body text. Click any element in the preview to override individual fonts.
           </p>
         </div>
-
-        {/* Layout grid — hidden on RSVP Invitation tab */}
-        {showLayout && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{label} Layout</label>
-            <div className="grid grid-cols-4 gap-2">
-              {LAYOUT_DESIGNS.map((design) => {
-                const active = selectedLayout === design.id;
-                return (
-                  <button
-                    key={design.id}
-                    type="button"
-                    onClick={() => onLayoutChange(design.id)}
-                    title={design.desc}
-                    className={[
-                      "group relative flex flex-col rounded-lg border-2 overflow-hidden transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                      active
-                        ? "border-primary shadow-md"
-                        : "border-border hover:border-primary/60 hover:shadow-sm",
-                    ].join(" ")}
-                  >
-                    <div className="aspect-[3/4] w-full overflow-hidden" style={{ backgroundColor: backgroundColor || "#1E1A2E" }}>
-                      <LayoutThumbnail layout={design.id} colors={colors} backgroundColor={backgroundColor || "#1E1A2E"} />
-                    </div>
-                    <div className={[
-                      "px-1 py-1 text-center text-[10px] leading-tight font-medium transition-colors",
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background text-muted-foreground group-hover:text-foreground",
-                    ].join(" ")}>
-                      {design.name}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Background Color */}
         <div className="space-y-2">

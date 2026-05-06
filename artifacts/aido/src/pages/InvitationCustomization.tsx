@@ -1087,12 +1087,6 @@ export default function InvitationCustomizationPage({
           {!useGeneratedInvitation && (
             <DesignOptionsSection
               mode={previewTab}
-              selectedLayout={
-                isSTD ? saveTheDateLayout : digitalInvitationLayout
-              }
-              onLayoutChange={
-                isSTD ? setSaveTheDateLayout : setDigitalInvitationLayout
-              }
               backgroundColor={
                 isSTD ? saveTheDateBackground : digitalInvitationBackground
               }
@@ -1106,7 +1100,6 @@ export default function InvitationCustomizationPage({
                 isSTD ? setSaveTheDateFont : setDigitalInvitationFont
               }
               colors={displayPalette}
-              showLayout={false}
             />
           )}
 
