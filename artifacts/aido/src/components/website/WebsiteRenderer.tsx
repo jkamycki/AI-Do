@@ -107,6 +107,21 @@ function bodyFont(data: WebsiteRendererPayload): string {
   return (data.customText._bodyFont || "").trim() || "Inter";
 }
 
+// Returns the override font for an editable text element, or undefined to
+// use the theme default. Used by EditableText's per-element font picker.
+function elementFont(data: WebsiteRendererPayload, key: string): string | undefined {
+  const v = (data.customText[`${key}_font`] || "").trim();
+  return v || undefined;
+}
+
+// Compose a fontFamily string. If the element has its own override, use it.
+// Otherwise fall back to the supplied default (heading or body).
+function elementFontStack(data: WebsiteRendererPayload, key: string, fallbackFont: string, fallbackKind: "heading" | "body"): string {
+  const own = elementFont(data, key);
+  const f = own || fallbackFont;
+  return fallbackKind === "heading" ? fontStack(f) : bodyFontStack(f);
+}
+
 
 function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
@@ -129,8 +144,11 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           value={data.customText._heroTagline ?? ""}
           defaultValue="We're getting married"
           onCommit={(v) => ctx.onTextChange("_heroTagline", v)}
+          fontKey="_heroTagline_font"
+          fontValue={elementFont(data, "_heroTagline")}
+          onFontCommit={(v) => ctx.onTextChange("_heroTagline_font", v)}
           className="uppercase tracking-[0.3em] text-xs sm:text-sm mb-6 opacity-80"
-          style={{ color: data.heroImage ? "#fff" : data.colorPalette.primary }}
+          style={{ color: data.heroImage ? "#fff" : data.colorPalette.primary, fontFamily: elementFont(data, "_heroTagline") ? bodyFontStack(elementFont(data, "_heroTagline")!) : undefined }}
         />
         <h1 className="text-5xl sm:text-7xl md:text-8xl mb-6 leading-tight" style={{ fontFamily: fontStack(headingFont(data)) }}>
           {couple}
@@ -223,8 +241,11 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={data.customText.story_subtitle ?? ""}
         defaultValue="How we got here"
         onCommit={(v) => ctx.onTextChange("story_subtitle", v)}
+        fontKey="story_subtitle_font"
+        fontValue={elementFont(data, "story_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("story_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
-        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "story_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
       />
       <EditableText
         as="div"
@@ -252,8 +273,11 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
         value={data.customText.schedule_subtitle ?? ""}
         defaultValue="The day of"
         onCommit={(v) => ctx.onTextChange("schedule_subtitle", v)}
+        fontKey="schedule_subtitle_font"
+        fontValue={elementFont(data, "schedule_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("schedule_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-10"
-        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "schedule_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
       />
       <div className="space-y-5 max-w-2xl mx-auto">
         {events.length > 0 ? (
@@ -314,8 +338,11 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={data.customText.travel_subtitle ?? ""}
         defaultValue="Where & how to get there"
         onCommit={(v) => ctx.onTextChange("travel_subtitle", v)}
+        fontKey="travel_subtitle_font"
+        fontValue={elementFont(data, "travel_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("travel_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
-        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "travel_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
       />
       {data.couple.venue && (
         <div className="text-center mb-6">
@@ -352,8 +379,11 @@ function Registry({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
         value={data.customText.registry_subtitle ?? ""}
         defaultValue="With love"
         onCommit={(v) => ctx.onTextChange("registry_subtitle", v)}
+        fontKey="registry_subtitle_font"
+        fontValue={elementFont(data, "registry_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("registry_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
-        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "registry_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
       />
       <EditableText
         as="div"
@@ -380,8 +410,11 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={data.customText.faq_subtitle ?? ""}
         defaultValue="Good to know"
         onCommit={(v) => ctx.onTextChange("faq_subtitle", v)}
+        fontKey="faq_subtitle_font"
+        fontValue={elementFont(data, "faq_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("faq_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
-        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "faq_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
       />
       <EditableText
         as="div"
@@ -408,8 +441,11 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         value={data.customText.gallery_subtitle ?? ""}
         defaultValue="Moments"
         onCommit={(v) => ctx.onTextChange("gallery_subtitle", v)}
+        fontKey="gallery_subtitle_font"
+        fontValue={elementFont(data, "gallery_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("gallery_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-10"
-        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "gallery_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {images.map((img, i) => (
@@ -439,6 +475,9 @@ export interface WeddingPartyMember {
   name: string;
   role: string;
   side?: WeddingPartySide;
+  // Photo focal point as percentages 0–100. Defaults to 50/50 (centered).
+  photoX?: number;
+  photoY?: number;
 }
 
 export function parseWeddingPartyMembers(raw: string | undefined): WeddingPartyMember[] {
@@ -453,6 +492,8 @@ export function parseWeddingPartyMembers(raw: string | undefined): WeddingPartyM
         name: typeof m.name === "string" ? m.name : "",
         role: typeof m.role === "string" ? m.role : "",
         side: m.side === "groom" || m.side === "bride" || m.side === "family" ? m.side : undefined,
+        photoX: typeof m.photoX === "number" ? Math.max(0, Math.min(100, m.photoX)) : undefined,
+        photoY: typeof m.photoY === "number" ? Math.max(0, Math.min(100, m.photoY)) : undefined,
       }));
   } catch {
     return [];
@@ -467,7 +508,13 @@ function PartyMemberCard({ data, member }: { data: WebsiteRendererPayload; membe
         style={{ background: `${data.colorPalette.primary}15`, border: `1px solid ${data.colorPalette.primary}33` }}
       >
         {member.photo ? (
-          <img src={imageUrl(member.photo)} alt={member.name} className="w-full h-full object-cover" loading="lazy" />
+          <img
+            src={imageUrl(member.photo)}
+            alt={member.name}
+            className="w-full h-full object-cover"
+            style={{ objectPosition: `${member.photoX ?? 50}% ${member.photoY ?? 50}%` }}
+            loading="lazy"
+          />
         ) : (
           <Heart className="h-8 w-8 opacity-30" style={{ color: data.colorPalette.primary }} />
         )}
@@ -498,8 +545,11 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
         value={data.customText.weddingParty_subtitle ?? ""}
         defaultValue="Meet our family & friends standing with us"
         onCommit={(v) => ctx.onTextChange("weddingParty_subtitle", v)}
+        fontKey="weddingParty_subtitle_font"
+        fontValue={elementFont(data, "weddingParty_subtitle")}
+        onFontCommit={(v) => ctx.onTextChange("weddingParty_subtitle_font", v)}
         className="block text-center text-base sm:text-lg max-w-2xl mx-auto mb-12 opacity-80"
-        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+        style={{ color: data.colorPalette.text, fontFamily: elementFontStack(data, "weddingParty_subtitle", bodyFont(data), "body") }}
       />
       {members.length === 0 ? (
         <p className="text-center text-sm opacity-60" style={{ color: data.colorPalette.text }}>

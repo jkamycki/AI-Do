@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/react";
 import { useUpload } from "@workspace/object-storage-web";
 import { authFetch } from "@/lib/authFetch";
@@ -731,6 +731,85 @@ export default function WebsiteEditor() {
   );
 }
 
+// ---- wedding party avatar with drag-to-position ----
+
+function PartyAvatar({
+  photo,
+  photoX,
+  photoY,
+  onPositionChange,
+  onRemove,
+}: {
+  photo: string;
+  photoX: number;
+  photoY: number;
+  onPositionChange: (x: number, y: number) => void;
+  onRemove: () => void;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const updateFromEvent = (clientX: number, clientY: number) => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
+    onPositionChange(Math.max(0, Math.min(100, x)), Math.max(0, Math.min(100, y)));
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-1 flex-shrink-0">
+      <div
+        ref={ref}
+        className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-border bg-background cursor-move select-none"
+        onPointerDown={(e) => {
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+          setDragging(true);
+          updateFromEvent(e.clientX, e.clientY);
+        }}
+        onPointerMove={(e) => {
+          if (!dragging) return;
+          updateFromEvent(e.clientX, e.clientY);
+        }}
+        onPointerUp={(e) => {
+          (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+          setDragging(false);
+        }}
+        onPointerCancel={() => setDragging(false)}
+        title="Drag to reposition photo"
+      >
+        <img
+          src={photo.startsWith("/objects/") ? `/api/storage${photo}` : photo}
+          alt=""
+          className="w-full h-full object-cover pointer-events-none"
+          style={{ objectPosition: `${photoX}% ${photoY}%` }}
+          draggable={false}
+        />
+        {/* focal point indicator while dragging */}
+        {dragging && (
+          <div
+            className="absolute w-3 h-3 rounded-full border-2 border-white shadow-md pointer-events-none"
+            style={{
+              left: `${photoX}%`,
+              top: `${photoY}%`,
+              transform: "translate(-50%, -50%)",
+              background: "rgba(99,102,241,0.9)",
+            }}
+          />
+        )}
+      </div>
+      <span className="text-[10px] text-muted-foreground">drag to position</span>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="text-[10px] text-muted-foreground hover:text-destructive"
+      >
+        Remove photo
+      </button>
+    </div>
+  );
+}
+
 // ---- wedding party editor ----
 
 function WeddingPartyEditor({
@@ -765,32 +844,36 @@ function WeddingPartyEditor({
       {members.map((m, i) => (
         <div key={i} className="rounded-md border border-border p-3 space-y-2 bg-muted/20">
           <div className="flex items-start gap-3">
-            <label className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0 cursor-pointer border-2 border-dashed border-border flex items-center justify-center bg-background hover:border-primary/50 transition-colors relative group">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const path = await uploadFile(file);
-                  if (path) updateMember(i, { photo: path });
-                  e.target.value = "";
-                }}
-                disabled={isUploading}
+            {m.photo ? (
+              <PartyAvatar
+                photo={m.photo}
+                photoX={m.photoX ?? 50}
+                photoY={m.photoY ?? 50}
+                onPositionChange={(x, y) => updateMember(i, { photoX: x, photoY: y })}
+                onRemove={() => updateMember(i, { photo: "", photoX: undefined, photoY: undefined })}
               />
-              {m.photo ? (
-                <img
-                  src={m.photo.startsWith("/objects/") ? `/api/storage${m.photo}` : m.photo}
-                  alt=""
-                  className="w-full h-full object-cover"
+            ) : (
+              <label className="w-20 h-20 rounded-full overflow-hidden flex-shrink-0 cursor-pointer border-2 border-dashed border-border flex items-center justify-center bg-background hover:border-primary/50 transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const path = await uploadFile(file);
+                    if (path) updateMember(i, { photo: path });
+                    e.target.value = "";
+                  }}
+                  disabled={isUploading}
                 />
-              ) : isUploading ? (
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              ) : (
-                <ImageIcon className="h-4 w-4 text-muted-foreground" />
-              )}
-            </label>
+                {isUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : (
+                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                )}
+              </label>
+            )}
             <div className="flex-1 space-y-1.5">
               <Input
                 value={m.name}
