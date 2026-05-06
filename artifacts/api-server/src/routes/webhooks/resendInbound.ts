@@ -8,6 +8,22 @@ import { Webhook } from "svix";
 
 const router = Router();
 
+// In-memory ring buffer of the last 20 inbound webhook attempts (resets on restart)
+const recentHits: Array<{ ts: string; result: string; conversationId?: number; senderEmail?: string; reason?: string }> = [];
+function logHit(result: string, extra: { conversationId?: number; senderEmail?: string; reason?: string } = {}) {
+  recentHits.unshift({ ts: new Date().toISOString(), result, ...extra });
+  if (recentHits.length > 20) recentHits.pop();
+}
+
+// GET /api/webhooks/resend/status — config check + recent hit log (no auth needed, safe info only)
+router.get("/webhooks/resend/status", (_req, res) => {
+  res.json({
+    secretConfigured: !!process.env.RESEND_WEBHOOK_SECRET,
+    inboundDomain: process.env.INBOUND_EMAIL_DOMAIN ?? "mail.aidowedding.net (default)",
+    recentHits,
+  });
+});
+
 interface ResendInboundEvent {
   type?: string;
   data?: {
@@ -65,6 +81,7 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
       });
     } catch (err) {
       logger.warn({ svixId: req.header("svix-id"), err: String(err) }, "Inbound webhook signature verification failed");
+      logHit("error:invalid_signature");
       return res.status(401).json({ error: "Invalid signature" });
     }
 
@@ -92,6 +109,7 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
 
     if (!conversationId || !token) {
       logger.warn({ recipients }, "Inbound email had no matching routing address");
+      logHit("ignored:no_routing_match");
       return res.status(200).json({ ignored: true, reason: "no routing match" });
     }
 
@@ -100,6 +118,7 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
       .limit(1);
     if (!conv) {
       logger.warn({ conversationId }, "Inbound email token mismatch");
+      logHit("ignored:token_mismatch", { conversationId });
       return res.status(200).json({ ignored: true, reason: "token mismatch" });
     }
 
@@ -109,6 +128,7 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
         .where(and(eq(vendorMessages.conversationId, conv.id), eq(vendorMessages.inboundMessageId, data.message_id)))
         .limit(1);
       if (existing) {
+        logHit("ignored:duplicate", { conversationId: conv.id });
         return res.status(200).json({ ok: true, deduped: true });
       }
     }
@@ -176,8 +196,10 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
       subject,
     }).where(eq(vendorConversations.id, conv.id));
 
+    logHit("saved", { conversationId: conv.id, senderEmail: sender.email });
     res.json({ ok: true, conversationId: conv.id });
   } catch (err) {
+    logHit("error:exception");
     logger.error(err, "resend inbound webhook failed");
     res.status(500).json({ error: "Internal server error" });
   }
