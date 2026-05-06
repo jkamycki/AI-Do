@@ -191,8 +191,12 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
         : "";
       const html = `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#222;"><div>${bodyHtml}</div>${attHtml}${sigHtml}</body></html>`;
 
-      // Personalize From name with the couple — feels like a real person, not a robot.
-      const fromName = coupleNames || undefined;
+      // Use the routing address as both From and Reply-To so vendor replies
+      // land in the right conversation regardless of whether the email client
+      // honours Reply-To. Some clients (Outlook, certain mobile apps) reply
+      // to From instead of Reply-To, which caused replies to go to the generic
+      // messaging@ address and never match a conversation.
+      const fromName = coupleNames || "A.IDO Wedding Planning";
 
       // CC the user's personal email(s). Two sources merged:
       // 1. The live CC list sent with this request (ccOverride) — used even if not yet saved to profile.
@@ -212,6 +216,7 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
 
       result = await sendEmail({
         to: vendor.email,
+        from: replyTo,      // routing address as From so Reply always routes back
         replyTo,
         cc,
         subject: finalSubject,
