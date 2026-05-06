@@ -6,7 +6,7 @@
 
 import type { StepId } from "./steps";
 
-const STORAGE_KEY = "aido:next-steps:v1";
+const storageKey = (userId: string) => `aido:next-steps:v1:${userId}`;
 const SKIP_DEPRIORITIZE_THRESHOLD = 3;
 
 export interface NextStepsOverrides {
@@ -18,10 +18,10 @@ export interface NextStepsOverrides {
 
 const EMPTY: NextStepsOverrides = { skipCounts: {}, manuallyDone: {} };
 
-export function loadOverrides(): NextStepsOverrides {
+export function loadOverrides(userId: string): NextStepsOverrides {
   if (typeof window === "undefined") return EMPTY;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey(userId));
     if (!raw) return EMPTY;
     const parsed = JSON.parse(raw) as Partial<NextStepsOverrides>;
     return {
@@ -33,10 +33,10 @@ export function loadOverrides(): NextStepsOverrides {
   }
 }
 
-export function saveOverrides(overrides: NextStepsOverrides): void {
+export function saveOverrides(overrides: NextStepsOverrides, userId: string): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
+    window.localStorage.setItem(storageKey(userId), JSON.stringify(overrides));
   } catch {
     /* localStorage may be disabled — fail silently rather than crash the UI */
   }
