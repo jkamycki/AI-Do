@@ -607,6 +607,25 @@ export default function InvitationCustomizationPage({
     backgroundImageUrl,
   ]);
 
+  // Flush any pending position changes to the DB when navigating away so the
+  // email always uses the latest photo crop, not a debounce-lagged value.
+  useEffect(() => {
+    return () => {
+      const v = latestValuesRef.current;
+      if (!v.profileId) return;
+      if (v.saveTheDatePhotoUrl?.startsWith("blob:")) return;
+      if (v.digitalInvitationPhotoUrl?.startsWith("blob:")) return;
+      const payload = {
+        saveTheDatePhotoPosition: v.saveTheDatePhotoPosition,
+        digitalInvitationPhotoPosition: v.digitalInvitationPhotoPosition,
+      };
+      authFetch("/api/invitation-customizations", {
+        method: "POST",
+        body: JSON.stringify({ ...payload }),
+      }).catch(() => {});
+    };
+  }, []);
+
   if (!profileId)
     return <div className="p-4 text-center">Profile not found</div>;
 
