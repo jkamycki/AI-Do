@@ -501,10 +501,9 @@ router.post("/collaborators/:id/resend", requireAuth, async (req, res) => {
     const myRole = await resolveWorkspaceRole(req.userId!, collab.profileId);
     if (!hasMinRole(myRole, "partner")) return res.status(403).json({ error: "Only owners and partners can resend invites." });
 
-    const newToken = randomUUID();
     const [updated] = await db
       .update(workspaceCollaborators)
-      .set({ inviteToken: newToken, status: "pending" })
+      .set({ status: "pending", invitedAt: new Date() })
       .where(eq(workspaceCollaborators.id, id))
       .returning();
 
