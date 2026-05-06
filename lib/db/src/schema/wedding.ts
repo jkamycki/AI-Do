@@ -518,3 +518,71 @@ export const insertInvitationCustomizationSchema = createInsertSchema(invitation
 export type InsertInvitationCustomization = z.infer<typeof insertInvitationCustomizationSchema>;
 export type InvitationCustomization = typeof invitationCustomizations.$inferSelect;
 
+export type WebsiteSectionsEnabled = {
+  welcome: boolean;
+  story: boolean;
+  schedule: boolean;
+  travel: boolean;
+  registry: boolean;
+  faq: boolean;
+  gallery: boolean;
+  weddingParty: boolean;
+};
+
+export type WebsiteCustomText = Record<string, string>;
+
+export type WebsiteGalleryImage = {
+  url: string;
+  caption?: string;
+  order: number;
+};
+
+export const weddingWebsites = pgTable("wedding_websites", {
+  id: serial("id").primaryKey(),
+  profileId: integer("profile_id").notNull().unique(),
+  slug: text("slug").notNull().unique(),
+  theme: text("theme").notNull().default("classic"),
+  layoutStyle: text("layout_style").notNull().default("standard"),
+  font: text("font").notNull().default("Playfair Display"),
+  accentColor: text("accent_color").notNull().default("#D4A017"),
+  colorPalette: jsonb("color_palette").notNull().$type<{
+    primary: string;
+    secondary: string;
+    accent: string;
+    neutral: string;
+    background: string;
+    text: string;
+  }>().default({
+    primary: "#D4A017",
+    secondary: "#F5C842",
+    accent: "#D4A017",
+    neutral: "#E8E0D0",
+    background: "#FFFFFF",
+    text: "#222222",
+  }),
+  sectionsEnabled: jsonb("sections_enabled").notNull().$type<WebsiteSectionsEnabled>().default({
+    welcome: true,
+    story: true,
+    schedule: true,
+    travel: true,
+    registry: true,
+    faq: true,
+    gallery: true,
+    weddingParty: true,
+  }),
+  // User-overridden text per section. Keys: "welcome", "story", "faq", etc.
+  // Empty value means "use auto-generated text from couple's profile".
+  customText: jsonb("custom_text").notNull().$type<WebsiteCustomText>().default({}),
+  galleryImages: jsonb("gallery_images").notNull().$type<WebsiteGalleryImage[]>().default([]),
+  heroImage: text("hero_image"),
+  password: text("password"),
+  published: boolean("published").notNull().default(false),
+  publishedAt: timestamp("published_at"),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertWeddingWebsiteSchema = createInsertSchema(weddingWebsites).omit({ id: true, lastUpdated: true, createdAt: true });
+export type InsertWeddingWebsite = z.infer<typeof insertWeddingWebsiteSchema>;
+export type WeddingWebsite = typeof weddingWebsites.$inferSelect;
+
