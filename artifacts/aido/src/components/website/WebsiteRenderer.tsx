@@ -1,6 +1,31 @@
 import { useEffect, useState } from "react";
+import { Link } from "wouter";
 import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon } from "lucide-react";
 import { EditableText } from "./EditableText";
+
+// camelCase section id <-> kebab-case URL slug
+const SECTION_TO_URL: Record<string, string> = {
+  home: "",
+  welcome: "welcome",
+  story: "story",
+  schedule: "schedule",
+  travel: "travel",
+  registry: "registry",
+  weddingParty: "wedding-party",
+  gallery: "gallery",
+  faq: "faq",
+};
+const URL_TO_SECTION: Record<string, string> = Object.fromEntries(
+  Object.entries(SECTION_TO_URL).map(([k, v]) => [v, k])
+);
+URL_TO_SECTION[""] = "home";
+
+export function urlSegmentForSection(id: string): string {
+  return SECTION_TO_URL[id] ?? id;
+}
+export function sectionFromUrlSegment(seg: string | undefined): string {
+  return URL_TO_SECTION[seg ?? ""] ?? "home";
+}
 
 export interface WebsiteRendererPayload {
   theme: string;
@@ -517,9 +542,21 @@ function BrandingFooter() {
   );
 }
 
-function TopNav({ data, scrollContainer }: { data: WebsiteRendererPayload; scrollContainer?: HTMLElement | null }) {
+function TopNav({
+  data,
+  scrollContainer,
+  pageMode,
+  slug,
+  currentSection,
+}: {
+  data: WebsiteRendererPayload;
+  scrollContainer?: HTMLElement | null;
+  pageMode: boolean;
+  slug?: string;
+  currentSection: string;
+}) {
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
-  const [active, setActive] = useState<string>("home");
+  const [scrollActive, setScrollActive] = useState<string>("home");
 
   // Build the ordered list of nav items only for sections that are enabled.
   const items: Array<{ id: string; label: string }> = [{ id: "home", label: "Home" }];
@@ -531,16 +568,17 @@ function TopNav({ data, scrollContainer }: { data: WebsiteRendererPayload; scrol
   if (data.sectionsEnabled.gallery) items.push({ id: "gallery", label: "Gallery" });
   if (data.sectionsEnabled.faq) items.push({ id: "faq", label: "FAQ" });
 
-  // Track which section is currently in view to underline the right nav item.
+  // Anchor-scroll mode (used by editor preview): track the visible section
+  // with IntersectionObserver to underline the right item.
   useEffect(() => {
+    if (pageMode) return;
     const root = scrollContainer ?? null;
     const observer = new IntersectionObserver(
       (entries) => {
-        // Pick the entry that's most visible.
         const visible = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible[0]) setActive(visible[0].target.id);
+        if (visible[0]) setScrollActive(visible[0].target.id);
       },
       { root, rootMargin: "-30% 0px -50% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
     );
@@ -550,14 +588,41 @@ function TopNav({ data, scrollContainer }: { data: WebsiteRendererPayload; scrol
     });
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.sectionsEnabled, scrollContainer]);
+  }, [pageMode, data.sectionsEnabled, scrollContainer]);
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
-    setActive(id);
+    setScrollActive(id);
   };
+
+  const active = pageMode ? currentSection : scrollActive;
+
+  const renderItem = (it: { id: string; label: string }) => {
+    const className = `relative pb-1 transition-colors hover:opacity-80 ${active === it.id ? "" : "opacity-70"}`;
+    const style = {
+      color: data.colorPalette.text,
+      borderBottom: active === it.id ? `2px solid ${data.colorPalette.primary}` : "2px solid transparent",
+      fontFamily: fontStack(headingFont(data)),
+    };
+    if (pageMode && slug) {
+      const seg = urlSegmentForSection(it.id);
+      const href = seg ? `/w/${slug}/${seg}` : `/w/${slug}`;
+      return (
+        <Link key={it.id} href={href} className={className} style={style}>
+          {it.label}
+        </Link>
+      );
+    }
+    return (
+      <button key={it.id} onClick={() => scrollTo(it.id)} className={className} style={style}>
+        {it.label}
+      </button>
+    );
+  };
+
+  const homeHref = pageMode && slug ? `/w/${slug}` : undefined;
 
   return (
     <nav
@@ -568,28 +633,25 @@ function TopNav({ data, scrollContainer }: { data: WebsiteRendererPayload; scrol
       }}
     >
       <div className="max-w-5xl mx-auto px-4 py-3 sm:py-4 flex flex-col items-center gap-2">
-        <button
-          onClick={() => scrollTo("home")}
-          className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
-          style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
-        >
-          {couple}
-        </button>
+        {homeHref ? (
+          <Link
+            href={homeHref}
+            className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
+            style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
+          >
+            {couple}
+          </Link>
+        ) : (
+          <button
+            onClick={() => scrollTo("home")}
+            className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
+            style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
+          >
+            {couple}
+          </button>
+        )}
         <div className="flex flex-wrap items-center justify-center gap-x-5 sm:gap-x-7 gap-y-1 text-xs sm:text-sm">
-          {items.map((it) => (
-            <button
-              key={it.id}
-              onClick={() => scrollTo(it.id)}
-              className={`relative pb-1 transition-colors hover:opacity-80 ${active === it.id ? "" : "opacity-70"}`}
-              style={{
-                color: data.colorPalette.text,
-                borderBottom: active === it.id ? `2px solid ${data.colorPalette.primary}` : "2px solid transparent",
-                fontFamily: fontStack(headingFont(data)),
-              }}
-            >
-              {it.label}
-            </button>
-          ))}
+          {items.map(renderItem)}
         </div>
       </div>
     </nav>
@@ -601,27 +663,46 @@ export function WebsiteRenderer({
   scrollContainer,
   editable = false,
   onTextChange,
+  currentSection,
+  slug,
 }: {
   data: WebsiteRendererPayload;
   scrollContainer?: HTMLElement | null;
   editable?: boolean;
   onTextChange?: (key: string, value: string) => void;
+  // When set, render only the matching section (page-per-section mode for
+  // the public site). When undefined, render every section in one scroll
+  // (the editor preview mode).
+  currentSection?: string;
+  // Slug for building per-section URLs in TopNav links.
+  slug?: string;
 }) {
   const ctx: EditCtx = editable && onTextChange
     ? { editable: true, onTextChange }
     : NOOP_CTX;
+  const pageMode = !!currentSection;
+  const showAll = !pageMode;
+  const show = (id: string, enabled: boolean) =>
+    enabled && (showAll || currentSection === id);
+
   return (
     <div style={{ background: data.colorPalette.background, color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <TopNav data={data} scrollContainer={scrollContainer} />
-      <Hero data={data} ctx={ctx} />
-      {data.sectionsEnabled.welcome && <Welcome data={data} ctx={ctx} />}
-      {data.sectionsEnabled.story && <Story data={data} ctx={ctx} />}
-      {data.sectionsEnabled.schedule && <Schedule data={data} ctx={ctx} />}
-      {data.sectionsEnabled.travel && <Travel data={data} ctx={ctx} />}
-      {data.sectionsEnabled.registry && <Registry data={data} ctx={ctx} />}
-      {data.sectionsEnabled.weddingParty && <WeddingParty data={data} ctx={ctx} />}
-      {data.sectionsEnabled.faq && <Faq data={data} ctx={ctx} />}
-      {data.sectionsEnabled.gallery && <Gallery data={data} ctx={ctx} />}
+      <TopNav
+        data={data}
+        scrollContainer={scrollContainer}
+        pageMode={pageMode}
+        slug={slug}
+        currentSection={currentSection ?? "home"}
+      />
+      {(showAll || currentSection === "home") && <Hero data={data} ctx={ctx} />}
+      {show("welcome", data.sectionsEnabled.welcome) && <Welcome data={data} ctx={ctx} />}
+      {show("story", data.sectionsEnabled.story) && <Story data={data} ctx={ctx} />}
+      {show("schedule", data.sectionsEnabled.schedule) && <Schedule data={data} ctx={ctx} />}
+      {show("travel", data.sectionsEnabled.travel) && <Travel data={data} ctx={ctx} />}
+      {show("registry", data.sectionsEnabled.registry) && <Registry data={data} ctx={ctx} />}
+      {show("weddingParty", data.sectionsEnabled.weddingParty) && <WeddingParty data={data} ctx={ctx} />}
+      {show("faq", data.sectionsEnabled.faq) && <Faq data={data} ctx={ctx} />}
+      {show("gallery", data.sectionsEnabled.gallery) && <Gallery data={data} ctx={ctx} />}
       <Footer data={data} ctx={ctx} />
     </div>
   );

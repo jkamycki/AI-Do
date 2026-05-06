@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
 import { apiFetch } from "@/lib/authFetch";
 import { Loader2, Lock } from "lucide-react";
-import { WebsiteRenderer, type WebsiteRendererPayload } from "@/components/website/WebsiteRenderer";
+import { WebsiteRenderer, type WebsiteRendererPayload, sectionFromUrlSegment } from "@/components/website/WebsiteRenderer";
 
 interface PublicSitePayload extends WebsiteRendererPayload {
   slug: string;
@@ -68,8 +68,14 @@ function PasswordGate({ accent, font, onSubmit, error }: { accent: string; font:
 }
 
 export default function PublicWebsite() {
-  const [, params] = useRoute("/w/:slug");
-  const slug = params?.slug ?? "";
+  const [matchedSlug, slugParams] = useRoute("/w/:slug");
+  const [matchedSection, sectionParams] = useRoute("/w/:slug/:section");
+  const slug = (matchedSection ? sectionParams?.slug : slugParams?.slug) ?? "";
+  const sectionSeg = matchedSection ? sectionParams?.section : undefined;
+  const currentSection = sectionFromUrlSegment(sectionSeg);
+  // Reference matchedSlug to suppress unused-var warning while keeping it
+  // available for future use.
+  void matchedSlug;
 
   const [password, setPassword] = useState<string | null>(() => {
     try {
@@ -193,5 +199,10 @@ export default function PublicWebsite() {
     );
   }
 
-  return <WebsiteRenderer data={data} />;
+  // Scroll to top on section navigation so each "page" feels distinct.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentSection]);
+
+  return <WebsiteRenderer data={data} currentSection={currentSection} slug={slug} />;
 }
