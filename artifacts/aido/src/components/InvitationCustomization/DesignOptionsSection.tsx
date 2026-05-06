@@ -109,8 +109,8 @@ export function DesignOptionsSection({
                         : "border-border hover:border-primary/60 hover:shadow-sm",
                     ].join(" ")}
                   >
-                    <div className="aspect-[3/4] w-full overflow-hidden" style={{ backgroundColor: backgroundColor || "#1E1A2E" }}>
-                      <LayoutThumbnail layout={design.id} colors={colors} backgroundColor={backgroundColor || "#1E1A2E"} />
+                    <div className="aspect-[3/4] w-full overflow-hidden" style={{ backgroundColor: backgroundColor || "#FFFFFF" }}>
+                      <LayoutThumbnail layout={design.id} colors={colors} backgroundColor={backgroundColor || "#FFFFFF"} />
                     </div>
                     <div className={[
                       "px-1 py-1 text-center text-[10px] leading-tight font-medium transition-colors",
