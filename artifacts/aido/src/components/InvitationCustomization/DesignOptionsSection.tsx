@@ -109,8 +109,8 @@ export function DesignOptionsSection({
                         : "border-border hover:border-primary/60 hover:shadow-sm",
                     ].join(" ")}
                   >
-                    <div className="aspect-[3/4] w-full overflow-hidden" style={{ backgroundColor: backgroundColor || "#FFFFFF" }}>
-                      <LayoutThumbnail layout={design.id} colors={colors} backgroundColor={backgroundColor || "#FFFFFF"} />
+                    <div className="aspect-[3/4] w-full overflow-hidden" style={{ backgroundColor: backgroundColor || "#1E1A2E" }}>
+                      <LayoutThumbnail layout={design.id} colors={colors} backgroundColor={backgroundColor || "#1E1A2E"} />
                     </div>
                     <div className={[
                       "px-1 py-1 text-center text-[10px] leading-tight font-medium transition-colors",
@@ -148,7 +148,7 @@ export function DesignOptionsSection({
               title="Click to pick a color"
             />
             <div className="flex flex-wrap gap-1.5 flex-1">
-              {["#0F1A2E", "#1E1A2E", "#FBEFEF", "#F4F1EA", "#FAF7F2", "#F8E8D5"].map((hex) => (
+              {["#1E1A2E", "#0F1A2E", "#FBEFEF", "#F4F1EA", "#FAF7F2", "#F8E8D5"].map((hex) => (
                 <button
                   key={hex}
                   type="button"
@@ -166,7 +166,7 @@ export function DesignOptionsSection({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Current: <span className="font-mono">{backgroundColor || "#FFFFFF"}</span>
+            Current: <span className="font-mono">{backgroundColor || "#1E1A2E"}</span>
           </p>
         </div>
 
