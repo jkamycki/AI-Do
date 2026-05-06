@@ -1,6 +1,7 @@
 import { Sidebar } from "./Sidebar";
 import { SupportChat } from "@/components/SupportChat";
 import { VendorReplyNotifier } from "@/components/VendorReplyNotifier";
+import { NextStepNudge } from "@/components/NextSteps/NextStepNudge";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       </main>
       <SupportChat />
       <VendorReplyNotifier />
+      <NextStepNudge />
     </div>
   );
 }
