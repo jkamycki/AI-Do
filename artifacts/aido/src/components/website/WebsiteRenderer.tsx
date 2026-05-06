@@ -56,6 +56,11 @@ function fontStack(font: string): string {
   return `'${font}', 'Playfair Display', Georgia, serif`;
 }
 
+function imageUrl(url: string): string {
+  if (url.startsWith("/objects/")) return `/api/storage${url}`;
+  return url;
+}
+
 function Hero({ data }: { data: WebsiteRendererPayload }) {
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
   const dateStr = formatWeddingDate(data.couple.weddingDate);
@@ -64,7 +69,7 @@ function Hero({ data }: { data: WebsiteRendererPayload }) {
       className="relative min-h-[80vh] flex items-center justify-center text-center px-6 py-24"
       style={{
         background: data.heroImage
-          ? `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.55)), url(${data.heroImage}) center/cover no-repeat`
+          ? `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.55)), url('${imageUrl(data.heroImage)}') center/cover no-repeat`
           : `linear-gradient(135deg, ${data.colorPalette.primary}22, ${data.colorPalette.secondary}22)`,
         color: data.heroImage ? "#fff" : data.colorPalette.text,
       }}
@@ -278,7 +283,7 @@ function Gallery({ data }: { data: WebsiteRendererPayload }) {
         {images.map((img, i) => (
           <div key={i} className="relative aspect-square overflow-hidden rounded-lg group">
             <img
-              src={img.url.startsWith("/objects/") ? `/api/storage${img.url}` : img.url}
+              src={imageUrl(img.url)}
               alt={img.caption ?? ""}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
