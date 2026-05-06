@@ -1482,14 +1482,30 @@ class AppErrorBoundary extends Component<
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
     console.error("[AppErrorBoundary]", error, info);
     this.setState({ componentStack: info?.componentStack || "" });
+    // Auto-reload once on stale-chunk errors after a deploy.
+    const msg = error?.message || "";
+    if (/Failed to fetch dynamically imported module|Loading chunk \d+ failed|Importing a module script failed|ChunkLoadError/i.test(msg)) {
+      const flag = "aido_chunk_reload_attempted";
+      if (typeof sessionStorage !== "undefined" && !sessionStorage.getItem(flag)) {
+        sessionStorage.setItem(flag, String(Date.now()));
+        window.location.reload();
+      }
+    }
   }
   render() {
     if (this.state.hasError) {
+      const isStale = /Failed to fetch dynamically imported module|Loading chunk \d+ failed|Importing a module script failed|ChunkLoadError/i.test(this.state.message);
+      const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform);
+      const shortcut = isMac ? "Cmd + Shift + R" : "Ctrl + Shift + R";
       return (
         <div className="dark min-h-screen bg-background text-foreground flex flex-col items-center justify-center gap-4 text-center p-8">
-          <h1 className="text-2xl font-semibold">Something went wrong</h1>
-          <p className="text-muted-foreground text-sm max-w-sm">
-            An unexpected error occurred. Please reload the page.
+          <h1 className="text-2xl font-semibold">
+            {isStale ? "This page needs to be refreshed" : "Something went wrong"}
+          </h1>
+          <p className="text-muted-foreground text-sm max-w-md">
+            {isStale
+              ? "We just shipped an update and your browser is still running the old version. A quick refresh will load the new files."
+              : "An unexpected error occurred. Please reload the page."}
           </p>
           <button
             onClick={() => window.location.reload()}
@@ -1497,6 +1513,9 @@ class AppErrorBoundary extends Component<
           >
             Reload page
           </button>
+          <p className="text-xs text-muted-foreground">
+            Or press <kbd className="px-1.5 py-0.5 rounded border border-border bg-background/50 font-mono text-[11px]">{shortcut}</kbd> for a hard refresh.
+          </p>
           <details open className="max-w-2xl text-left text-xs text-muted-foreground/80 bg-muted/20 rounded-lg p-3 mt-4">
             <summary className="cursor-pointer font-medium">Error details</summary>
             <p className="mt-2 font-mono text-destructive break-all">{this.state.message}</p>
