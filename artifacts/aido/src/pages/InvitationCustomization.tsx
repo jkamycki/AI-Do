@@ -1300,7 +1300,6 @@ export default function InvitationCustomizationPage({
                       partner2Name: displayWeddingProfile.partner2Name,
                       weddingDate: displayWeddingProfile.weddingDate,
                       venue: displayWeddingProfile.venue,
-                      venueAddress: displayWeddingProfile.location,
                       venueCity: displayWeddingProfile.venueCity,
                       venueState: displayWeddingProfile.venueState,
                       venueZip: displayWeddingProfile.venueZip,
@@ -1325,7 +1324,6 @@ export default function InvitationCustomizationPage({
                     backgroundColor={saveTheDateBackground}
                     partner1Name={displayWeddingProfile.partner1Name}
                     partner2Name={displayWeddingProfile.partner2Name}
-                    location={displayWeddingProfile.location}
                     venueCity={displayWeddingProfile.venueCity}
                     venueState={displayWeddingProfile.venueState}
                     venueZip={displayWeddingProfile.venueZip}
@@ -1365,6 +1363,7 @@ export default function InvitationCustomizationPage({
                     }
                     guestName={user?.firstName || "Guest Name"}
                     scale={rsvpScale}
+                    venueAddress={displayWeddingProfile.location}
                     venueCity={displayWeddingProfile.venueCity}
                     venueState={displayWeddingProfile.venueState}
                     venueZip={displayWeddingProfile.venueZip}
