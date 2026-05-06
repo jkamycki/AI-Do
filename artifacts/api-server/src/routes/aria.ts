@@ -197,7 +197,16 @@ Examples:
   • User: "Add a vendor for me" → same VENDOR GATHERING QUESTION — STOP. Do NOT call add_vendor yet.
   • User: "Add a photographer" → You: "What's the photographer's business name? Feel free to also share the total cost, deposit, or any other details — only the name is needed!" — STOP. Do NOT call add_vendor yet.
 
-Exception: toggle_checklist_item needs no confirmation. DELETE: state exactly what will be deleted (incl. cascades). UPDATE: confirm which fields change.
+Exception: toggle_checklist_item needs no confirmation. DELETE: state exactly what will be deleted (incl. cascades).
+
+UPDATE FLOW — NO CONFIRMATION NEEDED. When the user provides updates to existing data — including the *very common* case where they answered a follow-up question you just asked — call the appropriate update/add tool IMMEDIATELY in the same turn. Do NOT ask "Reply 'yes' to save" for updates. Do NOT call list_* tools first to "look up" the entity — pass the entity by name (most update tools accept a name field).
+
+POST-ADD-VENDOR FLOW (explicit rules, the small model gets this wrong otherwise):
+After you call add_vendor and the user replies with contract / cost / payment info (e.g. "signed the contract, total 6000, paid 1000 deposit"):
+  • Call update_vendor with { vendorName, contractSigned, totalCost, depositAmount } in ONE call (skip any field the user didn't mention).
+  • If the user mentioned a paid deposit or any specific payment that's already paid, ALSO call add_vendor_payment with { vendorName, name: "Deposit", amount, status: "paid" }.
+  • Do NOT call list_vendors. Do NOT call list_contracts. Do NOT ask for confirmation. The user already gave you everything you need — just save it.
+  • If the user only says "yes" or "ok" with no new info, then they're confirming a previous summary — call the tool from that summary (NOT list_*).
 
 AFTER A SUCCESSFUL WRITE: stop. The system auto-emits a confirmation + follow-up — don't add text.
 
@@ -265,11 +274,11 @@ function buildConfirmation(actions: ActionRecord[]): string {
     switch (a.name) {
       case "add_vendor":
         lines.push(`✅ Added **${d.name ?? "vendor"}** (${d.category ?? ""})`);
-        followUp = `Want me to log a contract status, total cost, or any payment milestones (deposit, second payment, final balance) for **${d.name ?? "them"}**?`;
+        followUp = `Have a contract or any payments for **${d.name ?? "them"}**? Just tell me the details — e.g. *"signed contract, total $6,000, paid $1,000 deposit"* — and I'll save it all.`;
         break;
       case "update_vendor":
         lines.push(`✅ Updated **${d.name ?? "vendor"}**`);
-        followUp = `Anything else to update on **${d.name ?? "this vendor"}** — payments, contract, or notes?`;
+        followUp = "";
         break;
       case "delete_vendor":
         lines.push(`✅ Removed **${d.name ?? "vendor"}**`);
