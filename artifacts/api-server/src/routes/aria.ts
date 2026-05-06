@@ -7,6 +7,7 @@ import {
 } from "@workspace/db";
 import { eq, desc, and, asc, ilike, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { isAllowedOrigin } from "../lib/allowedOrigins";
 import { aiLimiter, incrementDailyAria } from "../middlewares/rateLimiter";
 import { resolveProfile, resolveScopeUserId, resolveWorkspaceRole, hasMinRole, logActivity } from "../lib/workspaceAccess";
 import { getAuth } from "@clerk/express";
@@ -1674,7 +1675,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       res.setHeader("X-Accel-Buffering", "no");
       // Explicit CORS for SSE — Render's nginx can strip headers on streaming responses
       const origin = req.headers.origin;
-      if (origin) res.setHeader("Access-Control-Allow-Origin", origin);
+      if (isAllowedOrigin(origin)) res.setHeader("Access-Control-Allow-Origin", origin!);
       res.setHeader("Access-Control-Allow-Credentials", "true");
       res.flushHeaders();
     };

@@ -7,6 +7,7 @@ import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxy
 import { generalLimiter } from "./middlewares/rateLimiter";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { isAllowedOrigin } from "./lib/allowedOrigins";
 
 const app: Express = express();
 app.set("etag", false);
@@ -242,7 +243,7 @@ if (process.env.NODE_ENV === "production") {
     // forwarded as-is so that Clerk's normal 2FA flow proceeds.
     app.post(
       new RegExp(
-        `^${CLERK_PROXY_PATH.replace(/\//g, "\\/")}\\/v1\\/client\\/sign_ins\\/([^\\/]+)\\/attempt_first_factor$`,
+        `^${CLERK_PROXY_PATH.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\/v1\\/client\\/sign_ins\\/([^\\/]+)\\/attempt_first_factor$`,
       ),
       express.raw({ type: "*/*", limit: "4mb" }),
       async (req, res) => {
@@ -339,18 +340,6 @@ if (process.env.NODE_ENV === "production") {
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-const ALLOWED_ORIGINS = new Set([
-  "https://aidowedding.net",
-  "https://www.aidowedding.net",
-  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
-  ...(process.env.PUBLIC_APP_URL ? [process.env.PUBLIC_APP_URL] : []),
-]);
-
-const ALLOWED_ORIGIN_PATTERNS = [
-  /^https:\/\/ai-do-aido[a-z0-9-]*\.vercel\.app$/,
-  /^https:\/\/[a-z0-9-]+-kamyckijoseph[a-z0-9-]*\.vercel\.app$/,
-];
-
 app.use(
   cors({
     credentials: true,
@@ -367,8 +356,7 @@ app.use(
       ) {
         return callback(null, true);
       }
-      if (ALLOWED_ORIGINS.has(origin)) return callback(null, true);
-      if (ALLOWED_ORIGIN_PATTERNS.some(pattern => pattern.test(origin))) return callback(null, true);
+      if (isAllowedOrigin(origin)) return callback(null, true);
       callback(new Error(`CORS: origin not allowed — ${origin}`));
     },
   }),

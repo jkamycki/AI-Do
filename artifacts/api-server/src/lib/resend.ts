@@ -1,5 +1,6 @@
 import { logger } from "./logger";
 import * as crypto from "crypto";
+import he from "he";
 
 const RESEND_API = "https://api.resend.com";
 
@@ -151,10 +152,11 @@ export function cleanInboundText(text: string): string {
   return cleaned;
 }
 
-/** Strip HTML tags safely (very conservative - we surface text, not rendered HTML). */
+/** Strip HTML tags and decode entities — output is plain text, not HTML. */
 export function htmlToText(html: string): string {
   if (!html) return "";
-  // Use indexOf-based removal for <style> and <script> blocks to avoid ReDoS
+
+  // Remove <style> and <script> blocks using indexOf to avoid ReDoS
   let s = html;
   for (const [open, close] of [["<style", "</style>"], ["<script", "</script>"]] as const) {
     let i: number;
@@ -164,17 +166,21 @@ export function htmlToText(html: string): string {
       s = s.slice(0, i) + s.slice(j + close.length);
     }
   }
-  return s
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n\n")
-    .replace(/<[^>]{0,2000}>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim();
+
+  // Insert newlines for block-level breaks before stripping tags
+  s = s.replace(/<br\s*\/?>/gi, "\n").replace(/<\/p\s*>/gi, "\n\n");
+
+  // Strip tags character-by-character (handles > inside attribute values safely)
+  let result = "";
+  let inTag = false;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "<") { inTag = true; continue; }
+    if (s[i] === ">" && inTag) { inTag = false; continue; }
+    if (!inTag) result += s[i];
+  }
+
+  // Decode HTML entities properly using the `he` library
+  return he.decode(result).replace(/\n{3,}/g, "\n\n").trim();
 }
 
 export function randomToken(bytes = 18): string {

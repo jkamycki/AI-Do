@@ -35,15 +35,19 @@ export const openai = new OpenAI({ apiKey, baseURL });
  * Provider is detected from the resolved base URL.
  * Override at any time by setting the AI_MODEL env var.
  */
+function getBaseHostname(): string {
+  try { return new URL(baseURL).hostname; } catch { return ""; }
+}
+
 export function getModel(): string {
   if (process.env.AI_MODEL) return process.env.AI_MODEL;
+  const host = getBaseHostname();
   // llama-3.1-8b-instant: 20,000 TPM free tier (vs 6,000 for 70B) —
   // much less rate-limiting, lower latency, still strong at tool-calling.
   // Override with AI_MODEL=llama-3.3-70b-versatile for the larger model.
-  if (baseURL.includes("groq.com")) return "llama-3.1-8b-instant";
-  if (baseURL.includes("openrouter.ai")) return "meta-llama/llama-3.1-8b-instruct";
-  if (baseURL.includes("anthropic")) return "claude-3-5-haiku-20241022";
-  // OpenAI or Replit proxy
+  if (host.endsWith(".groq.com") || host === "api.groq.com") return "llama-3.1-8b-instant";
+  if (host.endsWith(".openrouter.ai") || host === "openrouter.ai") return "meta-llama/llama-3.1-8b-instruct";
+  if (host.endsWith(".anthropic.com") || host === "api.anthropic.com") return "claude-3-5-haiku-20241022";
   return "gpt-4o-mini";
 }
 
@@ -55,11 +59,11 @@ export function getModel(): string {
  */
 export function getVisionModel(): string {
   if (process.env.AI_VISION_MODEL) return process.env.AI_VISION_MODEL;
+  const host = getBaseHostname();
   // Groq's free-tier multimodal Llama 4 Scout model — accepts image_url and is
   // OpenAI-compatible. The text-only AI_MODEL override does not apply here.
-  if (baseURL.includes("groq.com")) return "meta-llama/llama-4-scout-17b-16e-instruct";
-  if (baseURL.includes("openrouter.ai")) return "meta-llama/llama-3.2-11b-vision-instruct";
-  if (baseURL.includes("anthropic")) return "claude-3-5-sonnet-20241022";
-  // OpenAI or Replit proxy — gpt-4o-mini supports vision.
+  if (host.endsWith(".groq.com") || host === "api.groq.com") return "meta-llama/llama-4-scout-17b-16e-instruct";
+  if (host.endsWith(".openrouter.ai") || host === "openrouter.ai") return "meta-llama/llama-3.2-11b-vision-instruct";
+  if (host.endsWith(".anthropic.com") || host === "api.anthropic.com") return "claude-3-5-sonnet-20241022";
   return "gpt-4o-mini";
 }
