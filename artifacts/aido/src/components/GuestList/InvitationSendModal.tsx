@@ -17,6 +17,7 @@ import {
 import { authFetch } from "@/lib/authFetch";
 import type { Guest } from "@workspace/api-client-react";
 import type { TextOverrides, ColorPalette } from "@/types/invitations";
+import { DigitalInvitationPreview } from "@/components/InvitationCustomization/DigitalInvitationPreview";
 import { AiSaveDatePreview, AiDigitalInvitationPreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
 
@@ -45,6 +46,7 @@ interface Profile {
   partner2Name?: string | null;
   weddingDate?: string | null;
   venue?: string | null;
+  location?: string | null;
   venueAddress?: string | null;
   venueCity?: string | null;
   venueState?: string | null;
@@ -711,22 +713,34 @@ export function InvitationSendModal({
                   <p className="text-xs text-muted-foreground text-center">
                     This is exactly what will be emailed to your guest
                   </p>
-                  <div className="flex justify-center">
+                  <div className="flex justify-center overflow-hidden">
                     {profile && (
-                      <AiDigitalInvitationPreview
-                        profile={{
-                          ...profile,
-                          venueAddress: profile.venueAddress ?? profile.venue ?? undefined,
-                        }}
-                        palette={palette}
+                      <DigitalInvitationPreview
                         photoUrl={
                           customization.digitalInvitationPhotoUrl
                           || profile.digitalInvitationPhotoUrl
                           || profile.invitationPhotoUrl
                           || null
                         }
-                        photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
-                        customColors={digCustomColors}
+                        venue={profile.venue ?? ""}
+                        location={profile.location ?? profile.venueAddress ?? ""}
+                        venueCity={profile.venueCity ?? ""}
+                        venueState={profile.venueState ?? ""}
+                        venueZip={profile.venueZip ?? ""}
+                        ceremonyTime={profile.ceremonyTime ?? ""}
+                        receptionTime={profile.receptionTime ?? ""}
+                        guestName={guest?.name ?? "Guest"}
+                        colors={palette}
+                        font={customization.digitalInvitationFont}
+                        layout={customization.digitalInvitationLayout}
+                        backgroundColor={customization.digitalInvitationBackground}
+                        partner1Name={profile.partner1Name ?? ""}
+                        partner2Name={profile.partner2Name ?? ""}
+                        weddingDate={profile.weddingDate ?? ""}
+                        message={profile.invitationMessage ?? undefined}
+                        textOverrides={customization.textOverrides}
+                        onTextOverridesChange={() => {}}
+                        editable={false}
                       />
                     )}
                   </div>

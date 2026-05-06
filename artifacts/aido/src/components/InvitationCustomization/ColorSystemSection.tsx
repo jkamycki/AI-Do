@@ -170,6 +170,28 @@ export function ColorSystemSection({
         <CardTitle className="text-lg">🎨 Color System</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Pre-made Palettes */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Pre-made Palettes</label>
+          <Select value={selectedPalette || ""} onValueChange={handlePresetPaletteSelect}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a palette" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(PRESET_PALETTES).map(([id, palette]) => (
+                <SelectItem key={id} value={id}>
+                  {palette.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedPalette && (
+            <p className="text-xs text-muted-foreground">
+              {PRESET_PALETTES[selectedPalette as keyof typeof PRESET_PALETTES]?.description}
+            </p>
+          )}
+        </div>
+
         {/* Auto-Generated Palette Display */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Auto-Generated Palette</label>
@@ -210,28 +232,6 @@ export function ColorSystemSection({
 
           {advancedOpen && (
             <div className="border-t p-4 space-y-4">
-              {/* Pre-made Palettes */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Pre-made Palettes</label>
-                <Select value={selectedPalette || ""} onValueChange={handlePresetPaletteSelect}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a palette" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(PRESET_PALETTES).map(([id, palette]) => (
-                      <SelectItem key={id} value={id}>
-                        {palette.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedPalette && (
-                  <p className="text-xs text-muted-foreground">
-                    {PRESET_PALETTES[selectedPalette as keyof typeof PRESET_PALETTES]?.description}
-                  </p>
-                )}
-              </div>
-
               {/* Custom Color Inputs */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Custom Colors</label>
