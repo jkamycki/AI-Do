@@ -574,6 +574,7 @@ export default function SeatingChartPage() {
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
+      queryClient.invalidateQueries({ queryKey: ["next-steps", "seating-charts"] });
       queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
       if (saved && typeof saved.id === "number") {
         setActiveChartId(saved.id);
@@ -599,6 +600,7 @@ export default function SeatingChartPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
+      queryClient.invalidateQueries({ queryKey: ["next-steps", "seating-charts"] });
       queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
     },
   });
@@ -610,6 +612,7 @@ export default function SeatingChartPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
+      queryClient.invalidateQueries({ queryKey: ["next-steps", "seating-charts"] });
       toast({ title: t("seating.chart_deleted") });
     },
   });

@@ -356,7 +356,10 @@ export default function Hotels() {
     },
   });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["hotels"] });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["hotels"] });
+    queryClient.invalidateQueries({ queryKey: ["next-steps", "hotels"] });
+  };
 
   const addMutation = useMutation({
     mutationFn: (data: Partial<HotelBlock>) =>

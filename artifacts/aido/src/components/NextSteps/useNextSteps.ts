@@ -62,7 +62,7 @@ export function useNextSteps() {
       const json = await r.json();
       return Array.isArray(json) ? json : (json.contracts ?? []);
     },
-    staleTime: 60_000,
+    staleTime: 0,
   });
   const { data: hotels } = useQuery<{ id: number }[]>({
     queryKey: ["next-steps", "hotels"],
@@ -72,7 +72,7 @@ export function useNextSteps() {
       const json = await r.json();
       return Array.isArray(json) ? json : (json.hotels ?? []);
     },
-    staleTime: 60_000,
+    staleTime: 0,
   });
   const { data: seating } = useQuery<{ tables?: unknown[] }>({
     queryKey: ["next-steps", "seating-charts"],
@@ -85,7 +85,7 @@ export function useNextSteps() {
       const charts = Array.isArray(json) ? json : (json.charts ?? []);
       return { tables: charts };
     },
-    staleTime: 60_000,
+    staleTime: 0,
   });
 
   const data: NextStepsData = useMemo(

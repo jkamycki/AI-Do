@@ -91,7 +91,10 @@ export function NextStepNudge() {
             Skip
           </button>
           <button
-            onClick={() => markDone(current.step.id)}
+            onClick={() => {
+              markDone(current.step.id);
+              setStepIndex(i => Math.max(0, Math.min(i, activeSteps.length - 2)));
+            }}
             className="h-8 px-2.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             Done
