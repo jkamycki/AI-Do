@@ -8,6 +8,11 @@ export const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN ?? "mail.aidowedd
 export const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `messaging@${INBOUND_DOMAIN}`;
 export const FROM_NAME = process.env.RESEND_FROM_NAME ?? "A.IDo Messaging";
 
+// The domain Resend is verified to SEND from (extracted from FROM_EMAIL).
+// Used to build the per-conversation From/Reply-To address so that vendor
+// replies to either field are routed back to the right conversation.
+export const SENDING_DOMAIN = FROM_EMAIL.split("@")[1] ?? INBOUND_DOMAIN;
+
 export interface SendEmailParams {
   to: string;
   from?: string;
@@ -112,6 +117,17 @@ export async function sendEmail(p: SendEmailParams): Promise<SendEmailResult> {
 /** Build the per-conversation Reply-To address vendors send replies to. */
 export function buildInboundAddress(conversationId: number, token: string): string {
   return `messages+${conversationId}.${token}@${INBOUND_DOMAIN}`;
+}
+
+/**
+ * Build the per-conversation FROM address used when emailing vendors.
+ * Uses the verified SENDING domain so that:
+ * - Resend can actually send the email
+ * - Vendor replies to the From field (Outlook-style clients) land on the
+ *   same domain as the Reply-To and get routed back to the right conversation.
+ */
+export function buildVendorFromAddress(conversationId: number, token: string): string {
+  return `messages+${conversationId}.${token}@${SENDING_DOMAIN}`;
 }
 
 /** Parse `messages+{conversationId}.{token}@domain` and return the parts. */
