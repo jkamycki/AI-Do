@@ -23,6 +23,15 @@ function TabSkeleton() {
   );
 }
 
+function isStaleChunkError(message: string): boolean {
+  return /Failed to fetch dynamically imported module|Loading chunk \d+ failed|Importing a module script failed|ChunkLoadError/i.test(message);
+}
+
+function refreshShortcutHint(): string {
+  const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform);
+  return isMac ? "Cmd + Shift + R" : "Ctrl + Shift + R";
+}
+
 class TabErrorBoundary extends Component<{ children: ReactNode; tabName: string }, { hasError: boolean; error: Error | null }> {
   state = { hasError: false, error: null as Error | null };
 
@@ -32,19 +41,49 @@ class TabErrorBoundary extends Component<{ children: ReactNode; tabName: string 
 
   componentDidCatch(error: Error) {
     console.error(`Tab "${this.props.tabName}" failed to load:`, error);
+    // Auto-reload once on stale-chunk errors so users don't see this screen
+    // after a deploy (the page has the new index.html but is asking for old
+    // chunk files that no longer exist on the server). Guard with sessionStorage
+    // so we don't loop if the reload doesn't fix it.
+    if (isStaleChunkError(error.message)) {
+      const flag = "aido_chunk_reload_attempted";
+      if (typeof sessionStorage !== "undefined" && !sessionStorage.getItem(flag)) {
+        sessionStorage.setItem(flag, String(Date.now()));
+        window.location.reload();
+      }
+    }
   }
 
   render() {
     if (this.state.hasError) {
       const message = this.state.error?.message || "Unknown error";
       const stack = this.state.error?.stack || "";
+      const isStale = isStaleChunkError(message);
       return (
         <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 space-y-3">
-          <div className="text-center">
-            <p className="font-semibold text-destructive">This tab failed to load</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Try refreshing the page. If it persists, share the details below with support.
+          <div className="text-center space-y-2">
+            <p className="font-semibold text-destructive">
+              {isStale ? "This page needs to be refreshed" : "This tab failed to load"}
             </p>
+            {isStale ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  We just shipped an update and your browser still has the old version cached. A quick refresh will load the new files.
+                </p>
+                <div className="flex flex-col items-center gap-2 pt-2">
+                  <Button onClick={() => window.location.reload()} className="gap-2">
+                    <Sparkles className="h-4 w-4" /> Refresh now
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Or press <kbd className="px-1.5 py-0.5 rounded border border-border bg-background font-mono text-[11px]">{refreshShortcutHint()}</kbd> for a hard refresh.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Try a hard refresh — press <kbd className="px-1.5 py-0.5 rounded border border-border bg-background font-mono text-[11px]">{refreshShortcutHint()}</kbd> — to reload the page. If the issue persists, share the details below with support.
+              </p>
+            )}
           </div>
           <details className="text-xs bg-background/50 rounded p-3 border border-border/40">
             <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
