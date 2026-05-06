@@ -1,4 +1,5 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, lazy, Suspense, Component } from "react";
+import type { ReactNode } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRoute } from "wouter";
@@ -18,6 +19,32 @@ function TabSkeleton() {
       </div>
     </div>
   );
+}
+
+class TabErrorBoundary extends Component<{ children: ReactNode; tabName: string }, { hasError: boolean; error: Error | null }> {
+  state = { hasError: false, error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error(`Tab "${this.props.tabName}" failed to load:`, error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-center">
+          <p className="font-semibold text-destructive">This tab failed to load</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Try refreshing the page. If the issue persists, contact support.
+          </p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 interface RouteParams {
@@ -55,22 +82,28 @@ export default function GuestListAndInvitations() {
           <TabsTrigger value="wedding-party">Wedding Party</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="guest-list" forceMount className="mt-6 data-[state=inactive]:hidden">
-          <Suspense fallback={<TabSkeleton />}>
-            <Guests />
-          </Suspense>
+        <TabsContent value="guest-list" className="mt-6">
+          <TabErrorBoundary tabName="Guest List">
+            <Suspense fallback={<TabSkeleton />}>
+              <Guests />
+            </Suspense>
+          </TabErrorBoundary>
         </TabsContent>
 
-        <TabsContent value="invitation-customization" forceMount className="mt-6 data-[state=inactive]:hidden">
-          <Suspense fallback={<TabSkeleton />}>
-            <InvitationCustomization profileId={profileId} />
-          </Suspense>
+        <TabsContent value="invitation-customization" className="mt-6">
+          <TabErrorBoundary tabName="Invitation Customization">
+            <Suspense fallback={<TabSkeleton />}>
+              <InvitationCustomization profileId={profileId} />
+            </Suspense>
+          </TabErrorBoundary>
         </TabsContent>
 
         <TabsContent value="wedding-party" className="mt-6">
-          <Suspense fallback={<TabSkeleton />}>
-            <WeddingParty />
-          </Suspense>
+          <TabErrorBoundary tabName="Wedding Party">
+            <Suspense fallback={<TabSkeleton />}>
+              <WeddingParty />
+            </Suspense>
+          </TabErrorBoundary>
         </TabsContent>
       </Tabs>
     </div>
