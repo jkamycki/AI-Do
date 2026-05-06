@@ -223,33 +223,13 @@ export function ColorSystemSection({
       <CardContent className="space-y-6">
         {/* Primary Color Input */}
         <div className="space-y-2">
-          <div className="flex gap-2">
-            <div className="flex-1 flex gap-2">
-              <Input
-                type="text"
-                placeholder="#D4A017"
-                value={primaryColor}
-                onChange={handlePrimaryColorChange}
-                maxLength={7}
-              />
-              <div
-                className="w-10 h-10 rounded border border-border cursor-pointer"
-                style={{ backgroundColor: primaryColor || "#D4A017" }}
-                onClick={() => {
-                  const input = document.createElement("input");
-                  input.type = "color";
-                  input.value = primaryColor || "#D4A017";
-                  input.onchange = (e) => {
-                    if (e.target instanceof HTMLInputElement) {
-                      onPrimaryColorChange(e.target.value);
-                      generateColorMutation.mutate(e.target.value);
-                    }
-                  };
-                  input.click();
-                }}
-              />
-            </div>
-          </div>
+          <Input
+            type="text"
+            placeholder="#D4A017"
+            value={primaryColor}
+            onChange={handlePrimaryColorChange}
+            maxLength={7}
+          />
           {primaryError && (
             <div className="flex items-center gap-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
