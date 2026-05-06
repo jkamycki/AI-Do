@@ -693,6 +693,7 @@ export function InvitationSendModal({
                         venueCity={profile.venueCity ?? ""}
                         venueState={profile.venueState ?? ""}
                         venueZip={profile.venueZip ?? ""}
+                        message={customization.saveTheDateMessage || profile.saveTheDateMessage || undefined}
                         textOverrides={Object.fromEntries(Object.entries(customization.textOverrides).filter(([k]) => k.startsWith("std:")))}
                         onTextOverridesChange={() => {}}
                         editable={false}

@@ -82,7 +82,7 @@ export function RsvpPagePreview({
   invitationMessage,
 }: RsvpPagePreviewProps) {
   const bg = backgroundColor || "#1E1A2E";
-  const accent = colors.primary || "#D4A017";
+  const accent = colors.accent || colors.primary || "#D4A017";
   const isLight = isLightColor(bg);
   const textColor = isLight ? "#1a1a1a" : "#ffffff";
   const textMuted = isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)";
