@@ -148,6 +148,10 @@ function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) 
     profile.venueCity,
     [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
   ].filter(Boolean).join(", ");
+  const ceremonyCityStateZip = [
+    profile.ceremonyCity,
+    [profile.ceremonyState, profile.ceremonyZip].filter(Boolean).join(" "),
+  ].filter(Boolean).join(", ");
   const hasSeparateCeremony = !!(
     !profile.ceremonyAtVenue &&
     (profile.ceremonyVenueName || profile.ceremonyAddress || profile.ceremonyCity)
@@ -188,12 +192,14 @@ function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) 
                 <p style={{ fontFamily: jakarta, fontSize: "9px", fontWeight: 700, letterSpacing: "0.35em", textTransform: "uppercase", color: "hsl(var(--primary))", marginBottom: "4px" }}>Ceremony</p>
                 {ceremonyTimeStr && <p style={{ fontFamily: jakarta, fontSize: "13px", fontWeight: 600, color: "#fff" }}>{ceremonyTimeStr}</p>}
                 {profile.ceremonyVenueName && <p style={{ fontFamily: cormorant, fontSize: "14px", color: "rgba(255,255,255,0.8)", marginTop: "2px" }}>{profile.ceremonyVenueName}</p>}
-                {profile.ceremonyCity && <p style={{ fontFamily: jakarta, fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>{[profile.ceremonyCity, profile.ceremonyState].filter(Boolean).join(", ")}</p>}
+                {profile.ceremonyAddress && <p style={{ fontFamily: jakarta, fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>{profile.ceremonyAddress}</p>}
+                {ceremonyCityStateZip && <p style={{ fontFamily: jakarta, fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>{ceremonyCityStateZip}</p>}
               </div>
               <div className="rounded-lg border p-3 text-center" style={{ background: "rgba(255,255,255,0.05)", borderColor: "rgba(255,255,255,0.1)" }}>
                 <p style={{ fontFamily: jakarta, fontSize: "9px", fontWeight: 700, letterSpacing: "0.35em", textTransform: "uppercase", color: "hsl(var(--primary))", marginBottom: "4px" }}>Reception</p>
                 {receptionTimeStr && <p style={{ fontFamily: jakarta, fontSize: "13px", fontWeight: 600, color: "#fff" }}>{receptionTimeStr}</p>}
                 {profile.venue && <p style={{ fontFamily: cormorant, fontSize: "14px", color: "rgba(255,255,255,0.8)", marginTop: "2px" }}>{profile.venue}</p>}
+                {profile.venueAddress && <p style={{ fontFamily: jakarta, fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>{profile.venueAddress}</p>}
                 {cityStateZip && <p style={{ fontFamily: jakarta, fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>{cityStateZip}</p>}
               </div>
             </div>
@@ -203,6 +209,7 @@ function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) 
                 <MapPin className="h-3.5 w-3.5 text-primary/80" />
                 <p style={{ fontFamily: cormorant, fontSize: "1.1rem", color: "rgba(255,255,255,0.8)" }}>{profile.venue}</p>
               </div>
+              {profile.venueAddress && <p style={{ fontFamily: jakarta, fontSize: "11px", color: "rgba(255,255,255,0.5)" }}>{profile.venueAddress}</p>}
               {cityStateZip && <p style={{ fontFamily: jakarta, fontSize: "11px", color: "rgba(255,255,255,0.5)" }}>{cityStateZip}</p>}
               {(ceremonyTimeStr || receptionTimeStr) && (
                 <p style={{ fontFamily: jakarta, fontSize: "11px", color: "rgba(255,255,255,0.6)", marginTop: "2px" }}>
