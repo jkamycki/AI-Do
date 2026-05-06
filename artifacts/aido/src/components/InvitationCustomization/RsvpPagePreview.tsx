@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { CheckCircle2, XCircle, Heart, MapPin, Download } from "lucide-react";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 import type { ColorPalette } from "@/types/invitations";
@@ -13,6 +14,7 @@ interface RsvpPagePreviewProps {
   venue: string;
   photoUrl: string | null;
   photoPosition?: PhotoPosition;
+  onPhotoPositionChange?: (pos: PhotoPosition) => void;
   guestName?: string;
   scale?: number;
   venueAddress?: string | null;
@@ -68,6 +70,7 @@ export function RsvpPagePreview({
   venue,
   photoUrl,
   photoPosition = { x: 50, y: 50 },
+  onPhotoPositionChange,
   guestName = "Guest Name",
   scale = 1.0,
   venueAddress,
@@ -105,6 +108,27 @@ export function RsvpPagePreview({
     receptionTimeStr && `Reception ${receptionTimeStr}`,
   ].filter(Boolean).join("  ·  ");
 
+  const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
+
+  const handlePhotoPanDown = (e: React.PointerEvent) => {
+    if (!onPhotoPositionChange) return;
+    e.preventDefault();
+    panRef.current = { sx: e.clientX, sy: e.clientY, ox: photoPosition.x, oy: photoPosition.y };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePhotoPanMove = (e: React.PointerEvent) => {
+    if (!panRef.current || !onPhotoPositionChange) return;
+    const dx = e.clientX - panRef.current.sx;
+    const dy = e.clientY - panRef.current.sy;
+    onPhotoPositionChange({
+      x: Math.max(0, Math.min(100, panRef.current.ox - dx * 0.35)),
+      y: Math.max(0, Math.min(100, panRef.current.oy - dy * 0.35)),
+    });
+  };
+
+  const handlePhotoPanUp = () => { panRef.current = null; };
+
   return (
     <div
       className="relative mx-auto overflow-hidden rounded-xl shadow-2xl border"
@@ -138,7 +162,13 @@ export function RsvpPagePreview({
 
         {/* Photo */}
         {photoUrl && (
-          <div style={{ padding: "0 20px 12px" }}>
+          <div
+            style={{ padding: "0 20px 12px", cursor: onPhotoPositionChange ? "grab" : undefined }}
+            onPointerDown={handlePhotoPanDown}
+            onPointerMove={handlePhotoPanMove}
+            onPointerUp={handlePhotoPanUp}
+            onPointerCancel={handlePhotoPanUp}
+          >
             <AuthMediaImage
               src={photoUrl}
               alt={`${couple}'s wedding`}
@@ -147,7 +177,10 @@ export function RsvpPagePreview({
                 borderRadius: 10, display: "block",
                 boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
                 objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
+                pointerEvents: "none",
+                userSelect: "none",
               }}
+              draggable={false}
             />
           </div>
         )}
