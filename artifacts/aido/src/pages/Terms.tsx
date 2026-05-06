@@ -16,10 +16,10 @@ export default function Terms() {
 
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl text-foreground">Terms of Service</h1>
-          <p className="text-sm text-muted-foreground">Last updated: April 23, 2026</p>
+          <p className="text-sm text-foreground">Last updated: April 23, 2026</p>
         </div>
 
-        <div className="prose prose-sm max-w-none space-y-8 text-foreground/90 leading-relaxed">
+        <div className="max-w-none space-y-8 text-foreground leading-relaxed">
 
           <section className="space-y-3">
             <h2 className="font-serif text-xl font-semibold text-foreground">1. Acceptance of Terms</h2>
@@ -414,7 +414,7 @@ export default function Terms() {
             <img src="/logo.png" alt="A.IDO" className="h-10 w-auto object-contain" />
             <span className="font-semibold text-foreground">A.IDO</span>
           </div>
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All rights reserved.</p>
+          <p className="text-xs text-foreground">© {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All rights reserved.</p>
         </div>
       </div>
     </div>
