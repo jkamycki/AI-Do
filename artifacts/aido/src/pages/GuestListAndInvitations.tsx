@@ -34,12 +34,27 @@ class TabErrorBoundary extends Component<{ children: ReactNode; tabName: string 
 
   render() {
     if (this.state.hasError) {
+      const message = this.state.error?.message || "Unknown error";
+      const stack = this.state.error?.stack || "";
       return (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-center">
-          <p className="font-semibold text-destructive">This tab failed to load</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Try refreshing the page. If the issue persists, contact support.
-          </p>
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 space-y-3">
+          <div className="text-center">
+            <p className="font-semibold text-destructive">This tab failed to load</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Try refreshing the page. If it persists, share the details below with support.
+            </p>
+          </div>
+          <details className="text-xs bg-background/50 rounded p-3 border border-border/40">
+            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+              Show technical details
+            </summary>
+            <p className="mt-2 font-mono text-destructive break-words">{message}</p>
+            {stack && (
+              <pre className="mt-2 whitespace-pre-wrap break-words text-muted-foreground text-[10px] max-h-40 overflow-auto">
+                {stack}
+              </pre>
+            )}
+          </details>
         </div>
       );
     }
