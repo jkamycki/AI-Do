@@ -17,7 +17,6 @@ import {
 import { authFetch } from "@/lib/authFetch";
 import type { Guest } from "@workspace/api-client-react";
 import type { TextOverrides, ColorPalette } from "@/types/invitations";
-import { RsvpPagePreview } from "@/components/InvitationCustomization/RsvpPagePreview";
 import { AiSaveDatePreview, AiDigitalInvitationPreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
 
@@ -499,7 +498,7 @@ export function InvitationSendModal({
 }: Props) {
   const [customization, setCustomization] = useState<Customization | null>(null);
   const [loadingCustomization, setLoadingCustomization] = useState(false);
-  const [activeTab, setActiveTab] = useState<"saveTheDate" | "digitalInvitation" | "rsvpPage">("saveTheDate");
+  const [activeTab, setActiveTab] = useState<"saveTheDate" | "digitalInvitation">("saveTheDate");
   const [bypassBlock, setBypassBlock] = useState(false);
 
   useEffect(() => {
@@ -663,16 +662,13 @@ export function InvitationSendModal({
                 </div>
               </div>
 
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "saveTheDate" | "digitalInvitation" | "rsvpPage")}>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "saveTheDate" | "digitalInvitation")}>
                 <TabsList className="w-full">
                   <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
                     <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
                   </TabsTrigger>
                   <TabsTrigger value="digitalInvitation" className="flex-1 text-xs">
                     <Heart className="h-3.5 w-3.5 mr-1" /> RSVP Invitation
-                  </TabsTrigger>
-                  <TabsTrigger value="rsvpPage" className="flex-1 text-xs">
-                    <Eye className="h-3.5 w-3.5 mr-1" /> RSVP Page
                   </TabsTrigger>
                 </TabsList>
 
@@ -749,64 +745,18 @@ export function InvitationSendModal({
                   )}
                 </TabsContent>
 
-                <TabsContent value="rsvpPage" className="pt-4 space-y-4">
-                  <p className="text-xs text-muted-foreground text-center">This is exactly what your guest will see when they open their RSVP link</p>
-                  <div className="flex justify-center">
-                    <RsvpPagePreview
-                      scale={1.0}
-                      colors={palette}
-                      font={customization.digitalInvitationFont}
-                      backgroundColor={customization.digitalInvitationBackground}
-                      partner1Name={profile?.partner1Name ?? ""}
-                      partner2Name={profile?.partner2Name ?? ""}
-                      weddingDate={profile?.weddingDate ?? ""}
-                      venue={profile?.venue ?? ""}
-                      photoUrl={
-                        customization.digitalInvitationPhotoUrl
-                        || profile?.digitalInvitationPhotoUrl
-                        || profile?.invitationPhotoUrl
-                        || null
-                      }
-                      photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
-                      guestName={guest?.name}
-                      venueAddress={profile?.venueAddress}
-                      venueCity={profile?.venueCity}
-                      venueState={profile?.venueState}
-                      venueZip={profile?.venueZip}
-                      ceremonyTime={profile?.ceremonyTime}
-                      receptionTime={profile?.receptionTime}
-                      invitationMessage={profile?.invitationMessage}
-                    />
-                  </div>
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() => guest && onSendDigitalInvitation(guest.id)}
-                    disabled={isSendingDigital}
-                  >
-                    {isSendingDigital
-                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
-                    }
-                  </Button>
-                  {!guest?.email && (
-                    <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
-                  )}
-                </TabsContent>
               </Tabs>
             </div>
           ) : (
             /* ── AI-Generated Mode ── */
             <div className="space-y-4">
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "saveTheDate" | "digitalInvitation" | "rsvpPage")}>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "saveTheDate" | "digitalInvitation")}>
                 <TabsList className="w-full">
                   <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
                     <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
                   </TabsTrigger>
                   <TabsTrigger value="digitalInvitation" className="flex-1 text-xs">
                     <Heart className="h-3.5 w-3.5 mr-1" /> RSVP Invitation
-                  </TabsTrigger>
-                  <TabsTrigger value="rsvpPage" className="flex-1 text-xs">
-                    <Eye className="h-3.5 w-3.5 mr-1" /> RSVP Page
                   </TabsTrigger>
                 </TabsList>
 
@@ -868,49 +818,6 @@ export function InvitationSendModal({
                   )}
                 </TabsContent>
 
-                <TabsContent value="rsvpPage" className="pt-4 space-y-4">
-                  <p className="text-xs text-muted-foreground text-center">This is exactly what your guest will see when they open their RSVP link</p>
-                  <div className="flex justify-center">
-                    <RsvpPagePreview
-                      scale={1.0}
-                      colors={{ primary: "#D4A017", secondary: "#F5C842", accent: "#D4A017", neutral: "#E8E0D0" }}
-                      font={null}
-                      backgroundColor="#1E1A2E"
-                      partner1Name={profile?.partner1Name ?? ""}
-                      partner2Name={profile?.partner2Name ?? ""}
-                      weddingDate={profile?.weddingDate ?? ""}
-                      venue={profile?.venue ?? ""}
-                      photoUrl={
-                        customization.digitalInvitationPhotoUrl
-                        || profile?.digitalInvitationPhotoUrl
-                        || profile?.invitationPhotoUrl
-                        || null
-                      }
-                      photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
-                      guestName={guest?.name}
-                      venueAddress={profile?.venueAddress}
-                      venueCity={profile?.venueCity}
-                      venueState={profile?.venueState}
-                      venueZip={profile?.venueZip}
-                      ceremonyTime={profile?.ceremonyTime}
-                      receptionTime={profile?.receptionTime}
-                      invitationMessage={profile?.invitationMessage}
-                    />
-                  </div>
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() => guest && onSendDigitalInvitation(guest.id)}
-                    disabled={isSendingDigital}
-                  >
-                    {isSendingDigital
-                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
-                    }
-                  </Button>
-                  {!guest?.email && (
-                    <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
-                  )}
-                </TabsContent>
               </Tabs>
             </div>
           )}
