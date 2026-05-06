@@ -223,9 +223,6 @@ export function ColorSystemSection({
       <CardContent className="space-y-6">
         {/* Primary Color Input */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">
-            Enter your wedding color code here
-          </label>
           <div className="flex gap-2">
             <div className="flex-1 flex gap-2">
               <Input
