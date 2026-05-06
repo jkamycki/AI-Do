@@ -83,7 +83,7 @@ export function NextStepNudge() {
           <button
             onClick={() => {
               skip(current.step.id);
-              setStepIndex(i => Math.min(i + 1, activeSteps.length - 2));
+              setStepIndex(i => Math.min(i + 1, activeSteps.length - 1));
             }}
             className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
