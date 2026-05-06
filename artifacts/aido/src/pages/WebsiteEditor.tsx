@@ -15,7 +15,7 @@ import {
   QrCode, Download,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { WebsiteRenderer, type WebsiteRendererPayload } from "@/components/website/WebsiteRenderer";
+import { WebsiteRenderer, type WebsiteRendererPayload, parseWeddingPartyMembers, type WeddingPartyMember } from "@/components/website/WebsiteRenderer";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
@@ -637,6 +637,19 @@ export default function WebsiteEditor() {
           </label>
         </Section>
 
+        {/* Wedding Party */}
+        <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
+          <WeddingPartyEditor
+            members={parseWeddingPartyMembers(record.customText._weddingPartyMembers)}
+            onChange={(next) => update({ customText: { ...record.customText, _weddingPartyMembers: JSON.stringify(next) } })}
+            uploadFile={async (file) => {
+              const r = await upload.uploadFile(file);
+              return r?.objectPath ?? null;
+            }}
+            isUploading={upload.isUploading}
+          />
+        </Section>
+
         {/* Password */}
         <Section icon={<Lock className="h-4 w-4" />} title="Password Protection">
           {record.passwordEnabled ? (
@@ -714,6 +727,97 @@ export default function WebsiteEditor() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ---- wedding party editor ----
+
+function WeddingPartyEditor({
+  members,
+  onChange,
+  uploadFile,
+  isUploading,
+}: {
+  members: WeddingPartyMember[];
+  onChange: (next: WeddingPartyMember[]) => void;
+  uploadFile: (file: File) => Promise<string | null>;
+  isUploading: boolean;
+}) {
+  const updateMember = (index: number, patch: Partial<WeddingPartyMember>) => {
+    const next = members.map((m, i) => (i === index ? { ...m, ...patch } : m));
+    onChange(next);
+  };
+  const removeMember = (index: number) => {
+    onChange(members.filter((_, i) => i !== index));
+  };
+  const addMember = () => {
+    onChange([...members, { photo: "", name: "", role: "" }]);
+  };
+
+  return (
+    <div className="space-y-3">
+      {members.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          Add bridesmaids, groomsmen, parents, or anyone else standing with you. Each member gets a photo, name, and role on the public site.
+        </p>
+      )}
+      {members.map((m, i) => (
+        <div key={i} className="rounded-md border border-border p-3 space-y-2 bg-muted/20">
+          <div className="flex items-start gap-3">
+            <label className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0 cursor-pointer border-2 border-dashed border-border flex items-center justify-center bg-background hover:border-primary/50 transition-colors relative group">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const path = await uploadFile(file);
+                  if (path) updateMember(i, { photo: path });
+                  e.target.value = "";
+                }}
+                disabled={isUploading}
+              />
+              {m.photo ? (
+                <img
+                  src={m.photo.startsWith("/objects/") ? `/api/storage${m.photo}` : m.photo}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              ) : isUploading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : (
+                <ImageIcon className="h-4 w-4 text-muted-foreground" />
+              )}
+            </label>
+            <div className="flex-1 space-y-1.5">
+              <Input
+                value={m.name}
+                onChange={(e) => updateMember(i, { name: e.target.value })}
+                placeholder="Name"
+                className="h-8 text-sm"
+              />
+              <Input
+                value={m.role}
+                onChange={(e) => updateMember(i, { role: e.target.value })}
+                placeholder="Role (e.g. Bridesmaid, Best Man)"
+                className="h-8 text-sm"
+              />
+            </div>
+            <button
+              onClick={() => removeMember(i)}
+              className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+              aria-label="Remove member"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ))}
+      <Button size="sm" variant="outline" onClick={addMember} className="w-full" disabled={isUploading}>
+        Add member
+      </Button>
     </div>
   );
 }

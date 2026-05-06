@@ -407,6 +407,75 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
   );
 }
 
+export interface WeddingPartyMember {
+  photo: string;
+  name: string;
+  role: string;
+}
+
+export function parseWeddingPartyMembers(raw: string | undefined): WeddingPartyMember[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((m) => m && typeof m === "object")
+      .map((m) => ({
+        photo: typeof m.photo === "string" ? m.photo : "",
+        name: typeof m.name === "string" ? m.name : "",
+        role: typeof m.role === "string" ? m.role : "",
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
+  const members = parseWeddingPartyMembers(data.customText._weddingPartyMembers);
+  if (members.length === 0 && !ctx.editable) return null;
+  return (
+    <SectionShell id="weddingParty" titleKey="weddingParty_title" defaultTitle="Wedding Party" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx}>
+      <EditableText
+        as="div"
+        editable={ctx.editable}
+        value={data.customText.weddingParty_subtitle ?? ""}
+        defaultValue="Meet our family & friends standing with us"
+        onCommit={(v) => ctx.onTextChange("weddingParty_subtitle", v)}
+        className="block text-center text-base sm:text-lg max-w-2xl mx-auto mb-12 opacity-80"
+        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+      />
+      {members.length === 0 ? (
+        <p className="text-center text-sm opacity-60" style={{ color: data.colorPalette.text }}>
+          No wedding party members yet — add some from the sidebar.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10 max-w-3xl mx-auto">
+          {members.map((m, i) => (
+            <div key={i} className="flex flex-col items-center text-center">
+              <div
+                className="w-32 h-32 sm:w-36 sm:h-36 rounded-full overflow-hidden mb-4 flex items-center justify-center"
+                style={{ background: `${data.colorPalette.primary}15`, border: `1px solid ${data.colorPalette.primary}33` }}
+              >
+                {m.photo ? (
+                  <img src={imageUrl(m.photo)} alt={m.name} className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  <Heart className="h-8 w-8 opacity-30" style={{ color: data.colorPalette.primary }} />
+                )}
+              </div>
+              <div className="text-2xl sm:text-3xl mb-1" style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}>
+                {m.name || "Name"}
+              </div>
+              <div className="text-sm opacity-80" style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}>
+                {m.role || "Role"}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </SectionShell>
+  );
+}
+
 function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
   const dateStr = formatWeddingDate(data.couple.weddingDate);
@@ -435,6 +504,7 @@ function TopNav({ data, scrollContainer }: { data: WebsiteRendererPayload; scrol
   if (data.sectionsEnabled.schedule) items.push({ id: "schedule", label: "Schedule" });
   if (data.sectionsEnabled.travel) items.push({ id: "travel", label: "Travel" });
   if (data.sectionsEnabled.registry) items.push({ id: "registry", label: "Registry" });
+  if (data.sectionsEnabled.weddingParty) items.push({ id: "weddingParty", label: "Wedding Party" });
   if (data.sectionsEnabled.gallery) items.push({ id: "gallery", label: "Gallery" });
   if (data.sectionsEnabled.faq) items.push({ id: "faq", label: "FAQ" });
 
@@ -526,6 +596,7 @@ export function WebsiteRenderer({
       {data.sectionsEnabled.schedule && <Schedule data={data} ctx={ctx} />}
       {data.sectionsEnabled.travel && <Travel data={data} ctx={ctx} />}
       {data.sectionsEnabled.registry && <Registry data={data} ctx={ctx} />}
+      {data.sectionsEnabled.weddingParty && <WeddingParty data={data} ctx={ctx} />}
       {data.sectionsEnabled.faq && <Faq data={data} ctx={ctx} />}
       {data.sectionsEnabled.gallery && <Gallery data={data} ctx={ctx} />}
       <Footer data={data} ctx={ctx} />
