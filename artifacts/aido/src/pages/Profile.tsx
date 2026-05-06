@@ -48,7 +48,7 @@ const profileSchema = z.object({
   ceremonyZip: z.string().optional().default(""),
   guestCount: z.coerce.number().min(1, "Must be at least 1"),
   totalBudget: z.coerce.number().min(1, "Must be at least 1"),
-  weddingVibe: z.string().min(1, "Vibe is required"),
+  weddingVibe: z.string().optional().default(""),
   preferredLanguage: z.string().default("English"),
 });
 
@@ -98,7 +98,6 @@ export default function Profile() {
       ceremonyZip: "",
       guestCount: 100,
       totalBudget: 30000,
-      weddingVibe: "Romantic & Elegant",
       preferredLanguage: "English",
     },
   });
@@ -125,7 +124,6 @@ export default function Profile() {
         ceremonyZip: profile.ceremonyZip ?? "",
         guestCount: profile.guestCount,
         totalBudget: profile.totalBudget,
-        weddingVibe: profile.weddingVibe,
         preferredLanguage: profile.preferredLanguage ?? "English",
       });
     }
@@ -536,37 +534,6 @@ export default function Profile() {
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="weddingVibe"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("profile.wedding_vibe")}</FormLabel>
-                    <Select
-                      key={field.value || "empty"}
-                      value={field.value || undefined}
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="bg-background" data-testid="select-vibe">
-                          <SelectValue placeholder={t("profile.select_vibe")} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Romantic & Elegant">{t("profile.vibe_romantic")}</SelectItem>
-                        <SelectItem value="Modern & Minimalist">{t("profile.vibe_modern")}</SelectItem>
-                        <SelectItem value="Rustic & Boho">{t("profile.vibe_rustic")}</SelectItem>
-                        <SelectItem value="Vintage & Classic">{t("profile.vibe_vintage")}</SelectItem>
-                        <SelectItem value="Glamorous & Luxurious">{t("profile.vibe_glamorous")}</SelectItem>
-                        <SelectItem value="Casual & Intimate">{t("profile.vibe_casual")}</SelectItem>
-                        <SelectItem value="Whimsical & Playful">{t("profile.vibe_whimsical")}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <div className="flex justify-end gap-3 pt-4">
                 <Button
                   type="button"
@@ -592,7 +559,6 @@ export default function Profile() {
                     ceremonyZip: "",
                     guestCount: 0,
                     totalBudget: 0,
-                    weddingVibe: "",
                     preferredLanguage: "English",
                   })}
                   className="px-6"

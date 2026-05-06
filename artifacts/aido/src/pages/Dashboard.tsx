@@ -25,7 +25,6 @@ import {
   UsersRound,
   AlertTriangle,
   Pencil,
-  Gem,
   Hotel,
   ChevronRight,
   LayoutGrid,
@@ -841,12 +840,6 @@ export default function Dashboard() {
                   <UsersRound className="h-4 w-4 text-primary flex-shrink-0" />
                   <span className="text-sm text-foreground"><strong>{summary.profile.guestCount}</strong> {t("dashboard.expected_guests")}</span>
                 </div>
-                {summary.profile.weddingVibe && (
-                  <div className="flex items-center gap-2">
-                    <Gem className="h-4 w-4 text-primary flex-shrink-0" />
-                    <span className="text-sm text-foreground capitalize">{summary.profile.weddingVibe}</span>
-                  </div>
-                )}
                 {summary.profile.totalBudget > 0 && (
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-primary flex-shrink-0" />
