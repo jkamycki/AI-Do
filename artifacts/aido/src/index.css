@@ -239,3 +239,18 @@
   background: transparent;
 }
 
+
+/* Wedding website inline editor (contenteditable spans/divs) */
+.editable-text {
+  border-radius: 4px;
+  transition: outline-color 120ms ease, background-color 120ms ease;
+  outline: 2px dashed transparent;
+  outline-offset: 4px;
+}
+.editable-text:hover {
+  outline-color: rgba(99, 102, 241, 0.45);
+}
+.editable-text:focus {
+  outline: 2px solid rgba(99, 102, 241, 0.75) !important;
+  background-color: rgba(99, 102, 241, 0.06);
+}

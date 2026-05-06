@@ -12,6 +12,17 @@ function fontStack(font: string): string {
   return `'${font}', 'Playfair Display', Georgia, serif`;
 }
 
+function setMeta(name: string, content: string, isProperty = false) {
+  const attr = isProperty ? "property" : "name";
+  let el = document.head.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute(attr, name);
+    document.head.appendChild(el);
+  }
+  el.setAttribute("content", content);
+}
+
 function PasswordGate({ accent, font, onSubmit, error }: { accent: string; font: string; onSubmit: (pw: string) => void; error: string | null }) {
   const [pw, setPw] = useState("");
   return (
@@ -124,7 +135,22 @@ export default function PublicWebsite() {
 
   useEffect(() => {
     if (data) {
-      document.title = `${data.couple.partner1Name} & ${data.couple.partner2Name} — Wedding`;
+      const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
+      const description = (data.customText.welcome || data.customText.story || `Join us as we celebrate our wedding.`).slice(0, 160);
+      const heroAbsolute = data.heroImage
+        ? (data.heroImage.startsWith("/objects/") ? `${window.location.origin}/api/storage${data.heroImage}` : data.heroImage)
+        : null;
+      document.title = `${couple} — Wedding`;
+      setMeta("description", description);
+      setMeta("og:title", `${couple} — Wedding`, true);
+      setMeta("og:description", description, true);
+      setMeta("og:type", "website", true);
+      setMeta("og:url", window.location.href, true);
+      if (heroAbsolute) setMeta("og:image", heroAbsolute, true);
+      setMeta("twitter:card", heroAbsolute ? "summary_large_image" : "summary");
+      setMeta("twitter:title", `${couple} — Wedding`);
+      setMeta("twitter:description", description);
+      if (heroAbsolute) setMeta("twitter:image", heroAbsolute);
     } else {
       document.title = "Wedding Website";
     }
