@@ -12,7 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
+  QrCode, Download,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WebsiteRenderer, type WebsiteRendererPayload } from "@/components/website/WebsiteRenderer";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
@@ -39,7 +41,23 @@ const THEMES = [
 ];
 
 const FONTS = [
-  "Playfair Display", "Cormorant Garamond", "Inter", "Lora", "Merriweather", "Josefin Sans", "Montserrat", "Bodoni Moda",
+  "Playfair Display", "Cormorant Garamond", "Lora", "Merriweather", "Bodoni Moda", "Cinzel", "Italiana", "Tangerine", "Great Vibes", "Allura", "Parisienne",
+];
+
+const BODY_FONTS = [
+  "Inter", "Montserrat", "Josefin Sans", "Lato", "Open Sans", "Source Sans 3", "Nunito", "Raleway", "Poppins",
+];
+
+// Section keys that render a heading + body. Each gets a Title (chip),
+// Subtitle (h2), and Body (paragraph) text override.
+const SECTION_TEXT_KEYS: Array<{ key: string; label: string; defaultTitle: string; defaultSubtitle?: string }> = [
+  { key: "welcome",  label: "Welcome",  defaultTitle: "Welcome" },
+  { key: "story",    label: "Our Story", defaultTitle: "Our Story", defaultSubtitle: "How we got here" },
+  { key: "schedule", label: "Schedule",  defaultTitle: "Schedule", defaultSubtitle: "The day of" },
+  { key: "travel",   label: "Travel",    defaultTitle: "Travel & Venue", defaultSubtitle: "Where & how to get there" },
+  { key: "registry", label: "Registry",  defaultTitle: "Registry", defaultSubtitle: "With love" },
+  { key: "faq",      label: "FAQ",       defaultTitle: "FAQ", defaultSubtitle: "Good to know" },
+  { key: "gallery",  label: "Gallery",   defaultTitle: "Gallery", defaultSubtitle: "Moments" },
 ];
 
 const LAYOUT_STYLES = [
@@ -72,6 +90,8 @@ export default function WebsiteEditor() {
   const [dirty, setDirty] = useState(false);
   const [copied, setCopied] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
+  const [qrOpen, setQrOpen] = useState(false);
+  const [lastAutosaved, setLastAutosaved] = useState<Date | null>(null);
 
   const upload = useUpload({
     getToken,
@@ -169,6 +189,50 @@ export default function WebsiteEditor() {
     setRecord((prev) => (prev ? { ...prev, ...patch } : prev));
     setDirty(true);
   };
+
+  const saveNow = async (silent: boolean): Promise<boolean> => {
+    if (!record) return false;
+    if (!silent) setSaving(true);
+    try {
+      const r = await authFetch("/api/website/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          theme: record.theme,
+          layoutStyle: record.layoutStyle,
+          font: record.font,
+          accentColor: record.accentColor,
+          colorPalette: record.colorPalette,
+          sectionsEnabled: record.sectionsEnabled,
+          customText: record.customText,
+          galleryImages: record.galleryImages,
+          heroImage: record.heroImage,
+          ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
+        }),
+      });
+      if (!r.ok) throw new Error("Failed to save");
+      const body = (await r.json()) as WebsiteRecord;
+      setRecord(body);
+      setPasswordInput("");
+      setDirty(false);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      if (!silent) setSaving(false);
+    }
+  };
+
+  // Autosave: 10 seconds after the last change.
+  useEffect(() => {
+    if (!record || !dirty) return;
+    const timer = setTimeout(async () => {
+      const ok = await saveNow(true);
+      if (ok) setLastAutosaved(new Date());
+    }, 10000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record, dirty]);
 
   const handleSave = async () => {
     if (!record) return;
@@ -361,11 +425,16 @@ export default function WebsiteEditor() {
               {record.published ? "Live" : "Draft"}
             </Badge>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
               {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
               {saving ? "Saving..." : dirty ? "Save changes" : "Saved"}
             </Button>
+            {!dirty && lastAutosaved && (
+              <span className="text-[11px] text-muted-foreground">
+                Autosaved {lastAutosaved.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+              </span>
+            )}
             <Button size="sm" variant={record.published ? "outline" : "default"} onClick={handlePublish} disabled={publishing}>
               {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Globe className="h-3.5 w-3.5 mr-1.5" />}
               {record.published ? "Unpublish" : "Publish"}
@@ -374,6 +443,12 @@ export default function WebsiteEditor() {
               <Button size="sm" variant="outline" onClick={() => window.open(publicUrl, "_blank")}>
                 <Eye className="h-3.5 w-3.5 mr-1.5" />
                 Preview
+              </Button>
+            )}
+            {record.published && (
+              <Button size="sm" variant="outline" onClick={() => setQrOpen(true)}>
+                <QrCode className="h-3.5 w-3.5 mr-1.5" />
+                QR Code
               </Button>
             )}
           </div>
@@ -418,17 +493,34 @@ export default function WebsiteEditor() {
           </div>
         </Section>
 
-        {/* Font */}
-        <Section icon={<Type className="h-4 w-4" />} title="Font">
-          <select
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-            value={record.font}
-            onChange={(e) => update({ font: e.target.value })}
-          >
-            {FONTS.map((f) => (
-              <option key={f} value={f}>{f}</option>
-            ))}
-          </select>
+        {/* Typography */}
+        <Section icon={<Type className="h-4 w-4" />} title="Typography">
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Heading font (couple names, titles)</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={record.customText._headingFont || record.font}
+                onChange={(e) => update({ customText: { ...record.customText, _headingFont: e.target.value }, font: e.target.value })}
+              >
+                {FONTS.map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Body font (paragraphs)</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={record.customText._bodyFont || "Inter"}
+                onChange={(e) => update({ customText: { ...record.customText, _bodyFont: e.target.value } })}
+              >
+                {BODY_FONTS.map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </Section>
 
         {/* Layout */}
@@ -469,19 +561,80 @@ export default function WebsiteEditor() {
           </div>
         </Section>
 
-        {/* Section text editors */}
-        <Section icon={<FileText className="h-4 w-4" />} title="Section Text">
-          {(["welcome","story","faq","travel","registry"] as const).map((key) => (
-            <div key={key} className="mb-4 last:mb-0">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 block">{key}</Label>
-              <Textarea
-                value={record.customText[key] ?? ""}
-                onChange={(e) => update({ customText: { ...record.customText, [key]: e.target.value } })}
-                className="min-h-[80px] resize-y text-sm"
-                placeholder={`Tell guests about ${key}...`}
+        {/* Hero text overrides */}
+        <Section icon={<FileText className="h-4 w-4" />} title="Hero">
+          <div className="space-y-2">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Tagline (above your names)</Label>
+              <Input
+                value={record.customText._heroTagline ?? ""}
+                onChange={(e) => update({ customText: { ...record.customText, _heroTagline: e.target.value } })}
+                placeholder="We're getting married"
+                className="text-sm"
               />
             </div>
+          </div>
+        </Section>
+
+        {/* Section text editors — each with title, subtitle, body */}
+        <Section icon={<FileText className="h-4 w-4" />} title="Section Text">
+          <p className="text-[11px] text-muted-foreground mb-3">
+            Leave any field blank to use the default. Body text is required for the section to show on the site.
+          </p>
+          {SECTION_TEXT_KEYS.map((s) => (
+            <details key={s.key} className="mb-2 last:mb-0 rounded-md border border-border overflow-hidden group">
+              <summary className="px-3 py-2 cursor-pointer text-sm font-medium hover:bg-muted/50 transition-colors flex items-center justify-between">
+                <span>{s.label}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {record.customText[s.key]?.trim() ? "edited" : "default"}
+                </span>
+              </summary>
+              <div className="p-3 pt-0 space-y-2 bg-muted/20">
+                <div>
+                  <Label className="text-[11px] text-muted-foreground mb-1 block">Title (small chip)</Label>
+                  <Input
+                    value={record.customText[`${s.key}_title`] ?? ""}
+                    onChange={(e) => update({ customText: { ...record.customText, [`${s.key}_title`]: e.target.value } })}
+                    placeholder={s.defaultTitle}
+                    className="text-sm h-8"
+                  />
+                </div>
+                {s.defaultSubtitle !== undefined && (
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground mb-1 block">Heading</Label>
+                    <Input
+                      value={record.customText[`${s.key}_subtitle`] ?? ""}
+                      onChange={(e) => update({ customText: { ...record.customText, [`${s.key}_subtitle`]: e.target.value } })}
+                      placeholder={s.defaultSubtitle}
+                      className="text-sm h-8"
+                    />
+                  </div>
+                )}
+                {(s.key === "welcome" || s.key === "story" || s.key === "travel" || s.key === "registry" || s.key === "faq") && (
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground mb-1 block">Body</Label>
+                    <Textarea
+                      value={record.customText[s.key] ?? ""}
+                      onChange={(e) => update({ customText: { ...record.customText, [s.key]: e.target.value } })}
+                      placeholder={`Tell guests about ${s.label.toLowerCase()}...`}
+                      className="min-h-[80px] resize-y text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+            </details>
           ))}
+        </Section>
+
+        {/* Footer */}
+        <Section icon={<FileText className="h-4 w-4" />} title="Footer">
+          <Label className="text-xs text-muted-foreground mb-1 block">Footer text (under couple names)</Label>
+          <Input
+            value={record.customText._footerText ?? ""}
+            onChange={(e) => update({ customText: { ...record.customText, _footerText: e.target.value } })}
+            placeholder="(defaults to wedding date)"
+            className="text-sm"
+          />
         </Section>
 
         {/* Hero image */}
@@ -590,6 +743,42 @@ export default function WebsiteEditor() {
           <WebsiteRenderer data={livePreview} />
         </div>
       </main>
+
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Wedding website QR code</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-2">
+            <div className="rounded-lg border bg-white p-3">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=${encodeURIComponent(publicUrl)}`}
+                alt="QR code"
+                className="w-64 h-64"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center font-mono break-all">{publicUrl}</p>
+            <Button
+              variant="outline"
+              className="w-full"
+              asChild
+            >
+              <a
+                href={`https://api.qrserver.com/v1/create-qr-code/?size=800x800&margin=10&data=${encodeURIComponent(publicUrl)}`}
+                download="wedding-website-qr.png"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download QR
+              </a>
+            </Button>
+            <p className="text-[11px] text-muted-foreground text-center">
+              Print this on save-the-dates, place cards, or signage. Guests scan it to open your wedding site.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

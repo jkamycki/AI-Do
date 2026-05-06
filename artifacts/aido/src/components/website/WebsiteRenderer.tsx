@@ -57,9 +57,28 @@ function fontStack(font: string): string {
   return `'${font}', 'Playfair Display', Georgia, serif`;
 }
 
+function bodyFontStack(font: string): string {
+  return `'${font}', system-ui, -apple-system, sans-serif`;
+}
+
 function imageUrl(url: string): string {
   if (url.startsWith("/objects/")) return `/api/storage${url}`;
   return url;
+}
+
+function headingFont(data: WebsiteRendererPayload): string {
+  return (data.customText._headingFont || "").trim() || data.font;
+}
+
+function bodyFont(data: WebsiteRendererPayload): string {
+  return (data.customText._bodyFont || "").trim() || "Inter";
+}
+
+// Reads a custom override or returns the default. Empty string in the
+// override means "use default" (so users can clear a field to revert).
+function txt(data: WebsiteRendererPayload, key: string, fallback: string): string {
+  const v = data.customText[key];
+  return v && v.trim() ? v : fallback;
 }
 
 function Hero({ data }: { data: WebsiteRendererPayload }) {
@@ -81,9 +100,9 @@ function Hero({ data }: { data: WebsiteRendererPayload }) {
           className="uppercase tracking-[0.3em] text-xs sm:text-sm mb-6 opacity-80"
           style={{ color: data.heroImage ? "#fff" : data.colorPalette.primary }}
         >
-          We're getting married
+          {txt(data, "_heroTagline", "We're getting married")}
         </p>
-        <h1 className="text-5xl sm:text-7xl md:text-8xl mb-6 leading-tight" style={{ fontFamily: fontStack(data.font) }}>
+        <h1 className="text-5xl sm:text-7xl md:text-8xl mb-6 leading-tight" style={{ fontFamily: fontStack(headingFont(data)) }}>
           {couple}
         </h1>
         <div className="flex items-center justify-center gap-4 text-base sm:text-lg opacity-90">
@@ -136,8 +155,8 @@ function Welcome({ data }: { data: WebsiteRendererPayload }) {
   const text = data.customText.welcome ?? "";
   if (!text) return null;
   return (
-    <SectionShell id="welcome" title="Welcome" icon={<Heart className="h-4 w-4" />} data={data}>
-      <p className="text-center text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto" style={{ color: data.colorPalette.text }}>
+    <SectionShell id="welcome" title={txt(data, "welcome_title", "Welcome")} icon={<Heart className="h-4 w-4" />} data={data}>
+      <p className="text-center text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto whitespace-pre-line" style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}>
         {text}
       </p>
     </SectionShell>
@@ -148,11 +167,11 @@ function Story({ data }: { data: WebsiteRendererPayload }) {
   const text = data.customText.story ?? "";
   if (!text) return null;
   return (
-    <SectionShell id="story" title="Our Story" icon={<Heart className="h-4 w-4" />} data={data}>
-      <h2 className="text-center text-3xl sm:text-4xl mb-8" style={{ fontFamily: fontStack(data.font), color: data.colorPalette.text }}>
-        How we got here
+    <SectionShell id="story" title={txt(data, "story_title", "Our Story")} icon={<Heart className="h-4 w-4" />} data={data}>
+      <h2 className="text-center text-3xl sm:text-4xl mb-8" style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}>
+        {txt(data, "story_subtitle", "How we got here")}
       </h2>
-      <p className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line" style={{ color: data.colorPalette.text }}>
+      <p className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line" style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}>
         {text}
       </p>
     </SectionShell>
@@ -164,9 +183,9 @@ function Schedule({ data }: { data: WebsiteRendererPayload }) {
   const hasFallback = data.couple.ceremonyTime || data.couple.receptionTime;
   if (events.length === 0 && !hasFallback) return null;
   return (
-    <SectionShell id="schedule" title="Schedule" icon={<Clock className="h-4 w-4" />} data={data}>
-      <h2 className="text-center text-3xl sm:text-4xl mb-10" style={{ fontFamily: fontStack(data.font), color: data.colorPalette.text }}>
-        The day of
+    <SectionShell id="schedule" title={txt(data, "schedule_title", "Schedule")} icon={<Clock className="h-4 w-4" />} data={data}>
+      <h2 className="text-center text-3xl sm:text-4xl mb-10" style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}>
+        {txt(data, "schedule_subtitle", "The day of")}
       </h2>
       <div className="space-y-5 max-w-2xl mx-auto">
         {events.length > 0 ? (
@@ -220,9 +239,9 @@ function Travel({ data }: { data: WebsiteRendererPayload }) {
   const text = data.customText.travel ?? "";
   if (!text && !data.couple.venue) return null;
   return (
-    <SectionShell id="travel" title="Travel & Venue" icon={<MapPin className="h-4 w-4" />} data={data}>
-      <h2 className="text-center text-3xl sm:text-4xl mb-8" style={{ fontFamily: fontStack(data.font), color: data.colorPalette.text }}>
-        Where & how to get there
+    <SectionShell id="travel" title={txt(data, "travel_title", "Travel & Venue")} icon={<MapPin className="h-4 w-4" />} data={data}>
+      <h2 className="text-center text-3xl sm:text-4xl mb-8" style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}>
+        {txt(data, "travel_subtitle", "Where & how to get there")}
       </h2>
       {data.couple.venue && (
         <div className="text-center mb-6">
@@ -247,9 +266,9 @@ function Registry({ data }: { data: WebsiteRendererPayload }) {
   const text = data.customText.registry ?? "";
   if (!text) return null;
   return (
-    <SectionShell id="registry" title="Registry" icon={<Gift className="h-4 w-4" />} data={data}>
-      <h2 className="text-center text-3xl sm:text-4xl mb-8" style={{ fontFamily: fontStack(data.font), color: data.colorPalette.text }}>
-        With love
+    <SectionShell id="registry" title={txt(data, "registry_title", "Registry")} icon={<Gift className="h-4 w-4" />} data={data}>
+      <h2 className="text-center text-3xl sm:text-4xl mb-8" style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}>
+        {txt(data, "registry_subtitle", "With love")}
       </h2>
       <p className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line" style={{ color: data.colorPalette.text }}>
         {text}
@@ -262,9 +281,9 @@ function Faq({ data }: { data: WebsiteRendererPayload }) {
   const text = data.customText.faq ?? "";
   if (!text) return null;
   return (
-    <SectionShell id="faq" title="FAQ" icon={<HelpCircle className="h-4 w-4" />} data={data}>
-      <h2 className="text-center text-3xl sm:text-4xl mb-8" style={{ fontFamily: fontStack(data.font), color: data.colorPalette.text }}>
-        Good to know
+    <SectionShell id="faq" title={txt(data, "faq_title", "FAQ")} icon={<HelpCircle className="h-4 w-4" />} data={data}>
+      <h2 className="text-center text-3xl sm:text-4xl mb-8" style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}>
+        {txt(data, "faq_subtitle", "Good to know")}
       </h2>
       <p className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line" style={{ color: data.colorPalette.text }}>
         {text}
@@ -277,9 +296,9 @@ function Gallery({ data }: { data: WebsiteRendererPayload }) {
   const images = (data.galleryImages ?? []).slice().sort((a, b) => a.order - b.order);
   if (images.length === 0) return null;
   return (
-    <SectionShell id="gallery" title="Gallery" icon={<ImageIcon className="h-4 w-4" />} data={data}>
-      <h2 className="text-center text-3xl sm:text-4xl mb-10" style={{ fontFamily: fontStack(data.font), color: data.colorPalette.text }}>
-        Moments
+    <SectionShell id="gallery" title={txt(data, "gallery_title", "Gallery")} icon={<ImageIcon className="h-4 w-4" />} data={data}>
+      <h2 className="text-center text-3xl sm:text-4xl mb-10" style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}>
+        {txt(data, "gallery_subtitle", "Moments")}
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {images.map((img, i) => (
@@ -304,10 +323,11 @@ function Gallery({ data }: { data: WebsiteRendererPayload }) {
 
 function Footer({ data }: { data: WebsiteRendererPayload }) {
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
+  const dateStr = formatWeddingDate(data.couple.weddingDate);
   return (
     <footer className="py-12 px-6 text-center" style={{ background: data.colorPalette.primary, color: "#fff" }}>
-      <div className="text-2xl mb-2" style={{ fontFamily: fontStack(data.font) }}>{couple}</div>
-      <div className="text-sm opacity-80">{formatWeddingDate(data.couple.weddingDate)}</div>
+      <div className="text-2xl mb-2" style={{ fontFamily: fontStack(headingFont(data)) }}>{couple}</div>
+      <div className="text-sm opacity-80 whitespace-pre-line">{txt(data, "_footerText", dateStr)}</div>
     </footer>
   );
 }
@@ -365,7 +385,7 @@ function TopNav({ data, scrollContainer }: { data: WebsiteRendererPayload; scrol
         <button
           onClick={() => scrollTo("home")}
           className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
-          style={{ fontFamily: fontStack(data.font), color: data.colorPalette.primary }}
+          style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
         >
           {couple}
         </button>
@@ -378,7 +398,7 @@ function TopNav({ data, scrollContainer }: { data: WebsiteRendererPayload; scrol
               style={{
                 color: data.colorPalette.text,
                 borderBottom: active === it.id ? `2px solid ${data.colorPalette.primary}` : "2px solid transparent",
-                fontFamily: fontStack(data.font),
+                fontFamily: fontStack(headingFont(data)),
               }}
             >
               {it.label}
