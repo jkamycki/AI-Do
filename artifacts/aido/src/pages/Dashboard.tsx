@@ -2,7 +2,8 @@ import { useGetDashboardSummary, getListVendorsQueryKey, getGetDashboardSummaryQ
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@clerk/react";
 import { useLocation } from "wouter";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, Component } from "react";
+import type { ReactNode } from "react";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -75,9 +76,42 @@ function getGreetingKey() {
   return "dashboard.good_evening";
 }
 
-function formatDate(dateStr: string) {
-  const d = new Date(dateStr + "T12:00:00");
-  return d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+// Safari throws RangeError on Invalid Date.toLocaleDateString() — wrap in try/catch
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr + "T12:00:00");
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  } catch {
+    return dateStr;
+  }
+}
+
+class DashboardErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: string }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: "" };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
+          <AlertCircle className="h-12 w-12 text-destructive" />
+          <h2 className="text-2xl font-serif">Something went wrong</h2>
+          <p className="text-sm text-muted-foreground max-w-sm">{this.state.error}</p>
+          <Button onClick={() => window.location.reload()}>Reload page</Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 function formatTime(timeStr: string | null | undefined) {
@@ -636,6 +670,7 @@ export default function Dashboard() {
     : 0;
 
   return (
+    <DashboardErrorBoundary>
     <div className="space-y-6 max-w-5xl mx-auto">
       <OnboardingWizard open={showOnboarding} onDismiss={dismissOnboarding} />
       {cropSrc && (
@@ -1155,5 +1190,6 @@ export default function Dashboard() {
         />
       </div>
     </div>
+    </DashboardErrorBoundary>
   );
 }
