@@ -18,8 +18,8 @@ import { authFetch } from "@/lib/authFetch";
 import type { Guest } from "@workspace/api-client-react";
 import type { TextOverrides, ColorPalette } from "@/types/invitations";
 import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
-import { DigitalInvitationPreview } from "@/components/InvitationCustomization/DigitalInvitationPreview";
-import { AiSaveDatePreview, AiDigitalInvitationPreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
+import { RsvpPagePreview } from "@/components/InvitationCustomization/RsvpPagePreview";
+import { AiSaveDatePreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
 
 interface Customization {
@@ -727,50 +727,28 @@ export function InvitationSendModal({
                     This is exactly what will be emailed to your guest
                   </p>
                   <div className="flex justify-center overflow-hidden">
-                    {profile && (isCustomMode ? (
-                      <DigitalInvitationPreview
-                        photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
+                    {profile && (
+                      <RsvpPagePreview
+                        colors={palette}
+                        font={customization.digitalInvitationFont}
+                        backgroundColor={customization.digitalInvitationBackground}
+                        partner1Name={profile.partner1Name ?? ""}
+                        partner2Name={profile.partner2Name ?? ""}
+                        weddingDate={profile.weddingDate ?? ""}
                         venue={profile.venue ?? ""}
-                        location={profile.location ?? profile.venueAddress ?? ""}
+                        photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
+                        photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
+                        guestName={guest?.name ?? "Guest"}
+                        venueAddress={profile.location ?? profile.venueAddress ?? ""}
                         venueCity={profile.venueCity ?? ""}
                         venueState={profile.venueState ?? ""}
                         venueZip={profile.venueZip ?? ""}
                         ceremonyTime={profile.ceremonyTime ?? ""}
                         receptionTime={profile.receptionTime ?? ""}
-                        guestName={guest?.name ?? "Guest"}
-                        colors={palette}
-                        font={customization.digitalInvitationFont}
-                        layout={customization.digitalInvitationLayout}
-                        backgroundColor={customization.digitalInvitationBackground}
-                        partner1Name={profile.partner1Name ?? ""}
-                        partner2Name={profile.partner2Name ?? ""}
-                        weddingDate={profile.weddingDate ?? ""}
-                        message={profile.invitationMessage ?? undefined}
-                        textOverrides={Object.fromEntries(Object.entries(customization.textOverrides).filter(([k]) => k.startsWith("dig:")))}
-                        onTextOverridesChange={() => {}}
-                        editable={false}
+                        invitationMessage={profile.invitationMessage ?? ""}
+                        scale={0.72}
                       />
-                    ) : (
-                      <AiDigitalInvitationPreview
-                        profile={{
-                          partner1Name: profile.partner1Name ?? "",
-                          partner2Name: profile.partner2Name ?? "",
-                          weddingDate: profile.weddingDate ?? "",
-                          venue: profile.venue ?? "",
-                          venueAddress: profile.location ?? profile.venueAddress ?? "",
-                          venueCity: profile.venueCity ?? "",
-                          venueState: profile.venueState ?? "",
-                          venueZip: profile.venueZip ?? "",
-                          ceremonyTime: profile.ceremonyTime ?? "",
-                          receptionTime: profile.receptionTime ?? "",
-                          invitationMessage: profile.invitationMessage ?? "",
-                        }}
-                        palette={palette}
-                        photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
-                        photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
-                        customColors={digCustomColors}
-                      />
-                    ))}
+                    )}
                   </div>
                   <Button
                     className="w-full gap-2"
