@@ -89,8 +89,11 @@ router.get("/guest-collect/:token/preview", async (req, res) => {
     const description = `${name1} & ${name2} are collecting mailing addresses for their wedding invitations. Tap to share your contact info.`;
 
     const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() || req.protocol;
-    const host = (req.headers["x-forwarded-host"] as string)?.split(",")[0]?.trim() || req.get("host");
-    const origin = `${proto}://${host}`;
+    const rawHost = (req.headers["x-forwarded-host"] as string)?.split(",")[0]?.trim() || req.get("host") || "";
+    // Only allow safe host values (alphanumeric, dots, hyphens, colons for port)
+    const safeProto = proto === "https" ? "https" : "http";
+    const safeHost = /^[a-zA-Z0-9.\-:]+$/.test(rawHost) ? rawHost : (process.env.APP_ORIGIN ?? "aidowedding.net");
+    const origin = `${safeProto}://${safeHost}`;
     const formUrl = `${origin}/collect/${req.params.token}`;
 
     const safeTitle = escapeHtml(title);

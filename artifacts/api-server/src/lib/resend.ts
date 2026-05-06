@@ -38,6 +38,8 @@ export interface RetrievedEmail {
 export async function getEmail(emailId: string): Promise<RetrievedEmail | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return null;
+  // Validate emailId to prevent SSRF — Resend IDs are alphanumeric with hyphens/underscores
+  if (!/^[a-zA-Z0-9_-]{1,200}$/.test(emailId)) return null;
   const candidates = [
     `${RESEND_API}/inbound/emails/${emailId}`,
     `${RESEND_API}/inbound/${emailId}`,
@@ -152,12 +154,20 @@ export function cleanInboundText(text: string): string {
 /** Strip HTML tags safely (very conservative - we surface text, not rendered HTML). */
 export function htmlToText(html: string): string {
   if (!html) return "";
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
+  // Use indexOf-based removal for <style> and <script> blocks to avoid ReDoS
+  let s = html;
+  for (const [open, close] of [["<style", "</style>"], ["<script", "</script>"]] as const) {
+    let i: number;
+    while ((i = s.toLowerCase().indexOf(open)) >= 0) {
+      const j = s.toLowerCase().indexOf(close, i);
+      if (j < 0) { s = s.slice(0, i); break; }
+      s = s.slice(0, i) + s.slice(j + close.length);
+    }
+  }
+  return s
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n\n")
-    .replace(/<[^>]+>/g, "")
+    .replace(/<[^>]{0,2000}>/g, "")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")

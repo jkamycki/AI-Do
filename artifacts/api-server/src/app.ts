@@ -20,7 +20,9 @@ app.set("trust proxy", 1);
 // crossOriginResourcePolicy is loosened so the Vercel frontend can fetch responses.
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    // This is a JSON API; restrict everything by default. The frontend owns
+    // its own CSP — this header here only applies to any HTML error pages.
+    contentSecurityPolicy: { directives: { defaultSrc: ["'none'"] } },
     crossOriginResourcePolicy: { policy: "cross-origin" },
   }),
 );
@@ -71,27 +73,32 @@ if (process.env.NODE_ENV === "production") {
 
     type FetchHeaders = Record<string, string>;
 
+    const FAPI_BASE = "https://frontend-api.clerk.dev";
+    const BAPI_BASE = "https://api.clerk.com";
+
     const fapiFetch = (
       path: string,
       method: "POST" | "GET",
       headers: FetchHeaders,
       body?: string,
-    ) =>
-      fetch(`https://frontend-api.clerk.dev${path}`, {
+    ) => {
+      const url = new URL(path, FAPI_BASE);
+      if (url.origin !== FAPI_BASE) throw new Error("Invalid Clerk FAPI path");
+      return fetch(url.toString(), {
         method,
-        headers: {
-          ...headers,
-          "Clerk-Secret-Key": secretKey,
-        },
+        headers: { ...headers, "Clerk-Secret-Key": secretKey },
         body,
       });
+    };
 
     const bapiFetch = (
       path: string,
       method: "POST" | "GET",
       jsonBody?: unknown,
-    ) =>
-      fetch(`https://api.clerk.com${path}`, {
+    ) => {
+      const url = new URL(path, BAPI_BASE);
+      if (url.origin !== BAPI_BASE) throw new Error("Invalid Clerk BAPI path");
+      return fetch(url.toString(), {
         method,
         headers: {
           Authorization: `Bearer ${secretKey}`,
@@ -99,6 +106,7 @@ if (process.env.NODE_ENV === "production") {
         },
         body: jsonBody === undefined ? undefined : JSON.stringify(jsonBody),
       });
+    };
 
     // Properly forward upstream response (handles multi-value Set-Cookie)
     const forwardResponse = (

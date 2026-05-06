@@ -35,7 +35,13 @@ export function setWorkspaceProfileId(id: number | null): void {
  * Pass `null` to clear the base URL.
  */
 export function setBaseUrl(url: string | null): void {
-  _baseUrl = url ? url.replace(/\/+$/, "") : null;
+  if (url) {
+    let trimmed = url;
+    while (trimmed.endsWith("/")) trimmed = trimmed.slice(0, -1);
+    _baseUrl = trimmed;
+  } else {
+    _baseUrl = null;
+  }
 }
 
 /**
