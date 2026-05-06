@@ -164,10 +164,6 @@ export function AiSaveDatePreview({
   const couple    = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine  = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-  const timesLine = !customColors && [
-    formatTime(profile.ceremonyTime)  && `Ceremony ${formatTime(profile.ceremonyTime)}`,
-    formatTime(profile.receptionTime) && `Reception ${formatTime(profile.receptionTime)}`,
-  ].filter(Boolean).join(" · ");
 
   return (
     <CardShell photoUrl={photoUrl} photoPosition={photoPosition} customColors={customColors}>
@@ -212,12 +208,6 @@ export function AiSaveDatePreview({
           {cityLine}
         </p>
       )}
-      {timesLine && (
-        <p style={{ fontFamily: jakarta, fontSize: 10, color: accent, margin: "6px 0 0" }}>
-          {timesLine}
-        </p>
-      )}
-
       {profile.saveTheDateMessage && (
         <p style={{ fontFamily: cormorant, fontSize: "0.95rem", fontStyle: "italic",
                     color: text, lineHeight: 1.7, margin: "14px 0 0" }}>
