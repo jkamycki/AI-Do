@@ -739,6 +739,7 @@ export function InvitationSendModal({
                         venue={profile.venue ?? ""}
                         photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
                         photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
+                        onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
                         guestName={guest?.name ?? "Guest"}
                         venueAddress={profile.location ?? profile.venueAddress ?? ""}
                         venueCity={profile.venueCity ?? ""}
