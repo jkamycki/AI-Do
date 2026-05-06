@@ -22,7 +22,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Clock, AlertCircle, CheckCircle2, Eye } from "lucide-react";
+import { Mail, Clock, AlertCircle, CheckCircle2, Eye, Trash2 } from "lucide-react";
 
 export default function OperationsCenterPage() {
   const { getToken } = useAuth();
@@ -75,6 +75,21 @@ export default function OperationsCenterPage() {
     },
     onError: () => {
       toast({ title: "Failed to send follow-up", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (ticketId: number) => {
+      const r = await authedFetch(`/api/help/support-tickets/${ticketId}`, { method: "DELETE" });
+      if (!r.ok) throw new Error("Failed to delete ticket");
+      return r.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Ticket deleted." });
+      queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete ticket", variant: "destructive" });
     },
   });
 
@@ -230,6 +245,20 @@ export default function OperationsCenterPage() {
                   </div>
 
                   <div className="flex gap-2 flex-shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => {
+                        if (confirm("Delete this ticket? This cannot be undone.")) {
+                          deleteMutation.mutate(ticket.id);
+                        }
+                      }}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button

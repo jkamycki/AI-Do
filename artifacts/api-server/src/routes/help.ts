@@ -381,4 +381,18 @@ router.patch("/help/support-tickets/:id/status", requireAuth, async (req, res) =
   }
 });
 
+router.delete("/help/support-tickets/:id", requireAuth, async (req, res) => {
+  try {
+    const admin = await isAdmin(req.userId!);
+    if (!admin) return res.status(403).json({ error: "Access denied." });
+
+    const ticketId = parseInt(String(req.params["id"] ?? "0"), 10);
+    await db.delete(supportTickets).where(eq(supportTickets.id, ticketId));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "Failed to delete ticket");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
