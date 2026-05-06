@@ -71,6 +71,7 @@ interface RsvpInfo {
   plusOneAllowed: boolean;
   hasPhoto: boolean;
   photoUrl: string | null;
+  photoObjectPosition?: string | null;
   invitationMessage: string | null;
   colorPalette: { primary: string; secondary: string; accent: string; neutral: string } | null;
   backgroundColor: string | null;
@@ -338,6 +339,7 @@ export default function Rsvp() {
                 crossOrigin="anonymous"
                 style={{
                   width: "100%", height: 200, objectFit: "cover",
+                  objectPosition: info.photoObjectPosition ?? "50% 50%",
                   borderRadius: 8, display: "block",
                   boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
                 }}

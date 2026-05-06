@@ -898,6 +898,7 @@ router.get("/rsvp/:token", async (req, res) => {
       ? await db
           .select({
             digitalInvitationPhotoUrl: invitationCustomizations.digitalInvitationPhotoUrl,
+            digitalInvitationPhotoPosition: invitationCustomizations.digitalInvitationPhotoPosition,
             colorPalette: invitationCustomizations.colorPalette,
             customColors: invitationCustomizations.customColors,
             digitalInvitationBackground: invitationCustomizations.digitalInvitationBackground,
@@ -944,6 +945,10 @@ router.get("/rsvp/:token", async (req, res) => {
       plusOneAllowed: true,
       hasPhoto: !!resolvedPhotoUrl,
       photoUrl: resolvedPhotoUrl,
+      photoObjectPosition: (() => {
+        const pos = c?.digitalInvitationPhotoPosition as { x?: number; y?: number } | null;
+        return pos ? `${pos.x ?? 50}% ${pos.y ?? 50}%` : "50% 50%";
+      })(),
       invitationMessage: profile?.invitationMessage ?? null,
       // Custom design theming — used to style the RSVP page
       colorPalette: mergedPalette,
