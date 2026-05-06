@@ -181,7 +181,7 @@ CASE A — user provided all required fields up front (real business name + cate
   Turn 3 (you): IMMEDIATELY call the tool. No more text, no more questions.
 
 CASE B — user is missing the vendor name (e.g. said "add a vendor" or "add a photographer" with no business name):
-  Turn 1 (you): ask the VENDOR GATHERING QUESTION (below). Do not summarize yet. Do NOT call add_vendor.
+  Turn 1 (you): ask the VENDOR GATHERING QUESTION (below). Do not summarize yet. Do NOT call add_vendor. DO NOT pass the gathering question as the vendor name — that is NEVER a valid name.
   Turn 2 (user): answers with their details.
   Turn 3 (you): one-line summary in present/future tense + Reply "yes" to save. (Same as Case A turn 1.)
   Turn 4 (user): yes.
@@ -189,6 +189,7 @@ CASE B — user is missing the vendor name (e.g. said "add a vendor" or "add a p
 
 VENDOR GATHERING QUESTION — use this exact style whenever the user wants to add a vendor but hasn't given a name:
   "What's the vendor's name and category (florist, photographer, caterer, DJ, etc.)? Feel free to also share the total cost, deposit amount, or any other details — only the name is needed to get started!"
+  ⚠️ WARNING: Never use this question text as the vendor name argument. It is a message to the user, not a name to save.
 
 Examples:
   • User: "Add vendor [Name], Florist, total cost 5000" → You: "Saving [Name] (Florist) with a total cost of $5,000. Reply 'yes' to save." → User: "yes" → You: [calls add_vendor immediately, no extra text].
@@ -706,6 +707,17 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       // uses these as defaults when the user hasn't provided a real name.
       if (/^(bloom\s*&?\s*co|happy clicks studio|sarah lee photography)$/i.test(lowerName)) {
         return { ok: false, error: `"${vendorName}" is an example name, not a name the user provided. Ask the user: "What's the specific business name?" then call add_vendor with their real answer.` };
+      }
+      // Reject names that are clearly questions or the gathering-question text.
+      // A real business name never contains a question mark or exceeds 80 chars.
+      if (vendorName.includes("?")) {
+        return { ok: false, error: `"${vendorName}" is a question, not a business name. Ask the user for the vendor's name and wait for their reply before calling add_vendor.` };
+      }
+      if (vendorName.length > 80) {
+        return { ok: false, error: `Vendor name is too long to be a real business name. Ask the user: "What's the specific business name?" then call add_vendor with their real answer.` };
+      }
+      if (/^(what'?s|what is|please|could you|can you|tell me|i need|i want|add a |add an )/i.test(vendorName)) {
+        return { ok: false, error: `"${vendorName.slice(0, 40)}…" looks like a prompt or question, not a business name. Ask the user for the vendor's name and wait for their reply.` };
       }
       const depositAmt = Number(args.depositAmount ?? 0);
       const todayISO = new Date().toISOString().slice(0, 10);

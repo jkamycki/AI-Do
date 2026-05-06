@@ -1,8 +1,12 @@
 import { Router } from "express";
-import { db, contactMessages, feedbackSubmissions, adminUsers, supportTickets } from "@workspace/db";
-import { eq, desc, or } from "drizzle-orm";
+import { db, contactMessages, feedbackSubmissions, supportTickets } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { randomUUID } from "crypto";
+import { clerkClient } from "@clerk/express";
+import { sendEmail, FROM_EMAIL } from "../lib/resend";
+
+const OWNER_EMAILS = ["kamyckijoseph@gmail.com"];
 
 const router = Router();
 
@@ -67,13 +71,13 @@ router.post("/help/feedback", requireAuth, async (req, res) => {
 });
 
 async function isAdmin(userId: string): Promise<boolean> {
-  const OWNER_EMAILS_LOWER = ["kamyckijoseph@gmail.com"];
-  const rows = await db
-    .select()
-    .from(adminUsers)
-    .where(eq(adminUsers.userId, userId))
-    .limit(1);
-  return rows.length > 0;
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    const userEmails = user.emailAddresses.map(e => e.emailAddress.toLowerCase());
+    return OWNER_EMAILS.some(e => userEmails.includes(e));
+  } catch {
+    return false;
+  }
 }
 
 router.get("/help/messages", requireAuth, async (req, res) => {
@@ -205,6 +209,44 @@ router.post("/help/support-ticket", async (req, res) => {
       })
       .returning();
 
+    // Notify the ops team
+    sendEmail({
+      to: OWNER_EMAILS[0],
+      from: FROM_EMAIL,
+      replyTo: email.trim().toLowerCase(),
+      subject: `[${ticketNumber}] New Support Ticket: ${subject.trim().slice(0, 80)}`,
+      text: [
+        `New support ticket submitted via A.IDO`,
+        ``,
+        `Ticket: ${ticketNumber}`,
+        `From:   ${name.trim()} <${email.trim()}>`,
+        `Category: ${category.trim()}`,
+        `Subject: ${subject.trim()}`,
+        ``,
+        `--- Conversation ---`,
+        message.trim(),
+      ].join("\n"),
+    }).catch(() => {});
+
+    // Confirm receipt to the user
+    sendEmail({
+      to: email.trim().toLowerCase(),
+      replyTo: OWNER_EMAILS[0],
+      subject: `We received your support request [${ticketNumber}]`,
+      text: [
+        `Hi ${name.trim()},`,
+        ``,
+        `Thanks for reaching out to A.IDO support. We've received your message and will get back to you as soon as possible.`,
+        ``,
+        `Your ticket number is: ${ticketNumber}`,
+        ``,
+        `--- Your conversation ---`,
+        message.trim(),
+        ``,
+        `— The A.IDO Team`,
+      ].join("\n"),
+    }).catch(() => {});
+
     res.json({
       success: true,
       ticketNumber: ticket.ticketNumber,
@@ -250,6 +292,33 @@ router.patch("/help/support-tickets/:id/follow-up", requireAuth, async (req, res
     }
 
     const ticketId = parseInt(String(req.params["id"] ?? "0"), 10);
+
+    // Fetch the ticket so we have the original subject for the email
+    const [existing] = await db
+      .select()
+      .from(supportTickets)
+      .where(eq(supportTickets.id, ticketId))
+      .limit(1);
+
+    if (!existing) return res.status(404).json({ error: "Ticket not found." });
+
+    // Actually send the email before saving so we can report failure
+    const emailResult = await sendEmail({
+      to: followUpEmail.trim(),
+      replyTo: OWNER_EMAILS[0],
+      subject: `Re: ${existing.subject} [${existing.ticketNumber}]`,
+      text: [
+        followUpNotes.trim(),
+        ``,
+        `— A.IDO Support Team`,
+        `Ticket: ${existing.ticketNumber}`,
+      ].join("\n"),
+    });
+
+    if (!emailResult.ok) {
+      req.log.error({ error: emailResult.error }, "Failed to send follow-up email");
+      return res.status(502).json({ error: `Email delivery failed: ${emailResult.error}` });
+    }
 
     const [updated] = await db
       .update(supportTickets)

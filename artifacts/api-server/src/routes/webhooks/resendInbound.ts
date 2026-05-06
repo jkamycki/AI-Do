@@ -115,22 +115,21 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
 
     const sender = extractSender(data.from);
 
-    // Sender identity verification: compare the From: address against the stored
-    // vendor email. If the vendor has a known email, any mismatch means the token
-    // was used by someone other than the actual vendor (impersonation attempt).
-    // If no email is stored yet, pin the first sender so future messages can be
-    // verified.
+    // Sender identity check: the token is already a cryptographic secret so
+    // the email check is advisory only. Log a mismatch but still accept the
+    // message — vendors often reply from a different address than the one saved
+    // in their profile (personal vs business email, alias, etc.) and silently
+    // dropping their reply is worse than accepting it.
     const [vendor] = await db.select().from(vendors).where(eq(vendors.id, conv.vendorId)).limit(1);
     if (vendor) {
       if (vendor.email) {
         const normalizedSender = sender.email.trim().toLowerCase();
         const normalizedVendor = vendor.email.trim().toLowerCase();
-        if (!normalizedSender || normalizedSender !== normalizedVendor) {
+        if (normalizedSender && normalizedSender !== normalizedVendor) {
           logger.warn(
             { conversationId: conv.id, vendorId: vendor.id, expectedEmail: vendor.email, actualEmail: sender.email },
-            "Inbound email sender mismatch — rejecting as possible impersonation"
+            "Inbound email sender mismatch — accepting anyway (token is authoritative)"
           );
-          return res.status(200).json({ ignored: true, reason: "sender mismatch" });
         }
       } else if (sender.email) {
         await db.update(vendors).set({ email: sender.email.trim().toLowerCase() }).where(eq(vendors.id, vendor.id));
