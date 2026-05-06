@@ -10,6 +10,7 @@ import {
   useDeleteGuest,
   useAcknowledgeGuest,
   getGetGuestsQueryKey,
+  getGetDashboardSummaryQueryKey,
   useGetProfile,
 } from "@workspace/api-client-react";
 import type { Guest } from "@workspace/api-client-react";
@@ -672,7 +673,10 @@ export default function Guests() {
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" }));
 
   const queryKey = getGetGuestsQueryKey();
-  const invalidate = () => queryClient.invalidateQueries({ queryKey });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey });
+    queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+  };
 
   function optimisticUpdate(guestId: number, patch: Partial<Guest>) {
     queryClient.setQueryData(queryKey, (old: typeof data) => {

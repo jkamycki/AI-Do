@@ -11,6 +11,7 @@ import {
   useUpdateManualExpense,
   useDeleteManualExpense,
   getListManualExpensesQueryKey,
+  getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { authFetch } from "@/lib/authFetch";
 import { useToast } from "@/hooks/use-toast";
@@ -178,6 +179,7 @@ export default function Budget() {
         onSuccess: () => {
           toast({ title: t("budget.toast_budget_updated") });
           queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
           setEditingBudget(false);
         },
         onError: () => toast({ variant: "destructive", title: t("budget.toast_could_not_update_budget") }),

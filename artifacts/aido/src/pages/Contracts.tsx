@@ -452,6 +452,7 @@ export default function Contracts() {
     mutationFn: (id: number) => authFetch(`${API}/api/contracts/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contracts"] });
+      qc.invalidateQueries({ queryKey: ["next-steps", "contracts"] });
       toast({ title: t("contracts.contract_removed") });
     },
   });
@@ -465,6 +466,7 @@ export default function Contracts() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contracts"] });
+      qc.invalidateQueries({ queryKey: ["next-steps", "contracts"] });
       toast({ title: t("contracts.contract_renamed") });
     },
     onError: () => toast({ title: t("contracts.could_not_rename"), variant: "destructive" }),

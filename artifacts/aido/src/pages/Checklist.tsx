@@ -4,7 +4,8 @@ import {
   useGenerateChecklist,
   useToggleChecklistItem,
   useGetProfile,
-  getGetChecklistQueryKey
+  getGetChecklistQueryKey,
+  getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
@@ -48,7 +49,10 @@ export default function Checklist() {
   const [newTask, setNewTask] = useState("");
   const [newDescription, setNewDescription] = useState("");
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+  };
 
   const updateItem = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<ChecklistItem> }) => {

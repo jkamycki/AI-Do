@@ -8,7 +8,7 @@ import {
   verticalListSortingStrategy, useSortable, arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useGetTimeline, useGenerateTimeline, useGetProfile, getGetTimelineQueryKey } from "@workspace/api-client-react";
+import { useGetTimeline, useGenerateTimeline, useGetProfile, getGetTimelineQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
 import { useToast } from "@/hooks/use-toast";
@@ -509,6 +509,7 @@ export default function Timeline() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       setIsDirty(false);
       toast({ title: "Timeline saved" });
     },
@@ -526,6 +527,7 @@ export default function Timeline() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       setIsDirty(false);
       toast({ title: t("timeline.reset_success"), description: t("timeline.reset_success_desc") });
     },
@@ -620,6 +622,7 @@ export default function Timeline() {
         onSuccess: () => {
           toast({ title: t("timeline.generated_title"), description: t("timeline.generated_desc") });
           queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
           setIsDirty(false);
           setEditingEvent(null);
           setAddingEvent(false);
