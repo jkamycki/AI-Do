@@ -467,7 +467,7 @@ export function Sidebar() {
         <nav className="flex-1 p-4 space-y-4">
           {navSections.map((section) => (
             <div key={section.labelKey}>
-              <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary">
                 {t(section.labelKey, { defaultValue: section.labelKey })}
               </p>
               <div className="space-y-0.5">
@@ -479,7 +479,7 @@ export function Sidebar() {
           ))}
 
           <div className="border-t border-primary/10 pt-4">
-            <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary">
               {t("sidebar.workspace_section")}
             </p>
             <div className="space-y-0.5">
@@ -505,7 +505,7 @@ export function Sidebar() {
             variant="ghost"
             size="sm"
             onClick={handleSignOut}
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/5"
+            className="w-full justify-start gap-3 text-primary hover:text-destructive hover:bg-destructive/5"
           >
             <LogOut className="h-4 w-4" />
             <span>{t("sidebar.sign_out")}</span>
