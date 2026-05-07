@@ -58,6 +58,8 @@ export interface WebsiteRendererPayload {
   customText: Record<string, string>;
   textStyles?: Record<string, { fontFamily?: string; fontSize?: string; color?: string; bold?: boolean; italic?: boolean; animation?: string }>;
   textPositions?: Record<string, { x: number; y: number }>;
+  // Wedding party members synced from the portal (takes precedence over customText._weddingPartyMembers)
+  portalParty?: Array<{ id: number; name: string; role: string; side: string; photoUrl: string | null; sortOrder: number }>;
   galleryImages: Array<{ url: string; caption?: string; order: number }>;
   heroImage: string | null;
   couple: {
@@ -1154,7 +1156,15 @@ function PartyMemberCard({ data, member }: { data: WebsiteRendererPayload; membe
 }
 
 function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
-  const members = parseWeddingPartyMembers(data.customText._weddingPartyMembers);
+  // Portal party members take precedence over manually-entered ones
+  const members: WeddingPartyMember[] = data.portalParty && data.portalParty.length > 0
+    ? data.portalParty.map((m) => ({
+        photo: m.photoUrl ?? "",
+        name: m.name,
+        role: m.role,
+        side: (m.side === "groom" || m.side === "bride" || m.side === "family") ? m.side as WeddingPartySide : undefined,
+      }))
+    : parseWeddingPartyMembers(data.customText._weddingPartyMembers);
   if (members.length === 0 && !ctx.editable) return null;
 
   const groomSide = members.filter((m) => m.side === "groom");

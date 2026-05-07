@@ -410,6 +410,7 @@ export default function WebsiteEditor() {
     textPositions: record.textPositions ?? {},
     galleryImages: record.galleryImages,
     heroImage: record.heroImage,
+    portalParty: record.portalParty,
     couple: previewExtra?.couple ?? {
       partner1Name: "",
       partner2Name: "",
@@ -699,15 +700,27 @@ export default function WebsiteEditor() {
 
         {/* Wedding Party */}
         <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
-          <WeddingPartyEditor
-            members={parseWeddingPartyMembers(record.customText._weddingPartyMembers)}
-            onChange={(next) => update({ customText: { ...record.customText, _weddingPartyMembers: JSON.stringify(next) } })}
-            uploadFile={async (file) => {
-              const r = await upload.uploadFile(file);
-              return r?.objectPath ?? null;
-            }}
-            isUploading={upload.isUploading}
-          />
+          {record.portalParty && record.portalParty.length > 0 ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 dark:bg-emerald-950/30 text-xs text-emerald-800 dark:text-emerald-200">
+                <Users className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>Synced from your Wedding Party portal ({record.portalParty.length} member{record.portalParty.length !== 1 ? "s" : ""})</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Members are managed in the <strong>Wedding Party</strong> section of this portal. Changes there sync here automatically.
+              </p>
+            </div>
+          ) : (
+            <WeddingPartyEditor
+              members={parseWeddingPartyMembers(record.customText._weddingPartyMembers)}
+              onChange={(next) => update({ customText: { ...record.customText, _weddingPartyMembers: JSON.stringify(next) } })}
+              uploadFile={async (file) => {
+                const r = await upload.uploadFile(file);
+                return r?.objectPath ?? null;
+              }}
+              isUploading={upload.isUploading}
+            />
+          )}
         </Section>
 
         {/* Announcement banner */}
