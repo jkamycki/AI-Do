@@ -1,145 +1,165 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
 
 export default function DataHandling() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-zinc-950 text-white">
       <div className="max-w-3xl mx-auto px-6 py-12">
         <Link href="/">
-          <Button variant="ghost" size="sm" className="mb-8 -ml-2 text-muted-foreground hover:text-foreground gap-1.5">
+          <Button variant="ghost" size="sm" className="mb-8 -ml-2 text-zinc-300 hover:text-white hover:bg-white/10 gap-1.5">
             <ArrowLeft className="h-4 w-4" />
             Back to Home
           </Button>
         </Link>
 
-        <div className="space-y-2 mb-10">
-          <h1 className="font-serif text-4xl text-foreground">Data Handling Statement</h1>
-          <p className="text-sm text-muted-foreground">Last updated: April 26, 2026</p>
-        </div>
-
-        <div className="prose prose-sm max-w-none space-y-8 text-foreground/90 leading-relaxed">
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">1. Overview</h2>
-            <p>
-              This Data Handling Statement explains in plain language how A.IDO collects, stores, processes,
-              and retains data on your behalf. It is intended to complement our Privacy Policy and Terms of
-              Service by providing a practical, transparent description of our data flows and responsibilities.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">2. Types of Data We Handle</h2>
-            <div className="space-y-4">
-              <div>
-                <p className="font-medium text-foreground">Account Data</p>
-                <p className="text-sm">Your email address and display name collected during registration and managed by Clerk (our authentication provider).</p>
-              </div>
-              <div>
-                <p className="font-medium text-foreground">Wedding Profile Data</p>
-                <p className="text-sm">Partner names, wedding date, venue, ceremony style, estimated guest count, and other profile information you provide.</p>
-              </div>
-              <div>
-                <p className="font-medium text-foreground">Guest Data</p>
-                <p className="text-sm">Guest names, contact details, RSVP status, meal preferences, dietary restrictions, seating assignments, and hotel information you enter.</p>
-              </div>
-              <div>
-                <p className="font-medium text-foreground">Vendor Data</p>
-                <p className="text-sm">Vendor names, categories, contact information, pricing, contract details, payment milestones, and email correspondence managed through the platform.</p>
-              </div>
-              <div>
-                <p className="font-medium text-foreground">Financial Data</p>
-                <p className="text-sm">Budget allocations, actual spend, vendor payments, and financial summaries. We do not process or store payment card information — no financial transactions occur through A.IDO.</p>
-              </div>
-              <div>
-                <p className="font-medium text-foreground">AI Conversation Data</p>
-                <p className="text-sm">Messages you send to Aria, our AI assistant. These are transmitted to Anthropic for processing and stored in our database to maintain your conversation history. You can clear your history at any time.</p>
-              </div>
-              <div>
-                <p className="font-medium text-foreground">Uploaded Files</p>
-                <p className="text-sm">Contract documents and other files you upload to the Service are stored securely in our infrastructure and associated with your account.</p>
-              </div>
-            </div>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">3. Where Your Data Lives</h2>
-            <p>Your data is stored in the following systems:</p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li><strong>Primary database:</strong> A managed PostgreSQL instance hosted in the cloud. All data is stored in a single database associated with your user account.</li>
-              <li><strong>File storage:</strong> Uploaded files are stored in a secure object storage service (App Storage).</li>
-              <li><strong>Authentication:</strong> Your account credentials and session data are managed by Clerk's infrastructure.</li>
-              <li><strong>AI processing:</strong> Messages sent to Aria are transmitted to Anthropic's API for real-time processing. Anthropic does not use customer API data to train their models by default.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">4. Data Isolation and Multi-Tenancy</h2>
-            <p>
-              Each user's data is logically isolated within our database using user-specific identifiers. All
-              queries are scoped to the authenticated user's account or workspaces they have been explicitly
-              granted access to. We do not commingle data between unrelated accounts, and our API enforces
-              server-side authorization checks on every request.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">5. Data Shared with Collaborators</h2>
-            <p>
-              When you invite a collaborator (e.g., a partner, planner, or day-of coordinator) to your
-              workspace, they are granted access to the wedding data within that workspace according to their
-              assigned role. You are responsible for choosing whom to invite. Collaborators may view, edit,
-              or — depending on their role — delete data within the shared workspace. Revoking access removes
-              their ability to access the workspace going forward but does not undo previous actions.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">6. Data Retention and Deletion</h2>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li><strong>Active accounts:</strong> Your data is retained for as long as your account exists and you continue using the Service.</li>
-              <li><strong>Account deletion:</strong> When you delete your account through Settings, your wedding data and personal information are scheduled for removal from our active systems. This process may take up to 30 days.</li>
-              <li><strong>AI conversation history:</strong> You can clear your Aria conversation history at any time using the "Clear all" function on the Aria page.</li>
-              <li><strong>Backups:</strong> Deleted data may persist in encrypted backups for a limited period (typically up to 90 days) before being permanently purged.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">7. Data Export</h2>
-            <p>
-              We encourage all users to regularly export their important wedding data. Where export tools are
-              available within the app (e.g., guest list export, budget data), we encourage you to use them
-              and store copies independently. A.IDO is not a system of record and should not be treated as
-              your only copy of critical planning information.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">8. No Sale of Data</h2>
-            <p>
-              We do not sell, rent, or trade your personal data or wedding planning information to any third
-              party for marketing or commercial purposes. Your data is used solely to provide and improve the
-              A.IDO Service.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">9. Contact</h2>
-            <p>
-              For questions about how we handle your data, please contact us through the Help &amp; Feedback
-              section within the app after signing in.
-            </p>
-          </section>
-
-        </div>
-
-        <div className="mt-12 pt-8 border-t border-border/40 text-center">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <img src="/logo.png" alt="A.IDO" className="h-10 w-auto object-contain" />
-            <span className="font-semibold text-foreground">A.IDO</span>
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 mb-8 flex items-start gap-3 text-amber-100">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-amber-300" />
+          <div className="space-y-1 text-sm leading-relaxed">
+            <p className="font-semibold text-amber-200">Draft — review with legal counsel before publishing.</p>
+            <p>This page describes what we store, where we send it, and how long we keep it. Confirm everything matches production reality before publishing.</p>
           </div>
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All rights reserved.</p>
+        </div>
+
+        <div className="space-y-2 mb-10">
+          <h1 className="font-serif text-4xl">Data Handling</h1>
+          <p className="text-sm text-zinc-300">Last updated: November 2026</p>
+        </div>
+
+        <div className="space-y-8 leading-relaxed">
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">What We Store</h2>
+            <p>For each wedding workspace, we store:</p>
+            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+              <li><strong>Profile</strong> — couple names, wedding date, venue, location (city/state/zip), ceremony &amp; reception times, guest count, total budget, theme, preferred language.</li>
+              <li><strong>Budget</strong> — line items, manual expenses, payment logs, vendor totals, deposit milestones.</li>
+              <li><strong>Checklist</strong> — month-by-month tasks and completion state.</li>
+              <li><strong>Timeline</strong> — minute-by-minute day-of events and any AI-generated drafts.</li>
+              <li><strong>Vendors</strong> — name, category, email, phone, contracts, deposit amount, contract-signed flag, notes.</li>
+              <li><strong>Vendor messages</strong> — drafted, sent, and received emails (when wired through Resend).</li>
+              <li><strong>Contracts</strong> — uploaded contract PDFs and AI-generated summary / risk flags.</li>
+              <li><strong>Mood board</strong> — uploaded images and AI suggestions.</li>
+              <li><strong>Guest list</strong> — names, optional email/phone/address, dietary notes, plus-ones, RSVP status, table assignment, save-the-date / e-invite delivery status.</li>
+              <li><strong>Hotel blocks</strong> — hotel name, address, code, room counts, booking link.</li>
+              <li><strong>Wedding party</strong> — member names, roles, sides, photos, notes (email/phone fields removed).</li>
+              <li><strong>Seating chart</strong> — table layouts, guest-to-table assignments, themes per table.</li>
+              <li><strong>Wedding website</strong> — slug, theme/colors/fonts, custom text, hero photo, gallery, registry links, schedule, FAQ, RSVP responses, optional password.</li>
+              <li><strong>Aria conversations</strong> — your messages to Aria and her replies (resume-on-refresh).</li>
+              <li><strong>Support tickets</strong> — name, email, subject, message, status, our follow-up notes.</li>
+              <li><strong>Workspace collaborators</strong> — invited users and their assigned roles.</li>
+            </ul>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">Subprocessors</h2>
+            <p>To run the Service we share data with these vendors:</p>
+            <div className="overflow-x-auto rounded-lg border border-white/10">
+              <table className="w-full text-sm">
+                <thead className="bg-white/5 text-zinc-300 text-left">
+                  <tr>
+                    <th className="px-4 py-2.5 font-semibold">Subprocessor</th>
+                    <th className="px-4 py-2.5 font-semibold">Purpose</th>
+                    <th className="px-4 py-2.5 font-semibold">Data shared</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  <tr>
+                    <td className="px-4 py-2.5 align-top"><strong>Clerk</strong></td>
+                    <td className="px-4 py-2.5 align-top">Authentication, sessions, password breach checks</td>
+                    <td className="px-4 py-2.5 align-top text-zinc-200">Email, password hash, profile photo, login events</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 align-top"><strong>Resend</strong></td>
+                    <td className="px-4 py-2.5 align-top">Transactional email (RSVP confirmations, invite links, support replies, vendor emails)</td>
+                    <td className="px-4 py-2.5 align-top text-zinc-200">Sender, recipient, subject, body</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 align-top"><strong>OpenAI</strong></td>
+                    <td className="px-4 py-2.5 align-top">AI inference (Aria, contract analyzer, mood board suggestions, etc.)</td>
+                    <td className="px-4 py-2.5 align-top text-zinc-200">Prompt + context for the requested feature</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 align-top"><strong>Groq</strong></td>
+                    <td className="px-4 py-2.5 align-top">AI inference (fast Llama-based responses)</td>
+                    <td className="px-4 py-2.5 align-top text-zinc-200">Prompt + context for the requested feature</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 align-top"><strong>Render</strong></td>
+                    <td className="px-4 py-2.5 align-top">API hosting</td>
+                    <td className="px-4 py-2.5 align-top text-zinc-200">All API traffic, server logs</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 align-top"><strong>Vercel / Cloudflare</strong></td>
+                    <td className="px-4 py-2.5 align-top">Frontend hosting and CDN</td>
+                    <td className="px-4 py-2.5 align-top text-zinc-200">Static assets, request metadata</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 align-top"><strong>Postgres host</strong></td>
+                    <td className="px-4 py-2.5 align-top">Application database with encryption at rest</td>
+                    <td className="px-4 py-2.5 align-top text-zinc-200">All workspace data described above</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-zinc-300 text-sm">
+              We don't use third-party advertising networks, retargeting pixels, or session-replay tooling.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">Retention</h2>
+            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+              <li>Workspace data is retained while your account is active.</li>
+              <li>When you delete your account from Settings → Account, all wedding data (profile, budget, checklist,
+                  timeline, vendors, contracts, guest list, seating, wedding party, hotel blocks, wedding website,
+                  AI conversations) is permanently deleted from the primary database.</li>
+              <li>Database backups roll forward and are purged after roughly 30 days.</li>
+              <li>Server logs are retained for security and debugging for typically 30 days.</li>
+              <li>Aggregated, non-identifying analytics may be retained longer for product improvement.</li>
+            </ul>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">Export &amp; Portability</h2>
+            <p>
+              Many surfaces of the Service support export:
+            </p>
+            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+              <li>The seating chart exports to PDF.</li>
+              <li>The day-of timeline exports to PDF.</li>
+              <li>The mood board exports to PDF.</li>
+              <li>RSVP responses export to CSV.</li>
+              <li>For a full account-data export, email{" "}
+                <a className="text-amber-300 underline" href="mailto:support@aidowedding.net">support@aidowedding.net</a>{" "}
+                — we'll respond within a reasonable time, typically 30 days.
+              </li>
+            </ul>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">Guest-Submitted Data</h2>
+            <p>
+              When a guest RSVPs through your public wedding website, their submission is stored in your private
+              workspace. Off-list guests who use "RSVP anyway" are stored with the source flag <span className="font-mono text-zinc-300">rsvp_self_add</span>{" "}
+              and a notes line indicating they should be verified. As the workspace owner, you are the controller of
+              your guests' data — please honor any deletion or correction requests they make to you directly.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">Contact</h2>
+            <p>
+              Questions about data handling, exports, or deletion:{" "}
+              <a className="text-amber-300 underline" href="mailto:support@aidowedding.net">support@aidowedding.net</a>.
+            </p>
+          </section>
+
+        </div>
+
+        <div className="border-t border-white/10 pt-6 mt-12 flex items-center justify-between text-xs text-zinc-400">
+          <p>© {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All rights reserved.</p>
+          <Link href="/" className="hover:text-white">Home</Link>
         </div>
       </div>
     </div>

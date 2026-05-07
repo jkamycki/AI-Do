@@ -1,155 +1,197 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
 
 export default function Privacy() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-zinc-950 text-white">
       <div className="max-w-3xl mx-auto px-6 py-12">
         <Link href="/">
-          <Button variant="ghost" size="sm" className="mb-8 -ml-2 text-muted-foreground hover:text-foreground gap-1.5">
+          <Button variant="ghost" size="sm" className="mb-8 -ml-2 text-zinc-300 hover:text-white hover:bg-white/10 gap-1.5">
             <ArrowLeft className="h-4 w-4" />
             Back to Home
           </Button>
         </Link>
 
-        <div className="space-y-2 mb-10">
-          <h1 className="font-serif text-4xl text-foreground">Privacy Policy</h1>
-          <p className="text-sm text-muted-foreground">Last updated: April 26, 2026</p>
-        </div>
-
-        <div className="prose prose-sm max-w-none space-y-8 text-foreground/90 leading-relaxed">
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">1. Introduction</h2>
-            <p>
-              A.IDO ("we," "our," or "us") is committed to protecting your personal information. This Privacy Policy
-              explains how we collect, use, disclose, and safeguard your information when you use A.IDO — the
-              AI-powered wedding planning platform. Please read this policy carefully. By using the Service, you
-              consent to the practices described herein.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">2. Information We Collect</h2>
-            <p>We collect the following categories of information:</p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li><strong>Account information:</strong> Your name, email address, and profile details provided during registration.</li>
-              <li><strong>Wedding data:</strong> Guest lists, vendor details, budgets, timelines, seating arrangements, checklist items, contracts, and any other planning information you enter into the Service.</li>
-              <li><strong>Communications:</strong> Messages you send to vendors via the Service, and any content you submit to the AI assistant (Aria).</li>
-              <li><strong>Usage data:</strong> Pages visited, features used, clicks, session duration, and other interaction data collected automatically.</li>
-              <li><strong>Device information:</strong> Browser type, operating system, IP address, and device identifiers.</li>
-              <li><strong>Cookies and tracking technologies:</strong> We use cookies and similar technologies to maintain sessions, remember preferences, and analyze usage patterns.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">3. How We Use Your Information</h2>
-            <p>We use the information we collect to:</p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li>Provide, maintain, and improve the Service.</li>
-              <li>Process and respond to your requests, including AI assistant queries.</li>
-              <li>Send you transactional messages such as account verification and notifications.</li>
-              <li>Personalize your experience and deliver relevant features.</li>
-              <li>Monitor and analyze usage trends to enhance functionality and user experience.</li>
-              <li>Detect, investigate, and prevent fraudulent transactions and abuse.</li>
-              <li>Comply with legal obligations and enforce our Terms of Service.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">4. AI Processing of Your Data</h2>
-            <p>
-              When you interact with Aria, our AI planning assistant, the content of your messages — including
-              wedding details, vendor information, and planning questions — is transmitted to a third-party AI
-              provider (Anthropic) for processing. This data is used solely to generate a response to your query.
-              We do not sell your conversation data, and we configure our AI integrations to minimize data
-              retention by the provider. Please do not share sensitive personal information (e.g., credit card
-              numbers, government ID numbers) with the AI assistant.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">5. Sharing of Your Information</h2>
-            <p>We do not sell your personal information. We may share your data with:</p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li><strong>Service providers:</strong> Trusted third parties who assist in operating the Service (e.g., hosting, authentication, AI processing, email delivery) under appropriate confidentiality obligations.</li>
-              <li><strong>Collaborators:</strong> Users you explicitly invite to your wedding workspace, in accordance with the permissions you grant them.</li>
-              <li><strong>Legal authorities:</strong> When required by law, court order, or governmental authority, or to protect the rights, property, or safety of A.IDO, our users, or the public.</li>
-              <li><strong>Business transfers:</strong> In connection with a merger, acquisition, or sale of assets, your information may be transferred to the acquiring entity.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">6. Data Retention</h2>
-            <p>
-              We retain your personal information and wedding data for as long as your account is active or as
-              needed to provide the Service. You may delete your account at any time through the Settings page.
-              Upon deletion, we will remove your personal data from our active systems within a reasonable
-              timeframe, though some information may remain in backups or logs for a limited period as required
-              by law or for legitimate business purposes.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">7. Your Rights and Choices</h2>
-            <p>Depending on your jurisdiction, you may have the right to:</p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li>Access the personal information we hold about you.</li>
-              <li>Request correction of inaccurate or incomplete data.</li>
-              <li>Request deletion of your personal data.</li>
-              <li>Opt out of certain data processing activities.</li>
-              <li>Data portability — receiving your data in a structured, machine-readable format.</li>
-            </ul>
-            <p>
-              To exercise these rights, please contact us through the Help &amp; Feedback section within the app.
-              We will respond to your request within a reasonable timeframe in accordance with applicable law.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">8. Cookies</h2>
-            <p>
-              We use cookies to maintain your authentication session and remember your preferences. You can
-              control cookie behavior through your browser settings; however, disabling certain cookies may
-              prevent you from using some features of the Service.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">9. Children's Privacy</h2>
-            <p>
-              The Service is not directed at children under the age of 18. We do not knowingly collect personal
-              information from minors. If you believe we have inadvertently collected data from a minor, please
-              contact us and we will promptly delete it.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">10. Changes to This Policy</h2>
-            <p>
-              We may update this Privacy Policy from time to time. We will indicate the date of the latest
-              revision at the top of this page. Your continued use of the Service after changes are posted
-              constitutes your acceptance of the updated policy.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">11. Contact</h2>
-            <p>
-              If you have questions or concerns about this Privacy Policy or our data practices, please contact
-              us through the Help &amp; Feedback section within the app after signing in.
-            </p>
-          </section>
-
-        </div>
-
-        <div className="mt-12 pt-8 border-t border-border/40 text-center">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <img src="/logo.png" alt="A.IDO" className="h-10 w-auto object-contain" />
-            <span className="font-semibold text-foreground">A.IDO</span>
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 mb-8 flex items-start gap-3 text-amber-100">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-amber-300" />
+          <div className="space-y-1 text-sm leading-relaxed">
+            <p className="font-semibold text-amber-200">Draft — review with legal counsel before publishing.</p>
+            <p>This page is an AI-assisted draft tailored to A.IDO's current data flows. It is not legal advice. Have a New York-licensed attorney review for GDPR, CCPA, NY SHIELD Act, and any other obligations applicable to your business.</p>
           </div>
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All rights reserved.</p>
+        </div>
+
+        <div className="space-y-2 mb-10">
+          <h1 className="font-serif text-4xl">Privacy Policy</h1>
+          <p className="text-sm text-zinc-300">Last updated: November 2026</p>
+        </div>
+
+        <div className="space-y-8 leading-relaxed">
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">1. Who We Are</h2>
+            <p>
+              A.IDO is an AI-assisted wedding-planning platform operated by the team at aidowedding.net (the
+              "Service," "we," "us"). This Privacy Policy explains what information we collect, how we use it, and the
+              choices you have.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">2. Information We Collect</h2>
+            <p><strong>From you, when you create an account:</strong></p>
+            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+              <li>Identity and contact data (name, email, optional phone, profile photo) handled by our authentication
+                  provider, Clerk.</li>
+              <li>Wedding profile (couple names, wedding date, venue, location, ceremony / reception times, guest count,
+                  budget, theme).</li>
+              <li>Preferred language for UI and AI responses.</li>
+            </ul>
+            <p><strong>From you, when you use the planner:</strong></p>
+            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+              <li>Vendor records (contact info, contracts you upload, deposit amounts, payment milestones, notes).</li>
+              <li>Guest list (name, email, phone, address, dietary notes, plus-ones, RSVP status, table assignment).</li>
+              <li>Wedding-party member directory.</li>
+              <li>Hotel block details.</li>
+              <li>Mood-board images (uploaded photos).</li>
+              <li>Seating-chart layouts.</li>
+              <li>Wedding website content (text, images, theme, schedule, registry links, RSVP responses).</li>
+              <li>Day-of timeline events.</li>
+              <li>Conversations with our AI assistant (Aria) and AI support assistant.</li>
+              <li>Support tickets you file via the support widget.</li>
+            </ul>
+            <p><strong>From your guests, on the public wedding website:</strong></p>
+            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+              <li>Name, email, attendance, dietary notes, plus-one details, and any free-text message they include
+                  with their RSVP. Off-list guests can self-add via "RSVP anyway" — that data is also stored.</li>
+            </ul>
+            <p><strong>Automatically:</strong></p>
+            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+              <li>Standard server logs (IP address, user-agent, timestamps, request paths) for security and debugging.</li>
+              <li>Basic product-analytics events (e.g. user login, feature first-use) to understand engagement.</li>
+              <li>Cookies / local storage for authentication tokens, language preference, and UI state. We do not use
+                  third-party advertising or cross-site tracking cookies.</li>
+            </ul>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">3. How We Use Your Information</h2>
+            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+              <li>To operate the Service — display your data, sync changes across collaborators, generate AI output,
+                  send transactional email (RSVP confirmations, support replies, invite links).</li>
+              <li>To improve product quality and debug issues, using aggregate or anonymized signals where possible.</li>
+              <li>To enforce our Terms, prevent abuse, and protect users (rate-limiting, fraud detection).</li>
+              <li>To respond to your support requests.</li>
+            </ul>
+            <p>We do not sell your personal information. We do not use your data to train third-party AI models.</p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">4. AI Processing</h2>
+            <p>
+              When you use AI features (Aria, the support assistant, AI vendor email drafts, AI contract analysis,
+              AI timeline / checklist / mood board generation, AI seating chart, AI day-of coordinator), the prompts
+              and any necessary context (e.g. your guest count, vendor list, contract text) are transmitted to our
+              third-party AI providers — currently <strong>OpenAI</strong> and <strong>Groq</strong> — for processing
+              and returned to you. Per their policies at the time of writing, neither provider trains its public
+              models on API customer data, and content is retained only briefly for abuse monitoring (≤30 days).
+              We don't include your account email or wedding-website slug in AI prompts unless you explicitly type
+              them.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">5. Sharing Your Information</h2>
+            <p>We share information only with:</p>
+            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+              <li><strong>Workspace collaborators</strong> you invite (partner, planner, vendor) under role-based
+                  permissions.</li>
+              <li><strong>Subprocessors</strong> needed to run the Service: Clerk (auth), Resend (email delivery),
+                  OpenAI and Groq (AI inference), our hosting and database providers (currently Render and
+                  Postgres-as-a-service). See the Data Handling page for the full list and what each receives.</li>
+              <li><strong>Legal authorities</strong> if required by valid legal process or to protect rights, safety,
+                  and the integrity of the Service.</li>
+              <li><strong>Acquirers</strong> in the unlikely event of a sale, merger, or acquisition; you'll be
+                  notified before your information is transferred.</li>
+            </ul>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">6. Public Wedding Website</h2>
+            <p>
+              When you publish a wedding website, the content you mark as published becomes publicly accessible at
+              your chosen URL and may be indexed by search engines unless you set a password. Anything you put on the
+              public site (couple names, wedding date, venue, photos, schedule) is no longer private. RSVP submissions
+              from your guests are stored in your private workspace, not displayed on the public site.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">7. Your Rights &amp; Choices</h2>
+            <p>Depending on where you live, you may have the right to:</p>
+            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+              <li>Access, correct, or export your personal data.</li>
+              <li>Delete your account and the associated wedding workspace from Settings → Account.</li>
+              <li>Withdraw consent for any optional processing.</li>
+              <li>Object to or restrict processing in some circumstances.</li>
+              <li>Lodge a complaint with your local data-protection authority.</li>
+            </ul>
+            <p>
+              To exercise any of these rights, contact{" "}
+              <a className="text-amber-300 underline" href="mailto:support@aidowedding.net">support@aidowedding.net</a>.
+              We respond within a reasonable time — typically 30 days.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">8. Data Retention</h2>
+            <p>
+              We retain your data while your account is active. When you delete your account, we permanently remove
+              your wedding profile, budget, checklist, timeline, vendors, contracts, mood board, guest list, seating
+              charts, wedding party, hotel blocks, wedding website, and AI conversation history. Backups are retained
+              for up to 30 days for disaster-recovery purposes and then purged. Aggregated, non-identifying analytics
+              may be retained longer.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">9. Children</h2>
+            <p>
+              The Service is not directed to children under 18 and we do not knowingly collect their personal data.
+              If you believe a minor has provided us information, contact us and we will delete it.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">10. International Transfers</h2>
+            <p>
+              We are based in the United States. If you access the Service from outside the US, you consent to
+              transferring your data to the US for processing. Where required (e.g. EU/EEA users), we rely on
+              standard contractual clauses or equivalent transfer mechanisms with our subprocessors.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">11. Changes to This Policy</h2>
+            <p>
+              We may update this policy from time to time. Material changes will be communicated by email or in-app
+              notice. Continued use after the effective date constitutes acceptance.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">12. Contact</h2>
+            <p>
+              Privacy questions or data-rights requests:{" "}
+              <a className="text-amber-300 underline" href="mailto:support@aidowedding.net">support@aidowedding.net</a>.
+            </p>
+          </section>
+
+        </div>
+
+        <div className="border-t border-white/10 pt-6 mt-12 flex items-center justify-between text-xs text-zinc-400">
+          <p>© {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All rights reserved.</p>
+          <Link href="/" className="hover:text-white">Home</Link>
         </div>
       </div>
     </div>
