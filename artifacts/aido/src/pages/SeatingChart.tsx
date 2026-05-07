@@ -1,4 +1,4 @@
-import { useEffect, useState, useId } from "react";
+import { useEffect, useState, useId, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
 import { useGetGuests, useGetProfile, getGetGuestsQueryKey } from "@workspace/api-client-react";
@@ -680,6 +680,20 @@ export default function SeatingChartPage() {
       setSeatsPerTable(chart.seatsPerTable);
     }
   };
+
+  // On first mount, if there's no in-memory result and the user has saved
+  // charts, surface the most recently generated chart as the active view.
+  // savedCharts come back ordered by desc(createdAt), so [0] is the latest.
+  // Older charts stay accessible from the "Saved charts" list.
+  const autoLoadedRef = useRef(false);
+  useEffect(() => {
+    if (autoLoadedRef.current) return;
+    if (result || activeChartId !== null) { autoLoadedRef.current = true; return; }
+    if (chartsLoading || savedCharts.length === 0) return;
+    autoLoadedRef.current = true;
+    loadChart(savedCharts[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartsLoading, savedCharts]);
 
   const filledCount = guests.filter(g => g.name.trim()).length;
   const totalCapacity = tableCount * seatsPerTable;
