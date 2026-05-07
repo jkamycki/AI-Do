@@ -12,10 +12,10 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
-  QrCode, Download,
+  QrCode, Download, Link2, Plus,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { WebsiteRenderer, type WebsiteRendererPayload, parseWeddingPartyMembers, type WeddingPartyMember, type WeddingPartySide } from "@/components/website/WebsiteRenderer";
+import { WebsiteRenderer, type WebsiteRendererPayload, parseWeddingPartyMembers, parseRegistryLinks, type WeddingPartyMember, type WeddingPartySide, type RegistryLink } from "@/components/website/WebsiteRenderer";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
@@ -637,6 +637,16 @@ export default function WebsiteEditor() {
           </label>
         </Section>
 
+        {/* Registry Links */}
+        <Section icon={<Link2 className="h-4 w-4" />} title="Registry Links">
+          <RegistryLinksEditor
+            links={parseRegistryLinks(record.customText._registryLinks)}
+            onChange={(next) =>
+              update({ customText: { ...record.customText, _registryLinks: JSON.stringify(next) } })
+            }
+          />
+        </Section>
+
         {/* Wedding Party */}
         <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
           <WeddingPartyEditor
@@ -727,6 +737,86 @@ export default function WebsiteEditor() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ---- registry links editor ----
+
+const REGISTRY_PRESETS = [
+  "Amazon Wishlist",
+  "Zola",
+  "Crate & Barrel",
+  "Williams-Sonoma",
+  "Target",
+  "Bed Bath & Beyond",
+  "Pottery Barn",
+  "Honeymoon Fund",
+];
+
+function RegistryLinksEditor({
+  links,
+  onChange,
+}: {
+  links: RegistryLink[];
+  onChange: (next: RegistryLink[]) => void;
+}) {
+  const add = () => onChange([...links, { name: "", url: "" }]);
+  const remove = (i: number) => onChange(links.filter((_, idx) => idx !== i));
+  const update = (i: number, patch: Partial<RegistryLink>) =>
+    onChange(links.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+
+  return (
+    <div className="space-y-3">
+      {links.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          Add clickable buttons to your registry pages — Amazon, Zola, or any custom URL.
+        </p>
+      )}
+      {links.map((link, i) => (
+        <div key={i} className="rounded-md border border-border p-3 space-y-2 bg-muted/20">
+          <div className="flex items-center gap-2">
+            <select
+              className="flex-1 h-8 rounded-md border border-border bg-background px-2 text-xs"
+              value={REGISTRY_PRESETS.includes(link.name) ? link.name : "__custom__"}
+              onChange={(e) => {
+                if (e.target.value !== "__custom__") update(i, { name: e.target.value });
+              }}
+            >
+              {REGISTRY_PRESETS.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+              <option value="__custom__">Custom name…</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              aria-label="Remove registry"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {!REGISTRY_PRESETS.includes(link.name) && (
+            <Input
+              value={link.name}
+              onChange={(e) => update(i, { name: e.target.value })}
+              placeholder="Registry name"
+              className="h-8 text-xs"
+            />
+          )}
+          <Input
+            value={link.url}
+            onChange={(e) => update(i, { url: e.target.value })}
+            placeholder="https://registry.example.com/..."
+            className="h-8 text-xs font-mono"
+            type="url"
+          />
+        </div>
+      ))}
+      <Button size="sm" variant="outline" onClick={add} className="w-full" disabled={links.length >= 8}>
+        <Plus className="h-3.5 w-3.5 mr-1.5" /> Add registry
+      </Button>
     </div>
   );
 }
