@@ -410,6 +410,7 @@ export default function WebsiteEditor() {
     textPositions: record.textPositions ?? {},
     galleryImages: record.galleryImages,
     heroImage: record.heroImage,
+    portalParty: record.portalParty,
     couple: previewExtra?.couple ?? {
       partner1Name: "",
       partner2Name: "",
@@ -466,6 +467,39 @@ export default function WebsiteEditor() {
             </div>
           )}
         </div>
+
+        {/* Text tools */}
+        <Section icon={<Type className="h-4 w-4" />} title="Text Tools">
+          <div className="space-y-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => {
+                const key = `_custom_${Date.now()}`;
+                update({
+                  customText: { ...record.customText, [key]: "New text — click to edit" },
+                  textPositions: { ...(record.textPositions ?? {}), [key]: { x: 0, y: 0 } },
+                });
+              }}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Insert text box
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+              onClick={() => {
+                if (!window.confirm("Reset all text edits, styles, and positions to defaults?")) return;
+                update({ customText: {}, textStyles: {}, textPositions: {} });
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+              Reset all to default
+            </Button>
+          </div>
+        </Section>
 
         {/* Theme picker */}
         <Section icon={<Palette className="h-4 w-4" />} title="Theme">
@@ -666,15 +700,27 @@ export default function WebsiteEditor() {
 
         {/* Wedding Party */}
         <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
-          <WeddingPartyEditor
-            members={parseWeddingPartyMembers(record.customText._weddingPartyMembers)}
-            onChange={(next) => update({ customText: { ...record.customText, _weddingPartyMembers: JSON.stringify(next) } })}
-            uploadFile={async (file) => {
-              const r = await upload.uploadFile(file);
-              return r?.objectPath ?? null;
-            }}
-            isUploading={upload.isUploading}
-          />
+          {record.portalParty && record.portalParty.length > 0 ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 dark:bg-emerald-950/30 text-xs text-emerald-800 dark:text-emerald-200">
+                <Users className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>Synced from your Wedding Party portal ({record.portalParty.length} member{record.portalParty.length !== 1 ? "s" : ""})</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Members are managed in the <strong>Wedding Party</strong> section of this portal. Changes there sync here automatically.
+              </p>
+            </div>
+          ) : (
+            <WeddingPartyEditor
+              members={parseWeddingPartyMembers(record.customText._weddingPartyMembers)}
+              onChange={(next) => update({ customText: { ...record.customText, _weddingPartyMembers: JSON.stringify(next) } })}
+              uploadFile={async (file) => {
+                const r = await upload.uploadFile(file);
+                return r?.objectPath ?? null;
+              }}
+              isUploading={upload.isUploading}
+            />
+          )}
         </Section>
 
         {/* Announcement banner */}
@@ -790,6 +836,13 @@ export default function WebsiteEditor() {
             onTextChange={(key, value) => update({ customText: { ...record.customText, [key]: value } })}
             onStyleChange={(key, style) => update({ textStyles: { ...(record.textStyles ?? {}), [key]: style } })}
             onPositionChange={(key, pos) => update({ textPositions: { ...(record.textPositions ?? {}), [key]: pos } })}
+            onDeleteElement={(key) => {
+              const ct = { ...record.customText };
+              const ts = { ...(record.textStyles ?? {}) };
+              const tp = { ...(record.textPositions ?? {}) };
+              delete ct[key]; delete ts[key]; delete tp[key];
+              update({ customText: ct, textStyles: ts, textPositions: tp });
+            }}
           />
         </div>
       </main>
@@ -821,6 +874,7 @@ export default function WebsiteEditor() {
             data={livePreview}
             editable={false}
             slug={record.slug ?? ""}
+            previewMode
           />
         </div>
       )}

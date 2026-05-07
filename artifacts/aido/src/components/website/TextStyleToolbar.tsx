@@ -1,5 +1,6 @@
-import { forwardRef, useEffect } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { Trash2 } from "lucide-react";
 import type { WebsiteTextStyle } from "@workspace/db";
 
 export { type WebsiteTextStyle };
@@ -40,15 +41,81 @@ function loadGoogleFont(family: string) {
   document.head.appendChild(link);
 }
 
+// Custom dropdown — uses e.preventDefault() like buttons so the contenteditable
+// never loses focus. Native <select> can't be reliably blocked from triggering
+// parent e.preventDefault() across browsers.
+function ToolbarDropdown({
+  value,
+  options,
+  onChange,
+  onKeepOpen,
+  minWidth = 120,
+  fontPreview = false,
+}: {
+  value: string;
+  options: { label: string; value: string }[];
+  onChange: (v: string) => void;
+  onKeepOpen?: () => void;
+  minWidth?: number;
+  fontPreview?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = options.find((o) => o.value === value) ?? options[0];
+
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <button
+        type="button"
+        style={{
+          minWidth,
+          fontFamily: fontPreview && value ? `'${value}', serif` : undefined,
+        }}
+        className="h-7 text-xs rounded border border-border bg-background px-2 flex items-center gap-1 cursor-pointer hover:bg-muted"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => { setOpen((o) => !o); onKeepOpen?.(); }}
+      >
+        <span className="flex-1 text-left truncate">{current.label}</span>
+        <span className="opacity-40 ml-1 text-[9px] flex-shrink-0">▾</span>
+      </button>
+
+      {open && (
+        <div
+          className="absolute top-full left-0 mt-0.5 bg-background border border-border rounded-md shadow-lg overflow-auto"
+          style={{ minWidth, maxHeight: 200, zIndex: 10001 }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors whitespace-nowrap ${opt.value === value ? "text-primary font-semibold" : ""}`}
+              style={{ fontFamily: fontPreview && opt.value ? `'${opt.value}', serif` : undefined }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+                onKeepOpen?.();
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Props {
   style: WebsiteTextStyle;
   onChange: (next: WebsiteTextStyle) => void;
   anchorRect: DOMRect;
   onKeepOpen?: () => void;
+  onDelete?: () => void;
 }
 
 export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
-  ({ style, onChange, anchorRect, onKeepOpen }, ref) => {
+  ({ style, onChange, anchorRect, onKeepOpen, onDelete }, ref) => {
     useEffect(() => {
       FONT_OPTIONS.filter((f) => f.value).forEach((f) => loadGoogleFont(f.value));
     }, []);
@@ -69,42 +136,26 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
           : "bg-background border border-border hover:bg-muted text-foreground"
       }`;
 
-    // Called on selects: stop propagation so the parent div's preventDefault doesn't
-    // block the native dropdown from opening, but still keep the toolbar alive.
-    const selectMouseDown = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onKeepOpen?.();
-    };
-
     return createPortal(
       <div
         ref={ref}
         className="fixed z-[9999] flex items-center gap-1 flex-wrap px-2 py-1.5 rounded-lg shadow-xl border border-border bg-background"
-        style={{ top, left, maxWidth: "min(600px, 94vw)" }}
-        // preventDefault on the toolbar background prevents contenteditable blur;
-        // individual <select> elements stop propagation so they can still open.
+        style={{ top, left, maxWidth: "min(640px, 94vw)" }}
         onMouseDown={(e) => { e.preventDefault(); onKeepOpen?.(); }}
         onMouseEnter={onKeepOpen}
       >
-        {/* Font family */}
-        <select
+        {/* Font family — custom dropdown avoids native <select> event issues */}
+        <ToolbarDropdown
           value={style.fontFamily ?? ""}
-          onChange={(e) => {
-            const v = e.target.value;
+          options={FONT_OPTIONS}
+          onChange={(v) => {
             patch({ fontFamily: v || undefined });
             if (v) loadGoogleFont(v);
           }}
-          onMouseDown={selectMouseDown}
-          onFocus={() => onKeepOpen?.()}
-          className="h-7 text-xs rounded border border-border bg-background px-1 cursor-pointer"
-          style={{ fontFamily: style.fontFamily ?? "inherit", minWidth: 140 }}
-        >
-          {FONT_OPTIONS.map((f) => (
-            <option key={f.value} value={f.value} style={{ fontFamily: f.value || "inherit" }}>
-              {f.label}
-            </option>
-          ))}
-        </select>
+          onKeepOpen={onKeepOpen}
+          minWidth={140}
+          fontPreview
+        />
 
         {/* Bold / Italic */}
         <button
@@ -156,20 +207,14 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
         {/* Separator */}
         <div className="w-px h-5 bg-border mx-0.5" />
 
-        {/* Animation */}
-        <select
+        {/* Animation — custom dropdown */}
+        <ToolbarDropdown
           value={style.animation ?? ""}
-          onChange={(e) => patch({ animation: e.target.value || undefined })}
-          onMouseDown={selectMouseDown}
-          onFocus={() => onKeepOpen?.()}
-          className="h-7 text-xs rounded border border-border bg-background px-1 cursor-pointer"
-        >
-          {ANIMATION_OPTIONS.map((a) => (
-            <option key={a.value} value={a.value}>
-              {a.label}
-            </option>
-          ))}
-        </select>
+          options={ANIMATION_OPTIONS}
+          onChange={(v) => patch({ animation: v || undefined })}
+          onKeepOpen={onKeepOpen}
+          minWidth={100}
+        />
 
         {/* Reset all */}
         {Object.keys(style).length > 0 && (
@@ -181,6 +226,21 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
           >
             Reset
           </button>
+        )}
+
+        {/* Delete element */}
+        {onDelete && (
+          <>
+            <div className="w-px h-5 bg-border mx-0.5" />
+            <button
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors px-1"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={onDelete}
+              title="Delete this text element"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </>
         )}
       </div>,
       document.body,

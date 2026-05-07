@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2 } from "lucide-react";
 import { EditableText, type TextPosition } from "./EditableText";
@@ -58,6 +58,8 @@ export interface WebsiteRendererPayload {
   customText: Record<string, string>;
   textStyles?: Record<string, { fontFamily?: string; fontSize?: string; color?: string; bold?: boolean; italic?: boolean; animation?: string }>;
   textPositions?: Record<string, { x: number; y: number }>;
+  // Wedding party members synced from the portal (takes precedence over customText._weddingPartyMembers)
+  portalParty?: Array<{ id: number; name: string; role: string; side: string; photoUrl: string | null; sortOrder: number }>;
   galleryImages: Array<{ url: string; caption?: string; order: number }>;
   heroImage: string | null;
   couple: {
@@ -96,17 +98,19 @@ interface EditCtx {
   onStyleChange?: (key: string, style: TextStyle) => void;
   textPositions?: Record<string, TextPosition>;
   onPositionChange?: (key: string, position: TextPosition) => void;
+  onDeleteElement?: (key: string) => void;
 }
 const NOOP_CTX: EditCtx = { editable: false, onTextChange: () => {} };
 
-// Returns textStyle + onStyleChange + position + onPositionChange props for an EditableText.
-function tsp(ctx: EditCtx, key: string) {
+// Returns textStyle + onStyleChange + position + onPositionChange + onDelete props for an EditableText.
+function tsp(ctx: EditCtx, key: string, deletable = false) {
   if (!ctx.editable) return {};
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
     position: ctx.textPositions?.[key],
     onPositionChange: ctx.onPositionChange ? (p: TextPosition) => ctx.onPositionChange!(key, p) : undefined,
+    onDelete: deletable && ctx.onDeleteElement ? () => ctx.onDeleteElement!(key) : undefined,
   };
 }
 
@@ -232,6 +236,95 @@ function Lightbox({
   );
 }
 
+// ---------- draggable row (icon + text unit) ----------
+
+const DRAG_THRESHOLD_ROW = 5;
+
+function DraggableRow({
+  children,
+  position,
+  onPositionChange,
+  editable,
+  className,
+  style,
+}: {
+  children: React.ReactNode;
+  position?: TextPosition;
+  onPositionChange?: (p: TextPosition) => void;
+  editable: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number; moved: boolean } | null>(null);
+
+  if (!editable || !onPositionChange) {
+    return (
+      <div
+        className={className}
+        style={{ ...style, transform: position ? `translate(${position.x}px, ${position.y}px)` : undefined }}
+      >
+        {children}
+      </div>
+    );
+  }
+
+  const transform = position ? `translate(${position.x}px, ${position.y}px)` : undefined;
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    dragState.current = { startX: e.clientX, startY: e.clientY, origX: position?.x ?? 0, origY: position?.y ?? 0, moved: false };
+    setIsDragging(true);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragState.current) return;
+    const dx = e.clientX - dragState.current.startX;
+    const dy = e.clientY - dragState.current.startY;
+    if (Math.abs(dx) > DRAG_THRESHOLD_ROW || Math.abs(dy) > DRAG_THRESHOLD_ROW) dragState.current.moved = true;
+    if (dragState.current.moved) onPositionChange({ x: dragState.current.origX + dx, y: dragState.current.origY + dy });
+  };
+
+  const handlePointerUp = () => { dragState.current = null; setIsDragging(false); };
+
+  const hasOffset = position && (position.x !== 0 || position.y !== 0);
+
+  return (
+    <div
+      className={className}
+      style={{
+        ...style,
+        transform,
+        position: "relative",
+        cursor: isDragging ? "grabbing" : "grab",
+        outline: hovered || isDragging ? "1.5px dashed rgba(99,102,241,0.4)" : undefined,
+        outlineOffset: 4,
+        borderRadius: 2,
+        zIndex: isDragging ? 50 : undefined,
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
+      {hasOffset && (hovered || isDragging) && (
+        <span
+          style={{ position: "absolute", top: -20, right: 0, background: "rgba(99,102,241,0.9)", color: "#fff", borderRadius: 4, padding: "1px 6px", fontSize: 10, cursor: "pointer", userSelect: "none", zIndex: 300, lineHeight: 1.6 }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onPositionChange({ x: 0, y: 0 })}
+        >
+          ×
+        </span>
+      )}
+      {children}
+    </div>
+  );
+}
+
 // ---------- countdown ----------
 
 function calcTimeLeft(dateStr: string) {
@@ -323,31 +416,54 @@ function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
   if (!data.couple.weddingDate) return null;
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
 
-  function download() {
+  function downloadIcs() {
     const ics = buildIcs(couple, data.couple.weddingDate, data.couple.ceremonyTime, data.couple.venue, data.couple.location);
     const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = "wedding.ics";
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
   }
 
+  // Google Calendar link as alternative
+  const [y, m, d] = data.couple.weddingDate.split("-").map(Number);
+  const [h = 16, min = 0] = (data.couple.ceremonyTime || "16:00").split(":").map(Number);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const dt = `${y}${pad(m)}${pad(d)}T${pad(h)}${pad(min)}00`;
+  const endDt = `${y}${pad(m)}${pad(d)}T${pad(h + 4)}${pad(min)}00`;
+  const gcal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`${couple}'s Wedding`)}&dates=${dt}/${endDt}&location=${encodeURIComponent([data.couple.venue, data.couple.location].filter(Boolean).join(", "))}&details=${encodeURIComponent(`Join us to celebrate the wedding of ${couple}!`)}`;
+
+  const btnStyle: React.CSSProperties = {
+    background: "rgba(255,255,255,0.15)",
+    border: "1px solid rgba(255,255,255,0.4)",
+    color: data.heroImage ? "#fff" : data.colorPalette.text,
+    backdropFilter: "blur(4px)",
+  };
+
   return (
-    <button
-      onClick={download}
-      className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-opacity hover:opacity-80"
-      style={{
-        background: "rgba(255,255,255,0.15)",
-        border: "1px solid rgba(255,255,255,0.4)",
-        color: data.heroImage ? "#fff" : data.colorPalette.text,
-        backdropFilter: "blur(4px)",
-      }}
-    >
-      <Calendar className="h-4 w-4" />
-      Add to Calendar
-    </button>
+    <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
+      <button
+        onClick={downloadIcs}
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-opacity hover:opacity-80"
+        style={btnStyle}
+      >
+        <Calendar className="h-4 w-4" />
+        Add to Calendar (.ics)
+      </button>
+      <a
+        href={gcal}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-opacity hover:opacity-80"
+        style={btnStyle}
+      >
+        <Calendar className="h-4 w-4" />
+        Google Calendar
+      </a>
+    </div>
   );
 }
 
@@ -576,8 +692,13 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           style={{ fontFamily: fontStack(headingFont(data)), color: data.heroImage ? "#fff" : data.colorPalette.text }}
           {...tsp(ctx, "_coupleName")}
         />
-        <div className="flex items-center justify-center gap-4 text-base sm:text-lg opacity-90">
-          <Calendar className="h-5 w-5" />
+        <DraggableRow
+          editable={ctx.editable}
+          position={ctx.textPositions?.["_heroDateRow"]}
+          onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_heroDateRow", p) : undefined}
+          className="flex items-center justify-center gap-4 text-base sm:text-lg opacity-90"
+        >
+          <Calendar className="h-5 w-5 flex-shrink-0" style={{ pointerEvents: "none" }} />
           <EditableText
             editable={ctx.editable}
             value={data.customText._heroDate ?? ""}
@@ -586,10 +707,15 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             style={{ color: "inherit" }}
             {...tsp(ctx, "_heroDate")}
           />
-        </div>
+        </DraggableRow>
         {data.couple.venue && (
-          <div className="flex items-center justify-center gap-2 mt-3 text-sm sm:text-base opacity-80">
-            <MapPin className="h-4 w-4" />
+          <DraggableRow
+            editable={ctx.editable}
+            position={ctx.textPositions?.["_heroVenueRow"]}
+            onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_heroVenueRow", p) : undefined}
+            className="flex items-center justify-center gap-2 mt-3 text-sm sm:text-base opacity-80"
+          >
+            <MapPin className="h-4 w-4 flex-shrink-0" style={{ pointerEvents: "none" }} />
             <EditableText
               editable={ctx.editable}
               value={data.customText._heroVenue ?? ""}
@@ -598,15 +724,48 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               style={{ color: "inherit" }}
               {...tsp(ctx, "_heroVenue")}
             />
-          </div>
+          </DraggableRow>
         )}
         {data.couple.weddingDate && (
-          <CountdownTimer
-            dateStr={data.couple.weddingDate}
-            accentColor={data.heroImage ? "rgba(255,255,255,0.9)" : data.colorPalette.primary}
-          />
+          <DraggableRow
+            editable={ctx.editable}
+            position={ctx.textPositions?.["_countdown"]}
+            onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_countdown", p) : undefined}
+          >
+            <CountdownTimer
+              dateStr={data.couple.weddingDate}
+              accentColor={data.heroImage ? "rgba(255,255,255,0.9)" : data.colorPalette.primary}
+            />
+          </DraggableRow>
         )}
         <AddToCalendarButton data={data} />
+
+        {/* Custom floating text boxes — rendered inside hero so they scroll with content */}
+        {ctx.editable && Object.entries(data.customText)
+          .filter(([k]) => k.startsWith("_custom_"))
+          .map(([key, val]) => (
+            <div key={key} style={{ marginTop: 16 }}>
+              <EditableText
+                as="div"
+                editable
+                value={val}
+                defaultValue="New text — click to edit"
+                onCommit={(v) => ctx.onTextChange(key, v || "New text — click to edit")}
+                style={{
+                  display: "inline-block",
+                  background: "rgba(255,255,255,0.85)",
+                  color: "#222",
+                  padding: "6px 14px",
+                  borderRadius: 8,
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+                  fontSize: 18,
+                  minWidth: 80,
+                }}
+                {...tsp(ctx, key, true)}
+              />
+            </div>
+          ))
+        }
       </div>
     </section>
   );
@@ -997,7 +1156,15 @@ function PartyMemberCard({ data, member }: { data: WebsiteRendererPayload; membe
 }
 
 function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
-  const members = parseWeddingPartyMembers(data.customText._weddingPartyMembers);
+  // Portal party members take precedence over manually-entered ones
+  const members: WeddingPartyMember[] = data.portalParty && data.portalParty.length > 0
+    ? data.portalParty.map((m) => ({
+        photo: m.photoUrl ?? "",
+        name: m.name,
+        role: m.role,
+        side: (m.side === "groom" || m.side === "bride" || m.side === "family") ? m.side as WeddingPartySide : undefined,
+      }))
+    : parseWeddingPartyMembers(data.customText._weddingPartyMembers);
   if (members.length === 0 && !ctx.editable) return null;
 
   const groomSide = members.filter((m) => m.side === "groom");
@@ -1281,9 +1448,11 @@ export function WebsiteRenderer({
   onTextChange,
   onStyleChange,
   onPositionChange,
+  onDeleteElement,
   currentSection,
   slug,
   password,
+  previewMode = false,
 }: {
   data: WebsiteRendererPayload;
   scrollContainer?: HTMLElement | null;
@@ -1291,24 +1460,22 @@ export function WebsiteRenderer({
   onTextChange?: (key: string, value: string) => void;
   onStyleChange?: (key: string, style: TextStyle) => void;
   onPositionChange?: (key: string, position: TextPosition) => void;
-  // When set, render only the matching section (page-per-section mode for
-  // the public site). When undefined, render every section in one scroll
-  // (the editor preview mode).
+  onDeleteElement?: (key: string) => void;
   currentSection?: string;
-  // Slug for building per-section URLs in TopNav links.
   slug?: string;
-  // Optional password to forward to the RSVP API (the public guest endpoint
-  // is password-gated; if a guest already entered the password to view the
-  // site, we re-use it for RSVP search/submit).
   password?: string | null;
+  // Force scroll-based nav even when slug is provided (used by editor guest preview)
+  previewMode?: boolean;
 }) {
   const ctx: EditCtx = editable && onTextChange
-    ? { editable: true, onTextChange, textStyles: data.textStyles, onStyleChange, textPositions: data.textPositions, onPositionChange }
+    ? { editable: true, onTextChange, textStyles: data.textStyles, onStyleChange, textPositions: data.textPositions, onPositionChange, onDeleteElement }
     : NOOP_CTX;
   const pageMode = !!currentSection;
   const showAll = !pageMode;
   const show = (id: string, enabled: boolean) =>
     enabled && (showAll || currentSection === id);
+  // In previewMode, force scroll-based nav so TopNav buttons don't navigate away
+  const navSlug = previewMode ? undefined : slug;
 
   return (
     <div style={{ background: data.colorPalette.background, color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif" }}>
@@ -1317,7 +1484,7 @@ export function WebsiteRenderer({
         data={data}
         scrollContainer={scrollContainer}
         pageMode={pageMode}
-        slug={slug}
+        slug={navSlug}
         currentSection={currentSection ?? "home"}
       />
       {(showAll || currentSection === "home") && <Hero data={data} ctx={ctx} />}

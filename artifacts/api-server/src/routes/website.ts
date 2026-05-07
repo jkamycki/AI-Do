@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps } from "@workspace/db";
+import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty } from "@workspace/db";
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
 import { and, eq, ilike, desc, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -125,7 +125,14 @@ router.get("/website/me", requireAuth, async (req, res) => {
       .where(eq(weddingWebsites.profileId, profile.id))
       .limit(1);
     if (!row) return res.status(404).json({ error: "Website not created yet" });
-    res.json(serialize(row));
+
+    const partyMembers = await db
+      .select({ id: weddingParty.id, name: weddingParty.name, role: weddingParty.role, side: weddingParty.side, photoUrl: weddingParty.photoUrl, sortOrder: weddingParty.sortOrder })
+      .from(weddingParty)
+      .where(eq(weddingParty.userId, profile.userId))
+      .orderBy(weddingParty.sortOrder, weddingParty.createdAt);
+
+    res.json({ ...serialize(row), portalParty: partyMembers });
   } catch (err) {
     req.log.error(err, "getWebsite failed");
     res.status(500).json({ error: "Internal server error" });
@@ -305,6 +312,12 @@ router.get("/website/public/:slug", async (req, res) => {
       .limit(1);
     if (!profile) return res.status(404).json({ error: "Not found" });
 
+    const portalParty = await db
+      .select({ id: weddingParty.id, name: weddingParty.name, role: weddingParty.role, side: weddingParty.side, photoUrl: weddingParty.photoUrl, sortOrder: weddingParty.sortOrder })
+      .from(weddingParty)
+      .where(eq(weddingParty.userId, profile.userId))
+      .orderBy(weddingParty.sortOrder, weddingParty.createdAt);
+
     res.json({
       slug: row.slug,
       theme: row.theme,
@@ -318,6 +331,7 @@ router.get("/website/public/:slug", async (req, res) => {
       textPositions: row.textPositions ?? {},
       galleryImages: row.galleryImages,
       heroImage: row.heroImage,
+      portalParty,
       couple: {
         partner1Name: profile.partner1Name,
         partner2Name: profile.partner2Name,
