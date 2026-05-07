@@ -89,6 +89,10 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
     const attendingRows = guestRows.filter((g) => g.rsvpStatus === "attending");
     const attendingGuestCount = attendingRows.length;
     const seatedAttendingCount = attendingRows.filter((g) => !!g.tableAssignment && g.tableAssignment.trim() !== "").length;
+    // Order by createdAt so the dashboard reflects the most recently
+    // *generated* chart, regardless of edits to older charts. The seating
+    // page's saved-charts list uses the same order — the dashboard and the
+    // page agree on which chart is "the latest".
     const [latestChart] = hasProfile
       ? await db
           .select({
@@ -96,10 +100,11 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
             tableCount: seatingCharts.tableCount,
             seatsPerTable: seatingCharts.seatsPerTable,
             updatedAt: seatingCharts.updatedAt,
+            createdAt: seatingCharts.createdAt,
           })
           .from(seatingCharts)
           .where(eq(seatingCharts.profileId, profileId))
-          .orderBy(desc(seatingCharts.updatedAt))
+          .orderBy(desc(seatingCharts.createdAt))
           .limit(1)
       : [];
     const seatingSummary = {
