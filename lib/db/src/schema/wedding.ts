@@ -532,6 +532,16 @@ export type WebsiteSectionsEnabled = {
 
 export type WebsiteCustomText = Record<string, string>;
 
+export type WebsiteTextStyle = {
+  fontFamily?: string;
+  fontSize?: string;
+  color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  animation?: string;
+};
+export type WebsiteTextStyles = Record<string, WebsiteTextStyle>;
+
 export type WebsiteGalleryImage = {
   url: string;
   caption?: string;
@@ -574,6 +584,7 @@ export const weddingWebsites = pgTable("wedding_websites", {
   // User-overridden text per section. Keys: "welcome", "story", "faq", etc.
   // Empty value means "use auto-generated text from couple's profile".
   customText: jsonb("custom_text").notNull().$type<WebsiteCustomText>().default({}),
+  textStyles: jsonb("text_styles").$type<WebsiteTextStyles>().default({}),
   galleryImages: jsonb("gallery_images").notNull().$type<WebsiteGalleryImage[]>().default([]),
   heroImage: text("hero_image"),
   password: text("password"),

@@ -56,6 +56,7 @@ export interface WebsiteRendererPayload {
     rsvp?: boolean;
   };
   customText: Record<string, string>;
+  textStyles?: Record<string, { fontFamily?: string; fontSize?: string; color?: string; bold?: boolean; italic?: boolean; animation?: string }>;
   galleryImages: Array<{ url: string; caption?: string; order: number }>;
   heroImage: string | null;
   couple: {
@@ -69,7 +70,7 @@ export interface WebsiteRendererPayload {
     venueCity: string | null;
     venueState: string | null;
   };
-  timeline: Array<{ time: string; title: string; description: string; category: string }>;
+  // timeline removed — wedding website schedule is entered directly by the couple
 }
 
 function formatWeddingDate(dateStr: string): string {
@@ -84,12 +85,25 @@ function formatWeddingDate(dateStr: string): string {
   });
 }
 
+type TextStyle = { fontFamily?: string; fontSize?: string; color?: string; bold?: boolean; italic?: boolean; animation?: string };
+
 // Edit mode props passed to every section (and its EditableText spans).
 interface EditCtx {
   editable: boolean;
   onTextChange: (key: string, value: string) => void;
+  textStyles?: Record<string, TextStyle>;
+  onStyleChange?: (key: string, style: TextStyle) => void;
 }
 const NOOP_CTX: EditCtx = { editable: false, onTextChange: () => {} };
+
+// Returns textStyle + onStyleChange props for an EditableText at a given key.
+function tsp(ctx: EditCtx, key: string) {
+  if (!ctx.editable) return {};
+  return {
+    textStyle: ctx.textStyles?.[key] ?? {},
+    onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
+  };
+}
 
 function fontStack(font: string): string {
   return `'${font}', 'Playfair Display', Georgia, serif`;
@@ -391,6 +405,7 @@ function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx
         onCommit={(v) => ctx.onTextChange("rsvp_subtitle", v)}
         className="block text-center text-3xl sm:text-4xl mb-10"
         style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        {...tsp(ctx, "rsvp_subtitle")}
       />
       {data.customText.rsvp_deadline && (
         <p className="text-center text-sm mb-8 opacity-70" style={{ color: data.colorPalette.text }}>
@@ -542,11 +557,9 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           value={data.customText._heroTagline ?? ""}
           defaultValue="We're getting married"
           onCommit={(v) => ctx.onTextChange("_heroTagline", v)}
-          fontKey="_heroTagline_font"
-          fontValue={elementFont(data, "_heroTagline")}
-          onFontCommit={(v) => ctx.onTextChange("_heroTagline_font", v)}
           className="uppercase tracking-[0.3em] text-xs sm:text-sm mb-6 opacity-80"
           style={{ color: data.heroImage ? "#fff" : data.colorPalette.primary, fontFamily: elementFont(data, "_heroTagline") ? bodyFontStack(elementFont(data, "_heroTagline")!) : undefined }}
+          {...tsp(ctx, "_heroTagline")}
         />
         <h1 className="text-5xl sm:text-7xl md:text-8xl mb-6 leading-tight" style={{ fontFamily: fontStack(headingFont(data)) }}>
           {couple}
@@ -630,6 +643,7 @@ function Welcome({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         onCommit={(v) => ctx.onTextChange("welcome", v)}
         className="text-center text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
         style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+        {...tsp(ctx, "welcome")}
       />
     </SectionShell>
   );
@@ -646,11 +660,9 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={data.customText.story_subtitle ?? ""}
         defaultValue="How we got here"
         onCommit={(v) => ctx.onTextChange("story_subtitle", v)}
-        fontKey="story_subtitle_font"
-        fontValue={elementFont(data, "story_subtitle")}
-        onFontCommit={(v) => ctx.onTextChange("story_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
         style={{ fontFamily: elementFontStack(data, "story_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
+        {...tsp(ctx, "story_subtitle")}
       />
       <EditableText
         as="div"
@@ -661,60 +673,52 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         onCommit={(v) => ctx.onTextChange("story", v)}
         className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
         style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+        {...tsp(ctx, "story")}
       />
     </SectionShell>
   );
 }
 
 function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
-  const events = data.timeline ?? [];
+  const customSchedule = data.customText.schedule ?? "";
   const hasFallback = data.couple.ceremonyTime || data.couple.receptionTime;
-  if (events.length === 0 && !hasFallback && !ctx.editable) return null;
+  if (!customSchedule && !hasFallback && !ctx.editable) return null;
   return (
     <SectionShell id="schedule" titleKey="schedule_title" defaultTitle="Schedule" icon={<Clock className="h-4 w-4" />} data={data} ctx={ctx}>
-      <div className="space-y-5 max-w-2xl mx-auto">
-        {events.length > 0 ? (
-          events.map((e, i) => (
-            <div key={i} className="flex gap-4 items-start py-3 border-b last:border-b-0" style={{ borderColor: `${data.colorPalette.primary}22` }}>
-              <div className="flex-shrink-0 w-24 sm:w-32 text-sm sm:text-base font-medium" style={{ color: data.colorPalette.primary }}>
-                {e.time}
-              </div>
-              <div className="flex-1">
-                <div className="text-base sm:text-lg font-medium" style={{ color: data.colorPalette.text }}>
-                  {e.title}
-                </div>
-                {e.description && (
-                  <p className="text-sm mt-1 opacity-75" style={{ color: data.colorPalette.text }}>
-                    {e.description}
-                  </p>
-                )}
-              </div>
-            </div>
-          ))
-        ) : (
-          <>
+      <div className="max-w-2xl mx-auto">
+        {/* Ceremony / Reception time pills from profile */}
+        {(data.couple.ceremonyTime || data.couple.receptionTime) && (
+          <div className="space-y-3 mb-8">
             {data.couple.ceremonyTime && (
-              <div className="flex gap-4 items-start py-3 border-b" style={{ borderColor: `${data.colorPalette.primary}22` }}>
-                <div className="w-24 sm:w-32 text-sm sm:text-base font-medium" style={{ color: data.colorPalette.primary }}>
+              <div className="flex gap-4 items-center py-3 border-b" style={{ borderColor: `${data.colorPalette.primary}22` }}>
+                <div className="w-28 text-sm font-medium" style={{ color: data.colorPalette.primary }}>
                   {data.couple.ceremonyTime}
                 </div>
-                <div className="flex-1 text-base sm:text-lg" style={{ color: data.colorPalette.text }}>
-                  Ceremony
-                </div>
+                <div className="flex-1 text-base" style={{ color: data.colorPalette.text }}>Ceremony</div>
               </div>
             )}
             {data.couple.receptionTime && (
-              <div className="flex gap-4 items-start py-3">
-                <div className="w-24 sm:w-32 text-sm sm:text-base font-medium" style={{ color: data.colorPalette.primary }}>
+              <div className="flex gap-4 items-center py-3">
+                <div className="w-28 text-sm font-medium" style={{ color: data.colorPalette.primary }}>
                   {data.couple.receptionTime}
                 </div>
-                <div className="flex-1 text-base sm:text-lg" style={{ color: data.colorPalette.text }}>
-                  Reception
-                </div>
+                <div className="flex-1 text-base" style={{ color: data.colorPalette.text }}>Reception</div>
               </div>
             )}
-          </>
+          </div>
         )}
+        {/* Free-form schedule text */}
+        <EditableText
+          as="div"
+          multiline
+          editable={ctx.editable}
+          value={customSchedule}
+          defaultValue={ctx.editable ? "Add your wedding day schedule here — ceremony, cocktail hour, reception, dancing..." : ""}
+          onCommit={(v) => ctx.onTextChange("schedule", v)}
+          className="text-center text-base sm:text-lg leading-relaxed whitespace-pre-line"
+          style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+          {...tsp(ctx, "schedule")}
+        />
       </div>
     </SectionShell>
   );
@@ -731,11 +735,9 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={data.customText.travel_subtitle ?? ""}
         defaultValue="Where & how to get there"
         onCommit={(v) => ctx.onTextChange("travel_subtitle", v)}
-        fontKey="travel_subtitle_font"
-        fontValue={elementFont(data, "travel_subtitle")}
-        onFontCommit={(v) => ctx.onTextChange("travel_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
         style={{ fontFamily: elementFontStack(data, "travel_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
+        {...tsp(ctx, "travel_subtitle")}
       />
       {data.couple.venue && (
         <div className="text-center mb-6">
@@ -766,6 +768,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         onCommit={(v) => ctx.onTextChange("travel", v)}
         className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
         style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+        {...tsp(ctx, "travel")}
       />
     </SectionShell>
   );
@@ -783,11 +786,9 @@ function Registry({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
         value={data.customText.registry_subtitle ?? ""}
         defaultValue="With love"
         onCommit={(v) => ctx.onTextChange("registry_subtitle", v)}
-        fontKey="registry_subtitle_font"
-        fontValue={elementFont(data, "registry_subtitle")}
-        onFontCommit={(v) => ctx.onTextChange("registry_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
         style={{ fontFamily: elementFontStack(data, "registry_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
+        {...tsp(ctx, "registry_subtitle")}
       />
       {links.length > 0 && (
         <div className="flex flex-wrap justify-center gap-3 mb-8">
@@ -821,6 +822,7 @@ function Registry({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
           onCommit={(v) => ctx.onTextChange("registry", v)}
           className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
           style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+          {...tsp(ctx, "registry")}
         />
       )}
     </SectionShell>
@@ -838,11 +840,9 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={data.customText.faq_subtitle ?? ""}
         defaultValue="Good to know"
         onCommit={(v) => ctx.onTextChange("faq_subtitle", v)}
-        fontKey="faq_subtitle_font"
-        fontValue={elementFont(data, "faq_subtitle")}
-        onFontCommit={(v) => ctx.onTextChange("faq_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
         style={{ fontFamily: elementFontStack(data, "faq_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
+        {...tsp(ctx, "faq_subtitle")}
       />
       <EditableText
         as="div"
@@ -853,6 +853,7 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         onCommit={(v) => ctx.onTextChange("faq", v)}
         className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
         style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+        {...tsp(ctx, "faq")}
       />
     </SectionShell>
   );
@@ -877,11 +878,9 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         value={data.customText.gallery_subtitle ?? ""}
         defaultValue="Moments"
         onCommit={(v) => ctx.onTextChange("gallery_subtitle", v)}
-        fontKey="gallery_subtitle_font"
-        fontValue={elementFont(data, "gallery_subtitle")}
-        onFontCommit={(v) => ctx.onTextChange("gallery_subtitle_font", v)}
         className="block text-center text-3xl sm:text-4xl mb-10"
         style={{ fontFamily: elementFontStack(data, "gallery_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
+        {...tsp(ctx, "gallery_subtitle")}
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {images.map((img, i) => (
@@ -991,11 +990,9 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
         value={data.customText.weddingParty_subtitle ?? ""}
         defaultValue="Meet our family & friends standing with us"
         onCommit={(v) => ctx.onTextChange("weddingParty_subtitle", v)}
-        fontKey="weddingParty_subtitle_font"
-        fontValue={elementFont(data, "weddingParty_subtitle")}
-        onFontCommit={(v) => ctx.onTextChange("weddingParty_subtitle_font", v)}
         className="block text-center text-base sm:text-lg max-w-2xl mx-auto mb-12 opacity-80"
         style={{ color: data.colorPalette.text, fontFamily: elementFontStack(data, "weddingParty_subtitle", bodyFont(data), "body") }}
+        {...tsp(ctx, "weddingParty_subtitle")}
       />
       {members.length === 0 ? (
         <p className="text-center text-sm opacity-60" style={{ color: data.colorPalette.text }}>
@@ -1099,6 +1096,7 @@ function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           defaultValue={dateStr}
           onCommit={(v) => ctx.onTextChange("_footerText", v)}
           className="text-sm opacity-80 whitespace-pre-line"
+          {...tsp(ctx, "_footerText")}
         />
       </footer>
       <BrandingFooter />
@@ -1250,6 +1248,7 @@ export function WebsiteRenderer({
   scrollContainer,
   editable = false,
   onTextChange,
+  onStyleChange,
   currentSection,
   slug,
   password,
@@ -1258,6 +1257,7 @@ export function WebsiteRenderer({
   scrollContainer?: HTMLElement | null;
   editable?: boolean;
   onTextChange?: (key: string, value: string) => void;
+  onStyleChange?: (key: string, style: TextStyle) => void;
   // When set, render only the matching section (page-per-section mode for
   // the public site). When undefined, render every section in one scroll
   // (the editor preview mode).
@@ -1270,7 +1270,7 @@ export function WebsiteRenderer({
   password?: string | null;
 }) {
   const ctx: EditCtx = editable && onTextChange
-    ? { editable: true, onTextChange }
+    ? { editable: true, onTextChange, textStyles: data.textStyles, onStyleChange }
     : NOOP_CTX;
   const pageMode = !!currentSection;
   const showAll = !pageMode;
