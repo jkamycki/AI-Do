@@ -243,7 +243,8 @@ export function EditableText({
           outline: "none",
           cursor: showToolbar ? "text" : "inherit",
           minWidth: "1em",
-          pointerEvents: canDrag ? "none" : undefined,
+          // Block pointer events only while actively dragging so cursor placement still works on tap-to-edit
+          pointerEvents: isDragging ? "none" : undefined,
         }}
       >
         {display}
@@ -280,7 +281,11 @@ export function EditableText({
           onChange={onStyleChange}
           anchorRect={anchorRect}
           onKeepOpen={keepOpen}
-          onDelete={onDelete}
+          onDelete={onDelete ? () => {
+            // Cancel pending blur/commit so the deleted element isn't re-added
+            if (blurTimer.current) { clearTimeout(blurTimer.current); blurTimer.current = null; }
+            onDelete();
+          } : undefined}
         />
       )}
     </Wrap>

@@ -461,7 +461,7 @@ function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
         style={btnStyle}
       >
         <Calendar className="h-4 w-4" />
-        Apple / iCal (.ics)
+        Apple Calendar
       </button>
       <a
         href={gcal}
@@ -760,14 +760,19 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         )}
         <AddToCalendarButton data={data} />
 
-        {/* Custom floating text boxes — rendered inside hero so they scroll with content */}
-        {ctx.editable && Object.entries(data.customText)
-          .filter(([k]) => k.startsWith("_custom_"))
+        {/* Custom floating text boxes */}
+        {Object.entries(data.customText)
+          .filter(([k, v]) => {
+            if (!k.startsWith("_custom_")) return false;
+            // In guest mode, skip boxes that still have the placeholder text
+            if (!ctx.editable) return !!v?.trim() && v.trim() !== "New text — click to edit";
+            return true;
+          })
           .map(([key, val]) => (
             <div key={key} style={{ marginTop: 16 }}>
               <EditableText
                 as="div"
-                editable
+                editable={ctx.editable}
                 value={val}
                 defaultValue="New text — click to edit"
                 onCommit={(v) => ctx.onTextChange(key, v || "New text — click to edit")}
