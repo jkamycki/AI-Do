@@ -14,7 +14,7 @@ import {
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
   QrCode, Download, Link2, Plus, Megaphone, Users, Undo2, Sparkles, Settings,
 } from "lucide-react";
-import { WebsiteRenderer, type WebsiteRendererPayload, parseWeddingPartyMembers, parseRegistryLinks, type WeddingPartyMember, type WeddingPartySide, type RegistryLink } from "@/components/website/WebsiteRenderer";
+import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
@@ -87,6 +87,7 @@ export default function WebsiteEditor() {
   const [lastAutosaved, setLastAutosaved] = useState<Date | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewSection, setPreviewSection] = useState<string>("home");
+  const [editorSection, setEditorSection] = useState<string>("home");
   const [qrOpen, setQrOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings">("design");
   const inTab = (t: typeof activeTab) => activeTab === t;
@@ -226,7 +227,7 @@ export default function WebsiteEditor() {
     }, 500);
   }, []);
 
-  const handleUndo = useCallback(() => {
+  const doUndo = useCallback(() => {
     // Flush any pending coalesced entry first so we don't lose a half-coalesced state
     if (commitTimerRef.current) {
       clearTimeout(commitTimerRef.current);
@@ -244,6 +245,22 @@ export default function WebsiteEditor() {
     setRecord(prev);
     setDirty(true);
   }, []);
+
+  const handleUndo = useCallback(() => {
+    // If a contenteditable / input still has focus, the user's most recent
+    // edit hasn't been committed yet (EditableText debounces commit ~80ms
+    // after blur). Blur the active element and wait long enough for that
+    // commit to fire before popping history — otherwise the just-made change
+    // is invisible to the undo logic.
+    const active = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    const editing = !!active && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA");
+    if (editing) {
+      active!.blur();
+      setTimeout(doUndo, 150);
+      return;
+    }
+    doUndo();
+  }, [doUndo]);
 
   // Cmd/Ctrl+Z to undo from anywhere in the editor (except inside form fields)
   useEffect(() => {
@@ -886,7 +903,7 @@ export default function WebsiteEditor() {
           />
         </Section>}
 
-        {/* Wedding Party */}
+        {/* Wedding Party — read-only on the website editor; managed in the portal */}
         {inTab("pages") && <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
           {record.portalParty && record.portalParty.length > 0 ? (
             <div className="space-y-2">
@@ -899,15 +916,18 @@ export default function WebsiteEditor() {
               </p>
             </div>
           ) : (
-            <WeddingPartyEditor
-              members={parseWeddingPartyMembers(record.customText._weddingPartyMembers)}
-              onChange={(next) => update({ customText: { ...record.customText, _weddingPartyMembers: JSON.stringify(next) } })}
-              uploadFile={async (file) => {
-                const r = await upload.uploadFile(file);
-                return r?.objectPath ?? null;
-              }}
-              isUploading={upload.isUploading}
-            />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs text-muted-foreground">
+                <Users className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>No wedding party members yet</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Add and edit members in the <strong>Wedding Party</strong> section of this portal — they sync here automatically.
+              </p>
+              <Button size="sm" variant="outline" asChild>
+                <a href="/wedding-party">Open Wedding Party</a>
+              </Button>
+            </div>
           )}
         </Section>}
 
@@ -1043,6 +1063,17 @@ export default function WebsiteEditor() {
           <WebsiteRenderer
             data={livePreview!}
             editable
+            // Page-per-section navigation — same flow guests will see — so the
+            // editor preview matches what a guest gets when they click through.
+            slug={record.slug ?? ""}
+            previewMode
+            scrollContainer={previewRef.current}
+            currentSection={editorSection}
+            onSectionChange={(id) => {
+              setEditorSection(id);
+              // Reset preview scroll to top when switching pages
+              previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
+            }}
             onTextChange={(key, value) => patchRecord((prev) => ({ customText: { ...prev.customText, [key]: value } }))}
             onStyleChange={(key, style) => patchRecord((prev) => ({ textStyles: { ...(prev.textStyles ?? {}), [key]: style } }))}
             onPositionChange={(key, pos) => patchRecord((prev) => ({ textPositions: { ...(prev.textPositions ?? {}), [key]: pos } }))}
@@ -1331,188 +1362,6 @@ function RegistryLinksEditor({
   );
 }
 
-// ---- wedding party avatar with drag-to-position ----
-
-function PartyAvatar({
-  photo,
-  photoX,
-  photoY,
-  onPositionChange,
-  onRemove,
-}: {
-  photo: string;
-  photoX: number;
-  photoY: number;
-  onPositionChange: (x: number, y: number) => void;
-  onRemove: () => void;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [dragging, setDragging] = useState(false);
-
-  const updateFromEvent = (clientX: number, clientY: number) => {
-    const rect = ref.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = ((clientX - rect.left) / rect.width) * 100;
-    const y = ((clientY - rect.top) / rect.height) * 100;
-    onPositionChange(Math.max(0, Math.min(100, x)), Math.max(0, Math.min(100, y)));
-  };
-
-  return (
-    <div className="flex flex-col items-center gap-1 flex-shrink-0">
-      <div
-        ref={ref}
-        className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-border bg-background cursor-move select-none"
-        onPointerDown={(e) => {
-          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-          setDragging(true);
-          updateFromEvent(e.clientX, e.clientY);
-        }}
-        onPointerMove={(e) => {
-          if (!dragging) return;
-          updateFromEvent(e.clientX, e.clientY);
-        }}
-        onPointerUp={(e) => {
-          (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-          setDragging(false);
-        }}
-        onPointerCancel={() => setDragging(false)}
-        title="Drag to reposition photo"
-      >
-        <img
-          src={photo.startsWith("/objects/") ? `/api/storage${photo}` : photo}
-          alt=""
-          className="w-full h-full object-cover pointer-events-none"
-          style={{ objectPosition: `${photoX}% ${photoY}%` }}
-          draggable={false}
-        />
-        {/* focal point indicator while dragging */}
-        {dragging && (
-          <div
-            className="absolute w-3 h-3 rounded-full border-2 border-white shadow-md pointer-events-none"
-            style={{
-              left: `${photoX}%`,
-              top: `${photoY}%`,
-              transform: "translate(-50%, -50%)",
-              background: "rgba(99,102,241,0.9)",
-            }}
-          />
-        )}
-      </div>
-      <span className="text-[10px] text-muted-foreground">drag to position</span>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="text-[10px] text-muted-foreground hover:text-destructive"
-      >
-        Remove photo
-      </button>
-    </div>
-  );
-}
-
-// ---- wedding party editor ----
-
-function WeddingPartyEditor({
-  members,
-  onChange,
-  uploadFile,
-  isUploading,
-}: {
-  members: WeddingPartyMember[];
-  onChange: (next: WeddingPartyMember[]) => void;
-  uploadFile: (file: File) => Promise<string | null>;
-  isUploading: boolean;
-}) {
-  const updateMember = (index: number, patch: Partial<WeddingPartyMember>) => {
-    const next = members.map((m, i) => (i === index ? { ...m, ...patch } : m));
-    onChange(next);
-  };
-  const removeMember = (index: number) => {
-    onChange(members.filter((_, i) => i !== index));
-  };
-  const addMember = () => {
-    onChange([...members, { photo: "", name: "", role: "" }]);
-  };
-
-  return (
-    <div className="space-y-3">
-      {members.length === 0 && (
-        <p className="text-xs text-muted-foreground">
-          Add bridesmaids, groomsmen, parents, or anyone else standing with you. Each member gets a photo, name, and role on the public site.
-        </p>
-      )}
-      {members.map((m, i) => (
-        <div key={i} className="rounded-md border border-border p-3 space-y-2 bg-muted/20">
-          <div className="flex items-start gap-3">
-            {m.photo ? (
-              <PartyAvatar
-                photo={m.photo}
-                photoX={m.photoX ?? 50}
-                photoY={m.photoY ?? 50}
-                onPositionChange={(x, y) => updateMember(i, { photoX: x, photoY: y })}
-                onRemove={() => updateMember(i, { photo: "", photoX: undefined, photoY: undefined })}
-              />
-            ) : (
-              <label className="w-20 h-20 rounded-full overflow-hidden flex-shrink-0 cursor-pointer border-2 border-dashed border-border flex items-center justify-center bg-background hover:border-primary/50 transition-colors">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const path = await uploadFile(file);
-                    if (path) updateMember(i, { photo: path });
-                    e.target.value = "";
-                  }}
-                  disabled={isUploading}
-                />
-                {isUploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                ) : (
-                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                )}
-              </label>
-            )}
-            <div className="flex-1 space-y-1.5">
-              <Input
-                value={m.name}
-                onChange={(e) => updateMember(i, { name: e.target.value })}
-                placeholder="Name"
-                className="h-8 text-sm"
-              />
-              <Input
-                value={m.role}
-                onChange={(e) => updateMember(i, { role: e.target.value })}
-                placeholder="Role (e.g. Bridesmaid, Best Man)"
-                className="h-8 text-sm"
-              />
-              <select
-                value={m.side ?? ""}
-                onChange={(e) => updateMember(i, { side: (e.target.value || undefined) as WeddingPartySide | undefined })}
-                className="w-full h-8 rounded-md border border-border bg-background px-2 text-xs"
-              >
-                <option value="">Family & Friends</option>
-                <option value="groom">Groom's party</option>
-                <option value="bride">Bride's party</option>
-              </select>
-            </div>
-            <button
-              onClick={() => removeMember(i)}
-              className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-              aria-label="Remove member"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      ))}
-      <Button size="sm" variant="outline" onClick={addMember} className="w-full" disabled={isUploading}>
-        Add member
-      </Button>
-    </div>
-  );
-}
 
 // ---- QR code section ----
 

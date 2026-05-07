@@ -22,8 +22,21 @@ interface Props {
   onFontCommit?: (next: string) => void;
 }
 
-function animClass(animation: string | undefined): string {
-  return animation ?? "";
+// Map the animation keys saved by TextStyleToolbar to their full CSS shorthand.
+// Driving the animation via inline style ensures it survives any class-based
+// purging or load-order issues with the imported keyframes.
+const ANIMATION_CSS: Record<string, string> = {
+  "wsa-fade-in":    "wsa-fade-in 0.9s ease-in-out both",
+  "wsa-slide-up":   "wsa-slide-up 0.8s ease-out both",
+  "wsa-slide-right": "wsa-slide-right 0.8s ease-out both",
+  "wsa-zoom-in":    "wsa-zoom-in 0.8s ease-out both",
+  "wsa-bounce-in":  "wsa-bounce-in 0.7s ease-out both",
+};
+
+function animationStyle(animation: string | undefined): React.CSSProperties {
+  if (!animation) return {};
+  const css = ANIMATION_CSS[animation];
+  return css ? { animation: css } : {};
 }
 
 function styleFromTextStyle(ts: WebsiteTextStyle | undefined): React.CSSProperties {
@@ -76,7 +89,10 @@ export function EditableText({
   }, [display]);
 
   const tsStyle = styleFromTextStyle(textStyle);
-  const anim = animClass(textStyle?.animation);
+  const animStyle = animationStyle(textStyle?.animation);
+  // Re-key by the chosen animation so React remounts the element when the
+  // animation name changes — guarantees the keyframes restart from frame 0.
+  const animKey = textStyle?.animation ?? "";
   const transform = position ? `translate(${position.x}px, ${position.y}px)` : undefined;
 
   const Tag = (as === "div" ? "div" : "span") as React.ElementType;
@@ -84,7 +100,7 @@ export function EditableText({
 
   if (!editable) {
     return (
-      <Tag className={`${className} ${anim}`} style={{ ...style, ...tsStyle, transform }}>
+      <Tag key={animKey} className={className} style={{ ...style, ...tsStyle, ...animStyle, transform }}>
         {display}
       </Tag>
     );
@@ -212,6 +228,7 @@ export function EditableText({
       )}
 
       <Tag
+        key={animKey}
         ref={ref}
         contentEditable
         suppressContentEditableWarning
@@ -249,10 +266,11 @@ export function EditableText({
             }
           }
         }}
-        className={`${className} ${anim} editable-text`}
+        className={`${className} editable-text`}
         style={{
           ...style,
           ...tsStyle,
+          ...animStyle,
           outline: "none",
           cursor: showToolbar ? "text" : "inherit",
           minWidth: "1em",

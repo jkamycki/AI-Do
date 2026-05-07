@@ -50,7 +50,6 @@ const navSections = [
       { href: "/mood-board", labelKey: "nav.mood_board", icon: ImagePlus },
       { href: "/timeline", labelKey: "nav.timeline", icon: CalendarDays },
       { href: "/checklist", labelKey: "nav.checklist", icon: CheckSquare },
-      { href: "/website-editor", labelKey: "nav.website", icon: Globe },
     ],
   },
   {
@@ -479,6 +478,19 @@ export function Sidebar() {
               </div>
             </div>
           ))}
+
+          <div className="border-t border-primary/10 pt-4">
+            <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary">
+              {t("sidebar.guest_website_builder", { defaultValue: "Guest Website Builder" })}
+            </p>
+            <div className="space-y-0.5">
+              <NavLink
+                href="/website-editor"
+                label={t("nav.website_editor", { defaultValue: "Website Editor" })}
+                icon={Globe}
+              />
+            </div>
+          </div>
 
           <div className="border-t border-primary/10 pt-4">
             <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary">
