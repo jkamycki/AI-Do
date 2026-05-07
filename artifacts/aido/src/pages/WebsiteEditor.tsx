@@ -280,23 +280,24 @@ export default function WebsiteEditor() {
 
   // ---- update helpers ----
 
+  // Mirror current record into a ref so update/patchRecord can call queueHistory
+  // synchronously (refs are mutated immediately, while state updaters queued via
+  // setRecord are only invoked at React's next render — which can land AFTER a
+  // setTimeout(0) used to schedule undo, leaving pendingPrevRef empty).
+  const recordRef = useRef<WebsiteRecord | null>(null);
+  useEffect(() => { recordRef.current = record; }, [record]);
+
   const update = (patch: Partial<WebsiteRecord>) => {
-    setRecord((prev) => {
-      if (!prev) return prev;
-      queueHistory(prev);
-      return { ...prev, ...patch };
-    });
+    if (recordRef.current) queueHistory(recordRef.current);
+    setRecord((prev) => prev ? { ...prev, ...patch } : prev);
     setDirty(true);
   };
 
   // Functional updater for callbacks fired during editing (drag, style changes, text commits).
   // Uses prev state to avoid stale-closure bugs when rapid events fire before a re-render.
   const patchRecord = useCallback((fn: (prev: WebsiteRecord) => Partial<WebsiteRecord>) => {
-    setRecord((prev) => {
-      if (!prev) return prev;
-      queueHistory(prev);
-      return { ...prev, ...fn(prev) };
-    });
+    if (recordRef.current) queueHistory(recordRef.current);
+    setRecord((prev) => prev ? { ...prev, ...fn(prev) } : prev);
     setDirty(true);
   }, [queueHistory]);
 
