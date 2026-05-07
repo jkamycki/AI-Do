@@ -243,7 +243,8 @@ export function EditableText({
           outline: "none",
           cursor: showToolbar ? "text" : "inherit",
           minWidth: "1em",
-          pointerEvents: canDrag ? "none" : undefined,
+          // Block pointer events only while actively dragging so cursor placement still works on tap-to-edit
+          pointerEvents: isDragging ? "none" : undefined,
         }}
       >
         {display}

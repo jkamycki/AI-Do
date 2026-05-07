@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/react";
 import { useUpload } from "@workspace/object-storage-web";
 import { authFetch } from "@/lib/authFetch";
@@ -193,6 +193,13 @@ export default function WebsiteEditor() {
     setRecord((prev) => (prev ? { ...prev, ...patch } : prev));
     setDirty(true);
   };
+
+  // Functional updater for callbacks fired during editing (drag, style changes, text commits).
+  // Uses prev state to avoid stale-closure bugs when rapid events fire before a re-render.
+  const patchRecord = useCallback((fn: (prev: WebsiteRecord) => Partial<WebsiteRecord>) => {
+    setRecord((prev) => (prev ? { ...prev, ...fn(prev) } : prev));
+    setDirty(true);
+  }, []);
 
   const saveNow = async (silent: boolean): Promise<boolean> => {
     if (!record) return false;
@@ -398,7 +405,7 @@ export default function WebsiteEditor() {
     );
   }
 
-  const livePreview: WebsiteRendererPayload = {
+  const livePreview: WebsiteRendererPayload = useMemo(() => ({
     slug: record.slug,
     theme: record.theme,
     layoutStyle: record.layoutStyle,
@@ -423,7 +430,8 @@ export default function WebsiteEditor() {
       venueCity: null,
       venueState: null,
     },
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [record, previewExtra?.couple]);
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] md:h-screen">
@@ -478,10 +486,10 @@ export default function WebsiteEditor() {
               className="w-full justify-start gap-2"
               onClick={() => {
                 const key = `_custom_${Date.now()}`;
-                update({
-                  customText: { ...record.customText, [key]: "New text — click to edit" },
-                  textPositions: { ...(record.textPositions ?? {}), [key]: { x: 0, y: 0 } },
-                });
+                patchRecord((prev) => ({
+                  customText: { ...prev.customText, [key]: "New text — click to edit" },
+                  textPositions: { ...(prev.textPositions ?? {}), [key]: { x: 0, y: 0 } },
+                }));
                 // Scroll preview to top so user can see the new text box in the hero
                 setTimeout(() => previewRef.current?.scrollTo({ top: 0, behavior: "smooth" }), 50);
               }}
@@ -836,16 +844,16 @@ export default function WebsiteEditor() {
           <WebsiteRenderer
             data={livePreview}
             editable
-            onTextChange={(key, value) => update({ customText: { ...record.customText, [key]: value } })}
-            onStyleChange={(key, style) => update({ textStyles: { ...(record.textStyles ?? {}), [key]: style } })}
-            onPositionChange={(key, pos) => update({ textPositions: { ...(record.textPositions ?? {}), [key]: pos } })}
-            onDeleteElement={(key) => {
-              const ct = { ...record.customText };
-              const ts = { ...(record.textStyles ?? {}) };
-              const tp = { ...(record.textPositions ?? {}) };
+            onTextChange={(key, value) => patchRecord((prev) => ({ customText: { ...prev.customText, [key]: value } }))}
+            onStyleChange={(key, style) => patchRecord((prev) => ({ textStyles: { ...(prev.textStyles ?? {}), [key]: style } }))}
+            onPositionChange={(key, pos) => patchRecord((prev) => ({ textPositions: { ...(prev.textPositions ?? {}), [key]: pos } }))}
+            onDeleteElement={(key) => patchRecord((prev) => {
+              const ct = { ...prev.customText };
+              const ts = { ...(prev.textStyles ?? {}) };
+              const tp = { ...(prev.textPositions ?? {}) };
               delete ct[key]; delete ts[key]; delete tp[key];
-              update({ customText: ct, textStyles: ts, textPositions: tp });
-            }}
+              return { customText: ct, textStyles: ts, textPositions: tp };
+            })}
           />
         </div>
       </main>
