@@ -174,7 +174,14 @@
     "ceremony_at": "예식 {{time}}",
     "reception_at": "피로연 {{time}}",
     "days_to_go_count": "{{n}}일 남음",
-    "more_count": "+{{n}} 더 보기"
+    "more_count": "+{{n}} 더 보기",
+    "tile_seating": "좌석 배치",
+    "seated": "배치됨",
+    "tables": "테이블",
+    "seats_each": "좌석/테이블",
+    "seating_unseated": "{{count}}명이 아직 좌석이 없어요",
+    "no_seating_yet": "아직 좌석 배치가 없어요.",
+    "generate_seating": "좌석 배치 만들기"
   },
   "profile": {
     "title": "웨딩 프로필",

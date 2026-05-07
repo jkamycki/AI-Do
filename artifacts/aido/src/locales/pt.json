@@ -246,7 +246,14 @@
     "days_to_go_count": "{{n}} dias restantes",
     "more_count": "+{{n}} mais",
     "total_invited": "Total de convidados",
-    "members": "membros"
+    "members": "membros",
+    "tile_seating": "Acomodação",
+    "seated": "acomodados",
+    "tables": "mesas",
+    "seats_each": "lugares por mesa",
+    "seating_unseated": "{{count}} convidados ainda sem lugar",
+    "no_seating_yet": "Ainda sem mapa de mesas.",
+    "generate_seating": "Gerar mapa"
   },
   "profile": {
     "title": "Perfil do Casamento",

@@ -174,7 +174,14 @@
     "ceremony_at": "Ceremonia {{time}}",
     "reception_at": "Przyjęcie {{time}}",
     "days_to_go_count": "{{n}} dni do końca",
-    "more_count": "+{{n}} więcej"
+    "more_count": "+{{n}} więcej",
+    "tile_seating": "Rozsadzenie",
+    "seated": "przydzieleni",
+    "tables": "stoły",
+    "seats_each": "miejsc/stół",
+    "seating_unseated": "{{count}} gości wciąż potrzebuje miejsca",
+    "no_seating_yet": "Brak planu rozsadzenia.",
+    "generate_seating": "Wygeneruj rozsadzenie"
   },
   "profile": {
     "title": "Profil Weselny",

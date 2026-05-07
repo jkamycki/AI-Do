@@ -174,7 +174,14 @@
     "ceremony_at": "Ceremonie {{time}}",
     "reception_at": "Receptie {{time}}",
     "days_to_go_count": "{{n}} dagen te gaan",
-    "more_count": "+{{n}} meer"
+    "more_count": "+{{n}} meer",
+    "tile_seating": "Tafelschikking",
+    "seated": "geplaatst",
+    "tables": "tafels",
+    "seats_each": "plaatsen per tafel",
+    "seating_unseated": "{{count}} gasten hebben nog geen plek",
+    "no_seating_yet": "Nog geen tafelschikking.",
+    "generate_seating": "Tafelschikking genereren"
   },
   "profile": {
     "title": "Huwelijksprofiel",

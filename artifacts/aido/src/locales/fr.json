@@ -246,7 +246,14 @@
     "days_to_go_count": "{{n}} jours restants",
     "more_count": "+{{n}} de plus",
     "total_invited": "Total d'invités",
-    "members": "membres"
+    "members": "membres",
+    "tile_seating": "Plan de table",
+    "seated": "placés",
+    "tables": "tables",
+    "seats_each": "places par table",
+    "seating_unseated": "{{count}} invités encore sans place",
+    "no_seating_yet": "Pas encore de plan de table.",
+    "generate_seating": "Générer le plan"
   },
   "profile": {
     "title": "Profil de Mariage",

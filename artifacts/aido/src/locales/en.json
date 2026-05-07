@@ -259,7 +259,14 @@
     "ceremony_at": "Ceremony {{time}}",
     "reception_at": "Reception {{time}}",
     "days_to_go_count": "{{n}} days to go",
-    "more_count": "+{{n}} more"
+    "more_count": "+{{n}} more",
+    "tile_seating": "Seating",
+    "seated": "seated",
+    "tables": "tables",
+    "seats_each": "seats each",
+    "seating_unseated": "{{count}} guests still need a seat",
+    "no_seating_yet": "No seating chart yet.",
+    "generate_seating": "Generate seating"
   },
   "profile": {
     "title": "Wedding Profile",
