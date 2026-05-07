@@ -178,7 +178,7 @@
     "tile_seating": "Рассадка",
     "seated": "размещены",
     "tables": "столов",
-    "seats_each": "мест за столом",
+    "seats_each": "мест на стол",
     "seating_unseated": "{{count}} гостей пока без места",
     "no_seating_yet": "План рассадки ещё не создан.",
     "generate_seating": "Создать рассадку",

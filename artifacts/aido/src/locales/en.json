@@ -263,7 +263,7 @@
     "tile_seating": "Seating",
     "seated": "seated",
     "tables": "tables",
-    "seats_each": "seats each",
+    "seats_each": "seats per table",
     "seating_unseated": "{{count}} guests still need a seat",
     "no_seating_yet": "No seating chart yet.",
     "generate_seating": "Generate seating",
