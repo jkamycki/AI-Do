@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed } from "lucide-react";
+import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed, Share2, Check } from "lucide-react";
 import { EditableText, type TextPosition } from "./EditableText";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch } from "@/lib/authFetch";
@@ -712,16 +712,51 @@ function photoFilterCss(key: string | undefined | null): string {
 }
 
 function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
-  const mode = (data.customText._heroAnimation || "static") as "static" | "slideshow" | "kenburns" | "pan-lr";
+  const mode = (data.customText._heroAnimation || "static") as "static" | "slideshow" | "kenburns" | "pan-lr" | "marquee";
   const speed = (data.customText._heroAnimationSpeed || "medium") as "slow" | "medium" | "fast";
   const intervalMs = speed === "slow" ? 7000 : speed === "fast" ? 3000 : 5000;
   const animDuration = speed === "slow" ? "30s" : speed === "fast" ? "12s" : "20s";
+  const marqueeDuration = speed === "slow" ? "60s" : speed === "fast" ? "25s" : "40s";
   const photoFilter = photoFilterCss(data.customText._photoFilter);
 
   const heroAndGallery: string[] = [
     ...(data.heroImage ? [data.heroImage] : []),
     ...((data.galleryImages ?? []).slice().sort((a, b) => a.order - b.order).map((g) => g.url)),
   ];
+
+  // ---- Marquee: continuously scrolls a strip of photos left-to-right ----
+  if (mode === "marquee" && heroAndGallery.length > 0) {
+    // Duplicate the list so the loop is seamless when translateX hits -50%
+    const strip = [...heroAndGallery, ...heroAndGallery];
+    return (
+      <div className="absolute inset-0 overflow-hidden" style={{ background: `linear-gradient(135deg, ${data.colorPalette.primary}22, ${data.colorPalette.secondary}22)` }}>
+        <div
+          className="flex h-full"
+          style={{
+            width: "max-content",
+            animation: `wsa-marquee ${marqueeDuration} linear infinite`,
+            willChange: "transform",
+          }}
+        >
+          {strip.map((url, i) => (
+            <div
+              key={url + i}
+              className="h-full flex-shrink-0"
+              style={{
+                width: "60vw",
+                backgroundImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.55)), url('${imageUrl(url)}')`,
+                backgroundPosition: "center",
+                backgroundSize: "cover",
+                backgroundRepeat: "no-repeat",
+                filter: photoFilter,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const slideshowImages = mode === "slideshow" ? heroAndGallery : data.heroImage ? [data.heroImage] : [];
 
   const [activeIdx, setActiveIdx] = useState(0);
@@ -876,11 +911,11 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                 onCommit={(v) => ctx.onTextChange(key, v || "New text — click to edit")}
                 style={{
                   display: "inline-block",
-                  background: "rgba(255,255,255,0.85)",
-                  color: "#222",
+                  background: "transparent",
+                  color: data.heroImage ? "#fff" : data.colorPalette.text,
                   padding: "6px 14px",
                   borderRadius: 8,
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+                  textShadow: data.heroImage ? "0 1px 4px rgba(0,0,0,0.6)" : undefined,
                   fontSize: 18,
                   minWidth: 80,
                 }}
@@ -1539,18 +1574,60 @@ function BrandingFooter() {
   );
 }
 
+function ShareButton({ accent, text }: { accent: string; text: string }) {
+  const [copied, setCopied] = useState(false);
+  const onClick = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const title = typeof document !== "undefined" ? document.title : "";
+    try {
+      // Prefer the native Share Sheet on mobile if available (gives guests
+      // text / WhatsApp / iMessage / etc.), fall back to clipboard.
+      if (typeof navigator !== "undefined" && (navigator as Navigator & { share?: (data: ShareData) => Promise<void> }).share) {
+        await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({ title, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* user cancelled or clipboard blocked */
+    }
+  };
+  return (
+    <button
+      onClick={onClick}
+      className="absolute right-3 top-3 z-40 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:opacity-90"
+      style={{
+        background: `${accent}15`,
+        color: text,
+        border: `1px solid ${accent}33`,
+      }}
+      title={copied ? "Link copied!" : "Share this page"}
+      aria-label={copied ? "Link copied" : "Share"}
+    >
+      {copied ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
+      <span className="hidden sm:inline">{copied ? "Copied" : "Share"}</span>
+    </button>
+  );
+}
+
 function TopNav({
   data,
   scrollContainer,
   pageMode,
   slug,
   currentSection,
+  onSectionChange,
 }: {
   data: WebsiteRendererPayload;
   scrollContainer?: HTMLElement | null;
   pageMode: boolean;
   slug?: string;
   currentSection: string;
+  // When provided, nav buttons call this instead of scrolling or routing.
+  // Used by the editor's Guest Preview to drive page-per-section navigation
+  // through React state without changing the actual URL.
+  onSectionChange?: (id: string) => void;
 }) {
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
   const [scrollActive, setScrollActive] = useState<string>("home");
@@ -1612,6 +1689,18 @@ function TopNav({
       fontFamily: fontStack(headingFont(data)),
       fontWeight: 600,
     };
+    if (onSectionChange) {
+      return (
+        <button
+          key={it.id}
+          onClick={() => { onSectionChange(it.id); scrollContainer?.scrollTo({ top: 0, behavior: "auto" }); }}
+          className={className}
+          style={style}
+        >
+          {it.label}
+        </button>
+      );
+    }
     if (slug) {
       const seg = urlSegmentForSection(it.id);
       const href = seg ? `/w/${slug}/${seg}` : `/w/${slug}`;
@@ -1628,7 +1717,9 @@ function TopNav({
     );
   };
 
-  const homeHref = slug ? `/w/${slug}` : undefined;
+  const homeHref = slug && !onSectionChange ? `/w/${slug}` : undefined;
+  // Show the Share button only on the real public site (not editor preview / live preview)
+  const showShare = !!slug && !onSectionChange;
 
   return (
     <nav
@@ -1638,6 +1729,7 @@ function TopNav({
         borderColor: `${data.colorPalette.primary}22`,
       }}
     >
+      {showShare && <ShareButton accent={data.colorPalette.primary} text={data.colorPalette.text} />}
       <div className="max-w-5xl mx-auto px-4 py-3 sm:py-4 flex flex-col items-center gap-2">
         {homeHref ? (
           <Link
@@ -1649,7 +1741,14 @@ function TopNav({
           </Link>
         ) : (
           <button
-            onClick={() => scrollTo("home")}
+            onClick={() => {
+              if (onSectionChange) {
+                onSectionChange("home");
+                scrollContainer?.scrollTo({ top: 0, behavior: "auto" });
+              } else {
+                scrollTo("home");
+              }
+            }}
             className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
             style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
           >
@@ -1673,6 +1772,7 @@ export function WebsiteRenderer({
   onPositionChange,
   onDeleteElement,
   currentSection,
+  onSectionChange,
   slug,
   password,
   previewMode = false,
@@ -1685,6 +1785,11 @@ export function WebsiteRenderer({
   onPositionChange?: (key: string, position: TextPosition) => void;
   onDeleteElement?: (key: string) => void;
   currentSection?: string;
+  // When provided alongside currentSection, the TopNav drives navigation
+  // through this callback instead of routing or scrolling — used by the
+  // editor's Guest Preview to render one section at a time without changing
+  // the URL.
+  onSectionChange?: (id: string) => void;
   slug?: string;
   password?: string | null;
   // Force scroll-based nav even when slug is provided (used by editor guest preview)
@@ -1727,6 +1832,7 @@ export function WebsiteRenderer({
         pageMode={pageMode}
         slug={navSlug}
         currentSection={currentSection ?? "home"}
+        onSectionChange={onSectionChange}
       />
       {(showAll || currentSection === "home") && <Hero data={data} ctx={ctx} />}
       {show("welcome", data.sectionsEnabled.welcome) && <Welcome data={data} ctx={ctx} />}
