@@ -218,6 +218,50 @@ router.put("/website/publish", requireAuth, async (req, res) => {
   }
 });
 
+// ---------- PUT /api/website/slug ----------
+
+router.put("/website/slug", requireAuth, async (req, res) => {
+  try {
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
+
+    const [existing] = await db
+      .select()
+      .from(weddingWebsites)
+      .where(eq(weddingWebsites.profileId, profile.id))
+      .limit(1);
+    if (!existing) return res.status(404).json({ error: "Website not created yet" });
+
+    const raw = String(req.body?.slug ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "")
+      .replace(/^-+|-+$/g, "")
+      .replace(/-{2,}/g, "-");
+
+    if (!raw || raw.length < 3) return res.status(400).json({ error: "Slug must be at least 3 characters" });
+    if (raw.length > 60) return res.status(400).json({ error: "Slug too long (max 60 characters)" });
+    if (raw === existing.slug) return res.json(serialize(existing));
+
+    const [conflict] = await db
+      .select({ id: weddingWebsites.id })
+      .from(weddingWebsites)
+      .where(eq(weddingWebsites.slug, raw))
+      .limit(1);
+    if (conflict) return res.status(409).json({ error: "That URL is already taken. Please try a different one." });
+
+    const [updated] = await db
+      .update(weddingWebsites)
+      .set({ slug: raw, lastUpdated: new Date() })
+      .where(eq(weddingWebsites.id, existing.id))
+      .returning();
+    res.json(serialize(updated));
+  } catch (err) {
+    req.log.error(err, "updateSlug failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ---------- GET /api/website/public/:slug ----------
 //
 // Public, unauthenticated. Returns the rendered website data the guest site

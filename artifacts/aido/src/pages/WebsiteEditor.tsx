@@ -607,20 +607,33 @@ export default function WebsiteEditor() {
 
         {/* Gallery */}
         <Section icon={<ImageIcon className="h-4 w-4" />} title="Gallery">
-          <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="grid grid-cols-3 gap-2 mb-3 items-start">
             {record.galleryImages.map((img, i) => (
-              <div key={i} className="relative aspect-square rounded-md overflow-hidden">
-                <img
-                  src={img.url.startsWith("/objects/") ? `/api/storage${img.url}` : img.url}
-                  alt=""
-                  className="w-full h-full object-cover"
+              <div key={i} className="flex flex-col gap-1">
+                <div className="relative aspect-square rounded-md overflow-hidden">
+                  <img
+                    src={img.url.startsWith("/objects/") ? `/api/storage${img.url}` : img.url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    onClick={() => removeGalleryImage(i)}
+                    className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+                <input
+                  value={img.caption ?? ""}
+                  onChange={(e) => {
+                    const next = record.galleryImages.map((im, idx) =>
+                      idx === i ? { ...im, caption: e.target.value || undefined } : im
+                    );
+                    update({ galleryImages: next });
+                  }}
+                  placeholder="Caption…"
+                  className="w-full text-[10px] border border-border rounded px-1.5 py-1 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 truncate"
                 />
-                <button
-                  onClick={() => removeGalleryImage(i)}
-                  className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
-                >
-                  <X className="h-3 w-3" />
-                </button>
               </div>
             ))}
           </div>
@@ -708,6 +721,17 @@ export default function WebsiteEditor() {
               </div>
             </div>
           )}
+        </Section>
+
+        {/* Website URL */}
+        <Section icon={<Link2 className="h-4 w-4" />} title="Website URL">
+          <SlugEditor
+            slug={record.slug}
+            published={record.published}
+            onSaved={(newSlug, lastUpdated) =>
+              setRecord((prev) => prev ? { ...prev, slug: newSlug, lastUpdated } : prev)
+            }
+          />
         </Section>
 
         {/* Password */}
@@ -876,9 +900,141 @@ function RsvpResponsesPanel({ enabled }: { enabled: boolean }) {
           ))}
         </div>
       )}
-      <Button size="sm" variant="outline" className="w-full" onClick={() => void refetch()}>
-        Refresh
-      </Button>
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" className="flex-1" onClick={() => void refetch()}>
+          Refresh
+        </Button>
+        {rsvps.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              const headers = ["Name", "Email", "Attending", "+1s", "Dietary", "Message", "Submitted"];
+              const rows = rsvps.map((r) => [
+                r.name,
+                r.email ?? "",
+                r.attending,
+                String(r.plusOneCount),
+                r.dietaryRestrictions ?? "",
+                r.message ?? "",
+                new Date(r.submittedAt).toLocaleString(),
+              ]);
+              const csv = [headers, ...rows]
+                .map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+                .join("\n");
+              const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "rsvp-responses.csv";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            CSV
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---- slug editor ----
+
+function SlugEditor({
+  slug,
+  published,
+  onSaved,
+}: {
+  slug: string;
+  published: boolean;
+  onSaved: (newSlug: string, lastUpdated: string) => void;
+}) {
+  const { toast } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [input, setInput] = useState(slug);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sanitize = (v: string) =>
+    v.toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/^-+|-+$/, "").replace(/-{2,}/g, "-").slice(0, 60);
+
+  const save = async () => {
+    const clean = sanitize(input);
+    if (clean.length < 3) { setError("At least 3 characters required"); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      const r = await authFetch("/api/website/slug", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: clean }),
+      });
+      const body = await r.json() as { slug?: string; lastUpdated?: string; error?: string };
+      if (!r.ok) { setError(body.error ?? "Failed to update URL"); return; }
+      onSaved(body.slug!, body.lastUpdated!);
+      setEditing(false);
+      toast({ title: "Website URL updated!" });
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">Customize the public URL for your site.</p>
+      {published && (
+        <p className="text-[11px] text-amber-600 dark:text-amber-400">
+          Changing the URL will break any previously shared links.
+        </p>
+      )}
+      {editing ? (
+        <div className="space-y-2">
+          <p className="text-[10px] text-muted-foreground font-mono">{window.location.origin}/w/</p>
+          <input
+            value={input}
+            onChange={(e) => { setInput(sanitize(e.target.value)); setError(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter") void save(); if (e.key === "Escape") { setEditing(false); setInput(slug); setError(null); } }}
+            placeholder="your-url-slug"
+            autoFocus
+            className="w-full h-8 px-3 rounded-md border border-border bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => void save()}
+              disabled={saving || sanitize(input).length < 3}
+              className="flex-1"
+            >
+              {saving ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Saving</> : "Save URL"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { setEditing(false); setInput(slug); setError(null); }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-mono text-muted-foreground truncate">/w/{slug}</span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs flex-shrink-0"
+            onClick={() => { setEditing(true); setInput(slug); }}
+          >
+            Edit URL
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
