@@ -1995,13 +1995,9 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         // For buffered (tool-equipped) requests, flush the accumulated text now
         // that we know the model produced a pure text response (no tool calls).
         // Strip any raw JSON blobs the small model may have echoed from a tool
-        // result — detected by a { ... } block with multiple "key": value pairs.
+        // result. If the strip ate everything, fall back to a friendly nudge
+        // so the user never sees a stuck loading indicator with no message.
         if (!skipTools && contentAccum) {
-          // Strip 3+ patterns of garbage the small model occasionally emits as
-          // text instead of using the function-call API:
-          //   - Short tool-call envelopes: `{"name": "add_vendor", "parameters": }`
-          //   - Tool-call envelopes with args: `{"name": "X", "arguments": {...}}`
-          //   - Long serialized blobs (3+ "key": pairs)
           const TOOL_NAME_PATTERN = /\{[^{}]{0,200}"name"\s*:\s*"[a-z_]+"[^{}]*(?:"(?:parameters|arguments)"\s*:\s*(?:\{[^{}]*\}|[^{}]*))?[^{}]*\}/gi;
           const sanitized = contentAccum
             .replace(TOOL_NAME_PATTERN, "")
@@ -2011,7 +2007,19 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
             })
             .replace(/\n{3,}/g, "\n\n")
             .trim();
-          if (sanitized) send({ type: "content", content: sanitized });
+          if (sanitized) {
+            send({ type: "content", content: sanitized });
+          } else {
+            // Strip ate everything (model wrote a tool-call envelope as
+            // text and nothing else). Don't leave the user with silence.
+            req.log.warn({ userId, lastUserPreview: lastUserText.slice(0, 80) }, "Aria response sanitized to empty");
+            send({ type: "content", content: "Sorry — I didn't quite catch that. Could you tell me a bit more about what you'd like me to do?" });
+          }
+        } else if (!skipTools && !contentAccum) {
+          // Model returned no content AND no tool calls. Edge case (rate
+          // limit / cut connection). Send a fallback so the loader clears.
+          req.log.warn({ userId, lastUserPreview: lastUserText.slice(0, 80) }, "Aria stream finished with no content and no tool calls");
+          send({ type: "content", content: "I didn't get a response — could you try that again?" });
         }
 
         // If the model was cut off mid-response, add its partial reply to
