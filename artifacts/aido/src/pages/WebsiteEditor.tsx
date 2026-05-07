@@ -467,6 +467,39 @@ export default function WebsiteEditor() {
           )}
         </div>
 
+        {/* Text tools */}
+        <Section icon={<Type className="h-4 w-4" />} title="Text Tools">
+          <div className="space-y-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => {
+                const key = `_custom_${Date.now()}`;
+                update({
+                  customText: { ...record.customText, [key]: "New text — click to edit" },
+                  textPositions: { ...(record.textPositions ?? {}), [key]: { x: 0, y: 0 } },
+                });
+              }}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Insert text box
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+              onClick={() => {
+                if (!window.confirm("Reset all text edits, styles, and positions to defaults?")) return;
+                update({ customText: {}, textStyles: {}, textPositions: {} });
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+              Reset all to default
+            </Button>
+          </div>
+        </Section>
+
         {/* Theme picker */}
         <Section icon={<Palette className="h-4 w-4" />} title="Theme">
           <div className="grid grid-cols-2 gap-2">
@@ -790,6 +823,13 @@ export default function WebsiteEditor() {
             onTextChange={(key, value) => update({ customText: { ...record.customText, [key]: value } })}
             onStyleChange={(key, style) => update({ textStyles: { ...(record.textStyles ?? {}), [key]: style } })}
             onPositionChange={(key, pos) => update({ textPositions: { ...(record.textPositions ?? {}), [key]: pos } })}
+            onDeleteElement={(key) => {
+              const ct = { ...record.customText };
+              const ts = { ...(record.textStyles ?? {}) };
+              const tp = { ...(record.textPositions ?? {}) };
+              delete ct[key]; delete ts[key]; delete tp[key];
+              update({ customText: ct, textStyles: ts, textPositions: tp });
+            }}
           />
         </div>
       </main>
@@ -821,6 +861,7 @@ export default function WebsiteEditor() {
             data={livePreview}
             editable={false}
             slug={record.slug ?? ""}
+            previewMode
           />
         </div>
       )}

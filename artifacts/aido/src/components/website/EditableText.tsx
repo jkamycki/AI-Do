@@ -16,6 +16,7 @@ interface Props {
   onStyleChange?: (next: WebsiteTextStyle) => void;
   position?: TextPosition;
   onPositionChange?: (next: TextPosition) => void;
+  onDelete?: () => void;
   fontKey?: string;
   fontValue?: string;
   onFontCommit?: (next: string) => void;
@@ -51,6 +52,7 @@ export function EditableText({
   onStyleChange,
   position,
   onPositionChange,
+  onDelete,
 }: Props) {
   const display = value && value.trim() ? value : defaultValue;
   const ref = useRef<HTMLElement | null>(null);
@@ -241,7 +243,6 @@ export function EditableText({
           outline: "none",
           cursor: showToolbar ? "text" : "inherit",
           minWidth: "1em",
-          // While in drag mode, pass pointer events through to the wrapper
           pointerEvents: canDrag ? "none" : undefined,
         }}
       >
@@ -279,6 +280,7 @@ export function EditableText({
           onChange={onStyleChange}
           anchorRect={anchorRect}
           onKeepOpen={keepOpen}
+          onDelete={onDelete}
         />
       )}
     </Wrap>
