@@ -201,6 +201,37 @@ export default function WebsiteEditor() {
     setDirty(true);
   }, []);
 
+  // Must be declared above any early return so the hook count stays stable.
+  const livePreview = useMemo<WebsiteRendererPayload | null>(() => {
+    if (!record) return null;
+    return {
+      slug: record.slug,
+      theme: record.theme,
+      layoutStyle: record.layoutStyle,
+      font: record.font,
+      accentColor: record.accentColor,
+      colorPalette: record.colorPalette,
+      sectionsEnabled: record.sectionsEnabled,
+      customText: record.customText,
+      textStyles: record.textStyles ?? {},
+      textPositions: record.textPositions ?? {},
+      galleryImages: record.galleryImages,
+      heroImage: record.heroImage,
+      portalParty: record.portalParty,
+      couple: previewExtra?.couple ?? {
+        partner1Name: "",
+        partner2Name: "",
+        weddingDate: "",
+        ceremonyTime: "",
+        receptionTime: "",
+        venue: "",
+        location: "",
+        venueCity: null,
+        venueState: null,
+      },
+    };
+  }, [record, previewExtra?.couple]);
+
   const saveNow = async (silent: boolean): Promise<boolean> => {
     if (!record) return false;
     if (!silent) setSaving(true);
@@ -404,34 +435,6 @@ export default function WebsiteEditor() {
       </div>
     );
   }
-
-  const livePreview: WebsiteRendererPayload = useMemo(() => ({
-    slug: record.slug,
-    theme: record.theme,
-    layoutStyle: record.layoutStyle,
-    font: record.font,
-    accentColor: record.accentColor,
-    colorPalette: record.colorPalette,
-    sectionsEnabled: record.sectionsEnabled,
-    customText: record.customText,
-    textStyles: record.textStyles ?? {},
-    textPositions: record.textPositions ?? {},
-    galleryImages: record.galleryImages,
-    heroImage: record.heroImage,
-    portalParty: record.portalParty,
-    couple: previewExtra?.couple ?? {
-      partner1Name: "",
-      partner2Name: "",
-      weddingDate: "",
-      ceremonyTime: "",
-      receptionTime: "",
-      venue: "",
-      location: "",
-      venueCity: null,
-      venueState: null,
-    },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [record, previewExtra?.couple]);
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] md:h-screen">
@@ -842,7 +845,7 @@ export default function WebsiteEditor() {
         </div>
         <div className="bg-white">
           <WebsiteRenderer
-            data={livePreview}
+            data={livePreview!}
             editable
             onTextChange={(key, value) => patchRecord((prev) => ({ customText: { ...prev.customText, [key]: value } }))}
             onStyleChange={(key, style) => patchRecord((prev) => ({ textStyles: { ...(prev.textStyles ?? {}), [key]: style } }))}
@@ -882,7 +885,7 @@ export default function WebsiteEditor() {
             </div>
           </div>
           <WebsiteRenderer
-            data={livePreview}
+            data={livePreview!}
             editable={false}
             slug={record.slug ?? ""}
             previewMode
