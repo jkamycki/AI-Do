@@ -115,6 +115,9 @@ export function EditableText({
   const Wrap = (as === "div" ? "div" : "span") as React.ElementType;
 
   if (!editable) {
+    // On the public site, an empty value with no fallback should not paint a
+    // blank container — render nothing so guests don't see ghost rows.
+    if ((display ?? "").trim() === "") return null;
     return (
       <Tag key={animKey} className={className} style={{ ...style, ...tsStyle, ...animStyle, transform }}>
         {display}
@@ -208,7 +211,17 @@ export function EditableText({
   const handleResizePointerUp = () => { resizeState.current = null; };
 
   const hasOffset = position && (position.x !== 0 || position.y !== 0);
-  const showControls = hovered || showToolbar || isDragging;
+  // Visibly-empty element: don't show the dashed outline or hover/resize/× chrome
+  // and (when not actively editing) don't render the Wrap shell at all. Otherwise
+  // a user clearing a non-deletable text element (e.g. couple name when the
+  // profile has no names yet) is left staring at a blue empty box.
+  const isVisiblyEmpty = (display ?? "").trim() === "";
+  const showControls = (hovered || showToolbar || isDragging) && (!isVisiblyEmpty || showToolbar);
+  if (isVisiblyEmpty && !showToolbar) {
+    // Render an invisible 0-width anchor so the parent layout doesn't collapse
+    // unpredictably and so React's keyed reconciliation stays stable.
+    return <Wrap aria-hidden="true" style={{ display: "none" }} />;
+  }
 
   return (
     <Wrap
