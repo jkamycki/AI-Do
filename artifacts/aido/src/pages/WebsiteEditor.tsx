@@ -848,6 +848,7 @@ interface RsvpEntry {
   dietaryRestrictions: string | null;
   message: string | null;
   submittedAt: string;
+  source?: "guest_list" | "website";
 }
 
 function RsvpResponsesPanel({ enabled }: { enabled: boolean }) {
@@ -861,7 +862,6 @@ function RsvpResponsesPanel({ enabled }: { enabled: boolean }) {
       if (!r.ok) throw new Error("Failed");
       return r.json();
     },
-    enabled,
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
@@ -909,7 +909,12 @@ function RsvpResponsesPanel({ enabled }: { enabled: boolean }) {
           {rsvps.map((r) => (
             <div key={r.id} className="rounded-md border border-border p-2.5 text-xs space-y-1 bg-card">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-medium truncate">{r.name}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-medium truncate">{r.name}</span>
+                  {r.source === "guest_list" && (
+                    <span className="flex-shrink-0 text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary font-medium">Guest list</span>
+                  )}
+                </div>
                 <span className={`flex-shrink-0 font-medium ${r.attending === "yes" ? "text-emerald-600" : r.attending === "no" ? "text-red-500" : "text-amber-500"}`}>
                   {r.attending === "yes" ? "✓ Attending" : r.attending === "no" ? "✗ Declined" : "? Maybe"}
                   {r.attending !== "no" && r.plusOneCount > 0 && ` +${r.plusOneCount}`}
@@ -932,14 +937,15 @@ function RsvpResponsesPanel({ enabled }: { enabled: boolean }) {
             variant="outline"
             className="flex-1"
             onClick={() => {
-              const headers = ["Name", "Email", "Attending", "+1s", "Dietary", "Message", "Submitted"];
+              const headers = ["Name", "Email", "Attending", "+1s", "Dietary", "Message", "Source", "Submitted"];
               const rows = rsvps.map((r) => [
                 r.name,
                 r.email ?? "",
-                r.attending,
+                r.attending === "yes" ? "Attending" : r.attending === "no" ? "Declined" : "Maybe",
                 String(r.plusOneCount),
                 r.dietaryRestrictions ?? "",
                 r.message ?? "",
+                r.source === "guest_list" ? "Guest List" : "Website Form",
                 new Date(r.submittedAt).toLocaleString(),
               ]);
               const csv = [headers, ...rows]

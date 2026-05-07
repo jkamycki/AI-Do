@@ -1303,8 +1303,10 @@ export function WebsiteRenderer({
       {show("weddingParty", data.sectionsEnabled.weddingParty) && <WeddingParty data={data} ctx={ctx} />}
       {show("faq", data.sectionsEnabled.faq) && <Faq data={data} ctx={ctx} />}
       {show("gallery", data.sectionsEnabled.gallery) && <Gallery data={data} ctx={ctx} />}
-      {(showAll || currentSection === "rsvp") && slug && (
-        <RsvpFlow data={data} slug={slug} password={password ?? undefined} />
+      {(showAll || currentSection === "rsvp") && (
+        slug
+          ? <RsvpFlow data={data} slug={slug} password={password ?? undefined} />
+          : <RsvpSection data={data} ctx={ctx} />
       )}
       <Footer data={data} ctx={ctx} />
     </div>
