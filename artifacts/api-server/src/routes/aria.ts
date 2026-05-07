@@ -477,7 +477,12 @@ function normalizeCategory(c: string): string {
   return found ?? c;
 }
 
-type ActionResult = { ok: true; data: unknown } | { ok: false; error: string };
+type ActionResult =
+  | { ok: true; data: unknown }
+  // doNotRetry tells the orchestrator to remove this tool from the next round so
+  // the model can't keep guessing args after a hallucination-rejection (e.g.
+  // "Lowdown Blow DJ" after the user only typed "add a vendor").
+  | { ok: false; error: string; doNotRetry?: boolean };
 type ActionRecord = { name: string; args: Record<string, unknown>; result: ActionResult };
 
 type FoundVendor = { ok: true; id: number; name: string } | { ok: false; error: string };
@@ -712,7 +717,7 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       if (!profile) return { ok: false, error: "No wedding profile found." };
       const vendorName = String(args.name ?? "").trim();
       const category = normalizeCategory(String(args.category ?? "Other").trim());
-      if (!vendorName) return { ok: false, error: "Vendor name is required. Ask the user for the specific business name." };
+      if (!vendorName) return { ok: false, error: "Vendor name is required. Ask the user for the specific business name.", doNotRetry: true };
 
       // Reject category words and placeholders used as vendor names
       const VENDOR_CATEGORY_WORDS = new Set([
@@ -724,7 +729,7 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       ]);
       const lowerName = vendorName.toLowerCase();
       if (VENDOR_CATEGORY_WORDS.has(lowerName)) {
-        return { ok: false, error: `"${vendorName}" is a vendor category, not a business name. Ask the user: "What's the specific business name?" then call add_vendor again with the real name.` };
+        return { ok: false, error: `"${vendorName}" is a vendor category, not a business name. Ask the user: "What's the specific business name?" then call add_vendor again with the real name.`, doNotRetry: true };
       }
 
       // Refuse to save a vendor whose name doesn't appear anywhere in the
@@ -743,24 +748,25 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
           return {
             ok: false,
             error: `"${vendorName}" doesn't appear in the user's messages — do not invent vendor names. Ask the user: "What's the vendor's business name?" and wait for their reply before calling add_vendor again.`,
+            doNotRetry: true,
           };
         }
       }
       if (/^(vendor\s*\d*|new vendor|sample vendor|test vendor|unnamed|unknown vendor|n\/a|none|tbd|placeholder|my vendor|the vendor)$/i.test(lowerName)) {
-        return { ok: false, error: `"${vendorName}" looks like a placeholder. Ask the user for the actual business name, then call add_vendor again.` };
+        return { ok: false, error: `"${vendorName}" looks like a placeholder. Ask the user for the actual business name, then call add_vendor again.`, doNotRetry: true };
       }
       // Reject names that match the system prompt examples — the model sometimes
       // uses these as defaults when the user hasn't provided a real name.
       if (/^(bloom\s*&?\s*co|happy clicks studio|sarah lee photography)$/i.test(lowerName)) {
-        return { ok: false, error: `"${vendorName}" is an example name, not a name the user provided. Ask the user: "What's the specific business name?" then call add_vendor with their real answer.` };
+        return { ok: false, error: `"${vendorName}" is an example name, not a name the user provided. Ask the user: "What's the specific business name?" then call add_vendor with their real answer.`, doNotRetry: true };
       }
       // Reject names that are clearly questions or the gathering-question text.
       // A real business name never contains a question mark or exceeds 80 chars.
       if (vendorName.includes("?")) {
-        return { ok: false, error: `"${vendorName}" is a question, not a business name. Ask the user for the vendor's name and wait for their reply before calling add_vendor.` };
+        return { ok: false, error: `"${vendorName}" is a question, not a business name. Ask the user for the vendor's name and wait for their reply before calling add_vendor.`, doNotRetry: true };
       }
       if (vendorName.length > 80) {
-        return { ok: false, error: `Vendor name is too long to be a real business name. Ask the user: "What's the specific business name?" then call add_vendor with their real answer.` };
+        return { ok: false, error: `Vendor name is too long to be a real business name. Ask the user: "What's the specific business name?" then call add_vendor with their real answer.`, doNotRetry: true };
       }
       if (/^(what'?s|what is|please|could you|can you|tell me|i need|i want|add a |add an )/i.test(vendorName)) {
         return { ok: false, error: `"${vendorName.slice(0, 40)}…" looks like a prompt or question, not a business name. Ask the user for the vendor's name and wait for their reply.` };
@@ -1834,7 +1840,10 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const lastUserText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
     const skipTools = !!lastUserText
       && (isConversationalMessage(lastUserText) || isInfoQuestion(lastUserText));
-    const filteredTools = skipTools ? [] : pickToolsForMessages(recent as Array<{ role: string; content: string }>);
+    let filteredTools = skipTools ? [] : pickToolsForMessages(recent as Array<{ role: string; content: string }>);
+    // Tools that returned a doNotRetry error this turn — pruned from the next
+    // loop iteration so the model can't keep guessing args after a rejection.
+    const bannedTools = new Set<string>();
     req.log.info({
       userId,
       skipTools,
@@ -2049,6 +2058,16 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
           tool_call_id: tc.id,
           content: JSON.stringify(result),
         });
+        // If a tool flagged its rejection as "do not retry" (e.g. add_vendor
+        // refused a hallucinated business name), drop that tool from the
+        // remaining loop iterations. Without this the model loops forever
+        // calling add_vendor with new invented names.
+        if (!result.ok && (result as { doNotRetry?: boolean }).doNotRetry) {
+          bannedTools.add(tc.name);
+        }
+      }
+      if (bannedTools.size > 0) {
+        filteredTools = filteredTools.filter((t) => !bannedTools.has(t.function.name));
       }
 
       // Fast path: if every tool was a write action AND all succeeded, skip the
