@@ -710,8 +710,49 @@ export default function SeatingChartPage() {
       const margin = 48;
       const colGap = 28;
       const colW = (pageW - margin * 2 - colGap) / 2;
-      let col = 0; // 0 = left, 1 = right
-      let cursorY = margin;
+      let col = 0;
+
+      // ── Brand palette ────────────────────────────────────────────────
+      // Deep purple background, gold for headings/accents, white for body.
+      const PURPLE: [number, number, number] = [42, 23, 69];   // #2A1745 — rich deep purple
+      const PURPLE_2: [number, number, number] = [60, 35, 95]; // slightly lighter, used for table-card fills
+      const GOLD: [number, number, number] = [212, 160, 23];   // #D4A017 — primary brand gold
+      const GOLD_SOFT: [number, number, number] = [245, 200, 66]; // accent highlights / dividers
+      const WHITE: [number, number, number] = [255, 255, 255];
+      const WHITE_DIM: [number, number, number] = [225, 215, 245]; // for secondary lines
+
+      // Paint the entire page background — this fn is called for the first
+      // page now and again every time we addPage().
+      const paintBackground = () => {
+        doc.setFillColor(...PURPLE);
+        doc.rect(0, 0, pageW, pageH, "F");
+      };
+      paintBackground();
+
+      // ── Logo (right corner) ──────────────────────────────────────────
+      // Fetch /logo.png as a data URL so jsPDF's addImage() can embed it.
+      let logoDataUrl: string | null = null;
+      try {
+        const res = await fetch("/logo.png");
+        if (res.ok) {
+          const blob = await res.blob();
+          logoDataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+          });
+        }
+      } catch { /* logo failure is non-fatal */ }
+
+      // Sized to look balanced at letter scale — not too small, not too big.
+      const LOGO_SIZE = 48;
+      const placeLogo = () => {
+        if (!logoDataUrl) return;
+        try {
+          doc.addImage(logoDataUrl, "PNG", pageW - margin - LOGO_SIZE, margin - 8, LOGO_SIZE, LOGO_SIZE);
+        } catch { /* ignore PNG-read issues */ }
+      };
 
       const couple = profile
         ? `${profile.partner1Name ?? ""} & ${profile.partner2Name ?? ""}`.trim()
@@ -726,46 +767,50 @@ export default function SeatingChartPage() {
           })()
         : "";
 
-      // ── Header
+      // ── Header ───────────────────────────────────────────────────────
+      let cursorY = margin + 6;
+      placeLogo();
+
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(22);
-      doc.text(t("seating.your_seating_chart", { defaultValue: "Seating Chart" }), margin, cursorY);
-      cursorY += 26;
+      doc.setFontSize(24);
+      doc.setTextColor(...GOLD);
+      doc.text(t("seating.your_seating_chart", { defaultValue: "Seating Chart" }), margin, cursorY + 14);
+      cursorY += 30;
 
       if (couple) {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(13);
-        doc.setTextColor(60, 60, 60);
+        doc.setTextColor(...WHITE);
         doc.text(couple, margin, cursorY);
         cursorY += 16;
       }
       if (weddingDate) {
         doc.setFontSize(11);
-        doc.setTextColor(110, 110, 110);
+        doc.setTextColor(...WHITE_DIM);
         doc.text(weddingDate, margin, cursorY);
         cursorY += 18;
       }
-      doc.setDrawColor(220, 220, 220);
+      // Gold divider under the header
+      doc.setDrawColor(...GOLD);
+      doc.setLineWidth(1);
       doc.line(margin, cursorY, pageW - margin, cursorY);
-      cursorY += 18;
+      cursorY += 22;
 
       const headerBottomY = cursorY;
       let leftY = headerBottomY;
       let rightY = headerBottomY;
 
-      // ── Tables (2-column flow)
+      // ── Tables (2-column flow) ───────────────────────────────────────
       for (const table of result.tables) {
-        // Estimate block height to decide if it fits in current column
         const lineHeight = 14;
         const headerH = 18 + 8;
         const rowsH = (table.guests.length || 1) * lineHeight;
         const themeH = table.theme ? 14 : 0;
-        const blockH = headerH + themeH + rowsH + 14;
+        const blockH = headerH + themeH + rowsH + 22;
 
-        // Pick the column with less content; fall back to next page if both too full.
         const pickCol = (): 0 | 1 => {
-          const lFits = leftY + blockH <= pageH - margin;
-          const rFits = rightY + blockH <= pageH - margin;
+          const lFits = leftY + blockH <= pageH - margin - 24;
+          const rFits = rightY + blockH <= pageH - margin - 24;
           if (!lFits && !rFits) return -1 as unknown as 0 | 1;
           if (!lFits) return 1;
           if (!rFits) return 0;
@@ -774,18 +819,35 @@ export default function SeatingChartPage() {
         let chosen = pickCol();
         if ((chosen as number) === -1) {
           doc.addPage();
-          leftY = margin;
-          rightY = margin;
+          paintBackground();
+          placeLogo();
+          // re-draw a slim gold rule at the top of new pages so the brand
+          // stays consistent without repeating the full title block
+          doc.setDrawColor(...GOLD);
+          doc.setLineWidth(0.6);
+          doc.line(margin, margin + LOGO_SIZE + 6, pageW - margin, margin + LOGO_SIZE + 6);
+          leftY = margin + LOGO_SIZE + 22;
+          rightY = leftY;
           chosen = 0;
         }
         col = chosen;
         const x = margin + col * (colW + colGap);
         let y = col === 0 ? leftY : rightY;
 
+        // Subtle card behind each table block for separation against the
+        // purple background. Rounded corners; soft purple fill.
+        const cardPad = 12;
+        const cardX = x - cardPad;
+        const cardY = y - 12;
+        const cardW = colW + cardPad * 2;
+        const cardH = blockH;
+        doc.setFillColor(...PURPLE_2);
+        doc.roundedRect(cardX, cardY, cardW, cardH, 8, 8, "F");
+
         // Table header
         doc.setFont("helvetica", "bold");
         doc.setFontSize(13);
-        doc.setTextColor(20, 20, 20);
+        doc.setTextColor(...GOLD);
         const tableTitle = table.tableName && table.tableName.trim()
           ? `Table ${table.tableNumber} · ${table.tableName}`
           : `Table ${table.tableNumber}`;
@@ -795,18 +857,17 @@ export default function SeatingChartPage() {
         if (table.theme) {
           doc.setFont("helvetica", "italic");
           doc.setFontSize(10);
-          doc.setTextColor(120, 120, 120);
+          doc.setTextColor(...GOLD_SOFT);
           const themeLines = doc.splitTextToSize(table.theme, colW);
           doc.text(themeLines, x, y);
           y += themeLines.length * 12 + 2;
         }
 
-        // Guest rows
         doc.setFont("helvetica", "normal");
         doc.setFontSize(11);
-        doc.setTextColor(50, 50, 50);
+        doc.setTextColor(...WHITE);
         if (table.guests.length === 0) {
-          doc.setTextColor(160, 160, 160);
+          doc.setTextColor(...WHITE_DIM);
           doc.text("(empty)", x, y);
           y += lineHeight;
         } else {
@@ -816,23 +877,24 @@ export default function SeatingChartPage() {
             y += lines.length * lineHeight;
           }
         }
-        y += 12;
+        y += 18;
 
         if (col === 0) leftY = y;
         else rightY = y;
       }
 
-      // ── Footer (page numbers + brand) on every page
+      // ── Footer (page numbers + brand) on every page ──────────────────
       const totalPages = (doc.internal.pages.length - 1) | 0;
       for (let p = 1; p <= totalPages; p++) {
         doc.setPage(p);
         doc.setFont("helvetica", "normal");
         doc.setFontSize(9);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Page ${p} / ${totalPages}`, margin, pageH - 18);
+        doc.setTextColor(...WHITE_DIM);
+        doc.text(`Page ${p} / ${totalPages}`, margin, pageH - 22);
         const right = "Generated by A.IDO";
         const rightW = doc.getTextWidth(right);
-        doc.text(right, pageW - margin - rightW, pageH - 18);
+        doc.setTextColor(...GOLD_SOFT);
+        doc.text(right, pageW - margin - rightW, pageH - 22);
       }
 
       const safe = (couple || "wedding").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
