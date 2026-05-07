@@ -1523,7 +1523,7 @@ export function WebsiteRenderer({
       {show("gallery", data.sectionsEnabled.gallery) && <Gallery data={data} ctx={ctx} />}
       {(showAll || currentSection === "rsvp") && (
         slug
-          ? <RsvpFlow data={data} slug={slug} password={password ?? undefined} />
+          ? <RsvpFlow data={data} slug={slug} password={password ?? undefined} previewMode={previewMode} />
           : <RsvpSection data={data} ctx={ctx} />
       )}
       <Footer data={data} ctx={ctx} />
