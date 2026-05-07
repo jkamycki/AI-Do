@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { db, weddingWebsites, weddingProfiles, timelines } from "@workspace/db";
+import { db, weddingWebsites, weddingProfiles, timelines, websiteRsvps } from "@workspace/db";
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile } from "../lib/workspaceAccess";
 
@@ -287,6 +287,86 @@ router.get("/website/public/:slug", async (req, res) => {
     });
   } catch (err) {
     req.log.error(err, "publicWebsite failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------- POST /api/website/rsvp/:slug ----------
+// Public — no auth required. Guests submit their RSVP.
+
+router.post("/website/rsvp/:slug", async (req, res) => {
+  try {
+    const slug = String(req.params.slug ?? "").toLowerCase();
+    if (!slug) return res.status(400).json({ error: "Slug required" });
+
+    const [row] = await db
+      .select({ id: weddingWebsites.id, published: weddingWebsites.published })
+      .from(weddingWebsites)
+      .where(eq(weddingWebsites.slug, slug))
+      .limit(1);
+    if (!row || !row.published) return res.status(404).json({ error: "Not found" });
+
+    const { name, email, attending, plusOneCount, dietaryRestrictions, message } = (req.body ?? {}) as {
+      name?: string;
+      email?: string;
+      attending?: string;
+      plusOneCount?: number;
+      dietaryRestrictions?: string;
+      message?: string;
+    };
+
+    if (!name?.trim()) return res.status(400).json({ error: "Name is required" });
+    const att = attending === "no" ? "no" : attending === "maybe" ? "maybe" : "yes";
+
+    const [created] = await db
+      .insert(websiteRsvps)
+      .values({
+        websiteId: row.id,
+        name: name.trim().slice(0, 120),
+        email: email?.trim().slice(0, 200) || null,
+        attending: att,
+        plusOneCount: Math.max(0, Math.min(10, Number(plusOneCount) || 0)),
+        dietaryRestrictions: dietaryRestrictions?.trim().slice(0, 500) || null,
+        message: message?.trim().slice(0, 1000) || null,
+      })
+      .returning({ id: websiteRsvps.id });
+
+    res.status(201).json({ success: true, id: created.id });
+  } catch (err) {
+    req.log.error(err, "submitRsvp failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------- GET /api/website/rsvps ----------
+// Authenticated — returns RSVPs for the couple's own website.
+
+router.get("/website/rsvps", requireAuth, async (req, res) => {
+  try {
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
+
+    const [site] = await db
+      .select({ id: weddingWebsites.id })
+      .from(weddingWebsites)
+      .where(eq(weddingWebsites.profileId, profile.id))
+      .limit(1);
+    if (!site) return res.status(404).json({ error: "Website not created yet" });
+
+    const rsvps = await db
+      .select()
+      .from(websiteRsvps)
+      .where(eq(websiteRsvps.websiteId, site.id))
+      .orderBy(desc(websiteRsvps.submittedAt));
+
+    const yes = rsvps.filter((r) => r.attending === "yes");
+    const no = rsvps.filter((r) => r.attending === "no");
+    const maybe = rsvps.filter((r) => r.attending === "maybe");
+    const totalGuests = yes.reduce((s, r) => s + 1 + r.plusOneCount, 0);
+
+    res.json({ rsvps, summary: { yes: yes.length, no: no.length, maybe: maybe.length, totalGuests } });
+  } catch (err) {
+    req.log.error(err, "getRsvps failed");
     res.status(500).json({ error: "Internal server error" });
   }
 });

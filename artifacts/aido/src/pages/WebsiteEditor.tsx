@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/react";
 import { useUpload } from "@workspace/object-storage-web";
 import { authFetch } from "@/lib/authFetch";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
-  QrCode, Download, Link2, Plus,
+  QrCode, Download, Link2, Plus, Megaphone, Users,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WebsiteRenderer, type WebsiteRendererPayload, parseWeddingPartyMembers, parseRegistryLinks, type WeddingPartyMember, type WeddingPartySide, type RegistryLink } from "@/components/website/WebsiteRenderer";
@@ -75,6 +76,7 @@ const SECTION_LIST: Array<{ id: keyof WebsiteRecord["sectionsEnabled"]; label: s
   { id: "faq",          label: "FAQ",           icon: HelpCircle },
   { id: "gallery",      label: "Gallery",       icon: ImageIcon },
   { id: "weddingParty", label: "Wedding Party", icon: Heart },
+  { id: "rsvp",         label: "RSVP",          icon: Heart },
 ];
 
 // ---------- main ----------
@@ -391,6 +393,7 @@ export default function WebsiteEditor() {
   }
 
   const livePreview: WebsiteRendererPayload = {
+    slug: record.slug,
     theme: record.theme,
     layoutStyle: record.layoutStyle,
     font: record.font,
@@ -660,6 +663,53 @@ export default function WebsiteEditor() {
           />
         </Section>
 
+        {/* Announcement banner */}
+        <Section icon={<Megaphone className="h-4 w-4" />} title="Announcement">
+          <p className="text-xs text-muted-foreground mb-2">
+            Show a dismissible banner at the top of your site — great for last-minute updates.
+          </p>
+          <Textarea
+            value={record.customText._announcement ?? ""}
+            onChange={(e) =>
+              update({ customText: { ...record.customText, _announcement: e.target.value } })
+            }
+            placeholder="e.g. Venue has changed — please check the Travel section for updated details."
+            className="text-sm resize-none"
+            rows={3}
+          />
+        </Section>
+
+        {/* RSVP responses */}
+        <Section icon={<Users className="h-4 w-4" />} title="RSVP Responses">
+          <RsvpResponsesPanel enabled={record.sectionsEnabled.rsvp ?? false} />
+          {record.sectionsEnabled.rsvp && (
+            <div className="mt-3 space-y-2">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">RSVP deadline (shown to guests)</Label>
+                <Input
+                  value={record.customText.rsvp_deadline ?? ""}
+                  onChange={(e) =>
+                    update({ customText: { ...record.customText, rsvp_deadline: e.target.value } })
+                  }
+                  placeholder="e.g. October 1, 2025"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Thank-you message (shown after submit)</Label>
+                <Input
+                  value={record.customText.rsvp_thankyou ?? ""}
+                  onChange={(e) =>
+                    update({ customText: { ...record.customText, rsvp_thankyou: e.target.value } })
+                  }
+                  placeholder="We'll send you more details closer to the day."
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+          )}
+        </Section>
+
         {/* Password */}
         <Section icon={<Lock className="h-4 w-4" />} title="Password Protection">
           {record.passwordEnabled ? (
@@ -737,6 +787,98 @@ export default function WebsiteEditor() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ---- rsvp responses panel ----
+
+interface RsvpEntry {
+  id: number;
+  name: string;
+  email: string | null;
+  attending: string;
+  plusOneCount: number;
+  dietaryRestrictions: string | null;
+  message: string | null;
+  submittedAt: string;
+}
+
+function RsvpResponsesPanel({ enabled }: { enabled: boolean }) {
+  const { data, isLoading, refetch } = useQuery<{
+    rsvps: RsvpEntry[];
+    summary: { yes: number; no: number; maybe: number; totalGuests: number };
+  }>({
+    queryKey: ["website-rsvps"],
+    queryFn: async () => {
+      const r = await authFetch("/api/website/rsvps");
+      if (!r.ok) throw new Error("Failed");
+      return r.json();
+    },
+    enabled,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+
+  if (!enabled) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Enable the RSVP section above to start collecting responses.
+      </p>
+    );
+  }
+
+  if (isLoading) {
+    return <div className="h-10 bg-muted animate-pulse rounded" />;
+  }
+
+  const summary = data?.summary;
+  const rsvps = data?.rsvps ?? [];
+
+  return (
+    <div className="space-y-3">
+      {summary && (
+        <div className="grid grid-cols-3 gap-2 text-center">
+          {[
+            { label: "Attending", value: summary.yes, color: "text-emerald-600" },
+            { label: "Declined", value: summary.no, color: "text-red-500" },
+            { label: "Maybe", value: summary.maybe, color: "text-amber-500" },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="rounded-lg border bg-muted/20 p-2">
+              <div className={`text-xl font-bold ${color}`}>{value}</div>
+              <div className="text-[10px] text-muted-foreground">{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {summary && summary.yes > 0 && (
+        <p className="text-xs text-muted-foreground text-center">
+          {summary.totalGuests} total guests (incl. +1s)
+        </p>
+      )}
+      {rsvps.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-2 text-center">No RSVPs yet.</p>
+      ) : (
+        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+          {rsvps.map((r) => (
+            <div key={r.id} className="rounded-md border border-border p-2.5 text-xs space-y-1 bg-card">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium truncate">{r.name}</span>
+                <span className={`flex-shrink-0 font-medium ${r.attending === "yes" ? "text-emerald-600" : r.attending === "no" ? "text-red-500" : "text-amber-500"}`}>
+                  {r.attending === "yes" ? "✓ Attending" : r.attending === "no" ? "✗ Declined" : "? Maybe"}
+                  {r.attending !== "no" && r.plusOneCount > 0 && ` +${r.plusOneCount}`}
+                </span>
+              </div>
+              {r.email && <p className="text-muted-foreground truncate">{r.email}</p>}
+              {r.dietaryRestrictions && <p className="text-muted-foreground">Diet: {r.dietaryRestrictions}</p>}
+              {r.message && <p className="italic text-muted-foreground line-clamp-2">"{r.message}"</p>}
+            </div>
+          ))}
+        </div>
+      )}
+      <Button size="sm" variant="outline" className="w-full" onClick={() => void refetch()}>
+        Refresh
+      </Button>
     </div>
   );
 }

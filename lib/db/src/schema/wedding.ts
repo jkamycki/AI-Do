@@ -527,6 +527,7 @@ export type WebsiteSectionsEnabled = {
   faq: boolean;
   gallery: boolean;
   weddingParty: boolean;
+  rsvp?: boolean;
 };
 
 export type WebsiteCustomText = Record<string, string>;
@@ -585,4 +586,18 @@ export const weddingWebsites = pgTable("wedding_websites", {
 export const insertWeddingWebsiteSchema = createInsertSchema(weddingWebsites).omit({ id: true, lastUpdated: true, createdAt: true });
 export type InsertWeddingWebsite = z.infer<typeof insertWeddingWebsiteSchema>;
 export type WeddingWebsite = typeof weddingWebsites.$inferSelect;
+
+export const websiteRsvps = pgTable("website_rsvps", {
+  id: serial("id").primaryKey(),
+  websiteId: integer("website_id").notNull(),
+  name: text("name").notNull(),
+  email: text("email"),
+  attending: text("attending").notNull().default("yes"),
+  plusOneCount: integer("plus_one_count").notNull().default(0),
+  dietaryRestrictions: text("dietary_restrictions"),
+  message: text("message"),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+});
+
+export type WebsiteRsvp = typeof websiteRsvps.$inferSelect;
 
