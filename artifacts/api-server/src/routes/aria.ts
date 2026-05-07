@@ -1844,6 +1844,23 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     // Tools that returned a doNotRetry error this turn — pruned from the next
     // loop iteration so the model can't keep guessing args after a rejection.
     const bannedTools = new Set<string>();
+
+    // Front-line block: when the user's most recent message is a bare
+    // "add a vendor" / "add a photographer" with no proper-noun business
+    // name in it, take add_vendor off the table entirely so the model
+    // cannot fabricate a name. This is more reliable than relying on the
+    // model to read the system prompt's "ask first" rule under token
+    // pressure — the small instruct model frequently ignores it and the
+    // user sees a red rejection pill before we get a question back.
+    const VENDOR_CATEGORY_INTENT = /\b(add|create|new)\s+(a|an)\s+(vendor|photographer|videographer|florist|caterer|catering|dj|band|musician|officiant|hair|makeup|transport(?:ation)?|limo|cake|baker|stationery|invitation|rental|planner|venue|coordinator)s?\b/i;
+    const HAS_PROPER_NOUN = /[A-Z][a-z]{2,}|"[^"]+"|'[^']+'/; // "Bloom & Co", or quoted business name
+    if (
+      VENDOR_CATEGORY_INTENT.test(lastUserText) &&
+      !HAS_PROPER_NOUN.test(lastUserText.replace(VENDOR_CATEGORY_INTENT, ""))
+    ) {
+      bannedTools.add("add_vendor");
+      filteredTools = filteredTools.filter((tool) => tool.function.name !== "add_vendor");
+    }
     req.log.info({
       userId,
       skipTools,
@@ -1980,9 +1997,15 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         // Strip any raw JSON blobs the small model may have echoed from a tool
         // result — detected by a { ... } block with multiple "key": value pairs.
         if (!skipTools && contentAccum) {
+          // Strip 3+ patterns of garbage the small model occasionally emits as
+          // text instead of using the function-call API:
+          //   - Short tool-call envelopes: `{"name": "add_vendor", "parameters": }`
+          //   - Tool-call envelopes with args: `{"name": "X", "arguments": {...}}`
+          //   - Long serialized blobs (3+ "key": pairs)
+          const TOOL_NAME_PATTERN = /\{[^{}]{0,200}"name"\s*:\s*"[a-z_]+"[^{}]*(?:"(?:parameters|arguments)"\s*:\s*(?:\{[^{}]*\}|[^{}]*))?[^{}]*\}/gi;
           const sanitized = contentAccum
+            .replace(TOOL_NAME_PATTERN, "")
             .replace(/\{[^{}]{80,}\}/g, (blob) => {
-              // Only strip if it looks like serialised data (3+ "key": patterns)
               const keyCount = (blob.match(/"[^"]+"\s*:/g) ?? []).length;
               return keyCount >= 3 ? "" : blob;
             })
