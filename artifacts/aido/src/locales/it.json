@@ -1188,7 +1188,12 @@
     "arranging": "Organizzazione…",
     "unassigned": "Ospiti Non Assegnati",
     "no_tables_title": "Nessun tavolo ancora",
-    "no_tables_desc": "Aggiungi tavoli e trascina gli ospiti per posizionarli."
+    "no_tables_desc": "Aggiungi tavoli e trascina gli ospiti per posizionarli.",
+    "export_pdf": "Esporta PDF",
+    "exporting_pdf": "Esportazione…",
+    "export_pdf_title": "Scarica un PDF stampabile con tutti i tavoli",
+    "pdf_saved": "PDF della disposizione salvato",
+    "pdf_failed": "Esportazione PDF non riuscita"
   },
   "help": {
     "title": "Aiuto e Supporto",

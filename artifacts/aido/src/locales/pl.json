@@ -587,7 +587,12 @@
     "arranging": "Rozmieszczanie…",
     "unassigned": "Nieprzypisani Goście",
     "no_tables_title": "Brak stołów",
-    "no_tables_desc": "Dodaj stoły i przeciągaj gości, aby ich posadzić."
+    "no_tables_desc": "Dodaj stoły i przeciągaj gości, aby ich posadzić.",
+    "export_pdf": "Eksportuj PDF",
+    "exporting_pdf": "Eksportuję…",
+    "export_pdf_title": "Pobierz PDF do wydruku ze wszystkimi stołami",
+    "pdf_saved": "PDF planu rozsadzenia zapisany",
+    "pdf_failed": "Eksport PDF nie powiódł się"
   },
   "help": {
     "title": "Pomoc i wsparcie",

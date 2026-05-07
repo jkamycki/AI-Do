@@ -1188,7 +1188,12 @@
     "guests_seated": "{{n}} convidados sentados",
     "tables_count": "{{n}} mesas",
     "generated_by": "Gerado pelo AI A.IDO",
-    "auto_saved": "Guardado automaticamente ✓"
+    "auto_saved": "Guardado automaticamente ✓",
+    "export_pdf": "Exportar PDF",
+    "exporting_pdf": "Exportando…",
+    "export_pdf_title": "Baixar um PDF imprimível com todas as mesas",
+    "pdf_saved": "PDF do mapa de mesas salvo",
+    "pdf_failed": "Falha ao exportar o PDF"
   },
   "help": {
     "title": "Ajuda e Suporte",

@@ -1188,7 +1188,12 @@
     "guests_seated": "{{n}}名のゲストが着席",
     "tables_count": "{{n}}テーブル",
     "generated_by": "A.IDO AIが生成",
-    "auto_saved": "自動保存済み ✓"
+    "auto_saved": "自動保存済み ✓",
+    "export_pdf": "PDF を書き出す",
+    "exporting_pdf": "書き出し中…",
+    "export_pdf_title": "全テーブルを印刷用 PDF でダウンロード",
+    "pdf_saved": "席次表 PDF を保存しました",
+    "pdf_failed": "PDF の書き出しに失敗しました"
   },
   "help": {
     "title": "ヘルプ & サポート",

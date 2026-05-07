@@ -1188,7 +1188,12 @@
     "arranging": "Wird angeordnet…",
     "unassigned": "Nicht zugewiesene Gäste",
     "no_tables_title": "Noch keine Tische",
-    "no_tables_desc": "Fügt Tische hinzu und zieht Gäste, um sie zu platzieren."
+    "no_tables_desc": "Fügt Tische hinzu und zieht Gäste, um sie zu platzieren.",
+    "export_pdf": "PDF exportieren",
+    "exporting_pdf": "Wird exportiert…",
+    "export_pdf_title": "Druckbares PDF aller Tische herunterladen",
+    "pdf_saved": "Sitzplan-PDF gespeichert",
+    "pdf_failed": "PDF-Export fehlgeschlagen"
   },
   "help": {
     "title": "Hilfe & Support",
