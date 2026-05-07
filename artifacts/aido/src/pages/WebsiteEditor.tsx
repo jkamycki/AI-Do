@@ -226,7 +226,7 @@ export default function WebsiteEditor() {
     }, 500);
   }, []);
 
-  const handleUndo = useCallback(() => {
+  const doUndo = useCallback(() => {
     // Flush any pending coalesced entry first so we don't lose a half-coalesced state
     if (commitTimerRef.current) {
       clearTimeout(commitTimerRef.current);
@@ -244,6 +244,22 @@ export default function WebsiteEditor() {
     setRecord(prev);
     setDirty(true);
   }, []);
+
+  const handleUndo = useCallback(() => {
+    // If a contenteditable / input still has focus, the user's most recent
+    // edit hasn't been committed yet (EditableText debounces commit ~80ms
+    // after blur). Blur the active element and wait long enough for that
+    // commit to fire before popping history — otherwise the just-made change
+    // is invisible to the undo logic.
+    const active = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    const editing = !!active && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA");
+    if (editing) {
+      active!.blur();
+      setTimeout(doUndo, 150);
+      return;
+    }
+    doUndo();
+  }, [doUndo]);
 
   // Cmd/Ctrl+Z to undo from anywhere in the editor (except inside form fields)
   useEffect(() => {
