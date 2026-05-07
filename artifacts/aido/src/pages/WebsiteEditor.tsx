@@ -15,7 +15,6 @@ import {
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
   QrCode, Download, Link2, Plus, Megaphone, Users,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WebsiteRenderer, type WebsiteRendererPayload, parseWeddingPartyMembers, parseRegistryLinks, type WeddingPartyMember, type WeddingPartySide, type RegistryLink } from "@/components/website/WebsiteRenderer";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
@@ -92,7 +91,6 @@ export default function WebsiteEditor() {
   const [dirty, setDirty] = useState(false);
   const [copied, setCopied] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
-  const [qrOpen, setQrOpen] = useState(false);
   const [lastAutosaved, setLastAutosaved] = useState<Date | null>(null);
 
   const upload = useUpload({
@@ -448,12 +446,6 @@ export default function WebsiteEditor() {
                 Preview
               </Button>
             )}
-            {record.published && (
-              <Button size="sm" variant="outline" onClick={() => setQrOpen(true)}>
-                <QrCode className="h-3.5 w-3.5 mr-1.5" />
-                QR Code
-              </Button>
-            )}
           </div>
           {record.published && (
             <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs">
@@ -734,6 +726,11 @@ export default function WebsiteEditor() {
           />
         </Section>
 
+        {/* QR Code */}
+        <Section icon={<QrCode className="h-4 w-4" />} title="QR Code for Invitations">
+          <QrCodeSection publicUrl={publicUrl} published={record.published} />
+        </Section>
+
         {/* Password */}
         <Section icon={<Lock className="h-4 w-4" />} title="Password Protection">
           {record.passwordEnabled ? (
@@ -776,41 +773,6 @@ export default function WebsiteEditor() {
         </div>
       </main>
 
-      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Wedding website QR code</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-4 py-2">
-            <div className="rounded-lg border bg-white p-3">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=${encodeURIComponent(publicUrl)}`}
-                alt="QR code"
-                className="w-64 h-64"
-              />
-            </div>
-            <p className="text-xs text-muted-foreground text-center font-mono break-all">{publicUrl}</p>
-            <Button
-              variant="outline"
-              className="w-full"
-              asChild
-            >
-              <a
-                href={`https://api.qrserver.com/v1/create-qr-code/?size=800x800&margin=10&data=${encodeURIComponent(publicUrl)}`}
-                download="wedding-website-qr.png"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download QR
-              </a>
-            </Button>
-            <p className="text-[11px] text-muted-foreground text-center">
-              Print this on save-the-dates, place cards, or signage. Guests scan it to open your wedding site.
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -826,6 +788,7 @@ interface RsvpEntry {
   dietaryRestrictions: string | null;
   message: string | null;
   submittedAt: string;
+  source?: "guest_list" | "website";
 }
 
 function RsvpResponsesPanel({ enabled }: { enabled: boolean }) {
@@ -839,7 +802,6 @@ function RsvpResponsesPanel({ enabled }: { enabled: boolean }) {
       if (!r.ok) throw new Error("Failed");
       return r.json();
     },
-    enabled,
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
@@ -887,7 +849,12 @@ function RsvpResponsesPanel({ enabled }: { enabled: boolean }) {
           {rsvps.map((r) => (
             <div key={r.id} className="rounded-md border border-border p-2.5 text-xs space-y-1 bg-card">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-medium truncate">{r.name}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-medium truncate">{r.name}</span>
+                  {r.source === "guest_list" && (
+                    <span className="flex-shrink-0 text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary font-medium">Guest list</span>
+                  )}
+                </div>
                 <span className={`flex-shrink-0 font-medium ${r.attending === "yes" ? "text-emerald-600" : r.attending === "no" ? "text-red-500" : "text-amber-500"}`}>
                   {r.attending === "yes" ? "✓ Attending" : r.attending === "no" ? "✗ Declined" : "? Maybe"}
                   {r.attending !== "no" && r.plusOneCount > 0 && ` +${r.plusOneCount}`}
@@ -910,14 +877,15 @@ function RsvpResponsesPanel({ enabled }: { enabled: boolean }) {
             variant="outline"
             className="flex-1"
             onClick={() => {
-              const headers = ["Name", "Email", "Attending", "+1s", "Dietary", "Message", "Submitted"];
+              const headers = ["Name", "Email", "Attending", "+1s", "Dietary", "Message", "Source", "Submitted"];
               const rows = rsvps.map((r) => [
                 r.name,
                 r.email ?? "",
-                r.attending,
+                r.attending === "yes" ? "Attending" : r.attending === "no" ? "Declined" : "Maybe",
                 String(r.plusOneCount),
                 r.dietaryRestrictions ?? "",
                 r.message ?? "",
+                r.source === "guest_list" ? "Guest List" : "Website Form",
                 new Date(r.submittedAt).toLocaleString(),
               ]);
               const csv = [headers, ...rows]
@@ -1298,6 +1266,119 @@ function WeddingPartyEditor({
       <Button size="sm" variant="outline" onClick={addMember} className="w-full" disabled={isUploading}>
         Add member
       </Button>
+    </div>
+  );
+}
+
+// ---- QR code section ----
+
+const QR_SIZES = [
+  { label: "Small (400px)", size: 400, desc: "Digital sharing, email" },
+  { label: "Medium (800px)", size: 800, desc: "Save-the-dates, small print" },
+  { label: "Large (1200px)", size: 1200, desc: "Invitations, 4×4\" print" },
+  { label: "Print (2000px)", size: 2000, desc: "Large signage, posters" },
+];
+
+function QrCodeSection({ publicUrl, published }: { publicUrl: string; published: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const [selectedSize, setSelectedSize] = useState(800);
+
+  const qrUrl = (size: number) =>
+    `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=12&data=${encodeURIComponent(publicUrl)}`;
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // ignore
+    }
+  };
+
+  if (!published) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-lg border-2 border-dashed border-border p-4 text-center">
+          <QrCode className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Publish your website first to generate a QR code for your physical invitations.
+          </p>
+        </div>
+        <Button size="sm" className="w-full" onClick={() => {}}>
+          <Globe className="h-3.5 w-3.5 mr-1.5" />
+          Publish to get QR code
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        Print this QR code on physical invitations, save-the-dates, or wedding signage. Guests scan it to open your site instantly.
+      </p>
+
+      {/* Preview */}
+      <div className="flex justify-center">
+        <div className="rounded-xl border-2 border-border bg-white p-3 shadow-sm inline-block">
+          <img
+            src={qrUrl(300)}
+            alt="Wedding website QR code"
+            className="w-40 h-40 block"
+          />
+        </div>
+      </div>
+
+      {/* URL + copy */}
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/50 text-[11px]">
+        <Globe className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+        <span className="truncate flex-1 font-mono text-muted-foreground">{publicUrl}</span>
+        <Button size="sm" variant="ghost" className="h-6 px-1.5 flex-shrink-0" onClick={copyLink}>
+          {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+        </Button>
+      </div>
+
+      {/* Size picker */}
+      <div>
+        <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">Download size</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {QR_SIZES.map((s) => (
+            <button
+              key={s.size}
+              onClick={() => setSelectedSize(s.size)}
+              className={`text-left px-2.5 py-2 rounded-md border text-xs transition-all ${selectedSize === s.size ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40"}`}
+            >
+              <div className="font-medium leading-tight">{s.label}</div>
+              <div className="text-[10px] opacity-60 mt-0.5">{s.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Download */}
+      <a
+        href={qrUrl(selectedSize)}
+        download={`wedding-qr-${selectedSize}px.png`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
+        style={{ background: "hsl(var(--primary))" }}
+      >
+        <Download className="h-4 w-4" />
+        Download {selectedSize}×{selectedSize}px
+      </a>
+
+      {/* Print tips */}
+      <div className="rounded-lg bg-muted/40 px-3 py-2.5 space-y-1">
+        <p className="text-[11px] font-semibold text-foreground">Printing tips</p>
+        <ul className="text-[11px] text-muted-foreground space-y-0.5 list-disc list-inside">
+          <li>Use 800px+ for print — 400px is fine for digital</li>
+          <li>Keep a white border around the code (already included)</li>
+          <li>Test by scanning with your phone before printing</li>
+          <li>Minimum print size: about 1×1 inch for reliable scanning</li>
+        </ul>
+      </div>
     </div>
   );
 }
