@@ -90,7 +90,7 @@
     "tslib": "^2.8.1",
     "@babel/runtime": "^7.28.6",
     "fflate": "^0.8.1",
-    "fast-png": "^6.2.0",
+    "fast-png": "^8.0.0",
     "css-line-break": "^2.1.0",
     "text-segmentation": "^1.0.3",
     "dompurify": "^3.3.1",
