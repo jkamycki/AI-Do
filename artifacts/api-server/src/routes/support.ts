@@ -99,18 +99,40 @@ const ARIA_SYSTEM_PROMPT = `You are Aria, an expert AI wedding planning assistan
 - If the user's question is vague, ask one clarifying question before diving in
 - Celebrate wins and acknowledge stress — planning a wedding is emotional, not just logistical
 
-## Filing a support ticket:
-You can file support tickets on behalf of the user via the submit_support_ticket tool. Use it when the user reports a bug, billing problem, account issue, broken feature, or anything that genuinely needs the human ops team — NOT for general planning questions you can answer yourself.
+## Filing a support ticket — STRICT RULES:
 
-Flow:
+CRITICAL: NEVER call submit_support_ticket with placeholder values like
+"User's full name as they typed it.", "user@example.com", "John Doe", or
+anything you didn't get from THIS conversation. Those placeholders are
+field DESCRIPTIONS — not values to send. If the user's real name and
+email aren't visible in this conversation OR in the User Context block
+above, you MUST ask the user for them before filing.
+
+CRITICAL: NEVER write the function call as text in your reply. ALWAYS
+use the function-calling API. Do not type \`{"name": "submit_support_ticket", ...}\`
+as message content — that is a bug; use the tool API.
+
+Flow when the user reports an issue:
 1. Ask the user to describe the issue clearly (steps, what happened, what they expected).
-2. The user's name and email are pre-filled from their account when available — confirm them ("I have you as Jane Doe at jane@example.com — sound right?") before filing. If they're missing, ask.
+2. Confirm name + email:
+   - If a User Context block above gave you their name + email, say
+     "Quick check — I have you as <name> at <email>. Should I use those?"
+     and wait for the user's reply before filing.
+   - If the User Context is missing or says "(unknown — ask the user)",
+     ask the user directly: "Could I grab your full name and the best
+     email to reach you at?"
 3. Pick the best category: bug | feature | general | billing | account | praise.
-4. Write a one-line subject (≤80 chars) and a full message that includes everything the user told you.
-5. Summarize what you're about to file ("Here's what I'll send to the support team: …") and ask the user to confirm before calling submit_support_ticket. Never file silently.
-6. After the tool returns, share the ticket number with the user and tell them they'll get an email confirmation.
+4. Write a one-line subject (≤80 chars) and a full message that captures
+   everything the user told you in their own words.
+5. Summarize: "Here's what I'll send to the support team: …" and wait for
+   the user to confirm ("yes" / "send it" / "go ahead") before calling
+   submit_support_ticket. Never file silently.
+6. After the tool returns, share the ticket number with the user and tell
+   them they'll get an email confirmation.
 
-Don't file tickets for chitchat, planning advice, or things you can solve yourself.`;
+Use submit_support_ticket only for: bugs, billing problems, account
+issues, broken features, praise / feedback for the team. Do NOT file
+tickets for general wedding-planning questions you can answer yourself.`;
 
 // Inserts a support ticket and fires the same notification emails as the
 // public POST /help/support-ticket route, so tickets created via Aria's
@@ -123,8 +145,31 @@ async function fileSupportTicket(args: Record<string, unknown>, userId: string |
   const message = String(args.message ?? "").trim();
 
   if (!name) return { ok: false, error: "Missing the user's name. Ask the user for their full name and try again." };
+  // Reject placeholder values the model copies from the tool description
+  // instead of asking the user. These strings appeared in production:
+  // "User's full name as they typed it.", "user@example.com", etc.
+  const PLACEHOLDER_NAME_PATTERNS = [
+    /full name as (?:they )?typed/i,
+    /^user'?s?\s+(?:full\s+)?name/i,
+    /^john\s+doe$/i,
+    /^jane\s+doe$/i,
+    /<.+>/, // e.g. "<name>"
+    /\[.+\]/, // e.g. "[Your Name]"
+  ];
+  if (PLACEHOLDER_NAME_PATTERNS.some((rx) => rx.test(name))) {
+    return { ok: false, error: `"${name}" looks like a placeholder, not the user's actual name. Ask the user: "What's your full name?" and use exactly what they type.` };
+  }
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { ok: false, error: "The email address is missing or malformed. Ask the user for a valid email and try again." };
+  }
+  const PLACEHOLDER_EMAIL_PATTERNS = [
+    /^user@example\.(com|org|net)$/i,
+    /^you@example\.(com|org|net)$/i,
+    /^john(\.|@)/i,
+    /^jane(\.|@)/i,
+  ];
+  if (PLACEHOLDER_EMAIL_PATTERNS.some((rx) => rx.test(email))) {
+    return { ok: false, error: `"${email}" is a placeholder email. Ask the user for the email they actually want us to reach them at.` };
   }
   if (!subject) return { ok: false, error: "Missing a subject line. Write a short one-line summary of the issue." };
   if (!message) return { ok: false, error: "Missing the issue description. Include what happened and any details the user gave." };
@@ -450,10 +495,12 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
         const choice = chunk.choices[0];
         if (choice?.finish_reason) finishReason = choice.finish_reason;
         const content = choice?.delta?.content;
-        if (content) {
-          accumulated += content;
-          res.write(`data: ${JSON.stringify({ content })}\n\n`);
-        }
+        // BUFFER content (don't stream raw) — the small Llama model occasionally
+        // writes the function-call envelope as text instead of using the tool
+        // API, e.g. {"name":"submit_support_ticket", "parameters": {...}} —
+        // and historically that JSON appeared verbatim in the user's chat
+        // bubble. By buffering, we can intercept and execute it silently.
+        if (content) accumulated += content;
         const tcDeltas = (choice?.delta as { tool_calls?: Array<{ index: number; id?: string; function?: { name?: string; arguments?: string } }> })?.tool_calls;
         if (tcDeltas) {
           for (const d of tcDeltas) {
@@ -463,6 +510,18 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
             if (d.function?.name) slot.name = d.function.name;
             if (d.function?.arguments) slot.args += d.function.arguments;
           }
+        }
+      }
+
+      // Fallback: detect text-based tool-call envelopes (model wrote the JSON
+      // in `content` instead of via the tool_calls API). We promote them to
+      // real tool calls and discard the raw text so the user doesn't see it.
+      const hasRealToolCalls = toolCallAcc.some((tc) => tc?.name);
+      if (!hasRealToolCalls && accumulated.includes('"submit_support_ticket"')) {
+        const m = accumulated.match(/\{[\s\S]*?"name"\s*:\s*"submit_support_ticket"[\s\S]*?"(?:parameters|arguments)"\s*:\s*(\{[\s\S]*?\})[\s\S]*?\}/);
+        if (m) {
+          toolCallAcc.push({ id: `call_${Date.now()}`, name: "submit_support_ticket", args: m[1] });
+          accumulated = ""; // wipe raw text; never reaches the user
         }
       }
 
@@ -506,6 +565,22 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
         convo.push({ role: "assistant", content: accumulated });
         convo.push({ role: "user", content: "Continue." });
         continue;
+      }
+      // No tool calls and no length cut-off — flush the buffered text. Strip
+      // any tool-call envelopes the model may have written as text and fall
+      // back to a friendly nudge if the strip ate everything (so the loader
+      // never spins indefinitely with no message).
+      if (accumulated) {
+        const TOOL_NAME_PATTERN = /\{[\s\S]*?"name"\s*:\s*"[a-z_]+"[\s\S]*?\}\s*\}?/gi;
+        const sanitized = accumulated
+          .replace(TOOL_NAME_PATTERN, "")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+        if (sanitized) {
+          res.write(`data: ${JSON.stringify({ content: sanitized })}\n\n`);
+        } else {
+          res.write(`data: ${JSON.stringify({ content: "Sorry — I didn't quite catch that. Could you tell me a bit more about what's going on?" })}\n\n`);
+        }
       }
       break;
     }
