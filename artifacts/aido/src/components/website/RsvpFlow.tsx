@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch, authFetch } from "@/lib/authFetch";
 import { Loader2, Search, Check, X, Heart } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { WebsiteRendererPayload } from "./WebsiteRenderer";
 
 interface GuestMatch {
@@ -38,6 +39,7 @@ export function RsvpFlow({
   // so guests on the user's list show up even if the site isn't published yet.
   previewMode?: boolean;
 }) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<"search" | "already-rsvped" | "form" | "self-add" | "done">("search");
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -229,18 +231,18 @@ export function RsvpFlow({
         {step === "search" && (
           <div>
             <h2 className="text-center text-3xl sm:text-4xl mb-3" style={{ fontFamily: fontStack(data.font), color: text }}>
-              {data.customText.rsvp_subtitle || "Will you be joining us?"}
+              {data.customText.rsvp_subtitle || t("rsvp.subtitle_default", { defaultValue: "Will you be joining us?" })}
             </h2>
             <p className="text-center text-sm sm:text-base mb-8 opacity-75" style={{ color: text }}>
-              {data.customText.rsvp_intro || "Find your name on the guest list and let us know if you can make it."}
+              {data.customText.rsvp_intro || t("rsvp.intro_default", { defaultValue: "Find your name on the guest list and let us know if you can make it." })}
             </p>
             <form onSubmit={handleSearch} className="flex flex-col gap-3 max-w-md mx-auto">
-              <label className="text-xs uppercase tracking-wider opacity-70" style={{ color: text }}>Your name</label>
+              <label className="text-xs uppercase tracking-wider opacity-70" style={{ color: text }}>{t("rsvp.your_name", { defaultValue: "Your name" })}</label>
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="First and last name"
+                placeholder={t("rsvp.name_placeholder", { defaultValue: "First and last name" })}
                 autoFocus
                 className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                 style={inputBase}
@@ -253,14 +255,16 @@ export function RsvpFlow({
                 style={{ background: accent, color: "#fff" }}
               >
                 {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                {searching ? "Searching..." : "Find me"}
+                {searching ? t("rsvp.searching", { defaultValue: "Searching..." }) : t("rsvp.find_me", { defaultValue: "Find me" })}
               </button>
             </form>
 
             {searched && matches.length > 0 && (
               <div className="mt-8 max-w-md mx-auto">
                 <p className="text-sm mb-3 opacity-75" style={{ color: text }}>
-                  We found {matches.length === 1 ? "you" : `${matches.length} matches`}. Tap your name:
+                  {matches.length === 1
+                    ? t("rsvp.found_one", { defaultValue: "We found you. Tap your name:" })
+                    : t("rsvp.found_many", { count: matches.length, defaultValue: "We found {{count}} matches. Tap your name:" })}
                 </p>
                 <div className="space-y-2">
                   {matches.map((m) => (
@@ -273,14 +277,17 @@ export function RsvpFlow({
                       <div className="font-medium">{m.name}</div>
                       {m.rsvpStatus !== "pending" && (
                         <div className="text-xs opacity-60 mt-0.5">
-                          Already replied: {m.rsvpStatus === "attending" ? "Attending" : "Declined"} (you can change it)
+                          {t("rsvp.already_replied", {
+                            status: m.rsvpStatus === "attending"
+                              ? t("rsvp.status_attending", { defaultValue: "Attending" })
+                              : t("rsvp.status_declined", { defaultValue: "Declined" }),
+                            defaultValue: "Already replied: {{status}} (you can change it)",
+                          })}
                         </div>
                       )}
                     </button>
                   ))}
                 </div>
-                {/* Escape hatch when none of the matches are actually the
-                    user — they can self-add and the couple can verify. */}
                 <button
                   type="button"
                   onClick={() => {
@@ -291,7 +298,7 @@ export function RsvpFlow({
                   className="mt-3 w-full text-xs underline opacity-70 hover:opacity-100 text-center"
                   style={{ color: text }}
                 >
-                  None of these are me — RSVP anyway
+                  {t("rsvp.none_are_me", { defaultValue: "None of these are me — RSVP anyway" })}
                 </button>
               </div>
             )}
@@ -299,7 +306,7 @@ export function RsvpFlow({
             {searched && matches.length === 0 && (
               <div className="mt-8 max-w-md mx-auto px-4 py-6 rounded-lg text-center space-y-4" style={{ background: `${accent}10`, border: `1px solid ${accent}33`, color: text }}>
                 <p className="text-sm">
-                  We couldn't find that name on the guest list. Double-check the spelling — or, if you'd still like to RSVP, send us your details and we'll review them.
+                  {t("rsvp.not_found", { defaultValue: "We couldn't find that name on the guest list. Double-check the spelling — or, if you'd still like to RSVP, send us your details and we'll review them." })}
                 </p>
                 <button
                   type="button"
@@ -311,7 +318,7 @@ export function RsvpFlow({
                   className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
                   style={{ background: accent, color: "#fff" }}
                 >
-                  RSVP anyway
+                  {t("rsvp.rsvp_anyway", { defaultValue: "RSVP anyway" })}
                 </button>
               </div>
             )}
@@ -327,16 +334,20 @@ export function RsvpFlow({
               <Check className="h-8 w-8" />
             </div>
             <h2 className="text-3xl sm:text-4xl mb-3" style={{ fontFamily: fontStack(data.font), color: text }}>
-              Hi {guest.name.split(" ")[0]}!
+              {t("rsvp.greeting", { name: guest.name.split(" ")[0], defaultValue: "Hi {{name}}!" })}
             </h2>
             <p className="text-base mb-2" style={{ color: text }}>
-              You've already RSVPed as{" "}
-              <strong>{guest.rsvpStatus === "attending" ? "Attending" : "Declined"}</strong>.
+              {t("rsvp.already_replied_as", {
+                status: guest.rsvpStatus === "attending"
+                  ? t("rsvp.status_attending", { defaultValue: "Attending" })
+                  : t("rsvp.status_declined", { defaultValue: "Declined" }),
+                defaultValue: "You've already RSVPed as <0>{{status}}</0>.",
+              })}
             </p>
             <p className="text-sm opacity-70 mb-8" style={{ color: text }}>
               {guest.rsvpStatus === "attending"
-                ? "We're so excited to celebrate with you!"
-                : "We're sorry you can't make it — you'll be missed!"}
+                ? t("rsvp.excited_to_celebrate", { defaultValue: "We're so excited to celebrate with you!" })
+                : t("rsvp.sorry_you_cant", { defaultValue: "We're sorry you can't make it — you'll be missed!" })}
             </p>
             <div className="space-y-3">
               <button
@@ -350,14 +361,14 @@ export function RsvpFlow({
                 className="w-full px-4 py-3 rounded-lg font-medium transition-opacity hover:opacity-90"
                 style={{ background: accent, color: "#fff" }}
               >
-                Done
+                {t("rsvp.done", { defaultValue: "Done" })}
               </button>
               <button
                 onClick={() => setStep("form")}
                 className="w-full text-xs underline opacity-60 hover:opacity-100"
                 style={{ color: text }}
               >
-                I need to update my RSVP
+                {t("rsvp.update_rsvp", { defaultValue: "I need to update my RSVP" })}
               </button>
             </div>
           </div>
@@ -366,9 +377,9 @@ export function RsvpFlow({
         {step === "form" && guest && (
           <div>
             <h2 className="text-center text-3xl sm:text-4xl mb-2" style={{ fontFamily: fontStack(data.font), color: text }}>
-              Hi {guest.name.split(" ")[0]}!
+              {t("rsvp.greeting", { name: guest.name.split(" ")[0], defaultValue: "Hi {{name}}!" })}
             </h2>
-            <p className="text-center text-sm mb-10 opacity-75" style={{ color: text }}>Will you be joining us?</p>
+            <p className="text-center text-sm mb-10 opacity-75" style={{ color: text }}>{t("rsvp.subtitle_default", { defaultValue: "Will you be joining us?" })}</p>
 
             <form onSubmit={handleSubmit} className="space-y-6 max-w-md mx-auto">
               <div className="grid grid-cols-2 gap-3">
@@ -382,7 +393,7 @@ export function RsvpFlow({
                     color: attendance === "attending" ? "#fff" : text,
                   }}
                 >
-                  <Check className="h-4 w-4" /> Joyfully accept
+                  <Check className="h-4 w-4" /> {t("rsvp.joyfully_accept", { defaultValue: "Joyfully accept" })}
                 </button>
                 <button
                   type="button"
@@ -394,19 +405,19 @@ export function RsvpFlow({
                     color: attendance === "declined" ? "#fff" : text,
                   }}
                 >
-                  <X className="h-4 w-4" /> Regretfully decline
+                  <X className="h-4 w-4" /> {t("rsvp.regretfully_decline", { defaultValue: "Regretfully decline" })}
                 </button>
               </div>
 
               {attendance === "attending" && (
                 <>
                   <div>
-                    <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Meal choice (optional)</label>
+                    <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.meal_choice", { defaultValue: "Meal choice (optional)" })}</label>
                     <input
                       type="text"
                       value={mealChoice}
                       onChange={(e) => setMealChoice(e.target.value)}
-                      placeholder="Chicken, fish, vegetarian..."
+                      placeholder={t("rsvp.meal_placeholder", { defaultValue: "Chicken, fish, vegetarian..." })}
                       className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                       style={inputBase}
                     />
@@ -421,14 +432,14 @@ export function RsvpFlow({
                         className="h-4 w-4"
                         style={{ accentColor: accent }}
                       />
-                      <span className="text-sm" style={{ color: text }}>I'm bringing a plus one</span>
+                      <span className="text-sm" style={{ color: text }}>{t("rsvp.bringing_plus_one", { defaultValue: "I'm bringing a plus one" })}</span>
                     </label>
                   </div>
 
                   {plusOne && (
                     <>
                       <div>
-                        <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Plus one's name</label>
+                        <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.plus_one_name", { defaultValue: "Plus one's name" })}</label>
                         <input
                           type="text"
                           value={plusOneName}
@@ -438,12 +449,12 @@ export function RsvpFlow({
                         />
                       </div>
                       <div>
-                        <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Plus one's meal choice</label>
+                        <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.plus_one_meal", { defaultValue: "Plus one's meal choice" })}</label>
                         <input
                           type="text"
                           value={plusOneMeal}
                           onChange={(e) => setPlusOneMeal(e.target.value)}
-                          placeholder="Chicken, fish, vegetarian..."
+                          placeholder={t("rsvp.meal_placeholder", { defaultValue: "Chicken, fish, vegetarian..." })}
                           className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                           style={inputBase}
                         />
@@ -452,12 +463,12 @@ export function RsvpFlow({
                   )}
 
                   <div>
-                    <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Dietary restrictions or notes</label>
+                    <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.dietary", { defaultValue: "Dietary restrictions or notes" })}</label>
                     <textarea
                       value={dietary}
                       onChange={(e) => setDietary(e.target.value)}
                       rows={2}
-                      placeholder="Allergies, accommodations, anything we should know..."
+                      placeholder={t("rsvp.dietary_placeholder", { defaultValue: "Allergies, accommodations, anything we should know..." })}
                       className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                       style={inputBase}
                     />
@@ -474,7 +485,7 @@ export function RsvpFlow({
                 style={{ background: accent, color: "#fff" }}
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {submitting ? "Sending..." : "Send response"}
+                {submitting ? t("rsvp.sending", { defaultValue: "Sending..." }) : t("rsvp.send_response", { defaultValue: "Send response" })}
               </button>
 
               <button
@@ -487,7 +498,7 @@ export function RsvpFlow({
                 className="w-full text-xs underline opacity-60 hover:opacity-100"
                 style={{ color: text }}
               >
-                That's not me — go back
+                {t("rsvp.not_me_back", { defaultValue: "That's not me — go back" })}
               </button>
             </form>
           </div>
@@ -496,15 +507,18 @@ export function RsvpFlow({
         {step === "self-add" && (
           <div>
             <h2 className="text-center text-3xl sm:text-4xl mb-2" style={{ fontFamily: fontStack(data.font), color: text }}>
-              RSVP
+              {t("rsvp.title", { defaultValue: "RSVP" })}
             </h2>
             <p className="text-center text-sm mb-8 opacity-75" style={{ color: text }}>
-              You weren't on the list yet. Send us your details and {data.couple.partner1Name?.split(" ")[0] || "the couple"} can review them in their guest list.
+              {t("rsvp.self_add_intro", {
+                couple: data.couple.partner1Name?.split(" ")[0] || t("rsvp.the_couple", { defaultValue: "the couple" }),
+                defaultValue: "You weren't on the list yet. Send us your details and {{couple}} can review them in their guest list.",
+              })}
             </p>
 
             <form onSubmit={handleSelfAddSubmit} className="space-y-6 max-w-md mx-auto">
               <div>
-                <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Your full name</label>
+                <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.full_name", { defaultValue: "Your full name" })}</label>
                 <input
                   type="text"
                   value={selfName}
@@ -517,12 +531,12 @@ export function RsvpFlow({
               </div>
 
               <div>
-                <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Email (optional)</label>
+                <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.email_optional", { defaultValue: "Email (optional)" })}</label>
                 <input
                   type="email"
                   value={selfEmail}
                   onChange={(e) => setSelfEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t("rsvp.email_placeholder", { defaultValue: "you@example.com" })}
                   className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                   style={inputBase}
                 />
@@ -539,7 +553,7 @@ export function RsvpFlow({
                     color: attendance === "attending" ? "#fff" : text,
                   }}
                 >
-                  <Check className="h-4 w-4" /> Joyfully accept
+                  <Check className="h-4 w-4" /> {t("rsvp.joyfully_accept", { defaultValue: "Joyfully accept" })}
                 </button>
                 <button
                   type="button"
@@ -551,19 +565,19 @@ export function RsvpFlow({
                     color: attendance === "declined" ? "#fff" : text,
                   }}
                 >
-                  <X className="h-4 w-4" /> Regretfully decline
+                  <X className="h-4 w-4" /> {t("rsvp.regretfully_decline", { defaultValue: "Regretfully decline" })}
                 </button>
               </div>
 
               {attendance === "attending" && (
                 <>
                   <div>
-                    <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Meal choice (optional)</label>
+                    <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.meal_choice", { defaultValue: "Meal choice (optional)" })}</label>
                     <input
                       type="text"
                       value={mealChoice}
                       onChange={(e) => setMealChoice(e.target.value)}
-                      placeholder="Chicken, fish, vegetarian..."
+                      placeholder={t("rsvp.meal_placeholder", { defaultValue: "Chicken, fish, vegetarian..." })}
                       className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                       style={inputBase}
                     />
@@ -578,14 +592,14 @@ export function RsvpFlow({
                         className="h-4 w-4"
                         style={{ accentColor: accent }}
                       />
-                      <span className="text-sm" style={{ color: text }}>I'm bringing a plus one</span>
+                      <span className="text-sm" style={{ color: text }}>{t("rsvp.bringing_plus_one", { defaultValue: "I'm bringing a plus one" })}</span>
                     </label>
                   </div>
 
                   {plusOne && (
                     <>
                       <div>
-                        <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Plus one's name</label>
+                        <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.plus_one_name", { defaultValue: "Plus one's name" })}</label>
                         <input
                           type="text"
                           value={plusOneName}
@@ -595,12 +609,12 @@ export function RsvpFlow({
                         />
                       </div>
                       <div>
-                        <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Plus one's meal choice</label>
+                        <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.plus_one_meal", { defaultValue: "Plus one's meal choice" })}</label>
                         <input
                           type="text"
                           value={plusOneMeal}
                           onChange={(e) => setPlusOneMeal(e.target.value)}
-                          placeholder="Chicken, fish, vegetarian..."
+                          placeholder={t("rsvp.meal_placeholder", { defaultValue: "Chicken, fish, vegetarian..." })}
                           className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                           style={inputBase}
                         />
@@ -609,12 +623,12 @@ export function RsvpFlow({
                   )}
 
                   <div>
-                    <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Dietary restrictions or notes</label>
+                    <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.dietary", { defaultValue: "Dietary restrictions or notes" })}</label>
                     <textarea
                       value={dietary}
                       onChange={(e) => setDietary(e.target.value)}
                       rows={2}
-                      placeholder="Allergies, accommodations, anything we should know..."
+                      placeholder={t("rsvp.dietary_placeholder", { defaultValue: "Allergies, accommodations, anything we should know..." })}
                       className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                       style={inputBase}
                     />
@@ -623,12 +637,12 @@ export function RsvpFlow({
               )}
 
               <div>
-                <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Message to the couple (optional)</label>
+                <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.message_to_couple", { defaultValue: "Message to the couple (optional)" })}</label>
                 <textarea
                   value={selfMessage}
                   onChange={(e) => setSelfMessage(e.target.value)}
                   rows={2}
-                  placeholder="A note for the couple — relation, RSVP context, etc."
+                  placeholder={t("rsvp.message_placeholder", { defaultValue: "A note for the couple — relation, RSVP context, etc." })}
                   className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                   style={inputBase}
                 />
@@ -643,7 +657,7 @@ export function RsvpFlow({
                 style={{ background: accent, color: "#fff" }}
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {submitting ? "Sending..." : "Send response"}
+                {submitting ? t("rsvp.sending", { defaultValue: "Sending..." }) : t("rsvp.send_response", { defaultValue: "Send response" })}
               </button>
 
               <button
@@ -655,7 +669,7 @@ export function RsvpFlow({
                 className="w-full text-xs underline opacity-60 hover:opacity-100"
                 style={{ color: text }}
               >
-                ← Back to search
+                {t("rsvp.back_to_search", { defaultValue: "← Back to search" })}
               </button>
             </form>
           </div>
@@ -674,12 +688,18 @@ export function RsvpFlow({
                 <Check className="h-8 w-8" />
               </div>
               <h2 className="text-3xl sm:text-4xl mb-3" style={{ fontFamily: fontStack(data.font), color: text }}>
-                {attendance === "attending" ? "We can't wait to celebrate with you!" : "We'll miss you!"}
+                {attendance === "attending"
+                  ? t("rsvp.cant_wait", { defaultValue: "We can't wait to celebrate with you!" })
+                  : t("rsvp.miss_you", { defaultValue: "We'll miss you!" })}
               </h2>
               <p className="text-sm sm:text-base opacity-80 mb-8" style={{ color: text }}>
                 {attendance === "attending"
-                  ? `Your response has been received${replyName ? `, ${replyName}` : ""}. We'll be in touch with more details closer to the day.`
-                  : `Thank you for letting us know${replyName ? `, ${replyName}` : ""}. You'll be missed.`}
+                  ? (replyName
+                    ? t("rsvp.confirmation_attending_named", { name: replyName, defaultValue: "Your response has been received, {{name}}. We'll be in touch with more details closer to the day." })
+                    : t("rsvp.confirmation_attending", { defaultValue: "Your response has been received. We'll be in touch with more details closer to the day." }))
+                  : (replyName
+                    ? t("rsvp.confirmation_declined_named", { name: replyName, defaultValue: "Thank you for letting us know, {{name}}. You'll be missed." })
+                    : t("rsvp.confirmation_declined", { defaultValue: "Thank you for letting us know. You'll be missed." }))}
               </p>
               <button
                 onClick={() => {
@@ -695,7 +715,7 @@ export function RsvpFlow({
                 className="text-xs underline opacity-60 hover:opacity-100"
                 style={{ color: text }}
               >
-                Reply for someone else
+                {t("rsvp.reply_for_someone_else", { defaultValue: "Reply for someone else" })}
               </button>
             </div>
           );

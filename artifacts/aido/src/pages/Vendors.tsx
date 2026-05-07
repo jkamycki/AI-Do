@@ -480,7 +480,10 @@ function PaymentRow({
   if (editing) {
     return (
       <form onSubmit={handleEditSubmit} className="rounded-xl p-4 space-y-4 border bg-muted/20">
-        <p className="text-sm font-semibold">Edit Payment</p>
+        <p className="text-sm font-semibold">{t("vendors.edit_payment", { defaultValue: "Edit Payment" })}</p>
+        <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-md p-2.5">
+          {t("vendors.deposit_note", { defaultValue: "Note: don't log your deposit here or label a payment as \"Deposit\" — the deposit amount belongs in the Edit Vendor section so it isn't double-counted." })}
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 space-y-1.5">
             <Label className="text-xs">{t("vendors.payment_label")}</Label>
@@ -621,6 +624,9 @@ function AddPaymentForm({
   return (
     <form onSubmit={handleSubmit} className="rounded-xl p-4 space-y-4 border bg-muted/20">
       <p className="text-sm font-semibold">{t("vendors.add_payment")}</p>
+      <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-md p-2.5">
+        {t("vendors.deposit_note", { defaultValue: "Note: don't log your deposit here or label a payment as \"Deposit\" — the deposit amount belongs in the Edit Vendor section so it isn't double-counted." })}
+      </p>
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1.5">
           <Label className="text-xs">{t("vendors.payment_label")}</Label>
