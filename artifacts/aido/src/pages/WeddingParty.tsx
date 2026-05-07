@@ -91,6 +91,8 @@ interface Member {
 }
 
 const ROLES = [
+  "Bride",
+  "Groom",
   "Maid of Honor",
   "Best Man",
   "Bridesmaid",

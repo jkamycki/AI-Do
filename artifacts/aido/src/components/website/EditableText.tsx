@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { GripHorizontal } from "lucide-react";
 import { TextStyleToolbar, type WebsiteTextStyle } from "./TextStyleToolbar";
 
 export type TextPosition = { x: number; y: number };
@@ -17,7 +16,7 @@ interface Props {
   onStyleChange?: (next: WebsiteTextStyle) => void;
   position?: TextPosition;
   onPositionChange?: (next: TextPosition) => void;
-  // Legacy — unused
+  onDelete?: () => void;
   fontKey?: string;
   fontValue?: string;
   onFontCommit?: (next: string) => void;
@@ -38,6 +37,8 @@ function styleFromTextStyle(ts: WebsiteTextStyle | undefined): React.CSSProperti
   return css;
 }
 
+const DRAG_THRESHOLD = 5;
+
 export function EditableText({
   value,
   defaultValue,
@@ -51,6 +52,7 @@ export function EditableText({
   onStyleChange,
   position,
   onPositionChange,
+  onDelete,
 }: Props) {
   const display = value && value.trim() ? value : defaultValue;
   const ref = useRef<HTMLElement | null>(null);
@@ -61,9 +63,11 @@ export function EditableText({
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const [hovered, setHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const dragState = useRef<{
+    startX: number; startY: number; origX: number; origY: number; moved: boolean;
+  } | null>(null);
+  const resizeState = useRef<{ startY: number; startSize: number } | null>(null);
 
-  // Sync external value changes into contenteditable without clobbering an active edit
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -80,72 +84,88 @@ export function EditableText({
 
   if (!editable) {
     return (
-      <Tag
-        className={`${className} ${anim}`}
-        style={{ ...style, ...tsStyle, transform }}
-      >
+      <Tag className={`${className} ${anim}`} style={{ ...style, ...tsStyle, transform }}>
         {display}
       </Tag>
     );
   }
 
-  // --- blur / keep-open logic ---
-  // When the contenteditable blurs, we wait 80ms before hiding the toolbar.
-  // If focus moved into the toolbar (or onKeepOpen is called), we cancel the hide.
+  // --- blur / keep-open ---
   const scheduleHide = (committedText: string) => {
     if (blurTimer.current) clearTimeout(blurTimer.current);
     blurTimer.current = setTimeout(() => {
-      if (toolbarRef.current && toolbarRef.current.contains(document.activeElement)) {
-        return; // focus is inside toolbar — keep open
-      }
+      if (toolbarRef.current && toolbarRef.current.contains(document.activeElement)) return;
       setShowToolbar(false);
       setAnchorRect(null);
       if (!onCommit) return;
-      if (committedText === defaultValue.trim() || committedText === "") {
-        onCommit("");
-      } else {
-        onCommit(committedText);
-      }
+      if (committedText === defaultValue.trim() || committedText === "") onCommit("");
+      else onCommit(committedText);
     }, 80);
   };
 
   const keepOpen = () => {
     if (blurTimer.current) clearTimeout(blurTimer.current);
-    // re-focus the text element so the toolbar stays logically attached
     if (keepOpenTimer.current) clearTimeout(keepOpenTimer.current);
-    keepOpenTimer.current = setTimeout(() => {
-      ref.current?.focus({ preventScroll: true });
-    }, 120);
+    keepOpenTimer.current = setTimeout(() => ref.current?.focus({ preventScroll: true }), 120);
   };
 
-  // --- drag ---
-  const handleDragPointerDown = (e: React.PointerEvent) => {
+  // --- whole-box drag (only when not editing) ---
+  const canDrag = !!onPositionChange && !showToolbar;
+
+  const handleWrapPointerDown = (e: React.PointerEvent) => {
+    if (!onPositionChange || showToolbar) return;
     e.preventDefault();
-    e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     dragState.current = {
       startX: e.clientX,
       startY: e.clientY,
       origX: position?.x ?? 0,
       origY: position?.y ?? 0,
+      moved: false,
     };
     setIsDragging(true);
   };
 
-  const handleDragPointerMove = (e: React.PointerEvent) => {
+  const handleWrapPointerMove = (e: React.PointerEvent) => {
     if (!dragState.current || !onPositionChange) return;
     const dx = e.clientX - dragState.current.startX;
     const dy = e.clientY - dragState.current.startY;
-    onPositionChange({ x: dragState.current.origX + dx, y: dragState.current.origY + dy });
+    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+      dragState.current.moved = true;
+    }
+    if (dragState.current.moved) {
+      onPositionChange({ x: dragState.current.origX + dx, y: dragState.current.origY + dy });
+    }
   };
 
-  const handleDragPointerUp = () => {
+  const handleWrapPointerUp = () => {
+    const wasTap = dragState.current && !dragState.current.moved;
     dragState.current = null;
     setIsDragging(false);
+    if (wasTap) ref.current?.focus();
   };
 
-  const showDragHandle = onPositionChange && (hovered || showToolbar || isDragging);
+  // --- corner resize ---
+  const handleResizePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const el = ref.current;
+    const computed = el ? parseFloat(window.getComputedStyle(el).fontSize) : 16;
+    resizeState.current = { startY: e.clientY, startSize: computed };
+  };
+
+  const handleResizePointerMove = (e: React.PointerEvent) => {
+    if (!resizeState.current || !onStyleChange) return;
+    const dy = e.clientY - resizeState.current.startY;
+    const newSize = Math.max(8, Math.round(resizeState.current.startSize + dy * 0.5));
+    onStyleChange({ ...(textStyle ?? {}), fontSize: `${newSize}px` });
+  };
+
+  const handleResizePointerUp = () => { resizeState.current = null; };
+
   const hasOffset = position && (position.x !== 0 || position.y !== 0);
+  const showControls = hovered || showToolbar || isDragging;
 
   return (
     <Wrap
@@ -154,62 +174,40 @@ export function EditableText({
         display: as === "div" ? "block" : "inline-block",
         transform,
         zIndex: isDragging ? 100 : undefined,
-        outline: hovered && !isDragging ? "1.5px dashed rgba(99,102,241,0.35)" : undefined,
-        outlineOffset: 3,
+        outline: showControls ? "1.5px dashed rgba(99,102,241,0.5)" : undefined,
+        outlineOffset: 4,
         borderRadius: 2,
+        cursor: canDrag ? (isDragging ? "grabbing" : "grab") : undefined,
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onPointerDown={handleWrapPointerDown}
+      onPointerMove={handleWrapPointerMove}
+      onPointerUp={handleWrapPointerUp}
+      onPointerCancel={handleWrapPointerUp}
     >
-      {/* Drag handle */}
-      {showDragHandle && (
+      {/* Reset position button */}
+      {hasOffset && showControls && (
         <span
-          title="Drag to reposition"
           style={{
             position: "absolute",
-            top: -22,
-            left: 0,
-            cursor: isDragging ? "grabbing" : "grab",
-            background: "rgba(99,102,241,0.92)",
+            top: -20,
+            right: 0,
+            background: "rgba(99,102,241,0.9)",
             color: "#fff",
             borderRadius: 4,
-            padding: "2px 6px 2px 4px",
-            fontSize: 11,
+            padding: "1px 6px",
+            fontSize: 10,
+            cursor: "pointer",
             userSelect: "none",
             zIndex: 300,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 3,
-            whiteSpace: "nowrap",
-            lineHeight: 1,
+            lineHeight: 1.6,
           }}
-          onPointerDown={handleDragPointerDown}
-          onPointerMove={handleDragPointerMove}
-          onPointerUp={handleDragPointerUp}
-          onPointerCancel={handleDragPointerUp}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onPositionChange!({ x: 0, y: 0 })}
+          title="Reset position"
         >
-          <GripHorizontal size={11} />
-          drag
-          {hasOffset && (
-            <button
-              style={{
-                marginLeft: 4,
-                background: "rgba(255,255,255,0.25)",
-                border: "none",
-                borderRadius: 3,
-                color: "#fff",
-                fontSize: 10,
-                cursor: "pointer",
-                padding: "0 3px",
-                lineHeight: 1.4,
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); onPositionChange!({ x: 0, y: 0 }); }}
-              title="Reset position"
-            >
-              ×
-            </button>
-          )}
+          ×
         </span>
       )}
 
@@ -230,8 +228,7 @@ export function EditableText({
           sel?.addRange(range);
         }}
         onBlur={(e: React.FocusEvent) => {
-          const committedText = (e.currentTarget as HTMLElement).innerText.trim();
-          scheduleHide(committedText);
+          scheduleHide((e.currentTarget as HTMLElement).innerText.trim());
         }}
         onKeyDown={(e: React.KeyboardEvent) => {
           if (!multiline && e.key === "Enter") {
@@ -244,12 +241,37 @@ export function EditableText({
           ...style,
           ...tsStyle,
           outline: "none",
-          cursor: isDragging ? "grabbing" : "text",
+          cursor: showToolbar ? "text" : "inherit",
           minWidth: "1em",
+          pointerEvents: canDrag ? "none" : undefined,
         }}
       >
         {display}
       </Tag>
+
+      {/* Corner resize handle */}
+      {showControls && onStyleChange && (
+        <span
+          title="Drag to resize font"
+          style={{
+            position: "absolute",
+            bottom: -6,
+            right: -6,
+            width: 12,
+            height: 12,
+            background: "rgba(99,102,241,0.9)",
+            border: "2px solid white",
+            borderRadius: 3,
+            cursor: "se-resize",
+            zIndex: 300,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+          }}
+          onPointerDown={handleResizePointerDown}
+          onPointerMove={handleResizePointerMove}
+          onPointerUp={handleResizePointerUp}
+          onPointerCancel={handleResizePointerUp}
+        />
+      )}
 
       {showToolbar && anchorRect && onStyleChange && (
         <TextStyleToolbar
@@ -258,6 +280,7 @@ export function EditableText({
           onChange={onStyleChange}
           anchorRect={anchorRect}
           onKeepOpen={keepOpen}
+          onDelete={onDelete}
         />
       )}
     </Wrap>
