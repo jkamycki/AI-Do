@@ -1195,7 +1195,13 @@
     "exporting_pdf": "Wird exportiert…",
     "export_pdf_title": "Druckbares PDF aller Tische herunterladen",
     "pdf_saved": "Sitzplan-PDF gespeichert",
-    "pdf_failed": "PDF-Export fehlgeschlagen"
+    "pdf_failed": "PDF-Export fehlgeschlagen",
+    "reset": "Zurücksetzen",
+    "resetting": "Wird zurückgesetzt…",
+    "reset_title": "Alle gespeicherten Sitzpläne löschen und Tischzuweisungen entfernen",
+    "reset_confirm": "Sitzplan zurücksetzen? Alle gespeicherten Sitzpläne werden gelöscht und Tischzuweisungen auf der Gästeliste entfernt. Nicht umkehrbar.",
+    "reset_done": "Sitzplan zurückgesetzt",
+    "reset_failed": "Zurücksetzen fehlgeschlagen"
   },
   "help": {
     "title": "Hilfe & Support",

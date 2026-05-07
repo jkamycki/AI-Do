@@ -1195,7 +1195,13 @@
     "exporting_pdf": "Exportation…",
     "export_pdf_title": "Télécharger un PDF imprimable avec toutes les tables",
     "pdf_saved": "PDF du plan de table enregistré",
-    "pdf_failed": "Échec de l'export PDF"
+    "pdf_failed": "Échec de l'export PDF",
+    "reset": "Réinitialiser",
+    "resetting": "Réinitialisation…",
+    "reset_title": "Supprimer tous les plans de table enregistrés et effacer les attributions de table",
+    "reset_confirm": "Réinitialiser le plan de table ? Cela supprime tous les plans enregistrés et efface les attributions de table de votre liste d'invités. Action irréversible.",
+    "reset_done": "Plan de table réinitialisé",
+    "reset_failed": "Échec de la réinitialisation"
   },
   "help": {
     "title": "Aide & Support",

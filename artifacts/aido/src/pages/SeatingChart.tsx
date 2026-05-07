@@ -1,7 +1,7 @@
 import { useEffect, useState, useId, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
-import { useGetGuests, useGetProfile, getGetGuestsQueryKey } from "@workspace/api-client-react";
+import { useGetGuests, useGetProfile, getGetGuestsQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import type { Guest as GuestListGuest } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -339,6 +339,7 @@ export default function SeatingChartPage() {
   const uid = useId();
   const { data: profile } = useGetProfile();
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const STORAGE_KEY = "aido_seating_draft_v1";
   const draft = (() => {
     try {
@@ -697,6 +698,40 @@ export default function SeatingChartPage() {
 
   const filledCount = guests.filter(g => g.name.trim()).length;
   const totalCapacity = tableCount * seatsPerTable;
+
+  // Wipe all saved seating charts AND clear table assignments on the guest
+  // list, so the dashboard tile flips back to "No seating chart yet" and the
+  // guest-list assignments column resets in lockstep.
+  const handleReset = async () => {
+    if (!confirm(t("seating.reset_confirm", { defaultValue: "Reset seating chart? This deletes every saved chart and clears table assignments on your guest list. This cannot be undone." }))) {
+      return;
+    }
+    setResetting(true);
+    try {
+      const r = await authedFetch("/api/seating/charts", { method: "DELETE" });
+      if (!r.ok) throw new Error("Failed to reset");
+      // Clear in-page state
+      setResult(null);
+      setActiveChartId(null);
+      setChartDirty(false);
+      setShowSaved(false);
+      setShowGuests(true);
+      // Refresh the saved-charts list and the dashboard tile (which reads
+      // from /dashboard/summary's seatingSummary block).
+      queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
+      toast({ title: t("seating.reset_done", { defaultValue: "Seating chart reset" }) });
+    } catch (err) {
+      toast({
+        title: t("seating.reset_failed", { defaultValue: "Reset failed" }),
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const handleExportPdf = async () => {
     if (!result) return;
@@ -1177,6 +1212,19 @@ export default function SeatingChartPage() {
                 {exportingPdf
                   ? t("seating.exporting_pdf", { defaultValue: "Exporting…" })
                   : t("seating.export_pdf", { defaultValue: "Export PDF" })}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                disabled={resetting}
+                className="gap-1 text-destructive hover:text-destructive border-destructive/40 hover:bg-destructive/5"
+                title={t("seating.reset_title", { defaultValue: "Delete all saved seating charts and clear table assignments" })}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {resetting
+                  ? t("seating.resetting", { defaultValue: "Resetting…" })
+                  : t("seating.reset", { defaultValue: "Reset" })}
               </Button>
             </div>
           </div>
