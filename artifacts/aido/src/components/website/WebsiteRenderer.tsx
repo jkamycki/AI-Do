@@ -672,18 +672,6 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
   if (events.length === 0 && !hasFallback && !ctx.editable) return null;
   return (
     <SectionShell id="schedule" titleKey="schedule_title" defaultTitle="Schedule" icon={<Clock className="h-4 w-4" />} data={data} ctx={ctx}>
-      <EditableText
-        as="div"
-        editable={ctx.editable}
-        value={data.customText.schedule_subtitle ?? ""}
-        defaultValue="The day of"
-        onCommit={(v) => ctx.onTextChange("schedule_subtitle", v)}
-        fontKey="schedule_subtitle_font"
-        fontValue={elementFont(data, "schedule_subtitle")}
-        onFontCommit={(v) => ctx.onTextChange("schedule_subtitle_font", v)}
-        className="block text-center text-3xl sm:text-4xl mb-10"
-        style={{ fontFamily: elementFontStack(data, "schedule_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
-      />
       <div className="space-y-5 max-w-2xl mx-auto">
         {events.length > 0 ? (
           events.map((e, i) => (
