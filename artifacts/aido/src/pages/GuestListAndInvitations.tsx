@@ -10,7 +10,6 @@ import { Sparkles } from "lucide-react";
 
 const Guests = lazy(() => import("./Guests"));
 const InvitationCustomization = lazy(() => import("./InvitationCustomization"));
-const WeddingParty = lazy(() => import("./WeddingParty"));
 
 function TabSkeleton() {
   return (
@@ -162,10 +161,9 @@ export default function GuestListAndInvitations() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="guest-list">Guest List</TabsTrigger>
           <TabsTrigger value="invitation-customization">Invitation Customization</TabsTrigger>
-          <TabsTrigger value="wedding-party">Wedding Party</TabsTrigger>
         </TabsList>
 
         <TabsContent value="guest-list" className="mt-6">
@@ -180,14 +178,6 @@ export default function GuestListAndInvitations() {
           <TabErrorBoundary tabName="Invitation Customization">
             <Suspense fallback={<TabSkeleton />}>
               <InvitationCustomization profileId={profileId} />
-            </Suspense>
-          </TabErrorBoundary>
-        </TabsContent>
-
-        <TabsContent value="wedding-party" className="mt-6">
-          <TabErrorBoundary tabName="Wedding Party">
-            <Suspense fallback={<TabSkeleton />}>
-              <WeddingParty />
             </Suspense>
           </TabErrorBoundary>
         </TabsContent>
