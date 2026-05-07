@@ -247,6 +247,13 @@
     "more_count": "+{{n}} 件",
     "total_invited": "招待者総数",
     "members": "人",
+    "tile_seating": "席次",
+    "seated": "配置済み",
+    "tables": "卓",
+    "seats_each": "席/卓",
+    "seating_unseated": "{{count}}名がまだ未配置です",
+    "no_seating_yet": "まだ席次表がありません。",
+    "generate_seating": "席次を作成",
     "nudge_create_website": "結婚式ウェブサイトを作成",
     "nudge_create_website_when": "最後のステップ"
   },
@@ -1183,7 +1190,12 @@
     "guests_seated": "{{n}}名のゲストが着席",
     "tables_count": "{{n}}テーブル",
     "generated_by": "A.IDO AIが生成",
-    "auto_saved": "自動保存済み ✓"
+    "auto_saved": "自動保存済み ✓",
+    "export_pdf": "PDF を書き出す",
+    "exporting_pdf": "書き出し中…",
+    "export_pdf_title": "全テーブルを印刷用 PDF でダウンロード",
+    "pdf_saved": "席次表 PDF を保存しました",
+    "pdf_failed": "PDF の書き出しに失敗しました"
   },
   "help": {
     "title": "ヘルプ & サポート",
@@ -1287,5 +1299,10 @@
     "switch_to_light": "ライトモードに切り替える",
     "switch_to_dark": "ダークモードに切り替える",
     "sign_out": "サインアウト"
+  },
+  "editor": {
+    "trash_idle": "ドロップで削除",
+    "trash_drop": "放して削除",
+    "trash_hint": "テキストボックスをここにドラッグして削除"
   }
 }

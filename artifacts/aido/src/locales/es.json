@@ -247,6 +247,13 @@
     "more_count": "+{{n}} más",
     "total_invited": "Total invitados",
     "members": "miembros",
+    "tile_seating": "Asientos",
+    "seated": "sentados",
+    "tables": "mesas",
+    "seats_each": "asientos por mesa",
+    "seating_unseated": "{{count}} invitados aún sin asiento",
+    "no_seating_yet": "Aún no hay plano de asientos.",
+    "generate_seating": "Generar asientos",
     "nudge_create_website": "Crea tu sitio web de boda",
     "nudge_create_website_when": "Paso final"
   },
@@ -1170,7 +1177,12 @@
     "guests_seated": "{{n}} invitados sentados",
     "tables_count": "{{n}} mesas",
     "generated_by": "Generado por A.IDO IA",
-    "auto_saved": "Guardado automáticamente ✓"
+    "auto_saved": "Guardado automáticamente ✓",
+    "export_pdf": "Exportar PDF",
+    "exporting_pdf": "Exportando…",
+    "export_pdf_title": "Descargar un PDF imprimible con todas las mesas",
+    "pdf_saved": "PDF del plano de asientos guardado",
+    "pdf_failed": "Error al exportar el PDF"
   },
   "help": {
     "title": "Ayuda y Soporte",
@@ -1274,5 +1286,10 @@
     "switch_to_light": "Cambiar al modo claro",
     "switch_to_dark": "Cambiar al modo oscuro",
     "sign_out": "Cerrar sesión"
+  },
+  "editor": {
+    "trash_idle": "Suelta para borrar",
+    "trash_drop": "Suelta para borrar",
+    "trash_hint": "Arrastra un cuadro de texto aquí para borrarlo"
   }
 }

@@ -247,6 +247,13 @@
     "more_count": "+{{n}} 更多",
     "total_invited": "已邀请总人数",
     "members": "位成员",
+    "tile_seating": "座位安排",
+    "seated": "已就座",
+    "tables": "张桌子",
+    "seats_each": "个座位/桌",
+    "seating_unseated": "{{count}} 位宾客尚未安排座位",
+    "no_seating_yet": "还没有座位安排。",
+    "generate_seating": "生成座位安排",
     "nudge_create_website": "创建你的婚礼网站",
     "nudge_create_website_when": "最后一步"
   },
@@ -1183,7 +1190,12 @@
     "guests_seated": "{{n}} 位宾客已就座",
     "tables_count": "{{n}} 张桌子",
     "generated_by": "由 A.IDO AI 生成",
-    "auto_saved": "已自动保存 ✓"
+    "auto_saved": "已自动保存 ✓",
+    "export_pdf": "导出 PDF",
+    "exporting_pdf": "正在导出…",
+    "export_pdf_title": "下载所有桌位的可打印 PDF",
+    "pdf_saved": "座位图 PDF 已保存",
+    "pdf_failed": "导出 PDF 失败"
   },
   "help": {
     "title": "帮助与支持",
@@ -1287,5 +1299,10 @@
     "switch_to_light": "切换到浅色模式",
     "switch_to_dark": "切换到深色模式",
     "sign_out": "退出登录"
+  },
+  "editor": {
+    "trash_idle": "拖放以删除",
+    "trash_drop": "松开以删除",
+    "trash_hint": "将文本框拖到此处以删除"
   }
 }

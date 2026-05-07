@@ -1,7 +1,7 @@
 import { useEffect, useState, useId } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
-import { useGetGuests, getGetGuestsQueryKey } from "@workspace/api-client-react";
+import { useGetGuests, useGetProfile, getGetGuestsQueryKey } from "@workspace/api-client-react";
 import type { Guest as GuestListGuest } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import {
   Users, Plus, Trash2, Wand2, Heart, AlertTriangle, UserPlus,
   ChevronDown, ChevronUp, RefreshCw, Info, Armchair, Save,
-  Clock, ChevronRight, Download, GripVertical, MoveRight, Pencil,
+  Clock, ChevronRight, Download, GripVertical, MoveRight, Pencil, FileDown,
 } from "lucide-react";
 
 type RelType = "prefer" | "avoid";
@@ -337,6 +337,8 @@ export default function SeatingChartPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const uid = useId();
+  const { data: profile } = useGetProfile();
+  const [exportingPdf, setExportingPdf] = useState(false);
   const STORAGE_KEY = "aido_seating_draft_v1";
   const draft = (() => {
     try {
@@ -682,6 +684,157 @@ export default function SeatingChartPage() {
   const filledCount = guests.filter(g => g.name.trim()).length;
   const totalCapacity = tableCount * seatsPerTable;
 
+  const handleExportPdf = async () => {
+    if (!result) return;
+    setExportingPdf(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ orientation: "p", unit: "pt", format: "letter" });
+
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 48;
+      const colGap = 28;
+      const colW = (pageW - margin * 2 - colGap) / 2;
+      let col = 0; // 0 = left, 1 = right
+      let cursorY = margin;
+
+      const couple = profile
+        ? `${profile.partner1Name ?? ""} & ${profile.partner2Name ?? ""}`.trim()
+        : "";
+      const weddingDate = profile?.weddingDate
+        ? (() => {
+            try {
+              return new Date(profile.weddingDate + "T12:00:00").toLocaleDateString(undefined, {
+                weekday: "long", year: "numeric", month: "long", day: "numeric",
+              });
+            } catch { return profile.weddingDate; }
+          })()
+        : "";
+
+      // ── Header
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.text(t("seating.your_seating_chart", { defaultValue: "Seating Chart" }), margin, cursorY);
+      cursorY += 26;
+
+      if (couple) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(13);
+        doc.setTextColor(60, 60, 60);
+        doc.text(couple, margin, cursorY);
+        cursorY += 16;
+      }
+      if (weddingDate) {
+        doc.setFontSize(11);
+        doc.setTextColor(110, 110, 110);
+        doc.text(weddingDate, margin, cursorY);
+        cursorY += 18;
+      }
+      doc.setDrawColor(220, 220, 220);
+      doc.line(margin, cursorY, pageW - margin, cursorY);
+      cursorY += 18;
+
+      const headerBottomY = cursorY;
+      let leftY = headerBottomY;
+      let rightY = headerBottomY;
+
+      // ── Tables (2-column flow)
+      for (const table of result.tables) {
+        // Estimate block height to decide if it fits in current column
+        const lineHeight = 14;
+        const headerH = 18 + 8;
+        const rowsH = (table.guests.length || 1) * lineHeight;
+        const themeH = table.theme ? 14 : 0;
+        const blockH = headerH + themeH + rowsH + 14;
+
+        // Pick the column with less content; fall back to next page if both too full.
+        const pickCol = (): 0 | 1 => {
+          const lFits = leftY + blockH <= pageH - margin;
+          const rFits = rightY + blockH <= pageH - margin;
+          if (!lFits && !rFits) return -1 as unknown as 0 | 1;
+          if (!lFits) return 1;
+          if (!rFits) return 0;
+          return leftY <= rightY ? 0 : 1;
+        };
+        let chosen = pickCol();
+        if ((chosen as number) === -1) {
+          doc.addPage();
+          leftY = margin;
+          rightY = margin;
+          chosen = 0;
+        }
+        col = chosen;
+        const x = margin + col * (colW + colGap);
+        let y = col === 0 ? leftY : rightY;
+
+        // Table header
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.setTextColor(20, 20, 20);
+        const tableTitle = table.tableName && table.tableName.trim()
+          ? `Table ${table.tableNumber} · ${table.tableName}`
+          : `Table ${table.tableNumber}`;
+        doc.text(tableTitle, x, y);
+        y += 16;
+
+        if (table.theme) {
+          doc.setFont("helvetica", "italic");
+          doc.setFontSize(10);
+          doc.setTextColor(120, 120, 120);
+          const themeLines = doc.splitTextToSize(table.theme, colW);
+          doc.text(themeLines, x, y);
+          y += themeLines.length * 12 + 2;
+        }
+
+        // Guest rows
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.setTextColor(50, 50, 50);
+        if (table.guests.length === 0) {
+          doc.setTextColor(160, 160, 160);
+          doc.text("(empty)", x, y);
+          y += lineHeight;
+        } else {
+          for (const guest of table.guests) {
+            const lines = doc.splitTextToSize(`• ${guest}`, colW);
+            doc.text(lines, x, y);
+            y += lines.length * lineHeight;
+          }
+        }
+        y += 12;
+
+        if (col === 0) leftY = y;
+        else rightY = y;
+      }
+
+      // ── Footer (page numbers + brand) on every page
+      const totalPages = (doc.internal.pages.length - 1) | 0;
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Page ${p} / ${totalPages}`, margin, pageH - 18);
+        const right = "Generated by A.IDO";
+        const rightW = doc.getTextWidth(right);
+        doc.text(right, pageW - margin - rightW, pageH - 18);
+      }
+
+      const safe = (couple || "wedding").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      doc.save(`seating-chart-${safe || "wedding"}.pdf`);
+      toast({ title: t("seating.pdf_saved", { defaultValue: "Seating chart PDF saved" }) });
+    } catch (err) {
+      toast({
+        title: t("seating.pdf_failed", { defaultValue: "PDF export failed" }),
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       <div>
@@ -935,6 +1088,19 @@ export default function SeatingChartPage() {
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 {t("seating.regenerate")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                disabled={exportingPdf}
+                className="gap-1"
+                title={t("seating.export_pdf_title", { defaultValue: "Download a printable PDF of every table" })}
+              >
+                <FileDown className="h-3.5 w-3.5" />
+                {exportingPdf
+                  ? t("seating.exporting_pdf", { defaultValue: "Exporting…" })
+                  : t("seating.export_pdf", { defaultValue: "Export PDF" })}
               </Button>
             </div>
           </div>

@@ -247,6 +247,13 @@
     "more_count": "+{{n}} altri",
     "total_invited": "Totale invitati",
     "members": "membri",
+    "tile_seating": "Disposizione",
+    "seated": "seduti",
+    "tables": "tavoli",
+    "seats_each": "posti per tavolo",
+    "seating_unseated": "{{count}} invitati ancora senza posto",
+    "no_seating_yet": "Nessuna disposizione ancora.",
+    "generate_seating": "Genera disposizione",
     "nudge_create_website": "Crea il tuo sito web di matrimonio",
     "nudge_create_website_when": "Ultimo passaggio"
   },
@@ -1183,7 +1190,12 @@
     "arranging": "Organizzazione…",
     "unassigned": "Ospiti Non Assegnati",
     "no_tables_title": "Nessun tavolo ancora",
-    "no_tables_desc": "Aggiungi tavoli e trascina gli ospiti per posizionarli."
+    "no_tables_desc": "Aggiungi tavoli e trascina gli ospiti per posizionarli.",
+    "export_pdf": "Esporta PDF",
+    "exporting_pdf": "Esportazione…",
+    "export_pdf_title": "Scarica un PDF stampabile con tutti i tavoli",
+    "pdf_saved": "PDF della disposizione salvato",
+    "pdf_failed": "Esportazione PDF non riuscita"
   },
   "help": {
     "title": "Aiuto e Supporto",
@@ -1287,5 +1299,10 @@
     "switch_to_light": "Passa alla modalità chiara",
     "switch_to_dark": "Passa alla modalità scura",
     "sign_out": "Esci"
+  },
+  "editor": {
+    "trash_idle": "Trascina per eliminare",
+    "trash_drop": "Rilascia per eliminare",
+    "trash_hint": "Trascina qui un blocco di testo per eliminarlo"
   }
 }
