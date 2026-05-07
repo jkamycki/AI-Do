@@ -931,9 +931,21 @@ function SlugEditor({
     }
   };
 
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const host = origin.replace(/^https?:\/\//, "");
+
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">Customize the public URL for your site.</p>
+    <div className="space-y-2.5">
+      <div className="rounded-md bg-muted/40 border border-border/70 px-3 py-2 space-y-1">
+        <p className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">Guest website link</p>
+        <p className="text-xs font-mono break-all">
+          <span className="opacity-60">{host}/w/</span><span className="text-foreground">{slug}</span>
+        </p>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Share this with guests. Your editor (this page) stays at <span className="font-mono">{host}</span> —
+          the <span className="font-mono">/w/</span> prefix is what separates the public guest site from your portal.
+        </p>
+      </div>
       {published && (
         <p className="text-[11px] text-amber-600 dark:text-amber-400">
           Changing the URL will break any previously shared links.
@@ -941,15 +953,17 @@ function SlugEditor({
       )}
       {editing ? (
         <div className="space-y-2">
-          <p className="text-[10px] text-muted-foreground font-mono">{window.location.origin}/w/</p>
-          <input
-            value={input}
-            onChange={(e) => { setInput(sanitize(e.target.value)); setError(null); }}
-            onKeyDown={(e) => { if (e.key === "Enter") void save(); if (e.key === "Escape") { setEditing(false); setInput(slug); setError(null); } }}
-            placeholder="your-url-slug"
-            autoFocus
-            className="w-full h-8 px-3 rounded-md border border-border bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
+          <div className="flex items-center text-xs font-mono rounded-md border border-border bg-background overflow-hidden focus-within:ring-2 focus-within:ring-primary/30">
+            <span className="px-2.5 py-1.5 bg-muted text-muted-foreground border-r border-border whitespace-nowrap">{host}/w/</span>
+            <input
+              value={input}
+              onChange={(e) => { setInput(sanitize(e.target.value)); setError(null); }}
+              onKeyDown={(e) => { if (e.key === "Enter") void save(); if (e.key === "Escape") { setEditing(false); setInput(slug); setError(null); } }}
+              placeholder="your-url-slug"
+              autoFocus
+              className="flex-1 h-8 px-2 bg-background text-sm font-mono focus:outline-none"
+            />
+          </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex gap-2">
             <Button
@@ -970,12 +984,11 @@ function SlugEditor({
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-mono text-muted-foreground truncate">/w/{slug}</span>
+        <div className="flex items-center justify-end">
           <Button
             size="sm"
             variant="outline"
-            className="h-7 text-xs flex-shrink-0"
+            className="h-7 text-xs"
             onClick={() => { setEditing(true); setInput(slug); }}
           >
             Edit URL
