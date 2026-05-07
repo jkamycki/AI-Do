@@ -7,6 +7,7 @@ import { useRoute, Link } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useGetProfile } from "@workspace/api-client-react";
 import { Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const Guests = lazy(() => import("./Guests"));
 const InvitationCustomization = lazy(() => import("./InvitationCustomization"));
@@ -110,6 +111,7 @@ export default function GuestListAndInvitations() {
   const [, params] = useRoute("/guests/:profileId");
   const { activeWorkspace } = useWorkspace();
   const { data: profile, isLoading: profileLoading } = useGetProfile();
+  const { t } = useTranslation();
 
   const profileId = params?.profileId
     ? parseInt(params.profileId)
@@ -134,13 +136,13 @@ export default function GuestListAndInvitations() {
           <Sparkles className="h-7 w-7 text-primary" />
         </div>
         <div>
-          <h2 className="text-2xl font-serif font-semibold">Complete Your Wedding Profile</h2>
+          <h2 className="text-2xl font-serif font-semibold">{t("guests.complete_profile_title", { defaultValue: "Complete Your Wedding Profile" })}</h2>
           <p className="text-muted-foreground mt-2 text-sm">
-            You need to set up your wedding profile before you can manage guests and invitations.
+            {t("guests.complete_profile_desc", { defaultValue: "You need to set up your wedding profile before you can manage guests and invitations." })}
           </p>
         </div>
         <Link href="/profile">
-          <Button>Set Up Wedding Profile</Button>
+          <Button>{t("guests.set_up_profile", { defaultValue: "Set Up Wedding Profile" })}</Button>
         </Link>
       </div>
     );
@@ -150,20 +152,20 @@ export default function GuestListAndInvitations() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-serif font-bold">
-          Guest List & Invitations
+          {t("guests.page_title", { defaultValue: "Guest List & Invitations" })}
           <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40 align-middle">
             v2
           </span>
         </h1>
         <p className="text-muted-foreground mt-1">
-          Manage your guests and customize your invitation designs
+          {t("guests.page_subtitle", { defaultValue: "Manage your guests and customize your invitation designs" })}
         </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="guest-list">Guest List</TabsTrigger>
-          <TabsTrigger value="invitation-customization">Invitation Customization</TabsTrigger>
+          <TabsTrigger value="guest-list">{t("guests.tab_guest_list", { defaultValue: "Guest List" })}</TabsTrigger>
+          <TabsTrigger value="invitation-customization">{t("guests.tab_invitation", { defaultValue: "Invitation Customization" })}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="guest-list" className="mt-6">

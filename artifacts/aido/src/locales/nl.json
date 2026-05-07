@@ -232,7 +232,11 @@
     "just_now": "zojuist",
     "minutes_ago": "{{n}}m geleden",
     "hours_ago": "{{n}}u geleden",
-    "days_ago": "{{n}}d geleden"
+    "days_ago": "{{n}}d geleden",
+    "error_generic": "Aria liep tegen een fout aan. Probeer het opnieuw.",
+    "error_timeout": "Aria deed er te lang over om te antwoorden. De server is misschien aan het opwarmen — probeer het opnieuw.",
+    "error_with_detail": "Aria kon niet reageren: {{detail}}. Probeer het opnieuw.",
+    "error_no_response": "Aria kan nu niet reageren. Probeer het opnieuw."
   },
   "budget": {
     "title": "Budgetbeheer",
@@ -460,7 +464,14 @@
     "filter_pending": "In afwachting",
     "guest_added": "Gast toegevoegd",
     "guest_updated": "Gast bijgewerkt",
-    "guest_deleted": "Gast verwijderd"
+    "guest_deleted": "Gast verwijderd",
+    "complete_profile_title": "Vul je trouwprofiel aan",
+    "complete_profile_desc": "Je moet eerst je trouwprofiel instellen voordat je gasten en uitnodigingen kunt beheren.",
+    "set_up_profile": "Profiel instellen",
+    "page_title": "Gastenlijst & uitnodigingen",
+    "page_subtitle": "Beheer je gasten en pas je uitnodigingen aan",
+    "tab_guest_list": "Gastenlijst",
+    "tab_invitation": "Uitnodiging aanpassen"
   },
   "timeline": {
     "title": "Trouwdag Tijdlijn",

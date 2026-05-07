@@ -63,7 +63,8 @@
     "dayof": "Coordinateur du Jour J",
     "settings": "Paramètres & Collaborateurs",
     "help": "Aide & Support",
-    "admin": "Centre des Opérations"
+    "admin": "Centre des Opérations",
+    "website": "Site web du mariage"
   },
   "settings": {
     "title": "Paramètres",
@@ -243,7 +244,9 @@
     "ceremony_at": "Cérémonie {{time}}",
     "reception_at": "Réception {{time}}",
     "days_to_go_count": "{{n}} jours restants",
-    "more_count": "+{{n}} de plus"
+    "more_count": "+{{n}} de plus",
+    "total_invited": "Total d'invités",
+    "members": "membres"
   },
   "profile": {
     "title": "Profil de Mariage",
@@ -318,7 +321,11 @@
     "starter_3": "Ajoutez une nouvelle dépense pour moi",
     "starter_4": "Sur quoi devrais-je me concentrer 6 mois avant mon mariage ?",
     "starter_5": "Combien me reste-t-il à dépenser dans mon budget ?",
-    "starter_6": "Ajoutez un nouvel invité pour moi"
+    "starter_6": "Ajoutez un nouvel invité pour moi",
+    "error_generic": "Aria a rencontré une erreur. Veuillez réessayer.",
+    "error_timeout": "Aria a mis trop de temps à répondre. Le serveur démarre peut-être — veuillez réessayer.",
+    "error_with_detail": "Aria n'a pas pu répondre : {{detail}}. Veuillez réessayer.",
+    "error_no_response": "Aria ne peut pas répondre pour le moment. Veuillez réessayer."
   },
   "budget": {
     "title": "Suivi de budget",
@@ -814,7 +821,23 @@
     "new_guest_alert_other": "{{count}} invités viennent de remplir leurs informations",
     "new_guest_alert_desc": "Ils ont été ajoutés à votre liste d'invités via votre lien collecteur.",
     "dismiss_new_alert": "Compris",
-    "dismiss_new_badge": "Cliquer pour ignorer"
+    "dismiss_new_badge": "Cliquer pour ignorer",
+    "complete_profile_title": "Complétez votre profil de mariage",
+    "complete_profile_desc": "Vous devez configurer votre profil de mariage avant de pouvoir gérer les invités et les invitations.",
+    "set_up_profile": "Configurer le profil",
+    "page_title": "Liste d'invités et invitations",
+    "page_subtitle": "Gérez vos invités et personnalisez vos invitations",
+    "tab_guest_list": "Liste d'invités",
+    "tab_invitation": "Personnalisation des invitations",
+    "col_save_the_date": "Save the Date",
+    "save_the_date_not_sent": "Non envoyé",
+    "save_the_date_sent": "Envoyé",
+    "send_digital_invite_option": "Invitation avec RSVP",
+    "send_digital_invite_option_desc": "Invitation complète avec formulaire RSVP.",
+    "send_invite_desc": "Choisissez quel type envoyer à {{name}}.",
+    "send_invite_title": "Envoyer l'invitation",
+    "send_save_the_date_option": "Save the Date",
+    "send_save_the_date_option_desc": "Photo, date et lieu du mariage. Sans RSVP."
   },
   "timeline": {
     "title": "Calendrier du Jour du Mariage",

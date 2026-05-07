@@ -63,7 +63,8 @@
     "dayof": "婚礼当日协调",
     "settings": "设置与协作者",
     "help": "帮助与支持",
-    "admin": "运营中心"
+    "admin": "运营中心",
+    "website": "婚礼网站"
   },
   "settings": {
     "title": "设置",
@@ -243,7 +244,9 @@
     "ceremony_at": "仪式 {{time}}",
     "reception_at": "接待 {{time}}",
     "days_to_go_count": "{{n}} 天后",
-    "more_count": "+{{n}} 更多"
+    "more_count": "+{{n}} 更多",
+    "total_invited": "已邀请总人数",
+    "members": "位成员"
   },
   "profile": {
     "title": "婚礼档案",
@@ -318,7 +321,11 @@
     "starter_3": "帮我添加一笔新支出",
     "starter_4": "婚礼前6个月我应该优先做什么？",
     "starter_5": "我的预算还剩多少可以花？",
-    "starter_6": "帮我添加一位新宾客"
+    "starter_6": "帮我添加一位新宾客",
+    "error_generic": "Aria 遇到错误。请重试。",
+    "error_timeout": "Aria 回复太久了。服务器可能正在启动 — 请稍后重试。",
+    "error_with_detail": "Aria 无法回复:{{detail}}。请重试。",
+    "error_no_response": "Aria 暂时无法回复。请稍后重试。"
   },
   "budget": {
     "title": "预算追踪",
@@ -813,7 +820,24 @@
     "new_guest_alert_other": "{{count}} 位宾客刚刚填写了他们的信息",
     "new_guest_alert_desc": "他们已通过您的收集链接添加到宾客名单。",
     "dismiss_new_alert": "知道了",
-    "dismiss_new_badge": "点击忽略"
+    "dismiss_new_badge": "点击忽略",
+    "col_einvite_status": "电子邀请函状态",
+    "col_save_the_date": "Save the Date",
+    "save_the_date_not_sent": "未发送",
+    "save_the_date_sent": "已发送",
+    "send_digital_invite_option": "带 RSVP 的邀请函",
+    "send_digital_invite_option_desc": "完整的邀请函,含 RSVP 表单。",
+    "send_invite_desc": "请选择要发送给 {{name}} 的类型。",
+    "send_invite_title": "发送邀请",
+    "send_save_the_date_option": "Save the Date",
+    "send_save_the_date_option_desc": "照片、婚礼日期和地点,不含 RSVP。",
+    "complete_profile_title": "完善您的婚礼资料",
+    "complete_profile_desc": "请先设置婚礼资料,然后再管理宾客和请柬。",
+    "set_up_profile": "设置婚礼资料",
+    "page_title": "宾客名单与请柬",
+    "page_subtitle": "管理宾客并自定义您的请柬设计",
+    "tab_guest_list": "宾客名单",
+    "tab_invitation": "请柬定制"
   },
   "timeline": {
     "title": "婚礼当日时间表",

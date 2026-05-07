@@ -63,7 +63,8 @@
     "dayof": "Hochzeitstagkoordinator",
     "settings": "Einstellungen & Mitarbeiter",
     "help": "Hilfe & Support",
-    "admin": "Operationszentrum"
+    "admin": "Operationszentrum",
+    "website": "Hochzeits-Website"
   },
   "settings": {
     "title": "Einstellungen",
@@ -243,7 +244,9 @@
     "ceremony_at": "Zeremonie {{time}}",
     "reception_at": "Empfang {{time}}",
     "days_to_go_count": "{{n}} Tage noch",
-    "more_count": "+{{n}} mehr"
+    "more_count": "+{{n}} mehr",
+    "total_invited": "Eingeladen insgesamt",
+    "members": "Mitglieder"
   },
   "profile": {
     "title": "Hochzeitsprofil",
@@ -318,7 +321,11 @@
     "starter_3": "Füge eine neue Ausgabe für mich hinzu",
     "starter_4": "Worauf sollte ich mich 6 Monate vor meiner Hochzeit konzentrieren?",
     "starter_5": "Wie viel Budget habe ich noch übrig?",
-    "starter_6": "Füge einen neuen Gast für mich hinzu"
+    "starter_6": "Füge einen neuen Gast für mich hinzu",
+    "error_generic": "Aria hatte ein Problem. Bitte versuche es noch einmal.",
+    "error_timeout": "Aria hat zu lange gebraucht. Der Server fährt eventuell hoch — bitte versuche es noch einmal.",
+    "error_with_detail": "Aria konnte nicht antworten: {{detail}}. Bitte versuche es erneut.",
+    "error_no_response": "Aria kann gerade nicht antworten. Bitte versuche es erneut."
   },
   "budget": {
     "title": "Budgetverwaltung",
@@ -814,7 +821,23 @@
     "new_guest_alert_other": "{{count}} Gäste haben soeben ihre Daten ausgefüllt",
     "new_guest_alert_desc": "Sie wurden über euren Sammel-Link zu eurer Gästeliste hinzugefügt.",
     "dismiss_new_alert": "Verstanden",
-    "dismiss_new_badge": "Klicken zum Ausblenden"
+    "dismiss_new_badge": "Klicken zum Ausblenden",
+    "complete_profile_title": "Hochzeitsprofil vervollständigen",
+    "complete_profile_desc": "Du musst dein Hochzeitsprofil einrichten, bevor du Gäste und Einladungen verwalten kannst.",
+    "set_up_profile": "Profil einrichten",
+    "page_title": "Gästeliste & Einladungen",
+    "page_subtitle": "Verwalte deine Gäste und passe deine Einladungen an",
+    "tab_guest_list": "Gästeliste",
+    "tab_invitation": "Einladungsdesign",
+    "col_save_the_date": "Save the Date",
+    "save_the_date_not_sent": "Nicht gesendet",
+    "save_the_date_sent": "Gesendet",
+    "send_digital_invite_option": "Einladung mit RSVP",
+    "send_digital_invite_option_desc": "Vollständige Einladung mit RSVP-Formular.",
+    "send_invite_desc": "Wähle, welchen Typ du an {{name}} senden möchtest.",
+    "send_invite_title": "Einladung senden",
+    "send_save_the_date_option": "Save the Date",
+    "send_save_the_date_option_desc": "Foto, Datum und Ort. Ohne RSVP."
   },
   "timeline": {
     "title": "Hochzeitstag-Zeitplan",
