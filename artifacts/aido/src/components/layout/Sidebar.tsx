@@ -64,7 +64,8 @@ const navSections = [
     labelKey: "nav.guests_label",
     items: [
       { href: "/guests", labelKey: "nav.guests", icon: UsersRound },
-{ href: "/seating-chart", labelKey: "nav.seating", icon: Armchair },
+      { href: "/wedding-party", labelKey: "nav.party", icon: Crown },
+      { href: "/seating-chart", labelKey: "nav.seating", icon: Armchair },
       { href: "/hotels", labelKey: "nav.hotels", icon: Hotel },
     ],
   },

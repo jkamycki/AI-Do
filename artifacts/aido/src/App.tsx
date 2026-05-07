@@ -32,6 +32,7 @@ import Rsvp from "@/pages/Rsvp";
 import SaveTheDate from "@/pages/SaveTheDate";
 import PublicWebsite from "@/pages/PublicWebsite";
 import WebsiteEditor from "@/pages/WebsiteEditor";
+import WeddingParty from "@/pages/WeddingParty";
 import SharedWorkspace from "@/pages/SharedWorkspace";
 import GuestListAndInvitations from "@/pages/GuestListAndInvitations";
 import Hotels from "@/pages/Hotels";
@@ -1399,6 +1400,7 @@ function Router() {
       <Route path="/operations-center" component={() => <ProtectedRoute component={OperationsCenter} />} />
       <Route path="/seating-chart" component={() => <ProtectedRoute component={SeatingChart} />} />
       <Route path="/guests/:profileId?" component={() => <ProtectedRoute component={GuestListAndInvitations} />} />
+      <Route path="/wedding-party" component={() => <ProtectedRoute component={WeddingParty} />} />
       <Route path="/hotels" component={() => <ProtectedRoute component={Hotels} />} />
       <Route path="/contracts" component={() => <ProtectedRoute component={Contracts} />} />
       <Route path="/mood-board" component={() => <ProtectedRoute component={MoodBoard} />} />

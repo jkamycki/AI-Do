@@ -35,6 +35,7 @@ import {
   Camera,
   Trash2,
   ImagePlus,
+  Crown,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -401,7 +402,7 @@ type StatChipDef = {
 };
 
 const STAT_ORDER_KEY = "aido:dashboard:statOrder";
-const DEFAULT_STAT_ORDER = ["budget", "checklist", "timeline", "guests"] as const;
+const DEFAULT_STAT_ORDER = ["budget", "checklist", "timeline", "weddingParty"] as const;
 type StatKey = typeof DEFAULT_STAT_ORDER[number];
 
 function loadStatOrder(validKeys: string[]): StatKey[] {
@@ -938,6 +939,8 @@ function DashboardContent() {
       )}
 
       {/* Stats row — drag to reorder (single hint shown here for the whole dashboard) */}
+      {/* Guests has its own dedicated tile below (with attending/declined/awaiting/total),
+          so it's intentionally NOT a chip here to avoid duplicating the same number. */}
       <DraggableStatsRow
         chips={{
           budget: {
@@ -963,12 +966,12 @@ function DashboardContent() {
             sub: t("timeline.title"),
             href: "/timeline",
           },
-          guests: {
-            icon: UsersRound,
-            label: t("dashboard.tile_guests"),
-            value: `${summary.guestCount ?? 0}`,
-            sub: `${(summary as any).guestRsvpSummary?.attending ?? 0} ${t("dashboard.rsvp_attending").toLowerCase()}`,
-            href: "/guests",
+          weddingParty: {
+            icon: Crown,
+            label: t("nav.party"),
+            value: `${(summary as any).weddingPartyCount ?? 0}`,
+            sub: t("dashboard.members"),
+            href: "/wedding-party",
           },
         }}
       />
@@ -987,12 +990,16 @@ function DashboardContent() {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary" />
-                <span className="text-xs font-medium uppercase tracking-wider text-primary">{t("dashboard.guest_rsvps")}</span>
+                <span className="text-xs font-medium uppercase tracking-wider text-primary">{t("dashboard.tile_guests")}</span>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
             </div>
             {summary.guestCount > 0 ? (
               <div className="space-y-2">
+                <div className="flex items-baseline justify-between mb-1">
+                  <span className="text-2xl font-serif font-semibold text-foreground">{summary.guestCount}</span>
+                  <span className="text-[11px] text-muted-foreground uppercase tracking-wider">{t("dashboard.total_invited", { defaultValue: "Total invited" })}</span>
+                </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /><span className="text-xs text-muted-foreground">{t("dashboard.rsvp_attending")}</span></div>
                   <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{(summary as any).guestRsvpSummary?.attending ?? 0}</span>
