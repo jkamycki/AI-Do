@@ -211,12 +211,13 @@ export function EditableText({
   const handleResizePointerUp = () => { resizeState.current = null; };
 
   const hasOffset = position && (position.x !== 0 || position.y !== 0);
-  // Visibly-empty element: don't show the dashed outline or hover/resize/× chrome
-  // and (when not actively editing) don't render the Wrap shell at all. Otherwise
-  // a user clearing a non-deletable text element (e.g. couple name when the
-  // profile has no names yet) is left staring at a blue empty box.
+  // Visibly-empty element: NEVER show the dashed outline or hover/resize/×
+  // chrome — even when the toolbar is open. The earlier rule kept chrome on
+  // while focused, which left a giant blue rectangle on the hero whenever a
+  // user cleared a non-deletable text element. The contenteditable cursor
+  // still blinks for active editing, but no big rectangle appears.
   const isVisiblyEmpty = (display ?? "").trim() === "";
-  const showControls = (hovered || showToolbar || isDragging) && (!isVisiblyEmpty || showToolbar);
+  const showControls = (hovered || showToolbar || isDragging) && !isVisiblyEmpty;
   if (isVisiblyEmpty && !showToolbar) {
     // Render an invisible 0-width anchor so the parent layout doesn't collapse
     // unpredictably and so React's keyed reconciliation stays stable.

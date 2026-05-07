@@ -279,6 +279,20 @@ export function RsvpFlow({
                     </button>
                   ))}
                 </div>
+                {/* Escape hatch when none of the matches are actually the
+                    user — they can self-add and the couple can verify. */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelfName(query.trim());
+                    setError(null);
+                    setStep("self-add");
+                  }}
+                  className="mt-3 w-full text-xs underline opacity-70 hover:opacity-100 text-center"
+                  style={{ color: text }}
+                >
+                  None of these are me — RSVP anyway
+                </button>
               </div>
             )}
 
