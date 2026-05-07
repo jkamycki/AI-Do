@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2 } from "lucide-react";
-import { EditableText } from "./EditableText";
+import { EditableText, type TextPosition } from "./EditableText";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch } from "@/lib/authFetch";
 
@@ -57,6 +57,7 @@ export interface WebsiteRendererPayload {
   };
   customText: Record<string, string>;
   textStyles?: Record<string, { fontFamily?: string; fontSize?: string; color?: string; bold?: boolean; italic?: boolean; animation?: string }>;
+  textPositions?: Record<string, { x: number; y: number }>;
   galleryImages: Array<{ url: string; caption?: string; order: number }>;
   heroImage: string | null;
   couple: {
@@ -93,15 +94,19 @@ interface EditCtx {
   onTextChange: (key: string, value: string) => void;
   textStyles?: Record<string, TextStyle>;
   onStyleChange?: (key: string, style: TextStyle) => void;
+  textPositions?: Record<string, TextPosition>;
+  onPositionChange?: (key: string, position: TextPosition) => void;
 }
 const NOOP_CTX: EditCtx = { editable: false, onTextChange: () => {} };
 
-// Returns textStyle + onStyleChange props for an EditableText at a given key.
+// Returns textStyle + onStyleChange + position + onPositionChange props for an EditableText.
 function tsp(ctx: EditCtx, key: string) {
   if (!ctx.editable) return {};
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
+    position: ctx.textPositions?.[key],
+    onPositionChange: ctx.onPositionChange ? (p: TextPosition) => ctx.onPositionChange!(key, p) : undefined,
   };
 }
 
@@ -1249,6 +1254,7 @@ export function WebsiteRenderer({
   editable = false,
   onTextChange,
   onStyleChange,
+  onPositionChange,
   currentSection,
   slug,
   password,
@@ -1258,6 +1264,7 @@ export function WebsiteRenderer({
   editable?: boolean;
   onTextChange?: (key: string, value: string) => void;
   onStyleChange?: (key: string, style: TextStyle) => void;
+  onPositionChange?: (key: string, position: TextPosition) => void;
   // When set, render only the matching section (page-per-section mode for
   // the public site). When undefined, render every section in one scroll
   // (the editor preview mode).
@@ -1270,7 +1277,7 @@ export function WebsiteRenderer({
   password?: string | null;
 }) {
   const ctx: EditCtx = editable && onTextChange
-    ? { editable: true, onTextChange, textStyles: data.textStyles, onStyleChange }
+    ? { editable: true, onTextChange, textStyles: data.textStyles, onStyleChange, textPositions: data.textPositions, onPositionChange }
     : NOOP_CTX;
   const pageMode = !!currentSection;
   const showAll = !pageMode;

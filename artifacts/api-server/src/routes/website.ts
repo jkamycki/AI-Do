@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps } from "@workspace/db";
-import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteTextStyles } from "@workspace/db";
+import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
 import { and, eq, ilike, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile } from "../lib/workspaceAccess";
@@ -67,6 +67,7 @@ function serialize(w: typeof weddingWebsites.$inferSelect) {
     sectionsEnabled: w.sectionsEnabled,
     customText: w.customText,
     textStyles: w.textStyles ?? {},
+    textPositions: w.textPositions ?? {},
     galleryImages: w.galleryImages,
     heroImage: w.heroImage,
     passwordEnabled: !!w.password,
@@ -154,6 +155,7 @@ router.put("/website/update", requireAuth, async (req, res) => {
       sectionsEnabled: WebsiteSectionsEnabled;
       customText: WebsiteCustomText;
       textStyles: WebsiteTextStyles;
+      textPositions: WebsiteTextPositions;
       galleryImages: WebsiteGalleryImage[];
       heroImage: string | null;
       password: string | null;
@@ -170,6 +172,7 @@ router.put("/website/update", requireAuth, async (req, res) => {
     if (body.sectionsEnabled && typeof body.sectionsEnabled === "object") updates.sectionsEnabled = body.sectionsEnabled;
     if (body.customText && typeof body.customText === "object") updates.customText = body.customText;
     if (body.textStyles && typeof body.textStyles === "object") updates.textStyles = body.textStyles;
+    if (body.textPositions && typeof body.textPositions === "object") updates.textPositions = body.textPositions;
     if (Array.isArray(body.galleryImages)) updates.galleryImages = body.galleryImages.slice(0, 60);
     if ("heroImage" in body) updates.heroImage = body.heroImage ?? null;
     if ("password" in body) {
@@ -312,6 +315,7 @@ router.get("/website/public/:slug", async (req, res) => {
       sectionsEnabled: row.sectionsEnabled,
       customText: row.customText,
       textStyles: row.textStyles ?? {},
+      textPositions: row.textPositions ?? {},
       galleryImages: row.galleryImages,
       heroImage: row.heroImage,
       couple: {

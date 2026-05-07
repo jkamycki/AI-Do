@@ -542,6 +542,9 @@ export type WebsiteTextStyle = {
 };
 export type WebsiteTextStyles = Record<string, WebsiteTextStyle>;
 
+export type WebsiteTextPosition = { x: number; y: number };
+export type WebsiteTextPositions = Record<string, WebsiteTextPosition>;
+
 export type WebsiteGalleryImage = {
   url: string;
   caption?: string;
@@ -585,6 +588,7 @@ export const weddingWebsites = pgTable("wedding_websites", {
   // Empty value means "use auto-generated text from couple's profile".
   customText: jsonb("custom_text").notNull().$type<WebsiteCustomText>().default({}),
   textStyles: jsonb("text_styles").$type<WebsiteTextStyles>().default({}),
+  textPositions: jsonb("text_positions").$type<WebsiteTextPositions>().default({}),
   galleryImages: jsonb("gallery_images").notNull().$type<WebsiteGalleryImage[]>().default([]),
   heroImage: text("hero_image"),
   password: text("password"),
