@@ -175,6 +175,13 @@
     "reception_at": "피로연 {{time}}",
     "days_to_go_count": "{{n}}일 남음",
     "more_count": "+{{n}} 더 보기",
+    "tile_seating": "좌석 배치",
+    "seated": "배치됨",
+    "tables": "테이블",
+    "seats_each": "좌석/테이블",
+    "seating_unseated": "{{count}}명이 아직 좌석이 없어요",
+    "no_seating_yet": "아직 좌석 배치가 없어요.",
+    "generate_seating": "좌석 배치 만들기",
     "nudge_create_website": "결혼식 웹사이트 만들기",
     "nudge_create_website_when": "마지막 단계"
   },
@@ -582,7 +589,12 @@
     "arranging": "배치 중…",
     "unassigned": "미배정 하객",
     "no_tables_title": "아직 테이블이 없습니다",
-    "no_tables_desc": "테이블을 추가하고 하객을 드래그하여 좌석을 지정하세요."
+    "no_tables_desc": "테이블을 추가하고 하객을 드래그하여 좌석을 지정하세요.",
+    "export_pdf": "PDF 내보내기",
+    "exporting_pdf": "내보내는 중…",
+    "export_pdf_title": "모든 테이블을 인쇄용 PDF로 다운로드",
+    "pdf_saved": "좌석 배치 PDF 저장됨",
+    "pdf_failed": "PDF 내보내기에 실패했어요"
   },
   "help": {
     "title": "도움말 & 지원",
@@ -643,5 +655,10 @@
     "switch_to_light": "라이트 모드로 전환",
     "switch_to_dark": "다크 모드로 전환",
     "sign_out": "로그아웃"
+  },
+  "editor": {
+    "trash_idle": "여기에 놓으면 삭제",
+    "trash_drop": "놓으면 삭제됩니다",
+    "trash_hint": "텍스트 상자를 여기로 드래그하면 삭제돼요"
   }
 }

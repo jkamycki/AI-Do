@@ -12,10 +12,10 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
-  QrCode, Download, Link2, Plus, Megaphone, Users, Undo2, Sparkles, Settings,
+  QrCode, Download, Link2, Plus, Megaphone, Users, Undo2, Sparkles, Settings, Trash2,
 } from "lucide-react";
 import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
-import { flushPendingEditableCommits } from "@/components/website/EditableText";
+import { flushPendingEditableCommits, subscribeEditableDrag } from "@/components/website/EditableText";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
@@ -109,6 +109,10 @@ export default function WebsiteEditor() {
   const dragState = useRef<{ active: boolean; startX: number; startW: number }>({ active: false, startX: 0, startW: 260 });
   const previewRef = useRef<HTMLElement | null>(null);
   const [overlayEl, setOverlayEl] = useState<HTMLDivElement | null>(null);
+  // Whether ANY deletable EditableText is currently being dragged. Drives the
+  // visual emphasis on the trash drop zone.
+  const [editableDragging, setEditableDragging] = useState(false);
+  useEffect(() => subscribeEditableDrag((phase) => setEditableDragging(phase === "start")), []);
 
   const upload = useUpload({
     getToken,
@@ -1091,6 +1095,23 @@ export default function WebsiteEditor() {
           />
         </div>
       </main>
+
+      {/* Trash drop zone — appears whenever a deletable text element is being
+          dragged. Drop the box here to remove it (Undo restores). */}
+      <div
+        data-aido-trash="true"
+        className={`pointer-events-auto fixed bottom-6 right-6 z-[200] flex items-center gap-2 px-4 py-3 rounded-full border-2 shadow-lg transition-all duration-200 ${
+          editableDragging
+            ? "border-red-500 bg-red-500/95 text-white scale-110"
+            : "border-border bg-background/90 text-muted-foreground opacity-50 hover:opacity-100 backdrop-blur"
+        }`}
+        title="Drag a text box here to delete"
+      >
+        <Trash2 className={`h-4 w-4 ${editableDragging ? "text-white" : ""}`} />
+        <span className="text-xs font-medium">
+          {editableDragging ? "Release to delete" : "Drop to delete"}
+        </span>
+      </div>
 
       {ctxMenu && (
         <div

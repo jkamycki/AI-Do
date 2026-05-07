@@ -55,6 +55,21 @@ export function flushPendingEditableCommits(): void {
   }
 }
 
+// Lightweight pub/sub so the editor preview can show a "drop here to delete"
+// trash zone whenever a deletable EditableText is being dragged. EditableText
+// fires drag-start / drag-end; the editor subscribes and reveals the trash.
+type EditableDragPhase = "start" | "end";
+const editableDragSubs = new Set<(phase: EditableDragPhase) => void>();
+export function subscribeEditableDrag(fn: (phase: EditableDragPhase) => void): () => void {
+  editableDragSubs.add(fn);
+  return () => { editableDragSubs.delete(fn); };
+}
+function emitEditableDrag(phase: EditableDragPhase) {
+  for (const fn of editableDragSubs) {
+    try { fn(phase); } catch { /* ignore */ }
+  }
+}
+
 function styleFromTextStyle(ts: WebsiteTextStyle | undefined): React.CSSProperties {
   if (!ts) return {};
   const css: React.CSSProperties = {};
@@ -134,13 +149,10 @@ export function EditableText({
       if (toolbarRef.current && toolbarRef.current.contains(document.activeElement)) return;
       setShowToolbar(false);
       setAnchorRect(null);
-      // If this element is deletable (custom text box), an empty commit
-      // means the user cleared it — remove the whole box instead of
-      // leaving an empty placeholder behind.
-      if (onDelete && committedText === "") {
-        onDelete();
-        return;
-      }
+      // Note: empty commits no longer auto-delete deletable text boxes —
+      // users delete by dragging into the editor's trash drop zone.
+      // Keeping an empty value here lets the EditableText hide via
+      // `isVisiblyEmpty` in the editor preview without losing the row.
       if (!onCommit) return;
       if (committedText === defaultValue.trim() || committedText === "") onCommit("");
       else onCommit(committedText);
@@ -177,6 +189,12 @@ export function EditableText({
     const dx = e.clientX - dragState.current.startX;
     const dy = e.clientY - dragState.current.startY;
     if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+      if (!dragState.current.moved) {
+        // First time we cross the threshold → tell the editor a drag is on.
+        // Only emit when this element is deletable (onDelete present), so we
+        // don't reveal a trash zone for elements that can't be deleted anyway.
+        if (onDelete) emitEditableDrag("start");
+      }
       dragState.current.moved = true;
     }
     if (dragState.current.moved) {
@@ -184,11 +202,24 @@ export function EditableText({
     }
   };
 
-  const handleWrapPointerUp = () => {
+  const handleWrapPointerUp = (e: React.PointerEvent) => {
     const wasTap = dragState.current && !dragState.current.moved;
+    const wasDrag = dragState.current && dragState.current.moved;
     dragState.current = null;
     setIsDragging(false);
     if (wasTap) ref.current?.focus();
+    // Drop-on-trash: if a drag ended over an element marked data-aido-trash
+    // and this element is deletable, fire onDelete instead of leaving it at
+    // its dropped position. The editor restores via Undo.
+    if (wasDrag && onDelete) {
+      emitEditableDrag("end");
+      try {
+        const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+        if (el && el.closest('[data-aido-trash="true"]')) {
+          onDelete();
+        }
+      } catch { /* ignore */ }
+    }
   };
 
   // --- corner resize ---

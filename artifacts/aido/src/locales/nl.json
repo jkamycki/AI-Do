@@ -175,6 +175,13 @@
     "reception_at": "Receptie {{time}}",
     "days_to_go_count": "{{n}} dagen te gaan",
     "more_count": "+{{n}} meer",
+    "tile_seating": "Tafelschikking",
+    "seated": "geplaatst",
+    "tables": "tafels",
+    "seats_each": "plaatsen per tafel",
+    "seating_unseated": "{{count}} gasten hebben nog geen plek",
+    "no_seating_yet": "Nog geen tafelschikking.",
+    "generate_seating": "Tafelschikking genereren",
     "nudge_create_website": "Maak je trouwwebsite",
     "nudge_create_website_when": "Laatste stap"
   },
@@ -582,7 +589,12 @@
     "arranging": "Indelen…",
     "unassigned": "Niet-toegewezen gasten",
     "no_tables_title": "Nog geen tafels",
-    "no_tables_desc": "Voeg tafels toe en sleep gasten om ze te plaatsen."
+    "no_tables_desc": "Voeg tafels toe en sleep gasten om ze te plaatsen.",
+    "export_pdf": "PDF exporteren",
+    "exporting_pdf": "Exporteren…",
+    "export_pdf_title": "Download een printbaar PDF van alle tafels",
+    "pdf_saved": "Tafelschikking-PDF opgeslagen",
+    "pdf_failed": "PDF-export mislukt"
   },
   "help": {
     "title": "Help & ondersteuning",
@@ -643,5 +655,10 @@
     "switch_to_light": "Overschakelen naar lichte modus",
     "switch_to_dark": "Overschakelen naar donkere modus",
     "sign_out": "Afmelden"
+  },
+  "editor": {
+    "trash_idle": "Sleep om te verwijderen",
+    "trash_drop": "Loslaten om te verwijderen",
+    "trash_hint": "Sleep een tekstvak hierheen om te verwijderen"
   }
 }
