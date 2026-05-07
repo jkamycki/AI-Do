@@ -95,6 +95,7 @@ export default function WebsiteEditor() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(260);
   const dragState = useRef<{ active: boolean; startX: number; startW: number }>({ active: false, startX: 0, startW: 260 });
+  const previewRef = useRef<HTMLElement | null>(null);
 
   const upload = useUpload({
     getToken,
@@ -481,6 +482,8 @@ export default function WebsiteEditor() {
                   customText: { ...record.customText, [key]: "New text — click to edit" },
                   textPositions: { ...(record.textPositions ?? {}), [key]: { x: 0, y: 0 } },
                 });
+                // Scroll preview to top so user can see the new text box in the hero
+                setTimeout(() => previewRef.current?.scrollTo({ top: 0, behavior: "smooth" }), 50);
               }}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -825,7 +828,7 @@ export default function WebsiteEditor() {
       />
 
       {/* Live preview */}
-      <main className="flex-1 overflow-y-auto bg-muted/20">
+      <main ref={previewRef} className="flex-1 overflow-y-auto bg-muted/20">
         <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs text-muted-foreground">
           Live preview — changes appear here instantly. Click <strong>Save changes</strong> when you're happy.
         </div>

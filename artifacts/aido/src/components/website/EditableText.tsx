@@ -280,7 +280,11 @@ export function EditableText({
           onChange={onStyleChange}
           anchorRect={anchorRect}
           onKeepOpen={keepOpen}
-          onDelete={onDelete}
+          onDelete={onDelete ? () => {
+            // Cancel pending blur/commit so the deleted element isn't re-added
+            if (blurTimer.current) { clearTimeout(blurTimer.current); blurTimer.current = null; }
+            onDelete();
+          } : undefined}
         />
       )}
     </Wrap>
