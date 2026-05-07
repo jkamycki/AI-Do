@@ -279,15 +279,11 @@ function buildConfirmation(actions: ActionRecord[]): string {
       case "add_vendor": {
         const savedDetails: string[] = [];
         if (d.contractSigned) savedDetails.push("contract signed ✓");
-        if (d.depositMilestoneCreated) savedDetails.push("deposit milestone created ✓");
         const detailSuffix = savedDetails.length ? ` — ${savedDetails.join(", ")}` : "";
         lines.push(`✅ Added **${d.name ?? "vendor"}** (${d.category ?? ""})${detailSuffix}`);
-        // Only ask the contract/payment follow-up if neither was already saved
-        if (!d.contractSigned && !d.depositMilestoneCreated) {
-          followUp = `Have a contract or any payments for **${d.name ?? "them"}**? Just tell me the details — e.g. *"signed contract, total $6,000, paid $1,000 deposit"* — and I'll save it all.`;
-        } else if (!d.contractSigned) {
-          followUp = `Have you signed the contract with **${d.name ?? "them"}** yet? I can mark that too.`;
-        } else if (!d.depositMilestoneCreated) {
+        if (!d.contractSigned) {
+          followUp = `Have a contract or any payments for **${d.name ?? "them"}**? Just tell me the details — e.g. *"signed contract, total $6,000, paid $1,000 deposit"* — and I'll save them.`;
+        } else {
           followUp = `Any payments or deposit milestones to track for **${d.name ?? "them"}**?`;
         }
         break;
@@ -704,7 +700,12 @@ async function findExpense(profileId: number, idArg: unknown, nameArg: unknown):
   return { ok: false, error: "Either expenseId or matchName is required." };
 }
 
-async function executeTool(name: string, args: Record<string, unknown>, req: Request): Promise<ActionResult> {
+async function executeTool(name: string, args: Record<string, unknown>, req: Request, ctx?: { recentUserText?: string }): Promise<ActionResult> {
+  // Lower-cased blob of the user's most recent messages so individual tools
+  // can verify the user actually mentioned the things the model is trying
+  // to record (defense against hallucinated args like contractSigned=true
+  // when the user only asked to "add a vendor").
+  const userBlob = (ctx?.recentUserText ?? "").toLowerCase();
   try {
     if (name === "add_vendor") {
       const profile = await resolveProfile(req);
@@ -725,6 +726,26 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       if (VENDOR_CATEGORY_WORDS.has(lowerName)) {
         return { ok: false, error: `"${vendorName}" is a vendor category, not a business name. Ask the user: "What's the specific business name?" then call add_vendor again with the real name.` };
       }
+
+      // Refuse to save a vendor whose name doesn't appear anywhere in the
+      // user's recent messages. This catches hallucinated business names
+      // ("Lowdown Blow DJ", "Bloom & Co", etc.) that the small instruct
+      // model occasionally fabricates when it should be asking instead.
+      // We compare token-by-token so partial matches still pass — e.g.
+      // user: "add Bloom & Co Florists" → tokens "bloom" and "co" appear,
+      // hallucinations like "Lowdown Blow DJ" never do.
+      if (userBlob && userBlob.length > 0) {
+        const nameTokens = lowerName
+          .split(/[^a-z0-9]+/)
+          .filter((t) => t.length >= 3 && !VENDOR_CATEGORY_WORDS.has(t));
+        const anyMatch = nameTokens.some((t) => userBlob.includes(t));
+        if (nameTokens.length > 0 && !anyMatch) {
+          return {
+            ok: false,
+            error: `"${vendorName}" doesn't appear in the user's messages — do not invent vendor names. Ask the user: "What's the vendor's business name?" and wait for their reply before calling add_vendor again.`,
+          };
+        }
+      }
       if (/^(vendor\s*\d*|new vendor|sample vendor|test vendor|unnamed|unknown vendor|n\/a|none|tbd|placeholder|my vendor|the vendor)$/i.test(lowerName)) {
         return { ok: false, error: `"${vendorName}" looks like a placeholder. Ask the user for the actual business name, then call add_vendor again.` };
       }
@@ -744,10 +765,18 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       if (/^(what'?s|what is|please|could you|can you|tell me|i need|i want|add a |add an )/i.test(vendorName)) {
         return { ok: false, error: `"${vendorName.slice(0, 40)}…" looks like a prompt or question, not a business name. Ask the user for the vendor's name and wait for their reply.` };
       }
-      const depositAmt = Number(args.depositAmount ?? 0);
-      const totalCostAmt = Number(args.totalCost ?? 0);
-      const contractSignedArg = args.contractSigned === true;
-      const todayISO = new Date().toISOString().slice(0, 10);
+      // Defense against hallucinated args: only honor money/contract fields
+      // if the user actually mentioned them in their recent messages. The
+      // small instruct model frequently fills these in unprompted (e.g.
+      // contractSigned=true when the user only said "add a vendor"), which
+      // produced misleading "contract signed ✓ deposit milestone created ✓"
+      // confirmations for fictional details.
+      const userMentionedMoney = /(\$|\bdollar|\bcost|\btotal|\bdeposit|\bdue|\bbudget)/i.test(userBlob);
+      const userMentionedContract = /\b(contract|signed|sign(ed)? off|booked|locked in)\b/i.test(userBlob);
+      const depositAmt = userMentionedMoney ? Number(args.depositAmount ?? 0) : 0;
+      const totalCostAmt = userMentionedMoney ? Number(args.totalCost ?? 0) : 0;
+      const contractSignedArg = userMentionedContract && args.contractSigned === true;
+
       const [created] = await db.insert(vendors).values({
         profileId: profile.id,
         userId: profile.userId,
@@ -758,31 +787,20 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         website: args.website ? String(args.website) : null,
         portalLink: null,
         notes: args.notes ? String(args.notes) : null,
-        totalCost: String(totalCostAmt),
-        depositAmount: String(depositAmt),
+        totalCost: String(Number.isFinite(totalCostAmt) ? totalCostAmt : 0),
+        depositAmount: String(Number.isFinite(depositAmt) ? depositAmt : 0),
         contractSigned: contractSignedArg,
         nextPaymentDue: null,
         files: [],
         primaryContact: null,
       }).returning();
 
-      // Auto-create a Deposit payment milestone when a deposit amount is provided
-      if (depositAmt > 0) {
-        const depositPaid = args.depositPaid === true;
-        await db.insert(vendorPayments).values({
-          vendorId: created.id,
-          label: "Deposit",
-          amount: String(depositAmt),
-          dueDate: todayISO,
-          isPaid: depositPaid,
-          paidAt: depositPaid ? new Date() : null,
-        });
-        if (!depositPaid) {
-          await db.update(vendors).set({ nextPaymentDue: todayISO }).where(eq(vendors.id, created.id));
-        }
-      }
+      // NOTE: Deposit milestones are intentionally NOT auto-created here.
+      // If the user wants a deposit payment scheduled, the model must call
+      // add_vendor_payment explicitly so the action is visible in the
+      // confirmation summary instead of appearing as a hidden side-effect.
 
-      return { ok: true, data: { id: created.id, name: created.name, category: created.category, depositMilestoneCreated: depositAmt > 0, contractSigned: contractSignedArg, hasCost: totalCostAmt > 0 } };
+      return { ok: true, data: { id: created.id, name: created.name, category: created.category, contractSigned: contractSignedArg, hasCost: totalCostAmt > 0 } };
     }
 
     if (name === "add_vendor_payment") {
@@ -2006,8 +2024,17 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       // multiplied latency by the number of tools called. With Promise.all,
       // a 4-tool fan-out returns in roughly the time of the slowest single
       // query instead of their sum.
+      // Concatenate the last few user turns so executeTool validators can
+      // verify the model isn't recording details (e.g. contractSigned=true)
+      // that the user never actually mentioned in the conversation.
+      const recentUserText = messages
+        .filter((m) => m.role === "user")
+        .slice(-4)
+        .map((m) => (typeof m.content === "string" ? m.content : ""))
+        .join(" ")
+        .toLowerCase();
       const results = await Promise.all(
-        toolCalls.map((tc, i) => executeTool(tc.name, parsedArgsList[i], req))
+        toolCalls.map((tc, i) => executeTool(tc.name, parsedArgsList[i], req, { recentUserText }))
       );
 
       // Stream results + record into conversation history in deterministic
