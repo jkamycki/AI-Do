@@ -87,6 +87,7 @@ export default function WebsiteEditor() {
   const [lastAutosaved, setLastAutosaved] = useState<Date | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewSection, setPreviewSection] = useState<string>("home");
+  const [editorSection, setEditorSection] = useState<string>("home");
   const [qrOpen, setQrOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings">("design");
   const inTab = (t: typeof activeTab) => activeTab === t;
@@ -1062,6 +1063,17 @@ export default function WebsiteEditor() {
           <WebsiteRenderer
             data={livePreview!}
             editable
+            // Page-per-section navigation — same flow guests will see — so the
+            // editor preview matches what a guest gets when they click through.
+            slug={record.slug ?? ""}
+            previewMode
+            scrollContainer={previewRef.current}
+            currentSection={editorSection}
+            onSectionChange={(id) => {
+              setEditorSection(id);
+              // Reset preview scroll to top when switching pages
+              previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
+            }}
             onTextChange={(key, value) => patchRecord((prev) => ({ customText: { ...prev.customText, [key]: value } }))}
             onStyleChange={(key, style) => patchRecord((prev) => ({ textStyles: { ...(prev.textStyles ?? {}), [key]: style } }))}
             onPositionChange={(key, pos) => patchRecord((prev) => ({ textPositions: { ...(prev.textPositions ?? {}), [key]: pos } }))}
