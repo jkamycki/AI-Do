@@ -246,7 +246,14 @@
     "days_to_go_count": "{{n}} días restantes",
     "more_count": "+{{n}} más",
     "total_invited": "Total invitados",
-    "members": "miembros"
+    "members": "miembros",
+    "tile_seating": "Asientos",
+    "seated": "sentados",
+    "tables": "mesas",
+    "seats_each": "asientos por mesa",
+    "seating_unseated": "{{count}} invitados aún sin asiento",
+    "no_seating_yet": "Aún no hay plano de asientos.",
+    "generate_seating": "Generar asientos"
   },
   "profile": {
     "title": "Perfil de Boda",

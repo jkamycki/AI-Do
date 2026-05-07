@@ -246,7 +246,14 @@
     "days_to_go_count": "{{n}} giorni al matrimonio",
     "more_count": "+{{n}} altri",
     "total_invited": "Totale invitati",
-    "members": "membri"
+    "members": "membri",
+    "tile_seating": "Disposizione",
+    "seated": "seduti",
+    "tables": "tavoli",
+    "seats_each": "posti per tavolo",
+    "seating_unseated": "{{count}} invitati ancora senza posto",
+    "no_seating_yet": "Nessuna disposizione ancora.",
+    "generate_seating": "Genera disposizione"
   },
   "profile": {
     "title": "Profilo del Matrimonio",

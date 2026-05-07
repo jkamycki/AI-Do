@@ -174,7 +174,14 @@
     "ceremony_at": "مراسم الزفاف {{time}}",
     "reception_at": "حفل الاستقبال {{time}}",
     "days_to_go_count": "{{n}} أيام متبقية",
-    "more_count": "+{{n}} المزيد"
+    "more_count": "+{{n}} المزيد",
+    "tile_seating": "الجلوس",
+    "seated": "تم تخصيصهم",
+    "tables": "طاولات",
+    "seats_each": "مقاعد لكل طاولة",
+    "seating_unseated": "{{count}} مدعوّ لا يزالون بحاجة إلى مقعد",
+    "no_seating_yet": "لا يوجد مخطط جلوس بعد.",
+    "generate_seating": "إنشاء مخطط الجلوس"
   },
   "profile": {
     "title": "ملف الزفاف",

@@ -246,7 +246,14 @@
     "days_to_go_count": "{{n}} 天后",
     "more_count": "+{{n}} 更多",
     "total_invited": "已邀请总人数",
-    "members": "位成员"
+    "members": "位成员",
+    "tile_seating": "座位安排",
+    "seated": "已就座",
+    "tables": "张桌子",
+    "seats_each": "个座位/桌",
+    "seating_unseated": "{{count}} 位宾客尚未安排座位",
+    "no_seating_yet": "还没有座位安排。",
+    "generate_seating": "生成座位安排"
   },
   "profile": {
     "title": "婚礼档案",

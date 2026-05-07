@@ -174,7 +174,14 @@
     "ceremony_at": "Церемония {{time}}",
     "reception_at": "Приём {{time}}",
     "days_to_go_count": "{{n}} дней осталось",
-    "more_count": "+{{n}} ещё"
+    "more_count": "+{{n}} ещё",
+    "tile_seating": "Рассадка",
+    "seated": "размещены",
+    "tables": "столов",
+    "seats_each": "мест за столом",
+    "seating_unseated": "{{count}} гостей пока без места",
+    "no_seating_yet": "План рассадки ещё не создан.",
+    "generate_seating": "Создать рассадку"
   },
   "profile": {
     "title": "Свадебный профиль",

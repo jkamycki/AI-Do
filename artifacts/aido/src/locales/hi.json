@@ -174,7 +174,14 @@
     "ceremony_at": "समारोह {{time}}",
     "reception_at": "स्वागत {{time}}",
     "days_to_go_count": "{{n}} दिन शेष",
-    "more_count": "+{{n}} और"
+    "more_count": "+{{n}} और",
+    "tile_seating": "बैठने की व्यवस्था",
+    "seated": "बैठाए गए",
+    "tables": "मेज़",
+    "seats_each": "सीटें/मेज़",
+    "seating_unseated": "{{count}} मेहमानों के लिए अभी भी सीट चाहिए",
+    "no_seating_yet": "अभी कोई बैठक चार्ट नहीं।",
+    "generate_seating": "बैठक चार्ट बनाएँ"
   },
   "profile": {
     "title": "विवाह प्रोफ़ाइल",
