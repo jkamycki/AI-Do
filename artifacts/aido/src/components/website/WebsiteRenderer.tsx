@@ -428,13 +428,23 @@ function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
   }
 
-  // Google Calendar link as alternative
   const [y, m, d] = data.couple.weddingDate.split("-").map(Number);
   const [h = 16, min = 0] = (data.couple.ceremonyTime || "16:00").split(":").map(Number);
   const pad = (n: number) => String(n).padStart(2, "0");
-  const dt = `${y}${pad(m)}${pad(d)}T${pad(h)}${pad(min)}00`;
-  const endDt = `${y}${pad(m)}${pad(d)}T${pad(h + 4)}${pad(min)}00`;
-  const gcal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`${couple}'s Wedding`)}&dates=${dt}/${endDt}&location=${encodeURIComponent([data.couple.venue, data.couple.location].filter(Boolean).join(", "))}&details=${encodeURIComponent(`Join us to celebrate the wedding of ${couple}!`)}`;
+  const isoStart = `${y}-${pad(m)}-${pad(d)}T${pad(h)}:${pad(min)}:00`;
+  const isoEnd   = `${y}-${pad(m)}-${pad(d)}T${pad(h + 4)}:${pad(min)}:00`;
+  const locStr = [data.couple.venue, data.couple.location].filter(Boolean).join(", ");
+  const title = encodeURIComponent(`${couple}'s Wedding`);
+  const desc  = encodeURIComponent(`Join us to celebrate the wedding of ${couple}!`);
+  const loc   = encodeURIComponent(locStr);
+
+  // Google Calendar — compact datetime format without separators
+  const gcalDt    = `${y}${pad(m)}${pad(d)}T${pad(h)}${pad(min)}00`;
+  const gcalEndDt = `${y}${pad(m)}${pad(d)}T${pad(h + 4)}${pad(min)}00`;
+  const gcal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${gcalDt}/${gcalEndDt}&location=${loc}&details=${desc}`;
+
+  // Outlook.com web calendar
+  const outlook = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${title}&startdt=${encodeURIComponent(isoStart)}&enddt=${encodeURIComponent(isoEnd)}&location=${loc}&body=${desc}&path=/calendar/action/compose&rru=addevent`;
 
   const btnStyle: React.CSSProperties = {
     background: "rgba(255,255,255,0.15)",
@@ -451,7 +461,7 @@ function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
         style={btnStyle}
       >
         <Calendar className="h-4 w-4" />
-        Add to Calendar (.ics)
+        Apple / iCal (.ics)
       </button>
       <a
         href={gcal}
@@ -462,6 +472,16 @@ function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
       >
         <Calendar className="h-4 w-4" />
         Google Calendar
+      </a>
+      <a
+        href={outlook}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-opacity hover:opacity-80"
+        style={btnStyle}
+      >
+        <Calendar className="h-4 w-4" />
+        Outlook
       </a>
     </div>
   );
