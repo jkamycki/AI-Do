@@ -38,7 +38,7 @@ export function RsvpFlow({
   // so guests on the user's list show up even if the site isn't published yet.
   previewMode?: boolean;
 }) {
-  const [step, setStep] = useState<"search" | "already-rsvped" | "form" | "done">("search");
+  const [step, setStep] = useState<"search" | "already-rsvped" | "form" | "self-add" | "done">("search");
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [matches, setMatches] = useState<GuestMatch[]>([]);
@@ -54,6 +54,10 @@ export function RsvpFlow({
   const [plusOne, setPlusOne] = useState(false);
   const [plusOneName, setPlusOneName] = useState("");
   const [plusOneMeal, setPlusOneMeal] = useState("");
+  // Self-add (guest not on the list) form
+  const [selfName, setSelfName] = useState("");
+  const [selfEmail, setSelfEmail] = useState("");
+  const [selfMessage, setSelfMessage] = useState("");
 
   const accent = data.colorPalette.primary;
   const text = data.colorPalette.text;
@@ -160,6 +164,49 @@ export function RsvpFlow({
     }
   };
 
+  const handleSelfAddSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selfName.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
+    if (previewMode) {
+      // Preview mode skips the network write to avoid creating real guests.
+      setStep("done");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const r = await apiFetch(`/api/website/public/${encodeURIComponent(slug)}/rsvp/self-add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: selfName.trim(),
+          email: selfEmail.trim() || undefined,
+          attendance,
+          mealChoice: mealChoice || undefined,
+          plusOne: attendance === "attending" ? plusOne : false,
+          plusOneName: plusOne ? plusOneName : undefined,
+          plusOneMealChoice: plusOne ? plusOneMeal : undefined,
+          dietaryRestrictions: dietary || undefined,
+          message: selfMessage.trim() || undefined,
+          ...(password ? { password } : {}),
+        }),
+      });
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        setError(body?.error ?? "Failed to submit RSVP. Please try again.");
+        return;
+      }
+      setStep("done");
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const inputBase: React.CSSProperties = {
     background: `${bg === "#FFFFFF" ? "#FFFFFF" : "rgba(255,255,255,0.85)"}`,
     color: text,
@@ -236,10 +283,22 @@ export function RsvpFlow({
             )}
 
             {searched && matches.length === 0 && (
-              <div className="mt-8 max-w-md mx-auto px-4 py-6 rounded-lg text-center" style={{ background: `${accent}10`, border: `1px solid ${accent}33`, color: text }}>
+              <div className="mt-8 max-w-md mx-auto px-4 py-6 rounded-lg text-center space-y-4" style={{ background: `${accent}10`, border: `1px solid ${accent}33`, color: text }}>
                 <p className="text-sm">
-                  We couldn't find that name on the guest list. Double-check spelling, or please reach out to {data.couple.partner1Name} or {data.couple.partner2Name} directly.
+                  We couldn't find that name on the guest list. Double-check the spelling — or, if you'd still like to RSVP, send us your details and we'll review them.
                 </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelfName(query.trim());
+                    setError(null);
+                    setStep("self-add");
+                  }}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+                  style={{ background: accent, color: "#fff" }}
+                >
+                  RSVP anyway
+                </button>
               </div>
             )}
           </div>
@@ -420,37 +479,213 @@ export function RsvpFlow({
           </div>
         )}
 
-        {step === "done" && guest && (
-          <div className="text-center max-w-md mx-auto">
-            <div
-              className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6"
-              style={{ background: `${accent}20`, color: accent }}
-            >
-              <Check className="h-8 w-8" />
-            </div>
-            <h2 className="text-3xl sm:text-4xl mb-3" style={{ fontFamily: fontStack(data.font), color: text }}>
-              {attendance === "attending" ? "We can't wait to celebrate with you!" : "We'll miss you!"}
+        {step === "self-add" && (
+          <div>
+            <h2 className="text-center text-3xl sm:text-4xl mb-2" style={{ fontFamily: fontStack(data.font), color: text }}>
+              RSVP
             </h2>
-            <p className="text-sm sm:text-base opacity-80 mb-8" style={{ color: text }}>
-              {attendance === "attending"
-                ? `Your response has been received, ${guest.name.split(" ")[0]}. We'll be in touch with more details closer to the day.`
-                : `Thank you for letting us know. You'll be missed, ${guest.name.split(" ")[0]}.`}
+            <p className="text-center text-sm mb-8 opacity-75" style={{ color: text }}>
+              You weren't on the list yet. Send us your details and {data.couple.partner1Name?.split(" ")[0] || "the couple"} can review them in their guest list.
             </p>
-            <button
-              onClick={() => {
-                setStep("search");
-                setGuest(null);
-                setQuery("");
-                setMatches([]);
-                setSearched(false);
-              }}
-              className="text-xs underline opacity-60 hover:opacity-100"
-              style={{ color: text }}
-            >
-              Reply for someone else
-            </button>
+
+            <form onSubmit={handleSelfAddSubmit} className="space-y-6 max-w-md mx-auto">
+              <div>
+                <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Your full name</label>
+                <input
+                  type="text"
+                  value={selfName}
+                  onChange={(e) => setSelfName(e.target.value)}
+                  required
+                  autoFocus
+                  className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                  style={inputBase}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Email (optional)</label>
+                <input
+                  type="email"
+                  value={selfEmail}
+                  onChange={(e) => setSelfEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                  style={inputBase}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAttendance("attending")}
+                  className="px-4 py-4 rounded-lg border-2 transition-all flex items-center justify-center gap-2 font-medium"
+                  style={{
+                    borderColor: attendance === "attending" ? accent : `${accent}33`,
+                    background: attendance === "attending" ? accent : "transparent",
+                    color: attendance === "attending" ? "#fff" : text,
+                  }}
+                >
+                  <Check className="h-4 w-4" /> Joyfully accept
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAttendance("declined")}
+                  className="px-4 py-4 rounded-lg border-2 transition-all flex items-center justify-center gap-2 font-medium"
+                  style={{
+                    borderColor: attendance === "declined" ? accent : `${accent}33`,
+                    background: attendance === "declined" ? accent : "transparent",
+                    color: attendance === "declined" ? "#fff" : text,
+                  }}
+                >
+                  <X className="h-4 w-4" /> Regretfully decline
+                </button>
+              </div>
+
+              {attendance === "attending" && (
+                <>
+                  <div>
+                    <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Meal choice (optional)</label>
+                    <input
+                      type="text"
+                      value={mealChoice}
+                      onChange={(e) => setMealChoice(e.target.value)}
+                      placeholder="Chicken, fish, vegetarian..."
+                      className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                      style={inputBase}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={plusOne}
+                        onChange={(e) => setPlusOne(e.target.checked)}
+                        className="h-4 w-4"
+                        style={{ accentColor: accent }}
+                      />
+                      <span className="text-sm" style={{ color: text }}>I'm bringing a plus one</span>
+                    </label>
+                  </div>
+
+                  {plusOne && (
+                    <>
+                      <div>
+                        <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Plus one's name</label>
+                        <input
+                          type="text"
+                          value={plusOneName}
+                          onChange={(e) => setPlusOneName(e.target.value)}
+                          className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                          style={inputBase}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Plus one's meal choice</label>
+                        <input
+                          type="text"
+                          value={plusOneMeal}
+                          onChange={(e) => setPlusOneMeal(e.target.value)}
+                          placeholder="Chicken, fish, vegetarian..."
+                          className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                          style={inputBase}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div>
+                    <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Dietary restrictions or notes</label>
+                    <textarea
+                      value={dietary}
+                      onChange={(e) => setDietary(e.target.value)}
+                      rows={2}
+                      placeholder="Allergies, accommodations, anything we should know..."
+                      className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                      style={inputBase}
+                    />
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>Message to the couple (optional)</label>
+                <textarea
+                  value={selfMessage}
+                  onChange={(e) => setSelfMessage(e.target.value)}
+                  rows={2}
+                  placeholder="A note for the couple — relation, RSVP context, etc."
+                  className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                  style={inputBase}
+                />
+              </div>
+
+              {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full px-4 py-3 rounded-lg font-medium transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-2"
+                style={{ background: accent, color: "#fff" }}
+              >
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {submitting ? "Sending..." : "Send response"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("search");
+                  setError(null);
+                }}
+                className="w-full text-xs underline opacity-60 hover:opacity-100"
+                style={{ color: text }}
+              >
+                ← Back to search
+              </button>
+            </form>
           </div>
         )}
+
+        {step === "done" && (() => {
+          // After self-add the user has no `guest` row from the lookup, so use
+          // their typed name; for the regular flow, use the matched guest.
+          const replyName = guest?.name?.split(" ")[0] || selfName.split(" ")[0] || "";
+          return (
+            <div className="text-center max-w-md mx-auto">
+              <div
+                className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6"
+                style={{ background: `${accent}20`, color: accent }}
+              >
+                <Check className="h-8 w-8" />
+              </div>
+              <h2 className="text-3xl sm:text-4xl mb-3" style={{ fontFamily: fontStack(data.font), color: text }}>
+                {attendance === "attending" ? "We can't wait to celebrate with you!" : "We'll miss you!"}
+              </h2>
+              <p className="text-sm sm:text-base opacity-80 mb-8" style={{ color: text }}>
+                {attendance === "attending"
+                  ? `Your response has been received${replyName ? `, ${replyName}` : ""}. We'll be in touch with more details closer to the day.`
+                  : `Thank you for letting us know${replyName ? `, ${replyName}` : ""}. You'll be missed.`}
+              </p>
+              <button
+                onClick={() => {
+                  setStep("search");
+                  setGuest(null);
+                  setQuery("");
+                  setMatches([]);
+                  setSearched(false);
+                  setSelfName("");
+                  setSelfEmail("");
+                  setSelfMessage("");
+                }}
+                className="text-xs underline opacity-60 hover:opacity-100"
+                style={{ color: text }}
+              >
+                Reply for someone else
+              </button>
+            </div>
+          );
+        })()}
       </div>
     </section>
   );
