@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps } from "@workspace/db";
-import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
-import { and, eq, ilike, desc, not } from "drizzle-orm";
+import { db, weddingWebsites, weddingProfiles, timelines, guests, websiteRsvps } from "@workspace/db";
+import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage } from "@workspace/db";
+import { and, eq, ilike, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile } from "../lib/workspaceAccess";
 
@@ -66,8 +66,6 @@ function serialize(w: typeof weddingWebsites.$inferSelect) {
     colorPalette: w.colorPalette,
     sectionsEnabled: w.sectionsEnabled,
     customText: w.customText,
-    textStyles: w.textStyles ?? {},
-    textPositions: w.textPositions ?? {},
     galleryImages: w.galleryImages,
     heroImage: w.heroImage,
     passwordEnabled: !!w.password,
@@ -154,8 +152,6 @@ router.put("/website/update", requireAuth, async (req, res) => {
       colorPalette: typeof existing.colorPalette;
       sectionsEnabled: WebsiteSectionsEnabled;
       customText: WebsiteCustomText;
-      textStyles: WebsiteTextStyles;
-      textPositions: WebsiteTextPositions;
       galleryImages: WebsiteGalleryImage[];
       heroImage: string | null;
       password: string | null;
@@ -171,8 +167,6 @@ router.put("/website/update", requireAuth, async (req, res) => {
     if (body.colorPalette && typeof body.colorPalette === "object") updates.colorPalette = body.colorPalette;
     if (body.sectionsEnabled && typeof body.sectionsEnabled === "object") updates.sectionsEnabled = body.sectionsEnabled;
     if (body.customText && typeof body.customText === "object") updates.customText = body.customText;
-    if (body.textStyles && typeof body.textStyles === "object") updates.textStyles = body.textStyles;
-    if (body.textPositions && typeof body.textPositions === "object") updates.textPositions = body.textPositions;
     if (Array.isArray(body.galleryImages)) updates.galleryImages = body.galleryImages.slice(0, 60);
     if ("heroImage" in body) updates.heroImage = body.heroImage ?? null;
     if ("password" in body) {
@@ -305,6 +299,12 @@ router.get("/website/public/:slug", async (req, res) => {
       .limit(1);
     if (!profile) return res.status(404).json({ error: "Not found" });
 
+    const [tl] = await db
+      .select()
+      .from(timelines)
+      .where(eq(timelines.profileId, row.profileId))
+      .limit(1);
+
     res.json({
       slug: row.slug,
       theme: row.theme,
@@ -314,8 +314,6 @@ router.get("/website/public/:slug", async (req, res) => {
       colorPalette: row.colorPalette,
       sectionsEnabled: row.sectionsEnabled,
       customText: row.customText,
-      textStyles: row.textStyles ?? {},
-      textPositions: row.textPositions ?? {},
       galleryImages: row.galleryImages,
       heroImage: row.heroImage,
       couple: {
@@ -329,6 +327,7 @@ router.get("/website/public/:slug", async (req, res) => {
         venueCity: profile.venueCity,
         venueState: profile.venueState,
       },
+      timeline: tl?.events ?? [],
     });
   } catch (err) {
     req.log.error(err, "publicWebsite failed");
@@ -563,53 +562,18 @@ router.get("/website/rsvps", requireAuth, async (req, res) => {
       .limit(1);
     if (!site) return res.status(404).json({ error: "Website not created yet" });
 
-    // Simple anonymous RSVPs (old flow)
-    const anonymousRsvps = await db
+    const rsvps = await db
       .select()
       .from(websiteRsvps)
       .where(eq(websiteRsvps.websiteId, site.id))
       .orderBy(desc(websiteRsvps.submittedAt));
 
-    // Guest-list RSVPs: guests who replied via the name-search flow
-    const guestListRsvps = await db
-      .select({
-        id: guests.id,
-        name: guests.name,
-        email: guests.email,
-        rsvpStatus: guests.rsvpStatus,
-        plusOne: guests.plusOne,
-        dietaryNotes: guests.dietaryNotes,
-        createdAt: guests.createdAt,
-      })
-      .from(guests)
-      .where(and(eq(guests.profileId, profile.id), not(eq(guests.rsvpStatus, "pending"))));
-
-    // Normalise guest-list entries into the same shape as anonymous RSVPs
-    const guestEntries = guestListRsvps.map((g) => ({
-      id: -(g.id), // negative IDs to avoid collisions
-      name: g.name,
-      email: g.email ?? null,
-      attending: g.rsvpStatus === "attending" ? "yes" : g.rsvpStatus === "declined" ? "no" : "maybe",
-      plusOneCount: g.plusOne ? 1 : 0,
-      dietaryRestrictions: g.dietaryNotes ?? null,
-      message: null,
-      submittedAt: g.createdAt.toISOString(),
-      source: "guest_list" as const,
-    }));
-
-    const anonymousEntries = anonymousRsvps.map((r) => ({ ...r, source: "website" as const }));
-
-    const allRsvps = [
-      ...guestEntries,
-      ...anonymousEntries,
-    ].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-
-    const yes = allRsvps.filter((r) => r.attending === "yes");
-    const no = allRsvps.filter((r) => r.attending === "no");
-    const maybe = allRsvps.filter((r) => r.attending === "maybe");
+    const yes = rsvps.filter((r) => r.attending === "yes");
+    const no = rsvps.filter((r) => r.attending === "no");
+    const maybe = rsvps.filter((r) => r.attending === "maybe");
     const totalGuests = yes.reduce((s, r) => s + 1 + r.plusOneCount, 0);
 
-    res.json({ rsvps: allRsvps, summary: { yes: yes.length, no: no.length, maybe: maybe.length, totalGuests } });
+    res.json({ rsvps, summary: { yes: yes.length, no: no.length, maybe: maybe.length, totalGuests } });
   } catch (err) {
     req.log.error(err, "getRsvps failed");
     res.status(500).json({ error: "Internal server error" });

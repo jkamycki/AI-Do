@@ -92,30 +92,11 @@ export default function WebsiteEditor() {
   const [copied, setCopied] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [lastAutosaved, setLastAutosaved] = useState<Date | null>(null);
-  const [sidebarWidth, setSidebarWidth] = useState(260);
-  const dragState = useRef<{ active: boolean; startX: number; startW: number }>({ active: false, startX: 0, startW: 260 });
 
   const upload = useUpload({
     getToken,
     onError: (e) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
   });
-
-  // ---- sidebar resize drag ----
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (!dragState.current.active) return;
-      const dx = e.clientX - dragState.current.startX;
-      setSidebarWidth(Math.max(200, Math.min(520, dragState.current.startW + dx)));
-    };
-    const onUp = () => { dragState.current.active = false; };
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-    return () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-    };
-  }, []);
 
   // ---- load ----
 
@@ -140,15 +121,31 @@ export default function WebsiteEditor() {
 
   // Load couple data so the live preview can render even before the server
   // joins it. We fetch on demand from the public endpoint after first save.
-  const [previewExtra, setPreviewExtra] = useState<{ couple: WebsiteRendererPayload["couple"] } | null>(null);
+  // For preview-only fields (timeline, couple names), the saved record
+  // doesn't include them — we hit the public endpoint when published, or
+  // synthesize a placeholder.
+  const [previewExtra, setPreviewExtra] = useState<{ couple: WebsiteRendererPayload["couple"]; timeline: WebsiteRendererPayload["timeline"] } | null>(null);
   useEffect(() => {
     if (!record) return;
     let cancelled = false;
     (async () => {
-      const profileRes = await authFetch("/api/profile");
+      // Fetch profile + timeline directly to enrich preview.
+      const [profileRes, timelineRes] = await Promise.all([
+        authFetch("/api/profile"),
+        authFetch("/api/timeline").catch(() => null),
+      ]);
       if (cancelled) return;
       if (!profileRes?.ok) return;
       const profile = await profileRes.json();
+      let timeline: WebsiteRendererPayload["timeline"] = [];
+      if (timelineRes?.ok) {
+        try {
+          const tl = await timelineRes.json();
+          if (tl && Array.isArray(tl.events)) timeline = tl.events;
+        } catch {
+          // ignore
+        }
+      }
       setPreviewExtra({
         couple: {
           partner1Name: profile.partner1Name ?? "",
@@ -161,6 +158,7 @@ export default function WebsiteEditor() {
           venueCity: profile.venueCity ?? null,
           venueState: profile.venueState ?? null,
         },
+        timeline,
       });
     })();
     return () => {
@@ -207,8 +205,6 @@ export default function WebsiteEditor() {
           colorPalette: record.colorPalette,
           sectionsEnabled: record.sectionsEnabled,
           customText: record.customText,
-          textStyles: record.textStyles ?? {},
-          textPositions: record.textPositions ?? {},
           galleryImages: record.galleryImages,
           heroImage: record.heroImage,
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
@@ -253,8 +249,6 @@ export default function WebsiteEditor() {
           colorPalette: record.colorPalette,
           sectionsEnabled: record.sectionsEnabled,
           customText: record.customText,
-          textStyles: record.textStyles ?? {},
-          textPositions: record.textPositions ?? {},
           galleryImages: record.galleryImages,
           heroImage: record.heroImage,
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
@@ -405,8 +399,6 @@ export default function WebsiteEditor() {
     colorPalette: record.colorPalette,
     sectionsEnabled: record.sectionsEnabled,
     customText: record.customText,
-    textStyles: record.textStyles ?? {},
-    textPositions: record.textPositions ?? {},
     galleryImages: record.galleryImages,
     heroImage: record.heroImage,
     couple: previewExtra?.couple ?? {
@@ -420,15 +412,13 @@ export default function WebsiteEditor() {
       venueCity: null,
       venueState: null,
     },
+    timeline: previewExtra?.timeline ?? [],
   };
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] md:h-screen">
       {/* Sidebar */}
-      <aside
-        className="w-full lg:flex-shrink-0 border-r bg-background overflow-y-auto"
-        style={{ width: typeof window !== "undefined" && window.innerWidth >= 1024 ? sidebarWidth : undefined }}
-      >
+      <aside className="w-full lg:w-[260px] lg:flex-shrink-0 border-r bg-background overflow-y-auto">
         <div className="p-5 border-b sticky top-0 bg-background z-10">
           <div className="flex items-center justify-between gap-2 mb-3">
             <h2 className="text-xl font-serif font-bold">Website Editor</h2>
@@ -769,16 +759,6 @@ export default function WebsiteEditor() {
         </Section>
       </aside>
 
-      {/* Drag handle to resize sidebar */}
-      <div
-        className="hidden lg:flex w-1.5 cursor-col-resize bg-border hover:bg-primary/40 flex-shrink-0 transition-colors items-center justify-center"
-        onMouseDown={(e) => {
-          dragState.current = { active: true, startX: e.clientX, startW: sidebarWidth };
-          e.preventDefault();
-        }}
-        title="Drag to resize"
-      />
-
       {/* Live preview */}
       <main className="flex-1 overflow-y-auto bg-muted/20">
         <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs text-muted-foreground">
@@ -789,8 +769,6 @@ export default function WebsiteEditor() {
             data={livePreview}
             editable
             onTextChange={(key, value) => update({ customText: { ...record.customText, [key]: value } })}
-            onStyleChange={(key, style) => update({ textStyles: { ...(record.textStyles ?? {}), [key]: style } })}
-            onPositionChange={(key, pos) => update({ textPositions: { ...(record.textPositions ?? {}), [key]: pos } })}
           />
         </div>
       </main>

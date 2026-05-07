@@ -178,21 +178,21 @@ SUMMARY PHRASING RULE — CRITICAL: The summary turn MUST use future/present ten
 CASE A — user provided all required fields up front (real business name + category):
   Turn 1 (you): one-line summary in present/future tense. End with: Reply "yes" to save.
   Turn 2 (user): yes / confirm / ok / save it / go ahead / do it.
-  Turn 3 (you): IMMEDIATELY call the tool. No more text, no more questions.
+  Turn 3 (you): IMMEDIATELY call add_vendor. Include ALL details the user mentioned (totalCost, depositAmount, depositPaid, contractSigned). No more text, no more questions.
 
 CASE B — user is missing the vendor name (e.g. said "add a vendor" or "add a photographer" with no business name):
   Turn 1 (you): ask the VENDOR GATHERING QUESTION (below). Do not summarize yet. Do NOT call add_vendor. DO NOT pass the gathering question as the vendor name — that is NEVER a valid name.
   Turn 2 (user): answers with their details (e.g. "james dj", "Bloom & Co florist", "Sarah's Catering $5000").
   Turn 3 (you): IMMEDIATELY write the one-line summary in present/future tense + Reply "yes" to save. Do NOT call list_vendors or any other tool in this turn. Do NOT verify whether the vendor already exists.
   Turn 4 (user): yes.
-  Turn 5 (you): IMMEDIATELY call add_vendor. No other tools.
+  Turn 5 (you): IMMEDIATELY call add_vendor with ALL details the user has mentioned so far. No other tools.
 
 VENDOR GATHERING QUESTION — use this exact style whenever the user wants to add a vendor but hasn't given a name:
   "What's the vendor's name and category (florist, photographer, caterer, DJ, etc.)? Feel free to also share the total cost, deposit amount, or any other details — only the name is needed to get started!"
   ⚠️ WARNING: Never use this question text as the vendor name argument. It is a message to the user, not a name to save.
 
 Examples:
-  • User: "Add vendor [Name], Florist, total cost 5000" → You: "Saving [Name] (Florist) with a total cost of $5,000. Reply 'yes' to save." → User: "yes" → You: [calls add_vendor immediately, no extra text].
+  • User: "Add vendor [Name], Florist, total cost 5000, signed contract" → You: "Saving [Name] (Florist), $5,000 total, contract signed. Reply 'yes' to save." → User: "yes" → You: [calls add_vendor with name, category, totalCost: 5000, contractSigned: true — no extra text].
   • User: "Add a vendor" → You: "What's the vendor's name and category (florist, photographer, caterer, DJ, etc.)? Feel free to also share the total cost, deposit amount, or any other details — only the name is needed to get started!" — STOP. Do NOT call add_vendor yet.
   • User: "Add a vendor for me" → same VENDOR GATHERING QUESTION — STOP. Do NOT call add_vendor yet.
   • User: "Add a photographer" → You: "What's the photographer's business name? Feel free to also share the total cost, deposit, or any other details — only the name is needed!" — STOP. Do NOT call add_vendor yet.
@@ -202,11 +202,15 @@ Exception: toggle_checklist_item needs no confirmation. DELETE: state exactly wh
 UPDATE FLOW — NO CONFIRMATION NEEDED. When the user provides updates to existing data — including the *very common* case where they answered a follow-up question you just asked — call the appropriate update/add tool IMMEDIATELY in the same turn. Do NOT ask "Reply 'yes' to save" for updates. Do NOT call list_* tools first to "look up" the entity — pass the entity by name (most update tools accept a name field).
 
 POST-ADD-VENDOR FLOW (explicit rules, the small model gets this wrong otherwise):
-After you call add_vendor and the user replies with contract / cost / payment info (e.g. "signed the contract, total 6000, paid 1000 deposit"):
-  • Call update_vendor with { vendorName, contractSigned, totalCost, depositAmount } in ONE call (skip any field the user didn't mention).
-  • If the user mentioned a paid deposit or any specific payment that's already paid, ALSO call add_vendor_payment with { vendorName, name: "Deposit", amount, status: "paid" }.
-  • Do NOT call list_vendors. Do NOT call list_contracts. Do NOT ask for confirmation. The user already gave you everything you need — just save it.
-  • If the user only says "yes" or "ok" with no new info, then they're confirming a previous summary — call the tool from that summary (NOT list_*).
+Key signal: "✅ Added **X**" in an assistant message means add_vendor for X was already executed and X is in the database. Do NOT call add_vendor for X again under any circumstances.
+
+When you see "✅ Added **X**" and the user then provides contract / cost / payment info (e.g. "signed the contract, total 6000, paid 1000 deposit"):
+  • IMMEDIATELY call update_vendor with { vendorName: "X", contractSigned?, totalCost?, depositAmount? } — skip any field the user didn't mention.
+  • If the user mentioned a paid deposit or payment, ALSO call add_vendor_payment with { vendorName: "X", label: "Deposit", amount, dueDate: today, isPaid: true }.
+  • Do NOT ask for confirmation. Do NOT call list_vendors. Do NOT call list_contracts. The user gave you everything — just save it.
+  • If the user says "no", "not yet", "that's all", or similar → just acknowledge warmly and stop. Don't re-ask.
+
+SAVE ALL DETAILS UPFRONT: When calling add_vendor, include every field the user already mentioned — totalCost, depositAmount, depositPaid, contractSigned — so nothing needs to be re-asked afterward.
 
 AFTER A SUCCESSFUL WRITE: stop. The system auto-emits a confirmation + follow-up — don't add text.
 
@@ -272,10 +276,22 @@ function buildConfirmation(actions: ActionRecord[]): string {
     }
     const d = (a.result as { ok: true; data?: Record<string, unknown> }).data ?? {};
     switch (a.name) {
-      case "add_vendor":
-        lines.push(`✅ Added **${d.name ?? "vendor"}** (${d.category ?? ""})`);
-        followUp = `Have a contract or any payments for **${d.name ?? "them"}**? Just tell me the details — e.g. *"signed contract, total $6,000, paid $1,000 deposit"* — and I'll save it all.`;
+      case "add_vendor": {
+        const savedDetails: string[] = [];
+        if (d.contractSigned) savedDetails.push("contract signed ✓");
+        if (d.depositMilestoneCreated) savedDetails.push("deposit milestone created ✓");
+        const detailSuffix = savedDetails.length ? ` — ${savedDetails.join(", ")}` : "";
+        lines.push(`✅ Added **${d.name ?? "vendor"}** (${d.category ?? ""})${detailSuffix}`);
+        // Only ask the contract/payment follow-up if neither was already saved
+        if (!d.contractSigned && !d.depositMilestoneCreated) {
+          followUp = `Have a contract or any payments for **${d.name ?? "them"}**? Just tell me the details — e.g. *"signed contract, total $6,000, paid $1,000 deposit"* — and I'll save it all.`;
+        } else if (!d.contractSigned) {
+          followUp = `Have you signed the contract with **${d.name ?? "them"}** yet? I can mark that too.`;
+        } else if (!d.depositMilestoneCreated) {
+          followUp = `Any payments or deposit milestones to track for **${d.name ?? "them"}**?`;
+        }
         break;
+      }
       case "update_vendor":
         lines.push(`✅ Updated **${d.name ?? "vendor"}**`);
         followUp = "";
@@ -402,7 +418,7 @@ function buildConfirmation(actions: ActionRecord[]): string {
 }
 
 const TOOLS = [
-  { type:"function" as const, function:{ name:"add_vendor", description:"Add a new vendor to the user's wedding. ONLY call this AFTER: (1) the user has typed a specific business name in this conversation, AND (2) the user has confirmed with 'yes' or similar. NEVER invent a vendor name — not from examples, not from your training. NEVER call this tool in the same turn you ask for the vendor name. If the user just says 'add a vendor' or 'add a photographer' with no business name, ask for the name first and wait.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Exact business name the user typed. Never invent one."}, category:{type:"string", enum:["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Hair & Makeup","Transportation","Cake & Desserts","Invitations","Lighting & AV","Photo Booth","Wedding Planner","Other"], description:"Vendor category."}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, depositPaid:{type:"boolean"} }, required:["name","category"] } } },
+  { type:"function" as const, function:{ name:"add_vendor", description:"Add a new vendor to the user's wedding. ONLY call this AFTER: (1) the user has typed a specific business name in this conversation, AND (2) the user has confirmed with 'yes' or similar. NEVER invent a vendor name — not from examples, not from your training. NEVER call this tool in the same turn you ask for the vendor name. If the user just says 'add a vendor' or 'add a photographer' with no business name, ask for the name first and wait. Include all details the user mentioned (totalCost, depositAmount, contractSigned, etc.) so nothing needs to be re-asked.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Exact business name the user typed. Never invent one."}, category:{type:"string", enum:["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Hair & Makeup","Transportation","Cake & Desserts","Invitations","Lighting & AV","Photo Booth","Wedding Planner","Other"], description:"Vendor category."}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, depositPaid:{type:"boolean"}, contractSigned:{type:"boolean", description:"Set true if user said the contract is signed."} }, required:["name","category"] } } },
   { type:"function" as const, function:{ name:"update_vendor", description:"Update vendor fields. Pass vendorId or vendorName.", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"}, name:{type:"string"}, category:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, portalLink:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, contractSigned:{type:"boolean"} } } } },
   { type:"function" as const, function:{ name:"delete_vendor", description:"Delete vendor. Pass vendorId or vendorName.", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_vendors", description:"List all vendors.", parameters:{ type:"object", properties:{} } } },
@@ -729,6 +745,8 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         return { ok: false, error: `"${vendorName.slice(0, 40)}…" looks like a prompt or question, not a business name. Ask the user for the vendor's name and wait for their reply.` };
       }
       const depositAmt = Number(args.depositAmount ?? 0);
+      const totalCostAmt = Number(args.totalCost ?? 0);
+      const contractSignedArg = args.contractSigned === true;
       const todayISO = new Date().toISOString().slice(0, 10);
       const [created] = await db.insert(vendors).values({
         profileId: profile.id,
@@ -740,9 +758,9 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         website: args.website ? String(args.website) : null,
         portalLink: null,
         notes: args.notes ? String(args.notes) : null,
-        totalCost: String(Number(args.totalCost ?? 0)),
+        totalCost: String(totalCostAmt),
         depositAmount: String(depositAmt),
-        contractSigned: false,
+        contractSigned: contractSignedArg,
         nextPaymentDue: null,
         files: [],
         primaryContact: null,
@@ -764,7 +782,7 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         }
       }
 
-      return { ok: true, data: { id: created.id, name: created.name, category: created.category, depositMilestoneCreated: depositAmt > 0 } };
+      return { ok: true, data: { id: created.id, name: created.name, category: created.category, depositMilestoneCreated: depositAmt > 0, contractSigned: contractSignedArg, hasCost: totalCostAmt > 0 } };
     }
 
     if (name === "add_vendor_payment") {

@@ -34,7 +34,7 @@ export function RsvpFlow({
   slug: string;
   password?: string | null;
 }) {
-  const [step, setStep] = useState<"search" | "already-rsvped" | "form" | "done">("search");
+  const [step, setStep] = useState<"search" | "form" | "done">("search");
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [matches, setMatches] = useState<GuestMatch[]>([]);
@@ -106,12 +106,7 @@ export function RsvpFlow({
       }
       const body = (await r.json()) as GuestDetails;
       setGuest(body);
-      if (body.rsvpStatus !== "pending") {
-        setAttendance(body.rsvpStatus === "declined" ? "declined" : "attending");
-        setStep("already-rsvped");
-      } else {
-        setStep("form");
-      }
+      setStep("form");
     } catch {
       setError("Network error. Please try again.");
     }
@@ -232,51 +227,6 @@ export function RsvpFlow({
                 </p>
               </div>
             )}
-          </div>
-        )}
-
-        {step === "already-rsvped" && guest && (
-          <div className="text-center max-w-md mx-auto">
-            <div
-              className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6"
-              style={{ background: `${accent}20`, color: accent }}
-            >
-              <Check className="h-8 w-8" />
-            </div>
-            <h2 className="text-3xl sm:text-4xl mb-3" style={{ fontFamily: fontStack(data.font), color: text }}>
-              Hi {guest.name.split(" ")[0]}!
-            </h2>
-            <p className="text-base mb-2" style={{ color: text }}>
-              You've already RSVPed as{" "}
-              <strong>{guest.rsvpStatus === "attending" ? "Attending" : "Declined"}</strong>.
-            </p>
-            <p className="text-sm opacity-70 mb-8" style={{ color: text }}>
-              {guest.rsvpStatus === "attending"
-                ? "We're so excited to celebrate with you!"
-                : "We're sorry you can't make it — you'll be missed!"}
-            </p>
-            <div className="space-y-3">
-              <button
-                onClick={() => {
-                  setStep("search");
-                  setGuest(null);
-                  setQuery("");
-                  setMatches([]);
-                  setSearched(false);
-                }}
-                className="w-full px-4 py-3 rounded-lg font-medium transition-opacity hover:opacity-90"
-                style={{ background: accent, color: "#fff" }}
-              >
-                Done
-              </button>
-              <button
-                onClick={() => setStep("form")}
-                className="w-full text-xs underline opacity-60 hover:opacity-100"
-                style={{ color: text }}
-              >
-                I need to update my RSVP
-              </button>
-            </div>
           </div>
         )}
 
