@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed } from "lucide-react";
+import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed } from "lucide-react";
 import { EditableText, type TextPosition } from "./EditableText";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch } from "@/lib/authFetch";
@@ -693,21 +693,93 @@ function AnnouncementBanner({ data }: { data: WebsiteRendererPayload }) {
 
 // ---------- hero ----------
 
+// CSS filter presets used by the Hero background and the Gallery thumbnails.
+// Reused on both surfaces so a chosen "look" stays consistent across the site.
+const PHOTO_FILTERS: Record<string, string> = {
+  none: "none",
+  bw: "grayscale(1) contrast(1.05)",
+  sepia: "sepia(0.7) saturate(1.1)",
+  vintage: "sepia(0.35) contrast(0.95) saturate(0.85) brightness(0.95)",
+  soft: "contrast(0.92) brightness(1.05) saturate(0.9) blur(0.4px)",
+  cool: "hue-rotate(-12deg) saturate(1.1) brightness(0.97)",
+  warm: "hue-rotate(8deg) saturate(1.15) brightness(1.04)",
+  dramatic: "contrast(1.25) saturate(1.2) brightness(0.92)",
+  noir: "grayscale(1) contrast(1.35) brightness(0.85)",
+};
+
+function photoFilterCss(key: string | undefined | null): string {
+  return PHOTO_FILTERS[(key || "none") as keyof typeof PHOTO_FILTERS] ?? "none";
+}
+
+function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
+  const mode = (data.customText._heroAnimation || "static") as "static" | "slideshow" | "kenburns" | "pan-lr";
+  const speed = (data.customText._heroAnimationSpeed || "medium") as "slow" | "medium" | "fast";
+  const intervalMs = speed === "slow" ? 7000 : speed === "fast" ? 3000 : 5000;
+  const animDuration = speed === "slow" ? "30s" : speed === "fast" ? "12s" : "20s";
+  const photoFilter = photoFilterCss(data.customText._photoFilter);
+
+  const heroAndGallery: string[] = [
+    ...(data.heroImage ? [data.heroImage] : []),
+    ...((data.galleryImages ?? []).slice().sort((a, b) => a.order - b.order).map((g) => g.url)),
+  ];
+  const slideshowImages = mode === "slideshow" ? heroAndGallery : data.heroImage ? [data.heroImage] : [];
+
+  const [activeIdx, setActiveIdx] = useState(0);
+  useEffect(() => {
+    if (mode !== "slideshow" || slideshowImages.length < 2) return;
+    const id = setInterval(() => setActiveIdx((i) => (i + 1) % slideshowImages.length), intervalMs);
+    return () => clearInterval(id);
+  }, [mode, slideshowImages.length, intervalMs]);
+
+  if (slideshowImages.length === 0) {
+    return (
+      <div
+        className="absolute inset-0"
+        style={{ background: `linear-gradient(135deg, ${data.colorPalette.primary}22, ${data.colorPalette.secondary}22)` }}
+      />
+    );
+  }
+
+  const animationStyle: React.CSSProperties =
+    mode === "kenburns"
+      ? { animation: `wsa-kenburns ${animDuration} ease-in-out infinite` }
+      : mode === "pan-lr"
+        ? { animation: `wsa-pan-lr ${animDuration} ease-in-out infinite` }
+        : {};
+
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {slideshowImages.map((url, i) => (
+        <div
+          key={url + i}
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.55)), url('${imageUrl(url)}')`,
+            backgroundPosition: "center",
+            backgroundSize: "cover",
+            backgroundRepeat: "no-repeat",
+            opacity: mode === "slideshow" ? (i === activeIdx ? 1 : 0) : 1,
+            transition: mode === "slideshow" ? "opacity 1s ease-in-out" : undefined,
+            filter: photoFilter,
+            ...animationStyle,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
   const dateStr = formatWeddingDate(data.couple.weddingDate);
   return (
     <section
       id="home"
-      className="relative min-h-[80vh] flex items-center justify-center text-center px-6 py-24"
-      style={{
-        background: data.heroImage
-          ? `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.55)), url('${imageUrl(data.heroImage)}') center/cover no-repeat`
-          : `linear-gradient(135deg, ${data.colorPalette.primary}22, ${data.colorPalette.secondary}22)`,
-        color: data.heroImage ? "#fff" : data.colorPalette.text,
-      }}
+      className="relative min-h-[80vh] flex items-center justify-center text-center px-6 py-24 overflow-hidden"
+      style={{ color: data.heroImage ? "#fff" : data.colorPalette.text }}
     >
-      <div className="max-w-3xl">
+      <HeroBackground data={data} />
+      <div className="relative max-w-3xl">
         <EditableText
           as="div"
           editable={ctx.editable}
@@ -775,17 +847,27 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           </DraggableRow>
         )}
         <AddToCalendarButton data={data} />
+      </div>
 
-        {/* Custom floating text boxes */}
-        {Object.entries(data.customText)
-          .filter(([k, v]) => {
-            if (!k.startsWith("_custom_")) return false;
-            // In guest mode, skip boxes that still have the placeholder text
-            if (!ctx.editable) return !!v?.trim() && v.trim() !== "New text — click to edit";
-            return true;
-          })
-          .map(([key, val]) => (
-            <div key={key} style={{ marginTop: 16 }}>
+      {/* Custom floating text boxes — absolutely positioned so adding a new
+          box never shifts the centered hero layout (which felt like zooming) */}
+      {Object.entries(data.customText)
+        .filter(([k, v]) => {
+          if (!k.startsWith("_custom_")) return false;
+          if (!ctx.editable) return !!v?.trim() && v.trim() !== "New text — click to edit";
+          return true;
+        })
+        .map(([key, val], idx) => (
+          <div
+            key={key}
+            className="pointer-events-auto"
+            style={{
+              position: "absolute",
+              top: 24 + idx * 56,
+              left: 24,
+              zIndex: 20,
+            }}
+          >
               <EditableText
                 as="div"
                 editable={ctx.editable}
@@ -807,7 +889,6 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             </div>
           ))
         }
-      </div>
     </section>
   );
 }
@@ -962,7 +1043,33 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
 
 function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.travel ?? "";
-  if (!text && !data.couple.venue && !ctx.editable) return null;
+  const hotelName = (data.customText._hotelName ?? "").trim();
+  const hotelAddress = (data.customText._hotelAddress ?? "").trim();
+  const hasHotel = !!hotelName;
+  if (!text && !data.couple.venue && !hasHotel && !ctx.editable) return null;
+
+  const venueQuery = encodeURIComponent(
+    [data.couple.venue, data.couple.venueCity, data.couple.venueState, data.couple.location].filter(Boolean).join(", "),
+  );
+  const hotelQuery = encodeURIComponent([hotelName, hotelAddress].filter(Boolean).join(", "));
+
+  const cardStyle: React.CSSProperties = {
+    border: `1px solid ${data.colorPalette.primary}22`,
+    borderRadius: 12,
+    padding: "18px 20px",
+  };
+  const iconWrap: React.CSSProperties = {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    background: `${data.colorPalette.primary}15`,
+    color: data.colorPalette.primary,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  };
+
   return (
     <SectionShell id="travel" titleKey="travel_title" defaultTitle="Travel & Venue" icon={<MapPin className="h-4 w-4" />} data={data} ctx={ctx}>
       <EditableText
@@ -975,32 +1082,85 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         style={{ fontFamily: elementFontStack(data, "travel_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
         {...tsp(ctx, "travel_subtitle")}
       />
-      {data.couple.venue && (
-        <div className="text-center mb-6">
-          <div className="text-xl mb-1" style={{ color: data.colorPalette.text }}>{data.couple.venue}</div>
-          {data.couple.location && (
-            <div className="text-sm opacity-75 mb-3" style={{ color: data.colorPalette.text }}>
-              {data.couple.location}
+
+      <div className="grid sm:grid-cols-2 gap-4 max-w-3xl mx-auto mb-6">
+        {/* Venue */}
+        {data.couple.venue && (
+          <div style={cardStyle}>
+            <div className="flex items-start gap-3 mb-3">
+              <div style={iconWrap}><MapPin className="h-4 w-4" /></div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wider opacity-70" style={{ color: data.colorPalette.text }}>Venue</div>
+                <div className="text-base sm:text-lg font-medium" style={{ color: data.colorPalette.text }}>{data.couple.venue}</div>
+                {data.couple.location && (
+                  <div className="text-sm opacity-75" style={{ color: data.colorPalette.text }}>{data.couple.location}</div>
+                )}
+              </div>
             </div>
-          )}
-          <a
-            href={`https://www.google.com/maps/search/${encodeURIComponent([data.couple.venue, data.couple.venueCity, data.couple.venueState, data.couple.location].filter(Boolean).join(", "))}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
-            style={{ color: data.colorPalette.primary }}
-          >
-            <Navigation className="h-3.5 w-3.5" />
-            Open in Google Maps
-          </a>
-        </div>
-      )}
+            <a
+              href={`https://www.google.com/maps/search/${venueQuery}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
+              style={{ color: data.colorPalette.primary }}
+            >
+              <Navigation className="h-3.5 w-3.5" />
+              Open in Google Maps
+            </a>
+          </div>
+        )}
+
+        {/* Hotel */}
+        {(hasHotel || ctx.editable) && (
+          <div style={cardStyle}>
+            <div className="flex items-start gap-3 mb-3">
+              <div style={iconWrap}><Bed className="h-4 w-4" /></div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] uppercase tracking-wider opacity-70" style={{ color: data.colorPalette.text }}>Hotel</div>
+                <EditableText
+                  as="div"
+                  editable={ctx.editable}
+                  value={data.customText._hotelName ?? ""}
+                  defaultValue={ctx.editable ? "Hotel name" : ""}
+                  onCommit={(v) => ctx.onTextChange("_hotelName", v)}
+                  className="text-base sm:text-lg font-medium"
+                  style={{ color: data.colorPalette.text }}
+                  {...tsp(ctx, "_hotelName")}
+                />
+                <EditableText
+                  as="div"
+                  editable={ctx.editable}
+                  value={data.customText._hotelAddress ?? ""}
+                  defaultValue={ctx.editable ? "Address (street, city, state)" : ""}
+                  onCommit={(v) => ctx.onTextChange("_hotelAddress", v)}
+                  className="text-sm opacity-75"
+                  style={{ color: data.colorPalette.text }}
+                  {...tsp(ctx, "_hotelAddress")}
+                />
+              </div>
+            </div>
+            {hasHotel && (
+              <a
+                href={`https://www.google.com/maps/search/${hotelQuery}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
+                style={{ color: data.colorPalette.primary }}
+              >
+                <Navigation className="h-3.5 w-3.5" />
+                Open in Google Maps
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+
       <EditableText
         as="div"
         multiline
         editable={ctx.editable}
         value={text}
-        defaultValue={ctx.editable ? "Add hotel recommendations, parking info, directions..." : ""}
+        defaultValue={ctx.editable ? "Add parking info, directions, or other travel notes…" : ""}
         onCommit={(v) => ctx.onTextChange("travel", v)}
         className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
         style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
@@ -1097,6 +1257,7 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 
 function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const images = (data.galleryImages ?? []).slice().sort((a, b) => a.order - b.order);
+  const photoFilter = photoFilterCss(data.customText._photoFilter);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   if (images.length === 0 && !ctx.editable) return null;
   return (
@@ -1133,6 +1294,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
               alt={img.caption ?? ""}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
+              style={{ filter: photoFilter }}
             />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
               <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />

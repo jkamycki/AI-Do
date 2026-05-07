@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
-  QrCode, Download, Link2, Plus, Megaphone, Users,
+  QrCode, Download, Link2, Plus, Megaphone, Users, Undo2, Sparkles, Settings,
 } from "lucide-react";
 import { WebsiteRenderer, type WebsiteRendererPayload, parseWeddingPartyMembers, parseRegistryLinks, type WeddingPartyMember, type WeddingPartySide, type RegistryLink } from "@/components/website/WebsiteRenderer";
 
@@ -87,6 +87,8 @@ export default function WebsiteEditor() {
   const [lastAutosaved, setLastAutosaved] = useState<Date | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings">("design");
+  const inTab = (t: typeof activeTab) => activeTab === t;
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
@@ -195,19 +197,78 @@ export default function WebsiteEditor() {
     }
   };
 
+  // ---- undo history ----
+  // Coalesces rapid changes (drag, typing) into a single history entry so the
+  // user undoes one logical action at a time rather than each pixel of a drag.
+  const [historyLen, setHistoryLen] = useState(0);
+  const historyRef = useRef<WebsiteRecord[]>([]);
+  const pendingPrevRef = useRef<WebsiteRecord | null>(null);
+  const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const queueHistory = useCallback((prev: WebsiteRecord) => {
+    if (!pendingPrevRef.current) pendingPrevRef.current = prev;
+    if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+    commitTimerRef.current = setTimeout(() => {
+      const p = pendingPrevRef.current;
+      pendingPrevRef.current = null;
+      if (!p) return;
+      historyRef.current = [...historyRef.current.slice(-49), p];
+      setHistoryLen(historyRef.current.length);
+    }, 500);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    // Flush any pending coalesced entry first so we don't lose a half-coalesced state
+    if (commitTimerRef.current) {
+      clearTimeout(commitTimerRef.current);
+      commitTimerRef.current = null;
+    }
+    if (pendingPrevRef.current) {
+      historyRef.current = [...historyRef.current.slice(-49), pendingPrevRef.current];
+      pendingPrevRef.current = null;
+    }
+    if (historyRef.current.length === 0) return;
+    const prev = historyRef.current[historyRef.current.length - 1];
+    historyRef.current = historyRef.current.slice(0, -1);
+    setHistoryLen(historyRef.current.length);
+    setRecord(prev);
+    setDirty(true);
+  }, []);
+
+  // Cmd/Ctrl+Z to undo from anywhere in the editor (except inside form fields)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z" || e.shiftKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      e.preventDefault();
+      handleUndo();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [handleUndo]);
+
   // ---- update helpers ----
 
   const update = (patch: Partial<WebsiteRecord>) => {
-    setRecord((prev) => (prev ? { ...prev, ...patch } : prev));
+    setRecord((prev) => {
+      if (!prev) return prev;
+      queueHistory(prev);
+      return { ...prev, ...patch };
+    });
     setDirty(true);
   };
 
   // Functional updater for callbacks fired during editing (drag, style changes, text commits).
   // Uses prev state to avoid stale-closure bugs when rapid events fire before a re-render.
   const patchRecord = useCallback((fn: (prev: WebsiteRecord) => Partial<WebsiteRecord>) => {
-    setRecord((prev) => (prev ? { ...prev, ...fn(prev) } : prev));
+    setRecord((prev) => {
+      if (!prev) return prev;
+      queueHistory(prev);
+      return { ...prev, ...fn(prev) };
+    });
     setDirty(true);
-  }, []);
+  }, [queueHistory]);
 
   // Must be declared above any early return so the hook count stays stable.
   const livePreview = useMemo<WebsiteRendererPayload | null>(() => {
@@ -463,6 +524,16 @@ export default function WebsiteEditor() {
               {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
               {saving ? "Saving..." : dirty ? "Save changes" : "Saved"}
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleUndo}
+              disabled={historyLen === 0}
+              title="Undo last change (Cmd/Ctrl+Z)"
+            >
+              <Undo2 className="h-3.5 w-3.5 mr-1.5" />
+              Undo
+            </Button>
             {!dirty && lastAutosaved && (
               <span className="text-[11px] text-muted-foreground">
                 Autosaved {lastAutosaved.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
@@ -502,10 +573,33 @@ export default function WebsiteEditor() {
               )}
             </div>
           )}
+
+          {/* Tab rail */}
+          <div className="mt-4 flex items-center gap-1 -mb-1 overflow-x-auto">
+            {([
+              { id: "design",    label: "Design",    icon: Palette },
+              { id: "pages",     label: "Pages",     icon: FileText },
+              { id: "animation", label: "Animation", icon: Sparkles },
+              { id: "settings",  label: "Settings",  icon: Settings },
+            ] as const).map((t) => {
+              const TabIcon = t.icon;
+              const active = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+                >
+                  <TabIcon className="h-3.5 w-3.5" />
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Text tools */}
-        <Section icon={<Type className="h-4 w-4" />} title="Text Tools">
+        {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title="Text Tools">
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground leading-relaxed">
               Right-click anywhere on the preview to add a new text box.
@@ -523,10 +617,10 @@ export default function WebsiteEditor() {
               Reset all to default
             </Button>
           </div>
-        </Section>
+        </Section>}
 
         {/* Theme picker */}
-        <Section icon={<Palette className="h-4 w-4" />} title="Theme">
+        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title="Theme">
           <div className="grid grid-cols-2 gap-2">
             {THEMES.map((t) => (
               <button
@@ -543,20 +637,20 @@ export default function WebsiteEditor() {
               </button>
             ))}
           </div>
-        </Section>
+        </Section>}
 
         {/* Colors */}
-        <Section icon={<Palette className="h-4 w-4" />} title="Colors">
+        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title="Colors">
           <div className="grid grid-cols-2 gap-3">
             <ColorField label="Primary"   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
             <ColorField label="Secondary" value={record.colorPalette.secondary} onChange={(v) => update({ colorPalette: { ...record.colorPalette, secondary: v } })} />
             <ColorField label="Background" value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
             <ColorField label="Text"      value={record.colorPalette.text}      onChange={(v) => update({ colorPalette: { ...record.colorPalette, text: v } })} />
           </div>
-        </Section>
+        </Section>}
 
         {/* Typography */}
-        <Section icon={<Type className="h-4 w-4" />} title="Typography">
+        {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title="Typography">
           <div className="space-y-3">
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">Heading font (couple names, titles)</Label>
@@ -583,10 +677,10 @@ export default function WebsiteEditor() {
               </select>
             </div>
           </div>
-        </Section>
+        </Section>}
 
         {/* Sections */}
-        <Section icon={<ToggleLeft className="h-4 w-4" />} title="Sections">
+        {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title="Sections">
           <div className="space-y-2.5">
             {SECTION_LIST.map((s) => {
               const Icon = s.icon;
@@ -606,17 +700,88 @@ export default function WebsiteEditor() {
               );
             })}
           </div>
-        </Section>
+        </Section>}
 
         {/* Inline-edit hint */}
-        <Section icon={<FileText className="h-4 w-4" />} title="Edit Text">
+        {inTab("design") && <Section icon={<FileText className="h-4 w-4" />} title="Edit Text">
           <p className="text-xs text-muted-foreground leading-relaxed">
             Click any heading or paragraph in the preview to edit it directly. Press <strong>Enter</strong> on a heading or click outside to commit. Use this sidebar for theme, layout, photos, and section toggles.
           </p>
-        </Section>
+        </Section>}
+
+        {/* Hero animation */}
+        {inTab("animation") && <Section icon={<Sparkles className="h-4 w-4" />} title="Hero Animation">
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Style</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={record.customText._heroAnimation ?? "static"}
+                onChange={(e) => update({ customText: { ...record.customText, _heroAnimation: e.target.value } })}
+              >
+                <option value="static">Static (single image)</option>
+                <option value="slideshow">Slideshow (cycle photos)</option>
+                <option value="kenburns">Ken Burns (slow zoom)</option>
+                <option value="pan-lr">Pan left-to-right</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Speed</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={record.customText._heroAnimationSpeed ?? "medium"}
+                onChange={(e) => update({ customText: { ...record.customText, _heroAnimationSpeed: e.target.value } })}
+              >
+                <option value="slow">Slow</option>
+                <option value="medium">Medium</option>
+                <option value="fast">Fast</option>
+              </select>
+            </div>
+            {(record.customText._heroAnimation === "slideshow") && (
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Slideshow uses your hero image and all gallery photos. Add more photos in the Gallery section below to extend the rotation.
+              </p>
+            )}
+          </div>
+        </Section>}
+
+        {/* Photo effects */}
+        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Photo Effects">
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground mb-1 block">Filter (applied to hero + gallery)</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: "none", label: "Original" },
+                { id: "bw", label: "B&W" },
+                { id: "sepia", label: "Sepia" },
+                { id: "vintage", label: "Vintage" },
+                { id: "soft", label: "Soft" },
+                { id: "cool", label: "Cool" },
+                { id: "warm", label: "Warm" },
+                { id: "dramatic", label: "Dramatic" },
+                { id: "noir", label: "Noir" },
+              ].map((f) => {
+                const active = (record.customText._photoFilter ?? "none") === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => update({ customText: { ...record.customText, _photoFilter: f.id } })}
+                    className={`px-2 py-1.5 rounded-md border text-xs transition-all ${active ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40"}`}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed pt-1">
+              The lightbox always shows the original photo, so guests can still see the unfiltered version when they tap.
+            </p>
+          </div>
+        </Section>}
 
         {/* Hero image */}
-        <Section icon={<ImageIcon className="h-4 w-4" />} title="Hero Image">
+        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Hero Image">
           {record.heroImage ? (
             <div className="relative rounded-md overflow-hidden">
               <img
@@ -647,10 +812,10 @@ export default function WebsiteEditor() {
               {upload.isUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <><ImageIcon className="h-4 w-4" /> Upload hero image</>}
             </label>
           )}
-        </Section>
+        </Section>}
 
         {/* Gallery */}
-        <Section icon={<ImageIcon className="h-4 w-4" />} title="Gallery">
+        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Gallery">
           <div className="grid grid-cols-3 gap-2 mb-3 items-start">
             {record.galleryImages.map((img, i) => (
               <div key={i} className="flex flex-col gap-1">
@@ -695,20 +860,20 @@ export default function WebsiteEditor() {
             />
             {upload.isUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <>Add photos</>}
           </label>
-        </Section>
+        </Section>}
 
         {/* Registry Links */}
-        <Section icon={<Link2 className="h-4 w-4" />} title="Registry Links">
+        {inTab("pages") && <Section icon={<Link2 className="h-4 w-4" />} title="Registry Links">
           <RegistryLinksEditor
             links={parseRegistryLinks(record.customText._registryLinks)}
             onChange={(next) =>
               update({ customText: { ...record.customText, _registryLinks: JSON.stringify(next) } })
             }
           />
-        </Section>
+        </Section>}
 
         {/* Wedding Party */}
-        <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
+        {inTab("pages") && <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
           {record.portalParty && record.portalParty.length > 0 ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 dark:bg-emerald-950/30 text-xs text-emerald-800 dark:text-emerald-200">
@@ -730,10 +895,10 @@ export default function WebsiteEditor() {
               isUploading={upload.isUploading}
             />
           )}
-        </Section>
+        </Section>}
 
         {/* Announcement banner */}
-        <Section icon={<Megaphone className="h-4 w-4" />} title="Announcement">
+        {inTab("settings") && <Section icon={<Megaphone className="h-4 w-4" />} title="Announcement">
           <p className="text-xs text-muted-foreground mb-2">
             Show a dismissible banner at the top of your site — great for last-minute updates.
           </p>
@@ -746,10 +911,10 @@ export default function WebsiteEditor() {
             className="text-sm resize-none"
             rows={3}
           />
-        </Section>
+        </Section>}
 
         {/* RSVP settings — responses are tracked in the portal, not here */}
-        {record.sectionsEnabled.rsvp && (
+        {inTab("pages") && record.sectionsEnabled.rsvp && (
           <Section icon={<Heart className="h-4 w-4" />} title="RSVP Settings">
             <div className="space-y-2">
               <div>
@@ -778,8 +943,28 @@ export default function WebsiteEditor() {
           </Section>
         )}
 
+        {/* Website visibility */}
+        {inTab("settings") && (
+          <Section icon={<Globe className="h-4 w-4" />} title="Website Visibility">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-medium">{record.published ? "Live" : "Not published"}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {record.published
+                    ? "Your site is viewable by anyone with the link."
+                    : "Your site is in draft. Guests can't view it yet."}
+                </p>
+              </div>
+              <Button size="sm" variant={record.published ? "outline" : "default"} onClick={handlePublish} disabled={publishing}>
+                {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+                {record.published ? "Unpublish" : "Publish"}
+              </Button>
+            </div>
+          </Section>
+        )}
+
         {/* Website URL */}
-        <Section icon={<Link2 className="h-4 w-4" />} title="Website URL">
+        {inTab("settings") && <Section icon={<Link2 className="h-4 w-4" />} title="Website URL">
           <SlugEditor
             slug={record.slug}
             published={record.published}
@@ -787,10 +972,10 @@ export default function WebsiteEditor() {
               setRecord((prev) => prev ? { ...prev, slug: newSlug, lastUpdated } : prev)
             }
           />
-        </Section>
+        </Section>}
 
         {/* Password */}
-        <Section icon={<Lock className="h-4 w-4" />} title="Password Protection">
+        {inTab("settings") && <Section icon={<Lock className="h-4 w-4" />} title="Password Protection">
           {record.passwordEnabled ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 dark:bg-amber-950/30 text-xs text-amber-800 dark:text-amber-200">
@@ -814,7 +999,7 @@ export default function WebsiteEditor() {
           <p className="text-[11px] text-muted-foreground mt-2">
             When set, guests must enter this password before viewing the site.
           </p>
-        </Section>
+        </Section>}
       </aside>
 
       {/* Drag handle to resize sidebar */}
@@ -889,7 +1074,22 @@ export default function WebsiteEditor() {
           <div className="sticky top-3 right-0 z-[10000] flex justify-end px-4 pointer-events-none">
             <div className="flex items-center gap-2 pointer-events-auto bg-background/90 backdrop-blur border border-border rounded-full px-3 py-1.5 shadow-lg">
               <span className="text-xs text-muted-foreground font-medium">Guest Preview</span>
+              <Badge variant={record.published ? "default" : "secondary"} className="text-[10px] py-0 px-1.5">
+                {record.published ? "Live" : "Draft"}
+              </Badge>
               <div className="w-px h-4 bg-border" />
+              <Button
+                size="sm"
+                variant={record.published ? "outline" : "default"}
+                className="h-6 px-2 text-xs"
+                onClick={handlePublish}
+                disabled={publishing}
+              >
+                {publishing
+                  ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  : <Globe className="h-3 w-3 mr-1" />}
+                {record.published ? "Unpublish" : "Publish"}
+              </Button>
               {record.published && (
                 <button
                   className="text-xs text-primary hover:underline"
@@ -901,6 +1101,7 @@ export default function WebsiteEditor() {
               <button
                 className="text-xs text-muted-foreground hover:text-foreground"
                 onClick={() => setPreviewOpen(false)}
+                title="Close preview"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
