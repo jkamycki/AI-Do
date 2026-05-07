@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon } from "lucide-react";
+import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2 } from "lucide-react";
 import { EditableText } from "./EditableText";
 import { RsvpFlow } from "./RsvpFlow";
+import { apiFetch } from "@/lib/authFetch";
 
 // camelCase section id <-> kebab-case URL slug
 const SECTION_TO_URL: Record<string, string> = {
@@ -30,6 +31,7 @@ export function sectionFromUrlSegment(seg: string | undefined): string {
 }
 
 export interface WebsiteRendererPayload {
+  slug?: string;
   theme: string;
   layoutStyle: string;
   font: string;
@@ -51,6 +53,7 @@ export interface WebsiteRendererPayload {
     faq: boolean;
     gallery: boolean;
     weddingParty: boolean;
+    rsvp?: boolean;
   };
   customText: Record<string, string>;
   galleryImages: Array<{ url: string; caption?: string; order: number }>;
@@ -125,6 +128,399 @@ function elementFontStack(data: WebsiteRendererPayload, key: string, fallbackFon
 }
 
 
+// ---------- lightbox ----------
+
+function Lightbox({
+  images,
+  startIndex,
+  onClose,
+}: {
+  images: Array<{ url: string; caption?: string }>;
+  startIndex: number;
+  onClose: () => void;
+}) {
+  const [index, setIndex] = useState(startIndex);
+  const prev = () => setIndex((i) => Math.max(0, i - 1));
+  const next = () => setIndex((i) => Math.min(images.length - 1, i + 1));
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  const img = images[index];
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/92"
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
+        aria-label="Close"
+      >
+        <X className="h-5 w-5" />
+      </button>
+      {index > 0 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); prev(); }}
+          className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
+          aria-label="Previous"
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+      )}
+      {index < images.length - 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); next(); }}
+          className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
+          aria-label="Next"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
+      )}
+      <div
+        className="flex flex-col items-center max-w-5xl mx-12 max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img
+          src={imageUrl(img.url)}
+          alt={img.caption ?? ""}
+          className="max-h-[80vh] max-w-full object-contain rounded-lg shadow-2xl"
+        />
+        {img.caption && (
+          <p className="text-center text-white/80 text-sm mt-3 px-4">{img.caption}</p>
+        )}
+      </div>
+      {images.length > 1 && (
+        <div className="absolute bottom-5 flex gap-2">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              onClick={(e) => { e.stopPropagation(); setIndex(i); }}
+              className={`w-2 h-2 rounded-full transition-all ${i === index ? "bg-white scale-125" : "bg-white/40"}`}
+              aria-label={`Go to image ${i + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- countdown ----------
+
+function calcTimeLeft(dateStr: string) {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const diff = new Date(y, m - 1, d).getTime() - Date.now();
+  if (diff <= 0) return null;
+  return {
+    days: Math.floor(diff / 86_400_000),
+    hours: Math.floor((diff % 86_400_000) / 3_600_000),
+    minutes: Math.floor((diff % 3_600_000) / 60_000),
+    seconds: Math.floor((diff % 60_000) / 1000),
+  };
+}
+
+function CountdownTimer({ dateStr, accentColor }: { dateStr: string; accentColor: string }) {
+  const [left, setLeft] = useState(() => calcTimeLeft(dateStr));
+  useEffect(() => {
+    const id = setInterval(() => setLeft(calcTimeLeft(dateStr)), 1000);
+    return () => clearInterval(id);
+  }, [dateStr]);
+  if (!left) return null;
+  const units = [
+    { label: "Days", value: left.days },
+    { label: "Hours", value: left.hours },
+    { label: "Mins", value: left.minutes },
+    { label: "Secs", value: left.seconds },
+  ];
+  return (
+    <div className="flex items-center justify-center gap-4 sm:gap-8 mt-8">
+      {units.map(({ label, value }) => (
+        <div key={label} className="flex flex-col items-center">
+          <span
+            className="text-3xl sm:text-5xl font-bold tabular-nums leading-none"
+            style={{ color: accentColor }}
+          >
+            {String(value).padStart(2, "0")}
+          </span>
+          <span className="text-[10px] sm:text-xs uppercase tracking-widest mt-2 opacity-70">
+            {label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------- registry links ----------
+
+export interface RegistryLink { name: string; url: string; }
+
+export function parseRegistryLinks(raw: string | undefined): RegistryLink[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (l): l is RegistryLink => l && typeof l.name === "string" && typeof l.url === "string"
+    );
+  } catch {
+    return [];
+  }
+}
+
+// ---------- add to calendar ----------
+
+function buildIcs(couple: string, dateStr: string, ceremonyTime: string, venue: string, location: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const [h = 16, min = 0] = (ceremonyTime || "16:00").split(":").map(Number);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const dt = `${y}${pad(m)}${pad(d)}T${pad(h)}${pad(min)}00`;
+  const loc = [venue, location].filter(Boolean).join(", ");
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT",
+    `SUMMARY:${couple}'s Wedding`,
+    `DTSTART:${dt}`,
+    `LOCATION:${loc}`,
+    `DESCRIPTION:Join us to celebrate the wedding of ${couple}!`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
+
+function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
+  if (!data.couple.weddingDate) return null;
+  const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
+
+  function download() {
+    const ics = buildIcs(couple, data.couple.weddingDate, data.couple.ceremonyTime, data.couple.venue, data.couple.location);
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "wedding.ics";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <button
+      onClick={download}
+      className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-opacity hover:opacity-80"
+      style={{
+        background: "rgba(255,255,255,0.15)",
+        border: "1px solid rgba(255,255,255,0.4)",
+        color: data.heroImage ? "#fff" : data.colorPalette.text,
+        backdropFilter: "blur(4px)",
+      }}
+    >
+      <Calendar className="h-4 w-4" />
+      Add to Calendar
+    </button>
+  );
+}
+
+// ---------- rsvp ----------
+
+function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [attending, setAttending] = useState<"yes" | "no" | "maybe">("yes");
+  const [plusOne, setPlusOne] = useState(0);
+  const [dietary, setDietary] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) { setErr("Please enter your name."); return; }
+    setSubmitting(true);
+    setErr(null);
+    try {
+      const slug = data.slug ?? "";
+      const res = await apiFetch(`/api/website/rsvp/${encodeURIComponent(slug)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), email: email.trim() || undefined, attending, plusOneCount: plusOne, dietaryRestrictions: dietary.trim() || undefined, message: message.trim() || undefined }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? "Submission failed");
+      }
+      setDone(true);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "0.6rem 0.9rem",
+    borderRadius: "0.5rem",
+    border: `1px solid ${data.colorPalette.primary}44`,
+    background: data.colorPalette.background,
+    color: data.colorPalette.text,
+    fontSize: "0.9rem",
+    outline: "none",
+    fontFamily: "inherit",
+  };
+
+  return (
+    <SectionShell id="rsvp" titleKey="rsvp_title" defaultTitle="RSVP" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx}>
+      <EditableText
+        as="div"
+        editable={ctx.editable}
+        value={data.customText.rsvp_subtitle ?? ""}
+        defaultValue="We'd love to know if you can make it"
+        onCommit={(v) => ctx.onTextChange("rsvp_subtitle", v)}
+        className="block text-center text-3xl sm:text-4xl mb-10"
+        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+      />
+      {data.customText.rsvp_deadline && (
+        <p className="text-center text-sm mb-8 opacity-70" style={{ color: data.colorPalette.text }}>
+          Please RSVP by <strong>{data.customText.rsvp_deadline}</strong>
+        </p>
+      )}
+      {ctx.editable ? (
+        <p className="text-center text-sm opacity-60 py-8" style={{ color: data.colorPalette.text }}>
+          RSVP form will appear here for guests on the published site.
+        </p>
+      ) : done ? (
+        <div className="flex flex-col items-center gap-4 py-10">
+          <CheckCircle2 className="h-12 w-12" style={{ color: data.colorPalette.primary }} />
+          <p className="text-xl font-medium text-center" style={{ color: data.colorPalette.text, fontFamily: fontStack(headingFont(data)) }}>
+            {attending === "no" ? "We're sorry you can't make it 💙" : "Thank you! We can't wait to celebrate with you!"}
+          </p>
+          <EditableText
+            as="p"
+            editable={false}
+            value={data.customText.rsvp_thankyou ?? "We'll send you more details closer to the day."}
+            defaultValue="We'll send you more details closer to the day."
+            onCommit={() => {}}
+            className="text-sm text-center max-w-sm"
+            style={{ color: data.colorPalette.text, opacity: 0.75 }}
+          />
+        </div>
+      ) : (
+        <form onSubmit={submit} className="max-w-lg mx-auto space-y-4">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: data.colorPalette.text }}>Name *</label>
+              <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: data.colorPalette.text }}>Email</label>
+              <input style={inputStyle} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium mb-2 opacity-70" style={{ color: data.colorPalette.text }}>Will you attend?</label>
+            <div className="flex gap-2">
+              {(["yes", "no", "maybe"] as const).map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setAttending(opt)}
+                  className="flex-1 py-2 rounded-lg text-sm font-medium transition-all capitalize"
+                  style={{
+                    border: `1.5px solid ${data.colorPalette.primary}`,
+                    background: attending === opt ? data.colorPalette.primary : "transparent",
+                    color: attending === opt ? "#fff" : data.colorPalette.primary,
+                  }}
+                >
+                  {opt === "yes" ? "Joyfully accepts" : opt === "no" ? "Regretfully declines" : "Maybe"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {attending !== "no" && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: data.colorPalette.text }}>Additional guests</label>
+                <select style={inputStyle} value={plusOne} onChange={(e) => setPlusOne(Number(e.target.value))}>
+                  {[0,1,2,3,4,5].map((n) => (
+                    <option key={n} value={n}>{n === 0 ? "Just me" : `+${n} guest${n > 1 ? "s" : ""}`}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: data.colorPalette.text }}>Dietary restrictions</label>
+                <input style={inputStyle} value={dietary} onChange={(e) => setDietary(e.target.value)} placeholder="Vegetarian, gluten-free…" />
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: data.colorPalette.text }}>Message to the couple (optional)</label>
+            <textarea
+              style={{ ...inputStyle, resize: "vertical", minHeight: "80px" }}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Share a wish or note…"
+              rows={3}
+            />
+          </div>
+
+          {err && <p className="text-sm text-red-600">{err}</p>}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-3 rounded-lg text-white font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
+            style={{ background: data.colorPalette.primary }}
+          >
+            {submitting ? "Sending…" : "Send RSVP"}
+          </button>
+        </form>
+      )}
+    </SectionShell>
+  );
+}
+
+// ---------- announcement banner ----------
+
+function AnnouncementBanner({ data }: { data: WebsiteRendererPayload }) {
+  const text = data.customText._announcement?.trim();
+  const [dismissed, setDismissed] = useState(false);
+  if (!text || dismissed) return null;
+  return (
+    <div
+      className="relative flex items-start gap-3 px-5 py-3 text-sm"
+      style={{ background: `${data.colorPalette.primary}18`, borderBottom: `2px solid ${data.colorPalette.primary}55` }}
+    >
+      <span className="flex-1 text-center" style={{ color: data.colorPalette.text }}>{text}</span>
+      <button
+        onClick={() => setDismissed(true)}
+        className="flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+        aria-label="Dismiss"
+        style={{ color: data.colorPalette.text }}
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+// ---------- hero ----------
+
 function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
   const dateStr = formatWeddingDate(data.couple.weddingDate);
@@ -169,6 +565,13 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             </span>
           </div>
         )}
+        {data.couple.weddingDate && (
+          <CountdownTimer
+            dateStr={data.couple.weddingDate}
+            accentColor={data.heroImage ? "rgba(255,255,255,0.9)" : data.colorPalette.primary}
+          />
+        )}
+        <AddToCalendarButton data={data} />
       </div>
     </section>
   );
@@ -350,10 +753,20 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         <div className="text-center mb-6">
           <div className="text-xl mb-1" style={{ color: data.colorPalette.text }}>{data.couple.venue}</div>
           {data.couple.location && (
-            <div className="text-sm opacity-75" style={{ color: data.colorPalette.text }}>
+            <div className="text-sm opacity-75 mb-3" style={{ color: data.colorPalette.text }}>
               {data.couple.location}
             </div>
           )}
+          <a
+            href={`https://www.google.com/maps/search/${encodeURIComponent([data.couple.venue, data.couple.venueCity, data.couple.venueState, data.couple.location].filter(Boolean).join(", "))}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
+            style={{ color: data.colorPalette.primary }}
+          >
+            <Navigation className="h-3.5 w-3.5" />
+            Open in Google Maps
+          </a>
         </div>
       )}
       <EditableText
@@ -372,7 +785,8 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 
 function Registry({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.registry ?? "";
-  if (!text && !ctx.editable) return null;
+  const links = parseRegistryLinks(data.customText._registryLinks);
+  if (!text && links.length === 0 && !ctx.editable) return null;
   return (
     <SectionShell id="registry" titleKey="registry_title" defaultTitle="Registry" icon={<Gift className="h-4 w-4" />} data={data} ctx={ctx}>
       <EditableText
@@ -387,16 +801,40 @@ function Registry({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
         className="block text-center text-3xl sm:text-4xl mb-8"
         style={{ fontFamily: elementFontStack(data, "registry_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
       />
-      <EditableText
-        as="div"
-        multiline
-        editable={ctx.editable}
-        value={text}
-        defaultValue={ctx.editable ? "Share your registry links and gift preferences..." : ""}
-        onCommit={(v) => ctx.onTextChange("registry", v)}
-        className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
-        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
-      />
+      {links.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-3 mb-8">
+          {links.map((link, i) => (
+            <a
+              key={i}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
+              style={{
+                background: `${data.colorPalette.primary}15`,
+                border: `1.5px solid ${data.colorPalette.primary}`,
+                color: data.colorPalette.primary,
+                fontFamily: bodyFontStack(bodyFont(data)),
+              }}
+            >
+              {link.name}
+              <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+            </a>
+          ))}
+        </div>
+      )}
+      {(text || ctx.editable) && (
+        <EditableText
+          as="div"
+          multiline
+          editable={ctx.editable}
+          value={text}
+          defaultValue={ctx.editable ? "Add a note about your registry or gift preferences..." : ""}
+          onCommit={(v) => ctx.onTextChange("registry", v)}
+          className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
+          style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+        />
+      )}
     </SectionShell>
   );
 }
@@ -434,9 +872,17 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 
 function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const images = (data.galleryImages ?? []).slice().sort((a, b) => a.order - b.order);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   if (images.length === 0 && !ctx.editable) return null;
   return (
     <SectionShell id="gallery" titleKey="gallery_title" defaultTitle="Gallery" icon={<ImageIcon className="h-4 w-4" />} data={data} ctx={ctx}>
+      {lightboxIndex !== null && (
+        <Lightbox
+          images={images}
+          startIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
       <EditableText
         as="div"
         editable={ctx.editable}
@@ -451,19 +897,29 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {images.map((img, i) => (
-          <div key={i} className="relative aspect-square overflow-hidden rounded-lg group">
+          <button
+            key={i}
+            type="button"
+            onClick={() => setLightboxIndex(i)}
+            className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
+            aria-label={img.caption ?? `Photo ${i + 1}`}
+          >
             <img
               src={imageUrl(img.url)}
               alt={img.caption ?? ""}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
             />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+              <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
+            </div>
             {img.caption && (
-              <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/60 to-transparent text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/60 to-transparent text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity text-left">
                 {img.caption}
               </div>
             )}
-          </div>
+          </button>
         ))}
       </div>
     </SectionShell>
@@ -835,6 +1291,7 @@ export function WebsiteRenderer({
 
   return (
     <div style={{ background: data.colorPalette.background, color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <AnnouncementBanner data={data} />
       <TopNav
         data={data}
         scrollContainer={scrollContainer}

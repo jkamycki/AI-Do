@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/react";
 import { useUpload } from "@workspace/object-storage-web";
 import { authFetch } from "@/lib/authFetch";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,10 +13,10 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
-  QrCode, Download,
+  QrCode, Download, Link2, Plus, Megaphone, Users,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { WebsiteRenderer, type WebsiteRendererPayload, parseWeddingPartyMembers, type WeddingPartyMember, type WeddingPartySide } from "@/components/website/WebsiteRenderer";
+import { WebsiteRenderer, type WebsiteRendererPayload, parseWeddingPartyMembers, parseRegistryLinks, type WeddingPartyMember, type WeddingPartySide, type RegistryLink } from "@/components/website/WebsiteRenderer";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
@@ -75,6 +76,7 @@ const SECTION_LIST: Array<{ id: keyof WebsiteRecord["sectionsEnabled"]; label: s
   { id: "faq",          label: "FAQ",           icon: HelpCircle },
   { id: "gallery",      label: "Gallery",       icon: ImageIcon },
   { id: "weddingParty", label: "Wedding Party", icon: Heart },
+  { id: "rsvp",         label: "RSVP",          icon: Heart },
 ];
 
 // ---------- main ----------
@@ -391,6 +393,7 @@ export default function WebsiteEditor() {
   }
 
   const livePreview: WebsiteRendererPayload = {
+    slug: record.slug,
     theme: record.theme,
     layoutStyle: record.layoutStyle,
     font: record.font,
@@ -604,20 +607,33 @@ export default function WebsiteEditor() {
 
         {/* Gallery */}
         <Section icon={<ImageIcon className="h-4 w-4" />} title="Gallery">
-          <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="grid grid-cols-3 gap-2 mb-3 items-start">
             {record.galleryImages.map((img, i) => (
-              <div key={i} className="relative aspect-square rounded-md overflow-hidden">
-                <img
-                  src={img.url.startsWith("/objects/") ? `/api/storage${img.url}` : img.url}
-                  alt=""
-                  className="w-full h-full object-cover"
+              <div key={i} className="flex flex-col gap-1">
+                <div className="relative aspect-square rounded-md overflow-hidden">
+                  <img
+                    src={img.url.startsWith("/objects/") ? `/api/storage${img.url}` : img.url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    onClick={() => removeGalleryImage(i)}
+                    className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+                <input
+                  value={img.caption ?? ""}
+                  onChange={(e) => {
+                    const next = record.galleryImages.map((im, idx) =>
+                      idx === i ? { ...im, caption: e.target.value || undefined } : im
+                    );
+                    update({ galleryImages: next });
+                  }}
+                  placeholder="Caption…"
+                  className="w-full text-[10px] border border-border rounded px-1.5 py-1 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 truncate"
                 />
-                <button
-                  onClick={() => removeGalleryImage(i)}
-                  className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
-                >
-                  <X className="h-3 w-3" />
-                </button>
               </div>
             ))}
           </div>
@@ -637,6 +653,16 @@ export default function WebsiteEditor() {
           </label>
         </Section>
 
+        {/* Registry Links */}
+        <Section icon={<Link2 className="h-4 w-4" />} title="Registry Links">
+          <RegistryLinksEditor
+            links={parseRegistryLinks(record.customText._registryLinks)}
+            onChange={(next) =>
+              update({ customText: { ...record.customText, _registryLinks: JSON.stringify(next) } })
+            }
+          />
+        </Section>
+
         {/* Wedding Party */}
         <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
           <WeddingPartyEditor
@@ -647,6 +673,64 @@ export default function WebsiteEditor() {
               return r?.objectPath ?? null;
             }}
             isUploading={upload.isUploading}
+          />
+        </Section>
+
+        {/* Announcement banner */}
+        <Section icon={<Megaphone className="h-4 w-4" />} title="Announcement">
+          <p className="text-xs text-muted-foreground mb-2">
+            Show a dismissible banner at the top of your site — great for last-minute updates.
+          </p>
+          <Textarea
+            value={record.customText._announcement ?? ""}
+            onChange={(e) =>
+              update({ customText: { ...record.customText, _announcement: e.target.value } })
+            }
+            placeholder="e.g. Venue has changed — please check the Travel section for updated details."
+            className="text-sm resize-none"
+            rows={3}
+          />
+        </Section>
+
+        {/* RSVP responses */}
+        <Section icon={<Users className="h-4 w-4" />} title="RSVP Responses">
+          <RsvpResponsesPanel enabled={record.sectionsEnabled.rsvp ?? false} />
+          {record.sectionsEnabled.rsvp && (
+            <div className="mt-3 space-y-2">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">RSVP deadline (shown to guests)</Label>
+                <Input
+                  value={record.customText.rsvp_deadline ?? ""}
+                  onChange={(e) =>
+                    update({ customText: { ...record.customText, rsvp_deadline: e.target.value } })
+                  }
+                  placeholder="e.g. October 1, 2025"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Thank-you message (shown after submit)</Label>
+                <Input
+                  value={record.customText.rsvp_thankyou ?? ""}
+                  onChange={(e) =>
+                    update({ customText: { ...record.customText, rsvp_thankyou: e.target.value } })
+                  }
+                  placeholder="We'll send you more details closer to the day."
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+          )}
+        </Section>
+
+        {/* Website URL */}
+        <Section icon={<Link2 className="h-4 w-4" />} title="Website URL">
+          <SlugEditor
+            slug={record.slug}
+            published={record.published}
+            onSaved={(newSlug, lastUpdated) =>
+              setRecord((prev) => prev ? { ...prev, slug: newSlug, lastUpdated } : prev)
+            }
           />
         </Section>
 
@@ -727,6 +811,310 @@ export default function WebsiteEditor() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ---- rsvp responses panel ----
+
+interface RsvpEntry {
+  id: number;
+  name: string;
+  email: string | null;
+  attending: string;
+  plusOneCount: number;
+  dietaryRestrictions: string | null;
+  message: string | null;
+  submittedAt: string;
+}
+
+function RsvpResponsesPanel({ enabled }: { enabled: boolean }) {
+  const { data, isLoading, refetch } = useQuery<{
+    rsvps: RsvpEntry[];
+    summary: { yes: number; no: number; maybe: number; totalGuests: number };
+  }>({
+    queryKey: ["website-rsvps"],
+    queryFn: async () => {
+      const r = await authFetch("/api/website/rsvps");
+      if (!r.ok) throw new Error("Failed");
+      return r.json();
+    },
+    enabled,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+
+  if (!enabled) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Enable the RSVP section above to start collecting responses.
+      </p>
+    );
+  }
+
+  if (isLoading) {
+    return <div className="h-10 bg-muted animate-pulse rounded" />;
+  }
+
+  const summary = data?.summary;
+  const rsvps = data?.rsvps ?? [];
+
+  return (
+    <div className="space-y-3">
+      {summary && (
+        <div className="grid grid-cols-3 gap-2 text-center">
+          {[
+            { label: "Attending", value: summary.yes, color: "text-emerald-600" },
+            { label: "Declined", value: summary.no, color: "text-red-500" },
+            { label: "Maybe", value: summary.maybe, color: "text-amber-500" },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="rounded-lg border bg-muted/20 p-2">
+              <div className={`text-xl font-bold ${color}`}>{value}</div>
+              <div className="text-[10px] text-muted-foreground">{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {summary && summary.yes > 0 && (
+        <p className="text-xs text-muted-foreground text-center">
+          {summary.totalGuests} total guests (incl. +1s)
+        </p>
+      )}
+      {rsvps.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-2 text-center">No RSVPs yet.</p>
+      ) : (
+        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+          {rsvps.map((r) => (
+            <div key={r.id} className="rounded-md border border-border p-2.5 text-xs space-y-1 bg-card">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium truncate">{r.name}</span>
+                <span className={`flex-shrink-0 font-medium ${r.attending === "yes" ? "text-emerald-600" : r.attending === "no" ? "text-red-500" : "text-amber-500"}`}>
+                  {r.attending === "yes" ? "✓ Attending" : r.attending === "no" ? "✗ Declined" : "? Maybe"}
+                  {r.attending !== "no" && r.plusOneCount > 0 && ` +${r.plusOneCount}`}
+                </span>
+              </div>
+              {r.email && <p className="text-muted-foreground truncate">{r.email}</p>}
+              {r.dietaryRestrictions && <p className="text-muted-foreground">Diet: {r.dietaryRestrictions}</p>}
+              {r.message && <p className="italic text-muted-foreground line-clamp-2">"{r.message}"</p>}
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" className="flex-1" onClick={() => void refetch()}>
+          Refresh
+        </Button>
+        {rsvps.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              const headers = ["Name", "Email", "Attending", "+1s", "Dietary", "Message", "Submitted"];
+              const rows = rsvps.map((r) => [
+                r.name,
+                r.email ?? "",
+                r.attending,
+                String(r.plusOneCount),
+                r.dietaryRestrictions ?? "",
+                r.message ?? "",
+                new Date(r.submittedAt).toLocaleString(),
+              ]);
+              const csv = [headers, ...rows]
+                .map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+                .join("\n");
+              const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "rsvp-responses.csv";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            CSV
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---- slug editor ----
+
+function SlugEditor({
+  slug,
+  published,
+  onSaved,
+}: {
+  slug: string;
+  published: boolean;
+  onSaved: (newSlug: string, lastUpdated: string) => void;
+}) {
+  const { toast } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [input, setInput] = useState(slug);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sanitize = (v: string) =>
+    v.toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/^-+|-+$/, "").replace(/-{2,}/g, "-").slice(0, 60);
+
+  const save = async () => {
+    const clean = sanitize(input);
+    if (clean.length < 3) { setError("At least 3 characters required"); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      const r = await authFetch("/api/website/slug", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: clean }),
+      });
+      const body = await r.json() as { slug?: string; lastUpdated?: string; error?: string };
+      if (!r.ok) { setError(body.error ?? "Failed to update URL"); return; }
+      onSaved(body.slug!, body.lastUpdated!);
+      setEditing(false);
+      toast({ title: "Website URL updated!" });
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">Customize the public URL for your site.</p>
+      {published && (
+        <p className="text-[11px] text-amber-600 dark:text-amber-400">
+          Changing the URL will break any previously shared links.
+        </p>
+      )}
+      {editing ? (
+        <div className="space-y-2">
+          <p className="text-[10px] text-muted-foreground font-mono">{window.location.origin}/w/</p>
+          <input
+            value={input}
+            onChange={(e) => { setInput(sanitize(e.target.value)); setError(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter") void save(); if (e.key === "Escape") { setEditing(false); setInput(slug); setError(null); } }}
+            placeholder="your-url-slug"
+            autoFocus
+            className="w-full h-8 px-3 rounded-md border border-border bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => void save()}
+              disabled={saving || sanitize(input).length < 3}
+              className="flex-1"
+            >
+              {saving ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Saving</> : "Save URL"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { setEditing(false); setInput(slug); setError(null); }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-mono text-muted-foreground truncate">/w/{slug}</span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs flex-shrink-0"
+            onClick={() => { setEditing(true); setInput(slug); }}
+          >
+            Edit URL
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- registry links editor ----
+
+const REGISTRY_PRESETS = [
+  "Amazon Wishlist",
+  "Zola",
+  "Crate & Barrel",
+  "Williams-Sonoma",
+  "Target",
+  "Bed Bath & Beyond",
+  "Pottery Barn",
+  "Honeymoon Fund",
+];
+
+function RegistryLinksEditor({
+  links,
+  onChange,
+}: {
+  links: RegistryLink[];
+  onChange: (next: RegistryLink[]) => void;
+}) {
+  const add = () => onChange([...links, { name: "", url: "" }]);
+  const remove = (i: number) => onChange(links.filter((_, idx) => idx !== i));
+  const update = (i: number, patch: Partial<RegistryLink>) =>
+    onChange(links.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+
+  return (
+    <div className="space-y-3">
+      {links.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          Add clickable buttons to your registry pages — Amazon, Zola, or any custom URL.
+        </p>
+      )}
+      {links.map((link, i) => (
+        <div key={i} className="rounded-md border border-border p-3 space-y-2 bg-muted/20">
+          <div className="flex items-center gap-2">
+            <select
+              className="flex-1 h-8 rounded-md border border-border bg-background px-2 text-xs"
+              value={REGISTRY_PRESETS.includes(link.name) ? link.name : "__custom__"}
+              onChange={(e) => {
+                if (e.target.value !== "__custom__") update(i, { name: e.target.value });
+              }}
+            >
+              {REGISTRY_PRESETS.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+              <option value="__custom__">Custom name…</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              aria-label="Remove registry"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {!REGISTRY_PRESETS.includes(link.name) && (
+            <Input
+              value={link.name}
+              onChange={(e) => update(i, { name: e.target.value })}
+              placeholder="Registry name"
+              className="h-8 text-xs"
+            />
+          )}
+          <Input
+            value={link.url}
+            onChange={(e) => update(i, { url: e.target.value })}
+            placeholder="https://registry.example.com/..."
+            className="h-8 text-xs font-mono"
+            type="url"
+          />
+        </div>
+      ))}
+      <Button size="sm" variant="outline" onClick={add} className="w-full" disabled={links.length >= 8}>
+        <Plus className="h-3.5 w-3.5 mr-1.5" /> Add registry
+      </Button>
     </div>
   );
 }
