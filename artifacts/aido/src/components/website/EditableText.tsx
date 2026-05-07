@@ -208,15 +208,25 @@ export function EditableText({
     dragState.current = null;
     setIsDragging(false);
     if (wasTap) ref.current?.focus();
-    // Drop-on-trash: if a drag ended over an element marked data-aido-trash
-    // and this element is deletable, fire onDelete instead of leaving it at
-    // its dropped position. The editor restores via Undo.
+    // Drop-on-trash: if a drag ended over the trash zone, fire onDelete
+    // instead of leaving the element at its dropped position. We compare
+    // against the trash zone's bounding rect rather than using
+    // document.elementFromPoint(), because the dragged element has
+    // zIndex:100 and its translated box covers the trash zone — so
+    // elementFromPoint would return the dragged element itself, not the
+    // trash. Bounding-rect math sees through the overlap.
     if (wasDrag && onDelete) {
       emitEditableDrag("end");
       try {
-        const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-        if (el && el.closest('[data-aido-trash="true"]')) {
-          onDelete();
+        const trash = document.querySelector('[data-aido-trash="true"]') as HTMLElement | null;
+        if (trash) {
+          const r = trash.getBoundingClientRect();
+          // Tolerance: treat anything within ~24px of the chip as "on" it,
+          // so users don't have to land pixel-perfect on the small target.
+          const pad = 24;
+          const inside = e.clientX >= r.left - pad && e.clientX <= r.right + pad
+            && e.clientY >= r.top - pad && e.clientY <= r.bottom + pad;
+          if (inside) onDelete();
         }
       } catch { /* ignore */ }
     }
