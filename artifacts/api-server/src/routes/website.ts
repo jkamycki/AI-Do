@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps } from "@workspace/db";
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
-import { and, eq, ilike, desc } from "drizzle-orm";
+import { and, eq, ilike, desc, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile } from "../lib/workspaceAccess";
 
@@ -563,18 +563,53 @@ router.get("/website/rsvps", requireAuth, async (req, res) => {
       .limit(1);
     if (!site) return res.status(404).json({ error: "Website not created yet" });
 
-    const rsvps = await db
+    // Simple anonymous RSVPs (old flow)
+    const anonymousRsvps = await db
       .select()
       .from(websiteRsvps)
       .where(eq(websiteRsvps.websiteId, site.id))
       .orderBy(desc(websiteRsvps.submittedAt));
 
-    const yes = rsvps.filter((r) => r.attending === "yes");
-    const no = rsvps.filter((r) => r.attending === "no");
-    const maybe = rsvps.filter((r) => r.attending === "maybe");
+    // Guest-list RSVPs: guests who replied via the name-search flow
+    const guestListRsvps = await db
+      .select({
+        id: guests.id,
+        name: guests.name,
+        email: guests.email,
+        rsvpStatus: guests.rsvpStatus,
+        plusOne: guests.plusOne,
+        dietaryNotes: guests.dietaryNotes,
+        createdAt: guests.createdAt,
+      })
+      .from(guests)
+      .where(and(eq(guests.profileId, profile.id), not(eq(guests.rsvpStatus, "pending"))));
+
+    // Normalise guest-list entries into the same shape as anonymous RSVPs
+    const guestEntries = guestListRsvps.map((g) => ({
+      id: -(g.id), // negative IDs to avoid collisions
+      name: g.name,
+      email: g.email ?? null,
+      attending: g.rsvpStatus === "attending" ? "yes" : g.rsvpStatus === "declined" ? "no" : "maybe",
+      plusOneCount: g.plusOne ? 1 : 0,
+      dietaryRestrictions: g.dietaryNotes ?? null,
+      message: null,
+      submittedAt: g.createdAt.toISOString(),
+      source: "guest_list" as const,
+    }));
+
+    const anonymousEntries = anonymousRsvps.map((r) => ({ ...r, source: "website" as const }));
+
+    const allRsvps = [
+      ...guestEntries,
+      ...anonymousEntries,
+    ].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+
+    const yes = allRsvps.filter((r) => r.attending === "yes");
+    const no = allRsvps.filter((r) => r.attending === "no");
+    const maybe = allRsvps.filter((r) => r.attending === "maybe");
     const totalGuests = yes.reduce((s, r) => s + 1 + r.plusOneCount, 0);
 
-    res.json({ rsvps, summary: { yes: yes.length, no: no.length, maybe: maybe.length, totalGuests } });
+    res.json({ rsvps: allRsvps, summary: { yes: yes.length, no: no.length, maybe: maybe.length, totalGuests } });
   } catch (err) {
     req.log.error(err, "getRsvps failed");
     res.status(500).json({ error: "Internal server error" });

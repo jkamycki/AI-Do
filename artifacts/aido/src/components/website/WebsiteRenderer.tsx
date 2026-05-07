@@ -566,21 +566,38 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           style={{ color: data.heroImage ? "#fff" : data.colorPalette.primary, fontFamily: elementFont(data, "_heroTagline") ? bodyFontStack(elementFont(data, "_heroTagline")!) : undefined }}
           {...tsp(ctx, "_heroTagline")}
         />
-        <h1 className="text-5xl sm:text-7xl md:text-8xl mb-6 leading-tight" style={{ fontFamily: fontStack(headingFont(data)) }}>
-          {couple}
-        </h1>
+        <EditableText
+          as="div"
+          editable={ctx.editable}
+          value={data.customText._coupleName ?? ""}
+          defaultValue={couple}
+          onCommit={(v) => ctx.onTextChange("_coupleName", v)}
+          className="text-5xl sm:text-7xl md:text-8xl mb-6 leading-tight"
+          style={{ fontFamily: fontStack(headingFont(data)), color: data.heroImage ? "#fff" : data.colorPalette.text }}
+          {...tsp(ctx, "_coupleName")}
+        />
         <div className="flex items-center justify-center gap-4 text-base sm:text-lg opacity-90">
           <Calendar className="h-5 w-5" />
-          <span>{dateStr}</span>
+          <EditableText
+            editable={ctx.editable}
+            value={data.customText._heroDate ?? ""}
+            defaultValue={dateStr}
+            onCommit={(v) => ctx.onTextChange("_heroDate", v)}
+            style={{ color: "inherit" }}
+            {...tsp(ctx, "_heroDate")}
+          />
         </div>
         {data.couple.venue && (
           <div className="flex items-center justify-center gap-2 mt-3 text-sm sm:text-base opacity-80">
             <MapPin className="h-4 w-4" />
-            <span>
-              {data.couple.venue}
-              {data.couple.venueCity && `, ${data.couple.venueCity}`}
-              {data.couple.venueState && `, ${data.couple.venueState}`}
-            </span>
+            <EditableText
+              editable={ctx.editable}
+              value={data.customText._heroVenue ?? ""}
+              defaultValue={[data.couple.venue, data.couple.venueCity, data.couple.venueState].filter(Boolean).join(", ")}
+              onCommit={(v) => ctx.onTextChange("_heroVenue", v)}
+              style={{ color: "inherit" }}
+              {...tsp(ctx, "_heroVenue")}
+            />
           </div>
         )}
         {data.couple.weddingDate && (
@@ -1093,7 +1110,16 @@ function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   return (
     <>
       <footer className="py-12 px-6 text-center" style={{ background: data.colorPalette.primary, color: "#fff" }}>
-        <div className="text-2xl mb-2" style={{ fontFamily: fontStack(headingFont(data)) }}>{couple}</div>
+        <EditableText
+          as="div"
+          editable={ctx.editable}
+          value={data.customText._footerCoupleName ?? ""}
+          defaultValue={couple}
+          onCommit={(v) => ctx.onTextChange("_footerCoupleName", v)}
+          className="text-2xl mb-2"
+          style={{ fontFamily: fontStack(headingFont(data)), color: "#fff" }}
+          {...tsp(ctx, "_footerCoupleName")}
+        />
         <EditableText
           as="div"
           editable={ctx.editable}
@@ -1303,8 +1329,10 @@ export function WebsiteRenderer({
       {show("weddingParty", data.sectionsEnabled.weddingParty) && <WeddingParty data={data} ctx={ctx} />}
       {show("faq", data.sectionsEnabled.faq) && <Faq data={data} ctx={ctx} />}
       {show("gallery", data.sectionsEnabled.gallery) && <Gallery data={data} ctx={ctx} />}
-      {(showAll || currentSection === "rsvp") && slug && (
-        <RsvpFlow data={data} slug={slug} password={password ?? undefined} />
+      {(showAll || currentSection === "rsvp") && (
+        slug
+          ? <RsvpFlow data={data} slug={slug} password={password ?? undefined} />
+          : <RsvpSection data={data} ctx={ctx} />
       )}
       <Footer data={data} ctx={ctx} />
     </div>
