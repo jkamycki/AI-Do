@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/react";
 import { useUpload } from "@workspace/object-storage-web";
 import { authFetch } from "@/lib/authFetch";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -93,6 +92,7 @@ export default function WebsiteEditor() {
   const [passwordInput, setPasswordInput] = useState("");
   const [lastAutosaved, setLastAutosaved] = useState<Date | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(260);
   const dragState = useRef<{ active: boolean; startX: number; startW: number }>({ active: false, startX: 0, startW: 260 });
   const previewRef = useRef<HTMLElement | null>(null);
@@ -471,12 +471,28 @@ export default function WebsiteEditor() {
             </Button>
           </div>
           {record.published && (
-            <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs">
-              <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-              <span className="truncate flex-1 font-mono">{publicUrl}</span>
-              <Button size="sm" variant="ghost" className="h-6 px-2" onClick={copyLink}>
-                {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-              </Button>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs">
+                <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <span className="truncate flex-1 font-mono">{publicUrl}</span>
+                <Button size="sm" variant="ghost" className="h-6 px-2" onClick={copyLink}>
+                  {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2"
+                  onClick={() => setQrOpen((v) => !v)}
+                  title={qrOpen ? "Hide QR code" : "Generate QR code"}
+                >
+                  <QrCode className="h-3 w-3" />
+                </Button>
+              </div>
+              {qrOpen && (
+                <div className="rounded-md border bg-background p-3">
+                  <QrCodeSection publicUrl={publicUrl} published={record.published} />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -754,11 +770,10 @@ export default function WebsiteEditor() {
           />
         </Section>
 
-        {/* RSVP responses */}
-        <Section icon={<Users className="h-4 w-4" />} title="RSVP Responses">
-          <RsvpResponsesPanel enabled={record.sectionsEnabled.rsvp ?? false} />
-          {record.sectionsEnabled.rsvp && (
-            <div className="mt-3 space-y-2">
+        {/* RSVP settings — responses are tracked in the portal, not here */}
+        {record.sectionsEnabled.rsvp && (
+          <Section icon={<Heart className="h-4 w-4" />} title="RSVP Settings">
+            <div className="space-y-2">
               <div>
                 <Label className="text-xs text-muted-foreground mb-1 block">RSVP deadline (shown to guests)</Label>
                 <Input
@@ -782,8 +797,8 @@ export default function WebsiteEditor() {
                 />
               </div>
             </div>
-          )}
-        </Section>
+          </Section>
+        )}
 
         {/* Website URL */}
         <Section icon={<Link2 className="h-4 w-4" />} title="Website URL">
@@ -794,11 +809,6 @@ export default function WebsiteEditor() {
               setRecord((prev) => prev ? { ...prev, slug: newSlug, lastUpdated } : prev)
             }
           />
-        </Section>
-
-        {/* QR Code */}
-        <Section icon={<QrCode className="h-4 w-4" />} title="QR Code for Invitations">
-          <QrCodeSection publicUrl={publicUrl} published={record.published} />
         </Section>
 
         {/* Password */}
@@ -898,137 +908,6 @@ export default function WebsiteEditor() {
   );
 }
 
-// ---- rsvp responses panel ----
-
-interface RsvpEntry {
-  id: number;
-  name: string;
-  email: string | null;
-  attending: string;
-  plusOneCount: number;
-  dietaryRestrictions: string | null;
-  message: string | null;
-  submittedAt: string;
-  source?: "guest_list" | "website";
-}
-
-function RsvpResponsesPanel({ enabled }: { enabled: boolean }) {
-  const { data, isLoading, refetch } = useQuery<{
-    rsvps: RsvpEntry[];
-    summary: { yes: number; no: number; maybe: number; totalGuests: number };
-  }>({
-    queryKey: ["website-rsvps"],
-    queryFn: async () => {
-      const r = await authFetch("/api/website/rsvps");
-      if (!r.ok) throw new Error("Failed");
-      return r.json();
-    },
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-  });
-
-  if (!enabled) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        Enable the RSVP section above to start collecting responses.
-      </p>
-    );
-  }
-
-  if (isLoading) {
-    return <div className="h-10 bg-muted animate-pulse rounded" />;
-  }
-
-  const summary = data?.summary;
-  const rsvps = data?.rsvps ?? [];
-
-  return (
-    <div className="space-y-3">
-      {summary && (
-        <div className="grid grid-cols-3 gap-2 text-center">
-          {[
-            { label: "Attending", value: summary.yes, color: "text-emerald-600" },
-            { label: "Declined", value: summary.no, color: "text-red-500" },
-            { label: "Maybe", value: summary.maybe, color: "text-amber-500" },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="rounded-lg border bg-muted/20 p-2">
-              <div className={`text-xl font-bold ${color}`}>{value}</div>
-              <div className="text-[10px] text-muted-foreground">{label}</div>
-            </div>
-          ))}
-        </div>
-      )}
-      {summary && summary.yes > 0 && (
-        <p className="text-xs text-muted-foreground text-center">
-          {summary.totalGuests} total guests (incl. +1s)
-        </p>
-      )}
-      {rsvps.length === 0 ? (
-        <p className="text-xs text-muted-foreground py-2 text-center">No RSVPs yet.</p>
-      ) : (
-        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-          {rsvps.map((r) => (
-            <div key={r.id} className="rounded-md border border-border p-2.5 text-xs space-y-1 bg-card">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="font-medium truncate">{r.name}</span>
-                  {r.source === "guest_list" && (
-                    <span className="flex-shrink-0 text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary font-medium">Guest list</span>
-                  )}
-                </div>
-                <span className={`flex-shrink-0 font-medium ${r.attending === "yes" ? "text-emerald-600" : r.attending === "no" ? "text-red-500" : "text-amber-500"}`}>
-                  {r.attending === "yes" ? "✓ Attending" : r.attending === "no" ? "✗ Declined" : "? Maybe"}
-                  {r.attending !== "no" && r.plusOneCount > 0 && ` +${r.plusOneCount}`}
-                </span>
-              </div>
-              {r.email && <p className="text-muted-foreground truncate">{r.email}</p>}
-              {r.dietaryRestrictions && <p className="text-muted-foreground">Diet: {r.dietaryRestrictions}</p>}
-              {r.message && <p className="italic text-muted-foreground line-clamp-2">"{r.message}"</p>}
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="flex gap-2">
-        <Button size="sm" variant="outline" className="flex-1" onClick={() => void refetch()}>
-          Refresh
-        </Button>
-        {rsvps.length > 0 && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="flex-1"
-            onClick={() => {
-              const headers = ["Name", "Email", "Attending", "+1s", "Dietary", "Message", "Source", "Submitted"];
-              const rows = rsvps.map((r) => [
-                r.name,
-                r.email ?? "",
-                r.attending === "yes" ? "Attending" : r.attending === "no" ? "Declined" : "Maybe",
-                String(r.plusOneCount),
-                r.dietaryRestrictions ?? "",
-                r.message ?? "",
-                r.source === "guest_list" ? "Guest List" : "Website Form",
-                new Date(r.submittedAt).toLocaleString(),
-              ]);
-              const csv = [headers, ...rows]
-                .map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
-                .join("\n");
-              const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "rsvp-responses.csv";
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-          >
-            <Download className="h-3.5 w-3.5 mr-1.5" />
-            CSV
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ---- slug editor ----
 
