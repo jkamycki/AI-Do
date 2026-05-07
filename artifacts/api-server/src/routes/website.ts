@@ -497,6 +497,98 @@ router.get("/website/preview/guests/:guestId", requireAuth, async (req, res) => 
   }
 });
 
+// POST /api/website/public/:slug/rsvp/self-add — guest is not on the list
+// but wants to RSVP anyway. Create a new guest record marked as self-added so
+// the couple can manually verify them in the portal, and record the RSVP in
+// the same shape as the existing flow above.
+router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
+  try {
+    const slug = String(req.params.slug ?? "").toLowerCase();
+    const password = req.body?.password ? String(req.body.password) : undefined;
+    const r = await resolvePublishedSite(slug, password);
+    if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
+
+    const {
+      name,
+      email,
+      attendance,
+      mealChoice,
+      plusOne,
+      plusOneName,
+      plusOneMealChoice,
+      dietaryRestrictions,
+      message,
+    } = (req.body ?? {}) as {
+      name?: string;
+      email?: string;
+      attendance?: string;
+      mealChoice?: string;
+      plusOne?: boolean;
+      plusOneName?: string;
+      plusOneMealChoice?: string;
+      dietaryRestrictions?: string;
+      message?: string;
+    };
+
+    const cleanName = typeof name === "string" ? name.trim() : "";
+    if (!cleanName) return res.status(400).json({ error: "Please enter your full name." });
+    if (cleanName.length > 120) return res.status(400).json({ error: "Name is too long." });
+    if (attendance !== "attending" && attendance !== "declined") {
+      return res.status(400).json({ error: "Please select Attending or Declined." });
+    }
+
+    const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ error: "Email address looks invalid." });
+    }
+
+    const normalizeMeal = (val: unknown): string | null => {
+      if (typeof val !== "string") return null;
+      const trimmed = val.trim().toLowerCase();
+      if (!trimmed || trimmed === "none" || trimmed === "no_preference") return null;
+      return val.trim();
+    };
+
+    const dietaryClean = typeof dietaryRestrictions === "string" && dietaryRestrictions.trim()
+      ? dietaryRestrictions.trim()
+      : null;
+
+    const messageClean = typeof message === "string" && message.trim()
+      ? message.trim().slice(0, 1000)
+      : "";
+
+    // Tag the row with a clear note so the couple knows this came from a
+    // self-add rather than the curated guest list.
+    const noteLines = [
+      "Self-added via RSVP page (verify before sending invites).",
+      messageClean ? `Message: ${messageClean}` : "",
+    ].filter(Boolean);
+
+    const isAttending = attendance === "attending";
+    const wantsPlusOne = isAttending && plusOne === true;
+    const cleanPlusOneName = typeof plusOneName === "string" ? plusOneName.trim() : "";
+
+    const [created] = await db.insert(guests).values({
+      profileId: r.site.profileId,
+      name: cleanName,
+      email: cleanEmail || null,
+      rsvpStatus: attendance,
+      mealChoice: isAttending ? normalizeMeal(mealChoice) : null,
+      dietaryNotes: dietaryClean,
+      plusOne: wantsPlusOne,
+      plusOneName: wantsPlusOne && cleanPlusOneName ? cleanPlusOneName : null,
+      plusOneMealChoice: wantsPlusOne ? normalizeMeal(plusOneMealChoice) : null,
+      notes: noteLines.join("\n") || null,
+      source: "rsvp_self_add",
+    }).returning();
+
+    res.json({ success: true, status: attendance, guestId: created.id });
+  } catch (err) {
+    req.log.error(err, "websiteRsvpSelfAdd failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // POST /api/website/public/:slug/rsvp — submit/update RSVP for a guest.
 // Same write semantics as POST /rsvp/:token but identifies the guest by
 // guestId (returned from the search endpoint) instead of a token.
