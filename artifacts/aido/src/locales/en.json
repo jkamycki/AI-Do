@@ -232,6 +232,8 @@
     "tile_checklist": "Checklist",
     "tile_timeline": "Timeline",
     "tile_guests": "Guests",
+    "total_invited": "Total invited",
+    "members": "members",
     "view_timeline": "View Timeline",
     "generate_timeline": "Generate Timeline",
     "manage_budget": "Manage Budget",

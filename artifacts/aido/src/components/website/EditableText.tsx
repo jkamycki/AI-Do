@@ -113,6 +113,13 @@ export function EditableText({
       if (toolbarRef.current && toolbarRef.current.contains(document.activeElement)) return;
       setShowToolbar(false);
       setAnchorRect(null);
+      // If this element is deletable (custom text box), an empty commit
+      // means the user cleared it — remove the whole box instead of
+      // leaving an empty placeholder behind.
+      if (onDelete && committedText === "") {
+        onDelete();
+        return;
+      }
       if (!onCommit) return;
       if (committedText === defaultValue.trim() || committedText === "") onCommit("");
       else onCommit(committedText);

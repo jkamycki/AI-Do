@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { weddingProfiles, timelines, budgets, checklistItems, guests, vendors } from "@workspace/db";
+import { weddingProfiles, timelines, budgets, checklistItems, guests, vendors, weddingParty } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
@@ -76,6 +76,12 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       pending: guestRows.filter(g => g.rsvpStatus === "pending").length + guestRows.filter(g => g.rsvpStatus === "pending" && g.plusOne).length,
     };
 
+    // Wedding party count is keyed by userId (not profileId) — same scope the
+    // /api/wedding-party route uses, so the dashboard tile and the page agree.
+    const weddingPartyCount = hasProfile
+      ? (await db.select({ id: weddingParty.id }).from(weddingParty).where(eq(weddingParty.userId, profiles[0].userId))).length
+      : 0;
+
     function parseMonthsFromLabel(label: string): number | null {
       const m = label.match(/(\d+)\s+month/i);
       if (m) return parseInt(m[1]);
@@ -131,6 +137,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       checklistTotal,
       guestCount,
       guestRsvpSummary,
+      weddingPartyCount,
       hasProfile,
       hasTimeline,
       hasChecklist,
