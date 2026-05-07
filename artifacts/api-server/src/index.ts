@@ -1,6 +1,35 @@
+import { readdir, readFile } from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { scheduleBackups } from "./lib/backup";
+import { pool } from "@workspace/db";
+
+// Run all SQL migration files from lib/db/migrations at startup.
+// Each file uses ADD COLUMN IF NOT EXISTS / CREATE TABLE IF NOT EXISTS so
+// they are safe to replay on every boot.
+async function runMigrations(): Promise<void> {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const migrationsDir = path.resolve(__dirname, "../../../lib/db/migrations");
+  let files: string[] = [];
+  try {
+    files = (await readdir(migrationsDir)).filter((f) => f.endsWith(".sql")).sort();
+  } catch {
+    logger.warn({ migrationsDir }, "Migrations directory not found — skipping");
+    return;
+  }
+  const client = await pool.connect();
+  try {
+    for (const file of files) {
+      const sql = await readFile(path.join(migrationsDir, file), "utf8");
+      await client.query(sql);
+      logger.info({ file }, "Migration applied");
+    }
+  } finally {
+    client.release();
+  }
+}
 
 const rawPort = process.env["PORT"];
 
@@ -16,25 +45,32 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const server = app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
+runMigrations()
+  .then(() => {
+    const server = app.listen(port, (err) => {
+      if (err) {
+        logger.error({ err }, "Error listening on port");
+        process.exit(1);
+      }
+
+      logger.info({ port }, "Server listening");
+
+      void disableClerkBreachedPasswordCheck();
+      scheduleBackups();
+
+      // SSE connections stay open for the duration of an AI response.
+      // Render (and most proxies) close idle TCP connections after ~75s by
+      // default, which cuts off long AI streams before the model finishes.
+      // Setting these above the longest expected AI response (90s client
+      // timeout in the frontend) ensures the socket stays alive.
+      server.keepAliveTimeout = 120_000;
+      server.headersTimeout = 125_000;
+    });
+  })
+  .catch((err) => {
+    logger.error({ err }, "Migration failed — refusing to start");
     process.exit(1);
-  }
-
-  logger.info({ port }, "Server listening");
-
-  void disableClerkBreachedPasswordCheck();
-  scheduleBackups();
-});
-
-// SSE connections stay open for the duration of an AI response.
-// Render (and most proxies) close idle TCP connections after ~75s by
-// default, which cuts off long AI streams before the model finishes.
-// Setting these above the longest expected AI response (90s client
-// timeout in the frontend) ensures the socket stays alive.
-server.keepAliveTimeout = 120_000;
-server.headersTimeout = 125_000;
+  });
 
 async function disableClerkBreachedPasswordCheck(): Promise<void> {
   const secretKey = process.env["CLERK_SECRET_KEY"];
