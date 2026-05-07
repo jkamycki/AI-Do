@@ -60,7 +60,19 @@ router.post("/timeline", requireAuth, async (req, res) => {
     const { dayVision } = req.body as { dayVision?: string };
 
     const lang = profile.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
-    const langInstruction = lang ? `\n\nIMPORTANT: Write all event titles and descriptions in ${lang}.` : "";
+    // Important: tell the model to keep JSON structural fields (keys + the
+    // category enum + time format) in English while only translating the
+    // human-readable strings (title, description, location, notes). Small
+    // models otherwise translate the JSON keys (e.g. "título" instead of
+    // "title") which breaks our parser.
+    const langInstruction = lang
+      ? `\n\nLANGUAGE RULE — CRITICAL:
+- Translate ONLY the values of "title", "description", "location", and "notes" into ${lang}.
+- The JSON keys (id, startTime, endTime, title, description, category, location, notes) MUST stay in English.
+- The "category" value MUST stay in English from the allowed list (preparation, ceremony, cocktail, reception, photos, vendors, travel, dancing, other).
+- Times must remain in 24-hour HH:MM format.
+- Do NOT include any text outside the JSON array. Output ONLY the array.`
+      : "";
 
     const prompt = `Create a detailed wedding day timeline for the following wedding:
 - Couple: ${profile.partner1Name} & ${profile.partner2Name}
@@ -109,13 +121,28 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
     }, { signal: AbortSignal.timeout(90_000) });
 
     const content = completion.choices[0]?.message?.content ?? "[]";
-    let events: Array<{ time: string; title: string; description: string; category: string }>;
+    let events: Array<{ time: string; title: string; description: string; category: string }> = [];
 
     try {
+      // Strip common preamble/postamble text the model adds in non-English
+      // responses ("Aquí tienes el cronograma:..."). We greedy-match the
+      // outermost array.
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       events = JSON.parse(jsonMatch ? jsonMatch[0] : content);
-    } catch {
+      if (!Array.isArray(events)) events = [];
+    } catch (parseErr) {
+      req.log.warn({ err: String(parseErr), preview: content.slice(0, 500) }, "Timeline JSON parse failed");
       events = [];
+    }
+
+    if (events.length === 0) {
+      // The AI returned nothing usable. Surface a clear error rather than
+      // silently saving an empty timeline (which the user described seeing
+      // when generating in Spanish).
+      res.status(502).json({
+        error: "Aria couldn't generate a timeline this time. Please try again — if it keeps failing, try a shorter day vision.",
+      });
+      return;
     }
 
     // Replace any existing timelines for this profile so regenerate doesn't pile up duplicate rows.
