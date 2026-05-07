@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { weddingProfiles, timelines, budgets, checklistItems, guests, vendors, weddingParty, seatingCharts } from "@workspace/db";
+import { weddingProfiles, timelines, budgets, checklistItems, guests, vendors, weddingParty, weddingWebsites } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
@@ -82,34 +82,14 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       ? (await db.select({ id: weddingParty.id }).from(weddingParty).where(eq(weddingParty.userId, profiles[0].userId))).length
       : 0;
 
-    // Seating summary — most recent chart for the workspace (if any) plus how
-    // many attending guests already have a tableAssignment. The dashboard tile
-    // shows "X / Y seated" + table count, so couples can see at a glance how
-    // many people they still have to place.
-    const attendingRows = guestRows.filter((g) => g.rsvpStatus === "attending");
-    const attendingGuestCount = attendingRows.length;
-    const seatedAttendingCount = attendingRows.filter((g) => !!g.tableAssignment && g.tableAssignment.trim() !== "").length;
-    const [latestChart] = hasProfile
-      ? await db
-          .select({
-            id: seatingCharts.id,
-            tableCount: seatingCharts.tableCount,
-            seatsPerTable: seatingCharts.seatsPerTable,
-            updatedAt: seatingCharts.updatedAt,
-          })
-          .from(seatingCharts)
-          .where(eq(seatingCharts.profileId, profileId))
-          .orderBy(desc(seatingCharts.updatedAt))
-          .limit(1)
+    // Has the couple created their guest-facing wedding website yet? Used to
+    // append a "Create your wedding website" nudge as the final item in the
+    // dashboard's "Needs attention" box.
+    const websiteRows = hasProfile
+      ? await db.select({ id: weddingWebsites.id, published: weddingWebsites.published }).from(weddingWebsites).where(eq(weddingWebsites.profileId, profileId)).limit(1)
       : [];
-    const seatingSummary = {
-      hasChart: !!latestChart,
-      tableCount: latestChart?.tableCount ?? 0,
-      seatsPerTable: latestChart?.seatsPerTable ?? 0,
-      seatedAttendingCount,
-      attendingGuestCount,
-      lastUpdatedAt: latestChart?.updatedAt?.toISOString() ?? null,
-    };
+    const hasWebsite = websiteRows.length > 0;
+    const websitePublished = !!websiteRows[0]?.published;
 
     function parseMonthsFromLabel(label: string): number | null {
       const m = label.match(/(\d+)\s+month/i);
@@ -167,7 +147,8 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       guestCount,
       guestRsvpSummary,
       weddingPartyCount,
-      seatingSummary,
+      hasWebsite,
+      websitePublished,
       hasProfile,
       hasTimeline,
       hasChecklist,

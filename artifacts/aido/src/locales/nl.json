@@ -175,13 +175,8 @@
     "reception_at": "Receptie {{time}}",
     "days_to_go_count": "{{n}} dagen te gaan",
     "more_count": "+{{n}} meer",
-    "tile_seating": "Tafelschikking",
-    "seated": "geplaatst",
-    "tables": "tafels",
-    "seats_each": "plaatsen per tafel",
-    "seating_unseated": "{{count}} gasten hebben nog geen plek",
-    "no_seating_yet": "Nog geen tafelschikking.",
-    "generate_seating": "Tafelschikking genereren"
+    "nudge_create_website": "Maak je trouwwebsite",
+    "nudge_create_website_when": "Laatste stap"
   },
   "profile": {
     "title": "Huwelijksprofiel",
@@ -587,12 +582,7 @@
     "arranging": "Indelen…",
     "unassigned": "Niet-toegewezen gasten",
     "no_tables_title": "Nog geen tafels",
-    "no_tables_desc": "Voeg tafels toe en sleep gasten om ze te plaatsen.",
-    "export_pdf": "PDF exporteren",
-    "exporting_pdf": "Exporteren…",
-    "export_pdf_title": "Download een printbaar PDF van alle tafels",
-    "pdf_saved": "Tafelschikking-PDF opgeslagen",
-    "pdf_failed": "PDF-export mislukt"
+    "no_tables_desc": "Voeg tafels toe en sleep gasten om ze te plaatsen."
   },
   "help": {
     "title": "Help & ondersteuning",
