@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2 } from "lucide-react";
 import { EditableText } from "./EditableText";
+import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch } from "@/lib/authFetch";
 
 // camelCase section id <-> kebab-case URL slug
@@ -1162,7 +1163,8 @@ function TopNav({
   if (data.sectionsEnabled.weddingParty) items.push({ id: "weddingParty", label: "Wedding Party" });
   if (data.sectionsEnabled.gallery) items.push({ id: "gallery", label: "Gallery" });
   if (data.sectionsEnabled.faq) items.push({ id: "faq", label: "FAQ" });
-  if (data.sectionsEnabled.rsvp) items.push({ id: "rsvp", label: "RSVP" });
+  // RSVP is always available — it's the whole point of the site for guests.
+  items.push({ id: "rsvp", label: "RSVP" });
 
   // Anchor-scroll mode (used by editor preview): track the visible section
   // with IntersectionObserver to underline the right item.
@@ -1203,7 +1205,7 @@ function TopNav({
       fontFamily: fontStack(headingFont(data)),
       fontWeight: 600,
     };
-    if (pageMode && slug) {
+    if (slug) {
       const seg = urlSegmentForSection(it.id);
       const href = seg ? `/w/${slug}/${seg}` : `/w/${slug}`;
       return (
@@ -1219,7 +1221,7 @@ function TopNav({
     );
   };
 
-  const homeHref = pageMode && slug ? `/w/${slug}` : undefined;
+  const homeHref = slug ? `/w/${slug}` : undefined;
 
   return (
     <nav
@@ -1262,6 +1264,7 @@ export function WebsiteRenderer({
   onTextChange,
   currentSection,
   slug,
+  password,
 }: {
   data: WebsiteRendererPayload;
   scrollContainer?: HTMLElement | null;
@@ -1273,6 +1276,10 @@ export function WebsiteRenderer({
   currentSection?: string;
   // Slug for building per-section URLs in TopNav links.
   slug?: string;
+  // Optional password to forward to the RSVP API (the public guest endpoint
+  // is password-gated; if a guest already entered the password to view the
+  // site, we re-use it for RSVP search/submit).
+  password?: string | null;
 }) {
   const ctx: EditCtx = editable && onTextChange
     ? { editable: true, onTextChange }
@@ -1301,7 +1308,9 @@ export function WebsiteRenderer({
       {show("weddingParty", data.sectionsEnabled.weddingParty) && <WeddingParty data={data} ctx={ctx} />}
       {show("faq", data.sectionsEnabled.faq) && <Faq data={data} ctx={ctx} />}
       {show("gallery", data.sectionsEnabled.gallery) && <Gallery data={data} ctx={ctx} />}
-      {show("rsvp", data.sectionsEnabled.rsvp ?? false) && <RsvpSection data={data} ctx={ctx} />}
+      {(showAll || currentSection === "rsvp") && slug && (
+        <RsvpFlow data={data} slug={slug} password={password ?? undefined} />
+      )}
       <Footer data={data} ctx={ctx} />
     </div>
   );

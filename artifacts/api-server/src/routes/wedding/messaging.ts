@@ -295,6 +295,9 @@ router.post("/messaging/conversations/:id/suggest-reply", requireAuth, async (re
       ? `Couple: ${profile.partner1Name} & ${profile.partner2Name}\nWedding date: ${profile.weddingDate}\nVenue: ${profile.venue}, ${profile.location}\nGuest count: ${profile.guestCount}`
       : "";
 
+    const lang = profile?.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
+    const langInstruction = lang ? `\n\nIMPORTANT: Write the entire reply in ${lang}.` : "";
+
     const prompt = `You are drafting a reply on behalf of a couple to their wedding ${vendor?.category ?? "vendor"} "${vendor?.name ?? ""}".
 
 ${ctx}
@@ -302,7 +305,7 @@ ${ctx}
 Recent conversation (oldest first):
 ${transcript || "(no messages yet)"}
 
-Write a friendly, professional reply the couple can send. Keep it concise (2-4 short paragraphs). Do NOT include a subject line, do NOT include greeting placeholders like [Vendor Name] — use the actual name. End with the couple's first names. Return ONLY the message body, no JSON, no markdown.`;
+Write a friendly, professional reply the couple can send. Keep it concise (2-4 short paragraphs). Do NOT include a subject line, do NOT include greeting placeholders like [Vendor Name] — use the actual name. End with the couple's first names. Return ONLY the message body, no JSON, no markdown.${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
       model: getModel(),

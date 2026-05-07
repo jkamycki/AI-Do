@@ -2,12 +2,18 @@ import { Router } from "express";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
+import { resolveProfile } from "../../lib/workspaceAccess";
 
 const router = Router();
 
 router.post("/dayof/emergency", requireAuth, async (req, res) => {
   try {
     const { situation } = req.body;
+    const profile = await resolveProfile(req);
+    const lang = profile?.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
+    const langInstruction = lang
+      ? `\n\nLANGUAGE: Translate the values of "advice" and the "steps" array into ${lang}. Keep JSON keys ("advice", "steps") in English.`
+      : "";
 
     const prompt = `You are an experienced wedding coordinator helping a couple on their wedding day. They have encountered an emergency situation and need immediate, calm, practical advice.
 
@@ -21,7 +27,7 @@ Return ONLY valid JSON (no markdown) with this structure:
   "steps": ["Step 1 action", "Step 2 action", "Step 3 action", "Step 4 action"]
 }
 
-The steps should be concrete, actionable, and prioritized. Include 3-6 steps.`;
+The steps should be concrete, actionable, and prioritized. Include 3-6 steps.${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
