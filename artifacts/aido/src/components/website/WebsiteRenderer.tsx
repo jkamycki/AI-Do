@@ -1205,7 +1205,7 @@ function TopNav({
       fontFamily: fontStack(headingFont(data)),
       fontWeight: 600,
     };
-    if (pageMode && slug) {
+    if (slug) {
       const seg = urlSegmentForSection(it.id);
       const href = seg ? `/w/${slug}/${seg}` : `/w/${slug}`;
       return (
@@ -1221,7 +1221,7 @@ function TopNav({
     );
   };
 
-  const homeHref = pageMode && slug ? `/w/${slug}` : undefined;
+  const homeHref = slug ? `/w/${slug}` : undefined;
 
   return (
     <nav

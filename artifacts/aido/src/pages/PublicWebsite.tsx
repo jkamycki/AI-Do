@@ -72,7 +72,9 @@ export default function PublicWebsite() {
   const [matchedSection, sectionParams] = useRoute("/w/:slug/:section");
   const slug = (matchedSection ? sectionParams?.slug : slugParams?.slug) ?? "";
   const sectionSeg = matchedSection ? sectionParams?.section : undefined;
-  const currentSection = sectionFromUrlSegment(sectionSeg);
+  // Only set when a specific section is in the URL. Undefined on the home
+  // page so the full scrollable site is shown.
+  const currentSection = matchedSection ? sectionFromUrlSegment(sectionSeg) : undefined;
   // Reference matchedSlug to suppress unused-var warning while keeping it
   // available for future use.
   void matchedSlug;
@@ -199,10 +201,10 @@ export default function PublicWebsite() {
     );
   }
 
-  // Scroll to top on section navigation so each "page" feels distinct.
+  // Scroll to top whenever the section changes.
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [currentSection]);
+  }, [sectionSeg]);
 
   return <WebsiteRenderer data={data} currentSection={currentSection} slug={slug} password={password} />;
 }
