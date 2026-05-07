@@ -211,16 +211,18 @@ export function EditableText({
   const handleResizePointerUp = () => { resizeState.current = null; };
 
   const hasOffset = position && (position.x !== 0 || position.y !== 0);
-  // Visibly-empty element: NEVER show the dashed outline or hover/resize/×
-  // chrome — even when the toolbar is open. The earlier rule kept chrome on
-  // while focused, which left a giant blue rectangle on the hero whenever a
-  // user cleared a non-deletable text element. The contenteditable cursor
-  // still blinks for active editing, but no big rectangle appears.
+  // Visibly-empty element: don't render a Wrap, ever. The earlier "preserve
+  // while toolbar open" carveout still left a thin focus rectangle visible
+  // during editing because:
+  //   1. .editable-text:focus has `outline: 2px solid !important` in CSS, and
+  //   2. the inner Tag has minWidth:"1em", so an empty contenteditable still
+  //      occupies 1em x line-height (huge on a text-7xl couple-name).
+  // Hiding the Wrap unconditionally collapses the focused contenteditable
+  // (display:none triggers blur), the toolbar closes via the blur path, and
+  // there's nothing for the focus ring to paint around.
   const isVisiblyEmpty = (display ?? "").trim() === "";
   const showControls = (hovered || showToolbar || isDragging) && !isVisiblyEmpty;
-  if (isVisiblyEmpty && !showToolbar) {
-    // Render an invisible 0-width anchor so the parent layout doesn't collapse
-    // unpredictably and so React's keyed reconciliation stays stable.
+  if (isVisiblyEmpty) {
     return <Wrap aria-hidden="true" style={{ display: "none" }} />;
   }
 
