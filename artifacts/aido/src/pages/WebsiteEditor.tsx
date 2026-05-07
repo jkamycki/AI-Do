@@ -421,7 +421,7 @@ export default function WebsiteEditor() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] -m-6 lg:-m-8">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] md:h-screen">
       {/* Sidebar */}
       <aside
         className="w-full lg:flex-shrink-0 border-r bg-background overflow-y-auto"

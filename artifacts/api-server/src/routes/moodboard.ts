@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { openai, getModel, getVisionModel } from "@workspace/integrations-openai-ai-server";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { resolveProfile } from "../lib/workspaceAccess";
 
 const router = Router();
 const storage = new ObjectStorageService();
@@ -179,6 +180,10 @@ router.post("/mood-board/generate-summary", requireAuth, async (req, res) => {
       return res.json({ summary: "Add some images to your mood board to generate your style summary." });
     }
 
+    const profile = await resolveProfile(req);
+    const lang = profile?.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
+    const langInstruction = lang ? `\n\nIMPORTANT: Write the summary entirely in ${lang}.` : "";
+
     const prompt = `Based on a couple's wedding mood board, write a 1-2 sentence style summary that captures their aesthetic in a warm, personal way.
 
 Style keywords: ${[...new Set(allKeywords)].slice(0, 10).join(", ") || "none yet"}
@@ -187,7 +192,7 @@ Floral styles: ${[...new Set(allFloralStyles)].slice(0, 3).join(", ") || "not sp
 Venue vibes: ${[...new Set(allVenueVibes)].slice(0, 3).join(", ") || "not specified"}
 Color palette: ${colors.slice(0, 6).join(", ") || "not specified"}
 
-Write in second person ("Your wedding style is..."). Be specific, evocative, and positive. Under 50 words.`;
+Write in second person ("Your wedding style is..."). Be specific, evocative, and positive. Under 50 words.${langInstruction}`;
 
     const response = await openai.chat.completions.create({
       model: getModel(),

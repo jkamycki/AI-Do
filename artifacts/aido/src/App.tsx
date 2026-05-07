@@ -1091,7 +1091,7 @@ function HomeRedirect() {
   return <Landing />;
 }
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+function ProtectedRoute({ component: Component, fullWidth = false }: { component: React.ComponentType; fullWidth?: boolean }) {
   const { isLoaded, isSignedIn } = useAuth();
   useInactivityLogout();
 
@@ -1108,7 +1108,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   }
 
   return (
-    <AppLayout>
+    <AppLayout fullWidth={fullWidth}>
       <Component />
     </AppLayout>
   );
@@ -1403,7 +1403,7 @@ function Router() {
       <Route path="/contracts" component={() => <ProtectedRoute component={Contracts} />} />
       <Route path="/mood-board" component={() => <ProtectedRoute component={MoodBoard} />} />
       <Route path="/aria" component={() => <ProtectedRoute component={Aria} />} />
-      <Route path="/website-editor" component={() => <ProtectedRoute component={WebsiteEditor} />} />
+      <Route path="/website-editor" component={() => <ProtectedRoute component={WebsiteEditor} fullWidth />} />
       <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} />} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />

@@ -146,6 +146,11 @@ router.post("/budget", requireAuth, async (req, res) => {
 router.post("/budget/predict", requireAuth, async (req, res) => {
   try {
     const { location, guestCount, weddingVibe } = req.body;
+    const profile = await resolveProfile(req);
+    const lang = profile?.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
+    const langInstruction = lang
+      ? `\n\nLANGUAGE: Translate ONLY the "notes" field values and the "aiSuggestions" string into ${lang}. JSON keys, the "category" enum names, and numeric values must stay in English.`
+      : "";
 
     const prompt = `Estimate the wedding budget breakdown for a ${weddingVibe} wedding in ${location} with ${guestCount} guests.
 
@@ -164,7 +169,7 @@ Return ONLY valid JSON (no markdown) with this structure:
   "aiSuggestions": "3-4 sentences of practical advice for this specific wedding budget and location"
 }
 
-Include these categories: Venue, Catering & Bar, Photography, Videography, Florals & Decor, Music/DJ/Band, Wedding Cake, Attire & Beauty, Invitations & Stationery, Transportation, Officiant, Favors & Gifts, Honeymoon Fund, Miscellaneous/Emergency Fund.`;
+Include these categories: Venue, Catering & Bar, Photography, Videography, Florals & Decor, Music/DJ/Band, Wedding Cake, Attire & Beauty, Invitations & Stationery, Transportation, Officiant, Favors & Gifts, Honeymoon Fund, Miscellaneous/Emergency Fund.${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
