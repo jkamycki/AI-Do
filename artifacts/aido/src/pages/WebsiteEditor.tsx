@@ -86,6 +86,7 @@ export default function WebsiteEditor() {
   const [passwordInput, setPasswordInput] = useState("");
   const [lastAutosaved, setLastAutosaved] = useState<Date | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewSection, setPreviewSection] = useState<string>("home");
   const [qrOpen, setQrOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings">("design");
   const inTab = (t: typeof activeTab) => activeTab === t;
@@ -515,7 +516,10 @@ export default function WebsiteEditor() {
         <div className="p-5 border-b sticky top-0 bg-background z-10">
           <div className="flex items-center justify-between gap-2 mb-3">
             <h2 className="text-xl font-serif font-bold">Website Editor</h2>
-            <Badge variant={record.published ? "default" : "secondary"}>
+            <Badge
+              variant={record.published ? "default" : "destructive"}
+              className={record.published ? undefined : "bg-red-600 hover:bg-red-600 text-white"}
+            >
               {record.published ? "Live" : "Draft"}
             </Badge>
           </div>
@@ -543,7 +547,7 @@ export default function WebsiteEditor() {
               {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Globe className="h-3.5 w-3.5 mr-1.5" />}
               {record.published ? "Unpublish" : "Publish"}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setPreviewOpen(true)}>
+            <Button size="sm" variant="outline" onClick={() => { setPreviewSection("home"); setPreviewOpen(true); }}>
               <Eye className="h-3.5 w-3.5 mr-1.5" />
               Guest Preview
             </Button>
@@ -723,6 +727,7 @@ export default function WebsiteEditor() {
                 <option value="slideshow">Slideshow (cycle photos)</option>
                 <option value="kenburns">Ken Burns (slow zoom)</option>
                 <option value="pan-lr">Pan left-to-right</option>
+                <option value="marquee">Marquee (continuous scroll)</option>
               </select>
             </div>
             <div>
@@ -1074,7 +1079,10 @@ export default function WebsiteEditor() {
           <div className="sticky top-3 right-0 z-[10000] flex justify-end px-4 pointer-events-none">
             <div className="flex items-center gap-2 pointer-events-auto bg-background/90 backdrop-blur border border-border rounded-full px-3 py-1.5 shadow-lg">
               <span className="text-xs text-muted-foreground font-medium">Guest Preview</span>
-              <Badge variant={record.published ? "default" : "secondary"} className="text-[10px] py-0 px-1.5">
+              <Badge
+                variant={record.published ? "default" : "destructive"}
+                className={record.published ? "text-[10px] py-0 px-1.5" : "text-[10px] py-0 px-1.5 bg-red-600 hover:bg-red-600 text-white"}
+              >
                 {record.published ? "Live" : "Draft"}
               </Badge>
               <div className="w-px h-4 bg-border" />
@@ -1113,6 +1121,8 @@ export default function WebsiteEditor() {
             slug={record.slug ?? ""}
             previewMode
             scrollContainer={overlayEl}
+            currentSection={previewSection}
+            onSectionChange={setPreviewSection}
           />
         </div>
       )}

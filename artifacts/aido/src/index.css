@@ -43,6 +43,10 @@
   50%  { transform: scale(1.18) translateX(3%); }
   100% { transform: scale(1.18) translateX(-3%); }
 }
+@keyframes wsa-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
 
 @custom-variant dark (&:is(.dark *));
 
