@@ -63,7 +63,8 @@
     "help": "Ayuda y Soporte",
     "planning": "Planificación",
     "mood_board": "Tablero de Ideas",
-    "admin": "Centro de Operaciones"
+    "admin": "Centro de Operaciones",
+    "website": "Sitio web de boda"
   },
   "settings": {
     "title": "Ajustes",
@@ -243,7 +244,9 @@
     "ceremony_at": "Ceremonia {{time}}",
     "reception_at": "Recepción {{time}}",
     "days_to_go_count": "{{n}} días restantes",
-    "more_count": "+{{n}} más"
+    "more_count": "+{{n}} más",
+    "total_invited": "Total invitados",
+    "members": "miembros"
   },
   "profile": {
     "title": "Perfil de Boda",
@@ -318,7 +321,11 @@
     "starter_3": "Agrega un gasto nuevo por mí",
     "starter_4": "¿Qué debo priorizar 6 meses antes de mi boda?",
     "starter_5": "¿Cuánto me queda por gastar de mi presupuesto?",
-    "starter_6": "Agrega un invitado nuevo por mí"
+    "starter_6": "Agrega un invitado nuevo por mí",
+    "error_generic": "Aria encontró un error. Inténtalo de nuevo.",
+    "error_timeout": "Aria tardó demasiado en responder. El servidor puede estar reiniciándose — inténtalo de nuevo.",
+    "error_with_detail": "Aria no pudo responder: {{detail}}. Inténtalo de nuevo.",
+    "error_no_response": "Aria no puede responder ahora mismo. Inténtalo de nuevo."
   },
   "budget": {
     "title": "Rastreador de Presupuesto",
@@ -814,7 +821,23 @@
     "new_guest_alert_other": "{{count}} invitados acaban de completar su información",
     "new_guest_alert_desc": "Fueron añadidos a tu lista de invitados a través de tu enlace de recopilación.",
     "dismiss_new_alert": "Entendido",
-    "dismiss_new_badge": "Haz clic para cerrar"
+    "dismiss_new_badge": "Haz clic para cerrar",
+    "col_save_the_date": "Save the Date",
+    "save_the_date_not_sent": "No enviado",
+    "save_the_date_sent": "Enviado",
+    "send_digital_invite_option": "Invitación con RSVP",
+    "send_digital_invite_option_desc": "Invitación completa con formulario de RSVP.",
+    "send_invite_desc": "Elige qué tipo enviar a {{name}}.",
+    "send_invite_title": "Enviar invitación",
+    "send_save_the_date_option": "Save the Date",
+    "send_save_the_date_option_desc": "Foto, fecha y lugar de la boda. Sin RSVP.",
+    "complete_profile_title": "Completa tu perfil de boda",
+    "complete_profile_desc": "Tienes que configurar tu perfil de boda antes de poder gestionar invitados e invitaciones.",
+    "set_up_profile": "Configurar perfil de boda",
+    "page_title": "Lista de invitados e invitaciones",
+    "page_subtitle": "Gestiona tus invitados y personaliza tus invitaciones",
+    "tab_guest_list": "Lista de invitados",
+    "tab_invitation": "Personalización de invitaciones"
   },
   "timeline": {
     "title": "Cronograma del Día de la Boda",

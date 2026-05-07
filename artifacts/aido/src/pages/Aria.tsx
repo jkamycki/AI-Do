@@ -468,7 +468,7 @@ export default function Aria() {
             // makes Aria look like she "ghosted" the user. Showing the
             // message inline lets the user read what went wrong and try
             // again with context.
-            const errMsg = (parsed.error as string) || "Aria encountered an error. Please try again.";
+            const errMsg = (parsed.error as string) || t("aria.error_generic", { defaultValue: "Aria encountered an error. Please try again." });
             accumulated = errMsg;
             updatePlaceholder({ content: errMsg, streaming: false });
             // Skip the rest of the stream cleanly
@@ -486,7 +486,7 @@ export default function Aria() {
         // Replace the placeholder with the timeout message inline so the
         // user keeps their question visible above and can retry.
         updatePlaceholder({
-          content: "Aria's reply took too long. The server may just be warming up — please try again.",
+          content: t("aria.error_timeout", { defaultValue: "Aria's reply took too long. The server may just be warming up — please try again." }),
           streaming: false,
         });
         return;
@@ -495,8 +495,8 @@ export default function Aria() {
       // and retry. Bubble stays visible above their original question.
       updatePlaceholder({
         content: err instanceof Error && err.message
-          ? `Aria couldn't respond: ${err.message}. Please try again.`
-          : "Aria couldn't respond right now. Please try again.",
+          ? t("aria.error_with_detail", { detail: err.message, defaultValue: "Aria couldn't respond: {{detail}}. Please try again." })
+          : t("aria.error_no_response", { defaultValue: "Aria couldn't respond right now. Please try again." }),
         streaming: false,
       });
     } finally {

@@ -63,7 +63,8 @@
     "dayof": "当日コーディネーター",
     "settings": "設定 & コラボレーター",
     "help": "ヘルプ & サポート",
-    "admin": "オペレーションセンター"
+    "admin": "オペレーションセンター",
+    "website": "結婚式ウェブサイト"
   },
   "settings": {
     "title": "設定",
@@ -243,7 +244,9 @@
     "ceremony_at": "挙式 {{time}}",
     "reception_at": "披露宴 {{time}}",
     "days_to_go_count": "{{n}} 日前",
-    "more_count": "+{{n}} 件"
+    "more_count": "+{{n}} 件",
+    "total_invited": "招待者総数",
+    "members": "人"
   },
   "profile": {
     "title": "ウェディングプロフィール",
@@ -318,7 +321,11 @@
     "starter_3": "新しい経費を追加して",
     "starter_4": "結婚式6ヶ月前に何を優先すればいいですか？",
     "starter_5": "予算の残りはいくらですか？",
-    "starter_6": "新しいゲストを追加して"
+    "starter_6": "新しいゲストを追加して",
+    "error_generic": "Ariaがエラーに遭遇しました。もう一度お試しください。",
+    "error_timeout": "Ariaの応答に時間がかかりすぎています。サーバーが起動中かもしれません — もう一度お試しください。",
+    "error_with_detail": "Ariaが応答できませんでした: {{detail}}。もう一度お試しください。",
+    "error_no_response": "Ariaは現在応答できません。もう一度お試しください。"
   },
   "budget": {
     "title": "予算トラッカー",
@@ -813,7 +820,24 @@
     "new_guest_alert_other": "{{count}}名のゲストが情報を入力しました",
     "new_guest_alert_desc": "コレクターリンクを通じてゲストリストに追加されました。",
     "dismiss_new_alert": "わかりました",
-    "dismiss_new_badge": "クリックして閉じる"
+    "dismiss_new_badge": "クリックして閉じる",
+    "col_einvite_status": "デジタル招待状の状態",
+    "col_save_the_date": "Save the Date",
+    "save_the_date_not_sent": "未送信",
+    "save_the_date_sent": "送信済み",
+    "send_digital_invite_option": "RSVP付き招待状",
+    "send_digital_invite_option_desc": "RSVPフォーム付きの正式な招待状です。",
+    "send_invite_desc": "{{name}}様に送る種類を選んでください。",
+    "send_invite_title": "招待状を送る",
+    "send_save_the_date_option": "Save the Date",
+    "send_save_the_date_option_desc": "写真、日付、会場のお知らせ。RSVPなし。",
+    "complete_profile_title": "結婚式プロフィールを完成させる",
+    "complete_profile_desc": "招待客と招待状を管理する前に、結婚式プロフィールを設定してください。",
+    "set_up_profile": "プロフィールを設定",
+    "page_title": "招待客リストと招待状",
+    "page_subtitle": "招待客の管理と招待状のデザインを行います",
+    "tab_guest_list": "招待客リスト",
+    "tab_invitation": "招待状のカスタマイズ"
   },
   "timeline": {
     "title": "結婚式当日のタイムライン",

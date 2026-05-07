@@ -232,7 +232,11 @@
     "just_now": "الآن",
     "minutes_ago": "منذ {{n}} د",
     "hours_ago": "منذ {{n}} س",
-    "days_ago": "منذ {{n}} ي"
+    "days_ago": "منذ {{n}} ي",
+    "error_generic": "واجهت Aria خطأ. حاول مرة أخرى.",
+    "error_timeout": "استغرقت Aria وقتًا طويلاً للرد. قد يكون الخادم في طور التشغيل — حاول مرة أخرى.",
+    "error_with_detail": "تعذّر على Aria الرد: {{detail}}. حاول مرة أخرى.",
+    "error_no_response": "Aria غير قادرة على الرد الآن. حاول مرة أخرى."
   },
   "budget": {
     "title": "تتبع الميزانية",
@@ -460,7 +464,14 @@
     "filter_pending": "قيد الانتظار",
     "guest_added": "تمت إضافة الضيف",
     "guest_updated": "تم تحديث الضيف",
-    "guest_deleted": "تمت إزالة الضيف"
+    "guest_deleted": "تمت إزالة الضيف",
+    "complete_profile_title": "أكمل ملف زفافك",
+    "complete_profile_desc": "يجب إعداد ملف زفافك قبل أن تتمكن من إدارة المدعوين والدعوات.",
+    "set_up_profile": "إعداد ملف الزفاف",
+    "page_title": "قائمة المدعوين والدعوات",
+    "page_subtitle": "أدر المدعوين وخصّص تصميم دعواتك",
+    "tab_guest_list": "قائمة المدعوين",
+    "tab_invitation": "تخصيص الدعوة"
   },
   "timeline": {
     "title": "جدول أحداث يوم الزفاف",

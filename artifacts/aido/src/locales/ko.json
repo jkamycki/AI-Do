@@ -232,7 +232,11 @@
     "just_now": "방금 전",
     "minutes_ago": "{{n}}분 전",
     "hours_ago": "{{n}}시간 전",
-    "days_ago": "{{n}}일 전"
+    "days_ago": "{{n}}일 전",
+    "error_generic": "Aria에서 오류가 발생했습니다. 다시 시도해 주세요.",
+    "error_timeout": "Aria의 응답이 너무 늦어집니다. 서버가 시작 중일 수 있습니다 — 다시 시도해 주세요.",
+    "error_with_detail": "Aria가 응답하지 못했습니다: {{detail}}. 다시 시도해 주세요.",
+    "error_no_response": "Aria가 지금 응답할 수 없습니다. 다시 시도해 주세요."
   },
   "budget": {
     "title": "예산 추적기",
@@ -460,7 +464,14 @@
     "filter_pending": "대기 중",
     "guest_added": "하객이 추가되었습니다",
     "guest_updated": "하객 정보가 업데이트되었습니다",
-    "guest_deleted": "하객이 삭제되었습니다"
+    "guest_deleted": "하객이 삭제되었습니다",
+    "complete_profile_title": "결혼식 프로필을 완성하세요",
+    "complete_profile_desc": "하객과 청첩장을 관리하려면 먼저 결혼식 프로필을 설정해야 합니다.",
+    "set_up_profile": "프로필 설정",
+    "page_title": "하객 명단과 청첩장",
+    "page_subtitle": "하객을 관리하고 청첩장 디자인을 맞춤 설정하세요",
+    "tab_guest_list": "하객 명단",
+    "tab_invitation": "청첩장 꾸미기"
   },
   "timeline": {
     "title": "웨딩 당일 타임라인",

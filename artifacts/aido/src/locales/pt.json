@@ -63,7 +63,8 @@
     "dayof": "Coordenação do Dia",
     "settings": "Definições e Colaboradores",
     "help": "Ajuda e Suporte",
-    "admin": "Centro de Operações"
+    "admin": "Centro de Operações",
+    "website": "Site do casamento"
   },
   "settings": {
     "title": "Definições",
@@ -243,7 +244,9 @@
     "ceremony_at": "Cerimônia {{time}}",
     "reception_at": "Recepção {{time}}",
     "days_to_go_count": "{{n}} dias restantes",
-    "more_count": "+{{n}} mais"
+    "more_count": "+{{n}} mais",
+    "total_invited": "Total de convidados",
+    "members": "membros"
   },
   "profile": {
     "title": "Perfil do Casamento",
@@ -318,7 +321,11 @@
     "starter_3": "Adicione uma nova despesa para mim",
     "starter_4": "O que devo priorizar 6 meses antes do meu casamento?",
     "starter_5": "Quanto falta no meu orçamento para gastar?",
-    "starter_6": "Adicione um novo convidado para mim"
+    "starter_6": "Adicione um novo convidado para mim",
+    "error_generic": "A Aria encontrou um erro. Tente novamente.",
+    "error_timeout": "A Aria está a demorar muito a responder. O servidor pode estar a reiniciar — tente novamente.",
+    "error_with_detail": "A Aria não conseguiu responder: {{detail}}. Tente novamente.",
+    "error_no_response": "A Aria não consegue responder neste momento. Tente novamente."
   },
   "budget": {
     "title": "Rastreador de Orçamento",
@@ -813,7 +820,24 @@
     "new_guest_alert_other": "{{count}} convidados acabaram de preencher as suas informações",
     "new_guest_alert_desc": "Foram adicionados à sua lista de convidados através do seu link de recolha.",
     "dismiss_new_alert": "Entendido",
-    "dismiss_new_badge": "Clique para ignorar"
+    "dismiss_new_badge": "Clique para ignorar",
+    "col_einvite_status": "Status do convite digital",
+    "col_save_the_date": "Save the Date",
+    "save_the_date_not_sent": "Não enviado",
+    "save_the_date_sent": "Enviado",
+    "send_digital_invite_option": "Convite com RSVP",
+    "send_digital_invite_option_desc": "Convite completo com formulário de RSVP.",
+    "send_invite_desc": "Escolha qual tipo enviar para {{name}}.",
+    "send_invite_title": "Enviar convite",
+    "send_save_the_date_option": "Save the Date",
+    "send_save_the_date_option_desc": "Foto, data e local do casamento. Sem RSVP.",
+    "complete_profile_title": "Complete seu perfil de casamento",
+    "complete_profile_desc": "Você precisa configurar seu perfil de casamento antes de gerenciar convidados e convites.",
+    "set_up_profile": "Configurar perfil",
+    "page_title": "Lista de convidados e convites",
+    "page_subtitle": "Gerencie seus convidados e personalize seus convites",
+    "tab_guest_list": "Lista de convidados",
+    "tab_invitation": "Personalização de convites"
   },
   "timeline": {
     "title": "Agenda do Dia do Casamento",

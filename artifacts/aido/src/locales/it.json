@@ -63,7 +63,8 @@
     "dayof": "Coordinatore del Giorno",
     "settings": "Impostazioni e Collaboratori",
     "help": "Aiuto e Supporto",
-    "admin": "Centro Operazioni"
+    "admin": "Centro Operazioni",
+    "website": "Sito web di matrimonio"
   },
   "settings": {
     "title": "Impostazioni",
@@ -243,7 +244,9 @@
     "ceremony_at": "Cerimonia {{time}}",
     "reception_at": "Ricevimento {{time}}",
     "days_to_go_count": "{{n}} giorni al matrimonio",
-    "more_count": "+{{n}} altri"
+    "more_count": "+{{n}} altri",
+    "total_invited": "Totale invitati",
+    "members": "membri"
   },
   "profile": {
     "title": "Profilo del Matrimonio",
@@ -318,7 +321,11 @@
     "starter_3": "Aggiungi una nuova spesa per me",
     "starter_4": "Su cosa dovrei concentrarmi 6 mesi prima del matrimonio?",
     "starter_5": "Quanto budget mi rimane da spendere?",
-    "starter_6": "Aggiungi un nuovo ospite per me"
+    "starter_6": "Aggiungi un nuovo ospite per me",
+    "error_generic": "Aria ha riscontrato un errore. Riprova.",
+    "error_timeout": "Aria sta impiegando troppo tempo. Il server potrebbe essersi riavviando — riprova.",
+    "error_with_detail": "Aria non è riuscita a rispondere: {{detail}}. Riprova.",
+    "error_no_response": "Aria non riesce a rispondere ora. Riprova."
   },
   "budget": {
     "title": "Gestione Budget",
@@ -814,7 +821,23 @@
     "new_guest_alert_other": "{{count}} ospiti hanno appena compilato le loro informazioni",
     "new_guest_alert_desc": "Sono stati aggiunti alla tua lista ospiti tramite il tuo link raccoglitore.",
     "dismiss_new_alert": "Capito",
-    "dismiss_new_badge": "Clicca per ignorare"
+    "dismiss_new_badge": "Clicca per ignorare",
+    "complete_profile_title": "Completa il profilo del matrimonio",
+    "complete_profile_desc": "Devi impostare il profilo del matrimonio prima di poter gestire ospiti e inviti.",
+    "set_up_profile": "Configura profilo",
+    "page_title": "Lista invitati e inviti",
+    "page_subtitle": "Gestisci gli invitati e personalizza i tuoi inviti",
+    "tab_guest_list": "Lista invitati",
+    "tab_invitation": "Personalizzazione inviti",
+    "col_save_the_date": "Save the Date",
+    "save_the_date_not_sent": "Non inviato",
+    "save_the_date_sent": "Inviato",
+    "send_digital_invite_option": "Invito con RSVP",
+    "send_digital_invite_option_desc": "Invito completo con modulo RSVP.",
+    "send_invite_desc": "Scegli quale tipo inviare a {{name}}.",
+    "send_invite_title": "Invia invito",
+    "send_save_the_date_option": "Save the Date",
+    "send_save_the_date_option_desc": "Foto, data e luogo del matrimonio. Senza RSVP."
   },
   "timeline": {
     "title": "Timeline del Giorno del Matrimonio",

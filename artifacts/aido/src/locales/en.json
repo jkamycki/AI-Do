@@ -334,7 +334,11 @@
     "starter_3": "Add a new expense for me",
     "starter_4": "What should I prioritize 6 months before my wedding?",
     "starter_5": "How much is left in my budget to spend?",
-    "starter_6": "Add a new guest for me"
+    "starter_6": "Add a new guest for me",
+    "error_generic": "Aria encountered an error. Please try again.",
+    "error_timeout": "Aria's reply took too long. The server may just be warming up — please try again.",
+    "error_with_detail": "Aria couldn't respond: {{detail}}. Please try again.",
+    "error_no_response": "Aria couldn't respond right now. Please try again."
   },
   "budget": {
     "title": "Budget Tracker",
@@ -839,7 +843,14 @@
     "new_guest_alert_other": "{{count}} guests just filled out their info",
     "new_guest_alert_desc": "They were added to your guest list via your collector link.",
     "dismiss_new_alert": "Got it",
-    "dismiss_new_badge": "Click to dismiss"
+    "dismiss_new_badge": "Click to dismiss",
+    "complete_profile_title": "Complete Your Wedding Profile",
+    "complete_profile_desc": "You need to set up your wedding profile before you can manage guests and invitations.",
+    "set_up_profile": "Set Up Wedding Profile",
+    "page_title": "Guest List & Invitations",
+    "page_subtitle": "Manage your guests and customize your invitation designs",
+    "tab_guest_list": "Guest List",
+    "tab_invitation": "Invitation Customization"
   },
   "timeline": {
     "title": "Wedding Day Timeline",

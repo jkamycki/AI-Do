@@ -232,7 +232,11 @@
     "just_now": "właśnie teraz",
     "minutes_ago": "{{n}} min temu",
     "hours_ago": "{{n}} godz. temu",
-    "days_ago": "{{n}} dni temu"
+    "days_ago": "{{n}} dni temu",
+    "error_generic": "Aria napotkała błąd. Spróbuj ponownie.",
+    "error_timeout": "Aria zbyt długo odpowiada. Serwer może się uruchamiać — spróbuj ponownie.",
+    "error_with_detail": "Aria nie mogła odpowiedzieć: {{detail}}. Spróbuj ponownie.",
+    "error_no_response": "Aria nie może teraz odpowiedzieć. Spróbuj ponownie."
   },
   "budget": {
     "title": "Śledzenie budżetu",
@@ -460,7 +464,14 @@
     "filter_pending": "Oczekujący",
     "guest_added": "Gość dodany",
     "guest_updated": "Gość zaktualizowany",
-    "guest_deleted": "Gość usunięty"
+    "guest_deleted": "Gość usunięty",
+    "complete_profile_title": "Uzupełnij swój profil ślubny",
+    "complete_profile_desc": "Musisz skonfigurować swój profil ślubny, zanim zaczniesz zarządzać gośćmi i zaproszeniami.",
+    "set_up_profile": "Skonfiguruj profil",
+    "page_title": "Lista gości i zaproszenia",
+    "page_subtitle": "Zarządzaj gośćmi i dostosuj wygląd zaproszeń",
+    "tab_guest_list": "Lista gości",
+    "tab_invitation": "Personalizacja zaproszenia"
   },
   "timeline": {
     "title": "Harmonogram Dnia Ślubu",
