@@ -59,12 +59,6 @@ const SECTION_TEXT_KEYS: Array<{ key: string; label: string; defaultTitle: strin
   { key: "gallery",  label: "Gallery",   defaultTitle: "Gallery", defaultSubtitle: "Moments" },
 ];
 
-const LAYOUT_STYLES = [
-  { id: "standard", name: "Standard" },
-  { id: "compact",  name: "Compact" },
-  { id: "wide",     name: "Wide" },
-];
-
 const SECTION_LIST: Array<{ id: keyof WebsiteRecord["sectionsEnabled"]; label: string; icon: React.ElementType }> = [
   { id: "welcome",      label: "Welcome",       icon: Heart },
   { id: "story",        label: "Our Story",     icon: Heart },
@@ -589,21 +583,6 @@ export default function WebsiteEditor() {
                 ))}
               </select>
             </div>
-          </div>
-        </Section>
-
-        {/* Layout */}
-        <Section icon={<ToggleLeft className="h-4 w-4" />} title="Layout">
-          <div className="flex gap-2">
-            {LAYOUT_STYLES.map((l) => (
-              <button
-                key={l.id}
-                onClick={() => update({ layoutStyle: l.id })}
-                className={`flex-1 px-3 py-2 rounded-md border text-sm transition-all ${record.layoutStyle === l.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
-              >
-                {l.name}
-              </button>
-            ))}
           </div>
         </Section>
 

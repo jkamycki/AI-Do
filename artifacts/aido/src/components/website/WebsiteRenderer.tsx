@@ -413,6 +413,7 @@ function buildIcs(couple: string, dateStr: string, ceremonyTime: string, venue: 
 }
 
 function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
+  const [open, setOpen] = useState(false);
   if (!data.couple.weddingDate) return null;
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
 
@@ -438,12 +439,9 @@ function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
   const desc  = encodeURIComponent(`Join us to celebrate the wedding of ${couple}!`);
   const loc   = encodeURIComponent(locStr);
 
-  // Google Calendar — compact datetime format without separators
   const gcalDt    = `${y}${pad(m)}${pad(d)}T${pad(h)}${pad(min)}00`;
   const gcalEndDt = `${y}${pad(m)}${pad(d)}T${pad(h + 4)}${pad(min)}00`;
   const gcal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${gcalDt}/${gcalEndDt}&location=${loc}&details=${desc}`;
-
-  // Outlook.com web calendar
   const outlook = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${title}&startdt=${encodeURIComponent(isoStart)}&enddt=${encodeURIComponent(isoEnd)}&location=${loc}&body=${desc}&path=/calendar/action/compose&rru=addevent`;
 
   const btnStyle: React.CSSProperties = {
@@ -453,36 +451,54 @@ function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
     backdropFilter: "blur(4px)",
   };
 
+  const itemClass = "block w-full text-left px-4 py-2 text-sm hover:bg-black/5 transition-colors";
+
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
+    <div className="relative inline-flex flex-col items-center mt-6">
       <button
-        onClick={downloadIcs}
+        onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-opacity hover:opacity-80"
         style={btnStyle}
+        aria-expanded={open}
       >
         <Calendar className="h-4 w-4" />
-        Apple Calendar
+        Add to Calendar
       </button>
-      <a
-        href={gcal}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-opacity hover:opacity-80"
-        style={btnStyle}
-      >
-        <Calendar className="h-4 w-4" />
-        Google Calendar
-      </a>
-      <a
-        href={outlook}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-opacity hover:opacity-80"
-        style={btnStyle}
-      >
-        <Calendar className="h-4 w-4" />
-        Outlook
-      </a>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
+          <div
+            className="absolute top-full mt-2 z-50 rounded-lg shadow-xl border overflow-hidden min-w-[180px]"
+            style={{ background: "#fff", color: "#222", borderColor: "rgba(0,0,0,0.1)" }}
+          >
+            <button
+              type="button"
+              className={itemClass}
+              onClick={() => { downloadIcs(); setOpen(false); }}
+            >
+              Apple Calendar
+            </button>
+            <a
+              href={gcal}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={itemClass}
+              onClick={() => setOpen(false)}
+            >
+              Google Calendar
+            </a>
+            <a
+              href={outlook}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={itemClass}
+              onClick={() => setOpen(false)}
+            >
+              Outlook
+            </a>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1501,6 +1517,24 @@ export function WebsiteRenderer({
   const ctx: EditCtx = editable && onTextChange
     ? { editable: true, onTextChange, textStyles: data.textStyles, onStyleChange, textPositions: data.textPositions, onPositionChange, onDeleteElement }
     : NOOP_CTX;
+
+  // Dynamically load the chosen heading + body Google Fonts so that fonts not
+  // preloaded in index.html (e.g. Tangerine, Great Vibes, Allura) actually render.
+  const headingFontName = headingFont(data);
+  const bodyFontName = bodyFont(data);
+  useEffect(() => {
+    const families = Array.from(new Set([headingFontName, bodyFontName].filter(Boolean)));
+    families.forEach((family) => {
+      const id = `aido-font-${family.replace(/\s+/g, "-").toLowerCase()}`;
+      if (document.getElementById(id)) return;
+      const link = document.createElement("link");
+      link.id = id;
+      link.rel = "stylesheet";
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family).replace(/%20/g, "+")}:wght@400;500;600;700&display=swap`;
+      document.head.appendChild(link);
+    });
+  }, [headingFontName, bodyFontName]);
+
   const pageMode = !!currentSection;
   const showAll = !pageMode;
   const show = (id: string, enabled: boolean) =>
