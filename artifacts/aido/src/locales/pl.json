@@ -175,13 +175,8 @@
     "reception_at": "Przyjęcie {{time}}",
     "days_to_go_count": "{{n}} dni do końca",
     "more_count": "+{{n}} więcej",
-    "tile_seating": "Rozsadzenie",
-    "seated": "przydzieleni",
-    "tables": "stoły",
-    "seats_each": "miejsc/stół",
-    "seating_unseated": "{{count}} gości wciąż potrzebuje miejsca",
-    "no_seating_yet": "Brak planu rozsadzenia.",
-    "generate_seating": "Wygeneruj rozsadzenie"
+    "nudge_create_website": "Stwórz stronę swojego ślubu",
+    "nudge_create_website_when": "Ostatni krok"
   },
   "profile": {
     "title": "Profil Weselny",
@@ -587,12 +582,7 @@
     "arranging": "Rozmieszczanie…",
     "unassigned": "Nieprzypisani Goście",
     "no_tables_title": "Brak stołów",
-    "no_tables_desc": "Dodaj stoły i przeciągaj gości, aby ich posadzić.",
-    "export_pdf": "Eksportuj PDF",
-    "exporting_pdf": "Eksportuję…",
-    "export_pdf_title": "Pobierz PDF do wydruku ze wszystkimi stołami",
-    "pdf_saved": "PDF planu rozsadzenia zapisany",
-    "pdf_failed": "Eksport PDF nie powiódł się"
+    "no_tables_desc": "Dodaj stoły i przeciągaj gości, aby ich posadzić."
   },
   "help": {
     "title": "Pomoc i wsparcie",

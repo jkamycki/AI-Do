@@ -175,13 +175,8 @@
     "reception_at": "स्वागत {{time}}",
     "days_to_go_count": "{{n}} दिन शेष",
     "more_count": "+{{n}} और",
-    "tile_seating": "बैठने की व्यवस्था",
-    "seated": "बैठाए गए",
-    "tables": "मेज़",
-    "seats_each": "सीटें/मेज़",
-    "seating_unseated": "{{count}} मेहमानों के लिए अभी भी सीट चाहिए",
-    "no_seating_yet": "अभी कोई बैठक चार्ट नहीं।",
-    "generate_seating": "बैठक चार्ट बनाएँ"
+    "nudge_create_website": "अपनी शादी की वेबसाइट बनाएँ",
+    "nudge_create_website_when": "अंतिम चरण"
   },
   "profile": {
     "title": "विवाह प्रोफ़ाइल",
@@ -587,12 +582,7 @@
     "arranging": "व्यवस्थित हो रहा है…",
     "unassigned": "असाइन न किए गए मेहमान",
     "no_tables_title": "अभी तक कोई टेबल नहीं",
-    "no_tables_desc": "टेबल जोड़ें और मेहमानों को बैठाने के लिए खींचें।",
-    "export_pdf": "PDF निर्यात करें",
-    "exporting_pdf": "निर्यात हो रहा है…",
-    "export_pdf_title": "सभी मेज़ों का प्रिंट-योग्य PDF डाउनलोड करें",
-    "pdf_saved": "बैठक चार्ट PDF सहेजा गया",
-    "pdf_failed": "PDF निर्यात विफल"
+    "no_tables_desc": "टेबल जोड़ें और मेहमानों को बैठाने के लिए खींचें।"
   },
   "help": {
     "title": "सहायता और समर्थन",

@@ -247,13 +247,8 @@
     "more_count": "+{{n}} mais",
     "total_invited": "Total de convidados",
     "members": "membros",
-    "tile_seating": "Acomodação",
-    "seated": "acomodados",
-    "tables": "mesas",
-    "seats_each": "lugares por mesa",
-    "seating_unseated": "{{count}} convidados ainda sem lugar",
-    "no_seating_yet": "Ainda sem mapa de mesas.",
-    "generate_seating": "Gerar mapa"
+    "nudge_create_website": "Crie o site do seu casamento",
+    "nudge_create_website_when": "Etapa final"
   },
   "profile": {
     "title": "Perfil do Casamento",
@@ -1188,12 +1183,7 @@
     "guests_seated": "{{n}} convidados sentados",
     "tables_count": "{{n}} mesas",
     "generated_by": "Gerado pelo AI A.IDO",
-    "auto_saved": "Guardado automaticamente ✓",
-    "export_pdf": "Exportar PDF",
-    "exporting_pdf": "Exportando…",
-    "export_pdf_title": "Baixar um PDF imprimível com todas as mesas",
-    "pdf_saved": "PDF do mapa de mesas salvo",
-    "pdf_failed": "Falha ao exportar o PDF"
+    "auto_saved": "Guardado automaticamente ✓"
   },
   "help": {
     "title": "Ajuda e Suporte",

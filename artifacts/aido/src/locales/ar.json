@@ -175,13 +175,8 @@
     "reception_at": "حفل الاستقبال {{time}}",
     "days_to_go_count": "{{n}} أيام متبقية",
     "more_count": "+{{n}} المزيد",
-    "tile_seating": "الجلوس",
-    "seated": "تم تخصيصهم",
-    "tables": "طاولات",
-    "seats_each": "مقاعد لكل طاولة",
-    "seating_unseated": "{{count}} مدعوّ لا يزالون بحاجة إلى مقعد",
-    "no_seating_yet": "لا يوجد مخطط جلوس بعد.",
-    "generate_seating": "إنشاء مخطط الجلوس"
+    "nudge_create_website": "أنشئ موقع زفافك",
+    "nudge_create_website_when": "الخطوة الأخيرة"
   },
   "profile": {
     "title": "ملف الزفاف",
@@ -587,12 +582,7 @@
     "arranging": "جارٍ الترتيب…",
     "unassigned": "الضيوف غير المعيّنين",
     "no_tables_title": "لا توجد طاولات بعد",
-    "no_tables_desc": "أضف طاولات واسحب الضيوف لتخصيص مقاعدهم.",
-    "export_pdf": "تصدير PDF",
-    "exporting_pdf": "جارٍ التصدير…",
-    "export_pdf_title": "تنزيل ملف PDF قابل للطباعة لجميع الطاولات",
-    "pdf_saved": "تم حفظ ملف PDF لمخطط الجلوس",
-    "pdf_failed": "فشل تصدير PDF"
+    "no_tables_desc": "أضف طاولات واسحب الضيوف لتخصيص مقاعدهم."
   },
   "help": {
     "title": "المساعدة والدعم",

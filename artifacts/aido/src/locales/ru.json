@@ -175,13 +175,8 @@
     "reception_at": "Приём {{time}}",
     "days_to_go_count": "{{n}} дней осталось",
     "more_count": "+{{n}} ещё",
-    "tile_seating": "Рассадка",
-    "seated": "размещены",
-    "tables": "столов",
-    "seats_each": "мест за столом",
-    "seating_unseated": "{{count}} гостей пока без места",
-    "no_seating_yet": "План рассадки ещё не создан.",
-    "generate_seating": "Создать рассадку"
+    "nudge_create_website": "Создайте свадебный сайт",
+    "nudge_create_website_when": "Последний шаг"
   },
   "profile": {
     "title": "Свадебный профиль",
@@ -587,12 +582,7 @@
     "arranging": "Рассадка…",
     "unassigned": "Нераспределённые гости",
     "no_tables_title": "Столов пока нет",
-    "no_tables_desc": "Добавьте столы и перетащите гостей, чтобы рассадить их.",
-    "export_pdf": "Экспорт в PDF",
-    "exporting_pdf": "Экспортируем…",
-    "export_pdf_title": "Скачать печатный PDF со всеми столами",
-    "pdf_saved": "PDF рассадки сохранён",
-    "pdf_failed": "Не удалось экспортировать PDF"
+    "no_tables_desc": "Добавьте столы и перетащите гостей, чтобы рассадить их."
   },
   "help": {
     "title": "Помощь и поддержка",

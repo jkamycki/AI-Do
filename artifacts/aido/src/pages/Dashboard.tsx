@@ -36,7 +36,6 @@ import {
   Trash2,
   ImagePlus,
   Crown,
-  Armchair,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -532,72 +531,6 @@ export default function Dashboard() {
     <DashboardErrorBoundary>
       <DashboardContent />
     </DashboardErrorBoundary>
-  );
-}
-
-// Seating tile in the dashboard overview row. Shows "X / Y seated" plus a
-// "N tables • M seats each" sub-line, or a "Generate seating" CTA when no
-// chart exists. Tints amber when the gap (unseated attending) is > 5 within
-// 30 days of the wedding — matches the dashboard's existing "needs attention"
-// color language.
-interface SeatingSummary {
-  hasChart: boolean;
-  tableCount: number;
-  seatsPerTable: number;
-  seatedAttendingCount: number;
-  attendingGuestCount: number;
-  lastUpdatedAt: string | null;
-}
-function SeatingTile({
-  summary,
-  daysUntilWedding,
-  t,
-}: {
-  summary: SeatingSummary | undefined;
-  daysUntilWedding: number;
-  t: (key: string, opts?: Record<string, unknown>) => string;
-}) {
-  const seated = summary?.seatedAttendingCount ?? 0;
-  const attending = summary?.attendingGuestCount ?? 0;
-  const unseated = Math.max(0, attending - seated);
-  const wantsAttention = summary?.hasChart && daysUntilWedding <= 30 && unseated > 5;
-  const tintClass = wantsAttention ? "border-amber-300/70 bg-amber-50/60 dark:border-amber-700/40 dark:bg-amber-900/10" : "border-border/60 bg-card";
-  return (
-    <Link href="/seating-chart">
-      <div className={`border rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer h-full ${tintClass}`}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Armchair className="h-4 w-4 text-primary" />
-            <span className="text-xs font-medium uppercase tracking-wider text-primary">{t("dashboard.tile_seating", { defaultValue: "Seating" })}</span>
-          </div>
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-        </div>
-        {summary?.hasChart ? (
-          <div className="space-y-1.5">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-serif font-semibold text-foreground">{seated}</span>
-              <span className="text-sm text-muted-foreground">/ {attending} {t("dashboard.seated", { defaultValue: "seated" })}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {summary.tableCount} {t("dashboard.tables", { defaultValue: "tables" })} · {summary.seatsPerTable} {t("dashboard.seats_each", { defaultValue: "seats each" })}
-            </p>
-            {wantsAttention && (
-              <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium pt-1">
-                {t("dashboard.seating_unseated", { count: unseated, defaultValue: "{{count}} guests still need a seat" })}
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">{t("dashboard.no_seating_yet", { defaultValue: "No seating chart yet." })}</p>
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-              {t("dashboard.generate_seating", { defaultValue: "Generate seating" })}
-              <ArrowRight className="h-3 w-3" />
-            </span>
-          </div>
-        )}
-      </div>
-    </Link>
   );
 }
 
@@ -1134,28 +1067,19 @@ function DashboardContent() {
 
             ),
           },
-          {
-            id: "seating",
-            node: (
-              <SeatingTile
-                summary={(summary as any).seatingSummary}
-                daysUntilWedding={summary.daysUntilWedding}
-                t={t}
-              />
-            ),
-          },
+
         ]}
       />
 
       {/* Upcoming tasks alert */}
-      {summary.upcomingTasks && summary.upcomingTasks.length > 0 && (
+      {((summary.upcomingTasks && summary.upcomingTasks.length > 0) || !(summary as any).hasWebsite) && (
         <div className="rounded-2xl border border-amber-200 dark:border-amber-700/50 bg-amber-50/60 dark:bg-amber-900/20 p-5">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
             <span className="text-sm font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-wider">{t("dashboard.needs_attention")}</span>
           </div>
           <div className="space-y-2">
-            {summary.upcomingTasks.map(task => (
+            {(summary.upcomingTasks ?? []).map(task => (
               <div key={task.id} className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400 flex-shrink-0 mt-2" />
                 <div>
@@ -1164,12 +1088,32 @@ function DashboardContent() {
                 </div>
               </div>
             ))}
+            {/* Website-creation nudge — always lands at the end of the list and
+                disappears once the couple creates the wedding website. */}
+            {!(summary as any).hasWebsite && (
+              <Link href="/website-editor" className="block group">
+                <div className="flex items-start gap-2 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 rounded-md -mx-1 px-1 py-0.5 transition-colors">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400 flex-shrink-0 mt-2" />
+                  <div className="flex-1">
+                    <span className="text-sm text-amber-900 dark:text-amber-200 font-medium">
+                      {t("dashboard.nudge_create_website", { defaultValue: "Create your wedding website" })}
+                    </span>
+                    <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">
+                      {t("dashboard.nudge_create_website_when", { defaultValue: "Final step" })}
+                    </span>
+                  </div>
+                  <ArrowRight className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 mt-1.5 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                </div>
+              </Link>
+            )}
           </div>
-          <Link href="/checklist" className="mt-3 inline-block">
-            <Button variant="outline" size="sm" className="border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 mt-2">
-              {t("dashboard.continue_checklist")} <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-            </Button>
-          </Link>
+          {(summary.upcomingTasks ?? []).length > 0 && (
+            <Link href="/checklist" className="mt-3 inline-block">
+              <Button variant="outline" size="sm" className="border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 mt-2">
+                {t("dashboard.continue_checklist")} <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+              </Button>
+            </Link>
+          )}
         </div>
       )}
 

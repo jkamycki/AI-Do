@@ -247,13 +247,8 @@
     "more_count": "+{{n}} de plus",
     "total_invited": "Total d'invités",
     "members": "membres",
-    "tile_seating": "Plan de table",
-    "seated": "placés",
-    "tables": "tables",
-    "seats_each": "places par table",
-    "seating_unseated": "{{count}} invités encore sans place",
-    "no_seating_yet": "Pas encore de plan de table.",
-    "generate_seating": "Générer le plan"
+    "nudge_create_website": "Créez votre site web de mariage",
+    "nudge_create_website_when": "Dernière étape"
   },
   "profile": {
     "title": "Profil de Mariage",
@@ -1188,12 +1183,7 @@
     "arranging": "Organisation…",
     "unassigned": "Invités Non Assignés",
     "no_tables_title": "Aucune table pour l'instant",
-    "no_tables_desc": "Ajoutez des tables et faites glisser les invités pour les placer.",
-    "export_pdf": "Exporter en PDF",
-    "exporting_pdf": "Exportation…",
-    "export_pdf_title": "Télécharger un PDF imprimable avec toutes les tables",
-    "pdf_saved": "PDF du plan de table enregistré",
-    "pdf_failed": "Échec de l'export PDF"
+    "no_tables_desc": "Ajoutez des tables et faites glisser les invités pour les placer."
   },
   "help": {
     "title": "Aide & Support",
