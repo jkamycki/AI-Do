@@ -437,6 +437,66 @@ router.get("/website/public/:slug/guests/:guestId", async (req, res) => {
   }
 });
 
+// GET /api/website/preview/guests/search?q=name — authenticated owner-only
+// search used by the editor's "Guest Preview" overlay before the site is
+// published. Searches the owner's guest list directly; no published check.
+router.get("/website/preview/guests/search", requireAuth, async (req, res) => {
+  try {
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
+    const q = String(req.query.q ?? "").trim();
+    if (q.length < 2) return res.json({ matches: [] });
+
+    const rows = await db
+      .select({
+        id: guests.id,
+        name: guests.name,
+        rsvpStatus: guests.rsvpStatus,
+        plusOne: guests.plusOne,
+      })
+      .from(guests)
+      .where(and(eq(guests.profileId, profile.id), ilike(guests.name, `%${q.replace(/[%_]/g, "\\$&")}%`)))
+      .limit(10);
+
+    res.json({ matches: rows });
+  } catch (err) {
+    req.log.error(err, "websiteRsvpPreviewSearch failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/website/preview/guests/:guestId — authenticated owner-only fetch
+// of a single guest, for the preview RSVP flow.
+router.get("/website/preview/guests/:guestId", requireAuth, async (req, res) => {
+  try {
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
+    const guestId = parseInt(String(req.params.guestId), 10);
+    if (!Number.isFinite(guestId)) return res.status(400).json({ error: "Bad guest id" });
+
+    const [guest] = await db
+      .select()
+      .from(guests)
+      .where(and(eq(guests.id, guestId), eq(guests.profileId, profile.id)))
+      .limit(1);
+    if (!guest) return res.status(404).json({ error: "Guest not found" });
+
+    res.json({
+      id: guest.id,
+      name: guest.name,
+      rsvpStatus: guest.rsvpStatus,
+      mealChoice: guest.mealChoice,
+      dietaryNotes: guest.dietaryNotes,
+      plusOne: guest.plusOne,
+      plusOneName: guest.plusOneName,
+      plusOneMealChoice: guest.plusOneMealChoice,
+    });
+  } catch (err) {
+    req.log.error(err, "websiteRsvpPreviewGetGuest failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // POST /api/website/public/:slug/rsvp — submit/update RSVP for a guest.
 // Same write semantics as POST /rsvp/:token but identifies the guest by
 // guestId (returned from the search endpoint) instead of a token.

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/react";
 import { useUpload } from "@workspace/object-storage-web";
 import { authFetch } from "@/lib/authFetch";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,12 +59,6 @@ const SECTION_TEXT_KEYS: Array<{ key: string; label: string; defaultTitle: strin
   { key: "gallery",  label: "Gallery",   defaultTitle: "Gallery", defaultSubtitle: "Moments" },
 ];
 
-const LAYOUT_STYLES = [
-  { id: "standard", name: "Standard" },
-  { id: "compact",  name: "Compact" },
-  { id: "wide",     name: "Wide" },
-];
-
 const SECTION_LIST: Array<{ id: keyof WebsiteRecord["sectionsEnabled"]; label: string; icon: React.ElementType }> = [
   { id: "welcome",      label: "Welcome",       icon: Heart },
   { id: "story",        label: "Our Story",     icon: Heart },
@@ -93,9 +86,24 @@ export default function WebsiteEditor() {
   const [passwordInput, setPasswordInput] = useState("");
   const [lastAutosaved, setLastAutosaved] = useState<Date | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setCtxMenu(null); };
+    const onDown = () => setCtxMenu(null);
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [ctxMenu]);
   const [sidebarWidth, setSidebarWidth] = useState(260);
   const dragState = useRef<{ active: boolean; startX: number; startW: number }>({ active: false, startX: 0, startW: 260 });
   const previewRef = useRef<HTMLElement | null>(null);
+  const [overlayEl, setOverlayEl] = useState<HTMLDivElement | null>(null);
 
   const upload = useUpload({
     getToken,
@@ -470,12 +478,28 @@ export default function WebsiteEditor() {
             </Button>
           </div>
           {record.published && (
-            <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs">
-              <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-              <span className="truncate flex-1 font-mono">{publicUrl}</span>
-              <Button size="sm" variant="ghost" className="h-6 px-2" onClick={copyLink}>
-                {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-              </Button>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs">
+                <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <span className="truncate flex-1 font-mono">{publicUrl}</span>
+                <Button size="sm" variant="ghost" className="h-6 px-2" onClick={copyLink}>
+                  {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2"
+                  onClick={() => setQrOpen((v) => !v)}
+                  title={qrOpen ? "Hide QR code" : "Generate QR code"}
+                >
+                  <QrCode className="h-3 w-3" />
+                </Button>
+              </div>
+              {qrOpen && (
+                <div className="rounded-md border bg-background p-3">
+                  <QrCodeSection publicUrl={publicUrl} published={record.published} />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -483,23 +507,9 @@ export default function WebsiteEditor() {
         {/* Text tools */}
         <Section icon={<Type className="h-4 w-4" />} title="Text Tools">
           <div className="space-y-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full justify-start gap-2"
-              onClick={() => {
-                const key = `_custom_${Date.now()}`;
-                patchRecord((prev) => ({
-                  customText: { ...prev.customText, [key]: "New text — click to edit" },
-                  textPositions: { ...(prev.textPositions ?? {}), [key]: { x: 0, y: 0 } },
-                }));
-                // Scroll preview to top so user can see the new text box in the hero
-                setTimeout(() => previewRef.current?.scrollTo({ top: 0, behavior: "smooth" }), 50);
-              }}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Insert text box
-            </Button>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Right-click anywhere on the preview to add a new text box.
+            </p>
             <Button
               size="sm"
               variant="outline"
@@ -572,21 +582,6 @@ export default function WebsiteEditor() {
                 ))}
               </select>
             </div>
-          </div>
-        </Section>
-
-        {/* Layout */}
-        <Section icon={<ToggleLeft className="h-4 w-4" />} title="Layout">
-          <div className="flex gap-2">
-            {LAYOUT_STYLES.map((l) => (
-              <button
-                key={l.id}
-                onClick={() => update({ layoutStyle: l.id })}
-                className={`flex-1 px-3 py-2 rounded-md border text-sm transition-all ${record.layoutStyle === l.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
-              >
-                {l.name}
-              </button>
-            ))}
           </div>
         </Section>
 
@@ -753,11 +748,10 @@ export default function WebsiteEditor() {
           />
         </Section>
 
-        {/* RSVP responses */}
-        <Section icon={<Users className="h-4 w-4" />} title="RSVP Responses">
-          <RsvpResponsesPanel enabled={record.sectionsEnabled.rsvp ?? false} />
-          {record.sectionsEnabled.rsvp && (
-            <div className="mt-3 space-y-2">
+        {/* RSVP settings — responses are tracked in the portal, not here */}
+        {record.sectionsEnabled.rsvp && (
+          <Section icon={<Heart className="h-4 w-4" />} title="RSVP Settings">
+            <div className="space-y-2">
               <div>
                 <Label className="text-xs text-muted-foreground mb-1 block">RSVP deadline (shown to guests)</Label>
                 <Input
@@ -781,8 +775,8 @@ export default function WebsiteEditor() {
                 />
               </div>
             </div>
-          )}
-        </Section>
+          </Section>
+        )}
 
         {/* Website URL */}
         <Section icon={<Link2 className="h-4 w-4" />} title="Website URL">
@@ -793,11 +787,6 @@ export default function WebsiteEditor() {
               setRecord((prev) => prev ? { ...prev, slug: newSlug, lastUpdated } : prev)
             }
           />
-        </Section>
-
-        {/* QR Code */}
-        <Section icon={<QrCode className="h-4 w-4" />} title="QR Code for Invitations">
-          <QrCodeSection publicUrl={publicUrl} published={record.published} />
         </Section>
 
         {/* Password */}
@@ -839,7 +828,15 @@ export default function WebsiteEditor() {
       />
 
       {/* Live preview */}
-      <main ref={previewRef} className="flex-1 overflow-y-auto bg-muted/20">
+      <main
+        ref={previewRef}
+        className="flex-1 overflow-y-auto bg-muted/20"
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setCtxMenu({ x: e.clientX, y: e.clientY });
+        }}
+        onClick={() => { if (ctxMenu) setCtxMenu(null); }}
+      >
         <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs text-muted-foreground">
           Live preview — changes appear here instantly. Click <strong>Save changes</strong> when you're happy.
         </div>
@@ -861,9 +858,34 @@ export default function WebsiteEditor() {
         </div>
       </main>
 
+      {ctxMenu && (
+        <div
+          className="fixed z-[10000] rounded-md border border-border bg-popover shadow-lg py-1 min-w-[180px]"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <button
+            className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent flex items-center gap-2"
+            onClick={() => {
+              const key = `_custom_${Date.now()}`;
+              patchRecord((prev) => ({
+                customText: { ...prev.customText, [key]: "New text — click to edit" },
+                textPositions: { ...(prev.textPositions ?? {}), [key]: { x: 0, y: 0 } },
+              }));
+              setCtxMenu(null);
+            }}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Insert text box
+          </button>
+        </div>
+      )}
+
       {/* Guest preview overlay */}
       {previewOpen && (
-        <div className="fixed inset-0 z-[9999] bg-background overflow-auto">
+        <div ref={setOverlayEl} className="fixed inset-0 z-[9999] bg-background overflow-auto">
           <div className="sticky top-3 right-0 z-[10000] flex justify-end px-4 pointer-events-none">
             <div className="flex items-center gap-2 pointer-events-auto bg-background/90 backdrop-blur border border-border rounded-full px-3 py-1.5 shadow-lg">
               <span className="text-xs text-muted-foreground font-medium">Guest Preview</span>
@@ -889,6 +911,7 @@ export default function WebsiteEditor() {
             editable={false}
             slug={record.slug ?? ""}
             previewMode
+            scrollContainer={overlayEl}
           />
         </div>
       )}
@@ -896,137 +919,6 @@ export default function WebsiteEditor() {
   );
 }
 
-// ---- rsvp responses panel ----
-
-interface RsvpEntry {
-  id: number;
-  name: string;
-  email: string | null;
-  attending: string;
-  plusOneCount: number;
-  dietaryRestrictions: string | null;
-  message: string | null;
-  submittedAt: string;
-  source?: "guest_list" | "website";
-}
-
-function RsvpResponsesPanel({ enabled }: { enabled: boolean }) {
-  const { data, isLoading, refetch } = useQuery<{
-    rsvps: RsvpEntry[];
-    summary: { yes: number; no: number; maybe: number; totalGuests: number };
-  }>({
-    queryKey: ["website-rsvps"],
-    queryFn: async () => {
-      const r = await authFetch("/api/website/rsvps");
-      if (!r.ok) throw new Error("Failed");
-      return r.json();
-    },
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-  });
-
-  if (!enabled) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        Enable the RSVP section above to start collecting responses.
-      </p>
-    );
-  }
-
-  if (isLoading) {
-    return <div className="h-10 bg-muted animate-pulse rounded" />;
-  }
-
-  const summary = data?.summary;
-  const rsvps = data?.rsvps ?? [];
-
-  return (
-    <div className="space-y-3">
-      {summary && (
-        <div className="grid grid-cols-3 gap-2 text-center">
-          {[
-            { label: "Attending", value: summary.yes, color: "text-emerald-600" },
-            { label: "Declined", value: summary.no, color: "text-red-500" },
-            { label: "Maybe", value: summary.maybe, color: "text-amber-500" },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="rounded-lg border bg-muted/20 p-2">
-              <div className={`text-xl font-bold ${color}`}>{value}</div>
-              <div className="text-[10px] text-muted-foreground">{label}</div>
-            </div>
-          ))}
-        </div>
-      )}
-      {summary && summary.yes > 0 && (
-        <p className="text-xs text-muted-foreground text-center">
-          {summary.totalGuests} total guests (incl. +1s)
-        </p>
-      )}
-      {rsvps.length === 0 ? (
-        <p className="text-xs text-muted-foreground py-2 text-center">No RSVPs yet.</p>
-      ) : (
-        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-          {rsvps.map((r) => (
-            <div key={r.id} className="rounded-md border border-border p-2.5 text-xs space-y-1 bg-card">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="font-medium truncate">{r.name}</span>
-                  {r.source === "guest_list" && (
-                    <span className="flex-shrink-0 text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary font-medium">Guest list</span>
-                  )}
-                </div>
-                <span className={`flex-shrink-0 font-medium ${r.attending === "yes" ? "text-emerald-600" : r.attending === "no" ? "text-red-500" : "text-amber-500"}`}>
-                  {r.attending === "yes" ? "✓ Attending" : r.attending === "no" ? "✗ Declined" : "? Maybe"}
-                  {r.attending !== "no" && r.plusOneCount > 0 && ` +${r.plusOneCount}`}
-                </span>
-              </div>
-              {r.email && <p className="text-muted-foreground truncate">{r.email}</p>}
-              {r.dietaryRestrictions && <p className="text-muted-foreground">Diet: {r.dietaryRestrictions}</p>}
-              {r.message && <p className="italic text-muted-foreground line-clamp-2">"{r.message}"</p>}
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="flex gap-2">
-        <Button size="sm" variant="outline" className="flex-1" onClick={() => void refetch()}>
-          Refresh
-        </Button>
-        {rsvps.length > 0 && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="flex-1"
-            onClick={() => {
-              const headers = ["Name", "Email", "Attending", "+1s", "Dietary", "Message", "Source", "Submitted"];
-              const rows = rsvps.map((r) => [
-                r.name,
-                r.email ?? "",
-                r.attending === "yes" ? "Attending" : r.attending === "no" ? "Declined" : "Maybe",
-                String(r.plusOneCount),
-                r.dietaryRestrictions ?? "",
-                r.message ?? "",
-                r.source === "guest_list" ? "Guest List" : "Website Form",
-                new Date(r.submittedAt).toLocaleString(),
-              ]);
-              const csv = [headers, ...rows]
-                .map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
-                .join("\n");
-              const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "rsvp-responses.csv";
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-          >
-            <Download className="h-3.5 w-3.5 mr-1.5" />
-            CSV
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ---- slug editor ----
 
@@ -1071,9 +963,21 @@ function SlugEditor({
     }
   };
 
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const host = origin.replace(/^https?:\/\//, "");
+
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">Customize the public URL for your site.</p>
+    <div className="space-y-2.5">
+      <div className="rounded-md bg-muted/40 border border-border/70 px-3 py-2 space-y-1">
+        <p className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">Guest website link</p>
+        <p className="text-xs font-mono break-all">
+          <span className="opacity-60">{host}/w/</span><span className="text-foreground">{slug}</span>
+        </p>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Share this with guests. Your editor (this page) stays at <span className="font-mono">{host}</span> —
+          the <span className="font-mono">/w/</span> prefix is what separates the public guest site from your portal.
+        </p>
+      </div>
       {published && (
         <p className="text-[11px] text-amber-600 dark:text-amber-400">
           Changing the URL will break any previously shared links.
@@ -1081,15 +985,17 @@ function SlugEditor({
       )}
       {editing ? (
         <div className="space-y-2">
-          <p className="text-[10px] text-muted-foreground font-mono">{window.location.origin}/w/</p>
-          <input
-            value={input}
-            onChange={(e) => { setInput(sanitize(e.target.value)); setError(null); }}
-            onKeyDown={(e) => { if (e.key === "Enter") void save(); if (e.key === "Escape") { setEditing(false); setInput(slug); setError(null); } }}
-            placeholder="your-url-slug"
-            autoFocus
-            className="w-full h-8 px-3 rounded-md border border-border bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
+          <div className="flex items-center text-xs font-mono rounded-md border border-border bg-background overflow-hidden focus-within:ring-2 focus-within:ring-primary/30">
+            <span className="px-2.5 py-1.5 bg-muted text-muted-foreground border-r border-border whitespace-nowrap">{host}/w/</span>
+            <input
+              value={input}
+              onChange={(e) => { setInput(sanitize(e.target.value)); setError(null); }}
+              onKeyDown={(e) => { if (e.key === "Enter") void save(); if (e.key === "Escape") { setEditing(false); setInput(slug); setError(null); } }}
+              placeholder="your-url-slug"
+              autoFocus
+              className="flex-1 h-8 px-2 bg-background text-sm font-mono focus:outline-none"
+            />
+          </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex gap-2">
             <Button
@@ -1110,12 +1016,11 @@ function SlugEditor({
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-mono text-muted-foreground truncate">/w/{slug}</span>
+        <div className="flex items-center justify-end">
           <Button
             size="sm"
             variant="outline"
-            className="h-7 text-xs flex-shrink-0"
+            className="h-7 text-xs"
             onClick={() => { setEditing(true); setInput(slug); }}
           >
             Edit URL

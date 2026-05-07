@@ -234,6 +234,19 @@ export function EditableText({
           if (!multiline && e.key === "Enter") {
             e.preventDefault();
             (e.currentTarget as HTMLElement).blur();
+            return;
+          }
+          // Delete/Backspace with all text selected (or already empty) deletes the whole text box
+          if ((e.key === "Delete" || e.key === "Backspace") && onDelete) {
+            const el = e.currentTarget as HTMLElement;
+            const text = el.innerText;
+            const sel = window.getSelection();
+            const allSelected = !!sel && sel.toString().length > 0 && sel.toString() === text;
+            if (allSelected || text.length === 0) {
+              e.preventDefault();
+              if (blurTimer.current) { clearTimeout(blurTimer.current); blurTimer.current = null; }
+              onDelete();
+            }
           }
         }}
         className={`${className} ${anim} editable-text`}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2 } from "lucide-react";
+import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed } from "lucide-react";
 import { EditableText, type TextPosition } from "./EditableText";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch } from "@/lib/authFetch";
@@ -413,6 +413,7 @@ function buildIcs(couple: string, dateStr: string, ceremonyTime: string, venue: 
 }
 
 function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
+  const [open, setOpen] = useState(false);
   if (!data.couple.weddingDate) return null;
   const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
 
@@ -438,12 +439,9 @@ function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
   const desc  = encodeURIComponent(`Join us to celebrate the wedding of ${couple}!`);
   const loc   = encodeURIComponent(locStr);
 
-  // Google Calendar — compact datetime format without separators
   const gcalDt    = `${y}${pad(m)}${pad(d)}T${pad(h)}${pad(min)}00`;
   const gcalEndDt = `${y}${pad(m)}${pad(d)}T${pad(h + 4)}${pad(min)}00`;
   const gcal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${gcalDt}/${gcalEndDt}&location=${loc}&details=${desc}`;
-
-  // Outlook.com web calendar
   const outlook = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${title}&startdt=${encodeURIComponent(isoStart)}&enddt=${encodeURIComponent(isoEnd)}&location=${loc}&body=${desc}&path=/calendar/action/compose&rru=addevent`;
 
   const btnStyle: React.CSSProperties = {
@@ -453,36 +451,54 @@ function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
     backdropFilter: "blur(4px)",
   };
 
+  const itemClass = "block w-full text-left px-4 py-2 text-sm hover:bg-black/5 transition-colors";
+
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
+    <div className="relative inline-flex flex-col items-center mt-6">
       <button
-        onClick={downloadIcs}
+        onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-opacity hover:opacity-80"
         style={btnStyle}
+        aria-expanded={open}
       >
         <Calendar className="h-4 w-4" />
-        Apple Calendar
+        Add to Calendar
       </button>
-      <a
-        href={gcal}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-opacity hover:opacity-80"
-        style={btnStyle}
-      >
-        <Calendar className="h-4 w-4" />
-        Google Calendar
-      </a>
-      <a
-        href={outlook}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-opacity hover:opacity-80"
-        style={btnStyle}
-      >
-        <Calendar className="h-4 w-4" />
-        Outlook
-      </a>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
+          <div
+            className="absolute top-full mt-2 z-50 rounded-lg shadow-xl border overflow-hidden min-w-[180px]"
+            style={{ background: "#fff", color: "#222", borderColor: "rgba(0,0,0,0.1)" }}
+          >
+            <button
+              type="button"
+              className={itemClass}
+              onClick={() => { downloadIcs(); setOpen(false); }}
+            >
+              Apple Calendar
+            </button>
+            <a
+              href={gcal}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={itemClass}
+              onClick={() => setOpen(false)}
+            >
+              Google Calendar
+            </a>
+            <a
+              href={outlook}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={itemClass}
+              onClick={() => setOpen(false)}
+            >
+              Outlook
+            </a>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -887,39 +903,53 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 
 function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const customSchedule = data.customText.schedule ?? "";
-  const hasFallback = data.couple.ceremonyTime || data.couple.receptionTime;
-  if (!customSchedule && !hasFallback && !ctx.editable) return null;
+  const ceremonyTime = (data.customText._scheduleCeremonyTime ?? "").trim() || data.couple.ceremonyTime || "";
+  const cocktailTime = (data.customText._scheduleCocktailTime ?? "").trim();
+  const receptionTime = (data.customText._scheduleReceptionTime ?? "").trim() || data.couple.receptionTime || "";
+  const items: Array<{ key: string; label: string; Icon: typeof Heart; time: string }> = [
+    { key: "_scheduleCeremonyTime", label: "Ceremony",     Icon: Heart,            time: ceremonyTime },
+    { key: "_scheduleCocktailTime", label: "Cocktail Hour", Icon: Wine,             time: cocktailTime },
+    { key: "_scheduleReceptionTime", label: "Reception",    Icon: UtensilsCrossed,  time: receptionTime },
+  ];
+  const visibleItems = ctx.editable ? items : items.filter((i) => i.time);
+  if (!ctx.editable && visibleItems.length === 0 && !customSchedule) return null;
   return (
     <SectionShell id="schedule" titleKey="schedule_title" defaultTitle="Schedule" icon={<Clock className="h-4 w-4" />} data={data} ctx={ctx}>
       <div className="max-w-2xl mx-auto">
-        {/* Ceremony / Reception time pills from profile */}
-        {(data.couple.ceremonyTime || data.couple.receptionTime) && (
-          <div className="space-y-3 mb-8">
-            {data.couple.ceremonyTime && (
-              <div className="flex gap-4 items-center py-3 border-b" style={{ borderColor: `${data.colorPalette.primary}22` }}>
-                <div className="w-28 text-sm font-medium" style={{ color: data.colorPalette.primary }}>
-                  {data.couple.ceremonyTime}
-                </div>
-                <div className="flex-1 text-base" style={{ color: data.colorPalette.text }}>Ceremony</div>
+        <div className="space-y-3 mb-8">
+          {visibleItems.map((it, idx) => (
+            <div
+              key={it.key}
+              className="flex gap-4 items-center py-3"
+              style={{
+                borderBottom: idx < visibleItems.length - 1 ? `1px solid ${data.colorPalette.primary}22` : "none",
+              }}
+            >
+              <div
+                className="flex items-center justify-center w-9 h-9 rounded-full flex-shrink-0"
+                style={{ background: `${data.colorPalette.primary}15`, color: data.colorPalette.primary }}
+              >
+                <it.Icon className="h-4 w-4" />
               </div>
-            )}
-            {data.couple.receptionTime && (
-              <div className="flex gap-4 items-center py-3">
-                <div className="w-28 text-sm font-medium" style={{ color: data.colorPalette.primary }}>
-                  {data.couple.receptionTime}
-                </div>
-                <div className="flex-1 text-base" style={{ color: data.colorPalette.text }}>Reception</div>
+              <div className="w-28 text-sm font-medium" style={{ color: data.colorPalette.primary }}>
+                <EditableText
+                  editable={ctx.editable}
+                  value={data.customText[it.key] ?? ""}
+                  defaultValue={it.time || (ctx.editable ? "Add time" : "")}
+                  onCommit={(v) => ctx.onTextChange(it.key, v)}
+                />
               </div>
-            )}
-          </div>
-        )}
-        {/* Free-form schedule text */}
+              <div className="flex-1 text-base" style={{ color: data.colorPalette.text }}>{it.label}</div>
+            </div>
+          ))}
+        </div>
+        {/* Optional free-form notes below the schedule */}
         <EditableText
           as="div"
           multiline
           editable={ctx.editable}
           value={customSchedule}
-          defaultValue={ctx.editable ? "Add your wedding day schedule here — ceremony, cocktail hour, reception, dancing..." : ""}
+          defaultValue={ctx.editable ? "Add any extra schedule notes — dress code, parking, after-party, etc." : ""}
           onCommit={(v) => ctx.onTextChange("schedule", v)}
           className="text-center text-base sm:text-lg leading-relaxed whitespace-pre-line"
           style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
@@ -1390,7 +1420,9 @@ function TopNav({
       { root, rootMargin: "-30% 0px -50% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
     );
     items.forEach((it) => {
-      const el = document.getElementById(it.id);
+      const el = scrollContainer
+        ? (scrollContainer.querySelector(`#${CSS.escape(it.id)}`) as HTMLElement | null)
+        : document.getElementById(it.id);
       if (el) observer.observe(el);
     });
     return () => observer.disconnect();
@@ -1398,7 +1430,11 @@ function TopNav({
   }, [pageMode, data.sectionsEnabled, scrollContainer]);
 
   const scrollTo = (id: string) => {
-    const el = document.getElementById(id);
+    // Scope the lookup to scrollContainer when one is provided so two simultaneous
+    // renderers (e.g. live editor + Guest Preview overlay) don't collide on duplicate IDs.
+    const el = scrollContainer
+      ? (scrollContainer.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null)
+      : document.getElementById(id);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
     setScrollActive(id);
@@ -1495,6 +1531,24 @@ export function WebsiteRenderer({
   const ctx: EditCtx = editable && onTextChange
     ? { editable: true, onTextChange, textStyles: data.textStyles, onStyleChange, textPositions: data.textPositions, onPositionChange, onDeleteElement }
     : NOOP_CTX;
+
+  // Dynamically load the chosen heading + body Google Fonts so that fonts not
+  // preloaded in index.html (e.g. Tangerine, Great Vibes, Allura) actually render.
+  const headingFontName = headingFont(data);
+  const bodyFontName = bodyFont(data);
+  useEffect(() => {
+    const families = Array.from(new Set([headingFontName, bodyFontName].filter(Boolean)));
+    families.forEach((family) => {
+      const id = `aido-font-${family.replace(/\s+/g, "-").toLowerCase()}`;
+      if (document.getElementById(id)) return;
+      const link = document.createElement("link");
+      link.id = id;
+      link.rel = "stylesheet";
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family).replace(/%20/g, "+")}:wght@400;500;600;700&display=swap`;
+      document.head.appendChild(link);
+    });
+  }, [headingFontName, bodyFontName]);
+
   const pageMode = !!currentSection;
   const showAll = !pageMode;
   const show = (id: string, enabled: boolean) =>
@@ -1523,7 +1577,7 @@ export function WebsiteRenderer({
       {show("gallery", data.sectionsEnabled.gallery) && <Gallery data={data} ctx={ctx} />}
       {(showAll || currentSection === "rsvp") && (
         slug
-          ? <RsvpFlow data={data} slug={slug} password={password ?? undefined} />
+          ? <RsvpFlow data={data} slug={slug} password={password ?? undefined} previewMode={previewMode} />
           : <RsvpSection data={data} ctx={ctx} />
       )}
       <Footer data={data} ctx={ctx} />

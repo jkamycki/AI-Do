@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/authFetch";
+import { apiFetch, authFetch } from "@/lib/authFetch";
 import { Loader2, Search, Check, X, Heart } from "lucide-react";
 import type { WebsiteRendererPayload } from "./WebsiteRenderer";
 
@@ -29,10 +29,14 @@ export function RsvpFlow({
   data,
   slug,
   password,
+  previewMode = false,
 }: {
   data: WebsiteRendererPayload;
   slug: string;
   password?: string | null;
+  // When true (editor "Guest Preview"), use authenticated owner-scoped endpoints
+  // so guests on the user's list show up even if the site isn't published yet.
+  previewMode?: boolean;
 }) {
   const [step, setStep] = useState<"search" | "already-rsvped" | "form" | "done">("search");
   const [query, setQuery] = useState("");
@@ -77,9 +81,10 @@ export function RsvpFlow({
     setSearching(true);
     setSearched(false);
     try {
-      const r = await apiFetch(
-        `/api/website/public/${encodeURIComponent(slug)}/guests/search?q=${encodeURIComponent(query.trim())}${queryArgs}`,
-      );
+      const url = previewMode
+        ? `/api/website/preview/guests/search?q=${encodeURIComponent(query.trim())}`
+        : `/api/website/public/${encodeURIComponent(slug)}/guests/search?q=${encodeURIComponent(query.trim())}${queryArgs}`;
+      const r = previewMode ? await authFetch(url) : await apiFetch(url);
       if (!r.ok) {
         setError("Search failed. Please try again.");
         return;
@@ -97,9 +102,10 @@ export function RsvpFlow({
   const selectGuest = async (m: GuestMatch) => {
     setError(null);
     try {
-      const r = await apiFetch(
-        `/api/website/public/${encodeURIComponent(slug)}/guests/${m.id}${password ? `?password=${encodeURIComponent(password)}` : ""}`,
-      );
+      const url = previewMode
+        ? `/api/website/preview/guests/${m.id}`
+        : `/api/website/public/${encodeURIComponent(slug)}/guests/${m.id}${password ? `?password=${encodeURIComponent(password)}` : ""}`;
+      const r = previewMode ? await authFetch(url) : await apiFetch(url);
       if (!r.ok) {
         setError("Couldn't load your details. Please try again.");
         return;
@@ -120,6 +126,10 @@ export function RsvpFlow({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!guest) return;
+    if (previewMode) {
+      setStep("done");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
