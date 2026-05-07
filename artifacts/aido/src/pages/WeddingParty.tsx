@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Plus, Phone, Mail, Trash2, Edit2, Crown, Heart, RotateCcw, Camera, Loader2 } from "lucide-react";
+import { Users, Plus, Trash2, Edit2, Crown, Heart, RotateCcw, Camera, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { HeadshotCropDialog } from "@/components/HeadshotCropDialog";
 
@@ -123,7 +123,7 @@ const AVATAR_BG: Record<string, string> = {
 
 const EMPTY: Partial<Member> = {
   name: "", role: "Bridesmaid", side: "bride",
-  phone: "", email: "", notes: "", sortOrder: 0,
+  notes: "", sortOrder: 0,
 };
 
 // ─── MemberForm ───────────────────────────────────────────────────────────────
@@ -168,14 +168,6 @@ function MemberForm({
               <SelectItem value="groom">{t("party.side_groomsmen")}</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>{t("party.phone_label")}</Label>
-          <Input type="tel" placeholder="(555) 000-0000" value={form.phone ?? ""} onChange={e => set("phone", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>{t("party.email_label")}</Label>
-          <Input type="email" placeholder="jane@email.com" value={form.email ?? ""} onChange={e => set("email", e.target.value)} />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("party.notes_label")}</Label>
@@ -334,26 +326,10 @@ function MemberCard({
             </div>
           </div>
 
-          {/* Contact / notes */}
-          <div className="mt-3 space-y-1.5">
-            {(member.phone || member.email) && (
-              <div className="flex flex-wrap gap-3">
-                {member.phone && (
-                  <a href={`tel:${member.phone}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                    <Phone className="h-3.5 w-3.5" />{member.phone}
-                  </a>
-                )}
-                {member.email && (
-                  <a href={`mailto:${member.email}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                    <Mail className="h-3.5 w-3.5" />{member.email}
-                  </a>
-                )}
-              </div>
-            )}
-            {member.notes && (
-              <p className="text-xs text-muted-foreground italic border-t border-border/40 pt-2 mt-2">{member.notes}</p>
-            )}
-          </div>
+          {/* Notes */}
+          {member.notes && (
+            <p className="text-xs text-muted-foreground italic border-t border-border/40 pt-2 mt-3">{member.notes}</p>
+          )}
         </CardContent>
       </Card>
 
