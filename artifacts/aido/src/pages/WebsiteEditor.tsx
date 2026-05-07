@@ -209,6 +209,8 @@ export default function WebsiteEditor() {
           colorPalette: record.colorPalette,
           sectionsEnabled: record.sectionsEnabled,
           customText: record.customText,
+          textStyles: record.textStyles ?? {},
+          textPositions: record.textPositions ?? {},
           galleryImages: record.galleryImages,
           heroImage: record.heroImage,
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
@@ -254,6 +256,7 @@ export default function WebsiteEditor() {
           sectionsEnabled: record.sectionsEnabled,
           customText: record.customText,
           textStyles: record.textStyles ?? {},
+          textPositions: record.textPositions ?? {},
           galleryImages: record.galleryImages,
           heroImage: record.heroImage,
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
@@ -405,6 +408,7 @@ export default function WebsiteEditor() {
     sectionsEnabled: record.sectionsEnabled,
     customText: record.customText,
     textStyles: record.textStyles ?? {},
+    textPositions: record.textPositions ?? {},
     galleryImages: record.galleryImages,
     heroImage: record.heroImage,
     couple: previewExtra?.couple ?? {
@@ -789,6 +793,7 @@ export default function WebsiteEditor() {
             editable
             onTextChange={(key, value) => update({ customText: { ...record.customText, [key]: value } })}
             onStyleChange={(key, style) => update({ textStyles: { ...(record.textStyles ?? {}), [key]: style } })}
+            onPositionChange={(key, pos) => update({ textPositions: { ...(record.textPositions ?? {}), [key]: pos } })}
           />
         </div>
       </main>
