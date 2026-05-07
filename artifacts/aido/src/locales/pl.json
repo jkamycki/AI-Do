@@ -594,7 +594,13 @@
     "exporting_pdf": "Eksportuję…",
     "export_pdf_title": "Pobierz PDF do wydruku ze wszystkimi stołami",
     "pdf_saved": "PDF planu rozsadzenia zapisany",
-    "pdf_failed": "Eksport PDF nie powiódł się"
+    "pdf_failed": "Eksport PDF nie powiódł się",
+    "reset": "Resetuj",
+    "resetting": "Resetowanie…",
+    "reset_title": "Usuń wszystkie zapisane plany rozsadzenia i wyczyść przydziały do stołów",
+    "reset_confirm": "Zresetować plan rozsadzenia? Spowoduje to usunięcie wszystkich zapisanych planów i wyczyszczenie przydziałów do stołów na liście gości. Operacja nieodwracalna.",
+    "reset_done": "Plan rozsadzenia zresetowany",
+    "reset_failed": "Resetowanie nie powiodło się"
   },
   "help": {
     "title": "Pomoc i wsparcie",

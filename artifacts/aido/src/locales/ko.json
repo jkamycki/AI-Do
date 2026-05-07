@@ -594,7 +594,13 @@
     "exporting_pdf": "내보내는 중…",
     "export_pdf_title": "모든 테이블을 인쇄용 PDF로 다운로드",
     "pdf_saved": "좌석 배치 PDF 저장됨",
-    "pdf_failed": "PDF 내보내기에 실패했어요"
+    "pdf_failed": "PDF 내보내기에 실패했어요",
+    "reset": "초기화",
+    "resetting": "초기화 중…",
+    "reset_title": "저장된 모든 좌석 배치를 삭제하고 테이블 배정을 초기화",
+    "reset_confirm": "좌석 배치를 초기화할까요? 저장된 모든 좌석 배치와 하객 명단의 테이블 배정이 삭제됩니다. 되돌릴 수 없어요.",
+    "reset_done": "좌석 배치가 초기화되었습니다",
+    "reset_failed": "초기화에 실패했어요"
   },
   "help": {
     "title": "도움말 & 지원",

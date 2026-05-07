@@ -1195,7 +1195,13 @@
     "exporting_pdf": "Exportando…",
     "export_pdf_title": "Baixar um PDF imprimível com todas as mesas",
     "pdf_saved": "PDF do mapa de mesas salvo",
-    "pdf_failed": "Falha ao exportar o PDF"
+    "pdf_failed": "Falha ao exportar o PDF",
+    "reset": "Redefinir",
+    "resetting": "Redefinindo…",
+    "reset_title": "Excluir todos os mapas de mesas salvos e limpar as atribuições de mesa",
+    "reset_confirm": "Redefinir o mapa de mesas? Isso exclui todos os mapas salvos e limpa as atribuições de mesa na lista de convidados. Não pode ser desfeito.",
+    "reset_done": "Mapa de mesas redefinido",
+    "reset_failed": "Falha ao redefinir"
   },
   "help": {
     "title": "Ajuda e Suporte",

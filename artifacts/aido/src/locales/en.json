@@ -1195,7 +1195,13 @@
     "exporting_pdf": "Exporting…",
     "export_pdf_title": "Download a printable PDF of every table",
     "pdf_saved": "Seating chart PDF saved",
-    "pdf_failed": "PDF export failed"
+    "pdf_failed": "PDF export failed",
+    "reset": "Reset",
+    "resetting": "Resetting…",
+    "reset_title": "Delete all saved seating charts and clear table assignments",
+    "reset_confirm": "Reset seating chart? This deletes every saved chart and clears table assignments on your guest list. This cannot be undone.",
+    "reset_done": "Seating chart reset",
+    "reset_failed": "Reset failed"
   },
   "help": {
     "title": "Help & Support",

@@ -594,7 +594,13 @@
     "exporting_pdf": "Exporteren…",
     "export_pdf_title": "Download een printbaar PDF van alle tafels",
     "pdf_saved": "Tafelschikking-PDF opgeslagen",
-    "pdf_failed": "PDF-export mislukt"
+    "pdf_failed": "PDF-export mislukt",
+    "reset": "Herstellen",
+    "resetting": "Herstellen…",
+    "reset_title": "Alle opgeslagen tafelschikkingen verwijderen en tafelverdeling wissen",
+    "reset_confirm": "Tafelschikking herstellen? Hiermee verwijder je alle opgeslagen tafelschikkingen en wis je de tafelverdeling op je gastenlijst. Kan niet worden ongedaan gemaakt.",
+    "reset_done": "Tafelschikking hersteld",
+    "reset_failed": "Herstellen mislukt"
   },
   "help": {
     "title": "Help & ondersteuning",

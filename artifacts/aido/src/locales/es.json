@@ -1182,7 +1182,13 @@
     "exporting_pdf": "Exportando…",
     "export_pdf_title": "Descargar un PDF imprimible con todas las mesas",
     "pdf_saved": "PDF del plano de asientos guardado",
-    "pdf_failed": "Error al exportar el PDF"
+    "pdf_failed": "Error al exportar el PDF",
+    "reset": "Restablecer",
+    "resetting": "Restableciendo…",
+    "reset_title": "Eliminar todos los planos de asientos guardados y limpiar las asignaciones de mesa",
+    "reset_confirm": "¿Restablecer el plano de asientos? Esto elimina todos los planos guardados y borra las asignaciones de mesa de tu lista de invitados. No se puede deshacer.",
+    "reset_done": "Plano de asientos restablecido",
+    "reset_failed": "Error al restablecer"
   },
   "help": {
     "title": "Ayuda y Soporte",

@@ -240,4 +240,30 @@ router.delete("/seating/charts/:id", requireAuth, async (req, res) => {
   }
 });
 
+// Wipe every saved seating chart for the workspace AND clear tableAssignment
+// on every guest in the profile. Used by the page's "Reset" button so the
+// dashboard tile flips back to "No seating chart yet" and the guest-list
+// table-assignment column resets in lockstep.
+router.delete("/seating/charts", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    await db.delete(seatingCharts).where(eq(seatingCharts.userId, userId));
+    if (profile) {
+      await db
+        .update(guestRecords)
+        .set({ tableAssignment: null })
+        .where(eq(guestRecords.profileId, profile.id));
+    }
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

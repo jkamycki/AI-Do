@@ -1195,7 +1195,13 @@
     "exporting_pdf": "Esportazione…",
     "export_pdf_title": "Scarica un PDF stampabile con tutti i tavoli",
     "pdf_saved": "PDF della disposizione salvato",
-    "pdf_failed": "Esportazione PDF non riuscita"
+    "pdf_failed": "Esportazione PDF non riuscita",
+    "reset": "Reimposta",
+    "resetting": "Reimpostazione…",
+    "reset_title": "Elimina tutte le disposizioni salvate e cancella le assegnazioni dei tavoli",
+    "reset_confirm": "Reimpostare la disposizione? Vengono eliminate tutte le disposizioni salvate e le assegnazioni dei tavoli sulla lista invitati. Operazione irreversibile.",
+    "reset_done": "Disposizione reimpostata",
+    "reset_failed": "Reimpostazione non riuscita"
   },
   "help": {
     "title": "Aiuto e Supporto",
