@@ -202,16 +202,24 @@ export default function WebsiteEditor() {
   // Coalesces rapid changes (drag, typing) into a single history entry so the
   // user undoes one logical action at a time rather than each pixel of a drag.
   const [historyLen, setHistoryLen] = useState(0);
+  // Mirrors whether pendingPrevRef holds an uncommitted entry, so the Undo
+  // button enables immediately after a change rather than after the 500ms
+  // debounce flushes the pending entry into history.
+  const [hasPending, setHasPending] = useState(false);
   const historyRef = useRef<WebsiteRecord[]>([]);
   const pendingPrevRef = useRef<WebsiteRecord | null>(null);
   const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const queueHistory = useCallback((prev: WebsiteRecord) => {
-    if (!pendingPrevRef.current) pendingPrevRef.current = prev;
+    if (!pendingPrevRef.current) {
+      pendingPrevRef.current = prev;
+      setHasPending(true);
+    }
     if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
     commitTimerRef.current = setTimeout(() => {
       const p = pendingPrevRef.current;
       pendingPrevRef.current = null;
+      setHasPending(false);
       if (!p) return;
       historyRef.current = [...historyRef.current.slice(-49), p];
       setHistoryLen(historyRef.current.length);
@@ -227,6 +235,7 @@ export default function WebsiteEditor() {
     if (pendingPrevRef.current) {
       historyRef.current = [...historyRef.current.slice(-49), pendingPrevRef.current];
       pendingPrevRef.current = null;
+      setHasPending(false);
     }
     if (historyRef.current.length === 0) return;
     const prev = historyRef.current[historyRef.current.length - 1];
@@ -532,7 +541,7 @@ export default function WebsiteEditor() {
               size="sm"
               variant="outline"
               onClick={handleUndo}
-              disabled={historyLen === 0}
+              disabled={historyLen === 0 && !hasPending}
               title="Undo last change (Cmd/Ctrl+Z)"
             >
               <Undo2 className="h-3.5 w-3.5 mr-1.5" />
