@@ -996,10 +996,6 @@ function DashboardContent() {
             </div>
             {summary.guestCount > 0 ? (
               <div className="space-y-2">
-                <div className="flex items-baseline justify-between mb-1">
-                  <span className="text-2xl font-serif font-semibold text-foreground">{summary.guestCount}</span>
-                  <span className="text-[11px] text-muted-foreground uppercase tracking-wider">{t("dashboard.total_invited", { defaultValue: "Total invited" })}</span>
-                </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /><span className="text-xs text-muted-foreground">{t("dashboard.rsvp_attending")}</span></div>
                   <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{(summary as any).guestRsvpSummary?.attending ?? 0}</span>
@@ -1011,6 +1007,10 @@ function DashboardContent() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /><span className="text-xs text-muted-foreground">{t("dashboard.rsvp_awaiting")}</span></div>
                   <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{(summary as any).guestRsvpSummary?.pending ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-border/50 pt-2 mt-1">
+                  <span className="text-xs font-medium text-foreground">{t("dashboard.total_invited", { defaultValue: "Total invited" })}</span>
+                  <span className="text-sm font-semibold text-foreground">{summary.guestCount}</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-muted overflow-hidden flex mt-1">
                   {((summary as any).guestRsvpSummary?.attending ?? 0) > 0 && (
