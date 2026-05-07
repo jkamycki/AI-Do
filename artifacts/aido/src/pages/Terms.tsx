@@ -1,420 +1,237 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
 
 export default function Terms() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-zinc-950 text-white">
       <div className="max-w-3xl mx-auto px-6 py-12">
-        {/* Back link */}
         <Link href="/">
-          <Button variant="ghost" size="sm" className="mb-8 -ml-2 text-muted-foreground hover:text-foreground gap-1.5">
+          <Button variant="ghost" size="sm" className="mb-8 -ml-2 text-zinc-300 hover:text-white hover:bg-white/10 gap-1.5">
             <ArrowLeft className="h-4 w-4" />
             Back to Home
           </Button>
         </Link>
 
-        <div className="space-y-2 mb-10">
-          <h1 className="font-serif text-4xl text-foreground">Terms of Service</h1>
-          <p className="text-sm text-foreground">Last updated: April 23, 2026</p>
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 mb-8 flex items-start gap-3 text-amber-100">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-amber-300" />
+          <div className="space-y-1 text-sm leading-relaxed">
+            <p className="font-semibold text-amber-200">Draft — review with legal counsel before publishing.</p>
+            <p>This page is an AI-assisted draft tailored to A.IDO's current feature set. It is not legal advice. Have a New York-licensed attorney review and finalize before relying on these terms for actual users.</p>
+          </div>
         </div>
 
-        <div className="max-w-none space-y-8 text-foreground leading-relaxed">
+        <div className="space-y-2 mb-10">
+          <h1 className="font-serif text-4xl text-white">Terms of Service</h1>
+          <p className="text-sm text-zinc-300">Last updated: November 2026</p>
+        </div>
+
+        <div className="space-y-8 leading-relaxed text-white">
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">1. Acceptance of Terms</h2>
+            <h2 className="font-serif text-xl font-semibold">1. Acceptance of Terms</h2>
             <p>
               By accessing or using A.IDO ("the Service," "we," "us," or "our"), you agree to be bound by these
-              Terms of Service ("Terms"). If you do not agree to all of these Terms, do not access or use the Service.
-              These Terms apply to all visitors, users, and anyone else who accesses or uses the Service.
+              Terms of Service ("Terms"). If you do not agree, do not access or use the Service. These Terms apply
+              to all visitors, registered users, collaborators (partners, planners, vendors, family members invited
+              to a workspace), and anyone who interacts with a wedding website published through the Service.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">2. Description of Service</h2>
+            <h2 className="font-serif text-xl font-semibold">2. Description of the Service</h2>
             <p>
-              A.IDO is an AI-powered wedding planning platform that provides tools including but not limited to:
-              wedding timelines, budget management, guest list management, vendor communications, contract review
-              assistance, seating chart generation, checklist tracking, and an AI planning assistant. The Service
-              is provided for personal, non-commercial use only unless otherwise agreed in writing.
+              A.IDO is an AI-assisted wedding-planning platform. The Service currently provides:
             </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">3. Eligibility</h2>
-            <p>
-              You must be at least 18 years old to use the Service. By agreeing to these Terms, you represent and
-              warrant that you are at least 18 years of age and have the legal capacity to enter into this agreement.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">4. User Accounts</h2>
-            <p>
-              To access certain features of the Service, you must register for an account. You agree to provide
-              accurate, current, and complete information during registration and to keep your account information
-              updated. You are solely responsible for maintaining the confidentiality of your login credentials and
-              for all activities that occur under your account. You must notify us immediately of any unauthorized
-              use of your account. We are not liable for any loss or damage arising from your failure to protect
-              your account credentials.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">5. User Content</h2>
-            <p>
-              You retain ownership of all content, data, and information you submit to the Service ("User Content"),
-              including guest lists, vendor details, budgets, and wedding details. By submitting User Content, you
-              grant us a limited, non-exclusive, royalty-free license to use, store, and process your User Content
-              solely for the purpose of providing and improving the Service. You are solely responsible for ensuring
-              that your User Content does not violate any applicable laws, regulations, or third-party rights.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">6. Data Storage, Backups, and Loss of Data</h2>
-            <p>
-              <span className="font-semibold text-foreground">You are solely responsible for maintaining your own backups of any User Content you submit
-              to the Service.</span> While we take commercially reasonable measures to store your data securely
-              and reliably, A.IDO <span className="font-semibold text-foreground">does not guarantee</span> the availability, accuracy, integrity, or
-              continued retention of any User Content, and we expressly disclaim any obligation to act as a
-              backup, archival, or recovery service.
-            </p>
-            <p>
-              You acknowledge and agree that User Content — including but not limited to wedding profiles, guest
-              lists, vendor records, budgets, contracts, photos, messages, seating charts, checklists, timelines,
-              uploaded files, and AI-generated content — <span className="font-semibold text-foreground">may be lost, corrupted, deleted, modified, or
-              rendered inaccessible</span> as a result of, without limitation:
-            </p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li>your own actions or those of any collaborator, guest, or third party with access to your account or workspace;</li>
-              <li>account deletion, account suspension, or termination of the Service or your use of it;</li>
-              <li>technical failures, hardware or software malfunctions, network outages, data center incidents, or service interruptions;</li>
-              <li>security incidents, unauthorized access, malware, or cyberattacks;</li>
-              <li>bugs, errors, deployments, schema changes, migrations, or maintenance operations performed on the Service;</li>
-              <li>third-party service providers (including but not limited to hosting, storage, email delivery, AI providers, and authentication services);</li>
-              <li>force majeure events, natural disasters, governmental actions, or any cause outside our reasonable control.</li>
+            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+              <li><strong>Wedding profile</strong> — couple names, wedding date, venue, guest count, budget, theme, and related details.</li>
+              <li><strong>AI timeline generator</strong> — drafts a minute-by-minute day-of schedule, downloadable as a PDF.</li>
+              <li><strong>Smart checklist</strong> — month-by-month task suggestions tailored to your wedding date.</li>
+              <li><strong>Budget manager</strong> — tracks estimated vs. actual costs, deposits, payment milestones, and vendor totals.</li>
+              <li><strong>Vendor tracking</strong> — store vendor contacts, contract status, deposit milestones, and notes.</li>
+              <li><strong>AI vendor email assistant</strong> — drafts professional emails to send to vendors.</li>
+              <li><strong>AI contract analyzer</strong> — uploads vendor contracts and surfaces summary plus flagged terms.</li>
+              <li><strong>Mood board</strong> — image collection and AI-assisted style suggestions; PDF export.</li>
+              <li><strong>Guest list &amp; invitations</strong> — guest data, dietary notes, RSVP tokens, save-the-date and digital invitation flows.</li>
+              <li><strong>Hotel blocks</strong> — booking link, code, room counts.</li>
+              <li><strong>Wedding party</strong> — bridesmaid / groomsmen / officiant directory.</li>
+              <li><strong>Seating chart</strong> — AI table generation, drag-to-rearrange editor, PDF export.</li>
+              <li><strong>Day-of coordinator</strong> — AI emergency helper used during the wedding day.</li>
+              <li><strong>Wedding website</strong> — couples publish a public guest site at a chosen URL with RSVP, schedule, registry, gallery, etc.</li>
+              <li><strong>Aria</strong> — an AI planning assistant that can read and (with confirmation) modify your data via tool calls.</li>
+              <li><strong>Workspace collaboration</strong> — invite a partner, planner, or vendor with role-based access.</li>
+              <li><strong>Support chat</strong> — an AI support assistant that can file support tickets on your behalf.</li>
             </ul>
             <p>
-              <span className="font-semibold text-foreground">To the maximum extent permitted by applicable law, A.IDO and its owners, operators,
-              employees, agents, contractors, and licensors shall have no liability whatsoever to you or any
-              third party for any loss, deletion, corruption, or unavailability of User Content, or for any
-              direct, indirect, incidental, consequential, special, punitive, or exemplary damages arising from
-              or relating to such loss, including but not limited to loss of revenue, lost profits, lost business
-              opportunities, emotional distress, missed deadlines, or wedding-related disruption.</span>
-            </p>
-            <p>
-              We strongly recommend that you regularly export and retain your own copies of any wedding-related
-              information you consider important, using the export tools provided within the Service or by
-              copying the data manually. Your continued use of the Service constitutes your acceptance of this
-              risk and your agreement that the Service is not, and shall not be deemed to be, your system of
-              record for any data.
+              The Service is provided for personal, non-commercial use unless otherwise agreed in writing. Features
+              may be added, modified, or removed during the beta period without notice.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">7. Shared Workspaces and Collaborators</h2>
+            <h2 className="font-serif text-xl font-semibold">3. Beta Status &amp; No-Cost Use</h2>
             <p>
-              The Service allows the account owner ("Owner") of a wedding workspace to invite additional users
-              ("Collaborators") to view, edit, or otherwise interact with the Owner's wedding data, subject to
-              the role and permissions assigned by the Owner. By inviting a Collaborator, the Owner authorizes
-              that person to access, modify, add, or — depending on their role — <span className="font-semibold text-foreground">delete</span> data
-              within the shared workspace.
+              A.IDO is currently offered free of charge as a public beta. We reserve the right to introduce paid
+              features in the future, in which case we will provide reasonable advance notice and an opportunity to
+              cancel or downgrade before any charge is incurred. By using the beta you accept that the Service may
+              have bugs, partial features, downtime, or data loss; you should retain independent backups of important
+              wedding details. See also the Beta Disclaimer page.
             </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">4. Eligibility</h2>
             <p>
-              You acknowledge and agree that:
+              You must be at least 18 years old and able to enter into a legally binding contract in your jurisdiction.
+              By agreeing to these Terms you represent that both conditions are met.
             </p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li>The Owner is solely responsible for choosing whom to invite, the role assigned, and the consequences of any actions taken by Collaborators within the workspace.</li>
-              <li>A.IDO is not liable for any loss, deletion, alteration, disclosure, or misuse of User Content caused by a Collaborator, an invited guest, or any other party with access granted by the Owner.</li>
-              <li>Removing a Collaborator's access does not, on its own, restore data the Collaborator may have changed or deleted while their access was active.</li>
-              <li>Inviting a Collaborator may involve sharing personal information about you, your partner, your guests, and your vendors. You represent that you have any necessary consents to do so.</li>
-              <li>Collaborators are bound by these Terms when they access the Service, and you agree to inform anyone you invite of these obligations.</li>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">5. Your Account &amp; Workspace</h2>
+            <p>
+              Authentication is handled by Clerk. You are responsible for keeping your credentials confidential and for
+              every action taken under your account. When you invite collaborators (partner / planner / vendor), they
+              receive scoped access to your wedding workspace under role-based permissions. You are responsible for who
+              you invite and what they do with the access you grant. We may suspend or terminate accounts that violate
+              these Terms or that show signs of compromise.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">6. Your Content &amp; Guest Data</h2>
+            <p>
+              You retain ownership of all content you upload (text, images, contracts, mood boards, vendor records,
+              guest lists, RSVPs, wedding-website edits). By uploading you grant A.IDO a non-exclusive license to host,
+              process, transmit, display, and back up that content solely to operate the Service for you and your
+              workspace collaborators. You are responsible for ensuring you have the right to upload any third-party
+              content (e.g. photos taken by your photographer) and for collecting any consents required to import your
+              guests' personal data into the Service.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">7. AI Features &amp; AI Output</h2>
+            <p>
+              The Service uses third-party AI providers (currently OpenAI and Groq) to generate text, suggestions,
+              drafts, summaries, and structured data. AI output is generated probabilistically and may be inaccurate,
+              incomplete, biased, or unsafe. You are responsible for reviewing all AI-generated content (timelines,
+              emails, contract summaries, RSVP messages, etc.) before sending, signing, sharing, or relying on it.
+              In particular:
+            </p>
+            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+              <li>The AI <em>contract analyzer</em> is informational only and is not a substitute for a lawyer.</li>
+              <li>The AI <em>vendor email assistant</em> drafts emails — you choose whether to send them.</li>
+              <li>The AI <em>day-of coordinator</em> offers suggestions, not professional emergency or medical advice.</li>
+              <li>The AI <em>planner (Aria)</em> can take actions in your workspace via tool calls; we apply server-side
+                  validation, but you are responsible for the final state of your data.</li>
             </ul>
+            <p>We disclaim any warranty that AI output is accurate, fit for purpose, or non-infringing.</p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">8. Wedding Website &amp; Public Content</h2>
             <p>
-              Removing a Collaborator from a workspace revokes their future access only; it does not delete the
-              underlying wedding data, which continues to be owned and controlled by the Owner.
+              When you publish a wedding website, content you mark as published becomes publicly accessible at the URL
+              you choose (e.g. <span className="font-mono text-zinc-300">aidowedding.net/w/your-slug</span>) and may be
+              indexed by search engines unless you set a password. Information your guests submit through the public
+              RSVP flow (including off-list "RSVP anyway" submissions) is stored in your workspace and visible to your
+              collaborators. You are responsible for compliance with applicable privacy laws when collecting guest data.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">8. AI-Generated Content & Limitations</h2>
-            <p>
-              A.IDO uses artificial intelligence to generate suggestions, timelines, emails, seating arrangements,
-              and other planning content. You acknowledge and agree that:
-            </p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li>AI-generated content is provided for informational and planning assistance purposes only.</li>
-              <li>AI outputs may contain errors, omissions, or inaccuracies and should not be relied upon as
-                professional legal, financial, or contractual advice.</li>
-              <li>Contract analysis features do not constitute legal advice. Always consult a qualified attorney
-                before signing any vendor contract.</li>
-              <li>We make no guarantee that AI-generated suggestions are suitable for your specific circumstances.</li>
-              <li>You are solely responsible for reviewing and verifying all AI-generated content before acting on it.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">9. Contract Analysis — Not Legal Advice</h2>
-            <p>
-              A.IDO offers a contract analysis feature ("Contract Analyzer") that uses artificial intelligence to
-              review uploaded vendor contracts and surface potential issues, key terms, red flags, missing clauses,
-              and other observations. <span className="font-semibold text-foreground">This feature is provided for informational and planning purposes
-              only and does not constitute legal advice of any kind.</span>
-            </p>
-            <p>By using the Contract Analyzer, you expressly acknowledge and agree that:</p>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>
-                <span className="font-semibold text-foreground">No attorney-client relationship is created.</span> A.IDO is not a law firm. No use of the Contract
-                Analyzer creates, or should be construed to create, an attorney-client relationship between you and A.IDO
-                or any of its owners, employees, or contractors.
-              </li>
-              <li>
-                <span className="font-semibold text-foreground">AI analysis is not a substitute for legal counsel.</span> The output generated by the Contract
-                Analyzer is produced by an artificial intelligence model and has not been reviewed or verified by a
-                licensed attorney. It may contain errors, omissions, misinterpretations, or incomplete analysis.
-              </li>
-              <li>
-                <span className="font-semibold text-foreground">Jurisdictional limitations.</span> Contract law varies significantly by country, state, and
-                locality. The Contract Analyzer does not account for the specific laws, regulations, or judicial
-                interpretations applicable in your jurisdiction. Analysis that appears favorable or unfavorable under
-                one jurisdiction's law may be assessed differently under another.
-              </li>
-              <li>
-                <span className="font-semibold text-foreground">You must obtain independent legal review.</span> Before signing any vendor contract —
-                regardless of what the Contract Analyzer indicates — you are strongly advised to have the contract
-                reviewed by a qualified, licensed attorney in your jurisdiction. Do not rely solely on the Contract
-                Analyzer when making any legal or financial decision.
-              </li>
-              <li>
-                <span className="font-semibold text-foreground">No guarantee of completeness or accuracy.</span> The Contract Analyzer may fail to identify
-                issues present in your contract, may flag issues that are not actually problematic, or may assess risk
-                incorrectly. A.IDO makes no warranty regarding the accuracy, completeness, or fitness for purpose of
-                any contract analysis output.
-              </li>
-              <li>
-                <span className="font-semibold text-foreground">You assume full responsibility.</span> Any decision to sign, modify, reject, or otherwise act
-                upon a contract based on the Contract Analyzer's output is made entirely at your own risk. A.IDO shall
-                have no liability whatsoever for any loss, damage, legal claim, or adverse outcome arising from your
-                reliance on contract analysis output.
-              </li>
-            </ul>
-            <p>
-              <span className="font-semibold text-foreground">To the maximum extent permitted by applicable law, A.IDO and its owners, operators, employees,
-              agents, and licensors expressly disclaim all liability arising from or related to your use of the
-              Contract Analyzer feature, including but not limited to any claims arising from a contract you signed,
-              modified, or declined based on AI-generated analysis.</span>
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">10. Financial Planning Tools — Not Financial Advice</h2>
-            <p>
-              A.IDO provides budget tracking, spend categorization, vendor payment management, and financial
-              summaries (collectively, "Financial Tools") to assist with wedding planning. <span className="font-semibold text-foreground">These
-              tools are provided for personal organizational and planning purposes only and do not constitute
-              professional financial, accounting, tax, or investment advice of any kind.</span>
-            </p>
-            <p>By using the Financial Tools, you acknowledge and agree that:</p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li>Budget figures, estimates, spending projections, and financial summaries generated by the Service are informational only and may be inaccurate, incomplete, or based on incorrect user input.</li>
-              <li>A.IDO is not a licensed financial advisor, accountant, or tax professional. No use of the Financial Tools creates any advisory relationship.</li>
-              <li>Any AI-generated financial suggestions or budget recommendations (including those produced by Aria) are not a substitute for professional financial advice.</li>
-              <li>You are solely responsible for verifying the accuracy of all figures entered into and displayed by the Service.</li>
-              <li>A.IDO shall have no liability for any financial loss, overspending, vendor disputes, or adverse outcomes resulting from reliance on Financial Tool outputs.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">11. Vendor Management, Third-Party Recommendations & AI-Drafted Communications</h2>
-            <p>
-              A.IDO allows users to manage vendor relationships, store vendor information, send and summarize
-              vendor emails, and receive AI-generated email drafts and vendor communication suggestions.
-            </p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li><span className="font-semibold text-foreground">No endorsement of vendors.</span> A.IDO does not vet, certify, recommend, or endorse any vendor listed or managed within the Service. The presence of a vendor in the Service does not imply any approval or guarantee of their quality, reliability, or suitability.</li>
-              <li><span className="font-semibold text-foreground">No responsibility for vendor conduct.</span> A.IDO is not a party to any contract or agreement between you and a vendor. We are not responsible for any vendor's acts, omissions, pricing, cancellations, or failure to deliver services.</li>
-              <li><span className="font-semibold text-foreground">AI-drafted emails are not reviewed or guaranteed.</span> Emails drafted or summarized by AI within the Service are generated automatically and have not been reviewed for accuracy, appropriateness, or legal effect. You are solely responsible for reviewing and approving any communication before it is sent. A.IDO is not liable for the content of any communication you send using AI-generated drafts.</li>
-              <li><span className="font-semibold text-foreground">No legal review of vendor communications.</span> AI-summarized or analyzed vendor emails do not constitute legal advice regarding the content, enforceability, or interpretation of any communication or agreement.</li>
-              <li><span className="font-semibold text-foreground">Third-party vendor contacts.</span> When you send emails to vendors through the Service or use vendor contact information stored in the Service, you represent that you have the right to communicate with those third parties and that your communications comply with applicable law, including anti-spam and data protection regulations.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">12. Day-Of Coordination & Wedding Timeline Tools</h2>
-            <p>
-              A.IDO provides tools to create and manage wedding day schedules, event timelines, and day-of
-              coordination checklists (collectively, "Day-Of Tools"). <span className="font-semibold text-foreground">These tools are provided as
-              planning aids only and do not constitute professional event planning, coordination, or
-              management services.</span>
-            </p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li>A.IDO is not a licensed event planner or coordinator. Use of the Day-Of Tools does not create a professional service relationship of any kind.</li>
-              <li>AI-generated schedules and timelines may contain errors, omit important events, or fail to account for your specific venue, vendors, or local customs.</li>
-              <li>You are solely responsible for verifying that all day-of information is accurate, complete, and appropriate for your specific circumstances before relying on it on your wedding day.</li>
-              <li>A.IDO shall have no liability for any disruptions, delays, missed events, vendor conflicts, or any other adverse outcomes occurring on your wedding day or in connection with your use of the Day-Of Tools.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">13. Guest Data, Seating & Third-Party Personal Information</h2>
-            <p>
-              A.IDO allows users to store, manage, and process personal information belonging to their wedding
-              guests and other third parties, including names, contact details, dietary restrictions, and
-              accommodation preferences.
-            </p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li><span className="font-semibold text-foreground">You are the data controller for your guests' data.</span> When you enter guest information into A.IDO, you act as the data controller for that personal information. You represent that you have the right and, where required by applicable law, the consent of each individual to collect and process their personal information using a third-party service.</li>
-              <li><span className="font-semibold text-foreground">AI-generated seating arrangements</span> are provided as suggestions only. Seating assignments, table configurations, and related recommendations are not guaranteed to be appropriate, socially acceptable, or conflict-free. You are solely responsible for reviewing and approving all seating before your event.</li>
-              <li><span className="font-semibold text-foreground">Guest communication.</span> Any messages sent to guests using contact information stored in the Service are your responsibility. You agree to comply with all applicable laws regarding electronic communications, including anti-spam laws.</li>
-              <li><span className="font-semibold text-foreground">Third-party privacy.</span> You agree not to enter any personal information into the Service without a lawful basis to do so, and to inform affected individuals about how their data is being used if required by applicable law.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">14. No Guarantee of Wedding Outcomes or Suitability</h2>
-            <p>
-              A.IDO is a planning and organizational tool. <span className="font-semibold text-foreground">We make no guarantee, representation, or
-              warranty that use of the Service will result in a successful, problem-free, or satisfactory
-              wedding event.</span> Planning involves variables — weather, vendor performance, personal
-              circumstances, and unforeseen events — that are entirely outside A.IDO's control.
-            </p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li>A.IDO is not responsible for the success, failure, quality, or any other aspect of your wedding event.</li>
-              <li>AI-generated checklists, timelines, budgets, seating arrangements, or any other planning content may not be suitable for your specific circumstances, culture, religion, or jurisdiction.</li>
-              <li>A.IDO shall have no liability for any wedding-related disruption, disappointment, loss, or damage, whether caused by reliance on content generated by the Service, failure of vendors, cancellations, weather, or any other cause.</li>
-              <li>Force majeure events — including natural disasters, pandemics, government orders, acts of war, or other circumstances beyond reasonable control — are not covered by or the responsibility of A.IDO in any way.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">15. Prohibited Conduct</h2>
+            <h2 className="font-serif text-xl font-semibold">9. Acceptable Use</h2>
             <p>You agree not to:</p>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li>Use the Service for any unlawful purpose or in violation of any applicable laws or regulations.</li>
-              <li>Upload or transmit harmful, abusive, harassing, defamatory, or objectionable content.</li>
-              <li>Attempt to gain unauthorized access to any part of the Service or its infrastructure.</li>
-              <li>Use automated tools, bots, or scripts to access the Service without written permission.</li>
-              <li>Resell, sublicense, or commercially exploit the Service without prior written consent.</li>
-              <li>Interfere with or disrupt the integrity or performance of the Service.</li>
-              <li>Collect or harvest any personally identifiable information from other users without their consent.</li>
+            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+              <li>Upload content that is unlawful, defamatory, obscene, harassing, or infringes any third-party rights.</li>
+              <li>Use the Service to send spam, harvest contact information, or impersonate others.</li>
+              <li>Probe, scan, or attempt to circumvent security or rate-limiting controls.</li>
+              <li>Reverse-engineer or scrape the Service, AI prompts, or AI outputs in bulk.</li>
+              <li>Use the Service to operate a competing wedding-planning product.</li>
             </ul>
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">16. Privacy</h2>
+            <h2 className="font-serif text-xl font-semibold">10. Third-Party Services</h2>
             <p>
-              Your use of the Service is subject to our Privacy Policy, which is incorporated into these Terms by
-              reference. By using the Service, you consent to the collection and use of your information as
-              described therein. We take reasonable measures to protect your personal data, but no transmission
-              over the internet is 100% secure and we cannot guarantee absolute security.
+              The Service integrates third-party providers including Clerk (authentication), Resend (transactional
+              email), OpenAI and Groq (AI inference), and our hosting and database providers. Their use is governed by
+              their own terms; we are not responsible for their acts or omissions. The Privacy Policy and Data Handling
+              page describe what is shared with each.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">17. Third-Party Services</h2>
-            <p>
-              The Service may integrate with or link to third-party services, websites, or platforms. We are not
-              responsible for the content, privacy policies, or practices of any third-party services. Your use of
-              third-party services is at your own risk and subject to their respective terms and conditions.
+            <h2 className="font-serif text-xl font-semibold">11. Disclaimer of Warranties</h2>
+            <p className="uppercase text-zinc-200 text-xs tracking-wide">
+              The Service is provided "as is" and "as available" without warranty of any kind, express or implied,
+              including but not limited to merchantability, fitness for a particular purpose, and non-infringement.
+              We do not warrant that the Service will be uninterrupted, secure, or error-free.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">18. Intellectual Property</h2>
-            <p>
-              All content, features, design, logos, trademarks, and technology of the Service are owned by A.IDO
-              or its licensors and are protected by applicable intellectual property laws. You may not copy,
-              reproduce, distribute, modify, or create derivative works of any part of the Service without our
-              express written permission. Nothing in these Terms grants you any rights to use our trademarks,
-              logos, or brand features.
+            <h2 className="font-serif text-xl font-semibold">12. Limitation of Liability</h2>
+            <p className="uppercase text-zinc-200 text-xs tracking-wide">
+              To the maximum extent permitted by law, A.IDO and its affiliates shall not be liable for indirect,
+              incidental, special, consequential, or punitive damages, or for loss of profits, revenues, data, or
+              goodwill, arising out of or related to the Service or these Terms. Total aggregate liability for any
+              claim shall not exceed the amount you paid us in the twelve months preceding the claim — which during
+              the beta period is $0.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">19. Disclaimer of Warranties</h2>
+            <h2 className="font-serif text-xl font-semibold">13. Indemnification</h2>
             <p>
-              THE SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS WITHOUT WARRANTIES OF ANY KIND,
-              EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR
-              A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE SERVICE WILL BE UNINTERRUPTED,
-              ERROR-FREE, SECURE, OR FREE OF VIRUSES OR OTHER HARMFUL COMPONENTS. WE DO NOT WARRANT THE ACCURACY,
-              COMPLETENESS, OR RELIABILITY OF ANY CONTENT OBTAINED THROUGH THE SERVICE.
+              You agree to defend, indemnify, and hold harmless A.IDO, its officers, employees, and contractors from
+              any claim, demand, loss, or expense arising out of your content, your use of the Service, your guest
+              data handling, or your breach of these Terms.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">20. Limitation of Liability</h2>
+            <h2 className="font-serif text-xl font-semibold">14. Termination</h2>
             <p>
-              TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, A.IDO AND ITS OWNERS, OPERATORS, EMPLOYEES,
-              AGENTS, AND LICENSORS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL,
-              OR PUNITIVE DAMAGES — INCLUDING BUT NOT LIMITED TO LOSS OF DATA, LOSS OF REVENUE, LOSS OF PROFITS,
-              OR DAMAGE TO REPUTATION — ARISING OUT OF OR IN CONNECTION WITH YOUR USE OF OR INABILITY TO USE THE
-              SERVICE, EVEN IF WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. OUR TOTAL LIABILITY TO
-              YOU FOR ANY CLAIM ARISING UNDER THESE TERMS SHALL NOT EXCEED THE AMOUNT YOU PAID TO US IN THE
-              THREE (3) MONTHS PRECEDING THE CLAIM, OR $50 USD, WHICHEVER IS GREATER.
+              You may delete your account at any time from Settings; doing so permanently removes your wedding profile,
+              budget, checklist, timeline, vendors, contracts, guest list, seating, wedding party, and wedding website
+              (subject to backup-retention windows described in Data Handling). We may suspend or terminate access for
+              violations of these Terms.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">21. Indemnification</h2>
+            <h2 className="font-serif text-xl font-semibold">15. Changes to These Terms</h2>
             <p>
-              You agree to indemnify, defend, and hold harmless A.IDO and its owners, officers, employees,
-              agents, and licensors from and against any claims, liabilities, damages, losses, costs, or expenses
-              (including reasonable attorneys' fees) arising out of or related to: (a) your use of the Service;
-              (b) your violation of these Terms; (c) your User Content; or (d) your violation of any rights of
-              any third party.
+              We may update these Terms from time to time. Material changes will be communicated by email or in-app
+              notice with a reasonable period before taking effect. Continued use after the effective date constitutes
+              acceptance.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">22. Termination</h2>
+            <h2 className="font-serif text-xl font-semibold">16. Governing Law &amp; Dispute Resolution</h2>
             <p>
-              We reserve the right to suspend or terminate your account and access to the Service at any time,
-              with or without notice, for any reason including violation of these Terms. Upon termination, your
-              right to use the Service ceases immediately. Provisions of these Terms that by their nature should
-              survive termination shall survive, including ownership provisions, warranty disclaimers, and
-              limitations of liability.
+              These Terms are governed by the laws of the State of New York, USA, without regard to conflict-of-law
+              rules. Any dispute arising under these Terms shall be resolved in the state or federal courts located in
+              New York County, New York, unless a binding arbitration provision is later added by counsel.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">23. Modifications to the Service and Terms</h2>
+            <h2 className="font-serif text-xl font-semibold">17. Contact</h2>
             <p>
-              We reserve the right to modify or discontinue the Service, or any part of it, at any time with or
-              without notice. We also reserve the right to update these Terms at any time. We will indicate the
-              date of the latest revision at the top of this page. Your continued use of the Service after any
-              changes constitutes your acceptance of the updated Terms. It is your responsibility to review
-              these Terms periodically.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">24. Governing Law</h2>
-            <p>
-              These Terms shall be governed by and construed in accordance with the laws of the United States,
-              without regard to its conflict of law provisions. Any dispute arising under or in connection with
-              these Terms shall be subject to the exclusive jurisdiction of the courts located in the applicable
-              jurisdiction. If any provision of these Terms is found to be unenforceable, the remaining provisions
-              will continue in full force and effect.
-            </p>
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="font-serif text-xl font-semibold text-foreground">25. Contact</h2>
-            <p>
-              If you have any questions about these Terms of Service, please contact us through the Help &amp;
-              Feedback section within the app after signing in.
+              Questions about these Terms? Reach us at{" "}
+              <a className="text-amber-300 underline" href="mailto:support@aidowedding.net">support@aidowedding.net</a>.
             </p>
           </section>
 
         </div>
 
-        <div className="mt-12 pt-8 border-t border-border/40 text-center">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <img src="/logo.png" alt="A.IDO" className="h-10 w-auto object-contain" />
-            <span className="font-semibold text-foreground">A.IDO</span>
-          </div>
-          <p className="text-xs text-foreground">© {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All rights reserved.</p>
+        <div className="border-t border-white/10 pt-6 mt-12 flex items-center justify-between text-xs text-zinc-400">
+          <p>© {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All rights reserved.</p>
+          <Link href="/" className="hover:text-white">Home</Link>
         </div>
       </div>
     </div>
