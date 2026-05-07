@@ -39,6 +39,22 @@ function animationStyle(animation: string | undefined): React.CSSProperties {
   return css ? { animation: css } : {};
 }
 
+// Module-level registry of debounced commits scheduled by EditableText's blur
+// handler. Exposing a flush lets the editor's Undo (and other "I need the
+// latest text NOW" callers) run pending onCommit callbacks synchronously,
+// avoiding the race where clicking Undo blurs the editable but the 80ms
+// commit timer hasn't fired before the undo handler reads its empty queue.
+const pendingEditableCommits = new Set<() => void>();
+
+export function flushPendingEditableCommits(): void {
+  if (pendingEditableCommits.size === 0) return;
+  const fns = Array.from(pendingEditableCommits);
+  pendingEditableCommits.clear();
+  for (const fn of fns) {
+    try { fn(); } catch { /* ignore — best-effort flush */ }
+  }
+}
+
 function styleFromTextStyle(ts: WebsiteTextStyle | undefined): React.CSSProperties {
   if (!ts) return {};
   const css: React.CSSProperties = {};
@@ -109,14 +125,18 @@ export function EditableText({
   // --- blur / keep-open ---
   const scheduleHide = (committedText: string) => {
     if (blurTimer.current) clearTimeout(blurTimer.current);
-    blurTimer.current = setTimeout(() => {
+    const fire = () => {
+      blurTimer.current = null;
+      pendingEditableCommits.delete(fire);
       if (toolbarRef.current && toolbarRef.current.contains(document.activeElement)) return;
       setShowToolbar(false);
       setAnchorRect(null);
       if (!onCommit) return;
       if (committedText === defaultValue.trim() || committedText === "") onCommit("");
       else onCommit(committedText);
-    }, 80);
+    };
+    pendingEditableCommits.add(fire);
+    blurTimer.current = setTimeout(fire, 80);
   };
 
   const keepOpen = () => {

@@ -15,6 +15,7 @@ import {
   QrCode, Download, Link2, Plus, Megaphone, Users, Undo2, Sparkles, Settings,
 } from "lucide-react";
 import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
+import { flushPendingEditableCommits } from "@/components/website/EditableText";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
@@ -247,19 +248,21 @@ export default function WebsiteEditor() {
   }, []);
 
   const handleUndo = useCallback(() => {
-    // If a contenteditable / input still has focus, the user's most recent
-    // edit hasn't been committed yet (EditableText debounces commit ~80ms
-    // after blur). Blur the active element and wait long enough for that
-    // commit to fire before popping history — otherwise the just-made change
-    // is invisible to the undo logic.
+    // EditableText debounces its blur-commit ~80ms. Clicking the Undo button
+    // mousedown-blurs the active editable, but the Undo click runs BEFORE
+    // that 80ms timer fires — so without flushing, the just-typed/deleted
+    // change is invisible to the undo logic.
+    //
+    // Two-step:
+    //   1. If something is still focused, blur it so its scheduleHide is queued.
+    //   2. Force every queued commit to run synchronously, then pop history.
     const active = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
     const editing = !!active && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA");
-    if (editing) {
-      active!.blur();
-      setTimeout(doUndo, 150);
-      return;
-    }
-    doUndo();
+    if (editing) active!.blur();
+    flushPendingEditableCommits();
+    // Defer one tick so React can apply the setRecord triggered by the
+    // flushed onCommit (and thus queueHistory) before doUndo reads the slot.
+    setTimeout(doUndo, 0);
   }, [doUndo]);
 
   // Cmd/Ctrl+Z to undo from anywhere in the editor (except inside form fields)
