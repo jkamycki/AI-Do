@@ -20,15 +20,6 @@ const FONT_OPTIONS = [
   { label: "Dancing Script", value: "Dancing Script" },
 ];
 
-const SIZE_OPTIONS = [
-  { label: "S", value: "0.75em", title: "Small" },
-  { label: "M", value: "1em", title: "Normal" },
-  { label: "L", value: "1.35em", title: "Large" },
-  { label: "XL", value: "1.75em", title: "X-Large" },
-  { label: "2X", value: "2.25em", title: "2X-Large" },
-  { label: "3X", value: "3em", title: "3X-Large" },
-];
-
 const ANIMATION_OPTIONS = [
   { label: "None", value: "" },
   { label: "Fade In", value: "wsa-fade-in" },
@@ -58,12 +49,10 @@ interface Props {
 
 export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
   ({ style, onChange, anchorRect, onKeepOpen }, ref) => {
-    // Load all available fonts so the select options preview correctly
     useEffect(() => {
       FONT_OPTIONS.filter((f) => f.value).forEach((f) => loadGoogleFont(f.value));
     }, []);
 
-    // Load the currently selected font whenever it changes
     useEffect(() => {
       if (style.fontFamily) loadGoogleFont(style.fontFamily);
     }, [style.fontFamily]);
@@ -80,9 +69,9 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
           : "bg-background border border-border hover:bg-muted text-foreground"
       }`;
 
-    // Prevent ALL mouse events from bubbling to the page, which would blur the
-    // contenteditable before the user has finished interacting with the toolbar.
-    const stopAndKeep = (e: React.MouseEvent | React.PointerEvent | React.FocusEvent) => {
+    // Called on selects: stop propagation so the parent div's preventDefault doesn't
+    // block the native dropdown from opening, but still keep the toolbar alive.
+    const selectMouseDown = (e: React.MouseEvent) => {
       e.stopPropagation();
       onKeepOpen?.();
     };
@@ -91,10 +80,11 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
       <div
         ref={ref}
         className="fixed z-[9999] flex items-center gap-1 flex-wrap px-2 py-1.5 rounded-lg shadow-xl border border-border bg-background"
-        style={{ top, left, maxWidth: "min(700px, 94vw)" }}
-        onMouseDown={(e) => { e.preventDefault(); stopAndKeep(e); }}
+        style={{ top, left, maxWidth: "min(600px, 94vw)" }}
+        // preventDefault on the toolbar background prevents contenteditable blur;
+        // individual <select> elements stop propagation so they can still open.
+        onMouseDown={(e) => { e.preventDefault(); onKeepOpen?.(); }}
         onMouseEnter={onKeepOpen}
-        onFocus={stopAndKeep}
       >
         {/* Font family */}
         <select
@@ -104,9 +94,10 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
             patch({ fontFamily: v || undefined });
             if (v) loadGoogleFont(v);
           }}
+          onMouseDown={selectMouseDown}
+          onFocus={() => onKeepOpen?.()}
           className="h-7 text-xs rounded border border-border bg-background px-1 cursor-pointer"
-          style={{ fontFamily: style.fontFamily ?? "inherit", minWidth: 130 }}
-          onFocus={stopAndKeep}
+          style={{ fontFamily: style.fontFamily ?? "inherit", minWidth: 140 }}
         >
           {FONT_OPTIONS.map((f) => (
             <option key={f.value} value={f.value} style={{ fontFamily: f.value || "inherit" }}>
@@ -114,21 +105,6 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
             </option>
           ))}
         </select>
-
-        {/* Font size */}
-        <div className="flex gap-0.5">
-          {SIZE_OPTIONS.map((s) => (
-            <button
-              key={s.value}
-              title={s.title}
-              className={btnClass(style.fontSize === s.value)}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => patch({ fontSize: style.fontSize === s.value ? undefined : s.value })}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
 
         {/* Bold / Italic */}
         <button
@@ -161,7 +137,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
               type="color"
               value={style.color ?? "#000000"}
               onChange={(e) => patch({ color: e.target.value })}
-              onFocus={stopAndKeep}
+              onFocus={() => onKeepOpen?.()}
               className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
             />
           </div>
@@ -184,7 +160,8 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
         <select
           value={style.animation ?? ""}
           onChange={(e) => patch({ animation: e.target.value || undefined })}
-          onFocus={stopAndKeep}
+          onMouseDown={selectMouseDown}
+          onFocus={() => onKeepOpen?.()}
           className="h-7 text-xs rounded border border-border bg-background px-1 cursor-pointer"
         >
           {ANIMATION_OPTIONS.map((a) => (
