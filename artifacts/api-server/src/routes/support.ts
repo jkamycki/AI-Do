@@ -1,10 +1,43 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../middlewares/requireAuth";
 import { aiLimiter, incrementDailySupport } from "../middlewares/rateLimiter";
-import { getAuth } from "@clerk/express";
+import { getAuth, clerkClient } from "@clerk/express";
+import { db, supportTickets } from "@workspace/db";
+import { sendEmail, FROM_EMAIL } from "../lib/resend";
 
 const router = Router();
+
+const OWNER_EMAILS = ["kamyckijoseph@gmail.com"];
+
+// Tool the support chat assistant can invoke to file a real ticket on
+// behalf of the signed-in user. Mirrors the public POST /help/support-ticket
+// flow (DB insert + ops alert + user confirmation email) so tickets created
+// here show up alongside contact-form tickets in the Operations Center.
+const SUPPORT_TICKET_TOOL = {
+  type: "function" as const,
+  function: {
+    name: "submit_support_ticket",
+    description:
+      "File a support ticket on behalf of the user. Call this only after the user has described a real issue/question and you have collected: their name, their email, a short subject (≤80 chars), and the issue details. Confirm with the user before calling. Tickets are visible to the A.IDO ops team in the Operations Center.",
+    parameters: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "User's full name as they typed it." },
+        email: { type: "string", description: "User's email address." },
+        category: {
+          type: "string",
+          enum: ["bug", "feature", "general", "billing", "account", "praise"],
+          description: "Best-fit category for triage.",
+        },
+        subject: { type: "string", description: "One-line summary, max ~80 chars." },
+        message: { type: "string", description: "Full description of the issue, including steps to reproduce or context the user gave." },
+      },
+      required: ["name", "email", "category", "subject", "message"],
+    },
+  },
+};
 
 const SUPPORT_BOT_PROMPT = `You are a friendly and helpful customer support assistant for A.IDO, an AI-powered wedding planning platform. Your role is to help customers with:
 
@@ -64,7 +97,98 @@ const ARIA_SYSTEM_PROMPT = `You are Aria, an expert AI wedding planning assistan
 - Use markdown (bullet points, bold, headers) — it renders in the chat
 - Keep responses focused and scannable; under 350 words unless a detailed breakdown is genuinely needed
 - If the user's question is vague, ask one clarifying question before diving in
-- Celebrate wins and acknowledge stress — planning a wedding is emotional, not just logistical`;
+- Celebrate wins and acknowledge stress — planning a wedding is emotional, not just logistical
+
+## Filing a support ticket:
+You can file support tickets on behalf of the user via the submit_support_ticket tool. Use it when the user reports a bug, billing problem, account issue, broken feature, or anything that genuinely needs the human ops team — NOT for general planning questions you can answer yourself.
+
+Flow:
+1. Ask the user to describe the issue clearly (steps, what happened, what they expected).
+2. The user's name and email are pre-filled from their account when available — confirm them ("I have you as Jane Doe at jane@example.com — sound right?") before filing. If they're missing, ask.
+3. Pick the best category: bug | feature | general | billing | account | praise.
+4. Write a one-line subject (≤80 chars) and a full message that includes everything the user told you.
+5. Summarize what you're about to file ("Here's what I'll send to the support team: …") and ask the user to confirm before calling submit_support_ticket. Never file silently.
+6. After the tool returns, share the ticket number with the user and tell them they'll get an email confirmation.
+
+Don't file tickets for chitchat, planning advice, or things you can solve yourself.`;
+
+// Inserts a support ticket and fires the same notification emails as the
+// public POST /help/support-ticket route, so tickets created via Aria's
+// tool show up in the Operations Center identically.
+async function fileSupportTicket(args: Record<string, unknown>, userId: string | null): Promise<Record<string, unknown>> {
+  const name = String(args.name ?? "").trim();
+  const email = String(args.email ?? "").trim().toLowerCase();
+  const category = String(args.category ?? "").trim().toLowerCase();
+  const subject = String(args.subject ?? "").trim();
+  const message = String(args.message ?? "").trim();
+
+  if (!name) return { ok: false, error: "Missing the user's name. Ask the user for their full name and try again." };
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { ok: false, error: "The email address is missing or malformed. Ask the user for a valid email and try again." };
+  }
+  if (!subject) return { ok: false, error: "Missing a subject line. Write a short one-line summary of the issue." };
+  if (!message) return { ok: false, error: "Missing the issue description. Include what happened and any details the user gave." };
+  const VALID_CATEGORIES = new Set(["bug", "feature", "general", "billing", "account", "praise"]);
+  const safeCategory = VALID_CATEGORIES.has(category) ? category : "general";
+
+  const ticketNumber = `TKT-${Date.now()}-${randomUUID().slice(0, 8).toUpperCase()}`;
+  try {
+    const [ticket] = await db
+      .insert(supportTickets)
+      .values({
+        ticketNumber,
+        name,
+        email,
+        category: safeCategory,
+        subject: subject.slice(0, 200),
+        message,
+        status: "open",
+        priority: "medium",
+        userId,
+      })
+      .returning();
+
+    sendEmail({
+      to: OWNER_EMAILS[0],
+      from: FROM_EMAIL,
+      replyTo: email,
+      subject: `[${ticketNumber}] New Support Ticket: ${subject.slice(0, 80)}`,
+      text: [
+        `New support ticket filed via Aria support chat`,
+        ``,
+        `Ticket: ${ticketNumber}`,
+        `From:   ${name} <${email}>`,
+        `Category: ${safeCategory}`,
+        `Subject: ${subject}`,
+        ``,
+        `--- Issue ---`,
+        message,
+      ].join("\n"),
+    }).catch(() => {});
+
+    sendEmail({
+      to: email,
+      replyTo: OWNER_EMAILS[0],
+      subject: `We received your support request [${ticketNumber}]`,
+      text: [
+        `Hi ${name},`,
+        ``,
+        `Thanks for reaching out to A.IDO support. We've received your message and will get back to you as soon as possible.`,
+        ``,
+        `Your ticket number is: ${ticketNumber}`,
+        ``,
+        `--- Your message ---`,
+        message,
+        ``,
+        `— The A.IDO Team`,
+      ].join("\n"),
+    }).catch(() => {});
+
+    return { ok: true, ticketNumber: ticket.ticketNumber, status: "open" };
+  } catch (err) {
+    return { ok: false, error: `Failed to create ticket: ${(err as Error)?.message ?? "unknown"}` };
+  }
+}
 
 router.post("/support/bot", async (req, res) => {
   try {
@@ -233,6 +357,18 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
       });
     }
 
+    // Pre-fetch the signed-in user's name + email so Aria can confirm them
+    // instead of asking from scratch when filing a ticket.
+    let knownName = "";
+    let knownEmail = "";
+    try {
+      const user = await clerkClient.users.getUser(userId);
+      const first = user.firstName ?? "";
+      const last = user.lastName ?? "";
+      knownName = `${first} ${last}`.trim();
+      knownEmail = user.emailAddresses?.[0]?.emailAddress ?? "";
+    } catch { /* ignore — Aria will ask if missing */ }
+
     const recent = messages.slice(-20);
 
     res.setHeader("Content-Type", "text/event-stream");
@@ -245,19 +381,22 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
       ? `\n\nIMPORTANT: Always respond in ${preferredLanguage}, regardless of what language the user writes in.`
       : "";
 
+    const userContextNote = (knownName || knownEmail)
+      ? `\n\n## User context (already known — confirm before using to file a ticket):\n- Name: ${knownName || "(unknown — ask the user)"}\n- Email: ${knownEmail || "(unknown — ask the user)"}`
+      : "";
+
     // Conversation history passed to the model — starts as user history, extended
-    // with assistant turns when continuing a cut-off response.
-    const convo: Array<{ role: string; content: string }> = [
-      { role: "system", content: ARIA_SYSTEM_PROMPT + langInstruction },
+    // with assistant turns when continuing a cut-off response or after tool calls.
+    const convo: Array<Record<string, unknown>> = [
+      { role: "system", content: ARIA_SYSTEM_PROMPT + userContextNote + langInstruction },
       ...recent,
     ];
 
     const callWithTimeout = () => openai.chat.completions.create({
       model: getModel(),
-      // 2048 tokens allows thorough responses (~1500 words). Groq's 20K TPM
-      // free tier easily handles this since the support prompt has no tools schema.
       max_completion_tokens: 2048,
       messages: convo as unknown as Parameters<typeof openai.chat.completions.create>[0]["messages"],
+      tools: [SUPPORT_TICKET_TOOL] as unknown as Parameters<typeof openai.chat.completions.create>[0]["tools"],
       stream: true as const,
     }, {
       signal: AbortSignal.timeout(55_000),
@@ -293,15 +432,19 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
       }
     };
 
-    // Stream with automatic continuation when the model hits max_completion_tokens.
-    // Each continuation adds the partial response to the conversation and asks the
-    // model to keep going — the client sees one seamless stream.
-    const MAX_CONTINUATIONS = 3;
-    let continuations = 0;
-    while (true) {
+    // Stream with automatic continuation when the model hits max_completion_tokens
+    // OR fires a tool call (e.g. submit_support_ticket). After a tool runs we feed
+    // its result back into the conversation and let the model produce its
+    // user-facing reply.
+    const MAX_TURNS = 4;
+    let turns = 0;
+    while (turns < MAX_TURNS) {
+      turns++;
       const stream = await callWithRetry();
       let accumulated = "";
       let finishReason: string | null = null;
+      // Tool calls arrive as deltas keyed by index; assemble them here.
+      const toolCallAcc: Array<{ id?: string; name?: string; args: string }> = [];
 
       for await (const chunk of stream) {
         const choice = chunk.choices[0];
@@ -311,13 +454,57 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
           accumulated += content;
           res.write(`data: ${JSON.stringify({ content })}\n\n`);
         }
+        const tcDeltas = (choice?.delta as { tool_calls?: Array<{ index: number; id?: string; function?: { name?: string; arguments?: string } }> })?.tool_calls;
+        if (tcDeltas) {
+          for (const d of tcDeltas) {
+            if (!toolCallAcc[d.index]) toolCallAcc[d.index] = { args: "" };
+            const slot = toolCallAcc[d.index];
+            if (d.id) slot.id = d.id;
+            if (d.function?.name) slot.name = d.function.name;
+            if (d.function?.arguments) slot.args += d.function.arguments;
+          }
+        }
       }
 
-      // If the model was cut off mid-response, request a seamless continuation.
-      if (finishReason === "length" && accumulated && continuations < MAX_CONTINUATIONS) {
+      const hasToolCalls = toolCallAcc.some((tc) => tc?.name);
+      if (hasToolCalls) {
+        // Tell the client an action is happening (UI can render a status pill).
+        for (const tc of toolCallAcc) {
+          if (!tc?.name) continue;
+          res.write(`data: ${JSON.stringify({ status: "Filing your support ticket…" })}\n\n`);
+          let parsed: Record<string, unknown> = {};
+          try { parsed = JSON.parse(tc.args || "{}"); } catch {}
+          let toolResult: Record<string, unknown> = { ok: false, error: "Unknown tool" };
+          if (tc.name === "submit_support_ticket") {
+            toolResult = await fileSupportTicket(parsed, userId);
+            if ((toolResult as { ok?: boolean }).ok) {
+              const ticketNumber = (toolResult as { ticketNumber?: string }).ticketNumber;
+              res.write(`data: ${JSON.stringify({ content: `\n\n📨 Filed support ticket **${ticketNumber}** — you'll get an email confirmation shortly.` })}\n\n`);
+            }
+          }
+          // Append the assistant turn (with the tool call) and the tool result
+          // back into the conversation so the next round can craft the reply.
+          convo.push({
+            role: "assistant",
+            content: accumulated || null,
+            tool_calls: [{
+              id: tc.id ?? `call_${Date.now()}`,
+              type: "function",
+              function: { name: tc.name, arguments: tc.args || "{}" },
+            }],
+          });
+          convo.push({
+            role: "tool",
+            tool_call_id: tc.id ?? `call_${Date.now()}`,
+            content: JSON.stringify(toolResult),
+          });
+        }
+        continue; // run another turn so the model produces its closing reply
+      }
+
+      if (finishReason === "length" && accumulated && turns < MAX_TURNS) {
         convo.push({ role: "assistant", content: accumulated });
         convo.push({ role: "user", content: "Continue." });
-        continuations++;
         continue;
       }
       break;
