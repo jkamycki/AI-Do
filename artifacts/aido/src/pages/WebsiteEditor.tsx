@@ -96,6 +96,7 @@ export default function WebsiteEditor() {
   const [sidebarWidth, setSidebarWidth] = useState(260);
   const dragState = useRef<{ active: boolean; startX: number; startW: number }>({ active: false, startX: 0, startW: 260 });
   const previewRef = useRef<HTMLElement | null>(null);
+  const [overlayEl, setOverlayEl] = useState<HTMLDivElement | null>(null);
 
   const upload = useUpload({
     getToken,
@@ -863,7 +864,7 @@ export default function WebsiteEditor() {
 
       {/* Guest preview overlay */}
       {previewOpen && (
-        <div className="fixed inset-0 z-[9999] bg-background overflow-auto">
+        <div ref={setOverlayEl} className="fixed inset-0 z-[9999] bg-background overflow-auto">
           <div className="sticky top-3 right-0 z-[10000] flex justify-end px-4 pointer-events-none">
             <div className="flex items-center gap-2 pointer-events-auto bg-background/90 backdrop-blur border border-border rounded-full px-3 py-1.5 shadow-lg">
               <span className="text-xs text-muted-foreground font-medium">Guest Preview</span>
@@ -889,6 +890,7 @@ export default function WebsiteEditor() {
             editable={false}
             slug={record.slug ?? ""}
             previewMode
+            scrollContainer={overlayEl}
           />
         </div>
       )}

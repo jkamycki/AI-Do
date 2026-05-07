@@ -1390,7 +1390,9 @@ function TopNav({
       { root, rootMargin: "-30% 0px -50% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
     );
     items.forEach((it) => {
-      const el = document.getElementById(it.id);
+      const el = scrollContainer
+        ? (scrollContainer.querySelector(`#${CSS.escape(it.id)}`) as HTMLElement | null)
+        : document.getElementById(it.id);
       if (el) observer.observe(el);
     });
     return () => observer.disconnect();
@@ -1398,7 +1400,11 @@ function TopNav({
   }, [pageMode, data.sectionsEnabled, scrollContainer]);
 
   const scrollTo = (id: string) => {
-    const el = document.getElementById(id);
+    // Scope the lookup to scrollContainer when one is provided so two simultaneous
+    // renderers (e.g. live editor + Guest Preview overlay) don't collide on duplicate IDs.
+    const el = scrollContainer
+      ? (scrollContainer.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null)
+      : document.getElementById(id);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
     setScrollActive(id);
