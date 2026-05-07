@@ -1168,7 +1168,12 @@
     "guests_seated": "{{n}} invitados sentados",
     "tables_count": "{{n}} mesas",
     "generated_by": "Generado por A.IDO IA",
-    "auto_saved": "Guardado automáticamente ✓"
+    "auto_saved": "Guardado automáticamente ✓",
+    "export_pdf": "Exportar PDF",
+    "exporting_pdf": "Exportando…",
+    "export_pdf_title": "Descargar un PDF imprimible con todas las mesas",
+    "pdf_saved": "PDF del plano de asientos guardado",
+    "pdf_failed": "Error al exportar el PDF"
   },
   "help": {
     "title": "Ayuda y Soporte",

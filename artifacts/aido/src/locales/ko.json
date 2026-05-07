@@ -580,7 +580,12 @@
     "arranging": "배치 중…",
     "unassigned": "미배정 하객",
     "no_tables_title": "아직 테이블이 없습니다",
-    "no_tables_desc": "테이블을 추가하고 하객을 드래그하여 좌석을 지정하세요."
+    "no_tables_desc": "테이블을 추가하고 하객을 드래그하여 좌석을 지정하세요.",
+    "export_pdf": "PDF 내보내기",
+    "exporting_pdf": "내보내는 중…",
+    "export_pdf_title": "모든 테이블을 인쇄용 PDF로 다운로드",
+    "pdf_saved": "좌석 배치 PDF 저장됨",
+    "pdf_failed": "PDF 내보내기에 실패했어요"
   },
   "help": {
     "title": "도움말 & 지원",

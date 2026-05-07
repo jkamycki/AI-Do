@@ -1181,7 +1181,12 @@
     "arranging": "Organisation…",
     "unassigned": "Invités Non Assignés",
     "no_tables_title": "Aucune table pour l'instant",
-    "no_tables_desc": "Ajoutez des tables et faites glisser les invités pour les placer."
+    "no_tables_desc": "Ajoutez des tables et faites glisser les invités pour les placer.",
+    "export_pdf": "Exporter en PDF",
+    "exporting_pdf": "Exportation…",
+    "export_pdf_title": "Télécharger un PDF imprimable avec toutes les tables",
+    "pdf_saved": "PDF du plan de table enregistré",
+    "pdf_failed": "Échec de l'export PDF"
   },
   "help": {
     "title": "Aide & Support",

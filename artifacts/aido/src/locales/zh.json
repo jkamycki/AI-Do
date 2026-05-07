@@ -1181,7 +1181,12 @@
     "guests_seated": "{{n}} 位宾客已就座",
     "tables_count": "{{n}} 张桌子",
     "generated_by": "由 A.IDO AI 生成",
-    "auto_saved": "已自动保存 ✓"
+    "auto_saved": "已自动保存 ✓",
+    "export_pdf": "导出 PDF",
+    "exporting_pdf": "正在导出…",
+    "export_pdf_title": "下载所有桌位的可打印 PDF",
+    "pdf_saved": "座位图 PDF 已保存",
+    "pdf_failed": "导出 PDF 失败"
   },
   "help": {
     "title": "帮助与支持",
