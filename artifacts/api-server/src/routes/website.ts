@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, weddingWebsites, weddingProfiles, timelines, websiteRsvps } from "@workspace/db";
-import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage } from "@workspace/db";
+import { db, weddingWebsites, weddingProfiles, websiteRsvps } from "@workspace/db";
+import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteTextStyles } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile } from "../lib/workspaceAccess";
@@ -66,6 +66,7 @@ function serialize(w: typeof weddingWebsites.$inferSelect) {
     colorPalette: w.colorPalette,
     sectionsEnabled: w.sectionsEnabled,
     customText: w.customText,
+    textStyles: w.textStyles ?? {},
     galleryImages: w.galleryImages,
     heroImage: w.heroImage,
     passwordEnabled: !!w.password,
@@ -152,6 +153,7 @@ router.put("/website/update", requireAuth, async (req, res) => {
       colorPalette: typeof existing.colorPalette;
       sectionsEnabled: WebsiteSectionsEnabled;
       customText: WebsiteCustomText;
+      textStyles: WebsiteTextStyles;
       galleryImages: WebsiteGalleryImage[];
       heroImage: string | null;
       password: string | null;
@@ -167,6 +169,7 @@ router.put("/website/update", requireAuth, async (req, res) => {
     if (body.colorPalette && typeof body.colorPalette === "object") updates.colorPalette = body.colorPalette;
     if (body.sectionsEnabled && typeof body.sectionsEnabled === "object") updates.sectionsEnabled = body.sectionsEnabled;
     if (body.customText && typeof body.customText === "object") updates.customText = body.customText;
+    if (body.textStyles && typeof body.textStyles === "object") updates.textStyles = body.textStyles;
     if (Array.isArray(body.galleryImages)) updates.galleryImages = body.galleryImages.slice(0, 60);
     if ("heroImage" in body) updates.heroImage = body.heroImage ?? null;
     if ("password" in body) {
@@ -299,12 +302,6 @@ router.get("/website/public/:slug", async (req, res) => {
       .limit(1);
     if (!profile) return res.status(404).json({ error: "Not found" });
 
-    const [tl] = await db
-      .select()
-      .from(timelines)
-      .where(eq(timelines.profileId, row.profileId))
-      .limit(1);
-
     res.json({
       slug: row.slug,
       theme: row.theme,
@@ -314,6 +311,7 @@ router.get("/website/public/:slug", async (req, res) => {
       colorPalette: row.colorPalette,
       sectionsEnabled: row.sectionsEnabled,
       customText: row.customText,
+      textStyles: row.textStyles ?? {},
       galleryImages: row.galleryImages,
       heroImage: row.heroImage,
       couple: {
@@ -327,7 +325,6 @@ router.get("/website/public/:slug", async (req, res) => {
         venueCity: profile.venueCity,
         venueState: profile.venueState,
       },
-      timeline: tl?.events ?? [],
     });
   } catch (err) {
     req.log.error(err, "publicWebsite failed");
