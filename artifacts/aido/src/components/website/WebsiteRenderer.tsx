@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2 } from "lucide-react";
+import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed } from "lucide-react";
 import { EditableText, type TextPosition } from "./EditableText";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch } from "@/lib/authFetch";
@@ -903,39 +903,53 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 
 function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const customSchedule = data.customText.schedule ?? "";
-  const hasFallback = data.couple.ceremonyTime || data.couple.receptionTime;
-  if (!customSchedule && !hasFallback && !ctx.editable) return null;
+  const ceremonyTime = (data.customText._scheduleCeremonyTime ?? "").trim() || data.couple.ceremonyTime || "";
+  const cocktailTime = (data.customText._scheduleCocktailTime ?? "").trim();
+  const receptionTime = (data.customText._scheduleReceptionTime ?? "").trim() || data.couple.receptionTime || "";
+  const items: Array<{ key: string; label: string; Icon: typeof Heart; time: string }> = [
+    { key: "_scheduleCeremonyTime", label: "Ceremony",     Icon: Heart,            time: ceremonyTime },
+    { key: "_scheduleCocktailTime", label: "Cocktail Hour", Icon: Wine,             time: cocktailTime },
+    { key: "_scheduleReceptionTime", label: "Reception",    Icon: UtensilsCrossed,  time: receptionTime },
+  ];
+  const visibleItems = ctx.editable ? items : items.filter((i) => i.time);
+  if (!ctx.editable && visibleItems.length === 0 && !customSchedule) return null;
   return (
     <SectionShell id="schedule" titleKey="schedule_title" defaultTitle="Schedule" icon={<Clock className="h-4 w-4" />} data={data} ctx={ctx}>
       <div className="max-w-2xl mx-auto">
-        {/* Ceremony / Reception time pills from profile */}
-        {(data.couple.ceremonyTime || data.couple.receptionTime) && (
-          <div className="space-y-3 mb-8">
-            {data.couple.ceremonyTime && (
-              <div className="flex gap-4 items-center py-3 border-b" style={{ borderColor: `${data.colorPalette.primary}22` }}>
-                <div className="w-28 text-sm font-medium" style={{ color: data.colorPalette.primary }}>
-                  {data.couple.ceremonyTime}
-                </div>
-                <div className="flex-1 text-base" style={{ color: data.colorPalette.text }}>Ceremony</div>
+        <div className="space-y-3 mb-8">
+          {visibleItems.map((it, idx) => (
+            <div
+              key={it.key}
+              className="flex gap-4 items-center py-3"
+              style={{
+                borderBottom: idx < visibleItems.length - 1 ? `1px solid ${data.colorPalette.primary}22` : "none",
+              }}
+            >
+              <div
+                className="flex items-center justify-center w-9 h-9 rounded-full flex-shrink-0"
+                style={{ background: `${data.colorPalette.primary}15`, color: data.colorPalette.primary }}
+              >
+                <it.Icon className="h-4 w-4" />
               </div>
-            )}
-            {data.couple.receptionTime && (
-              <div className="flex gap-4 items-center py-3">
-                <div className="w-28 text-sm font-medium" style={{ color: data.colorPalette.primary }}>
-                  {data.couple.receptionTime}
-                </div>
-                <div className="flex-1 text-base" style={{ color: data.colorPalette.text }}>Reception</div>
+              <div className="w-28 text-sm font-medium" style={{ color: data.colorPalette.primary }}>
+                <EditableText
+                  editable={ctx.editable}
+                  value={data.customText[it.key] ?? ""}
+                  defaultValue={it.time || (ctx.editable ? "Add time" : "")}
+                  onCommit={(v) => ctx.onTextChange(it.key, v)}
+                />
               </div>
-            )}
-          </div>
-        )}
-        {/* Free-form schedule text */}
+              <div className="flex-1 text-base" style={{ color: data.colorPalette.text }}>{it.label}</div>
+            </div>
+          ))}
+        </div>
+        {/* Optional free-form notes below the schedule */}
         <EditableText
           as="div"
           multiline
           editable={ctx.editable}
           value={customSchedule}
-          defaultValue={ctx.editable ? "Add your wedding day schedule here — ceremony, cocktail hour, reception, dancing..." : ""}
+          defaultValue={ctx.editable ? "Add any extra schedule notes — dress code, parking, after-party, etc." : ""}
           onCommit={(v) => ctx.onTextChange("schedule", v)}
           className="text-center text-base sm:text-lg leading-relaxed whitespace-pre-line"
           style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
