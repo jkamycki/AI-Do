@@ -32,6 +32,18 @@
 .wsa-zoom-in   { animation: wsa-zoom-in   0.8s ease-out both; }
 .wsa-bounce-in { animation: wsa-bounce-in 0.7s ease-out both; }
 
+/* Hero background animations */
+@keyframes wsa-kenburns {
+  0%   { transform: scale(1.05) translate(0, 0); }
+  50%  { transform: scale(1.15) translate(-2%, -1%); }
+  100% { transform: scale(1.05) translate(0, 0); }
+}
+@keyframes wsa-pan-lr {
+  0%   { transform: scale(1.18) translateX(-3%); }
+  50%  { transform: scale(1.18) translateX(3%); }
+  100% { transform: scale(1.18) translateX(-3%); }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
