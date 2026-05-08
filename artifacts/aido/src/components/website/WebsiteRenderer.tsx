@@ -1020,7 +1020,7 @@ function SectionShell({
   return (
     <section id={id} className="py-20 px-6" style={{ background: id === "gallery" ? data.colorPalette.neutral : backgroundWithOpacity(data) }}>
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-center gap-2 mb-3" style={{ color: data.colorPalette.primary }}>
+        <div className="flex items-center justify-center gap-2 mb-3" style={{ color: data.colorPalette.secondary }}>
           {icon}
           <EditableText
             editable={ctx.editable}
@@ -1030,7 +1030,7 @@ function SectionShell({
             className="uppercase tracking-[0.25em] text-xs"
           />
         </div>
-        <div className="w-12 h-px mx-auto mb-12" style={{ background: data.colorPalette.primary }} />
+        <div className="w-12 h-px mx-auto mb-12" style={{ background: data.colorPalette.secondary }} />
         {children}
       </div>
     </section>
