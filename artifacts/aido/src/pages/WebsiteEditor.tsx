@@ -92,7 +92,7 @@ export default function WebsiteEditor() {
   const [previewSection, setPreviewSection] = useState<string>("home");
   const [editorSection, setEditorSection] = useState<string>("home");
   const [qrOpen, setQrOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings">("design");
+  const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings" | "content">("design");
   const inTab = (t: typeof activeTab) => activeTab === t;
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [urlModalOpen, setUrlModalOpen] = useState(false);
@@ -691,10 +691,14 @@ export default function WebsiteEditor() {
           {/* Tab rail */}
           <div className="mt-4 flex items-center gap-1 -mb-1 overflow-x-auto">
             {([
-              { id: "design",    label: t("website_editor.tab_design", { defaultValue: "Design" }),    icon: Palette },
-              { id: "pages",     label: t("website_editor.tab_pages", { defaultValue: "Pages" }),     icon: FileText },
-              { id: "animation", label: t("website_editor.tab_animation", { defaultValue: "Animation" }), icon: Sparkles },
-              { id: "settings",  label: t("website_editor.tab_settings", { defaultValue: "Settings" }),  icon: Settings },
+              // "content" is mobile-only — phones can't show the live preview
+              // and the sidebar at the same time, so a plain form-based content
+              // editor is the easiest way to type things in.
+              { id: "content",   label: t("website_editor.tab_content", { defaultValue: "Content" }),  icon: FileText, mobileOnly: true },
+              { id: "design",    label: t("website_editor.tab_design", { defaultValue: "Design" }),    icon: Palette,  mobileOnly: false },
+              { id: "pages",     label: t("website_editor.tab_pages", { defaultValue: "Pages" }),     icon: FileText, mobileOnly: false },
+              { id: "animation", label: t("website_editor.tab_animation", { defaultValue: "Animation" }), icon: Sparkles, mobileOnly: false },
+              { id: "settings",  label: t("website_editor.tab_settings", { defaultValue: "Settings" }),  icon: Settings, mobileOnly: false },
             ] as const).map((tab) => {
               const TabIcon = tab.icon;
               const active = activeTab === tab.id;
@@ -702,7 +706,7 @@ export default function WebsiteEditor() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+                  className={`${tab.mobileOnly ? "lg:hidden " : ""}flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
                 >
                   <TabIcon className="h-3.5 w-3.5" />
                   {tab.label}
@@ -711,6 +715,59 @@ export default function WebsiteEditor() {
             })}
           </div>
         </div>
+
+        {/* Mobile-only Content editor — phones can't show preview + sidebar
+            side-by-side, so this is a plain form for the highest-impact
+            text fields. Updates flow through the existing customText jsonb
+            so the live preview reflects them when the user toggles back. */}
+        {inTab("content") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_content", { defaultValue: "Page content" })}>
+          <div className="space-y-4">
+            {([
+              { key: "_heroTagline",  label: t("website_editor.content_hero_tagline", { defaultValue: "Hero tagline (e.g. We're getting married)" }), placeholder: "We're getting married" },
+              { key: "_coupleName",   label: t("website_editor.content_couple_name", { defaultValue: "Couple name (overrides profile)" }), placeholder: "Joseph & Gabriela" },
+              { key: "_heroDate",     label: t("website_editor.content_hero_date", { defaultValue: "Hero date" }), placeholder: "Saturday, April 24, 2027" },
+              { key: "_announcement", label: t("website_editor.content_announcement", { defaultValue: "Announcement banner" }), placeholder: "" },
+            ] as const).map(({ key, label, placeholder }) => (
+              <div key={key}>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">{label}</label>
+                <Input
+                  value={record.customText[key] ?? ""}
+                  placeholder={placeholder}
+                  onChange={(e) => update({ customText: { ...record.customText, [key]: e.target.value } })}
+                />
+              </div>
+            ))}
+            {([
+              { key: "welcome",        label: t("website_editor.content_welcome", { defaultValue: "Welcome message" }) },
+              { key: "story",          label: t("website_editor.content_story", { defaultValue: "Our story" }) },
+              { key: "rsvp_subtitle",  label: t("website_editor.content_rsvp_subtitle", { defaultValue: "RSVP subtitle" }) },
+              { key: "rsvp_thankyou",  label: t("website_editor.content_rsvp_thankyou", { defaultValue: "RSVP thank-you message" }) },
+            ] as const).map(({ key, label }) => (
+              <div key={key}>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">{label}</label>
+                <textarea
+                  value={record.customText[key] ?? ""}
+                  onChange={(e) => update({ customText: { ...record.customText, [key]: e.target.value } })}
+                  rows={3}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+            ))}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                {t("website_editor.content_rsvp_deadline", { defaultValue: "RSVP deadline" })}
+              </label>
+              <Input
+                value={record.customText.rsvp_deadline ?? ""}
+                placeholder="May 1, 2027"
+                onChange={(e) => update({ customText: { ...record.customText, rsvp_deadline: e.target.value } })}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t("website_editor.content_help", { defaultValue: "Tap Preview at the bottom to see your changes. Save when you're happy." })}
+            </p>
+          </div>
+        </Section>}
 
         {/* Text tools */}
         {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_text_tools", { defaultValue: "Text Tools" })}>
