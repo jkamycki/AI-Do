@@ -1097,6 +1097,7 @@ export default function WebsiteEditor() {
                   <option value="fade-in">Fade in</option>
                   <option value="slide-up">Slide up</option>
                   <option value="zoom-in">Zoom in</option>
+                  <option value="puzzle">Puzzle build</option>
                 </select>
               </div>
             )}

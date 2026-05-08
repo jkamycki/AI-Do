@@ -1436,7 +1436,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
   const speed = data.customText._galleryAnimationSpeed ?? "medium";
   const slideshowIntervalMs = speed === "slow" ? 6000 : speed === "fast" ? 2500 : 4000;
   const marqueeDuration = speed === "slow" ? "60s" : speed === "fast" ? "20s" : "40s";
-  const entrance = (data.customText._galleryEntrance || "none") as "none" | "fade-in" | "slide-up" | "zoom-in";
+  const entrance = (data.customText._galleryEntrance || "none") as "none" | "fade-in" | "slide-up" | "zoom-in" | "puzzle";
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // Slideshow auto-advance. Hooks must run unconditionally — bail out inside.
@@ -1450,10 +1450,11 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
     if (activeIdx >= images.length) setActiveIdx(0);
   }, [images.length, activeIdx]);
 
+  // Per-item scroll observers for fade/slide/zoom entrance modes.
   const [visibleItems, setVisibleItems] = useState<Set<number>>(new Set());
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   useEffect(() => {
-    if (entrance === "none") { setVisibleItems(new Set()); return; }
+    if (entrance === "none" || entrance === "puzzle") { setVisibleItems(new Set()); return; }
     const observers = itemRefs.current.map((el, i) => {
       if (!el) return null;
       const obs = new IntersectionObserver(
@@ -1465,6 +1466,22 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
     });
     return () => { observers.forEach((obs) => obs?.disconnect()); };
   }, [entrance, images.length]);
+
+  // Grid-level observer for puzzle mode: fires once when the grid enters view,
+  // then CSS handles the sequential snap-in via animation-delay per item.
+  const [puzzleReady, setPuzzleReady] = useState(false);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (entrance !== "puzzle") { setPuzzleReady(false); return; }
+    const el = gridRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setPuzzleReady(true); obs.disconnect(); } },
+      { threshold: 0.05 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [entrance]);
 
   if (images.length === 0 && !ctx.editable) return null;
 
@@ -1580,18 +1597,22 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
           {renderCaption(images[activeIdx]?.caption)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" data-gallery-anim={entrance !== "none" ? entrance : undefined}>
+        <div
+          ref={gridRef}
+          className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4${puzzleReady ? " wsg-grid-ready" : ""}`}
+          data-gallery-anim={entrance !== "none" ? entrance : undefined}
+        >
           {images.map((img, i) => (
-            <div
-              key={i}
-              ref={(el) => { itemRefs.current[i] = el; }}
-              className={`wsg-item flex flex-col gap-1.5${visibleItems.has(i) ? " wsg-visible" : ""}`}
-              style={entrance !== "none" ? { ["--stagger" as string]: `${i * 80}ms` } : undefined}
-            >
+            <div key={i} className="flex flex-col gap-1.5">
+              <div
+                ref={(el) => { itemRefs.current[i] = el; }}
+                className={`wsg-item${visibleItems.has(i) ? " wsg-visible" : ""}`}
+                style={entrance !== "none" ? { ["--stagger" as string]: entrance === "puzzle" ? `${i * 220}ms` : `${i * 80}ms` } : undefined}
+              >
               <button
                 type="button"
                 onClick={() => setLightboxIndex(i)}
-                className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 w-full"
                 style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
                 aria-label={img.caption ?? `Photo ${i + 1}`}
               >
@@ -1604,6 +1625,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
                 />
                 {renderHoverIcon()}
               </button>
+              </div>
               {renderCaption(img.caption)}
             </div>
           ))}
