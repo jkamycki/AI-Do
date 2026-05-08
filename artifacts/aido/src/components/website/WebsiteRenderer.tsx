@@ -1138,6 +1138,7 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
                     value={data.customText[it.key] ?? ""}
                     defaultValue={it.time || (ctx.editable ? "Add Time" : "")}
                     onCommit={(v) => ctx.onTextChange(it.key, v)}
+                    {...tspStyle(ctx, it.key)}
                   />
                 </div>
                 <div className="flex-1 text-base" style={{ color: data.colorPalette.text }}>
@@ -1146,7 +1147,7 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
                     value={data.customText[it.labelKey] ?? ""}
                     defaultValue={it.defaultLabel}
                     onCommit={(v) => ctx.onTextChange(it.labelKey, v)}
-                    {...tsp(ctx, it.labelKey)}
+                    {...tspStyle(ctx, it.labelKey)}
                   />
                 </div>
               </div>
