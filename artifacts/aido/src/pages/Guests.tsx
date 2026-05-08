@@ -64,6 +64,21 @@ const GROUP_OPTIONS = [
   { value: "Other", label: "Other (type custom)…" },
 ];
 
+// Per-group background/text color combos so the badge for each preset is
+// instantly recognizable. Custom groups fall through to a neutral slate.
+function groupColorClasses(group: string | null | undefined): string {
+  switch (group) {
+    case "Bride's Family":  return "bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-900/40 dark:text-rose-200 dark:border-rose-700";
+    case "Bride's Friends": return "bg-pink-100 text-pink-900 border-pink-300 dark:bg-pink-900/40 dark:text-pink-200 dark:border-pink-700";
+    case "Groom's Family":  return "bg-sky-100 text-sky-900 border-sky-300 dark:bg-sky-900/40 dark:text-sky-200 dark:border-sky-700";
+    case "Groom's Friends": return "bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-700";
+    case "Wedding Party":   return "bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-900/40 dark:text-purple-200 dark:border-purple-700";
+    case "Coworkers":       return "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-700";
+    case "Family Friends":  return "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700";
+    default:                return "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-600";
+  }
+}
+
 const MEAL_OPTIONS = [
   { value: "chicken", label: "Chicken" },
   { value: "fish", label: "Fish" },
@@ -746,6 +761,33 @@ export default function Guests() {
     });
   }
 
+  function handleGroupChange(guest: Guest, raw: string) {
+    // "none" comes from the Select sentinel for "remove this guest's group".
+    const next = raw === "none" || raw === "" ? null : raw;
+    optimisticUpdate(guest.id, { guestGroup: next });
+    updateGuest.mutate({
+      id: guest.id,
+      data: {
+        name: guest.name,
+        email: guest.email ?? undefined,
+        invitationStatus: guest.invitationStatus ?? "pending",
+        rsvpStatus: (guest.rsvpStatus ?? "pending") as "pending" | "attending" | "maybe" | "declined",
+        mealChoice: guest.mealChoice ?? undefined,
+        guestGroup: next ?? undefined,
+        plusOne: guest.plusOne,
+        plusOneName: guest.plusOneName ?? undefined,
+        tableAssignment: guest.tableAssignment ?? undefined,
+        notes: guest.notes ?? undefined,
+      },
+    }, {
+      onSuccess: () => invalidate(),
+      onError: () => {
+        optimisticUpdate(guest.id, { guestGroup: guest.guestGroup });
+        toast({ title: "Failed to update group", variant: "destructive" });
+      },
+    });
+  }
+
   function handleRsvpChange(guest: Guest, newStatus: string) {
     optimisticUpdate(guest.id, { rsvpStatus: newStatus });
     updateGuest.mutate({
@@ -1234,7 +1276,7 @@ export default function Guests() {
                     <TableHead className="text-primary">{t("guests.col_rsvp")}</TableHead>
                     <TableHead className="hidden md:table-cell text-primary">{t("guests.col_meal")}</TableHead>
                     <TableHead className="hidden md:table-cell text-primary">{t("guests.col_table")}</TableHead>
-                    <TableHead className="hidden lg:table-cell text-primary">{t("guests.col_group", { defaultValue: "Group" })}</TableHead>
+                    <TableHead className="hidden md:table-cell text-primary">{t("guests.col_group", { defaultValue: "Group" })}</TableHead>
                     <TableHead className="hidden lg:table-cell text-primary">{t("guests.col_plus_one")}</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
@@ -1397,14 +1439,27 @@ export default function Guests() {
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                           {g.tableAssignment || "—"}
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell text-sm">
-                          {g.guestGroup ? (
-                            <Badge variant="outline" className="text-xs font-normal whitespace-nowrap">
-                              {g.guestGroup}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
+                        <TableCell className="hidden md:table-cell text-sm">
+                          <Select
+                            value={g.guestGroup ?? "none"}
+                            onValueChange={(v) => handleGroupChange(g, v)}
+                          >
+                            <SelectTrigger
+                              className={`h-7 px-2 text-xs font-medium border whitespace-nowrap [&>svg]:opacity-60 ${groupColorClasses(g.guestGroup)}`}
+                            >
+                              <SelectValue placeholder="—" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {GROUP_OPTIONS.filter((o) => o.value !== "Other").map((o) => (
+                                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                              ))}
+                              {/* If the guest has a custom non-preset value, surface it as
+                                  its own option so the Select stays in sync. */}
+                              {g.guestGroup
+                                && !GROUP_OPTIONS.some((o) => o.value === g.guestGroup)
+                                && <SelectItem value={g.guestGroup}>{g.guestGroup}</SelectItem>}
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell text-sm">
                           {g.plusOne ? (
