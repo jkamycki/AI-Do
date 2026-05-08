@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { vendorConversations, vendorMessages, vendors } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
 import { cleanInboundText, findRoutingAddressInText, htmlToText, parseInboundAddress, getEmail } from "../../lib/resend";
+import { isSupportInboxRecipient, saveSupportInboxMessage } from "../../lib/supportInbox";
 import { logger } from "../../lib/logger";
 import { Webhook } from "svix";
 
@@ -141,6 +142,32 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
     }
 
     if (!conversationId || !token) {
+      if (isSupportInboxRecipient(recipients)) {
+        const sender = extractSender(data.from);
+        let bodyText = (data.text && data.text.trim()) || "";
+        let bodyHtml = data.html || "";
+        if (!bodyText && !bodyHtml && data.email_id) {
+          const full = await getEmail(data.email_id);
+          bodyText = full?.text?.trim() || "";
+          bodyHtml = full?.html || "";
+        }
+        const rawText = bodyText || (bodyHtml ? htmlToText(bodyHtml) : "");
+        const cleaned = cleanInboundText(rawText) || rawText.trim();
+        const saved = await saveSupportInboxMessage({
+          fromEmail: sender.email,
+          fromName: sender.name,
+          subject: data.subject,
+          body: cleaned,
+        });
+        if (saved) {
+          logger.info({ recipients, contactMessageId: saved.id }, "Resend inbound: saved to support inbox");
+          logHit("saved:support", { senderEmail: sender.email });
+          return res.json({ ok: true, supportMessageId: saved.id });
+        }
+        logger.warn({ recipients }, "Resend inbound: support match but missing sender email");
+        logHit("ignored:support_no_sender");
+        return res.status(200).json({ ignored: true, reason: "support: missing sender" });
+      }
       logger.warn({ recipients }, "Inbound email had no matching routing address");
       logHit("ignored:no_routing_match");
       return res.status(200).json({ ignored: true, reason: "no routing match" });
