@@ -240,7 +240,12 @@ router.delete("/guests/:id", requireAuth, async (req, res) => {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid guest ID" });
 
-    const profileId = await getProfileId(req.userId!);
+    // Use resolveProfile (workspace-aware) — matching the GET/POST/PUT
+    // handlers above. Reading profile via getProfileId(req.userId) ignored
+    // the x-workspace-profile-id header and let collaborators delete their
+    // own guests when intending to act on a shared workspace.
+    const profile = await resolveProfile(req);
+    const profileId = profile?.id ?? null;
     if (!profileId) return res.status(400).json({ error: "No wedding profile found." });
 
     await db
