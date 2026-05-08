@@ -94,6 +94,60 @@ interface Table {
   theme?: string;
 }
 
+// If the AI dropped or duplicated guests (cleanGeneratedTables removes
+// hallucinations and duplicates, leaving a hole), seat the missing ones in
+// existing tables with capacity. New tables are created if every existing
+// one is at the seatsPerTable cap. This guarantees every input guest gets
+// a seat — preferred over silently leaving guests off the chart.
+function backfillUnseatedGuests(
+  tables: Table[],
+  inputGuests: Guest[],
+  tableCount: number,
+  seatsPerTable: number,
+): Table[] {
+  const seatedKeys = new Set<string>();
+  for (const t of tables) {
+    for (const name of t.guests ?? []) {
+      const k = (name ?? "").trim().toLowerCase();
+      if (k) seatedKeys.add(k);
+    }
+  }
+
+  const missing: string[] = [];
+  for (const g of inputGuests ?? []) {
+    const k = (g.name ?? "").trim().toLowerCase();
+    if (k && !seatedKeys.has(k)) missing.push(g.name.trim());
+  }
+
+  if (missing.length === 0) return tables;
+
+  const result = tables.map(t => ({ ...t, guests: [...(t.guests ?? [])] }));
+
+  // Ensure we have at least the requested number of tables before placing
+  // overflow — empty tables are preferable to creating excess ones.
+  while (result.length < tableCount) {
+    const num = result.length + 1;
+    result.push({ tableNumber: num, tableName: `Table ${num}`, guests: [] });
+  }
+
+  for (const name of missing) {
+    let placed = false;
+    for (const t of result) {
+      if (t.guests.length < seatsPerTable) {
+        t.guests.push(name);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      const num = result.length + 1;
+      result.push({ tableNumber: num, tableName: `Table ${num}`, guests: [name] });
+    }
+  }
+
+  return result;
+}
+
 router.post("/seating/generate", requireAuth, async (req, res) => {
   try {
     const { guests, tableCount, seatsPerTable, additionalNotes, language } = req.body as {
@@ -128,11 +182,12 @@ SETUP: ${tableCount} tables, ${seatsPerTable} seats per table max
 ${additionalNotes ? `ADDITIONAL NOTES: ${additionalNotes}` : ""}
 
 Rules:
-1. Never seat people with AVOID relationships at the same table
-2. Try to seat PREFER NEAR pairs at the same table
-3. Group family members and friend groups together
-4. Keep plus-ones with their partners
-5. Consider placing potential conflict groups at opposite sides of the room (note table order matters)
+1. EVERY guest from the list above MUST appear in exactly one table — do not omit anyone, do not duplicate anyone. The sum of guests across all tables must equal ${guests.length}.
+2. Never seat people with AVOID relationships at the same table
+3. Try to seat PREFER NEAR pairs at the same table
+4. Group family members and friend groups together
+5. Keep plus-ones with their partners
+6. Consider placing potential conflict groups at opposite sides of the room (note table order matters)
 
 Return ONLY valid JSON:
 {
@@ -155,9 +210,10 @@ Use only the exact guest names from the list. Only create tables that have guest
       model: getModel(),
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
-      // Was 2000. JSON output is ~tableCount × 80 tok + insights/warnings.
-      // Even a 20-table chart fits in 1500 tok; bigger weddings will too.
-      max_tokens: 1500,
+      // Roughly: each guest entry costs ~6 tokens, plus a few hundred for
+      // table chrome / insights / warnings. 1500 was tight for >40 guests
+      // and could truncate the JSON; allow more headroom for big weddings.
+      max_tokens: Math.max(2000, guests.length * 25 + 800),
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
@@ -175,7 +231,17 @@ Use only the exact guest names from the list. Only create tables that have guest
     }
 
     result.tables = cleanGeneratedTables(result.tables, guests);
-    result.totalSeated = result.tables.reduce((n, t) => n + (t.guests?.length ?? 0), 0);
+    const seatedAfterClean = result.tables.reduce((n, t) => n + (t.guests?.length ?? 0), 0);
+    result.tables = backfillUnseatedGuests(result.tables, guests, tableCount, seatsPerTable);
+    const totalAfterBackfill = result.tables.reduce((n, t) => n + (t.guests?.length ?? 0), 0);
+    if (totalAfterBackfill > seatedAfterClean) {
+      const added = totalAfterBackfill - seatedAfterClean;
+      result.warnings = [
+        ...(result.warnings ?? []),
+        `Backfilled ${added} guest${added === 1 ? "" : "s"} the AI didn't place — review their tables before saving.`,
+      ];
+    }
+    result.totalSeated = totalAfterBackfill;
 
     res.json(result);
   } catch (err) {
