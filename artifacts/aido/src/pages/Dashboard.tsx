@@ -153,6 +153,45 @@ function CountdownRing({ days }: { days: number }) {
   );
 }
 
+// Compact "X / Y rooms booked" tracker for the dashboard's venue tile.
+// Shows a colored progress bar that turns amber as the block fills up and
+// red once the booked count meets/exceeds the reserved capacity.
+function RoomsTracker({ booked, capacity }: { booked: number; capacity: number }) {
+  const safeCap = Math.max(1, capacity);
+  const pct = Math.max(0, Math.min(100, (booked / safeCap) * 100));
+  const remaining = Math.max(0, capacity - booked);
+  const tone =
+    booked >= capacity ? "rose"
+    : pct >= 75 ? "amber"
+    : "emerald";
+  const barColor =
+    tone === "rose" ? "bg-rose-500"
+    : tone === "amber" ? "bg-amber-500"
+    : "bg-emerald-500";
+  const textColor =
+    tone === "rose" ? "text-rose-600 dark:text-rose-400"
+    : tone === "amber" ? "text-amber-600 dark:text-amber-400"
+    : "text-emerald-600 dark:text-emerald-400";
+  return (
+    <div className="mt-1.5">
+      <div className="flex items-baseline justify-between gap-2 text-[11px]">
+        <span className={`font-semibold ${textColor}`}>
+          {booked} / {capacity} rooms booked
+        </span>
+        <span className="text-muted-foreground">
+          {remaining > 0 ? `${remaining} left` : "Block full"}
+        </span>
+      </div>
+      <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
+        <div
+          className={`h-full ${barColor} transition-[width] duration-500 ease-out`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function StatChip({
   icon: Icon,
   label,
@@ -955,12 +994,8 @@ function DashboardContent() {
                             {h.address && (
                               <p className="text-xs text-muted-foreground leading-snug break-words">{h.address}</p>
                             )}
-                            {(h.roomsBooked > 0 || (h.roomsReserved ?? 0) > 0) && (
-                              <p className="text-xs text-muted-foreground leading-snug mt-0.5">
-                                {h.roomsReserved != null && h.roomsReserved > 0
-                                  ? t("dashboard.rooms_booked_count", { booked: h.roomsBooked, reserved: h.roomsReserved })
-                                  : t("dashboard.rooms_booked_count_no_cap", { booked: h.roomsBooked })}
-                              </p>
+                            {(h.roomsReserved ?? 0) > 0 && (
+                              <RoomsTracker booked={h.roomsBooked} capacity={h.roomsReserved!} />
                             )}
                           </div>
                         ))}
@@ -1119,9 +1154,18 @@ function DashboardContent() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-2xl font-serif font-semibold text-foreground">{vendors.length}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-medium">
-                    {vendors.filter(v => v.isPaidOff).length}/{vendors.length} paid
-                  </span>
+                  {(() => {
+                    const paid = vendors.filter(v => v.isPaidOff).length;
+                    const allPaid = paid === vendors.length;
+                    const pillTone = allPaid
+                      ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
+                      : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300";
+                    return (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pillTone}`}>
+                        {paid}/{vendors.length} paid
+                      </span>
+                    );
+                  })()}
                 </div>
                 {vendors.slice(0, 3).map(v => (
                   <div key={v.id} className="flex items-center justify-between">
