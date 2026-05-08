@@ -467,6 +467,10 @@ export default function WebsiteEditor() {
       if (!r.ok) throw new Error("Failed");
       const body = (await r.json()) as WebsiteRecord;
       setRecord(body);
+      if (body.published) {
+        setPreviewSection("home");
+        setEditorSection("home");
+      }
       toast({ title: body.published ? "Website published!" : "Website unpublished" });
     } catch {
       toast({ title: "Failed to update publish state", variant: "destructive" });
