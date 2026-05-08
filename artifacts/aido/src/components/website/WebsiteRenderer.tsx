@@ -2173,7 +2173,7 @@ function TopNav({
   const renderItem = (it: { id: string; label: string }) => {
     const className = `relative pb-1 font-semibold transition-colors hover:opacity-80 ${active === it.id ? "" : "opacity-70"}`;
     const style = {
-      color: data.colorPalette.text,
+      color: data.customText._navLinkColor || data.colorPalette.text,
       borderBottom: active === it.id ? `2px solid ${data.colorPalette.primary}` : "2px solid transparent",
       fontFamily: fontStack(headingFont(data)),
       fontWeight: 600,
