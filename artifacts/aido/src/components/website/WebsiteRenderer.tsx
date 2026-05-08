@@ -115,6 +115,7 @@ function tsp(ctx: EditCtx, key: string, _deletable = false) {
     position: ctx.textPositions?.[key],
     onPositionChange: ctx.onPositionChange ? (p: TextPosition) => ctx.onPositionChange!(key, p) : undefined,
     onDelete: ctx.onDeleteElement ? () => ctx.onDeleteElement!(key) : undefined,
+    noAi: !key.startsWith("_custom_"),
   };
 }
 
@@ -127,6 +128,7 @@ function tspStyle(ctx: EditCtx, key: string) {
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
+    noAi: true as const,
   };
 }
 
@@ -137,6 +139,7 @@ function tspNoDelete(ctx: EditCtx, key: string) {
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
+    noAi: true as const,
   };
 }
 
