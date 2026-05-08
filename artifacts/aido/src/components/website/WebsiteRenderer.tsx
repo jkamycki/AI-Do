@@ -130,16 +130,13 @@ function tspStyle(ctx: EditCtx, key: string) {
   };
 }
 
-// Position + style but no delete — for hero EditableText elements whose
-// visibility is controlled exclusively through the sidebar Hero Elements
-// toggles rather than the inline toolbar trash button.
+// Style-only, no delete, no drag — for hero elements that must stay
+// centered. Visibility is controlled exclusively via sidebar toggles.
 function tspNoDelete(ctx: EditCtx, key: string) {
   if (!ctx.editable) return {};
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
-    position: ctx.textPositions?.[key],
-    onPositionChange: ctx.onPositionChange ? (p: TextPosition) => ctx.onPositionChange!(key, p) : undefined,
   };
 }
 
@@ -311,10 +308,7 @@ function DraggableRow({
 
   if (!editable || !onPositionChange) {
     return (
-      <div
-        className={className}
-        style={{ ...style, transform: position ? `translate(${position.x}px, ${position.y}px)` : undefined }}
-      >
+      <div className={className} style={style}>
         {children}
       </div>
     );
@@ -917,8 +911,6 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         {data.customText._heroDateRow !== EDITABLE_HIDDEN_MARKER && (
           <DraggableRow
             editable={ctx.editable}
-            position={ctx.textPositions?.["_heroDateRow"]}
-            onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_heroDateRow", p) : undefined}
             className="flex items-center justify-center gap-4 text-base sm:text-lg opacity-90"
           >
             {data.customText._heroDateIcon !== EDITABLE_HIDDEN_MARKER && (
@@ -937,8 +929,6 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         {data.couple.venue && data.customText._heroVenueRow !== EDITABLE_HIDDEN_MARKER && (
           <DraggableRow
             editable={ctx.editable}
-            position={ctx.textPositions?.["_heroVenueRow"]}
-            onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_heroVenueRow", p) : undefined}
             className="flex items-center justify-center gap-2 mt-3 text-sm sm:text-base opacity-80"
           >
             {data.customText._heroVenueIcon !== EDITABLE_HIDDEN_MARKER && (
@@ -955,11 +945,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           </DraggableRow>
         )}
         {data.couple.weddingDate && data.customText._countdown !== EDITABLE_HIDDEN_MARKER && (
-          <DraggableRow
-            editable={ctx.editable}
-            position={ctx.textPositions?.["_countdown"]}
-            onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_countdown", p) : undefined}
-          >
+          <DraggableRow editable={ctx.editable}>
             <CountdownTimer
               dateStr={data.couple.weddingDate}
               accentColor={data.heroImage ? "rgba(255,255,255,0.9)" : data.colorPalette.primary}
@@ -967,11 +953,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           </DraggableRow>
         )}
         {data.customText._addToCalendarRow !== EDITABLE_HIDDEN_MARKER && (
-          <DraggableRow
-            editable={ctx.editable}
-            position={ctx.textPositions?.["_addToCalendarRow"]}
-            onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_addToCalendarRow", p) : undefined}
-          >
+          <DraggableRow editable={ctx.editable}>
             <AddToCalendarButton data={data} />
           </DraggableRow>
         )}
