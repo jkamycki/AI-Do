@@ -882,9 +882,16 @@ export default function WebsiteEditor() {
                     checked={!isHidden}
                     onCheckedChange={(checked) => patchRecord((prev) => {
                       const ct = { ...prev.customText };
-                      if (checked) delete ct[row.key];
-                      else ct[row.key] = EDITABLE_HIDDEN_MARKER;
-                      return { customText: ct };
+                      const tp = { ...(prev.textPositions ?? {}) };
+                      if (checked) {
+                        delete ct[row.key];
+                        // Drop any stale drag offset so the element returns
+                        // to its centered default when re-enabled.
+                        delete tp[row.key];
+                      } else {
+                        ct[row.key] = EDITABLE_HIDDEN_MARKER;
+                      }
+                      return { customText: ct, textPositions: tp };
                     })}
                   />
                 </div>
