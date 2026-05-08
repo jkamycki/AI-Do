@@ -68,6 +68,7 @@ interface ManualExpenseFormState {
   cost: string;
   amountPaid: string;
   nextPaymentDue: string;
+  nextPaymentAmount: string;
   notes: string;
   receiptUrl: string | null;
   receiptName: string | null;
@@ -79,6 +80,7 @@ const emptyManualForm = (): ManualExpenseFormState => ({
   cost: "",
   amountPaid: "",
   nextPaymentDue: "",
+  nextPaymentAmount: "",
   notes: "",
   receiptUrl: null,
   receiptName: null,
@@ -104,6 +106,20 @@ function formatDate(d: string | null) {
     return dt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   } catch {
     return d;
+  }
+}
+
+// Returns days from today until the given ISO date (negative = past).
+// Used by the budget table to color-code the next-payment cell.
+function daysUntilDate(d: string | null | undefined): number {
+  if (!d) return Infinity;
+  try {
+    const dt = new Date(d.length <= 10 ? `${d}T00:00:00` : d);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((dt.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  } catch {
+    return Infinity;
   }
 }
 
@@ -201,6 +217,7 @@ export default function Budget() {
       cost: String(m.cost ?? 0),
       amountPaid: String(m.amountPaid ?? 0),
       nextPaymentDue: m.nextPaymentDue ?? "",
+      nextPaymentAmount: m.nextPaymentAmount != null ? String(m.nextPaymentAmount) : "",
       notes: m.notes ?? "",
       receiptUrl: m.receiptUrl ?? null,
       receiptName: m.receiptName ?? null,
@@ -231,6 +248,7 @@ export default function Budget() {
       cost: parseFloat(form.cost) || 0,
       amountPaid: parseFloat(form.amountPaid) || 0,
       nextPaymentDue: form.nextPaymentDue.trim() || null,
+      nextPaymentAmount: parseFloat(form.nextPaymentAmount) || null,
       notes: form.notes.trim() || null,
       receiptUrl: form.receiptUrl,
       receiptName: form.receiptName,
@@ -278,6 +296,25 @@ export default function Budget() {
         onError: () => toast({ variant: "destructive", title: t("budget.toast_could_not_delete_expense") }),
       },
     );
+  };
+
+  // One-click "Mark Paid" — hits the /mark-paid endpoint which atomically
+  // adds nextPaymentAmount to amountPaid and clears both next-payment fields.
+  // Generated client doesn't have a hook for this endpoint yet; calling
+  // authFetch directly keeps the implementation self-contained.
+  const handleMarkPaid = async (id: number) => {
+    if (!confirm(t("budget.confirm_mark_paid", { defaultValue: "Mark this payment as paid? The amount will be added to the running paid total." }))) return;
+    try {
+      const r = await authFetch(`/api/manual-expenses/${id}/mark-paid`, { method: "POST" });
+      if (!r.ok) {
+        toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
+        return;
+      }
+      toast({ title: t("budget.toast_payment_recorded", { defaultValue: "Payment recorded" }) });
+      queryClient.invalidateQueries({ queryKey: getListManualExpensesQueryKey() });
+    } catch {
+      toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
+    }
   };
 
   if (isLoadingBudget) {
@@ -508,7 +545,45 @@ export default function Budget() {
                         <TableCell className="text-right tabular-nums">{formatMoney(m.cost)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(m.amountPaid)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(remaining)}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{formatDate(m.nextPaymentDue)}</TableCell>
+                        <TableCell className="text-sm">
+                          {m.nextPaymentDue ? (() => {
+                            const daysUntil = daysUntilDate(m.nextPaymentDue);
+                            const isOverdue = daysUntil < 0;
+                            const isSoon = daysUntil >= 0 && daysUntil <= 7;
+                            const tone = isOverdue
+                              ? "text-red-600 dark:text-red-400 font-semibold"
+                              : isSoon
+                                ? "text-amber-600 dark:text-amber-400 font-medium"
+                                : "text-muted-foreground";
+                            const dueLabel = isOverdue
+                              ? t("budget.due_overdue", { n: Math.abs(daysUntil), defaultValue: `${Math.abs(daysUntil)} day(s) overdue` })
+                              : daysUntil === 0
+                                ? t("budget.due_today", { defaultValue: "Due today" })
+                                : isSoon
+                                  ? t("budget.due_in_days", { n: daysUntil, defaultValue: `Due in ${daysUntil} day(s)` })
+                                  : formatDate(m.nextPaymentDue);
+                            const amount = m.nextPaymentAmount ?? 0;
+                            return (
+                              <div className="space-y-1">
+                                <div className={`text-xs ${tone}`}>{dueLabel}</div>
+                                {amount > 0 && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs tabular-nums text-foreground">{formatMoney(amount)}</span>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 px-2 text-[10px] border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
+                                      onClick={() => handleMarkPaid(m.id)}
+                                      title={t("budget.mark_paid_title", { defaultValue: "Mark this payment paid (rolls into Paid total)" })}
+                                    >
+                                      {t("budget.mark_paid", { defaultValue: "Mark Paid" })}
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })() : <span className="text-muted-foreground text-xs">—</span>}
+                        </TableCell>
                         <TableCell>
                           <div className="space-y-1">
                             <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
@@ -649,14 +724,24 @@ export default function Budget() {
                 placeholder="0"
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("budget.next_payment_label", { defaultValue: "Next payment date (optional)" })}</label>
-              <Input
-                type="date"
-                value={form.nextPaymentDue}
-                onChange={(e) => setForm((f) => ({ ...f, nextPaymentDue: e.target.value }))}
-                className="[color-scheme:light] dark:[color-scheme:dark]"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t("budget.next_payment_date_label", { defaultValue: "Next payment date" })}</label>
+                <Input
+                  type="date"
+                  value={form.nextPaymentDue}
+                  onChange={(e) => setForm((f) => ({ ...f, nextPaymentDue: e.target.value }))}
+                  className="[color-scheme:light] dark:[color-scheme:dark]"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t("budget.next_payment_amount_label", { defaultValue: "Next payment amount" })}</label>
+                <MoneyInput
+                  value={form.nextPaymentAmount}
+                  onChange={(v) => setForm((f) => ({ ...f, nextPaymentAmount: v }))}
+                  placeholder="0"
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">{t("budget.notes_label")}</label>

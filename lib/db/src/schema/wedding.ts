@@ -153,6 +153,10 @@ export const manualExpenses = pgTable("manual_expenses", {
   // Optional date string (YYYY-MM-DD). Mirrors vendors.next_payment_due so
   // budget rows show the same Next Payment column for both lists.
   nextPaymentDue: text("next_payment_due"),
+  // Optional dollar amount for the next scheduled payment. Used by the
+  // "Mark Paid" button on the Budget page: clicking it rolls this amount
+  // into amount_paid and clears both next-payment fields.
+  nextPaymentAmount: numeric("next_payment_amount", { precision: 12, scale: 2 }),
   notes: text("notes"),
   receiptUrl: text("receipt_url"),
   receiptName: text("receipt_name"),
