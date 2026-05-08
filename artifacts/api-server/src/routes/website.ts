@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty } from "@workspace/db";
-import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
+import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteHeroImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
 import { and, eq, ilike, desc, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile } from "../lib/workspaceAccess";
@@ -69,6 +69,7 @@ function serialize(w: typeof weddingWebsites.$inferSelect) {
     textStyles: w.textStyles ?? {},
     textPositions: w.textPositions ?? {},
     galleryImages: w.galleryImages,
+    heroImages: w.heroImages ?? [],
     heroImage: w.heroImage,
     passwordEnabled: !!w.password,
     published: w.published,
@@ -164,6 +165,7 @@ router.put("/website/update", requireAuth, async (req, res) => {
       textStyles: WebsiteTextStyles;
       textPositions: WebsiteTextPositions;
       galleryImages: WebsiteGalleryImage[];
+      heroImages: WebsiteHeroImage[];
       heroImage: string | null;
       password: string | null;
     }>;
@@ -181,6 +183,7 @@ router.put("/website/update", requireAuth, async (req, res) => {
     if (body.textStyles && typeof body.textStyles === "object") updates.textStyles = body.textStyles;
     if (body.textPositions && typeof body.textPositions === "object") updates.textPositions = body.textPositions;
     if (Array.isArray(body.galleryImages)) updates.galleryImages = body.galleryImages.slice(0, 60);
+    if (Array.isArray(body.heroImages)) updates.heroImages = body.heroImages.slice(0, 30);
     if ("heroImage" in body) updates.heroImage = body.heroImage ?? null;
     if ("password" in body) {
       const p = body.password?.trim();
@@ -330,6 +333,7 @@ router.get("/website/public/:slug", async (req, res) => {
       textStyles: row.textStyles ?? {},
       textPositions: row.textPositions ?? {},
       galleryImages: row.galleryImages,
+      heroImages: row.heroImages ?? [],
       heroImage: row.heroImage,
       portalParty,
       couple: {

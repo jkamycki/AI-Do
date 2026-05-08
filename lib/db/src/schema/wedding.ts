@@ -573,6 +573,11 @@ export type WebsiteGalleryImage = {
   order: number;
 };
 
+export type WebsiteHeroImage = {
+  url: string;
+  order: number;
+};
+
 export const weddingWebsites = pgTable("wedding_websites", {
   id: serial("id").primaryKey(),
   profileId: integer("profile_id").notNull().unique(),
@@ -612,6 +617,7 @@ export const weddingWebsites = pgTable("wedding_websites", {
   textStyles: jsonb("text_styles").$type<WebsiteTextStyles>().default({}),
   textPositions: jsonb("text_positions").$type<WebsiteTextPositions>().default({}),
   galleryImages: jsonb("gallery_images").notNull().$type<WebsiteGalleryImage[]>().default([]),
+  heroImages: jsonb("hero_images").notNull().$type<WebsiteHeroImage[]>().default([]),
   heroImage: text("hero_image"),
   password: text("password"),
   published: boolean("published").notNull().default(false),
