@@ -947,9 +947,18 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           </DraggableRow>
         )}
       </div>
+    </section>
+  );
+}
 
-      {/* Custom floating text boxes — absolutely positioned so adding a new
-          box never shifts the centered hero layout (which felt like zooming) */}
+// Custom floating text boxes — rendered at the page level (not inside any
+// one section) so the user can drag them anywhere on the website and they
+// stay visible regardless of which section is currently scrolled to. The
+// outer wrapper is marked position:relative so absolute positioning here
+// is anchored to the whole page.
+function CustomTextBoxes({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
+  return (
+    <>
       {Object.entries(data.customText)
         .filter(([k, v]) => {
           if (!k.startsWith("_custom_")) return false;
@@ -962,33 +971,31 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             className="pointer-events-auto"
             style={{
               position: "absolute",
-              top: 24 + idx * 56,
+              top: 120 + idx * 56,
               left: 24,
               zIndex: 20,
             }}
           >
-              <EditableText
-                as="div"
-                editable={ctx.editable}
-                value={val}
-                defaultValue="New text — click to edit"
-                onCommit={(v) => ctx.onTextChange(key, v || "New text — click to edit")}
-                style={{
-                  display: "inline-block",
-                  background: "transparent",
-                  color: data.heroImage ? "#fff" : data.colorPalette.text,
-                  padding: "6px 14px",
-                  borderRadius: 8,
-                  textShadow: data.heroImage ? "0 1px 4px rgba(0,0,0,0.6)" : undefined,
-                  fontSize: 18,
-                  minWidth: 80,
-                }}
-                {...tsp(ctx, key, true)}
-              />
-            </div>
-          ))
-        }
-    </section>
+            <EditableText
+              as="div"
+              editable={ctx.editable}
+              value={val}
+              defaultValue="New text — click to edit"
+              onCommit={(v) => ctx.onTextChange(key, v || "New text — click to edit")}
+              style={{
+                display: "inline-block",
+                background: "transparent",
+                color: data.colorPalette.text,
+                padding: "6px 14px",
+                borderRadius: 8,
+                fontSize: 18,
+                minWidth: 80,
+              }}
+              {...tsp(ctx, key, true)}
+            />
+          </div>
+        ))}
+    </>
   );
 }
 
@@ -1934,7 +1941,7 @@ export function WebsiteRenderer({
   const navSlug = previewMode ? undefined : slug;
 
   return (
-    <div style={{ background: backgroundWithOpacity(data), color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <div style={{ background: backgroundWithOpacity(data), color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif", position: "relative" }}>
       <AnnouncementBanner data={data} />
       <TopNav
         data={data}
@@ -1959,6 +1966,7 @@ export function WebsiteRenderer({
           : <RsvpSection data={data} ctx={ctx} />
       )}
       <Footer data={data} ctx={ctx} />
+      <CustomTextBoxes data={data} ctx={ctx} />
     </div>
   );
 }
