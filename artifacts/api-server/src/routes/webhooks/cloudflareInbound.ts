@@ -4,6 +4,7 @@ import { vendorConversations, vendorMessages, vendors } from "@workspace/db/sche
 import { and, eq } from "drizzle-orm";
 import PostalMime from "postal-mime";
 import { cleanInboundText, findRoutingAddressInText, htmlToText, parseInboundAddress } from "../../lib/resend";
+import { isSupportInboxRecipient, saveSupportInboxMessage } from "../../lib/supportInbox";
 import { logger } from "../../lib/logger";
 
 const router = Router();
@@ -106,6 +107,36 @@ router.post("/webhooks/cloudflare/inbound", json({ limit: "20mb" }), async (req,
     }
 
     if (!parsed) {
+      const allRecipients = [
+        recipient,
+        ...(parsedMime?.to ?? []).map((t) => t.address ?? ""),
+        ...(parsedMime?.cc ?? []).map((t) => t.address ?? ""),
+      ].filter(Boolean);
+      if (isSupportInboxRecipient(allRecipients)) {
+        const fromAddr = parsedMime?.from?.address ?? "";
+        const fromName = parsedMime?.from?.name ?? "";
+        const sender = fromAddr
+          ? { email: fromAddr, name: fromName || undefined }
+          : parseFromHeader(payload.from);
+        const bodyText = (parsedMime?.text && parsedMime.text.trim()) || "";
+        const bodyHtml = parsedMime?.html || "";
+        const rawText = bodyText || (bodyHtml ? htmlToText(bodyHtml) : "");
+        const cleaned = cleanInboundText(rawText) || rawText.trim();
+        const saved = await saveSupportInboxMessage({
+          fromEmail: sender.email,
+          fromName: sender.name,
+          subject: parsedMime?.subject,
+          body: cleaned,
+        });
+        if (saved) {
+          logger.info({ recipient, contactMessageId: saved.id }, "Cloudflare inbound: saved to support inbox");
+          logCfHit("saved:support", { recipient, senderEmail: sender.email });
+          return res.json({ ok: true, supportMessageId: saved.id });
+        }
+        logger.warn({ recipient }, "Cloudflare inbound: support match but missing sender email");
+        logCfHit("ignored:support_no_sender", { recipient });
+        return res.status(200).json({ ignored: true, reason: "support: missing sender" });
+      }
       logger.warn({ recipient }, "Cloudflare inbound: no routing match");
       logCfHit("ignored:no_routing_match", { recipient });
       return res.status(200).json({ ignored: true, reason: "no routing match" });
