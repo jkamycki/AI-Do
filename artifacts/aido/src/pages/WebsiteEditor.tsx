@@ -833,9 +833,9 @@ export default function WebsiteEditor() {
               onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
             />
             <ColorField
-              label={t("website_editor.color_welcome", { defaultValue: "Welcome" })}
-              value={record.customText._welcomeColor || record.colorPalette.text}
-              onChange={(v) => update({ customText: { ...record.customText, _welcomeColor: v } })}
+              label={t("website_editor.color_welcome_bg", { defaultValue: "Welcome BG" })}
+              value={record.customText._welcomeBg || record.colorPalette.background}
+              onChange={(v) => update({ customText: { ...record.customText, _welcomeBg: v } })}
             />
           </div>
           {/* Background opacity slider — lets the user fade the section

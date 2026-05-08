@@ -1027,7 +1027,15 @@ function SectionShell({
   ctx: EditCtx;
 }) {
   return (
-    <section id={id} className="py-20 px-6" style={{ background: backgroundWithOpacity(data, data.colorPalette.neutral) }}>
+    <section
+      id={id}
+      className="py-20 px-6"
+      style={{
+        background: id === "welcome" && data.customText._welcomeBg
+          ? data.customText._welcomeBg
+          : backgroundWithOpacity(data, data.colorPalette.neutral),
+      }}
+    >
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-center gap-2 mb-3" style={{ color: data.colorPalette.secondary }}>
           {icon}
