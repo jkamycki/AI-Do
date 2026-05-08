@@ -49,11 +49,21 @@ export default function OperationsCenterPage() {
     });
   };
 
-  const { data: ticketsData, isLoading } = useQuery({
+  const { data: ticketsData, isLoading, error: ticketsError } = useQuery<{ tickets: unknown[] }, Error>({
     queryKey: ["support-tickets"],
     queryFn: async () => {
       const r = await authedFetch("/api/help/support-tickets");
-      if (!r.ok) throw new Error("Failed to fetch tickets");
+      if (!r.ok) {
+        // Surface the real error so the page can explain why no tickets show.
+        // 403 = signed-in user isn't on OWNER_EMAILS; anything else is server.
+        let serverMessage = "";
+        try { serverMessage = (await r.json())?.error ?? ""; } catch { /* ignore */ }
+        throw new Error(
+          r.status === 403
+            ? `Access denied (403): only emails on the OWNER list can view tickets. Signed in as the right account?`
+            : `Failed to fetch tickets (${r.status})${serverMessage ? `: ${serverMessage}` : ""}`,
+        );
+      }
       return r.json();
     },
   });
@@ -205,6 +215,14 @@ export default function OperationsCenterPage() {
         <div className="space-y-3">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-lg" />)}
         </div>
+      ) : ticketsError ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive/60 mx-auto mb-4" />
+            <p className="text-destructive font-medium mb-1">Couldn't load tickets</p>
+            <p className="text-muted-foreground text-sm">{ticketsError.message}</p>
+          </CardContent>
+        </Card>
       ) : filteredTickets.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
