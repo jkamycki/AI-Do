@@ -823,7 +823,7 @@ export default function WebsiteEditor() {
             <ColorField label={t("website_editor.color_background", { defaultValue: "Background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
             <ColorField label={t("website_editor.color_text", { defaultValue: "Text" })}      value={record.colorPalette.text}      onChange={(v) => update({ colorPalette: { ...record.colorPalette, text: v } })} />
             <ColorField
-              label={t("website_editor.color_couple_names", { defaultValue: "Couple Names (top)" })}
+              label={t("website_editor.color_couple_names", { defaultValue: "Header (Names)" })}
               value={record.customText._navCoupleColor || record.colorPalette.primary}
               onChange={(v) => update({ customText: { ...record.customText, _navCoupleColor: v } })}
             />
@@ -2033,8 +2033,8 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
 
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
-    <div>
-      <Label className="text-xs text-muted-foreground mb-1 block">{label}</Label>
+    <div className="flex flex-col">
+      <Label className="text-xs text-muted-foreground mb-1 block truncate" title={label}>{label}</Label>
       <div className="flex items-center gap-2">
         <input
           type="color"
@@ -2045,7 +2045,7 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="text-xs font-mono h-9"
+          className="text-xs font-mono h-9 min-w-0"
         />
       </div>
     </div>
