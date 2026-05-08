@@ -6,6 +6,25 @@ import { logger } from "./lib/logger";
 import { scheduleBackups } from "./lib/backup";
 import { pool } from "@workspace/db";
 
+// Neon free-tier computes auto-suspend after a few minutes of idle, and the
+// first connection after suspension can fail with "Control plane request
+// failed" while the VM wakes up. Retry a handful of times with backoff so
+// boot self-recovers instead of crashlooping.
+async function connectWithRetry(maxAttempts = 6): Promise<Awaited<ReturnType<typeof pool.connect>>> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await pool.connect();
+    } catch (err) {
+      lastErr = err;
+      const delayMs = Math.min(1000 * 2 ** (attempt - 1), 15_000);
+      logger.warn({ err, attempt, maxAttempts, delayMs }, "DB connect failed, retrying");
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 // Run all SQL migration files from lib/db/migrations at startup.
 // Each file uses ADD COLUMN IF NOT EXISTS / CREATE TABLE IF NOT EXISTS so
 // they are safe to replay on every boot.
@@ -19,7 +38,7 @@ async function runMigrations(): Promise<void> {
     logger.warn({ migrationsDir }, "Migrations directory not found — skipping");
     return;
   }
-  const client = await pool.connect();
+  const client = await connectWithRetry();
   try {
     for (const file of files) {
       const sql = await readFile(path.join(migrationsDir, file), "utf8");
