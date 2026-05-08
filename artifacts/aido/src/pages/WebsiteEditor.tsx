@@ -41,14 +41,6 @@ const THEMES = [
   { id: "garden2",   name: "Wildflower",        font: "Cormorant Garamond", primary: "#C18AAA", secondary: "#E8C5D5", accent: "#A8688A", neutral: "#F8EEF3", background: "#FFFCFD", text: "#3A2530" },
 ];
 
-const FONTS = [
-  "Playfair Display", "Cormorant Garamond", "Lora", "Merriweather", "Bodoni Moda", "Cinzel", "Italiana", "Tangerine", "Great Vibes", "Allura", "Parisienne",
-];
-
-const BODY_FONTS = [
-  "Inter", "Montserrat", "Josefin Sans", "Lato", "Open Sans", "Source Sans 3", "Nunito", "Raleway", "Poppins",
-];
-
 // Section keys that render a heading + body. Each gets a Title (chip),
 // Subtitle (h2), and Body (paragraph) text override.
 const SECTION_TEXT_KEYS: Array<{ key: string; label: string; defaultTitle: string; defaultSubtitle?: string }> = [
@@ -844,36 +836,6 @@ export default function WebsiteEditor() {
               </div>
             );
           })()}
-        </Section>}
-
-        {/* Typography */}
-        {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_typography", { defaultValue: "Typography" })}>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.heading_font_label", { defaultValue: "Heading font (couple names, titles)" })}</Label>
-              <select
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={record.customText._headingFont || record.font}
-                onChange={(e) => update({ customText: { ...record.customText, _headingFont: e.target.value }, font: e.target.value })}
-              >
-                {FONTS.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.body_font_label", { defaultValue: "Body font (paragraphs)" })}</Label>
-              <select
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={record.customText._bodyFont || "Inter"}
-                onChange={(e) => update({ customText: { ...record.customText, _bodyFont: e.target.value } })}
-              >
-                {BODY_FONTS.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
-            </div>
-          </div>
         </Section>}
 
         {/* Sections */}

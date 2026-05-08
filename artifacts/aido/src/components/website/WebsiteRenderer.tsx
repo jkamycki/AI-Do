@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed, Share2, Check } from "lucide-react";
+import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed, Share2, Check, Trash2 } from "lucide-react";
 import { EditableText, emitEditableDrag, EDITABLE_HIDDEN_MARKER, type TextPosition } from "./EditableText";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch } from "@/lib/authFetch";
@@ -119,14 +119,18 @@ function tsp(ctx: EditCtx, key: string, _deletable = false) {
 }
 
 // Style-only variant for EditableTexts already wrapped in a DraggableRow.
-// The row owns position + delete for the whole group; if we also wired those
-// onto the inner text the user would drag just the text and leave the row's
-// icon behind.
-function tspStyle(ctx: EditCtx, key: string) {
+// The row owns position for the whole group; if we also wired position onto
+// the inner text the user would drag just the text and leave the row's icon
+// behind. We *do* expose onDelete so the inline toolbar's trash button shows
+// up consistently — clicking it deletes the wrapping row (icon + text) via
+// `rowKey`, matching the drag-to-trash behavior the row already supports.
+function tspStyle(ctx: EditCtx, key: string, rowKey?: string) {
   if (!ctx.editable) return {};
+  const delKey = rowKey ?? key;
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
+    onDelete: ctx.onDeleteElement ? () => ctx.onDeleteElement!(delKey) : undefined,
   };
 }
 
@@ -377,14 +381,29 @@ function DraggableRow({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      {hasOffset && (hovered || isDragging) && (
-        <span
-          style={{ position: "absolute", top: -20, right: 0, background: "rgba(99,102,241,0.9)", color: "#fff", borderRadius: 4, padding: "1px 6px", fontSize: 10, cursor: "pointer", userSelect: "none", zIndex: 300, lineHeight: 1.6 }}
+      {(hovered || isDragging) && (
+        <div
+          style={{ position: "absolute", top: -28, right: 0, display: "flex", alignItems: "center", gap: 4, zIndex: 300 }}
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onPositionChange({ x: 0, y: 0 })}
         >
-          ×
-        </span>
+          {hasOffset && (
+            <span
+              style={{ background: "rgba(99,102,241,0.9)", color: "#fff", borderRadius: 4, padding: "1px 6px", fontSize: 10, cursor: "pointer", userSelect: "none", lineHeight: 1.6 }}
+              onClick={() => onPositionChange({ x: 0, y: 0 })}
+            >
+              ×
+            </span>
+          )}
+          {onDelete && (
+            <button
+              style={{ background: "rgba(220,38,38,0.9)", color: "#fff", border: "none", borderRadius: 4, padding: "3px 6px", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 3, lineHeight: 1 }}
+              onClick={onDelete}
+              title="Delete"
+            >
+              <Trash2 style={{ width: 11, height: 11 }} />
+            </button>
+          )}
+        </div>
       )}
       {children}
     </div>
@@ -918,7 +937,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={dateStr}
               onCommit={(v) => ctx.onTextChange("_heroDate", v)}
               style={{ color: "inherit" }}
-              {...tspStyle(ctx, "_heroDate")}
+              {...tspStyle(ctx, "_heroDate", "_heroDateRow")}
             />
           </DraggableRow>
         )}
@@ -939,7 +958,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={[data.couple.venue, data.couple.venueCity, data.couple.venueState].filter(Boolean).join(", ")}
               onCommit={(v) => ctx.onTextChange("_heroVenue", v)}
               style={{ color: "inherit" }}
-              {...tspStyle(ctx, "_heroVenue")}
+              {...tspStyle(ctx, "_heroVenue", "_heroVenueRow")}
             />
           </DraggableRow>
         )}
@@ -1470,18 +1489,17 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
 
   if (images.length === 0 && !ctx.editable) return null;
 
-  const renderImageOverlay = (img: { caption?: string }, i: number) => (
-    <>
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-        <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
-      </div>
-      {img.caption && (
-        <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/60 to-transparent text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity text-left">
-          {img.caption}
-        </div>
-      )}
-    </>
+  const renderHoverIcon = () => (
+    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+      <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
+    </div>
   );
+  const renderCaption = (caption?: string) =>
+    caption ? (
+      <p className="text-sm text-center px-1" style={{ color: data.colorPalette.text, opacity: 0.75 }}>
+        {caption}
+      </p>
+    ) : null;
 
   return (
     <SectionShell id="gallery" titleKey="gallery_title" defaultTitle="Gallery" icon={<ImageIcon className="h-4 w-4" />} data={data} ctx={ctx}>
@@ -1502,7 +1520,6 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         style={{ fontFamily: elementFontStack(data, "gallery_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
         {...tsp(ctx, "gallery_subtitle")}
       />
-
       {animation === "marquee" && images.length > 0 ? (
         <div className="relative overflow-hidden rounded-lg" style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}>
           <div
@@ -1514,90 +1531,97 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
             }}
           >
             {[...images, ...images].map((img, i) => (
+              <div key={`${img.url}-${i}`} className="flex flex-col gap-1.5 mx-2">
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(i % images.length)}
+                  className="relative h-64 sm:h-80 w-64 sm:w-80 flex-shrink-0 overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2"
+                  aria-label={img.caption ?? `Photo ${(i % images.length) + 1}`}
+                >
+                  <img
+                    src={imageUrl(img.url)}
+                    alt={img.caption ?? ""}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    style={{ filter: photoFilter }}
+                  />
+                  {renderHoverIcon()}
+                </button>
+                {renderCaption(img.caption)}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : animation === "slideshow" && images.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <div className="relative w-full max-w-3xl mx-auto aspect-[4/3] overflow-hidden rounded-lg" style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}>
+            {images.map((img, i) => (
               <button
                 key={`${img.url}-${i}`}
                 type="button"
-                onClick={() => setLightboxIndex(i % images.length)}
-                className="relative h-64 sm:h-80 w-64 sm:w-80 flex-shrink-0 mx-2 overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2"
-                aria-label={img.caption ?? `Photo ${(i % images.length) + 1}`}
+                onClick={() => setLightboxIndex(i)}
+                className="absolute inset-0 group focus:outline-none focus-visible:ring-2"
+                style={{
+                  opacity: i === activeIdx ? 1 : 0,
+                  transition: "opacity 1s ease-in-out",
+                  pointerEvents: i === activeIdx ? "auto" : "none",
+                }}
+                aria-label={img.caption ?? `Photo ${i + 1}`}
+                aria-hidden={i !== activeIdx}
+                tabIndex={i === activeIdx ? 0 : -1}
               >
                 <img
                   src={imageUrl(img.url)}
                   alt={img.caption ?? ""}
                   className="w-full h-full object-cover"
-                  loading="lazy"
+                  loading={i === 0 ? "eager" : "lazy"}
                   style={{ filter: photoFilter }}
                 />
-                {renderImageOverlay(img, i)}
+                {renderHoverIcon()}
               </button>
             ))}
+            {images.length > 1 && (
+              <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setActiveIdx(i); }}
+                    className="h-2 w-2 rounded-full transition-all"
+                    style={{
+                      background: i === activeIdx ? data.colorPalette.primary : "rgba(255,255,255,0.6)",
+                      transform: i === activeIdx ? "scale(1.3)" : "scale(1)",
+                    }}
+                    aria-label={`Go to photo ${i + 1}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      ) : animation === "slideshow" && images.length > 0 ? (
-        <div className="relative w-full max-w-3xl mx-auto aspect-[4/3] overflow-hidden rounded-lg" style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}>
-          {images.map((img, i) => (
-            <button
-              key={`${img.url}-${i}`}
-              type="button"
-              onClick={() => setLightboxIndex(i)}
-              className="absolute inset-0 group focus:outline-none focus-visible:ring-2"
-              style={{
-                opacity: i === activeIdx ? 1 : 0,
-                transition: "opacity 1s ease-in-out",
-                pointerEvents: i === activeIdx ? "auto" : "none",
-              }}
-              aria-label={img.caption ?? `Photo ${i + 1}`}
-              aria-hidden={i !== activeIdx}
-              tabIndex={i === activeIdx ? 0 : -1}
-            >
-              <img
-                src={imageUrl(img.url)}
-                alt={img.caption ?? ""}
-                className="w-full h-full object-cover"
-                loading={i === 0 ? "eager" : "lazy"}
-                style={{ filter: photoFilter }}
-              />
-              {renderImageOverlay(img, i)}
-            </button>
-          ))}
-          {images.length > 1 && (
-            <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5">
-              {images.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setActiveIdx(i); }}
-                  className="h-2 w-2 rounded-full transition-all"
-                  style={{
-                    background: i === activeIdx ? data.colorPalette.primary : "rgba(255,255,255,0.6)",
-                    transform: i === activeIdx ? "scale(1.3)" : "scale(1)",
-                  }}
-                  aria-label={`Go to photo ${i + 1}`}
-                />
-              ))}
-            </div>
-          )}
+          {renderCaption(images[activeIdx]?.caption)}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {images.map((img, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setLightboxIndex(i)}
-              className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-              style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
-              aria-label={img.caption ?? `Photo ${i + 1}`}
-            >
-              <img
-                src={imageUrl(img.url)}
-                alt={img.caption ?? ""}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                loading="lazy"
-                style={{ filter: photoFilter }}
-              />
-              {renderImageOverlay(img, i)}
-            </button>
+            <div key={i} className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => setLightboxIndex(i)}
+                className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
+                aria-label={img.caption ?? `Photo ${i + 1}`}
+              >
+                <img
+                  src={imageUrl(img.url)}
+                  alt={img.caption ?? ""}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                  style={{ filter: photoFilter }}
+                />
+                {renderHoverIcon()}
+              </button>
+              {renderCaption(img.caption)}
+            </div>
           ))}
         </div>
       )}
