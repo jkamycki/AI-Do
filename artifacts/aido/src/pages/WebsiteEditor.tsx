@@ -749,8 +749,11 @@ export default function WebsiteEditor() {
           <div className="space-y-2.5">
             {[
               { key: "_heroDateRow", label: t("website_editor.hero_date_row", { defaultValue: "Wedding Date" }) },
+              { key: "_heroDateIcon", label: t("website_editor.hero_date_icon", { defaultValue: "Date Calendar Icon" }) },
               { key: "_heroVenueRow", label: t("website_editor.hero_venue_row", { defaultValue: "Venue Address" }) },
+              { key: "_heroVenueIcon", label: t("website_editor.hero_venue_icon", { defaultValue: "Venue Pin Icon" }) },
               { key: "_countdown", label: t("website_editor.hero_countdown", { defaultValue: "Countdown Timer" }) },
+              { key: "_addToCalendarRow", label: t("website_editor.hero_add_to_calendar", { defaultValue: "Add to Calendar Button" }) },
             ].map((row) => {
               const isHidden = record.customText[row.key] === " __aido_hidden__ " || record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
               return (
