@@ -413,14 +413,18 @@ export function RsvpFlow({
                 <>
                   <div>
                     <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.meal_choice", { defaultValue: "Meal choice (optional)" })}</label>
-                    <input
-                      type="text"
+                    <select
                       value={mealChoice}
                       onChange={(e) => setMealChoice(e.target.value)}
-                      placeholder={t("rsvp.meal_placeholder", { defaultValue: "Chicken, fish, vegetarian..." })}
                       className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                       style={inputBase}
-                    />
+                    >
+                      <option value="">{t("rsvp.meal_select_placeholder", { defaultValue: "-- choose a meal --" })}</option>
+                      <option value="Chicken">{t("rsvp.meal_chicken", { defaultValue: "Chicken" })}</option>
+                      <option value="Fish">{t("rsvp.meal_fish", { defaultValue: "Fish" })}</option>
+                      <option value="Beef/Steak">{t("rsvp.meal_beef", { defaultValue: "Beef/Steak" })}</option>
+                      <option value="Vegetarian">{t("rsvp.meal_vegetarian", { defaultValue: "Vegetarian" })}</option>
+                    </select>
                   </div>
 
                   <div>
@@ -450,14 +454,18 @@ export function RsvpFlow({
                       </div>
                       <div>
                         <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.plus_one_meal", { defaultValue: "Plus one's meal choice" })}</label>
-                        <input
-                          type="text"
+                        <select
                           value={plusOneMeal}
                           onChange={(e) => setPlusOneMeal(e.target.value)}
-                          placeholder={t("rsvp.meal_placeholder", { defaultValue: "Chicken, fish, vegetarian..." })}
                           className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                           style={inputBase}
-                        />
+                        >
+                          <option value="">{t("rsvp.meal_select_placeholder", { defaultValue: "-- choose a meal --" })}</option>
+                          <option value="Chicken">{t("rsvp.meal_chicken", { defaultValue: "Chicken" })}</option>
+                          <option value="Fish">{t("rsvp.meal_fish", { defaultValue: "Fish" })}</option>
+                          <option value="Beef/Steak">{t("rsvp.meal_beef", { defaultValue: "Beef/Steak" })}</option>
+                          <option value="Vegetarian">{t("rsvp.meal_vegetarian", { defaultValue: "Vegetarian" })}</option>
+                        </select>
                       </div>
                     </>
                   )}
@@ -573,14 +581,18 @@ export function RsvpFlow({
                 <>
                   <div>
                     <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.meal_choice", { defaultValue: "Meal choice (optional)" })}</label>
-                    <input
-                      type="text"
+                    <select
                       value={mealChoice}
                       onChange={(e) => setMealChoice(e.target.value)}
-                      placeholder={t("rsvp.meal_placeholder", { defaultValue: "Chicken, fish, vegetarian..." })}
                       className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                       style={inputBase}
-                    />
+                    >
+                      <option value="">{t("rsvp.meal_select_placeholder", { defaultValue: "-- choose a meal --" })}</option>
+                      <option value="Chicken">{t("rsvp.meal_chicken", { defaultValue: "Chicken" })}</option>
+                      <option value="Fish">{t("rsvp.meal_fish", { defaultValue: "Fish" })}</option>
+                      <option value="Beef/Steak">{t("rsvp.meal_beef", { defaultValue: "Beef/Steak" })}</option>
+                      <option value="Vegetarian">{t("rsvp.meal_vegetarian", { defaultValue: "Vegetarian" })}</option>
+                    </select>
                   </div>
 
                   <div>
@@ -610,14 +622,18 @@ export function RsvpFlow({
                       </div>
                       <div>
                         <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.plus_one_meal", { defaultValue: "Plus one's meal choice" })}</label>
-                        <input
-                          type="text"
+                        <select
                           value={plusOneMeal}
                           onChange={(e) => setPlusOneMeal(e.target.value)}
-                          placeholder={t("rsvp.meal_placeholder", { defaultValue: "Chicken, fish, vegetarian..." })}
                           className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                           style={inputBase}
-                        />
+                        >
+                          <option value="">{t("rsvp.meal_select_placeholder", { defaultValue: "-- choose a meal --" })}</option>
+                          <option value="Chicken">{t("rsvp.meal_chicken", { defaultValue: "Chicken" })}</option>
+                          <option value="Fish">{t("rsvp.meal_fish", { defaultValue: "Fish" })}</option>
+                          <option value="Beef/Steak">{t("rsvp.meal_beef", { defaultValue: "Beef/Steak" })}</option>
+                          <option value="Vegetarian">{t("rsvp.meal_vegetarian", { defaultValue: "Vegetarian" })}</option>
+                        </select>
                       </div>
                     </>
                   )}
