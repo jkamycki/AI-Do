@@ -118,6 +118,18 @@ function tsp(ctx: EditCtx, key: string, _deletable = false) {
   };
 }
 
+// Style-only variant for EditableTexts already wrapped in a DraggableRow.
+// The row owns position + delete for the whole group; if we also wired those
+// onto the inner text the user would drag just the text and leave the row's
+// icon behind.
+function tspStyle(ctx: EditCtx, key: string) {
+  if (!ctx.editable) return {};
+  return {
+    textStyle: ctx.textStyles?.[key] ?? {},
+    onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
+  };
+}
+
 function fontStack(font: string): string {
   return `'${font}', 'Playfair Display', Georgia, serif`;
 }
@@ -906,7 +918,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={dateStr}
               onCommit={(v) => ctx.onTextChange("_heroDate", v)}
               style={{ color: "inherit" }}
-              {...tsp(ctx, "_heroDate")}
+              {...tspStyle(ctx, "_heroDate")}
             />
           </DraggableRow>
         )}
@@ -927,7 +939,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={[data.couple.venue, data.couple.venueCity, data.couple.venueState].filter(Boolean).join(", ")}
               onCommit={(v) => ctx.onTextChange("_heroVenue", v)}
               style={{ color: "inherit" }}
-              {...tsp(ctx, "_heroVenue")}
+              {...tspStyle(ctx, "_heroVenue")}
             />
           </DraggableRow>
         )}
