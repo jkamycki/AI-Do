@@ -997,6 +997,28 @@ export default function WebsiteEditor() {
           </p>
         </Section>}
 
+        {/* Gallery photo animation */}
+        {inTab("animation") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Gallery Photos">
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Entrance animation</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={record.customText._galleryAnimation ?? "none"}
+                onChange={(e) => update({ customText: { ...record.customText, _galleryAnimation: e.target.value } })}
+              >
+                <option value="none">None</option>
+                <option value="fade-in">Fade in</option>
+                <option value="slide-up">Slide up</option>
+                <option value="zoom-in">Zoom in</option>
+              </select>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Photos animate in one-by-one as guests scroll down to the gallery.
+            </p>
+          </div>
+        </Section>}
+
         {/* Hero animation */}
         {inTab("animation") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_hero_animation", { defaultValue: "Hero Animation" })}>
           <div className="space-y-3">

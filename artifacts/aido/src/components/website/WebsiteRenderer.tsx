@@ -1455,7 +1455,25 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const images = (data.galleryImages ?? []).slice().sort((a, b) => a.order - b.order);
   const photoFilter = photoFilterCss(data.customText._photoFilter);
+  const anim = (data.customText._galleryAnimation || "none") as "none" | "fade-in" | "slide-up" | "zoom-in";
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [visibleItems, setVisibleItems] = useState<Set<number>>(new Set());
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    if (anim === "none") { setVisibleItems(new Set()); return; }
+    const observers = itemRefs.current.map((el, i) => {
+      if (!el) return null;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) { setVisibleItems((prev) => new Set([...prev, i])); obs.disconnect(); } },
+        { threshold: 0.1 },
+      );
+      obs.observe(el);
+      return obs;
+    });
+    return () => { observers.forEach((obs) => obs?.disconnect()); };
+  }, [anim, images.length]);
+
   if (images.length === 0 && !ctx.editable) return null;
   return (
     <SectionShell id="gallery" titleKey="gallery_title" defaultTitle="Gallery" icon={<ImageIcon className="h-4 w-4" />} data={data} ctx={ctx}>
@@ -1476,9 +1494,14 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         style={{ fontFamily: elementFontStack(data, "gallery_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
         {...tsp(ctx, "gallery_subtitle")}
       />
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" data-gallery-anim={anim !== "none" ? anim : undefined}>
         {images.map((img, i) => (
-          <div key={i} className="flex flex-col gap-1.5">
+          <div
+            key={i}
+            ref={(el) => { itemRefs.current[i] = el; }}
+            className={`wsg-item flex flex-col gap-1.5${visibleItems.has(i) ? " wsg-visible" : ""}`}
+            style={anim !== "none" ? { ["--stagger" as string]: `${i * 80}ms` } : undefined}
+          >
             <button
               type="button"
               onClick={() => setLightboxIndex(i)}
