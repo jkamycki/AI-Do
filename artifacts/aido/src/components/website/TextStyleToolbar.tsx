@@ -23,15 +23,6 @@ const FONT_OPTIONS = [
   { label: "Dancing Script", value: "Dancing Script" },
 ];
 
-const ANIMATION_OPTIONS = [
-  { label: "None", value: "" },
-  { label: "Fade In", value: "wsa-fade-in" },
-  { label: "Slide Up", value: "wsa-slide-up" },
-  { label: "Slide Right", value: "wsa-slide-right" },
-  { label: "Zoom In", value: "wsa-zoom-in" },
-  { label: "Bounce", value: "wsa-bounce-in" },
-];
-
 function loadGoogleFont(family: string) {
   if (!family) return;
   const id = `gf-${family.replace(/\s+/g, "-")}`;
@@ -220,18 +211,6 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
             </button>
           )}
         </label>
-
-        {/* Separator */}
-        <div className="w-px h-5 bg-border mx-0.5" />
-
-        {/* Animation — custom dropdown */}
-        <ToolbarDropdown
-          value={style.animation ?? ""}
-          options={ANIMATION_OPTIONS}
-          onChange={(v) => patch({ animation: v || undefined })}
-          onKeepOpen={onKeepOpen}
-          minWidth={100}
-        />
 
         {/* Reset all */}
         {Object.keys(style).length > 0 && (
