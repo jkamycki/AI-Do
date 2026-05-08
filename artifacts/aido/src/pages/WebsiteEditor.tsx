@@ -16,7 +16,7 @@ import {
   QrCode, Download, Link2, Plus, Megaphone, Users, Undo2, Sparkles, Settings, Trash2,
 } from "lucide-react";
 import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
-import { flushPendingEditableCommits, subscribeEditableDrag } from "@/components/website/EditableText";
+import { flushPendingEditableCommits, subscribeEditableDrag, EDITABLE_HIDDEN_MARKER } from "@/components/website/EditableText";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
@@ -1095,10 +1095,12 @@ export default function WebsiteEditor() {
                 // User-added text box — fully remove the row.
                 delete ct[key]; delete ts[key]; delete tp[key];
               } else {
-                // Default field (couple names, story, schedule, etc.) — clear
-                // the text so the EditableText wrap visibly hides on the page,
-                // but keep style/position state so Undo can restore cleanly.
-                ct[key] = "";
+                // Default field (couple names, story, schedule, etc.) — flag
+                // it hidden via the sentinel marker. EditableText collapses
+                // the wrap on the page; underlying portal data (profile
+                // couple names, dates, etc.) is untouched. Undo restores by
+                // patching the marker back to its prior value.
+                ct[key] = EDITABLE_HIDDEN_MARKER;
               }
               return { customText: ct, textStyles: ts, textPositions: tp };
             })}
