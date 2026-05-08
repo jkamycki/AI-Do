@@ -1288,9 +1288,11 @@ export default function WebsiteEditor() {
         }}
         onClick={() => { if (ctxMenu) setCtxMenu(null); }}
       >
-        <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs text-muted-foreground flex items-center justify-between gap-3 flex-wrap">
-          <span>
-            Live preview — changes appear here instantly. Click <strong>Save</strong> when you're happy.
+        <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs flex items-center justify-between gap-3 flex-wrap">
+          <span style={{ color: "#D4A017" }}>
+            Live preview — changes appear here instantly. Click{" "}
+            <strong className="text-emerald-500">Save</strong>{" "}
+            when you're happy.
           </span>
           <button
             type="button"
@@ -1528,18 +1530,36 @@ function SlugEditor({
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const host = origin.replace(/^https?:\/\//, "");
+  const fullUrl = `${origin}/w/${slug}`;
+  const [copied, setCopied] = useState(false);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(fullUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  };
 
   return (
     <div className="space-y-2.5">
       <div className="rounded-md bg-muted/40 border border-border/70 px-3 py-2 space-y-1">
         <p className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">Guest website link</p>
-        <p className="text-xs font-mono break-all">
-          <span className="opacity-60">{host}/w/</span><span className="text-foreground">{slug}</span>
-        </p>
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Share this with guests. Your editor (this page) stays at <span className="font-mono">{host}</span> —
-          the <span className="font-mono">/w/</span> prefix is what separates the public guest site from your portal.
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-mono break-all flex-1">
+            <span className="opacity-60">{host}/w/</span><span className="text-foreground">{slug}</span>
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 shrink-0"
+            onClick={copyLink}
+            title="Copy guest website link"
+          >
+            {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+          </Button>
+        </div>
       </div>
       {published && (
         <p className="text-[11px] text-amber-600 dark:text-amber-400">
