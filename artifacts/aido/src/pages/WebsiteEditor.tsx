@@ -1288,9 +1288,11 @@ export default function WebsiteEditor() {
         }}
         onClick={() => { if (ctxMenu) setCtxMenu(null); }}
       >
-        <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs text-muted-foreground flex items-center justify-between gap-3 flex-wrap">
-          <span>
-            Live preview — changes appear here instantly. Click <strong>Save</strong> when you're happy.
+        <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs flex items-center justify-between gap-3 flex-wrap">
+          <span style={{ color: "#D4A017" }}>
+            Live preview — changes appear here instantly. Click{" "}
+            <strong className="text-emerald-500">Save</strong>{" "}
+            when you're happy.
           </span>
           <button
             type="button"
