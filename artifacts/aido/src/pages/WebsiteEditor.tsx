@@ -742,6 +742,35 @@ export default function WebsiteEditor() {
           </div>
         </Section>}
 
+        {/* Hero elements — toggles for the rows that drag-to-trash hides
+            (date, venue, countdown). Lets the user bring them back without
+            needing to hit Undo. */}
+        {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Hero Elements" })}>
+          <div className="space-y-2.5">
+            {[
+              { key: "_heroDateRow", label: t("website_editor.hero_date_row", { defaultValue: "Wedding Date" }) },
+              { key: "_heroVenueRow", label: t("website_editor.hero_venue_row", { defaultValue: "Venue Address" }) },
+              { key: "_countdown", label: t("website_editor.hero_countdown", { defaultValue: "Countdown Timer" }) },
+            ].map((row) => {
+              const isHidden = record.customText[row.key] === " __aido_hidden__ " || record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
+              return (
+                <div key={row.key} className="flex items-center justify-between gap-3 py-1.5">
+                  <Label className="text-sm cursor-pointer">{row.label}</Label>
+                  <Switch
+                    checked={!isHidden}
+                    onCheckedChange={(checked) => patchRecord((prev) => {
+                      const ct = { ...prev.customText };
+                      if (checked) delete ct[row.key];
+                      else ct[row.key] = EDITABLE_HIDDEN_MARKER;
+                      return { customText: ct };
+                    })}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </Section>}
+
         {/* Inline-edit hint */}
         {inTab("design") && <Section icon={<FileText className="h-4 w-4" />} title={t("website_editor.section_edit_text", { defaultValue: "Edit Text" })}>
           <p className="text-xs text-muted-foreground leading-relaxed">

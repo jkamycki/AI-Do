@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed, Share2, Check } from "lucide-react";
-import { EditableText, type TextPosition } from "./EditableText";
+import { EditableText, emitEditableDrag, EDITABLE_HIDDEN_MARKER, type TextPosition } from "./EditableText";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch } from "@/lib/authFetch";
 
@@ -248,6 +248,7 @@ function DraggableRow({
   children,
   position,
   onPositionChange,
+  onDelete,
   editable,
   className,
   style,
@@ -255,6 +256,7 @@ function DraggableRow({
   children: React.ReactNode;
   position?: TextPosition;
   onPositionChange?: (p: TextPosition) => void;
+  onDelete?: () => void;
   editable: boolean;
   className?: string;
   style?: React.CSSProperties;
@@ -287,11 +289,34 @@ function DraggableRow({
     if (!dragState.current) return;
     const dx = e.clientX - dragState.current.startX;
     const dy = e.clientY - dragState.current.startY;
-    if (Math.abs(dx) > DRAG_THRESHOLD_ROW || Math.abs(dy) > DRAG_THRESHOLD_ROW) dragState.current.moved = true;
+    if (Math.abs(dx) > DRAG_THRESHOLD_ROW || Math.abs(dy) > DRAG_THRESHOLD_ROW) {
+      if (!dragState.current.moved && onDelete) {
+        // Trigger trash-zone reveal exactly the same way EditableText does.
+        emitEditableDrag("start");
+      }
+      dragState.current.moved = true;
+    }
     if (dragState.current.moved) onPositionChange({ x: dragState.current.origX + dx, y: dragState.current.origY + dy });
   };
 
-  const handlePointerUp = () => { dragState.current = null; setIsDragging(false); };
+  const handlePointerUp = (e: React.PointerEvent) => {
+    const wasDrag = dragState.current && dragState.current.moved;
+    dragState.current = null;
+    setIsDragging(false);
+    if (wasDrag && onDelete) {
+      emitEditableDrag("end");
+      try {
+        const trash = document.querySelector('[data-aido-trash="true"]') as HTMLElement | null;
+        if (trash) {
+          const r = trash.getBoundingClientRect();
+          const pad = 24;
+          const inside = e.clientX >= r.left - pad && e.clientX <= r.right + pad
+            && e.clientY >= r.top - pad && e.clientY <= r.bottom + pad;
+          if (inside) onDelete();
+        }
+      } catch { /* ignore */ }
+    }
+  };
 
   const hasOffset = position && (position.x !== 0 || position.y !== 0);
 
@@ -839,27 +864,31 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           style={{ fontFamily: fontStack(headingFont(data)), color: data.heroImage ? "#fff" : data.colorPalette.text }}
           {...tsp(ctx, "_coupleName")}
         />
-        <DraggableRow
-          editable={ctx.editable}
-          position={ctx.textPositions?.["_heroDateRow"]}
-          onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_heroDateRow", p) : undefined}
-          className="flex items-center justify-center gap-4 text-base sm:text-lg opacity-90"
-        >
-          <Calendar className="h-5 w-5 flex-shrink-0" style={{ pointerEvents: "none" }} />
-          <EditableText
+        {data.customText._heroDateRow !== EDITABLE_HIDDEN_MARKER && (
+          <DraggableRow
             editable={ctx.editable}
-            value={data.customText._heroDate ?? ""}
-            defaultValue={dateStr}
-            onCommit={(v) => ctx.onTextChange("_heroDate", v)}
-            style={{ color: "inherit" }}
-            {...tsp(ctx, "_heroDate")}
-          />
-        </DraggableRow>
-        {data.couple.venue && (
+            position={ctx.textPositions?.["_heroDateRow"]}
+            onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_heroDateRow", p) : undefined}
+            onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_heroDateRow") : undefined}
+            className="flex items-center justify-center gap-4 text-base sm:text-lg opacity-90"
+          >
+            <Calendar className="h-5 w-5 flex-shrink-0" style={{ pointerEvents: "none" }} />
+            <EditableText
+              editable={ctx.editable}
+              value={data.customText._heroDate ?? ""}
+              defaultValue={dateStr}
+              onCommit={(v) => ctx.onTextChange("_heroDate", v)}
+              style={{ color: "inherit" }}
+              {...tsp(ctx, "_heroDate")}
+            />
+          </DraggableRow>
+        )}
+        {data.couple.venue && data.customText._heroVenueRow !== EDITABLE_HIDDEN_MARKER && (
           <DraggableRow
             editable={ctx.editable}
             position={ctx.textPositions?.["_heroVenueRow"]}
             onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_heroVenueRow", p) : undefined}
+            onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_heroVenueRow") : undefined}
             className="flex items-center justify-center gap-2 mt-3 text-sm sm:text-base opacity-80"
           >
             <MapPin className="h-4 w-4 flex-shrink-0" style={{ pointerEvents: "none" }} />
@@ -873,11 +902,12 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             />
           </DraggableRow>
         )}
-        {data.couple.weddingDate && (
+        {data.couple.weddingDate && data.customText._countdown !== EDITABLE_HIDDEN_MARKER && (
           <DraggableRow
             editable={ctx.editable}
             position={ctx.textPositions?.["_countdown"]}
             onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_countdown", p) : undefined}
+            onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_countdown") : undefined}
           >
             <CountdownTimer
               dateStr={data.couple.weddingDate}
