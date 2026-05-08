@@ -93,7 +93,13 @@ export function useNextSteps() {
       hasProfile: Boolean(summary?.hasProfile),
       guestCount: summary?.guestCount ?? 0,
       budgetTotal: summary?.budgetTotal ?? 0,
-      vendorCount: vendorsData?.vendors?.length ?? 0,
+      // The /api/vendors endpoint returns a raw array; the typed client used
+      // to wrap it as { vendors: [...] } and this getter never got updated.
+      // Result: the "Add Your Vendors" Next Step never auto-completed for
+      // users who already had vendors. Handle both shapes defensively.
+      vendorCount: Array.isArray(vendorsData)
+        ? vendorsData.length
+        : ((vendorsData as { vendors?: unknown[] } | undefined)?.vendors?.length ?? 0),
       contractCount: contracts?.length ?? 0,
       hasChecklist: Boolean(summary?.hasChecklist),
       checklistTotal: summary?.checklistTotal ?? 0,
