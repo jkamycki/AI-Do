@@ -354,7 +354,10 @@ export default function WebsiteEditor() {
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
         }),
       });
-      if (!r.ok) throw new Error("Failed to save");
+      if (!r.ok) {
+        const text = await r.text().catch(() => "");
+        throw new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`);
+      }
       const body = (await r.json()) as WebsiteRecord;
       // The /api/website/update endpoint manages the website record only —
       // portalParty is a JOIN from the wedding-party portal table that the
@@ -367,7 +370,8 @@ export default function WebsiteEditor() {
       setPasswordInput("");
       setDirty(false);
       return true;
-    } catch {
+    } catch (err) {
+      console.error("[WebsiteEditor] saveNow failed", err);
       return false;
     } finally {
       if (!silent) setSaving(false);
@@ -407,7 +411,10 @@ export default function WebsiteEditor() {
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
         }),
       });
-      if (!r.ok) throw new Error("Failed to save");
+      if (!r.ok) {
+        const text = await r.text().catch(() => "");
+        throw new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`);
+      }
       const body = (await r.json()) as WebsiteRecord;
       // Same fix as saveNow() — PUT response is the website row only and
       // doesn't include portalParty (a JOIN the GET endpoint enriches).
@@ -421,8 +428,10 @@ export default function WebsiteEditor() {
       setPasswordInput("");
       setDirty(false);
       toast({ title: "Saved!" });
-    } catch {
-      toast({ title: "Failed to save", variant: "destructive" });
+    } catch (err) {
+      console.error("[WebsiteEditor] handleSave failed", err);
+      const detail = err instanceof Error ? err.message : "Unknown error";
+      toast({ title: "Failed to save", description: detail, variant: "destructive" });
     } finally {
       setSaving(false);
     }
