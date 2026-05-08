@@ -402,6 +402,109 @@ function DraggableRow({
   );
 }
 
+// ---------- editable icon ----------
+
+// Lets the editor change colour and size of a static icon (e.g. schedule
+// section icons) without exposing any text or delete controls. Clicking the
+// icon while editing opens a tiny popover with a colour picker and a size
+// slider; values persist in customText[colourKey] / customText[sizeKey].
+function EditableIcon({
+  Icon,
+  ctx,
+  colorKey,
+  sizeKey,
+  defaultColor,
+  defaultSizePx,
+  customText,
+  wrapperClassName,
+  wrapperStyle,
+}: {
+  Icon: typeof Heart;
+  ctx: EditCtx;
+  colorKey: string;
+  sizeKey: string;
+  defaultColor: string;
+  defaultSizePx: number;
+  customText: Record<string, string>;
+  wrapperClassName?: string;
+  wrapperStyle?: React.CSSProperties;
+}) {
+  const [open, setOpen] = useState(false);
+  const color = (customText[colorKey] || "").trim() || defaultColor;
+  const sizeRaw = parseInt(customText[sizeKey] ?? "", 10);
+  const size = Number.isFinite(sizeRaw) && sizeRaw > 0 ? sizeRaw : defaultSizePx;
+
+  const iconEl = (
+    <Icon style={{ width: size, height: size, color, pointerEvents: "none" }} />
+  );
+
+  if (!ctx.editable) {
+    return (
+      <div className={wrapperClassName} style={wrapperStyle}>
+        {iconEl}
+      </div>
+    );
+  }
+
+  return (
+    <div className={wrapperClassName} style={{ ...wrapperStyle, position: "relative" }}>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        className="flex items-center justify-center w-full h-full rounded-full transition-shadow hover:ring-2"
+        style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0, lineHeight: 0 }}
+        title="Change icon colour and size"
+      >
+        {iconEl}
+      </button>
+      {open && (
+        <div
+          className="absolute z-[400] mt-2 rounded-lg border border-border bg-popover shadow-lg p-2.5"
+          style={{ top: "100%", left: 0, minWidth: 180 }}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <label className="text-[11px] uppercase tracking-wide opacity-70">Colour</label>
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => ctx.onTextChange(colorKey, e.target.value)}
+              className="h-6 w-10 rounded cursor-pointer border border-border"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-[11px] uppercase tracking-wide opacity-70">Size</label>
+            <input
+              type="range"
+              min={12}
+              max={64}
+              value={size}
+              onChange={(e) => ctx.onTextChange(sizeKey, e.target.value)}
+              className="flex-1"
+            />
+            <span className="text-[11px] tabular-nums w-8 text-right opacity-70">{size}px</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => { ctx.onTextChange(colorKey, ""); ctx.onTextChange(sizeKey, ""); }}
+            className="mt-2 text-[11px] underline opacity-60 hover:opacity-100"
+          >
+            Reset
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="mt-2 ml-3 text-[11px] underline opacity-60 hover:opacity-100"
+          >
+            Done
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------- countdown ----------
 
 function calcTimeLeft(dateStr: string) {
@@ -1142,12 +1245,17 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
                   borderBottom: idx < visibleItems.length - 1 ? `1px solid ${data.colorPalette.primary}22` : "none",
                 }}
               >
-                <div
-                  className="flex items-center justify-center w-9 h-9 rounded-full flex-shrink-0"
-                  style={{ background: `${data.colorPalette.primary}15`, color: data.colorPalette.primary }}
-                >
-                  <it.Icon className="h-4 w-4" />
-                </div>
+                <EditableIcon
+                  Icon={it.Icon}
+                  ctx={ctx}
+                  customText={data.customText}
+                  colorKey={`${it.key}_iconColor`}
+                  sizeKey={`${it.key}_iconSize`}
+                  defaultColor={data.colorPalette.primary}
+                  defaultSizePx={16}
+                  wrapperClassName="flex items-center justify-center w-9 h-9 rounded-full flex-shrink-0"
+                  wrapperStyle={{ background: `${data.colorPalette.primary}15` }}
+                />
                 <div
                   className="w-28 text-sm font-medium px-3 py-1.5 rounded-md"
                   style={{
