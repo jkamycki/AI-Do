@@ -1388,6 +1388,8 @@ function MessagesSection() {
   const [subTab, setSubTab] = useState<"contact" | "feedback">("contact");
   const [expanded, setExpanded] = useState<number | null>(null);
   const [showResolved, setShowResolved] = useState(false);
+  const [replyOpenId, setReplyOpenId] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState("");
   const queryClient = useQueryClient();
 
   const authedFetch = async (url: string, init: RequestInit = {}) => {
@@ -1436,6 +1438,25 @@ function MessagesSection() {
       if (!r.ok) throw new Error("Failed to delete");
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-messages"] }),
+  });
+
+  const replyMutation = useMutation({
+    mutationFn: async ({ id, text }: { id: number; text: string }) => {
+      const r = await authedFetch(`/api/help/messages/contact/${id}/reply`, {
+        method: "POST",
+        body: JSON.stringify({ replyText: text }),
+      });
+      if (!r.ok) {
+        let detail = "";
+        try { detail = (await r.json())?.error ?? ""; } catch { /* ignore */ }
+        throw new Error(detail || `Failed to send reply (${r.status})`);
+      }
+    },
+    onSuccess: () => {
+      setReplyOpenId(null);
+      setReplyText("");
+      queryClient.invalidateQueries({ queryKey: ["admin-messages"] });
+    },
   });
 
   const handleExpand = (id: number, type: "contact" | "feedback") => {
@@ -1565,7 +1586,7 @@ function MessagesSection() {
                     <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3">
                       {msg.message}
                     </p>
-                    <div className="mt-3 flex justify-end gap-2">
+                    <div className="mt-3 flex justify-end gap-2 flex-wrap">
                       <Button
                         size="sm"
                         variant="outline"
@@ -1578,6 +1599,24 @@ function MessagesSection() {
                       </Button>
                       <Button
                         size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={e => {
+                          e.stopPropagation();
+                          if (replyOpenId === msg.id) {
+                            setReplyOpenId(null);
+                            setReplyText("");
+                          } else {
+                            setReplyOpenId(msg.id);
+                            setReplyText("");
+                          }
+                        }}
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        {replyOpenId === msg.id ? "Cancel Reply" : "Reply"}
+                      </Button>
+                      <Button
+                        size="sm"
                         variant={msg.isResolved ? "outline" : "default"}
                         className={`gap-1.5 ${msg.isResolved ? "" : "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"}`}
                         onClick={e => { e.stopPropagation(); resolveMutation.mutate({ type: "contact", id: msg.id, resolved: !msg.isResolved }); }}
@@ -1587,6 +1626,47 @@ function MessagesSection() {
                         {msg.isResolved ? "Mark as Open" : "Mark as Resolved"}
                       </Button>
                     </div>
+                    {replyOpenId === msg.id && (
+                      <div
+                        className="mt-3 border border-border/40 rounded-lg p-3 bg-background"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <div className="text-xs text-muted-foreground mb-2">
+                          Replying to <strong>{msg.email}</strong> · subject: <strong>Re: {msg.subject}</strong>
+                        </div>
+                        <textarea
+                          className="w-full min-h-[120px] rounded-md border border-border/60 bg-background p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                          placeholder="Type your reply…"
+                          value={replyText}
+                          onChange={e => setReplyText(e.target.value)}
+                          disabled={replyMutation.isPending}
+                        />
+                        {replyMutation.isError && (
+                          <p className="text-xs text-destructive mt-2">
+                            {(replyMutation.error as Error)?.message ?? "Failed to send reply."}
+                          </p>
+                        )}
+                        <div className="mt-2 flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => { setReplyOpenId(null); setReplyText(""); }}
+                            disabled={replyMutation.isPending}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => replyMutation.mutate({ id: msg.id, text: replyText })}
+                            disabled={replyMutation.isPending || !replyText.trim()}
+                          >
+                            {replyMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                            Send Reply
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </Card>
