@@ -296,6 +296,12 @@ function DraggableRow({
   const transform = position ? `translate(${position.x}px, ${position.y}px)` : undefined;
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    // If the user pressed inside an inner EditableText (contenteditable),
+    // don't hijack the pointer — let the inner element get focus and open
+    // its own toolbar / inline drag. DraggableRow only captures pointer
+    // events that originate on its own padding / icons.
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('[contenteditable="true"]')) return;
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     dragState.current = { startX: e.clientX, startY: e.clientY, origX: position?.x ?? 0, origY: position?.y ?? 0, moved: false };
