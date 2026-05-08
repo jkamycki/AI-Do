@@ -281,7 +281,18 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
         {onAiGenerate && aiOpen && (
           <div
             className="basis-full flex items-stretch gap-1.5 mt-1 pt-1.5 border-t border-border"
-            onMouseDown={(e) => { e.preventDefault(); onKeepOpen?.(); }}
+            onMouseDown={(e) => {
+              // Block focus loss only when the click lands on padding/empty
+              // space — the <input> needs the default mousedown behavior so it
+              // can actually receive focus and accept typed text. onKeepOpen
+              // re-focuses the contenteditable, so it must also be skipped for
+              // the input click; scheduleHide already keeps the toolbar open
+              // while the input holds activeElement.
+              const target = e.target as HTMLElement;
+              if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+              e.preventDefault();
+              onKeepOpen?.();
+            }}
           >
             <input
               type="text"
