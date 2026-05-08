@@ -1291,7 +1291,14 @@ export default function WebsiteEditor() {
         <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs flex items-center justify-between gap-3 flex-wrap">
           <span style={{ color: "#D4A017" }}>
             Live preview — changes appear here instantly. Click{" "}
-            <strong className="text-emerald-500">Save</strong>{" "}
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !dirty}
+              className="font-bold text-emerald-500 underline underline-offset-2 hover:text-emerald-600 disabled:opacity-60 disabled:no-underline disabled:cursor-default"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>{" "}
             when you're happy.
           </span>
           <button
