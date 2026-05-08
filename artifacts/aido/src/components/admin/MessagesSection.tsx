@@ -9,6 +9,17 @@ import {
   Circle, CheckCircle2, Inbox, Star, Trash2, Loader2, Send,
 } from "lucide-react";
 
+interface ContactReply {
+  id: number;
+  contactMessageId: number;
+  direction: "outbound" | "inbound";
+  body: string;
+  senderUserId: string | null;
+  senderEmail: string | null;
+  senderName: string | null;
+  createdAt: string;
+}
+
 interface HelpMessage {
   id: number;
   userId: string | null;
@@ -19,6 +30,7 @@ interface HelpMessage {
   isRead: boolean;
   isResolved: boolean;
   createdAt: string;
+  replies?: ContactReply[];
 }
 
 interface FeedbackItem {
@@ -250,6 +262,34 @@ export default function MessagesSection({
                     <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3">
                       {msg.message}
                     </p>
+                    {msg.replies && msg.replies.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Conversation ({msg.replies.length})
+                        </p>
+                        {msg.replies.map(reply => {
+                          const isOutbound = reply.direction === "outbound";
+                          return (
+                            <div
+                              key={reply.id}
+                              className={`rounded-lg p-3 border ${isOutbound ? "bg-primary/5 border-primary/20 ml-6" : "bg-muted/30 border-border/40 mr-6"}`}
+                            >
+                              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                                <span className="font-medium">
+                                  {isOutbound
+                                    ? `You replied${reply.senderEmail ? ` (as ${reply.senderEmail})` : ""}`
+                                    : `${reply.senderName ?? reply.senderEmail ?? "Reply"}`}
+                                </span>
+                                <span>{new Date(reply.createdAt).toLocaleString()}</span>
+                              </div>
+                              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                                {reply.body}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                     <div className="mt-3 flex justify-end gap-2 flex-wrap">
                       <Button
                         size="sm"

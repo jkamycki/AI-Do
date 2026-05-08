@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, contactMessages, feedbackSubmissions, supportTickets } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { db, contactMessages, contactMessageReplies, feedbackSubmissions, supportTickets } from "@workspace/db";
+import { eq, desc, asc, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { randomUUID } from "crypto";
 import { clerkClient } from "@clerk/express";
@@ -98,11 +98,33 @@ router.get("/help/messages", requireAuth, async (req, res) => {
       .orderBy(desc(feedbackSubmissions.createdAt))
       .limit(200);
 
+    const contactIds = contacts.map(c => c.id);
+    const repliesRows = contactIds.length > 0
+      ? await db
+          .select()
+          .from(contactMessageReplies)
+          .where(inArray(contactMessageReplies.contactMessageId, contactIds))
+          .orderBy(asc(contactMessageReplies.createdAt))
+      : [];
+    const repliesByMessage = new Map<number, typeof repliesRows>();
+    for (const r of repliesRows) {
+      const list = repliesByMessage.get(r.contactMessageId) ?? [];
+      list.push(r);
+      repliesByMessage.set(r.contactMessageId, list);
+    }
+
     const unreadContacts = contacts.filter(c => !c.isRead).length;
     const unreadFeedback = feedback.filter(f => !f.isRead).length;
 
     res.json({
-      contacts: contacts.map(c => ({ ...c, createdAt: c.createdAt.toISOString() })),
+      contacts: contacts.map(c => ({
+        ...c,
+        createdAt: c.createdAt.toISOString(),
+        replies: (repliesByMessage.get(c.id) ?? []).map(r => ({
+          ...r,
+          createdAt: r.createdAt.toISOString(),
+        })),
+      })),
       feedback: feedback.map(f => ({ ...f, createdAt: f.createdAt.toISOString() })),
       unreadCount: unreadContacts + unreadFeedback,
     });
@@ -196,6 +218,15 @@ router.post("/help/messages/contact/:id/reply", requireAuth, async (req, res) =>
       req.log.error({ error: result.error }, "Failed to send contact-message reply");
       return res.status(502).json({ error: `Email delivery failed: ${result.error}` });
     }
+
+    await db.insert(contactMessageReplies).values({
+      contactMessageId: id,
+      direction: "outbound",
+      body: replyText.trim(),
+      senderUserId: req.userId ?? null,
+      senderEmail: supportAddress,
+      senderName: "A.IDO Support",
+    });
 
     await db
       .update(contactMessages)
