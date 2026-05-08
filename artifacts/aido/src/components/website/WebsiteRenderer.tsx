@@ -521,7 +521,7 @@ function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
   const btnStyle: React.CSSProperties = {
     background: "rgba(255,255,255,0.15)",
     border: "1px solid rgba(255,255,255,0.4)",
-    color: data.heroImage ? "#fff" : data.colorPalette.text,
+    color: (data.heroImage || (data.heroImages?.length ?? 0) > 0) ? "#fff" : data.colorPalette.text,
     backdropFilter: "blur(4px)",
   };
 
@@ -831,7 +831,7 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
     );
   }
 
-  const slideshowImages = mode === "slideshow" ? heroAndGallery : data.heroImage ? [data.heroImage] : [];
+  const slideshowImages = mode === "slideshow" ? heroAndGallery : heroAndGallery.length > 0 ? [heroAndGallery[0]] : [];
 
   const [activeIdx, setActiveIdx] = useState(0);
   useEffect(() => {
@@ -885,7 +885,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
     <section
       id="home"
       className="relative min-h-[80vh] flex items-center justify-center text-center px-6 py-24 overflow-hidden"
-      style={{ color: data.heroImage ? "#fff" : data.colorPalette.text }}
+      style={{ color: (data.heroImage || (data.heroImages?.length ?? 0) > 0) ? "#fff" : data.colorPalette.text }}
     >
       <HeroBackground data={data} />
       <div className="relative max-w-3xl">
@@ -896,7 +896,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           defaultValue="We're getting married"
           onCommit={(v) => ctx.onTextChange("_heroTagline", v)}
           className="uppercase tracking-[0.3em] text-xs sm:text-sm mb-6 opacity-80"
-          style={{ color: data.heroImage ? "#fff" : data.colorPalette.primary, fontFamily: elementFont(data, "_heroTagline") ? bodyFontStack(elementFont(data, "_heroTagline")!) : undefined }}
+          style={{ color: (data.heroImage || (data.heroImages?.length ?? 0) > 0) ? "#fff" : data.colorPalette.primary, fontFamily: elementFont(data, "_heroTagline") ? bodyFontStack(elementFont(data, "_heroTagline")!) : undefined }}
           {...tspNoDelete(ctx, "_heroTagline")}
         />
         <EditableText
@@ -906,7 +906,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           defaultValue={couple}
           onCommit={(v) => ctx.onTextChange("_coupleName", v)}
           className="text-5xl sm:text-7xl md:text-8xl mb-6 leading-tight"
-          style={{ fontFamily: fontStack(headingFont(data)), color: data.heroImage ? "#fff" : data.colorPalette.text }}
+          style={{ fontFamily: fontStack(headingFont(data)), color: (data.heroImage || (data.heroImages?.length ?? 0) > 0) ? "#fff" : data.colorPalette.text }}
           {...tspNoDelete(ctx, "_coupleName")}
         />
         {data.customText._heroDateRow !== EDITABLE_HIDDEN_MARKER && (
@@ -949,7 +949,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           <DraggableRow editable={ctx.editable}>
             <CountdownTimer
               dateStr={data.couple.weddingDate}
-              accentColor={data.heroImage ? "rgba(255,255,255,0.9)" : data.colorPalette.primary}
+              accentColor={(data.heroImage || (data.heroImages?.length ?? 0) > 0) ? "rgba(255,255,255,0.9)" : data.colorPalette.primary}
             />
           </DraggableRow>
         )}

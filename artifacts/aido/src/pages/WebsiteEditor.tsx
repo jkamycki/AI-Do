@@ -1144,46 +1144,28 @@ export default function WebsiteEditor() {
           </div>
         </Section>}
 
-        {/* Hero image */}
-        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_hero_image", { defaultValue: "Hero Image" })}>
-          {record.heroImage ? (
-            <div className="relative rounded-md overflow-hidden">
-              <img
-                src={record.heroImage.startsWith("/objects/") ? `/api/storage${record.heroImage}` : record.heroImage}
-                alt="Hero"
-                className="w-full h-32 object-cover"
-              />
-              <button
-                onClick={() => update({ heroImage: null })}
-                className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ) : (
-            <label className="flex items-center justify-center gap-2 w-full px-4 py-8 rounded-md border-2 border-dashed border-border cursor-pointer hover:border-primary/50 transition-colors text-sm text-muted-foreground">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleHeroUpload(file);
-                  e.target.value = "";
-                }}
-                disabled={upload.isUploading}
-              />
-              {upload.isUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <><ImageIcon className="h-4 w-4" /> Upload hero image</>}
-            </label>
-          )}
-        </Section>}
-
-        {/* Home Photos — additional photos for the hero slideshow/marquee, separate from the gallery section */}
-        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Home Photos">
+        {/* Home Page Photos — primary background + extras for slideshow/marquee */}
+        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Home Page Photos">
           <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
-            Extra photos shown on the home page (slideshow, marquee). These are separate from the Gallery section photos.
+            Photos shown on the home page background. Add multiple for slideshows and marquees. These are separate from the Gallery section.
           </p>
           <div className="grid grid-cols-3 gap-2 mb-3 items-start">
+            {record.heroImage && (
+              <div className="relative aspect-square rounded-md overflow-hidden">
+                <img
+                  src={record.heroImage.startsWith("/objects/") ? `/api/storage${record.heroImage}` : record.heroImage}
+                  alt="Main"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={() => update({ heroImage: null })}
+                  className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
+                  title="Remove main photo"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
             {(record.heroImages ?? []).map((img, i) => (
               <div key={i} className="relative aspect-square rounded-md overflow-hidden">
                 <img
@@ -1212,7 +1194,7 @@ export default function WebsiteEditor() {
               }}
               disabled={upload.isUploading}
             />
-            {upload.isUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <>Add home photos</>}
+            {upload.isUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <>Add photos</>}
           </label>
         </Section>}
 
