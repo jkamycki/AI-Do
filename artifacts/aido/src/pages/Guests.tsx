@@ -49,6 +49,21 @@ const INVITATION_OPTIONS = [
   { value: "sent", label: "Sent", color: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" },
 ];
 
+// Standard group / category presets so the seating-chart AI and other
+// downstream features can group people sensibly. Users can also free-type
+// any custom group via the "Other" Input that appears.
+const GROUP_OPTIONS = [
+  { value: "none", label: "No group" },
+  { value: "Bride's Family", label: "Bride's Family" },
+  { value: "Bride's Friends", label: "Bride's Friends" },
+  { value: "Groom's Family", label: "Groom's Family" },
+  { value: "Groom's Friends", label: "Groom's Friends" },
+  { value: "Wedding Party", label: "Wedding Party" },
+  { value: "Coworkers", label: "Coworkers" },
+  { value: "Family Friends", label: "Family Friends" },
+  { value: "Other", label: "Other (type custom)…" },
+];
+
 const MEAL_OPTIONS = [
   { value: "chicken", label: "Chicken" },
   { value: "fish", label: "Fish" },
@@ -179,6 +194,49 @@ function GuestForm({
             <FormMessage />
           </FormItem>
         )} />
+
+        {/* Group / category — bride's friends, groom's family, etc. Used
+            by the seating-chart AI and dashboard breakdowns. Users can
+            type any custom value by picking "Other". */}
+        <FormField control={form.control} name="guestGroup" render={({ field }) => {
+          const presetValues = GROUP_OPTIONS.map((o) => o.value);
+          const current = field.value ?? "";
+          const isPreset = current === "" || presetValues.includes(current);
+          const selectValue = current === "" ? "none" : (isPreset ? current : "Other");
+          return (
+            <FormItem>
+              <FormLabel>{t("guests.group_label", { defaultValue: "Group / Category" })}</FormLabel>
+              <Select
+                onValueChange={(v) => {
+                  if (v === "none") field.onChange("");
+                  else if (v === "Other") field.onChange(current && !presetValues.includes(current) ? current : "");
+                  else field.onChange(v);
+                }}
+                value={selectValue}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("guests.group_placeholder", { defaultValue: "Pick a group" })} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {GROUP_OPTIONS.map(o => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectValue === "Other" && (
+                <Input
+                  className="mt-2"
+                  placeholder={t("guests.group_custom_placeholder", { defaultValue: "Type a custom group name" })}
+                  value={isPreset ? "" : current}
+                  onChange={(e) => field.onChange(e.target.value)}
+                />
+              )}
+              <FormMessage />
+            </FormItem>
+          );
+        }} />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField control={form.control} name="mealChoice" render={({ field }) => (
