@@ -1061,7 +1061,7 @@ function Welcome({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         defaultValue={ctx.editable ? "Click to write a warm welcome for your guests..." : ""}
         onCommit={(v) => ctx.onTextChange("welcome", v)}
         className="text-center text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
-        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+        style={{ color: data.customText._welcomeColor || data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
         {...tsp(ctx, "welcome")}
       />
     </SectionShell>

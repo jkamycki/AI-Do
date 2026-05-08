@@ -832,6 +832,11 @@ export default function WebsiteEditor() {
               value={record.customText._footerColor || record.colorPalette.primary}
               onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
             />
+            <ColorField
+              label={t("website_editor.color_welcome", { defaultValue: "Welcome" })}
+              value={record.customText._welcomeColor || record.colorPalette.text}
+              onChange={(v) => update({ customText: { ...record.customText, _welcomeColor: v } })}
+            />
           </div>
           {/* Background opacity slider — lets the user fade the section
               backgrounds so any underlying hero image / page background
