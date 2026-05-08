@@ -567,16 +567,18 @@ export default function WebsiteEditor() {
               {record.published ? t("website_editor.live", { defaultValue: "Live" }) : t("website_editor.draft", { defaultValue: "Draft" })}
             </Badge>
           </div>
-          {/* Action toolbar — 2x2 grid. Brand gold (#D4A017) for the
+          {/* Action toolbar — 2x2 grid. Brand gold backgrounds for the
               affirmative actions (Preview, Publish, Save), green when
-              Save lands or site is Published, red for Undo and Unpublish.
-              All button text is bold per request. */}
+              Save lands or site is Published, red for Undo / Unpublish.
+              Button text now uses brand purple (#2A1745) so the labels
+              read in the brand-name color against the gold/green/red
+              backgrounds. All labels bold. */}
           <div className="grid grid-cols-2 gap-2 max-w-md">
             <Button
               size="sm"
               onClick={() => { setPreviewSection("home"); setPreviewOpen(true); }}
-              className="text-white border-0 font-bold"
-              style={{ background: "#D4A017" }}
+              className="border-0 font-bold"
+              style={{ background: "#D4A017", color: "#2A1745" }}
             >
               <Eye className="h-3.5 w-3.5 mr-1.5" />
               {t("website_editor.preview", { defaultValue: "Preview" })}
@@ -587,10 +589,14 @@ export default function WebsiteEditor() {
               disabled={publishing}
               className={
                 record.published
-                  ? "bg-emerald-600 hover:bg-red-600 text-white border-0 group font-bold"
-                  : "text-white border-0 font-bold"
+                  ? "bg-emerald-600 hover:bg-red-600 border-0 group font-bold"
+                  : "border-0 font-bold"
               }
-              style={record.published ? undefined : { background: "#D4A017" }}
+              style={
+                record.published
+                  ? { color: "#2A1745" }
+                  : { background: "#D4A017", color: "#2A1745" }
+              }
             >
               {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Globe className="h-3.5 w-3.5 mr-1.5" />}
               {record.published ? (
@@ -608,10 +614,14 @@ export default function WebsiteEditor() {
               disabled={!dirty || saving}
               className={
                 !dirty && !saving
-                  ? "bg-emerald-600 hover:bg-emerald-700 text-white border-0 disabled:opacity-100 disabled:bg-emerald-600 font-bold"
-                  : "text-white border-0 font-bold"
+                  ? "bg-emerald-600 hover:bg-emerald-700 border-0 disabled:opacity-100 disabled:bg-emerald-600 font-bold"
+                  : "border-0 font-bold"
               }
-              style={!dirty && !saving ? undefined : { background: "#D4A017" }}
+              style={
+                !dirty && !saving
+                  ? { color: "#2A1745" }
+                  : { background: "#D4A017", color: "#2A1745" }
+              }
             >
               {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : (!dirty ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />)}
               {saving
@@ -625,7 +635,8 @@ export default function WebsiteEditor() {
               onClick={handleUndo}
               disabled={historyLen === 0 && !hasPending}
               title="Undo last change (Cmd/Ctrl+Z)"
-              className="bg-red-600 hover:bg-red-700 text-white border-0 disabled:opacity-50 font-bold"
+              className="bg-red-600 hover:bg-red-700 border-0 disabled:opacity-50 font-bold"
+              style={{ color: "#2A1745" }}
             >
               <Undo2 className="h-3.5 w-3.5 mr-1.5" />
               {t("website_editor.undo", { defaultValue: "Undo" })}
