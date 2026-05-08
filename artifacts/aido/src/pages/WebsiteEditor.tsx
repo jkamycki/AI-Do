@@ -96,6 +96,7 @@ export default function WebsiteEditor() {
   const inTab = (t: typeof activeTab) => activeTab === t;
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [urlModalOpen, setUrlModalOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
 
   useEffect(() => {
     if (!ctxMenu) return;
@@ -563,10 +564,12 @@ export default function WebsiteEditor() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] md:h-screen">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] md:h-screen relative">
       {/* Sidebar */}
       <aside
-        className="w-full lg:flex-shrink-0 border-r bg-background overflow-y-auto"
+        className={`w-full lg:flex-shrink-0 border-r bg-background overflow-y-auto pb-20 lg:pb-0 ${
+          mobileView === "edit" ? "block" : "hidden"
+        } lg:block`}
         style={{ width: typeof window !== "undefined" && window.innerWidth >= 1024 ? sidebarWidth : undefined }}
       >
         <div className="p-5 border-b sticky top-0 bg-background z-10">
@@ -1285,7 +1288,9 @@ export default function WebsiteEditor() {
       {/* Live preview */}
       <main
         ref={previewRef}
-        className="flex-1 overflow-y-auto bg-muted/20"
+        className={`flex-1 overflow-y-auto bg-muted/20 pb-20 lg:pb-0 ${
+          mobileView === "preview" ? "block" : "hidden"
+        } lg:block`}
         onContextMenu={(e) => {
           e.preventDefault();
           setCtxMenu({ x: e.clientX, y: e.clientY });
@@ -1353,6 +1358,34 @@ export default function WebsiteEditor() {
           />
         </div>
       </main>
+
+      {/* Mobile-only Edit / Preview toggle. Phones only have room for one
+          pane at a time, so split the screen by tab instead of cramming the
+          sidebar above a tiny preview. lg breakpoint hides the bar. */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-[150] border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="grid grid-cols-2 gap-1 p-2 max-w-md mx-auto">
+          <button
+            onClick={() => setMobileView("edit")}
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+              mobileView === "edit"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {t("website_editor.tab_edit", { defaultValue: "Edit" })}
+          </button>
+          <button
+            onClick={() => setMobileView("preview")}
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+              mobileView === "preview"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {t("website_editor.tab_preview", { defaultValue: "Preview" })}
+          </button>
+        </div>
+      </div>
 
       {/* Trash drop zone — appears whenever a deletable text element is being
           dragged. Drop the box here to remove it (Undo restores). */}
