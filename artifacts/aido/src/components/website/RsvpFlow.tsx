@@ -92,14 +92,23 @@ export function RsvpFlow({
         : `/api/website/public/${encodeURIComponent(slug)}/guests/search?q=${encodeURIComponent(query.trim())}${queryArgs}`;
       const r = previewMode ? await authFetch(url) : await apiFetch(url);
       if (!r.ok) {
-        setError("Search failed. Please try again.");
+        // Treat search failures as "no match" so the live site shows the
+        // same "not on the guest list — RSVP anyway" prompt the preview
+        // shows on a true zero-result search. Without this fallback, an
+        // unpublished or transient 5xx silently swallows the prompt and
+        // the user thinks the form is broken.
+        setMatches([]);
+        setSearched(true);
         return;
       }
       const body = (await r.json()) as { matches: GuestMatch[] };
       setMatches(body.matches);
       setSearched(true);
     } catch {
-      setError("Network error. Please try again.");
+      // Same fallback for network errors — show the prompt instead of an
+      // error message that hides the path forward.
+      setMatches([]);
+      setSearched(true);
     } finally {
       setSearching(false);
     }
