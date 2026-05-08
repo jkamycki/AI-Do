@@ -149,7 +149,19 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
         ref={ref}
         className="fixed z-[9999] flex items-center gap-1 flex-wrap px-2 py-1.5 rounded-lg shadow-xl border border-border bg-background"
         style={{ top, left, maxWidth: "min(640px, 94vw)" }}
-        onMouseDown={(e) => { e.preventDefault(); onKeepOpen?.(); }}
+        onMouseDown={(e) => {
+          // Block focus loss only when the click lands on padding/empty
+          // chrome — INPUT and TEXTAREA must keep the default mousedown
+          // behavior so they can receive focus and accept typed text.
+          // scheduleHide keeps the toolbar open while the input is active.
+          const target = e.target as HTMLElement;
+          if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+            onKeepOpen?.();
+            return;
+          }
+          e.preventDefault();
+          onKeepOpen?.();
+        }}
         onMouseEnter={onKeepOpen}
       >
         {/* Font family — custom dropdown avoids native <select> event issues */}
