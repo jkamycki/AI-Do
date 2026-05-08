@@ -1582,28 +1582,29 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" data-gallery-anim={entrance !== "none" ? entrance : undefined}>
           {images.map((img, i) => (
-            <div
-              key={i}
-              ref={(el) => { itemRefs.current[i] = el; }}
-              className={`wsg-item flex flex-col gap-1.5${visibleItems.has(i) ? " wsg-visible" : ""}`}
-              style={entrance !== "none" ? { ["--stagger" as string]: `${i * 80}ms` } : undefined}
-            >
-              <button
-                type="button"
-                onClick={() => setLightboxIndex(i)}
-                className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
-                aria-label={img.caption ?? `Photo ${i + 1}`}
+            <div key={i} className="flex flex-col gap-1.5">
+              <div
+                ref={(el) => { itemRefs.current[i] = el; }}
+                className={`wsg-item${visibleItems.has(i) ? " wsg-visible" : ""}`}
+                style={entrance !== "none" ? { ["--stagger" as string]: `${i * 80}ms` } : undefined}
               >
-                <img
-                  src={imageUrl(img.url)}
-                  alt={img.caption ?? ""}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
-                  style={{ filter: photoFilter }}
-                />
-                {renderHoverIcon()}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(i)}
+                  className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 w-full"
+                  style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
+                  aria-label={img.caption ?? `Photo ${i + 1}`}
+                >
+                  <img
+                    src={imageUrl(img.url)}
+                    alt={img.caption ?? ""}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
+                    style={{ filter: photoFilter }}
+                  />
+                  {renderHoverIcon()}
+                </button>
+              </div>
               {renderCaption(img.caption)}
             </div>
           ))}
