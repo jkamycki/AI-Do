@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed, Share2, Check } from "lucide-react";
+import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed, Share2, Check, Trash2 } from "lucide-react";
 import { EditableText, emitEditableDrag, EDITABLE_HIDDEN_MARKER, type TextPosition } from "./EditableText";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch } from "@/lib/authFetch";
@@ -381,14 +381,29 @@ function DraggableRow({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      {hasOffset && (hovered || isDragging) && (
-        <span
-          style={{ position: "absolute", top: -20, right: 0, background: "rgba(99,102,241,0.9)", color: "#fff", borderRadius: 4, padding: "1px 6px", fontSize: 10, cursor: "pointer", userSelect: "none", zIndex: 300, lineHeight: 1.6 }}
+      {(hovered || isDragging) && (
+        <div
+          style={{ position: "absolute", top: -28, right: 0, display: "flex", alignItems: "center", gap: 4, zIndex: 300 }}
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onPositionChange({ x: 0, y: 0 })}
         >
-          ×
-        </span>
+          {hasOffset && (
+            <span
+              style={{ background: "rgba(99,102,241,0.9)", color: "#fff", borderRadius: 4, padding: "1px 6px", fontSize: 10, cursor: "pointer", userSelect: "none", lineHeight: 1.6 }}
+              onClick={() => onPositionChange({ x: 0, y: 0 })}
+            >
+              ×
+            </span>
+          )}
+          {onDelete && (
+            <button
+              style={{ background: "rgba(220,38,38,0.9)", color: "#fff", border: "none", borderRadius: 4, padding: "3px 6px", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 3, lineHeight: 1 }}
+              onClick={onDelete}
+              title="Delete"
+            >
+              <Trash2 style={{ width: 11, height: 11 }} />
+            </button>
+          )}
+        </div>
       )}
       {children}
     </div>
