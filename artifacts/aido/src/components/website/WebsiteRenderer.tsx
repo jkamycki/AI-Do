@@ -896,6 +896,8 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           onCommit={(v) => ctx.onTextChange("_coupleName", v)}
           className="text-5xl sm:text-7xl md:text-8xl mb-6 leading-tight"
           style={{ fontFamily: fontStack(headingFont(data)), color: data.heroImage ? "#fff" : data.colorPalette.text }}
+          aiEnabled={false}
+          readOnlyText
           {...tspNoDelete(ctx, "_coupleName")}
         />
         {data.customText._heroDateRow !== EDITABLE_HIDDEN_MARKER && (
@@ -912,6 +914,8 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={dateStr}
               onCommit={(v) => ctx.onTextChange("_heroDate", v)}
               style={{ color: "inherit" }}
+              aiEnabled={false}
+              readOnlyText
               {...tspStyle(ctx, "_heroDate")}
             />
           </DraggableRow>
@@ -930,6 +934,8 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={[data.couple.venue, data.couple.venueCity, data.couple.venueState].filter(Boolean).join(", ")}
               onCommit={(v) => ctx.onTextChange("_heroVenue", v)}
               style={{ color: "inherit" }}
+              aiEnabled={false}
+              readOnlyText
               {...tspStyle(ctx, "_heroVenue")}
             />
           </DraggableRow>
