@@ -259,7 +259,9 @@ function Lightbox({
 
 // ---------- draggable row (icon + text unit) ----------
 
-const DRAG_THRESHOLD_ROW = 5;
+// Same rationale as EditableText: 5px was too touchy and a normal click
+// could trip a drag mid-press. 12px feels more deliberate.
+const DRAG_THRESHOLD_ROW = 12;
 
 function DraggableRow({
   children,
