@@ -1864,8 +1864,7 @@ function TopNav({
   if (data.sectionsEnabled.weddingParty) items.push({ id: "weddingParty", label: "Wedding Party" });
   if (data.sectionsEnabled.gallery) items.push({ id: "gallery", label: "Gallery" });
   if (data.sectionsEnabled.faq) items.push({ id: "faq", label: "FAQ" });
-  // RSVP is always available — it's the whole point of the site for guests.
-  items.push({ id: "rsvp", label: "RSVP" });
+  if (data.sectionsEnabled.rsvp !== false) items.push({ id: "rsvp", label: "RSVP" });
 
   // Anchor-scroll mode (used by editor preview): track the visible section
   // with IntersectionObserver to underline the right item.
@@ -2066,7 +2065,7 @@ export function WebsiteRenderer({
       {show("weddingParty", data.sectionsEnabled.weddingParty) && <WeddingParty data={data} ctx={ctx} />}
       {show("faq", data.sectionsEnabled.faq) && <Faq data={data} ctx={ctx} />}
       {show("gallery", data.sectionsEnabled.gallery) && <Gallery data={data} ctx={ctx} />}
-      {(showAll || currentSection === "rsvp") && (
+      {show("rsvp", data.sectionsEnabled.rsvp !== false) && (
         slug
           ? <RsvpFlow data={data} slug={slug} password={password ?? undefined} previewMode={previewMode} />
           : <RsvpSection data={data} ctx={ctx} />
