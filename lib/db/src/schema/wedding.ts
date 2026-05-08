@@ -150,6 +150,9 @@ export const manualExpenses = pgTable("manual_expenses", {
   category: text("category").notNull().default("Other"),
   cost: numeric("cost", { precision: 12, scale: 2 }).notNull().default("0"),
   amountPaid: numeric("amount_paid", { precision: 12, scale: 2 }).notNull().default("0"),
+  // Optional date string (YYYY-MM-DD). Mirrors vendors.next_payment_due so
+  // budget rows show the same Next Payment column for both lists.
+  nextPaymentDue: text("next_payment_due"),
   notes: text("notes"),
   receiptUrl: text("receipt_url"),
   receiptName: text("receipt_name"),

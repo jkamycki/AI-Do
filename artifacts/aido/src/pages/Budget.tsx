@@ -67,6 +67,7 @@ interface ManualExpenseFormState {
   category: string;
   cost: string;
   amountPaid: string;
+  nextPaymentDue: string;
   notes: string;
   receiptUrl: string | null;
   receiptName: string | null;
@@ -77,6 +78,7 @@ const emptyManualForm = (): ManualExpenseFormState => ({
   category: "Other",
   cost: "",
   amountPaid: "",
+  nextPaymentDue: "",
   notes: "",
   receiptUrl: null,
   receiptName: null,
@@ -198,6 +200,7 @@ export default function Budget() {
       category: m.category || "Other",
       cost: String(m.cost ?? 0),
       amountPaid: String(m.amountPaid ?? 0),
+      nextPaymentDue: m.nextPaymentDue ?? "",
       notes: m.notes ?? "",
       receiptUrl: m.receiptUrl ?? null,
       receiptName: m.receiptName ?? null,
@@ -227,6 +230,7 @@ export default function Budget() {
       category: form.category || "Other",
       cost: parseFloat(form.cost) || 0,
       amountPaid: parseFloat(form.amountPaid) || 0,
+      nextPaymentDue: form.nextPaymentDue.trim() || null,
       notes: form.notes.trim() || null,
       receiptUrl: form.receiptUrl,
       receiptName: form.receiptName,
@@ -482,6 +486,8 @@ export default function Budget() {
                     <TableHead className="text-right">{t("budget.col_cost")}</TableHead>
                     <TableHead className="text-right">{t("budget.col_paid")}</TableHead>
                     <TableHead className="text-right">{t("budget.col_remaining")}</TableHead>
+                    <TableHead>{t("budget.col_next_payment")}</TableHead>
+                    <TableHead className="min-w-[180px]">{t("budget.col_progress")}</TableHead>
                     <TableHead>{t("budget.receipt_label")}</TableHead>
                     <TableHead className="text-right">{t("budget.col_actions")}</TableHead>
                   </TableRow>
@@ -489,6 +495,7 @@ export default function Budget() {
                 <TableBody>
                   {manualExpenses.map((m) => {
                     const remaining = Math.max(0, m.cost - m.amountPaid);
+                    const pct = m.cost > 0 ? Math.min((m.amountPaid / m.cost) * 100, 100) : 0;
                     return (
                       <TableRow key={m.id}>
                         <TableCell>
@@ -501,6 +508,20 @@ export default function Budget() {
                         <TableCell className="text-right tabular-nums">{formatMoney(m.cost)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(m.amountPaid)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(remaining)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{formatDate(m.nextPaymentDue)}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  pct >= 100 ? "bg-emerald-500" : pct > 50 ? "bg-primary" : "bg-amber-400"
+                                }`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">{t("budget.pct_paid", { pct: pct.toFixed(0) })}</p>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {(() => {
                             const href = safeReceiptHref(m.receiptUrl);
@@ -626,6 +647,15 @@ export default function Budget() {
                 value={form.amountPaid}
                 onChange={(v) => setForm((f) => ({ ...f, amountPaid: v }))}
                 placeholder="0"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">{t("budget.next_payment_label", { defaultValue: "Next payment date (optional)" })}</label>
+              <Input
+                type="date"
+                value={form.nextPaymentDue}
+                onChange={(e) => setForm((f) => ({ ...f, nextPaymentDue: e.target.value }))}
+                className="[color-scheme:light] dark:[color-scheme:dark]"
               />
             </div>
             <div className="space-y-1.5">

@@ -11,6 +11,7 @@ export interface ManualExpense {
   category: string;
   cost: number;
   amountPaid: number;
+  nextPaymentDue?: string | null;
   notes?: string | null;
   receiptUrl?: string | null;
   receiptName?: string | null;
@@ -23,6 +24,7 @@ export interface ManualExpenseInput {
   category?: string;
   cost?: number;
   amountPaid?: number;
+  nextPaymentDue?: string | null;
   notes?: string | null;
   receiptUrl?: string | null;
   receiptName?: string | null;
