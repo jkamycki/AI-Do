@@ -891,16 +891,6 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         <EditableText
           as="div"
           editable={ctx.editable}
-          value={data.customText._heroTagline ?? ""}
-          defaultValue="We're getting married"
-          onCommit={(v) => ctx.onTextChange("_heroTagline", v)}
-          className="uppercase tracking-[0.3em] text-xs sm:text-sm mb-6 opacity-80"
-          style={{ color: data.heroImage ? "#fff" : data.colorPalette.primary, fontFamily: elementFont(data, "_heroTagline") ? bodyFontStack(elementFont(data, "_heroTagline")!) : undefined }}
-          {...tspNoDelete(ctx, "_heroTagline")}
-        />
-        <EditableText
-          as="div"
-          editable={ctx.editable}
           value={data.customText._coupleName ?? ""}
           defaultValue={couple}
           onCommit={(v) => ctx.onTextChange("_coupleName", v)}

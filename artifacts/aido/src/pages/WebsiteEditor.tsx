@@ -881,7 +881,6 @@ export default function WebsiteEditor() {
           <div className="space-y-2.5">
             {[
               { key: "_coupleName", label: t("website_editor.hero_couple_names", { defaultValue: "Couple Names" }) },
-              { key: "_heroTagline", label: t("website_editor.hero_tagline", { defaultValue: "Tagline" }) },
               { key: "_heroDateRow", label: t("website_editor.hero_date_row", { defaultValue: "Wedding Date" }) },
               { key: "_heroDateIcon", label: t("website_editor.hero_date_icon", { defaultValue: "Date Calendar Icon" }) },
               { key: "_heroVenueRow", label: t("website_editor.hero_venue_row", { defaultValue: "Venue Address" }) },
