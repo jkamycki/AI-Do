@@ -122,6 +122,23 @@ function fontStack(font: string): string {
   return `'${font}', 'Playfair Display', Georgia, serif`;
 }
 
+// Compose a section background that respects the user's opacity slider
+// (customText._backgroundOpacity, 0-100). The base color stays the user's
+// chosen hex; we just prefix it with an alpha so the hero image / page
+// behind shows through. Returns the bare hex when opacity is 100 or unset.
+function backgroundWithOpacity(data: WebsiteRendererPayload, baseColor?: string): string {
+  const color = baseColor ?? data.colorPalette.background;
+  const raw = data.customText._backgroundOpacity;
+  const pct = raw === undefined || raw === "" ? 100 : Math.max(0, Math.min(100, parseInt(raw, 10)));
+  if (Number.isNaN(pct) || pct >= 100) return color;
+  // Convert 0-100 percentage to a 2-digit hex alpha (00-FF).
+  const alpha = Math.round((pct / 100) * 255).toString(16).padStart(2, "0").toUpperCase();
+  // Only valid for 6-digit hex colors. If the user picked something exotic
+  // (rgba, hsl, etc.) we leave it alone rather than corrupt the value.
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) return color;
+  return `${color}${alpha}`;
+}
+
 function bodyFontStack(font: string): string {
   return `'${font}', system-ui, -apple-system, sans-serif`;
 }
@@ -993,7 +1010,7 @@ function SectionShell({
   ctx: EditCtx;
 }) {
   return (
-    <section id={id} className="py-20 px-6" style={{ background: id === "gallery" ? data.colorPalette.neutral : data.colorPalette.background }}>
+    <section id={id} className="py-20 px-6" style={{ background: id === "gallery" ? data.colorPalette.neutral : backgroundWithOpacity(data) }}>
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-center gap-2 mb-3" style={{ color: data.colorPalette.primary }}>
           {icon}
