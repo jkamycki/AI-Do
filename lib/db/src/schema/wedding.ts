@@ -252,6 +252,7 @@ export const contactMessages = pgTable("contact_messages", {
   message: text("message").notNull(),
   isRead: boolean("is_read").notNull().default(false),
   isResolved: boolean("is_resolved").notNull().default(false),
+  threadToken: text("thread_token"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

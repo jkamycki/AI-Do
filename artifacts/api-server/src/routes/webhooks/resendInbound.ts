@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { vendorConversations, vendorMessages, vendors } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
 import { cleanInboundText, findRoutingAddressInText, htmlToText, parseInboundAddress, getEmail } from "../../lib/resend";
-import { isSupportInboxRecipient, saveSupportInboxMessage } from "../../lib/supportInbox";
+import { isSupportInboxRecipient, saveSupportInboxMessage, parseSupportThreadAddress, appendInboundReply } from "../../lib/supportInbox";
 import { logger } from "../../lib/logger";
 import { Webhook } from "svix";
 
@@ -142,6 +142,39 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
     }
 
     if (!conversationId || !token) {
+      let threadMatch: { contactMessageId: number; token: string } | null = null;
+      for (const r of recipients) {
+        const m = parseSupportThreadAddress(r);
+        if (m) { threadMatch = m; break; }
+      }
+      if (threadMatch) {
+        const sender = extractSender(data.from);
+        let bodyText = (data.text && data.text.trim()) || "";
+        let bodyHtml = data.html || "";
+        if (!bodyText && !bodyHtml && data.email_id) {
+          const full = await getEmail(data.email_id);
+          bodyText = full?.text?.trim() || "";
+          bodyHtml = full?.html || "";
+        }
+        const rawText = bodyText || (bodyHtml ? htmlToText(bodyHtml) : "");
+        const cleaned = cleanInboundText(rawText) || rawText.trim();
+        const saved = await appendInboundReply({
+          contactMessageId: threadMatch.contactMessageId,
+          token: threadMatch.token,
+          fromEmail: sender.email,
+          fromName: sender.name,
+          body: cleaned,
+        });
+        if (saved) {
+          logger.info({ recipients, contactMessageId: threadMatch.contactMessageId, replyId: saved.id }, "Resend inbound: appended to support thread");
+          logHit("saved:thread", { conversationId: threadMatch.contactMessageId, senderEmail: sender.email });
+          return res.json({ ok: true, contactMessageId: threadMatch.contactMessageId, replyId: saved.id });
+        }
+        logger.warn({ recipients, contactMessageId: threadMatch.contactMessageId }, "Resend inbound: thread token mismatch");
+        logHit("ignored:thread_token_mismatch");
+        return res.status(200).json({ ignored: true, reason: "thread token mismatch" });
+      }
+
       if (isSupportInboxRecipient(recipients)) {
         const sender = extractSender(data.from);
         let bodyText = (data.text && data.text.trim()) || "";
