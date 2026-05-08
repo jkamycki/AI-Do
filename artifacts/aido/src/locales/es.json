@@ -1557,5 +1557,9 @@
     "lets_plan": "¡A planificar!",
     "something_wrong": "Algo salió mal. Por favor, inténtalo de nuevo.",
     "skip_for_now": "Omitir por ahora"
+  },
+  "outage_banner": {
+    "message": "Tenemos un problema temporal de conexión. Tus datos están seguros — volveremos a estar en línea en breve.",
+    "view_status": "Ver estado"
   }
 }
