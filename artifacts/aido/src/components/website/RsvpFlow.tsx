@@ -157,6 +157,7 @@ export function RsvpFlow({
           plusOneName: plusOne ? plusOneName : undefined,
           plusOneMealChoice: plusOne ? plusOneMeal : undefined,
           dietaryRestrictions: dietary || undefined,
+          message: selfMessage.trim() || undefined,
           ...(password ? { password } : {}),
         }),
       });
@@ -490,6 +491,18 @@ export function RsvpFlow({
                   </div>
                 </>
               )}
+
+              <div>
+                <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.message_to_couple", { defaultValue: "Message to the couple (optional)" })}</label>
+                <textarea
+                  value={selfMessage}
+                  onChange={(e) => setSelfMessage(e.target.value)}
+                  rows={2}
+                  placeholder={t("rsvp.message_placeholder", { defaultValue: "A note for the couple — relation, RSVP context, etc." })}
+                  className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                  style={inputBase}
+                />
+              </div>
 
               {error && <p className="text-sm text-red-600 text-center">{error}</p>}
 

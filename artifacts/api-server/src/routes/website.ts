@@ -561,13 +561,6 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
       ? message.trim().slice(0, 1000)
       : "";
 
-    // Tag the row with a clear note so the couple knows this came from a
-    // self-add rather than the curated guest list.
-    const noteLines = [
-      "Self-added via RSVP page (verify before sending invites).",
-      messageClean ? `Message: ${messageClean}` : "",
-    ].filter(Boolean);
-
     const isAttending = attendance === "attending";
     const wantsPlusOne = isAttending && plusOne === true;
     const cleanPlusOneName = typeof plusOneName === "string" ? plusOneName.trim() : "";
@@ -582,7 +575,11 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
       plusOne: wantsPlusOne,
       plusOneName: wantsPlusOne && cleanPlusOneName ? cleanPlusOneName : null,
       plusOneMealChoice: wantsPlusOne ? normalizeMeal(plusOneMealChoice) : null,
-      notes: noteLines.join("\n") || null,
+      // Notes column is reserved for couple-authored notes; the guest's
+      // RSVP message lives in rsvpMessage so it can render in the RSVP
+      // column on the guest list page.
+      notes: "Self-added via RSVP page (verify before sending invites).",
+      rsvpMessage: messageClean || null,
       source: "rsvp_self_add",
     }).returning();
 
@@ -611,6 +608,7 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
       plusOneName,
       plusOneMealChoice,
       dietaryRestrictions,
+      message,
     } = (req.body ?? {}) as {
       guestId?: number;
       attendance?: string;
@@ -619,6 +617,7 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
       plusOneName?: string;
       plusOneMealChoice?: string;
       dietaryRestrictions?: string;
+      message?: string;
     };
 
     if (!guestId || !Number.isFinite(guestId)) return res.status(400).json({ error: "Missing guestId" });
@@ -646,6 +645,10 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
         ? dietaryRestrictions.trim()
         : null,
     };
+    if (typeof message === "string") {
+      const trimmed = message.trim().slice(0, 1000);
+      updateData.rsvpMessage = trimmed || null;
+    }
 
     if (attendance === "attending") {
       updateData.mealChoice = normalizeMeal(mealChoice);

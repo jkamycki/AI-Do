@@ -328,6 +328,7 @@ export const guests = pgTable("guests", {
   plusOneMealChoice: text("plus_one_meal_choice"),
   tableAssignment: text("table_assignment"),
   notes: text("notes"),
+  rsvpMessage: text("rsvp_message"),
   phone: text("phone"),
   address: text("address"),
   aptUnit: text("apt_unit"),

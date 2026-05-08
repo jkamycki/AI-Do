@@ -150,6 +150,14 @@ export default function PublicWebsite() {
     window.scrollTo(0, 0);
   }, [sectionSeg]);
 
+  // Once the site data first loads, force the page to the very top so
+  // /w/:slug (no section) always lands on Home — even if the browser
+  // restored a prior scroll position from a cached tab.
+  useEffect(() => {
+    if (!data || sectionSeg) return;
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [data, sectionSeg]);
+
   useEffect(() => {
     if (data) {
       const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
