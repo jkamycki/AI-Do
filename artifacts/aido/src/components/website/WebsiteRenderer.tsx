@@ -1094,11 +1094,12 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
   const ceremonyTime = (data.customText._scheduleCeremonyTime ?? "").trim() || data.couple.ceremonyTime || "";
   const cocktailTime = (data.customText._scheduleCocktailTime ?? "").trim();
   const receptionTime = (data.customText._scheduleReceptionTime ?? "").trim() || data.couple.receptionTime || "";
-  const items: Array<{ key: string; labelKey: string; defaultLabel: string; Icon: typeof Heart; time: string }> = [
-    { key: "_scheduleCeremonyTime",  labelKey: "_scheduleCeremonyLabel",  defaultLabel: "Ceremony",      Icon: Heart,           time: ceremonyTime },
-    { key: "_scheduleCocktailTime",  labelKey: "_scheduleCocktailLabel",  defaultLabel: "Cocktail Hour", Icon: Wine,            time: cocktailTime },
-    { key: "_scheduleReceptionTime", labelKey: "_scheduleReceptionLabel", defaultLabel: "Reception",     Icon: UtensilsCrossed, time: receptionTime },
+  const allItems: Array<{ key: string; labelKey: string; defaultLabel: string; Icon: typeof Heart; time: string; hiddenKey: string }> = [
+    { key: "_scheduleCeremonyTime",  labelKey: "_scheduleCeremonyLabel",  defaultLabel: "Ceremony",      Icon: Heart,           time: ceremonyTime, hiddenKey: "_scheduleCeremonyHidden" },
+    { key: "_scheduleCocktailTime",  labelKey: "_scheduleCocktailLabel",  defaultLabel: "Cocktail Hour", Icon: Wine,            time: cocktailTime, hiddenKey: "_scheduleCocktailHidden" },
+    { key: "_scheduleReceptionTime", labelKey: "_scheduleReceptionLabel", defaultLabel: "Reception",     Icon: UtensilsCrossed, time: receptionTime, hiddenKey: "_scheduleReceptionHidden" },
   ];
+  const items = allItems.filter((i) => data.customText[i.hiddenKey] !== EDITABLE_HIDDEN_MARKER);
   const visibleItems = ctx.editable ? items : items.filter((i) => i.time);
   if (!ctx.editable && visibleItems.length === 0 && !customSchedule) return null;
   return (
@@ -1135,7 +1136,7 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
                   <EditableText
                     editable={ctx.editable}
                     value={data.customText[it.key] ?? ""}
-                    defaultValue={it.time || (ctx.editable ? "Add time" : "")}
+                    defaultValue={it.time || (ctx.editable ? "Add Time" : "")}
                     onCommit={(v) => ctx.onTextChange(it.key, v)}
                   />
                 </div>
