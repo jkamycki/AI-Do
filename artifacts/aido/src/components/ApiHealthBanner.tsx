@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, ExternalLink } from "lucide-react";
 
-// Plug a public status page URL here once you create one (e.g. on Instatus
-// or BetterStack). Leave as null to hide the "View status" link.
-const STATUS_PAGE_URL: string | null = null;
+// Public BetterStack status page — pinging api.aidowedding.net/api/healthz
+// every 3 minutes. Leave as null to hide the "View status" link entirely.
+const STATUS_PAGE_URL: string | null = "https://aido.betteruptime.com";
 
 const HEALTH_CHECK_INTERVAL_MS = 30_000;
 const FAILURES_BEFORE_BANNER = 2;
