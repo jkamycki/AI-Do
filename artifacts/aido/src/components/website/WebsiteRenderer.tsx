@@ -1864,7 +1864,7 @@ function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const dateStr = formatWeddingDate(data.couple.weddingDate);
   return (
     <>
-      <footer className="py-12 px-6 text-center" style={{ background: data.colorPalette.primary, color: "#fff" }}>
+      <footer className="py-12 px-6 text-center" style={{ background: data.customText._footerColor || data.colorPalette.primary, color: "#fff" }}>
         <EditableText
           as="div"
           editable={ctx.editable}
@@ -2094,7 +2094,7 @@ function TopNav({
           <Link
             href={homeHref}
             className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
-            style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
+            style={{ fontFamily: fontStack(headingFont(data)), color: data.customText._navCoupleColor || data.colorPalette.primary }}
           >
             {couple}
           </Link>
@@ -2109,7 +2109,7 @@ function TopNav({
               }
             }}
             className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
-            style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
+            style={{ fontFamily: fontStack(headingFont(data)), color: data.customText._navCoupleColor || data.colorPalette.primary }}
           >
             {couple}
           </button>
