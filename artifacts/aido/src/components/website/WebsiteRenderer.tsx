@@ -1027,7 +1027,15 @@ function SectionShell({
   ctx: EditCtx;
 }) {
   return (
-    <section id={id} className="py-20 px-6" style={{ background: backgroundWithOpacity(data, data.colorPalette.neutral) }}>
+    <section
+      id={id}
+      className="py-20 px-6"
+      style={{
+        background: id === "welcome" && data.customText._welcomeBg
+          ? data.customText._welcomeBg
+          : backgroundWithOpacity(data, data.colorPalette.neutral),
+      }}
+    >
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-center gap-2 mb-3" style={{ color: data.colorPalette.secondary }}>
           {icon}
@@ -1061,7 +1069,7 @@ function Welcome({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         defaultValue={ctx.editable ? "Click to write a warm welcome for your guests..." : ""}
         onCommit={(v) => ctx.onTextChange("welcome", v)}
         className="text-center text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
-        style={{ color: data.customText._welcomeColor || data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
         {...tsp(ctx, "welcome")}
       />
     </SectionShell>
