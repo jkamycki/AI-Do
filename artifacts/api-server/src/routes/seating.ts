@@ -94,6 +94,46 @@ interface Table {
   theme?: string;
 }
 
+// AI sometimes ignores the seatsPerTable cap and stuffs >cap guests at a
+// single table. Trim each table down to the cap, collect the overflow, and
+// redistribute to tables with room (creating new tables if every existing
+// one is full). Runs before backfill so the cap is honored before missing
+// guests are placed.
+function enforceTableCapacity(
+  tables: Table[],
+  tableCount: number,
+  seatsPerTable: number,
+): Table[] {
+  const result = tables.map(t => ({ ...t, guests: [...(t.guests ?? [])] }));
+  const overflow: string[] = [];
+  for (const t of result) {
+    while (t.guests.length > seatsPerTable) {
+      overflow.push(t.guests.pop() as string);
+    }
+  }
+  if (overflow.length === 0) return result;
+
+  while (result.length < tableCount) {
+    const num = result.length + 1;
+    result.push({ tableNumber: num, tableName: `Table ${num}`, guests: [] });
+  }
+  for (const name of overflow) {
+    let placed = false;
+    for (const t of result) {
+      if (t.guests.length < seatsPerTable) {
+        t.guests.push(name);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      const num = result.length + 1;
+      result.push({ tableNumber: num, tableName: `Table ${num}`, guests: [name] });
+    }
+  }
+  return result;
+}
+
 // If the AI dropped or duplicated guests (cleanGeneratedTables removes
 // hallucinations and duplicates, leaving a hole), seat the missing ones in
 // existing tables with capacity. New tables are created if every existing
@@ -231,16 +271,20 @@ Use only the exact guest names from the list. Only create tables that have guest
     }
 
     result.tables = cleanGeneratedTables(result.tables, guests);
-    const seatedAfterClean = result.tables.reduce((n, t) => n + (t.guests?.length ?? 0), 0);
+    const overflowed = result.tables.some(t => (t.guests?.length ?? 0) > seatsPerTable);
+    result.tables = enforceTableCapacity(result.tables, tableCount, seatsPerTable);
+    const seatedAfterCap = result.tables.reduce((n, t) => n + (t.guests?.length ?? 0), 0);
     result.tables = backfillUnseatedGuests(result.tables, guests, tableCount, seatsPerTable);
     const totalAfterBackfill = result.tables.reduce((n, t) => n + (t.guests?.length ?? 0), 0);
-    if (totalAfterBackfill > seatedAfterClean) {
-      const added = totalAfterBackfill - seatedAfterClean;
-      result.warnings = [
-        ...(result.warnings ?? []),
-        `Backfilled ${added} guest${added === 1 ? "" : "s"} the AI didn't place — review their tables before saving.`,
-      ];
+    const warnings = [...(result.warnings ?? [])];
+    if (overflowed) {
+      warnings.push(`Some tables exceeded the ${seatsPerTable}-seat cap; overflow guests were moved to other tables.`);
     }
+    if (totalAfterBackfill > seatedAfterCap) {
+      const added = totalAfterBackfill - seatedAfterCap;
+      warnings.push(`Backfilled ${added} guest${added === 1 ? "" : "s"} the AI didn't place — review their tables before saving.`);
+    }
+    result.warnings = warnings;
     result.totalSeated = totalAfterBackfill;
 
     res.json(result);
