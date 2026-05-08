@@ -1234,6 +1234,7 @@ export default function Guests() {
                     <TableHead className="text-primary">{t("guests.col_rsvp")}</TableHead>
                     <TableHead className="hidden md:table-cell text-primary">{t("guests.col_meal")}</TableHead>
                     <TableHead className="hidden md:table-cell text-primary">{t("guests.col_table")}</TableHead>
+                    <TableHead className="hidden lg:table-cell text-primary">{t("guests.col_group", { defaultValue: "Group" })}</TableHead>
                     <TableHead className="hidden lg:table-cell text-primary">{t("guests.col_plus_one")}</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
@@ -1395,6 +1396,15 @@ export default function Guests() {
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                           {g.tableAssignment || "—"}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-sm">
+                          {g.guestGroup ? (
+                            <Badge variant="outline" className="text-xs font-normal whitespace-nowrap">
+                              {g.guestGroup}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell text-sm">
                           {g.plusOne ? (
