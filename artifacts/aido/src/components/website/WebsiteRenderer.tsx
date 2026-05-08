@@ -2062,7 +2062,7 @@ export function WebsiteRenderer({
         onSectionChange={onSectionChange}
       />
       {(showAll || currentSection === "home") && <Hero data={data} ctx={ctx} />}
-      {show("welcome", data.sectionsEnabled.welcome) && <Welcome data={data} ctx={ctx} />}
+      {data.sectionsEnabled.welcome && (showAll || currentSection === "home" || currentSection === "welcome") && <Welcome data={data} ctx={ctx} />}
       {show("story", data.sectionsEnabled.story) && <Story data={data} ctx={ctx} />}
       {show("schedule", data.sectionsEnabled.schedule) && <Schedule data={data} ctx={ctx} />}
       {show("travel", data.sectionsEnabled.travel) && <Travel data={data} ctx={ctx} />}
