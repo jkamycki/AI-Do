@@ -1438,13 +1438,18 @@ export default function WebsiteEditor() {
         <div ref={setOverlayEl} className="fixed inset-0 z-[9999] bg-background overflow-auto">
           <div className="sticky top-3 right-0 z-[10000] flex justify-end px-4 pointer-events-none">
             <div className="flex items-center gap-2 pointer-events-auto bg-background/90 backdrop-blur border border-border rounded-full px-3 py-1.5 shadow-lg">
-              <span className="text-xs text-muted-foreground font-medium">{t("website_editor.preview", { defaultValue: "Preview" })}</span>
-              <Badge
-                variant={record.published ? "default" : "destructive"}
-                className={record.published ? "text-[10px] py-0 px-1.5" : "text-[10px] py-0 px-1.5 bg-red-600 hover:bg-red-600 text-white"}
-              >
-                {record.published ? t("website_editor.live", { defaultValue: "Live" }) : t("website_editor.draft", { defaultValue: "Draft" })}
-              </Badge>
+              {record.published ? (
+                <span className="text-xs text-muted-foreground font-medium">{t("website_editor.preview", { defaultValue: "Preview" })}</span>
+              ) : (
+                <>
+                  <span className="text-[10px] font-bold uppercase tracking-wide bg-red-600 text-white rounded px-1.5 py-0.5">
+                    {t("website_editor.preview", { defaultValue: "Preview" })}
+                  </span>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                    {t("website_editor.preview_hidden_notice", { defaultValue: "Your website is currently hidden and is not visible to guests." })}
+                  </span>
+                </>
+              )}
               <div className="w-px h-4 bg-border" />
               <Button
                 size="sm"
