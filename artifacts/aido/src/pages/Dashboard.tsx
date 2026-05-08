@@ -955,6 +955,13 @@ function DashboardContent() {
                             {h.address && (
                               <p className="text-xs text-muted-foreground leading-snug break-words">{h.address}</p>
                             )}
+                            {(h.roomsBooked > 0 || (h.roomsReserved ?? 0) > 0) && (
+                              <p className="text-xs text-muted-foreground leading-snug mt-0.5">
+                                {h.roomsReserved != null && h.roomsReserved > 0
+                                  ? t("dashboard.rooms_booked_count", { booked: h.roomsBooked, reserved: h.roomsReserved })
+                                  : t("dashboard.rooms_booked_count_no_cap", { booked: h.roomsBooked })}
+                              </p>
+                            )}
                           </div>
                         ))}
                       </div>

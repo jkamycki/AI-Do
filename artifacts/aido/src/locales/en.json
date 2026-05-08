@@ -255,6 +255,8 @@
     "groom_side_count": "{{n}} groom side",
     "hotel_label": "Hotel",
     "hotels_label": "Hotels",
+    "rooms_booked_count": "{{booked}} / {{reserved}} rooms booked",
+    "rooms_booked_count_no_cap": "{{booked}} rooms booked",
     "date_time_label": "Date & Time",
     "ceremony_at": "Ceremony {{time}}",
     "reception_at": "Reception {{time}}",
