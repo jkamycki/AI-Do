@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -197,7 +198,20 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                 <FormField control={form.control} name="location" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("onboarding.city_location", { defaultValue: "City / Location" })}</FormLabel>
-                    <FormControl><Input placeholder={t("onboarding.city_placeholder", { defaultValue: "e.g. New York, NY" })} {...field} /></FormControl>
+                    <FormControl>
+                      <AddressAutocomplete
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onSelect={(s) => {
+                          // Wizard schema only has the single `location`
+                          // string; flatten city+state into it. Profile.tsx
+                          // captures the structured pieces separately later.
+                          const composed = [s.city, s.state].filter(Boolean).join(", ");
+                          field.onChange(composed || s.street);
+                        }}
+                        placeholder={t("onboarding.city_placeholder", { defaultValue: "e.g. New York, NY" })}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
