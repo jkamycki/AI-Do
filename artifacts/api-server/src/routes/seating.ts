@@ -11,18 +11,70 @@ async function syncTableAssignments(
   profileId: number,
   tables: { tableNumber: number; tableName: string; guests: string[] }[],
 ) {
+  // Build a lookup so AI-generated names with case/whitespace drift still
+  // match the actual guest record. Same name occurring on multiple guests
+  // (rare, but possible) gets every matching id so all are updated.
+  const allGuests = await db
+    .select({ id: guestRecords.id, name: guestRecords.name })
+    .from(guestRecords)
+    .where(eq(guestRecords.profileId, profileId));
+  const idsByName = new Map<string, number[]>();
+  for (const g of allGuests) {
+    const key = (g.name ?? "").trim().toLowerCase();
+    if (!key) continue;
+    const arr = idsByName.get(key) ?? [];
+    arr.push(g.id);
+    idsByName.set(key, arr);
+  }
+
+  // Clear stale assignments first so guests no longer at any table reset.
+  await db
+    .update(guestRecords)
+    .set({ tableAssignment: null })
+    .where(eq(guestRecords.profileId, profileId));
+
   for (const table of tables) {
-    for (const guestName of table.guests) {
-      if (!guestName?.trim()) continue;
-      await db
-        .update(guestRecords)
-        .set({ tableAssignment: `Table ${table.tableNumber}` })
-        .where(and(
-          eq(guestRecords.profileId, profileId),
-          eq(guestRecords.name, guestName),
-        ));
+    const label = `Table ${table.tableNumber}`;
+    for (const guestName of table.guests ?? []) {
+      const key = (guestName ?? "").trim().toLowerCase();
+      if (!key) continue;
+      const ids = idsByName.get(key);
+      if (!ids?.length) continue;
+      for (const id of ids) {
+        await db
+          .update(guestRecords)
+          .set({ tableAssignment: label })
+          .where(eq(guestRecords.id, id));
+      }
     }
   }
+}
+
+// Strip AI hallucinations (e.g. group labels showing up as guest names) and
+// drop duplicates across tables. Names not matching any input guest are
+// removed; matched names get replaced with the canonical input spelling.
+function cleanGeneratedTables(
+  tables: Table[] | undefined,
+  inputGuests: Guest[],
+): Table[] {
+  const canonicalByKey = new Map<string, string>();
+  for (const g of inputGuests ?? []) {
+    const key = (g.name ?? "").trim().toLowerCase();
+    if (key) canonicalByKey.set(key, g.name.trim());
+  }
+  const seen = new Set<string>();
+  return (tables ?? []).map(t => ({
+    ...t,
+    guests: (t.guests ?? []).reduce<string[]>((acc, name) => {
+      const key = (name ?? "").trim().toLowerCase();
+      const canonical = canonicalByKey.get(key);
+      if (canonical && !seen.has(key)) {
+        seen.add(key);
+        acc.push(canonical);
+      }
+      return acc;
+    }, []),
+  }));
 }
 
 interface Guest {
@@ -121,6 +173,9 @@ Use only the exact guest names from the list. Only create tables that have guest
     } catch {
       return res.status(500).json({ error: "AI returned invalid response. Please try again." });
     }
+
+    result.tables = cleanGeneratedTables(result.tables, guests);
+    result.totalSeated = result.tables.reduce((n, t) => n + (t.guests?.length ?? 0), 0);
 
     res.json(result);
   } catch (err) {
