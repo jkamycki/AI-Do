@@ -1,8 +1,9 @@
 import { forwardRef, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Trash2 } from "lucide-react";
+import { Trash2, Sparkles, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { WebsiteTextStyle } from "@workspace/db";
+import { authFetch } from "@/lib/authFetch";
 
 export { type WebsiteTextStyle };
 
@@ -113,11 +114,21 @@ interface Props {
   anchorRect: DOMRect;
   onKeepOpen?: () => void;
   onDelete?: () => void;
+  // Optional callback that replaces the underlying text with AI-generated
+  // copy. When provided, the toolbar shows a Sparkles button that opens a
+  // small prompt input. EditableText wires this up so the generated string
+  // lands in the contenteditable.
+  currentText?: string;
+  onAiGenerate?: (newText: string) => void;
 }
 
 export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
-  ({ style, onChange, anchorRect, onKeepOpen, onDelete }, ref) => {
+  ({ style, onChange, anchorRect, onKeepOpen, onDelete, currentText, onAiGenerate }, ref) => {
     const { t } = useTranslation();
+    const [aiOpen, setAiOpen] = useState(false);
+    const [aiPrompt, setAiPrompt] = useState("");
+    const [aiBusy, setAiBusy] = useState(false);
+    const [aiError, setAiError] = useState<string | null>(null);
     useEffect(() => {
       FONT_OPTIONS.filter((f) => f.value).forEach((f) => loadGoogleFont(f.value));
     }, []);
@@ -230,6 +241,23 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
           </button>
         )}
 
+        {/* AI generate */}
+        {onAiGenerate && (
+          <>
+            <div className="w-px h-5 bg-border mx-0.5" />
+            <button
+              className="flex items-center gap-1 text-xs px-1.5 rounded transition-colors"
+              style={{ color: "#D4A017" }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { setAiOpen((v) => !v); onKeepOpen?.(); }}
+              title={t("text_toolbar.ai_generate", { defaultValue: "AI: write this for me" })}
+            >
+              <Sparkles className="h-3 w-3" />
+              <span className="font-semibold">AI</span>
+            </button>
+          </>
+        )}
+
         {/* Delete element */}
         {onDelete && (
           <>
@@ -244,9 +272,77 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
             </button>
           </>
         )}
+
+        {/* AI prompt panel — sits below the toolbar's flex row when open */}
+        {onAiGenerate && aiOpen && (
+          <div
+            className="basis-full flex items-stretch gap-1.5 mt-1 pt-1.5 border-t border-border"
+            onMouseDown={(e) => { e.preventDefault(); onKeepOpen?.(); }}
+          >
+            <input
+              type="text"
+              autoFocus
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && aiPrompt.trim() && !aiBusy) {
+                  e.preventDefault();
+                  void handleAiGenerate();
+                }
+                if (e.key === "Escape") { e.preventDefault(); setAiOpen(false); }
+              }}
+              placeholder={t("text_toolbar.ai_prompt_placeholder", { defaultValue: "Describe what you'd like…" })}
+              className="flex-1 h-7 px-2 text-xs rounded border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+            />
+            <button
+              type="button"
+              disabled={!aiPrompt.trim() || aiBusy}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => void handleAiGenerate()}
+              className="h-7 px-2.5 rounded text-xs font-semibold text-white border-0 disabled:opacity-50"
+              style={{ background: "#D4A017" }}
+            >
+              {aiBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : t("text_toolbar.ai_generate_btn", { defaultValue: "Generate" })}
+            </button>
+            {aiError && (
+              <span className="basis-full text-[11px] text-destructive">{aiError}</span>
+            )}
+          </div>
+        )}
       </div>,
       document.body,
     );
+
+    async function handleAiGenerate() {
+      if (!onAiGenerate || !aiPrompt.trim()) return;
+      setAiBusy(true);
+      setAiError(null);
+      try {
+        const r = await authFetch("/api/ai/generate-text", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: aiPrompt.trim(),
+            currentText: currentText ?? "",
+          }),
+        });
+        if (!r.ok) {
+          const body = await r.json().catch(() => ({}));
+          setAiError(body?.error ?? "Couldn't generate. Please try again.");
+          return;
+        }
+        const body = await r.json() as { text?: string };
+        if (body.text) {
+          onAiGenerate(body.text);
+          setAiOpen(false);
+          setAiPrompt("");
+        }
+      } catch {
+        setAiError("Network error. Please try again.");
+      } finally {
+        setAiBusy(false);
+      }
+    }
   },
 );
 
