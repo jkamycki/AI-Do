@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 import { setFetchTokenGetter, setAuthFetchBaseUrl, authFetch } from "@/lib/authFetch";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { ApiHealthBanner } from "@/components/ApiHealthBanner";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useGetProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
@@ -1444,6 +1445,7 @@ function ClerkProviderWithRoutes() {
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
       <QueryClientProvider client={queryClient}>
+        <ApiHealthBanner />
         <ServerWarmupPing />
         <ServerKeepAlive />
         <ClerkTokenSetup />
