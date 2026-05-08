@@ -560,19 +560,19 @@ export default function WebsiteEditor() {
               {record.published ? t("website_editor.live", { defaultValue: "Live" }) : t("website_editor.draft", { defaultValue: "Draft" })}
             </Badge>
           </div>
-          {/* Action toolbar — explicit 2x2 grid so Preview + Publish sit on
-              the top row and Save + Undo sit below them. Colors follow the
-              user's request: gold for Preview & Publish (since both are
-              affirmative), green when Save has just landed or the site is
-              Published, red for Undo and Unpublish. */}
+          {/* Action toolbar — 2x2 grid. Brand gold (#D4A017) for the
+              affirmative actions (Preview, Publish, Save), green when
+              Save lands or site is Published, red for Undo and Unpublish.
+              All button text is bold per request. */}
           <div className="grid grid-cols-2 gap-2 max-w-md">
             <Button
               size="sm"
               onClick={() => { setPreviewSection("home"); setPreviewOpen(true); }}
-              className="bg-amber-500 hover:bg-amber-600 text-white border-0"
+              className="text-white border-0 font-bold"
+              style={{ background: "#D4A017" }}
             >
               <Eye className="h-3.5 w-3.5 mr-1.5" />
-              {t("website_editor.guest_preview", { defaultValue: "Guest Preview" })}
+              {t("website_editor.preview", { defaultValue: "Preview" })}
             </Button>
             <Button
               size="sm"
@@ -580,9 +580,10 @@ export default function WebsiteEditor() {
               disabled={publishing}
               className={
                 record.published
-                  ? "bg-emerald-600 hover:bg-red-600 text-white border-0 group"
-                  : "bg-amber-500 hover:bg-amber-600 text-white border-0"
+                  ? "bg-emerald-600 hover:bg-red-600 text-white border-0 group font-bold"
+                  : "text-white border-0 font-bold"
               }
+              style={record.published ? undefined : { background: "#D4A017" }}
             >
               {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Globe className="h-3.5 w-3.5 mr-1.5" />}
               {record.published ? (
@@ -600,15 +601,16 @@ export default function WebsiteEditor() {
               disabled={!dirty || saving}
               className={
                 !dirty && !saving
-                  ? "bg-emerald-600 hover:bg-emerald-700 text-white border-0 disabled:opacity-100 disabled:bg-emerald-600"
-                  : "bg-amber-500 hover:bg-amber-600 text-white border-0"
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white border-0 disabled:opacity-100 disabled:bg-emerald-600 font-bold"
+                  : "text-white border-0 font-bold"
               }
+              style={!dirty && !saving ? undefined : { background: "#D4A017" }}
             >
               {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : (!dirty ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />)}
               {saving
                 ? t("website_editor.saving", { defaultValue: "Saving..." })
                 : dirty
-                  ? t("website_editor.save_changes", { defaultValue: "Save changes" })
+                  ? t("website_editor.save", { defaultValue: "Save" })
                   : t("website_editor.saved", { defaultValue: "Saved" })}
             </Button>
             <Button
@@ -616,7 +618,7 @@ export default function WebsiteEditor() {
               onClick={handleUndo}
               disabled={historyLen === 0 && !hasPending}
               title="Undo last change (Cmd/Ctrl+Z)"
-              className="bg-red-600 hover:bg-red-700 text-white border-0 disabled:opacity-50"
+              className="bg-red-600 hover:bg-red-700 text-white border-0 disabled:opacity-50 font-bold"
             >
               <Undo2 className="h-3.5 w-3.5 mr-1.5" />
               {t("website_editor.undo", { defaultValue: "Undo" })}
@@ -1407,7 +1409,7 @@ export default function WebsiteEditor() {
         <div ref={setOverlayEl} className="fixed inset-0 z-[9999] bg-background overflow-auto">
           <div className="sticky top-3 right-0 z-[10000] flex justify-end px-4 pointer-events-none">
             <div className="flex items-center gap-2 pointer-events-auto bg-background/90 backdrop-blur border border-border rounded-full px-3 py-1.5 shadow-lg">
-              <span className="text-xs text-muted-foreground font-medium">{t("website_editor.guest_preview", { defaultValue: "Guest Preview" })}</span>
+              <span className="text-xs text-muted-foreground font-medium">{t("website_editor.preview", { defaultValue: "Preview" })}</span>
               <Badge
                 variant={record.published ? "default" : "destructive"}
                 className={record.published ? "text-[10px] py-0 px-1.5" : "text-[10px] py-0 px-1.5 bg-red-600 hover:bg-red-600 text-white"}
