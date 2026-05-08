@@ -1,11 +1,39 @@
 import { Router } from "express";
-import { db, vendors, vendorPayments } from "@workspace/db";
+import { db, vendors, vendorPayments, checklistItems } from "@workspace/db";
 import { eq, and, asc, inArray, isNull } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
+
+// Mark any "first vendor" / "add a vendor" style checklist items as
+// completed once the user has added at least one real vendor row. We
+// only flip items whose text mentions the literal word "vendor" so we
+// don't accidentally complete unrelated tasks like "Pay the photographer"
+// or "Book honeymoon flights". Skipped if the user already has more than
+// one vendor (likely already past this step), so we don't keep retrying
+// on every subsequent vendor add.
+async function markFirstVendorChecklistItemsComplete(profileId: number): Promise<void> {
+  const incompleteItems = await db
+    .select()
+    .from(checklistItems)
+    .where(and(
+      eq(checklistItems.profileId, profileId),
+      eq(checklistItems.isCompleted, false),
+    ));
+  const matching = incompleteItems.filter((item) =>
+    (item.task ?? "").toLowerCase().includes("vendor"),
+  );
+  if (matching.length === 0) return;
+  await db
+    .update(checklistItems)
+    .set({ isCompleted: true, completedAt: new Date() })
+    .where(and(
+      eq(checklistItems.profileId, profileId),
+      inArray(checklistItems.id, matching.map((m) => m.id)),
+    ));
+}
 
 function formatVendor(v: typeof vendors.$inferSelect) {
   return {
@@ -195,6 +223,10 @@ router.post("/vendors", requireAuth, async (req, res) => {
       files: [],
       primaryContact: primaryContact ?? null,
     }).returning();
+    // Best-effort: clear any "add a vendor" checklist nudges so the
+    // dashboard's Needs Attention banner stops asking once the user
+    // has added at least one vendor.
+    await markFirstVendorChecklistItemsComplete(profile.id).catch(() => {});
     res.status(201).json(formatVendor(created));
   } catch (err) {
     req.log.error(err, "Failed to create vendor");
