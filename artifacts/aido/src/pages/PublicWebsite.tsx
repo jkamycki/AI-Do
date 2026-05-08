@@ -141,12 +141,28 @@ export default function PublicWebsite() {
     link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@400;500;600;700&display=swap`;
   }, [data?.font]);
 
-  // Scroll to top whenever the section changes. Must live above all
-  // conditional returns or the hook count differs across renders and React
-  // throws #310 ("Rendered more hooks than during the previous render").
+  // Disable browser scroll restoration on the live site so a guest who
+  // scrolled to (say) RSVP last visit doesn't get auto-restored there on
+  // reload — the IntersectionObserver in TopNav would then highlight that
+  // section instead of Home, defeating the "always start on Home" rule.
+  useEffect(() => {
+    if (!("scrollRestoration" in window.history)) return;
+    const previous = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    return () => { window.history.scrollRestoration = previous; };
+  }, []);
+
+  // Scroll to top whenever the section changes OR when the site data
+  // first becomes available. The data-load case is what guarantees the
+  // live site always lands on Home: on initial mount this effect fires
+  // with `data === null` (loading spinner showing, scroll position
+  // doesn't matter), then fires again when `data` flips to the loaded
+  // payload right as the page renders. Must live above all conditional
+  // returns or the hook count differs across renders and React throws
+  // #310 ("Rendered more hooks than during the previous render").
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [sectionSeg]);
+  }, [sectionSeg, data]);
 
   useEffect(() => {
     if (data) {
