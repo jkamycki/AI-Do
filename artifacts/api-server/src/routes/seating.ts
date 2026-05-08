@@ -228,12 +228,21 @@ router.delete("/seating/charts/:id", requireAuth, async (req, res) => {
       return;
     }
     const userId = await resolveScopeUserId(req);
-    await db
+    const chartId = parseInt(String(req.params["id"] ?? "0"), 10);
+    const [deleted] = await db
       .delete(seatingCharts)
       .where(and(
-        eq(seatingCharts.id, parseInt(String(req.params["id"] ?? "0"), 10)),
+        eq(seatingCharts.id, chartId),
         eq(seatingCharts.userId, userId),
-      ));
+      ))
+      .returning({ profileId: seatingCharts.profileId });
+    const profileId = deleted?.profileId ?? (await resolveProfile(req))?.id ?? null;
+    if (profileId) {
+      await db
+        .update(guestRecords)
+        .set({ tableAssignment: null })
+        .where(eq(guestRecords.profileId, profileId));
+    }
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Internal server error" });

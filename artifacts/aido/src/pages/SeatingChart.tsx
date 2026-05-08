@@ -616,6 +616,8 @@ export default function SeatingChartPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
       queryClient.invalidateQueries({ queryKey: ["next-steps", "seating-charts"] });
+      queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       toast({ title: t("seating.chart_deleted") });
     },
   });
