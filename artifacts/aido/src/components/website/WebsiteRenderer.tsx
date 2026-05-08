@@ -1464,7 +1464,9 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
   const speed = data.customText._galleryAnimationSpeed ?? "medium";
   const slideshowIntervalMs = speed === "slow" ? 6000 : speed === "fast" ? 2500 : 4000;
   const marqueeDuration = speed === "slow" ? "60s" : speed === "fast" ? "20s" : "40s";
-  const entrance = (data.customText._galleryEntrance || "none") as "none" | "fade-in" | "slide-up" | "zoom-in" | "puzzle";
+  // Grid mode always uses the puzzle fade entrance — ignore _galleryEntrance
+  const entrance: "none" | "fade-in" | "slide-up" | "zoom-in" | "puzzle" =
+    animation === "grid" ? "puzzle" : "none";
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // Slideshow auto-advance. Hooks must run unconditionally — bail out inside.
@@ -1635,7 +1637,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
               <div
                 ref={(el) => { itemRefs.current[i] = el; }}
                 className={`wsg-item${visibleItems.has(i) ? " wsg-visible" : ""}`}
-                style={entrance !== "none" ? { ["--stagger" as string]: entrance === "puzzle" ? `${i * 400}ms` : `${i * 80}ms` } : undefined}
+                style={entrance !== "none" ? { ["--stagger" as string]: entrance === "puzzle" ? `${i * 4000}ms` : `${i * 80}ms` } : undefined}
               >
                 <button
                   type="button"
