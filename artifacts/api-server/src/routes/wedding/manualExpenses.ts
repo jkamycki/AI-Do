@@ -26,12 +26,20 @@ function format(row: typeof manualExpenses.$inferSelect) {
     cost: Number(row.cost),
     amountPaid: Number(row.amountPaid),
     nextPaymentDue: row.nextPaymentDue ?? null,
+    nextPaymentAmount: row.nextPaymentAmount != null ? Number(row.nextPaymentAmount) : null,
     notes: row.notes ?? null,
     receiptUrl: row.receiptUrl ?? null,
     receiptName: row.receiptName ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+function sanitizeNextPaymentAmount(input: unknown): string | null {
+  if (input == null || input === "") return null;
+  const n = Math.max(0, Number(input));
+  if (!Number.isFinite(n) || n === 0) return null;
+  return String(n);
 }
 
 // Accept either an ISO YYYY-MM-DD date string or null/empty. Anything
@@ -79,7 +87,7 @@ router.post("/manual-expenses", requireAuth, async (req, res) => {
       res.status(400).json({ error: "No wedding profile found" });
       return;
     }
-    const { name, category, cost, amountPaid, nextPaymentDue, notes, receiptUrl, receiptName } = req.body ?? {};
+    const { name, category, cost, amountPaid, nextPaymentDue, nextPaymentAmount, notes, receiptUrl, receiptName } = req.body ?? {};
     if (!name || typeof name !== "string" || !name.trim()) {
       res.status(400).json({ error: "name is required" });
       return;
@@ -100,6 +108,7 @@ router.post("/manual-expenses", requireAuth, async (req, res) => {
         cost: String(costNum),
         amountPaid: String(paidNum),
         nextPaymentDue: sanitizeNextPaymentDue(nextPaymentDue),
+        nextPaymentAmount: sanitizeNextPaymentAmount(nextPaymentAmount),
         notes: typeof notes === "string" ? notes.slice(0, 2000) : null,
         receiptUrl: sanitizeReceiptUrl(receiptUrl),
         receiptName: typeof receiptName === "string" ? receiptName.slice(0, 200) : null,
@@ -125,7 +134,7 @@ router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
       return;
     }
     const id = parseInt(String(req.params.id), 10);
-    const { name, category, cost, amountPaid, nextPaymentDue, notes, receiptUrl, receiptName } = req.body ?? {};
+    const { name, category, cost, amountPaid, nextPaymentDue, nextPaymentAmount, notes, receiptUrl, receiptName } = req.body ?? {};
     const updates: Partial<typeof manualExpenses.$inferInsert> = {};
     if (name !== undefined) {
       const trimmed = String(name).trim();
@@ -153,6 +162,7 @@ router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
       updates.amountPaid = String(n);
     }
     if (nextPaymentDue !== undefined) updates.nextPaymentDue = sanitizeNextPaymentDue(nextPaymentDue);
+    if (nextPaymentAmount !== undefined) updates.nextPaymentAmount = sanitizeNextPaymentAmount(nextPaymentAmount);
     if (notes !== undefined) updates.notes = typeof notes === "string" ? notes.slice(0, 2000) : null;
     if (receiptUrl !== undefined) updates.receiptUrl = sanitizeReceiptUrl(receiptUrl);
     if (receiptName !== undefined) updates.receiptName = typeof receiptName === "string" ? receiptName.slice(0, 200) : null;
@@ -169,6 +179,50 @@ router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
     res.json(format(updated));
   } catch (err) {
     req.log.error(err, "Failed to update manual expense");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// One-click payoff for the upcoming payment milestone. Adds
+// next_payment_amount to amount_paid and clears both next-payment fields.
+// Idempotent — clicking when there's no scheduled payment is a no-op.
+router.post("/manual-expenses/:id/mark-paid", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const id = parseInt(String(req.params.id), 10);
+    const [existing] = await db
+      .select()
+      .from(manualExpenses)
+      .where(and(eq(manualExpenses.id, id), eq(manualExpenses.profileId, profile.id)))
+      .limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const addAmount = existing.nextPaymentAmount != null ? Number(existing.nextPaymentAmount) : 0;
+    const newPaid = Number(existing.amountPaid) + (Number.isFinite(addAmount) ? addAmount : 0);
+    const [updated] = await db
+      .update(manualExpenses)
+      .set({
+        amountPaid: String(newPaid),
+        nextPaymentDue: null,
+        nextPaymentAmount: null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(manualExpenses.id, id), eq(manualExpenses.profileId, profile.id)))
+      .returning();
+    res.json(format(updated));
+  } catch (err) {
+    req.log.error(err, "Failed to mark manual expense paid");
     res.status(500).json({ error: "Internal server error" });
   }
 });
