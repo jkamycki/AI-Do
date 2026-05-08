@@ -1021,7 +1021,7 @@ function SectionShell({
   ctx: EditCtx;
 }) {
   return (
-    <section id={id} className="py-20 px-6" style={{ background: id === "gallery" ? data.colorPalette.neutral : backgroundWithOpacity(data) }}>
+    <section id={id} className="py-20 px-6" style={{ background: backgroundWithOpacity(data, data.colorPalette.neutral) }}>
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-center gap-2 mb-3" style={{ color: data.colorPalette.primary }}>
           {icon}
@@ -2182,7 +2182,7 @@ export function WebsiteRenderer({
   const navSlug = previewMode ? undefined : slug;
 
   return (
-    <div style={{ background: backgroundWithOpacity(data), color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif", position: "relative" }}>
+    <div style={{ background: data.colorPalette.background, color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif", position: "relative" }}>
       <AnnouncementBanner data={data} />
       <TopNav
         data={data}
