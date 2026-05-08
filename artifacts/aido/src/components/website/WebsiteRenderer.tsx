@@ -1934,7 +1934,7 @@ export function WebsiteRenderer({
   const navSlug = previewMode ? undefined : slug;
 
   return (
-    <div style={{ background: data.colorPalette.background, color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <div style={{ background: backgroundWithOpacity(data), color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <AnnouncementBanner data={data} />
       <TopNav
         data={data}
