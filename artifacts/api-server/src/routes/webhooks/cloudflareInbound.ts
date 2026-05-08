@@ -4,7 +4,7 @@ import { vendorConversations, vendorMessages, vendors } from "@workspace/db/sche
 import { and, eq } from "drizzle-orm";
 import PostalMime from "postal-mime";
 import { cleanInboundText, findRoutingAddressInText, htmlToText, parseInboundAddress } from "../../lib/resend";
-import { isSupportInboxRecipient, saveSupportInboxMessage } from "../../lib/supportInbox";
+import { isSupportInboxRecipient, saveSupportInboxMessage, parseSupportThreadAddress, appendInboundReply } from "../../lib/supportInbox";
 import { logger } from "../../lib/logger";
 
 const router = Router();
@@ -112,6 +112,39 @@ router.post("/webhooks/cloudflare/inbound", json({ limit: "20mb" }), async (req,
         ...(parsedMime?.to ?? []).map((t) => t.address ?? ""),
         ...(parsedMime?.cc ?? []).map((t) => t.address ?? ""),
       ].filter(Boolean);
+
+      let threadMatch: { contactMessageId: number; token: string } | null = null;
+      for (const r of allRecipients) {
+        const m = parseSupportThreadAddress(r);
+        if (m) { threadMatch = m; break; }
+      }
+      if (threadMatch) {
+        const fromAddr = parsedMime?.from?.address ?? "";
+        const fromName = parsedMime?.from?.name ?? "";
+        const sender = fromAddr
+          ? { email: fromAddr, name: fromName || undefined }
+          : parseFromHeader(payload.from);
+        const bodyText = (parsedMime?.text && parsedMime.text.trim()) || "";
+        const bodyHtml = parsedMime?.html || "";
+        const rawText = bodyText || (bodyHtml ? htmlToText(bodyHtml) : "");
+        const cleaned = cleanInboundText(rawText) || rawText.trim();
+        const saved = await appendInboundReply({
+          contactMessageId: threadMatch.contactMessageId,
+          token: threadMatch.token,
+          fromEmail: sender.email,
+          fromName: sender.name,
+          body: cleaned,
+        });
+        if (saved) {
+          logger.info({ recipient, contactMessageId: threadMatch.contactMessageId, replyId: saved.id }, "Cloudflare inbound: appended to support thread");
+          logCfHit("saved:thread", { recipient, conversationId: threadMatch.contactMessageId, senderEmail: sender.email });
+          return res.json({ ok: true, contactMessageId: threadMatch.contactMessageId, replyId: saved.id });
+        }
+        logger.warn({ recipient, contactMessageId: threadMatch.contactMessageId }, "Cloudflare inbound: thread token mismatch");
+        logCfHit("ignored:thread_token_mismatch", { recipient });
+        return res.status(200).json({ ignored: true, reason: "thread token mismatch" });
+      }
+
       if (isSupportInboxRecipient(allRecipients)) {
         const fromAddr = parsedMime?.from?.address ?? "";
         const fromName = parsedMime?.from?.name ?? "";

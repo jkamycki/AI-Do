@@ -5,7 +5,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { randomUUID } from "crypto";
 import { clerkClient } from "@clerk/express";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
-import { getSupportInboxAddresses } from "../lib/supportInbox";
+import { getSupportInboxAddresses, buildSupportThreadAddress, ensureContactThreadToken } from "../lib/supportInbox";
 
 const OWNER_EMAILS = ["kamyckijoseph@gmail.com"];
 
@@ -202,10 +202,12 @@ router.post("/help/messages/contact/:id/reply", requireAuth, async (req, res) =>
     if (!msg) return res.status(404).json({ error: "Message not found." });
 
     const supportAddress = getSupportInboxAddresses()[0] ?? OWNER_EMAILS[0];
+    const threadToken = await ensureContactThreadToken(id);
+    const replyToAddress = threadToken ? buildSupportThreadAddress(id, threadToken) : supportAddress;
     const subject = msg.subject.toLowerCase().startsWith("re:") ? msg.subject : `Re: ${msg.subject}`;
     const result = await sendEmail({
       to: msg.email,
-      replyTo: supportAddress,
+      replyTo: replyToAddress,
       subject,
       text: [
         replyText.trim(),
