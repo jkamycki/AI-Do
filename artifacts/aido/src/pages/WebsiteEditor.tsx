@@ -823,7 +823,7 @@ export default function WebsiteEditor() {
             <ColorField label={t("website_editor.color_background", { defaultValue: "Background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
             <ColorField label={t("website_editor.color_text", { defaultValue: "Text" })}      value={record.colorPalette.text}      onChange={(v) => update({ colorPalette: { ...record.colorPalette, text: v } })} />
             <ColorField
-              label={t("website_editor.color_couple_names", { defaultValue: "Couple Names (top)" })}
+              label={t("website_editor.color_couple_names", { defaultValue: "Header (Names)" })}
               value={record.customText._navCoupleColor || record.colorPalette.primary}
               onChange={(v) => update({ customText: { ...record.customText, _navCoupleColor: v } })}
             />
@@ -831,6 +831,11 @@ export default function WebsiteEditor() {
               label={t("website_editor.color_footer", { defaultValue: "Footer" })}
               value={record.customText._footerColor || record.colorPalette.primary}
               onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
+            />
+            <ColorField
+              label={t("website_editor.color_welcome", { defaultValue: "Welcome" })}
+              value={record.customText._welcomeColor || record.colorPalette.text}
+              onChange={(v) => update({ customText: { ...record.customText, _welcomeColor: v } })}
             />
           </div>
           {/* Background opacity slider — lets the user fade the section
@@ -1119,22 +1124,26 @@ export default function WebsiteEditor() {
                 </select>
               </div>
             )}
-            {(!record.customText._galleryAnimation || record.customText._galleryAnimation === "grid") && (
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1 block">Entrance animation</Label>
-                <select
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  value={record.customText._galleryEntrance ?? "none"}
-                  onChange={(e) => update({ customText: { ...record.customText, _galleryEntrance: e.target.value } })}
-                >
-                  <option value="none">None</option>
-                  <option value="fade-in">Fade in</option>
-                  <option value="slide-up">Slide up</option>
-                  <option value="zoom-in">Zoom in</option>
-                  <option value="puzzle">Puzzle build</option>
-                </select>
-              </div>
-            )}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Entrance animation</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={record.customText._galleryEntrance ?? "none"}
+                onChange={(e) => update({ customText: { ...record.customText, _galleryEntrance: e.target.value } })}
+              >
+                <option value="none">None</option>
+                <option value="fade-in">Fade in</option>
+                <option value="slide-up">Slide up</option>
+                <option value="zoom-in">Zoom in</option>
+                <option value="puzzle">Puzzle build</option>
+              </select>
+              {record.customText._galleryEntrance && record.customText._galleryEntrance !== "none"
+                && record.customText._galleryAnimation && record.customText._galleryAnimation !== "grid" && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed mt-1">
+                  Entrance animations only run when Style is set to Grid.
+                </p>
+              )}
+            </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               {t("website_editor.gallery_anim_hint", { defaultValue: "Choose how gallery photos display. Guests can still click any photo to open the full lightbox." })}
             </p>
@@ -2033,8 +2042,8 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
 
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
-    <div>
-      <Label className="text-xs text-muted-foreground mb-1 block">{label}</Label>
+    <div className="flex flex-col">
+      <Label className="text-xs text-muted-foreground mb-1 block truncate" title={label}>{label}</Label>
       <div className="flex items-center gap-2">
         <input
           type="color"
@@ -2045,7 +2054,7 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="text-xs font-mono h-9"
+          className="text-xs font-mono h-9 min-w-0"
         />
       </div>
     </div>

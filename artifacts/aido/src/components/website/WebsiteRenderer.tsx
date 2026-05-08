@@ -1061,7 +1061,7 @@ function Welcome({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         defaultValue={ctx.editable ? "Click to write a warm welcome for your guests..." : ""}
         onCommit={(v) => ctx.onTextChange("welcome", v)}
         className="text-center text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
-        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+        style={{ color: data.customText._welcomeColor || data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
         {...tsp(ctx, "welcome")}
       />
     </SectionShell>
@@ -1618,7 +1618,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
               <div
                 ref={(el) => { itemRefs.current[i] = el; }}
                 className={`wsg-item${visibleItems.has(i) ? " wsg-visible" : ""}`}
-                style={entrance !== "none" ? { ["--stagger" as string]: entrance === "puzzle" ? `${i * 220}ms` : `${i * 80}ms` } : undefined}
+                style={entrance !== "none" ? { ["--stagger" as string]: entrance === "puzzle" ? `${i * 600}ms` : `${i * 80}ms` } : undefined}
               >
                 <button
                   type="button"
