@@ -999,6 +999,7 @@ export default function WebsiteEditor() {
           </p>
         </Section>}
 
+
         {/* Hero animation */}
         {inTab("animation") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_hero_animation", { defaultValue: "Hero Animation" })}>
           <div className="space-y-3">
@@ -1062,6 +1063,21 @@ export default function WebsiteEditor() {
                   <option value="slow">{t("website_editor.speed_slow", { defaultValue: "Slow" })}</option>
                   <option value="medium">{t("website_editor.speed_medium", { defaultValue: "Medium" })}</option>
                   <option value="fast">{t("website_editor.speed_fast", { defaultValue: "Fast" })}</option>
+                </select>
+              </div>
+            )}
+            {(!record.customText._galleryAnimation || record.customText._galleryAnimation === "grid") && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Entrance animation</Label>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={record.customText._galleryEntrance ?? "none"}
+                  onChange={(e) => update({ customText: { ...record.customText, _galleryEntrance: e.target.value } })}
+                >
+                  <option value="none">None</option>
+                  <option value="fade-in">Fade in</option>
+                  <option value="slide-up">Slide up</option>
+                  <option value="zoom-in">Zoom in</option>
                 </select>
               </div>
             )}

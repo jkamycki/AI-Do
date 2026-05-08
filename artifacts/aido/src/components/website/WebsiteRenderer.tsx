@@ -1460,11 +1460,12 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const images = (data.galleryImages ?? []).slice().sort((a, b) => a.order - b.order);
   const photoFilter = photoFilterCss(data.customText._photoFilter);
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const animation = data.customText._galleryAnimation ?? "grid";
   const speed = data.customText._galleryAnimationSpeed ?? "medium";
   const slideshowIntervalMs = speed === "slow" ? 6000 : speed === "fast" ? 2500 : 4000;
   const marqueeDuration = speed === "slow" ? "60s" : speed === "fast" ? "20s" : "40s";
+  const entrance = (data.customText._galleryEntrance || "none") as "none" | "fade-in" | "slide-up" | "zoom-in";
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // Slideshow auto-advance. Hooks must run unconditionally — bail out inside.
   const [activeIdx, setActiveIdx] = useState(0);
@@ -1476,6 +1477,22 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
   useEffect(() => {
     if (activeIdx >= images.length) setActiveIdx(0);
   }, [images.length, activeIdx]);
+
+  const [visibleItems, setVisibleItems] = useState<Set<number>>(new Set());
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  useEffect(() => {
+    if (entrance === "none") { setVisibleItems(new Set()); return; }
+    const observers = itemRefs.current.map((el, i) => {
+      if (!el) return null;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) { setVisibleItems((prev) => new Set([...prev, i])); obs.disconnect(); } },
+        { threshold: 0.1 },
+      );
+      obs.observe(el);
+      return obs;
+    });
+    return () => { observers.forEach((obs) => obs?.disconnect()); };
+  }, [entrance, images.length]);
 
   if (images.length === 0 && !ctx.editable) return null;
 
@@ -1591,9 +1608,14 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
           {renderCaption(images[activeIdx]?.caption)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" data-gallery-anim={entrance !== "none" ? entrance : undefined}>
           {images.map((img, i) => (
-            <div key={i} className="flex flex-col gap-1.5">
+            <div
+              key={i}
+              ref={(el) => { itemRefs.current[i] = el; }}
+              className={`wsg-item flex flex-col gap-1.5${visibleItems.has(i) ? " wsg-visible" : ""}`}
+              style={entrance !== "none" ? { ["--stagger" as string]: `${i * 80}ms` } : undefined}
+            >
               <button
                 type="button"
                 onClick={() => setLightboxIndex(i)}
@@ -2172,7 +2194,7 @@ export function WebsiteRenderer({
         onSectionChange={onSectionChange}
       />
       {(showAll || currentSection === "home") && <Hero data={data} ctx={ctx} />}
-      {show("welcome", data.sectionsEnabled.welcome) && <Welcome data={data} ctx={ctx} />}
+      {data.sectionsEnabled.welcome && (showAll || currentSection === "home" || currentSection === "welcome") && <Welcome data={data} ctx={ctx} />}
       {show("story", data.sectionsEnabled.story) && <Story data={data} ctx={ctx} />}
       {show("schedule", data.sectionsEnabled.schedule) && <Schedule data={data} ctx={ctx} />}
       {show("travel", data.sectionsEnabled.travel) && <Travel data={data} ctx={ctx} />}
