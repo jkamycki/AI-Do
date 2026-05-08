@@ -1093,10 +1093,10 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
   const ceremonyTime = (data.customText._scheduleCeremonyTime ?? "").trim() || data.couple.ceremonyTime || "";
   const cocktailTime = (data.customText._scheduleCocktailTime ?? "").trim();
   const receptionTime = (data.customText._scheduleReceptionTime ?? "").trim() || data.couple.receptionTime || "";
-  const items: Array<{ key: string; label: string; Icon: typeof Heart; time: string }> = [
-    { key: "_scheduleCeremonyTime", label: "Ceremony",     Icon: Heart,            time: ceremonyTime },
-    { key: "_scheduleCocktailTime", label: "Cocktail Hour", Icon: Wine,             time: cocktailTime },
-    { key: "_scheduleReceptionTime", label: "Reception",    Icon: UtensilsCrossed,  time: receptionTime },
+  const items: Array<{ key: string; labelKey: string; defaultLabel: string; Icon: typeof Heart; time: string }> = [
+    { key: "_scheduleCeremonyTime",  labelKey: "_scheduleCeremonyLabel",  defaultLabel: "Ceremony",      Icon: Heart,           time: ceremonyTime },
+    { key: "_scheduleCocktailTime",  labelKey: "_scheduleCocktailLabel",  defaultLabel: "Cocktail Hour", Icon: Wine,            time: cocktailTime },
+    { key: "_scheduleReceptionTime", labelKey: "_scheduleReceptionLabel", defaultLabel: "Reception",     Icon: UtensilsCrossed, time: receptionTime },
   ];
   const visibleItems = ctx.editable ? items : items.filter((i) => i.time);
   if (!ctx.editable && visibleItems.length === 0 && !customSchedule) return null;
@@ -1104,31 +1104,52 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
     <SectionShell id="schedule" titleKey="schedule_title" defaultTitle="Schedule" icon={<Clock className="h-4 w-4" />} data={data} ctx={ctx}>
       <div className="max-w-2xl mx-auto">
         <div className="space-y-3 mb-8">
-          {visibleItems.map((it, idx) => (
-            <div
-              key={it.key}
-              className="flex gap-4 items-center py-3"
-              style={{
-                borderBottom: idx < visibleItems.length - 1 ? `1px solid ${data.colorPalette.primary}22` : "none",
-              }}
-            >
+          {visibleItems.map((it, idx) => {
+            const hasTime = !!it.time;
+            return (
               <div
-                className="flex items-center justify-center w-9 h-9 rounded-full flex-shrink-0"
-                style={{ background: `${data.colorPalette.primary}15`, color: data.colorPalette.primary }}
+                key={it.key}
+                className="flex gap-4 items-center py-3"
+                style={{
+                  borderBottom: idx < visibleItems.length - 1 ? `1px solid ${data.colorPalette.primary}22` : "none",
+                }}
               >
-                <it.Icon className="h-4 w-4" />
+                <div
+                  className="flex items-center justify-center w-9 h-9 rounded-full flex-shrink-0"
+                  style={{ background: `${data.colorPalette.primary}15`, color: data.colorPalette.primary }}
+                >
+                  <it.Icon className="h-4 w-4" />
+                </div>
+                <div
+                  className="w-28 text-sm font-medium px-3 py-1.5 rounded-md"
+                  style={{
+                    color: data.colorPalette.primary,
+                    // When the time isn't filled in yet, show the slot as a
+                    // dashed "Add time" box in editor mode so users see
+                    // exactly where to click. Hidden on the public site.
+                    border: ctx.editable && !hasTime ? `1px dashed ${data.colorPalette.primary}66` : "none",
+                    background: ctx.editable && !hasTime ? `${data.colorPalette.primary}08` : "transparent",
+                  }}
+                >
+                  <EditableText
+                    editable={ctx.editable}
+                    value={data.customText[it.key] ?? ""}
+                    defaultValue={it.time || (ctx.editable ? "Add time" : "")}
+                    onCommit={(v) => ctx.onTextChange(it.key, v)}
+                  />
+                </div>
+                <div className="flex-1 text-base" style={{ color: data.colorPalette.text }}>
+                  <EditableText
+                    editable={ctx.editable}
+                    value={data.customText[it.labelKey] ?? ""}
+                    defaultValue={it.defaultLabel}
+                    onCommit={(v) => ctx.onTextChange(it.labelKey, v)}
+                    {...tsp(ctx, it.labelKey)}
+                  />
+                </div>
               </div>
-              <div className="w-28 text-sm font-medium" style={{ color: data.colorPalette.primary }}>
-                <EditableText
-                  editable={ctx.editable}
-                  value={data.customText[it.key] ?? ""}
-                  defaultValue={it.time || (ctx.editable ? "Add time" : "")}
-                  onCommit={(v) => ctx.onTextChange(it.key, v)}
-                />
-              </div>
-              <div className="flex-1 text-base" style={{ color: data.colorPalette.text }}>{it.label}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         {/* Optional free-form notes below the schedule */}
         <EditableText
