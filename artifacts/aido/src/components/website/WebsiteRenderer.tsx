@@ -1295,8 +1295,24 @@ function Registry({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
 }
 
 function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
-  const text = data.customText.faq ?? "";
-  if (!text && !ctx.editable) return null;
+  type FaqItem = { question: string; answer: string };
+  let items: FaqItem[] = [];
+  try {
+    const raw = data.customText.faq_items_json;
+    if (raw) {
+      const parsed = JSON.parse(raw) as FaqItem[];
+      if (Array.isArray(parsed)) {
+        items = parsed.filter((it) => it && (it.question?.trim() || it.answer?.trim()));
+      }
+    }
+  } catch { /* ignore */ }
+
+  // Legacy single-string fallback used before the structured editor existed.
+  const legacyText = data.customText.faq ?? "";
+  const hasLegacyOnly = items.length === 0 && legacyText.trim().length > 0;
+
+  if (items.length === 0 && !legacyText && !ctx.editable) return null;
+
   return (
     <SectionShell id="faq" titleKey="faq_title" defaultTitle="FAQ" icon={<HelpCircle className="h-4 w-4" />} data={data} ctx={ctx}>
       <EditableText
@@ -1309,17 +1325,47 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         style={{ fontFamily: elementFontStack(data, "faq_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
         {...tsp(ctx, "faq_subtitle")}
       />
-      <EditableText
-        as="div"
-        multiline
-        editable={ctx.editable}
-        value={text}
-        defaultValue={ctx.editable ? "Answer common guest questions: dress code, parking, kids welcome, plus-ones..." : ""}
-        onCommit={(v) => ctx.onTextChange("faq", v)}
-        className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
-        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
-        {...tsp(ctx, "faq")}
-      />
+
+      {items.length > 0 && (
+        <div className="max-w-2xl mx-auto space-y-6">
+          {items.map((it, i) => (
+            <div key={i} className="text-left">
+              <h3
+                className="text-lg sm:text-xl font-medium mb-2"
+                style={{ color: data.colorPalette.primary, fontFamily: bodyFontStack(bodyFont(data)) }}
+              >
+                {it.question}
+              </h3>
+              <p
+                className="text-base leading-relaxed whitespace-pre-line"
+                style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+              >
+                {it.answer}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {hasLegacyOnly && (
+        <EditableText
+          as="div"
+          multiline
+          editable={ctx.editable}
+          value={legacyText}
+          defaultValue=""
+          onCommit={(v) => ctx.onTextChange("faq", v)}
+          className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
+          style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+          {...tsp(ctx, "faq")}
+        />
+      )}
+
+      {items.length === 0 && !legacyText && ctx.editable && (
+        <p className="text-center text-sm text-muted-foreground max-w-2xl mx-auto">
+          Add FAQ questions in the sidebar (Pages tab → FAQ Questions).
+        </p>
+      )}
     </SectionShell>
   );
 }
