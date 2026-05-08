@@ -115,6 +115,7 @@ function tsp(ctx: EditCtx, key: string, _deletable = false) {
     position: ctx.textPositions?.[key],
     onPositionChange: ctx.onPositionChange ? (p: TextPosition) => ctx.onPositionChange!(key, p) : undefined,
     onDelete: ctx.onDeleteElement ? () => ctx.onDeleteElement!(key) : undefined,
+    aiEnabled: key.startsWith("_custom_"),
   };
 }
 
@@ -127,6 +128,7 @@ function tspStyle(ctx: EditCtx, key: string) {
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
+    aiEnabled: false as const,
   };
 }
 
@@ -137,6 +139,7 @@ function tspNoDelete(ctx: EditCtx, key: string) {
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
+    aiEnabled: false as const,
   };
 }
 
@@ -1024,7 +1027,7 @@ function SectionShell({
   ctx: EditCtx;
 }) {
   return (
-    <section id={id} className="py-20 px-6" style={{ background: id === "gallery" ? data.colorPalette.neutral : backgroundWithOpacity(data) }}>
+    <section id={id} className="py-20 px-6" style={{ background: backgroundWithOpacity(data, data.colorPalette.neutral) }}>
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-center gap-2 mb-3" style={{ color: data.colorPalette.secondary }}>
           {icon}
@@ -1100,11 +1103,12 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
   const ceremonyTime = (data.customText._scheduleCeremonyTime ?? "").trim() || data.couple.ceremonyTime || "";
   const cocktailTime = (data.customText._scheduleCocktailTime ?? "").trim();
   const receptionTime = (data.customText._scheduleReceptionTime ?? "").trim() || data.couple.receptionTime || "";
-  const items: Array<{ key: string; labelKey: string; defaultLabel: string; Icon: typeof Heart; time: string }> = [
-    { key: "_scheduleCeremonyTime",  labelKey: "_scheduleCeremonyLabel",  defaultLabel: "Ceremony",      Icon: Heart,           time: ceremonyTime },
-    { key: "_scheduleCocktailTime",  labelKey: "_scheduleCocktailLabel",  defaultLabel: "Cocktail Hour", Icon: Wine,            time: cocktailTime },
-    { key: "_scheduleReceptionTime", labelKey: "_scheduleReceptionLabel", defaultLabel: "Reception",     Icon: UtensilsCrossed, time: receptionTime },
+  const allItems: Array<{ key: string; labelKey: string; defaultLabel: string; Icon: typeof Heart; time: string; hiddenKey: string }> = [
+    { key: "_scheduleCeremonyTime",  labelKey: "_scheduleCeremonyLabel",  defaultLabel: "Ceremony",      Icon: Heart,           time: ceremonyTime, hiddenKey: "_scheduleCeremonyHidden" },
+    { key: "_scheduleCocktailTime",  labelKey: "_scheduleCocktailLabel",  defaultLabel: "Cocktail Hour", Icon: Wine,            time: cocktailTime, hiddenKey: "_scheduleCocktailHidden" },
+    { key: "_scheduleReceptionTime", labelKey: "_scheduleReceptionLabel", defaultLabel: "Reception",     Icon: UtensilsCrossed, time: receptionTime, hiddenKey: "_scheduleReceptionHidden" },
   ];
+  const items = allItems.filter((i) => data.customText[i.hiddenKey] !== EDITABLE_HIDDEN_MARKER);
   const visibleItems = ctx.editable ? items : items.filter((i) => i.time);
   if (!ctx.editable && visibleItems.length === 0 && !customSchedule) return null;
   return (
@@ -1141,8 +1145,9 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
                   <EditableText
                     editable={ctx.editable}
                     value={data.customText[it.key] ?? ""}
-                    defaultValue={it.time || (ctx.editable ? "Add time" : "")}
+                    defaultValue={it.time || (ctx.editable ? "Add Time" : "")}
                     onCommit={(v) => ctx.onTextChange(it.key, v)}
+                    {...tspStyle(ctx, it.key)}
                   />
                 </div>
                 <div className="flex-1 text-base" style={{ color: data.colorPalette.text }}>
@@ -1151,7 +1156,7 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
                     value={data.customText[it.labelKey] ?? ""}
                     defaultValue={it.defaultLabel}
                     onCommit={(v) => ctx.onTextChange(it.labelKey, v)}
-                    {...tsp(ctx, it.labelKey)}
+                    {...tspStyle(ctx, it.labelKey)}
                   />
                 </div>
               </div>
@@ -1442,7 +1447,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
   const speed = data.customText._galleryAnimationSpeed ?? "medium";
   const slideshowIntervalMs = speed === "slow" ? 6000 : speed === "fast" ? 2500 : 4000;
   const marqueeDuration = speed === "slow" ? "60s" : speed === "fast" ? "20s" : "40s";
-  const entrance = (data.customText._galleryEntrance || "none") as "none" | "fade-in" | "slide-up" | "zoom-in";
+  const entrance = (data.customText._galleryEntrance || "none") as "none" | "fade-in" | "slide-up" | "zoom-in" | "puzzle";
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // Slideshow auto-advance. Hooks must run unconditionally — bail out inside.
@@ -1456,10 +1461,11 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
     if (activeIdx >= images.length) setActiveIdx(0);
   }, [images.length, activeIdx]);
 
+  // Per-item scroll observers for fade/slide/zoom entrance modes.
   const [visibleItems, setVisibleItems] = useState<Set<number>>(new Set());
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   useEffect(() => {
-    if (entrance === "none") { setVisibleItems(new Set()); return; }
+    if (entrance === "none" || entrance === "puzzle") { setVisibleItems(new Set()); return; }
     const observers = itemRefs.current.map((el, i) => {
       if (!el) return null;
       const obs = new IntersectionObserver(
@@ -1471,6 +1477,22 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
     });
     return () => { observers.forEach((obs) => obs?.disconnect()); };
   }, [entrance, images.length]);
+
+  // Grid-level observer for puzzle mode: fires once when the grid enters view,
+  // then CSS handles the sequential snap-in via animation-delay per item.
+  const [puzzleReady, setPuzzleReady] = useState(false);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (entrance !== "puzzle") { setPuzzleReady(false); return; }
+    const el = gridRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setPuzzleReady(true); obs.disconnect(); } },
+      { threshold: 0.05 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [entrance]);
 
   if (images.length === 0 && !ctx.editable) return null;
 
@@ -1586,13 +1608,17 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
           {renderCaption(images[activeIdx]?.caption)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" data-gallery-anim={entrance !== "none" ? entrance : undefined}>
+        <div
+          ref={gridRef}
+          className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4${puzzleReady ? " wsg-grid-ready" : ""}`}
+          data-gallery-anim={entrance !== "none" ? entrance : undefined}
+        >
           {images.map((img, i) => (
             <div key={i} className="flex flex-col gap-1.5">
               <div
                 ref={(el) => { itemRefs.current[i] = el; }}
                 className={`wsg-item${visibleItems.has(i) ? " wsg-visible" : ""}`}
-                style={entrance !== "none" ? { ["--stagger" as string]: `${i * 80}ms` } : undefined}
+                style={entrance !== "none" ? { ["--stagger" as string]: entrance === "puzzle" ? `${i * 220}ms` : `${i * 80}ms` } : undefined}
               >
                 <button
                   type="button"
@@ -2162,7 +2188,7 @@ export function WebsiteRenderer({
   const navSlug = previewMode ? undefined : slug;
 
   return (
-    <div style={{ background: backgroundWithOpacity(data), color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif", position: "relative" }}>
+    <div style={{ background: data.colorPalette.background, color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif", position: "relative" }}>
       <AnnouncementBanner data={data} />
       <TopNav
         data={data}

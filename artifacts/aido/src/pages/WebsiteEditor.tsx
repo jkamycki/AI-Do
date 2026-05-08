@@ -924,6 +924,30 @@ export default function WebsiteEditor() {
           </div>
         </Section>}
 
+        {/* Schedule event toggles */}
+        {inTab("pages") && record.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
+          <div className="space-y-2.5">
+            {[
+              { key: "_scheduleCeremonyHidden",  label: "Ceremony" },
+              { key: "_scheduleCocktailHidden",  label: "Cocktail Hour" },
+              { key: "_scheduleReceptionHidden", label: "Reception" },
+            ].map((row) => {
+              const isHidden = record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
+              return (
+                <div key={row.key} className="flex items-center justify-between gap-3 py-1.5">
+                  <Label className="text-sm cursor-pointer">{row.label}</Label>
+                  <Switch
+                    checked={!isHidden}
+                    onCheckedChange={(checked) =>
+                      update({ customText: { ...record.customText, [row.key]: checked ? "" : EDITABLE_HIDDEN_MARKER } })
+                    }
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </Section>}
+
         {/* FAQ items — structured Q/A entry, ~easier than typing the whole
             FAQ block as a single paragraph. Stored as JSON in
             customText.faq_items_json for backward compat with the legacy
@@ -1107,6 +1131,7 @@ export default function WebsiteEditor() {
                   <option value="fade-in">Fade in</option>
                   <option value="slide-up">Slide up</option>
                   <option value="zoom-in">Zoom in</option>
+                  <option value="puzzle">Puzzle build</option>
                 </select>
               </div>
             )}
