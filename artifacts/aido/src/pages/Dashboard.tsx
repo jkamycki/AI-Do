@@ -1154,9 +1154,18 @@ function DashboardContent() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-2xl font-serif font-semibold text-foreground">{vendors.length}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-medium">
-                    {vendors.filter(v => v.isPaidOff).length}/{vendors.length} paid
-                  </span>
+                  {(() => {
+                    const paid = vendors.filter(v => v.isPaidOff).length;
+                    const allPaid = paid === vendors.length;
+                    const pillTone = allPaid
+                      ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
+                      : "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300";
+                    return (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pillTone}`}>
+                        {paid}/{vendors.length} paid
+                      </span>
+                    );
+                  })()}
                 </div>
                 {vendors.slice(0, 3).map(v => (
                   <div key={v.id} className="flex items-center justify-between">
