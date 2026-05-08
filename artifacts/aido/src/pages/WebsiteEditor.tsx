@@ -867,6 +867,8 @@ export default function WebsiteEditor() {
         {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Hero Elements" })}>
           <div className="space-y-2.5">
             {[
+              { key: "_coupleName", label: t("website_editor.hero_couple_names", { defaultValue: "Couple Names" }) },
+              { key: "_heroTagline", label: t("website_editor.hero_tagline", { defaultValue: "Tagline" }) },
               { key: "_heroDateRow", label: t("website_editor.hero_date_row", { defaultValue: "Wedding Date" }) },
               { key: "_heroDateIcon", label: t("website_editor.hero_date_icon", { defaultValue: "Date Calendar Icon" }) },
               { key: "_heroVenueRow", label: t("website_editor.hero_venue_row", { defaultValue: "Venue Address" }) },
@@ -997,27 +999,6 @@ export default function WebsiteEditor() {
           </p>
         </Section>}
 
-        {/* Gallery photo animation */}
-        {inTab("animation") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Gallery Photos">
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Entrance animation</Label>
-              <select
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={record.customText._galleryAnimation ?? "none"}
-                onChange={(e) => update({ customText: { ...record.customText, _galleryAnimation: e.target.value } })}
-              >
-                <option value="none">None</option>
-                <option value="fade-in">Fade in</option>
-                <option value="slide-up">Slide up</option>
-                <option value="zoom-in">Zoom in</option>
-              </select>
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Photos animate in one-by-one as guests scroll down to the gallery.
-            </p>
-          </div>
-        </Section>}
 
         {/* Hero animation */}
         {inTab("animation") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_hero_animation", { defaultValue: "Hero Animation" })}>
@@ -1053,6 +1034,56 @@ export default function WebsiteEditor() {
                 {t("website_editor.slideshow_hint", { defaultValue: "Slideshow uses your hero image and all gallery photos. Add more photos in the Gallery section below to extend the rotation." })}
               </p>
             )}
+          </div>
+        </Section>}
+
+        {/* Gallery animation */}
+        {inTab("animation") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_gallery_animation", { defaultValue: "Gallery Animation" })}>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.style_label", { defaultValue: "Style" })}</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={record.customText._galleryAnimation ?? "grid"}
+                onChange={(e) => update({ customText: { ...record.customText, _galleryAnimation: e.target.value } })}
+              >
+                <option value="grid">{t("website_editor.gallery_anim_grid", { defaultValue: "Grid (static)" })}</option>
+                <option value="slideshow">{t("website_editor.gallery_anim_slideshow", { defaultValue: "Slideshow (fade through photos)" })}</option>
+                <option value="marquee">{t("website_editor.gallery_anim_marquee", { defaultValue: "Marquee (continuous scroll)" })}</option>
+              </select>
+            </div>
+            {(record.customText._galleryAnimation === "slideshow" || record.customText._galleryAnimation === "marquee") && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.speed_label", { defaultValue: "Speed" })}</Label>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={record.customText._galleryAnimationSpeed ?? "medium"}
+                  onChange={(e) => update({ customText: { ...record.customText, _galleryAnimationSpeed: e.target.value } })}
+                >
+                  <option value="slow">{t("website_editor.speed_slow", { defaultValue: "Slow" })}</option>
+                  <option value="medium">{t("website_editor.speed_medium", { defaultValue: "Medium" })}</option>
+                  <option value="fast">{t("website_editor.speed_fast", { defaultValue: "Fast" })}</option>
+                </select>
+              </div>
+            )}
+            {(!record.customText._galleryAnimation || record.customText._galleryAnimation === "grid") && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Entrance animation</Label>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={record.customText._galleryEntrance ?? "none"}
+                  onChange={(e) => update({ customText: { ...record.customText, _galleryEntrance: e.target.value } })}
+                >
+                  <option value="none">None</option>
+                  <option value="fade-in">Fade in</option>
+                  <option value="slide-up">Slide up</option>
+                  <option value="zoom-in">Zoom in</option>
+                </select>
+              </div>
+            )}
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {t("website_editor.gallery_anim_hint", { defaultValue: "Choose how gallery photos display. Guests can still click any photo to open the full lightbox." })}
+            </p>
           </div>
         </Section>}
 

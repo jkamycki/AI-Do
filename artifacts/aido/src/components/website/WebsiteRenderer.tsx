@@ -119,18 +119,27 @@ function tsp(ctx: EditCtx, key: string, _deletable = false) {
 }
 
 // Style-only variant for EditableTexts already wrapped in a DraggableRow.
-// The row owns position for the whole group; if we also wired position onto
-// the inner text the user would drag just the text and leave the row's icon
-// behind. We *do* expose onDelete so the inline toolbar's trash button shows
-// up consistently — clicking it deletes the wrapping row (icon + text) via
-// `rowKey`, matching the drag-to-trash behavior the row already supports.
-function tspStyle(ctx: EditCtx, key: string, rowKey?: string) {
+// The row owns position for the whole group; wiring position onto the inner
+// text would let users drag just the text and leave the row icon behind.
+// No onDelete: hero row elements are hidden/shown only via sidebar toggles.
+function tspStyle(ctx: EditCtx, key: string) {
   if (!ctx.editable) return {};
-  const delKey = rowKey ?? key;
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
-    onDelete: ctx.onDeleteElement ? () => ctx.onDeleteElement!(delKey) : undefined,
+  };
+}
+
+// Position + style but no delete — for hero EditableText elements whose
+// visibility is controlled exclusively through the sidebar Hero Elements
+// toggles rather than the inline toolbar trash button.
+function tspNoDelete(ctx: EditCtx, key: string) {
+  if (!ctx.editable) return {};
+  return {
+    textStyle: ctx.textStyles?.[key] ?? {},
+    onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
+    position: ctx.textPositions?.[key],
+    onPositionChange: ctx.onPositionChange ? (p: TextPosition) => ctx.onPositionChange!(key, p) : undefined,
   };
 }
 
@@ -893,7 +902,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           onCommit={(v) => ctx.onTextChange("_heroTagline", v)}
           className="uppercase tracking-[0.3em] text-xs sm:text-sm mb-6 opacity-80"
           style={{ color: data.heroImage ? "#fff" : data.colorPalette.primary, fontFamily: elementFont(data, "_heroTagline") ? bodyFontStack(elementFont(data, "_heroTagline")!) : undefined }}
-          {...tsp(ctx, "_heroTagline")}
+          {...tspNoDelete(ctx, "_heroTagline")}
         />
         <EditableText
           as="div"
@@ -903,14 +912,13 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           onCommit={(v) => ctx.onTextChange("_coupleName", v)}
           className="text-5xl sm:text-7xl md:text-8xl mb-6 leading-tight"
           style={{ fontFamily: fontStack(headingFont(data)), color: data.heroImage ? "#fff" : data.colorPalette.text }}
-          {...tsp(ctx, "_coupleName")}
+          {...tspNoDelete(ctx, "_coupleName")}
         />
         {data.customText._heroDateRow !== EDITABLE_HIDDEN_MARKER && (
           <DraggableRow
             editable={ctx.editable}
             position={ctx.textPositions?.["_heroDateRow"]}
             onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_heroDateRow", p) : undefined}
-            onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_heroDateRow") : undefined}
             className="flex items-center justify-center gap-4 text-base sm:text-lg opacity-90"
           >
             {data.customText._heroDateIcon !== EDITABLE_HIDDEN_MARKER && (
@@ -922,7 +930,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={dateStr}
               onCommit={(v) => ctx.onTextChange("_heroDate", v)}
               style={{ color: "inherit" }}
-              {...tspStyle(ctx, "_heroDate", "_heroDateRow")}
+              {...tspStyle(ctx, "_heroDate")}
             />
           </DraggableRow>
         )}
@@ -931,7 +939,6 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             editable={ctx.editable}
             position={ctx.textPositions?.["_heroVenueRow"]}
             onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_heroVenueRow", p) : undefined}
-            onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_heroVenueRow") : undefined}
             className="flex items-center justify-center gap-2 mt-3 text-sm sm:text-base opacity-80"
           >
             {data.customText._heroVenueIcon !== EDITABLE_HIDDEN_MARKER && (
@@ -943,7 +950,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={[data.couple.venue, data.couple.venueCity, data.couple.venueState].filter(Boolean).join(", ")}
               onCommit={(v) => ctx.onTextChange("_heroVenue", v)}
               style={{ color: "inherit" }}
-              {...tspStyle(ctx, "_heroVenue", "_heroVenueRow")}
+              {...tspStyle(ctx, "_heroVenue")}
             />
           </DraggableRow>
         )}
@@ -952,7 +959,6 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             editable={ctx.editable}
             position={ctx.textPositions?.["_countdown"]}
             onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_countdown", p) : undefined}
-            onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_countdown") : undefined}
           >
             <CountdownTimer
               dateStr={data.couple.weddingDate}
@@ -965,7 +971,6 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             editable={ctx.editable}
             position={ctx.textPositions?.["_addToCalendarRow"]}
             onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_addToCalendarRow", p) : undefined}
-            onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_addToCalendarRow") : undefined}
           >
             <AddToCalendarButton data={data} />
           </DraggableRow>
@@ -1455,13 +1460,28 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const images = (data.galleryImages ?? []).slice().sort((a, b) => a.order - b.order);
   const photoFilter = photoFilterCss(data.customText._photoFilter);
-  const anim = (data.customText._galleryAnimation || "none") as "none" | "fade-in" | "slide-up" | "zoom-in";
+  const animation = data.customText._galleryAnimation ?? "grid";
+  const speed = data.customText._galleryAnimationSpeed ?? "medium";
+  const slideshowIntervalMs = speed === "slow" ? 6000 : speed === "fast" ? 2500 : 4000;
+  const marqueeDuration = speed === "slow" ? "60s" : speed === "fast" ? "20s" : "40s";
+  const entrance = (data.customText._galleryEntrance || "none") as "none" | "fade-in" | "slide-up" | "zoom-in";
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // Slideshow auto-advance. Hooks must run unconditionally — bail out inside.
+  const [activeIdx, setActiveIdx] = useState(0);
+  useEffect(() => {
+    if (animation !== "slideshow" || images.length < 2) return;
+    const id = setInterval(() => setActiveIdx((i) => (i + 1) % images.length), slideshowIntervalMs);
+    return () => clearInterval(id);
+  }, [animation, images.length, slideshowIntervalMs]);
+  useEffect(() => {
+    if (activeIdx >= images.length) setActiveIdx(0);
+  }, [images.length, activeIdx]);
+
   const [visibleItems, setVisibleItems] = useState<Set<number>>(new Set());
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-
   useEffect(() => {
-    if (anim === "none") { setVisibleItems(new Set()); return; }
+    if (entrance === "none") { setVisibleItems(new Set()); return; }
     const observers = itemRefs.current.map((el, i) => {
       if (!el) return null;
       const obs = new IntersectionObserver(
@@ -1472,9 +1492,22 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
       return obs;
     });
     return () => { observers.forEach((obs) => obs?.disconnect()); };
-  }, [anim, images.length]);
+  }, [entrance, images.length]);
 
   if (images.length === 0 && !ctx.editable) return null;
+
+  const renderHoverIcon = () => (
+    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+      <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
+    </div>
+  );
+  const renderCaption = (caption?: string) =>
+    caption ? (
+      <p className="text-sm text-center px-1" style={{ color: data.colorPalette.text, opacity: 0.75 }}>
+        {caption}
+      </p>
+    ) : null;
+
   return (
     <SectionShell id="gallery" titleKey="gallery_title" defaultTitle="Gallery" icon={<ImageIcon className="h-4 w-4" />} data={data} ctx={ctx}>
       {lightboxIndex !== null && (
@@ -1494,40 +1527,116 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         style={{ fontFamily: elementFontStack(data, "gallery_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
         {...tsp(ctx, "gallery_subtitle")}
       />
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" data-gallery-anim={anim !== "none" ? anim : undefined}>
-        {images.map((img, i) => (
+      {animation === "marquee" && images.length > 0 ? (
+        <div className="relative overflow-hidden rounded-lg" style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}>
           <div
-            key={i}
-            ref={(el) => { itemRefs.current[i] = el; }}
-            className={`wsg-item flex flex-col gap-1.5${visibleItems.has(i) ? " wsg-visible" : ""}`}
-            style={anim !== "none" ? { ["--stagger" as string]: `${i * 80}ms` } : undefined}
+            className="flex"
+            style={{
+              width: "max-content",
+              animation: `wsa-marquee ${marqueeDuration} linear infinite`,
+              willChange: "transform",
+            }}
           >
-            <button
-              type="button"
-              onClick={() => setLightboxIndex(i)}
-              className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-              style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
-              aria-label={img.caption ?? `Photo ${i + 1}`}
-            >
-              <img
-                src={imageUrl(img.url)}
-                alt={img.caption ?? ""}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                loading="lazy"
-                style={{ filter: photoFilter }}
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
+            {[...images, ...images].map((img, i) => (
+              <div key={`${img.url}-${i}`} className="flex flex-col gap-1.5 mx-2">
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(i % images.length)}
+                  className="relative h-64 sm:h-80 w-64 sm:w-80 flex-shrink-0 overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2"
+                  aria-label={img.caption ?? `Photo ${(i % images.length) + 1}`}
+                >
+                  <img
+                    src={imageUrl(img.url)}
+                    alt={img.caption ?? ""}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    style={{ filter: photoFilter }}
+                  />
+                  {renderHoverIcon()}
+                </button>
+                {renderCaption(img.caption)}
               </div>
-            </button>
-            {img.caption && (
-              <p className="text-sm text-center px-1" style={{ color: data.colorPalette.text, opacity: 0.75 }}>
-                {img.caption}
-              </p>
+            ))}
+          </div>
+        </div>
+      ) : animation === "slideshow" && images.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <div className="relative w-full max-w-3xl mx-auto aspect-[4/3] overflow-hidden rounded-lg" style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}>
+            {images.map((img, i) => (
+              <button
+                key={`${img.url}-${i}`}
+                type="button"
+                onClick={() => setLightboxIndex(i)}
+                className="absolute inset-0 group focus:outline-none focus-visible:ring-2"
+                style={{
+                  opacity: i === activeIdx ? 1 : 0,
+                  transition: "opacity 1s ease-in-out",
+                  pointerEvents: i === activeIdx ? "auto" : "none",
+                }}
+                aria-label={img.caption ?? `Photo ${i + 1}`}
+                aria-hidden={i !== activeIdx}
+                tabIndex={i === activeIdx ? 0 : -1}
+              >
+                <img
+                  src={imageUrl(img.url)}
+                  alt={img.caption ?? ""}
+                  className="w-full h-full object-cover"
+                  loading={i === 0 ? "eager" : "lazy"}
+                  style={{ filter: photoFilter }}
+                />
+                {renderHoverIcon()}
+              </button>
+            ))}
+            {images.length > 1 && (
+              <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setActiveIdx(i); }}
+                    className="h-2 w-2 rounded-full transition-all"
+                    style={{
+                      background: i === activeIdx ? data.colorPalette.primary : "rgba(255,255,255,0.6)",
+                      transform: i === activeIdx ? "scale(1.3)" : "scale(1)",
+                    }}
+                    aria-label={`Go to photo ${i + 1}`}
+                  />
+                ))}
+              </div>
             )}
           </div>
-        ))}
-      </div>
+          {renderCaption(images[activeIdx]?.caption)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" data-gallery-anim={entrance !== "none" ? entrance : undefined}>
+          {images.map((img, i) => (
+            <div
+              key={i}
+              ref={(el) => { itemRefs.current[i] = el; }}
+              className={`wsg-item flex flex-col gap-1.5${visibleItems.has(i) ? " wsg-visible" : ""}`}
+              style={entrance !== "none" ? { ["--stagger" as string]: `${i * 80}ms` } : undefined}
+            >
+              <button
+                type="button"
+                onClick={() => setLightboxIndex(i)}
+                className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
+                aria-label={img.caption ?? `Photo ${i + 1}`}
+              >
+                <img
+                  src={imageUrl(img.url)}
+                  alt={img.caption ?? ""}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                  style={{ filter: photoFilter }}
+                />
+                {renderHoverIcon()}
+              </button>
+              {renderCaption(img.caption)}
+            </div>
+          ))}
+        </div>
+      )}
     </SectionShell>
   );
 }
