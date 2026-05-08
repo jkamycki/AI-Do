@@ -21,6 +21,7 @@ import { flushPendingEditableCommits, subscribeEditableDrag, EDITABLE_HIDDEN_MAR
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
   slug: string;
+  heroImages: Array<{ url: string; order: number }>;
   passwordEnabled: boolean;
   published: boolean;
   publishedAt: string | null;
@@ -316,6 +317,7 @@ export default function WebsiteEditor() {
       textStyles: record.textStyles ?? {},
       textPositions: record.textPositions ?? {},
       galleryImages: record.galleryImages,
+      heroImages: record.heroImages ?? [],
       heroImage: record.heroImage,
       portalParty: record.portalParty,
       couple: previewExtra?.couple ?? {
@@ -350,6 +352,7 @@ export default function WebsiteEditor() {
           textStyles: record.textStyles ?? {},
           textPositions: record.textPositions ?? {},
           galleryImages: record.galleryImages,
+          heroImages: record.heroImages ?? [],
           heroImage: record.heroImage,
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
         }),
@@ -403,6 +406,7 @@ export default function WebsiteEditor() {
           textStyles: record.textStyles ?? {},
           textPositions: record.textPositions ?? {},
           galleryImages: record.galleryImages,
+          heroImages: record.heroImages ?? [],
           heroImage: record.heroImage,
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
         }),
@@ -493,6 +497,24 @@ export default function WebsiteEditor() {
     if (!record) return;
     const next = record.galleryImages.filter((_, i) => i !== index).map((img, i) => ({ ...img, order: i }));
     update({ galleryImages: next });
+  };
+
+  const handleHeroImagesUpload = async (files: FileList) => {
+    if (!record) return;
+    const newImages = [...(record.heroImages ?? [])];
+    for (const file of Array.from(files).slice(0, 10)) {
+      const result = await upload.uploadFile(file);
+      if (result) {
+        newImages.push({ url: result.objectPath, order: newImages.length });
+      }
+    }
+    update({ heroImages: newImages });
+  };
+
+  const removeHeroImage = (index: number) => {
+    if (!record) return;
+    const next = (record.heroImages ?? []).filter((_, i) => i !== index).map((img, i) => ({ ...img, order: i }));
+    update({ heroImages: next });
   };
 
   const applyTheme = (themeId: string) => {
@@ -1029,9 +1051,9 @@ export default function WebsiteEditor() {
                 <option value="fast">{t("website_editor.speed_fast", { defaultValue: "Fast" })}</option>
               </select>
             </div>
-            {(record.customText._heroAnimation === "slideshow") && (
+            {(record.customText._heroAnimation === "slideshow" || record.customText._heroAnimation === "marquee") && (
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                {t("website_editor.slideshow_hint", { defaultValue: "Slideshow uses your hero image and all gallery photos. Add more photos in the Gallery section below to extend the rotation." })}
+                Uses your hero image and any photos added in the <strong>Home Photos</strong> section in the Design tab. Gallery photos stay in the gallery only.
               </p>
             )}
           </div>
@@ -1154,6 +1176,44 @@ export default function WebsiteEditor() {
               {upload.isUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <><ImageIcon className="h-4 w-4" /> Upload hero image</>}
             </label>
           )}
+        </Section>}
+
+        {/* Home Photos — additional photos for the hero slideshow/marquee, separate from the gallery section */}
+        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Home Photos">
+          <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
+            Extra photos shown on the home page (slideshow, marquee). These are separate from the Gallery section photos.
+          </p>
+          <div className="grid grid-cols-3 gap-2 mb-3 items-start">
+            {(record.heroImages ?? []).map((img, i) => (
+              <div key={i} className="relative aspect-square rounded-md overflow-hidden">
+                <img
+                  src={img.url.startsWith("/objects/") ? `/api/storage${img.url}` : img.url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={() => removeHeroImage(i)}
+                  className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <label className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-md border-2 border-dashed border-border cursor-pointer hover:border-primary/50 transition-colors text-sm text-muted-foreground">
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) handleHeroImagesUpload(e.target.files);
+                e.target.value = "";
+              }}
+              disabled={upload.isUploading}
+            />
+            {upload.isUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <>Add home photos</>}
+          </label>
         </Section>}
 
         {/* Gallery */}

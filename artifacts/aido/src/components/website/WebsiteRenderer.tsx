@@ -61,6 +61,7 @@ export interface WebsiteRendererPayload {
   // Wedding party members synced from the portal (takes precedence over customText._weddingPartyMembers)
   portalParty?: Array<{ id: number; name: string; role: string; side: string; photoUrl: string | null; sortOrder: number }>;
   galleryImages: Array<{ url: string; caption?: string; order: number }>;
+  heroImages?: Array<{ url: string; order: number }>;
   heroImage: string | null;
   couple: {
     partner1Name: string;
@@ -794,7 +795,7 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
 
   const heroAndGallery: string[] = [
     ...(data.heroImage ? [data.heroImage] : []),
-    ...((data.galleryImages ?? []).slice().sort((a, b) => a.order - b.order).map((g) => g.url)),
+    ...((data.heroImages ?? []).slice().sort((a, b) => a.order - b.order).map((g) => g.url)),
   ];
 
   // ---- Marquee: continuously scrolls a strip of photos left-to-right ----
