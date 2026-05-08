@@ -95,6 +95,7 @@ export default function WebsiteEditor() {
   const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings">("design");
   const inTab = (t: typeof activeTab) => activeTab === t;
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const [urlModalOpen, setUrlModalOpen] = useState(false);
 
   useEffect(() => {
     if (!ctxMenu) return;
@@ -897,6 +898,23 @@ export default function WebsiteEditor() {
           })()}
         </Section>}
 
+        {/* Custom URL CTA — gold link that opens a popup with the slug
+            editor. Sits in the Pages sidebar so it's visible alongside
+            FAQ Questions / Hero Elements. */}
+        {inTab("pages") && (
+          <button
+            type="button"
+            onClick={() => setUrlModalOpen(true)}
+            className="w-full text-center px-4 py-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 transition-colors"
+            style={{ color: "#D4A017" }}
+          >
+            <Link2 className="h-3.5 w-3.5 inline mr-1.5" />
+            <span className="font-semibold text-sm underline underline-offset-4">
+              {t("website_editor.custom_url_cta", { defaultValue: "Click here to get your custom website URL" })}
+            </span>
+          </button>
+        )}
+
         {/* Inline-edit hint */}
         {inTab("design") && <Section icon={<FileText className="h-4 w-4" />} title={t("website_editor.section_edit_text", { defaultValue: "Edit Text" })}>
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -1302,6 +1320,47 @@ export default function WebsiteEditor() {
             <Plus className="h-3.5 w-3.5" />
             Insert text box
           </button>
+        </div>
+      )}
+
+      {/* Custom URL modal — surfaces the existing SlugEditor in a focused
+          popup so users can find the URL setting from the Pages tab, not
+          just buried in Settings. */}
+      {urlModalOpen && (
+        <div
+          className="fixed inset-0 z-[10001] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={() => setUrlModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-border bg-background p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-semibold flex items-center gap-2" style={{ color: "#D4A017" }}>
+                <Link2 className="h-4 w-4" />
+                {t("website_editor.custom_url_modal_title", { defaultValue: "Your custom website URL" })}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setUrlModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              {t("website_editor.custom_url_modal_help", { defaultValue: "Pick a URL guests will type in their browser. Stick to letters, numbers, and dashes." })}
+            </p>
+            <SlugEditor
+              slug={record.slug}
+              published={record.published}
+              onSaved={(newSlug, lastUpdated) => {
+                setRecord((prev) => prev ? { ...prev, slug: newSlug, lastUpdated } : prev);
+              }}
+            />
+          </div>
         </div>
       )}
 
