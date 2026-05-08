@@ -581,6 +581,10 @@ export default function SeatingChartPage() {
       queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
       if (saved && typeof saved.id === "number") {
         setActiveChartId(saved.id);
+        // Generate auto-saves a new chart, so apply that fresh chart's
+        // assignments to the guest list right away — same behavior as
+        // explicitly clicking Load.
+        applyChartMutation.mutate(saved.id);
       }
       try { localStorage.removeItem(STORAGE_KEY); } catch {}
     },
@@ -601,10 +605,15 @@ export default function SeatingChartPage() {
       if (!r.ok) throw new Error("Update failed");
       return r.json() as Promise<SavedChart>;
     },
-    onSuccess: () => {
+    onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
       queryClient.invalidateQueries({ queryKey: ["next-steps", "seating-charts"] });
       queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
+      // The chart being updated is by definition the currently loaded one,
+      // so sync the guest list to its new tables.
+      if (saved && typeof saved.id === "number") {
+        applyChartMutation.mutate(saved.id);
+      }
     },
   });
 
