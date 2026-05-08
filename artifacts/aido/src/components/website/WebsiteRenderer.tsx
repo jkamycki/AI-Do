@@ -119,14 +119,18 @@ function tsp(ctx: EditCtx, key: string, _deletable = false) {
 }
 
 // Style-only variant for EditableTexts already wrapped in a DraggableRow.
-// The row owns position + delete for the whole group; if we also wired those
-// onto the inner text the user would drag just the text and leave the row's
-// icon behind.
-function tspStyle(ctx: EditCtx, key: string) {
+// The row owns position for the whole group; if we also wired position onto
+// the inner text the user would drag just the text and leave the row's icon
+// behind. We *do* expose onDelete so the inline toolbar's trash button shows
+// up consistently — clicking it deletes the wrapping row (icon + text) via
+// `rowKey`, matching the drag-to-trash behavior the row already supports.
+function tspStyle(ctx: EditCtx, key: string, rowKey?: string) {
   if (!ctx.editable) return {};
+  const delKey = rowKey ?? key;
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
+    onDelete: ctx.onDeleteElement ? () => ctx.onDeleteElement!(delKey) : undefined,
   };
 }
 
@@ -918,7 +922,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={dateStr}
               onCommit={(v) => ctx.onTextChange("_heroDate", v)}
               style={{ color: "inherit" }}
-              {...tspStyle(ctx, "_heroDate")}
+              {...tspStyle(ctx, "_heroDate", "_heroDateRow")}
             />
           </DraggableRow>
         )}
@@ -939,7 +943,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={[data.couple.venue, data.couple.venueCity, data.couple.venueState].filter(Boolean).join(", ")}
               onCommit={(v) => ctx.onTextChange("_heroVenue", v)}
               style={{ color: "inherit" }}
-              {...tspStyle(ctx, "_heroVenue")}
+              {...tspStyle(ctx, "_heroVenue", "_heroVenueRow")}
             />
           </DraggableRow>
         )}
