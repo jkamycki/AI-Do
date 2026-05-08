@@ -1478,30 +1478,31 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {images.map((img, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => setLightboxIndex(i)}
-            className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-            style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
-            aria-label={img.caption ?? `Photo ${i + 1}`}
-          >
-            <img
-              src={imageUrl(img.url)}
-              alt={img.caption ?? ""}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              loading="lazy"
-              style={{ filter: photoFilter }}
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-              <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
-            </div>
-            {img.caption && (
-              <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/60 to-transparent text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity text-left">
-                {img.caption}
+          <div key={i} className="flex flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={() => setLightboxIndex(i)}
+              className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+              style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
+              aria-label={img.caption ?? `Photo ${i + 1}`}
+            >
+              <img
+                src={imageUrl(img.url)}
+                alt={img.caption ?? ""}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                loading="lazy"
+                style={{ filter: photoFilter }}
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
               </div>
+            </button>
+            {img.caption && (
+              <p className="text-sm text-center px-1" style={{ color: data.colorPalette.text, opacity: 0.75 }}>
+                {img.caption}
+              </p>
             )}
-          </button>
+          </div>
         ))}
       </div>
     </SectionShell>
