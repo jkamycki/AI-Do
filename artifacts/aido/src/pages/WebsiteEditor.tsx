@@ -891,7 +891,6 @@ export default function WebsiteEditor() {
           <div className="space-y-2.5">
             {[
               { key: "_coupleName", label: t("website_editor.hero_couple_names", { defaultValue: "Couple Names" }) },
-              { key: "_heroTagline", label: t("website_editor.hero_tagline", { defaultValue: "Tagline" }) },
               { key: "_heroDateRow", label: t("website_editor.hero_date_row", { defaultValue: "Wedding Date" }) },
               { key: "_heroDateIcon", label: t("website_editor.hero_date_icon", { defaultValue: "Date Calendar Icon" }) },
               { key: "_heroVenueRow", label: t("website_editor.hero_venue_row", { defaultValue: "Venue Address" }) },
@@ -918,6 +917,30 @@ export default function WebsiteEditor() {
                       }
                       return { customText: ct, textPositions: tp };
                     })}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </Section>}
+
+        {/* Schedule event toggles */}
+        {inTab("pages") && record.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
+          <div className="space-y-2.5">
+            {[
+              { key: "_scheduleCeremonyHidden",  label: "Ceremony" },
+              { key: "_scheduleCocktailHidden",  label: "Cocktail Hour" },
+              { key: "_scheduleReceptionHidden", label: "Reception" },
+            ].map((row) => {
+              const isHidden = record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
+              return (
+                <div key={row.key} className="flex items-center justify-between gap-3 py-1.5">
+                  <Label className="text-sm cursor-pointer">{row.label}</Label>
+                  <Switch
+                    checked={!isHidden}
+                    onCheckedChange={(checked) =>
+                      update({ customText: { ...record.customText, [row.key]: checked ? "" : EDITABLE_HIDDEN_MARKER } })
+                    }
                   />
                 </div>
               );
@@ -1108,6 +1131,7 @@ export default function WebsiteEditor() {
                   <option value="fade-in">Fade in</option>
                   <option value="slide-up">Slide up</option>
                   <option value="zoom-in">Zoom in</option>
+                  <option value="puzzle">Puzzle build</option>
                 </select>
               </div>
             )}
