@@ -1471,12 +1471,14 @@ export default function WebsiteEditor() {
                   Open live site ↗
                 </button>
               )}
+              <div className="w-px h-4 bg-border" />
               <button
-                className="text-xs text-muted-foreground hover:text-foreground"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-foreground hover:text-primary transition-colors"
                 onClick={() => setPreviewOpen(false)}
                 title={t("website_editor.close_preview", { defaultValue: "Close preview" })}
               >
                 <X className="h-3.5 w-3.5" />
+                {t("website_editor.back_to_editor", { defaultValue: "Back to editor" })}
               </button>
             </div>
           </div>
