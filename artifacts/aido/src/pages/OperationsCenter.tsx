@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,33 @@ export default function OperationsCenterPage() {
       return r.json();
     },
   });
+
+  const { data: messagesData } = useQuery<{ contacts: { isRead: boolean; isResolved: boolean }[]; unreadCount: number }>({
+    queryKey: ["admin-messages"],
+    queryFn: async () => {
+      const r = await authedFetch("/api/help/messages");
+      if (!r.ok) throw new Error("Failed to fetch messages");
+      return r.json();
+    },
+    refetchInterval: 30000,
+  });
+  const unreadMessageCount = messagesData?.unreadCount ?? 0;
+
+  const lastSeenUnread = useRef<number | null>(null);
+  useEffect(() => {
+    if (lastSeenUnread.current === null) {
+      lastSeenUnread.current = unreadMessageCount;
+      return;
+    }
+    if (unreadMessageCount > lastSeenUnread.current) {
+      const delta = unreadMessageCount - lastSeenUnread.current;
+      toast({
+        title: delta === 1 ? "New message" : `${delta} new messages`,
+        description: "Operations Center → Messages & Feedback",
+      });
+    }
+    lastSeenUnread.current = unreadMessageCount;
+  }, [unreadMessageCount, toast]);
 
   const followUpMutation = useMutation({
     mutationFn: async (ticketId: number) => {
@@ -178,6 +205,11 @@ export default function OperationsCenterPage() {
         >
           <Inbox className="h-4 w-4" />
           Messages & Feedback
+          {unreadMessageCount > 0 && (
+            <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-600 text-white text-xs font-bold">
+              {unreadMessageCount}
+            </span>
+          )}
         </button>
       </div>
 
