@@ -872,7 +872,9 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_heroDateRow") : undefined}
             className="flex items-center justify-center gap-4 text-base sm:text-lg opacity-90"
           >
-            <Calendar className="h-5 w-5 flex-shrink-0" style={{ pointerEvents: "none" }} />
+            {data.customText._heroDateIcon !== EDITABLE_HIDDEN_MARKER && (
+              <Calendar className="h-5 w-5 flex-shrink-0" style={{ pointerEvents: "none" }} />
+            )}
             <EditableText
               editable={ctx.editable}
               value={data.customText._heroDate ?? ""}
@@ -891,7 +893,9 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_heroVenueRow") : undefined}
             className="flex items-center justify-center gap-2 mt-3 text-sm sm:text-base opacity-80"
           >
-            <MapPin className="h-4 w-4 flex-shrink-0" style={{ pointerEvents: "none" }} />
+            {data.customText._heroVenueIcon !== EDITABLE_HIDDEN_MARKER && (
+              <MapPin className="h-4 w-4 flex-shrink-0" style={{ pointerEvents: "none" }} />
+            )}
             <EditableText
               editable={ctx.editable}
               value={data.customText._heroVenue ?? ""}
@@ -915,7 +919,16 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             />
           </DraggableRow>
         )}
-        <AddToCalendarButton data={data} />
+        {data.customText._addToCalendarRow !== EDITABLE_HIDDEN_MARKER && (
+          <DraggableRow
+            editable={ctx.editable}
+            position={ctx.textPositions?.["_addToCalendarRow"]}
+            onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_addToCalendarRow", p) : undefined}
+            onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_addToCalendarRow") : undefined}
+          >
+            <AddToCalendarButton data={data} />
+          </DraggableRow>
+        )}
       </div>
 
       {/* Custom floating text boxes — absolutely positioned so adding a new
