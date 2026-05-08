@@ -1124,22 +1124,26 @@ export default function WebsiteEditor() {
                 </select>
               </div>
             )}
-            {(!record.customText._galleryAnimation || record.customText._galleryAnimation === "grid") && (
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1 block">Entrance animation</Label>
-                <select
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  value={record.customText._galleryEntrance ?? "none"}
-                  onChange={(e) => update({ customText: { ...record.customText, _galleryEntrance: e.target.value } })}
-                >
-                  <option value="none">None</option>
-                  <option value="fade-in">Fade in</option>
-                  <option value="slide-up">Slide up</option>
-                  <option value="zoom-in">Zoom in</option>
-                  <option value="puzzle">Puzzle build</option>
-                </select>
-              </div>
-            )}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Entrance animation</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={record.customText._galleryEntrance ?? "none"}
+                onChange={(e) => update({ customText: { ...record.customText, _galleryEntrance: e.target.value } })}
+              >
+                <option value="none">None</option>
+                <option value="fade-in">Fade in</option>
+                <option value="slide-up">Slide up</option>
+                <option value="zoom-in">Zoom in</option>
+                <option value="puzzle">Puzzle build</option>
+              </select>
+              {record.customText._galleryEntrance && record.customText._galleryEntrance !== "none"
+                && record.customText._galleryAnimation && record.customText._galleryAnimation !== "grid" && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed mt-1">
+                  Entrance animations only run when Style is set to Grid.
+                </p>
+              )}
+            </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               {t("website_editor.gallery_anim_hint", { defaultValue: "Choose how gallery photos display. Guests can still click any photo to open the full lightbox." })}
             </p>
