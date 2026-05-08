@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ interface Message {
 }
 
 export function AISupport() {
+  const { t } = useTranslation();
   const { getToken, isSignedIn } = useAuth();
   const { user } = useUser();
   const { toast } = useToast();
@@ -22,8 +24,10 @@ export function AISupport() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content:
-        "Hi there! 👋 I'm Aria, A.IDO's AI support assistant. I'm here to help with any questions or issues you're experiencing. What can I help you with today?",
+      content: t("ai_support.welcome", {
+        defaultValue:
+          "Hi there! 👋 I'm Aria, A.IDO's AI support assistant. I'm here to help with any questions or issues you're experiencing. What can I help you with today?",
+      }),
     },
   ]);
   const [input, setInput] = useState("");
@@ -217,12 +221,12 @@ export function AISupport() {
         <CardContent className="py-12 text-center">
           <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto mb-4" />
           <h2 className="text-2xl font-serif font-bold text-foreground mb-2">
-            Thank You!
+            {t("ai_support.thank-you", { defaultValue: "Thank You!" })}
           </h2>
           <p className="text-muted-foreground mb-6">
-            Your support ticket has been submitted to our operations team. We'll review your issue and get back to you as soon as possible via email.
+            {t("ai_support.ticket-submitted", { defaultValue: "Your support ticket has been submitted to our operations team. We'll review your issue and get back to you as soon as possible via email." })}
           </p>
-          <Button onClick={() => setSubmitted(false)}>Start New Chat</Button>
+          <Button onClick={() => setSubmitted(false)}>{t("ai_support.start-new-chat", { defaultValue: "Start New Chat" })}</Button>
         </CardContent>
       </Card>
     );
@@ -233,7 +237,7 @@ export function AISupport() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            💬 AI Support Assistant
+            {t("ai_support.title", { defaultValue: "💬 AI Support Assistant" })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -279,7 +283,7 @@ export function AISupport() {
             {/* Input */}
             <div className="flex gap-2">
               <Input
-                placeholder="Type your message..."
+                placeholder={t("ai_support.type-message", { defaultValue: "Type your message..." })}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -306,7 +310,7 @@ export function AISupport() {
             {messages.length > 1 && (
               <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-foreground">
-                  Ready to submit this conversation as a support ticket to our team?
+                  {t("ai_support.ready-to-submit", { defaultValue: "Ready to submit this conversation as a support ticket to our team?" })}
                 </p>
                 {!isSignedIn && (
                   <div className="space-y-2">

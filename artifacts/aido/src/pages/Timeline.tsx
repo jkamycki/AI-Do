@@ -273,11 +273,12 @@ function EventFormFields({
   value: Omit<TimelineEvent, "id">;
   onChange: (v: Omit<TimelineEvent, "id">) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Start time</label>
+          <label className="text-xs text-muted-foreground mb-1 block">{t("timeline.start_time", { defaultValue: "Start time" })}</label>
           <Input
             type="time"
             value={value.startTime}
@@ -286,7 +287,7 @@ function EventFormFields({
           />
         </div>
         <div>
-          <label className="text-xs text-muted-foreground mb-1 block">End time</label>
+          <label className="text-xs text-muted-foreground mb-1 block">{t("timeline.end_time", { defaultValue: "End time" })}</label>
           <Input
             type="time"
             value={value.endTime}
@@ -296,7 +297,7 @@ function EventFormFields({
         </div>
       </div>
       <div>
-        <label className="text-xs text-muted-foreground mb-1 block">Category</label>
+        <label className="text-xs text-muted-foreground mb-1 block">{t("timeline.category", { defaultValue: "Category" })}</label>
         <Select value={value.category} onValueChange={v => onChange({ ...value, category: v as Category })}>
           <SelectTrigger>
             <SelectValue />
@@ -306,7 +307,7 @@ function EventFormFields({
               <SelectItem key={c} value={c}>
                 <span className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${CATEGORY_CONFIG[c].dotColor}`} />
-                  {CATEGORY_CONFIG[c].label}
+                  {t(`timeline.cat_${c}`, { defaultValue: CATEGORY_CONFIG[c].label })}
                 </span>
               </SelectItem>
             ))}
@@ -314,37 +315,37 @@ function EventFormFields({
         </Select>
       </div>
       <div>
-        <label className="text-xs text-muted-foreground mb-1 block">Title *</label>
+        <label className="text-xs text-muted-foreground mb-1 block">{t("timeline.title_required", { defaultValue: "Title *" })}</label>
         <Input
           value={value.title}
           onChange={e => onChange({ ...value, title: e.target.value })}
-          placeholder="e.g. First Dance"
+          placeholder={t("timeline.title_placeholder", { defaultValue: "e.g. First Dance" })}
           className="font-medium"
         />
       </div>
       <div>
-        <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+        <label className="text-xs text-muted-foreground mb-1 block">{t("timeline.description", { defaultValue: "Description" })}</label>
         <Textarea
           value={value.description}
           onChange={e => onChange({ ...value, description: e.target.value })}
-          placeholder="What happens during this block..."
+          placeholder={t("timeline.description_placeholder", { defaultValue: "What happens during this block..." })}
           className="text-sm resize-none min-h-[72px]"
         />
       </div>
       <div>
-        <label className="text-xs text-muted-foreground mb-1 block">Location</label>
+        <label className="text-xs text-muted-foreground mb-1 block">{t("timeline.location", { defaultValue: "Location" })}</label>
         <Input
           value={value.location}
           onChange={e => onChange({ ...value, location: e.target.value })}
-          placeholder="e.g. Main Ballroom"
+          placeholder={t("timeline.location_placeholder", { defaultValue: "e.g. Main Ballroom" })}
         />
       </div>
       <div>
-        <label className="text-xs text-muted-foreground mb-1 block">Notes (private)</label>
+        <label className="text-xs text-muted-foreground mb-1 block">{t("timeline.notes_private", { defaultValue: "Notes (private)" })}</label>
         <Input
           value={value.notes}
           onChange={e => onChange({ ...value, notes: e.target.value })}
-          placeholder="Internal notes..."
+          placeholder={t("timeline.notes_placeholder", { defaultValue: "Internal notes..." })}
         />
       </div>
     </div>
@@ -362,6 +363,7 @@ function SortableEventCard({
   onEdit: (e: TimelineEvent) => void;
   onDelete: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: event.id });
   const cfg = CATEGORY_CONFIG[event.category] ?? CATEGORY_CONFIG.other;
   const [expanded, setExpanded] = useState(false);
@@ -376,7 +378,7 @@ function SortableEventCard({
         {...listeners}
         {...attributes}
         className="mt-3 p-1.5 rounded text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted cursor-grab active:cursor-grabbing transition-colors flex-shrink-0 select-none"
-        title="Drag to reorder"
+        title={t("timeline.drag_to_reorder", { defaultValue: "Drag to reorder" })}
         role="button"
         tabIndex={0}
       >
@@ -406,12 +408,12 @@ function SortableEventCard({
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 font-medium flex items-center gap-1 ${cfg.badgeClass}`}>
                   {cfg.icon}
-                  {cfg.label}
+                  {t(`timeline.cat_${event.category}`, { defaultValue: cfg.label })}
                 </Badge>
                 {conflict && (
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-700 flex items-center gap-1">
                     <AlertTriangle className="h-2.5 w-2.5" />
-                    {conflict.type === "overlap" ? "Overlap" : "Tight gap"}
+                    {conflict.type === "overlap" ? t("timeline.conflict_overlap", { defaultValue: "Overlap" }) : t("timeline.conflict_tight_gap", { defaultValue: "Tight gap" })}
                   </Badge>
                 )}
               </div>
@@ -419,14 +421,14 @@ function SortableEventCard({
                 <button
                   onClick={() => onEdit(event)}
                   className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                  title="Edit block"
+                  title={t("timeline.edit_block_title", { defaultValue: "Edit block" })}
                 >
                   <Pencil className="h-3 w-3" />
                 </button>
                 <button
                   onClick={() => onDelete(event.id)}
                   className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                  title="Delete block"
+                  title={t("timeline.delete_block_title", { defaultValue: "Delete block" })}
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
@@ -445,7 +447,7 @@ function SortableEventCard({
                 onClick={() => setExpanded(v => !v)}
                 className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 mt-0.5 transition-colors"
               >
-                {expanded ? <><ChevronUp className="h-3 w-3" /> Less</> : <><ChevronDown className="h-3 w-3" /> More</>}
+                {expanded ? <><ChevronUp className="h-3 w-3" /> {t("timeline.less", { defaultValue: "Less" })}</> : <><ChevronDown className="h-3 w-3" /> {t("timeline.more", { defaultValue: "More" })}</>}
               </button>
             )}
 
@@ -720,7 +722,7 @@ export default function Timeline() {
               {isDownloadingPdf
                 ? <div className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
                 : <FileDown className="h-3.5 w-3.5" />}
-              {isDownloadingPdf ? "Exporting…" : "PDF"}
+              {isDownloadingPdf ? t("timeline.exporting", { defaultValue: "Exporting…" }) : t("timeline.pdf", { defaultValue: "PDF" })}
             </Button>
           )}
           <Button
@@ -792,9 +794,9 @@ export default function Timeline() {
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
               {([
-                { mode: "master", icon: <Crown className="h-3.5 w-3.5" />, label: "Master" },
-                { mode: "guest", icon: <Eye className="h-3.5 w-3.5" />, label: "Guest View" },
-                { mode: "vendor", icon: <Users className="h-3.5 w-3.5" />, label: "Vendor View" },
+                { mode: "master", icon: <Crown className="h-3.5 w-3.5" />, label: t("timeline.view_master", { defaultValue: "Master" }) },
+                { mode: "guest", icon: <Eye className="h-3.5 w-3.5" />, label: t("timeline.view_guest", { defaultValue: "Guest View" }) },
+                { mode: "vendor", icon: <Users className="h-3.5 w-3.5" />, label: t("timeline.view_vendor", { defaultValue: "Vendor View" }) },
               ] as const).map(({ mode, icon, label }) => (
                 <button
                   key={mode}
@@ -814,11 +816,11 @@ export default function Timeline() {
               {conflicts.length > 0 && (
                 <div className="flex items-center gap-1.5 text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20 rounded-lg px-3 py-1.5 border border-orange-200 dark:border-orange-700">
                   <AlertTriangle className="h-3.5 w-3.5" />
-                  <span>{conflicts.length} conflict{conflicts.length > 1 ? "s" : ""} detected</span>
+                  <span>{conflicts.length} {conflicts.length > 1 ? t("timeline.conflicts_detected", { defaultValue: "conflicts detected" }) : t("timeline.conflict_detected", { defaultValue: "conflict detected" })}</span>
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                {visibleEvents.length} block{visibleEvents.length !== 1 ? "s" : ""}
+                {visibleEvents.length} {visibleEvents.length !== 1 ? t("timeline.blocks_label", { defaultValue: "blocks" }) : t("timeline.block_label", { defaultValue: "block" })}
                 {viewMode !== "master" && <span className="text-primary ml-1">({viewMode} view)</span>}
               </p>
             </div>
@@ -842,7 +844,7 @@ export default function Timeline() {
             {viewMode === "master" && (
               <div className="flex justify-center pt-2 pl-24 sm:pl-28">
                 <Button variant="outline" size="sm" onClick={openAdd} className="gap-1.5">
-                  <Plus className="h-3.5 w-3.5" /> Add Block
+                  <Plus className="h-3.5 w-3.5" /> {t("timeline.add_block_btn", { defaultValue: "Add Block" })}
                 </Button>
               </div>
             )}
@@ -853,16 +855,16 @@ export default function Timeline() {
       <Dialog open={!!editingEvent} onOpenChange={open => !open && setEditingEvent(null)}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-serif text-xl text-primary">Edit Block</DialogTitle>
-            <DialogDescription>Update this timeline block's details.</DialogDescription>
+            <DialogTitle className="font-serif text-xl text-primary">{t("timeline.edit_block_dialog_title", { defaultValue: "Edit Block" })}</DialogTitle>
+            <DialogDescription>{t("timeline.edit_block_dialog_desc", { defaultValue: "Update this timeline block's details." })}</DialogDescription>
           </DialogHeader>
           <EventFormFields value={editDraft} onChange={setEditDraft} />
           <div className="flex gap-2 pt-2">
             <Button onClick={submitEdit} disabled={!editDraft.title.trim()} className="flex-1 gap-1.5">
-              <Check className="h-3.5 w-3.5" /> Save Changes
+              <Check className="h-3.5 w-3.5" /> {t("timeline.save_changes_btn", { defaultValue: "Save Changes" })}
             </Button>
             <Button variant="outline" onClick={() => setEditingEvent(null)} className="gap-1.5">
-              <X className="h-3.5 w-3.5" /> Cancel
+              <X className="h-3.5 w-3.5" /> {t("timeline.cancel_btn_dialog", { defaultValue: "Cancel" })}
             </Button>
           </div>
         </DialogContent>
@@ -871,8 +873,8 @@ export default function Timeline() {
       <Dialog open={addingEvent} onOpenChange={open => !open && setAddingEvent(false)}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-serif text-xl text-primary">Add Block</DialogTitle>
-            <DialogDescription>Add a new event to your wedding day timeline.</DialogDescription>
+            <DialogTitle className="font-serif text-xl text-primary">{t("timeline.add_block_dialog_title", { defaultValue: "Add Block" })}</DialogTitle>
+            <DialogDescription>{t("timeline.add_block_dialog_desc", { defaultValue: "Add a new event to your wedding day timeline." })}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-wrap gap-1.5 pb-2">
             {(["ceremony", "reception", "photos", "vendors", "travel"] as Category[]).map(cat => (
@@ -886,17 +888,17 @@ export default function Timeline() {
                 }`}
               >
                 {CATEGORY_CONFIG[cat].icon}
-                {CATEGORY_CONFIG[cat].label}
+                {t(`timeline.cat_${cat}`, { defaultValue: CATEGORY_CONFIG[cat].label })}
               </button>
             ))}
           </div>
           <EventFormFields value={newEventDraft} onChange={setNewEventDraft} />
           <div className="flex gap-2 pt-2">
             <Button onClick={submitAdd} disabled={!newEventDraft.title.trim()} className="flex-1 gap-1.5">
-              <Plus className="h-3.5 w-3.5" /> Add Block
+              <Plus className="h-3.5 w-3.5" /> {t("timeline.add_block_submit", { defaultValue: "Add Block" })}
             </Button>
             <Button variant="outline" onClick={() => setAddingEvent(false)} className="gap-1.5">
-              <X className="h-3.5 w-3.5" /> Cancel
+              <X className="h-3.5 w-3.5" /> {t("timeline.cancel_add", { defaultValue: "Cancel" })}
             </Button>
           </div>
         </DialogContent>
