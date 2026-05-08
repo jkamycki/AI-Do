@@ -25,19 +25,12 @@ function applyBase(input: RequestInfo | URL): RequestInfo | URL {
 }
 
 function getActiveWorkspaceProfileId(): number | null {
-  if (_workspaceProfileId != null) return _workspaceProfileId;
-  try {
-    const stored = localStorage.getItem("aido_active_workspace");
-    if (!stored) return null;
-    const parsed = JSON.parse(stored) as
-      | { userId?: string; workspace?: { profileId?: number; role?: string } }
-      | null;
-    const w = parsed?.workspace;
-    if (!parsed?.userId || !w || w.role === "owner") return null;
-    return typeof w.profileId === "number" ? w.profileId : null;
-  } catch {
-    return null;
-  }
+  // SECURITY: only return what WorkspaceContext has explicitly set via
+  // setAuthFetchWorkspaceProfileId. The previous implementation fell back to
+  // reading localStorage directly, which let a stale cache from a previous
+  // sign-in leak the wrong workspace's profile id into another account's
+  // requests (cross-account data leak on the seating chart's guest import).
+  return _workspaceProfileId;
 }
 
 export function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {

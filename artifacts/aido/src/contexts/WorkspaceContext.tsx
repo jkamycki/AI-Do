@@ -33,9 +33,23 @@ const WorkspaceContext = createContext<WorkspaceContextValue>({
 
 const STORAGE_KEY = "aido_active_workspace";
 
+// One-time migration: previous versions stored the active workspace in
+// localStorage, which persists across sessions and silently rehydrated a
+// shared workspace whenever a user signed back in. We've moved to
+// sessionStorage so each new browser session starts in the user's own
+// workspace by default. Wipe the legacy localStorage key so a stale entry
+// can't be picked up by anything that might still read it.
+try {
+  if (typeof localStorage !== "undefined") {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+} catch {
+  // ignore — best-effort cleanup
+}
+
 function readStored(): StoredWorkspace | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     // Legacy format: bare WorkspaceInfo with no userId binding. Treat as
@@ -79,7 +93,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const stored = readStored();
 
     if (!isSignedIn || !userId) {
-      if (stored) localStorage.removeItem(STORAGE_KEY);
+      if (stored) sessionStorage.removeItem(STORAGE_KEY);
       setActiveWorkspaceState(null);
       syncWorkspaceProfileId(null);
       return;
@@ -87,7 +101,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     if (!stored || stored.userId !== userId) {
       // Cache belongs to someone else — clear it.
-      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(STORAGE_KEY);
       setActiveWorkspaceState(null);
       syncWorkspaceProfileId(null);
       return;
@@ -105,9 +119,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     syncWorkspaceProfileId(w?.role !== "owner" ? (w?.profileId ?? null) : null);
     if (w && userId) {
       const payload: StoredWorkspace = { userId, workspace: w };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(STORAGE_KEY);
     }
   };
 
