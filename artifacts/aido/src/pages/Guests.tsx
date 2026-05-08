@@ -1410,6 +1410,11 @@ export default function Guests() {
                               ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
+                          {g.rsvpMessage && (
+                            <p className="mt-1.5 text-xs italic text-muted-foreground whitespace-pre-wrap break-words max-w-[16rem]" title={g.rsvpMessage}>
+                              “{g.rsvpMessage}”
+                            </p>
+                          )}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <DropdownMenu>
