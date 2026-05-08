@@ -771,6 +771,103 @@ export default function WebsiteEditor() {
           </div>
         </Section>}
 
+        {/* FAQ items — structured Q/A entry, ~easier than typing the whole
+            FAQ block as a single paragraph. Stored as JSON in
+            customText.faq_items_json for backward compat with the legacy
+            single-string customText.faq. */}
+        {inTab("pages") && record.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title={t("website_editor.section_faq_items", { defaultValue: "FAQ Questions" })}>
+          {(() => {
+            type FaqItem = { question: string; answer: string };
+            const QUESTION_MAX = 400;
+            const ANSWER_MAX = 2000;
+            let items: FaqItem[] = [];
+            try {
+              const raw = record.customText.faq_items_json;
+              if (raw) items = JSON.parse(raw) as FaqItem[];
+              if (!Array.isArray(items)) items = [];
+            } catch { items = []; }
+
+            const saveItems = (next: FaqItem[]) => {
+              patchRecord((prev) => ({
+                customText: { ...prev.customText, faq_items_json: JSON.stringify(next) },
+              }));
+            };
+
+            const updateItem = (i: number, patch: Partial<FaqItem>) => {
+              const next = items.slice();
+              next[i] = { ...next[i], ...patch } as FaqItem;
+              saveItems(next);
+            };
+
+            const removeItem = (i: number) => {
+              const next = items.slice();
+              next.splice(i, 1);
+              saveItems(next);
+            };
+
+            const addItem = () => {
+              saveItems([...items, { question: "", answer: "" }]);
+            };
+
+            return (
+              <div className="space-y-4">
+                {items.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("website_editor.faq_empty", { defaultValue: "No FAQ questions yet. Add your first one below." })}
+                  </p>
+                )}
+                {items.map((item, i) => (
+                  <div key={i} className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label className="text-xs">
+                          {t("website_editor.faq_question", { defaultValue: "Question" })} <span className="text-destructive">*</span>
+                        </Label>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(i)}
+                          className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                          title={t("website_editor.faq_remove", { defaultValue: "Remove question" })}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <Input
+                        value={item.question}
+                        onChange={(e) => updateItem(i, { question: e.target.value.slice(0, QUESTION_MAX) })}
+                        placeholder={t("website_editor.faq_question_placeholder", { defaultValue: "What's the dress code?" })}
+                        className="text-sm"
+                      />
+                      <p className="text-[10px] text-muted-foreground text-right mt-0.5">
+                        {item.question.length}/{QUESTION_MAX}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1 block">
+                        {t("website_editor.faq_answer", { defaultValue: "Answer" })} <span className="text-destructive">*</span>
+                      </Label>
+                      <textarea
+                        value={item.answer}
+                        onChange={(e) => updateItem(i, { answer: e.target.value.slice(0, ANSWER_MAX) })}
+                        placeholder={t("website_editor.faq_answer_placeholder", { defaultValue: "Formal attire keeps the evening elegant…" })}
+                        rows={4}
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+                      />
+                      <p className="text-[10px] text-muted-foreground text-right mt-0.5">
+                        {item.answer.length}/{ANSWER_MAX}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={addItem} className="w-full">
+                  <Plus className="h-3.5 w-3.5 mr-1.5" />
+                  {t("website_editor.faq_add", { defaultValue: "Add Question" })}
+                </Button>
+              </div>
+            );
+          })()}
+        </Section>}
+
         {/* Inline-edit hint */}
         {inTab("design") && <Section icon={<FileText className="h-4 w-4" />} title={t("website_editor.section_edit_text", { defaultValue: "Edit Text" })}>
           <p className="text-xs text-muted-foreground leading-relaxed">
