@@ -1526,7 +1526,7 @@ function PartyMemberCard({ data, member }: { data: WebsiteRendererPayload; membe
 
 function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   // Portal party members take precedence over manually-entered ones
-  const members: WeddingPartyMember[] = data.portalParty && data.portalParty.length > 0
+  const rawMembers: WeddingPartyMember[] = data.portalParty && data.portalParty.length > 0
     ? data.portalParty.map((m) => ({
         photo: m.photoUrl ?? "",
         name: m.name,
@@ -1534,11 +1534,53 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
         side: (m.side === "groom" || m.side === "bride" || m.side === "family") ? m.side as WeddingPartySide : undefined,
       }))
     : parseWeddingPartyMembers(data.customText._weddingPartyMembers);
+
+  // Only show people the user actually filled in. Anyone with a blank
+  // name is treated as an empty slot and skipped on the published site.
+  // (Editor still renders them so the user can finish setting them up.)
+  const members = ctx.editable
+    ? rawMembers
+    : rawMembers.filter((m) => m.name?.trim());
+
   if (members.length === 0 && !ctx.editable) return null;
 
-  const groomSide = members.filter((m) => m.side === "groom");
-  const brideSide = members.filter((m) => m.side === "bride");
+  // Sort each side so the principal roles always come first: Groom + Best
+  // Man on the groom side, Bride + Maid of Honor on the bride side. Then
+  // groomsmen / bridesmaids in the order they were added, then everyone
+  // else last.
+  const groomRolePriority = (role: string): number => {
+    const r = role?.toLowerCase().trim() ?? "";
+    if (r === "groom") return 0;
+    if (r === "best man") return 1;
+    if (r.includes("groomsman") || r.includes("groomsmen")) return 2;
+    if (r.includes("ring bearer")) return 3;
+    return 99;
+  };
+  const brideRolePriority = (role: string): number => {
+    const r = role?.toLowerCase().trim() ?? "";
+    if (r === "bride") return 0;
+    if (r === "maid of honor" || r === "matron of honor") return 1;
+    if (r.includes("bridesmaid")) return 2;
+    if (r.includes("flower girl")) return 3;
+    return 99;
+  };
+  const stableSort = <T,>(arr: T[], priority: (item: T) => number): T[] =>
+    arr
+      .map((item, index) => ({ item, index, p: priority(item) }))
+      .sort((a, b) => a.p - b.p || a.index - b.index)
+      .map((x) => x.item);
+
+  const groomSide = stableSort(members.filter((m) => m.side === "groom"), (m) => groomRolePriority(m.role));
+  const brideSide = stableSort(members.filter((m) => m.side === "bride"), (m) => brideRolePriority(m.role));
   const familySide = members.filter((m) => m.side === "family" || !m.side);
+
+  // When a side has an odd number of members, the trailing card spans
+  // both columns and centers itself so it doesn't sit alone in the
+  // left column with an empty slot to its right.
+  const lastItemCenterStyle = (count: number, idx: number): React.CSSProperties =>
+    count % 2 === 1 && idx === count - 1
+      ? { gridColumn: "1 / -1", justifySelf: "center", maxWidth: 220 }
+      : {};
 
   return (
     <SectionShell id="weddingParty" titleKey="weddingParty_title" defaultTitle="Wedding Party" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx}>
@@ -1580,7 +1622,9 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10">
                     {groomSide.map((m, i) => (
-                      <PartyMemberCard key={`g-${i}`} data={data} member={m} />
+                      <div key={`g-${i}`} style={lastItemCenterStyle(groomSide.length, i)}>
+                        <PartyMemberCard data={data} member={m} />
+                      </div>
                     ))}
                   </div>
                 )}
@@ -1606,7 +1650,9 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10">
                     {brideSide.map((m, i) => (
-                      <PartyMemberCard key={`b-${i}`} data={data} member={m} />
+                      <div key={`b-${i}`} style={lastItemCenterStyle(brideSide.length, i)}>
+                        <PartyMemberCard data={data} member={m} />
+                      </div>
                     ))}
                   </div>
                 )}
