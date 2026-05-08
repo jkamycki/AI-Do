@@ -772,9 +772,9 @@ export default function SeatingChartPage() {
       let col = 0;
 
       // ── Brand palette ────────────────────────────────────────────────
-      // Deep purple background, gold for headings/accents, white for body.
-      const PURPLE: [number, number, number] = [42, 23, 69];   // #2A1745 — rich deep purple
-      const PURPLE_2: [number, number, number] = [60, 35, 95]; // slightly lighter, used for table-card fills
+      // Deeper purple background, gold for headings/accents, white for body.
+      const PURPLE: [number, number, number] = [22, 11, 38];   // #160B26 — deep brand purple
+      const PURPLE_2: [number, number, number] = [40, 22, 66]; // table-card fill, slightly lifted
       const GOLD: [number, number, number] = [212, 160, 23];   // #D4A017 — primary brand gold
       const GOLD_SOFT: [number, number, number] = [245, 200, 66]; // accent highlights / dividers
       const WHITE: [number, number, number] = [255, 255, 255];
@@ -830,23 +830,29 @@ export default function SeatingChartPage() {
       let cursorY = margin + 6;
       placeLogo();
 
+      const centerX = pageW / 2;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(24);
       doc.setTextColor(...GOLD);
-      doc.text(t("seating.your_seating_chart", { defaultValue: "Seating Chart" }), margin, cursorY + 14);
+      doc.text(
+        t("seating.your_seating_chart", { defaultValue: "Seating Chart" }),
+        centerX,
+        cursorY + 14,
+        { align: "center" },
+      );
       cursorY += 30;
 
       if (couple) {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(13);
         doc.setTextColor(...WHITE);
-        doc.text(couple, margin, cursorY);
+        doc.text(couple, centerX, cursorY, { align: "center" });
         cursorY += 16;
       }
       if (weddingDate) {
         doc.setFontSize(11);
         doc.setTextColor(...WHITE_DIM);
-        doc.text(weddingDate, margin, cursorY);
+        doc.text(weddingDate, centerX, cursorY, { align: "center" });
         cursorY += 18;
       }
       // Gold divider under the header
@@ -903,6 +909,10 @@ export default function SeatingChartPage() {
         doc.setFillColor(...PURPLE_2);
         doc.roundedRect(cardX, cardY, cardW, cardH, 8, 8, "F");
 
+        // Card center used for the title/theme so the heading reads
+        // symmetrically inside its rounded card.
+        const cardCenterX = x + colW / 2;
+
         // Table header
         doc.setFont("helvetica", "bold");
         doc.setFontSize(13);
@@ -910,7 +920,7 @@ export default function SeatingChartPage() {
         const tableTitle = table.tableName && table.tableName.trim()
           ? `Table ${table.tableNumber} · ${table.tableName}`
           : `Table ${table.tableNumber}`;
-        doc.text(tableTitle, x, y);
+        doc.text(tableTitle, cardCenterX, y, { align: "center" });
         y += 16;
 
         if (table.theme) {
@@ -918,7 +928,7 @@ export default function SeatingChartPage() {
           doc.setFontSize(10);
           doc.setTextColor(...GOLD_SOFT);
           const themeLines = doc.splitTextToSize(table.theme, colW);
-          doc.text(themeLines, x, y);
+          doc.text(themeLines, cardCenterX, y, { align: "center" });
           y += themeLines.length * 12 + 2;
         }
 

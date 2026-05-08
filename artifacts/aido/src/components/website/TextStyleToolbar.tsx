@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Trash2, Sparkles, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -124,9 +124,21 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
     const [aiPrompt, setAiPrompt] = useState("");
     const [aiBusy, setAiBusy] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
+    const aiInputRef = useRef<HTMLInputElement | null>(null);
     useEffect(() => {
       FONT_OPTIONS.filter((f) => f.value).forEach((f) => loadGoogleFont(f.value));
     }, []);
+
+    // The contenteditable underneath is greedy about focus; explicitly hand
+    // focus to the AI input the moment the panel opens so the user's
+    // keystrokes go into the prompt instead of the heading underneath.
+    useEffect(() => {
+      if (aiOpen) {
+        const id = window.setTimeout(() => aiInputRef.current?.focus(), 0);
+        return () => window.clearTimeout(id);
+      }
+      return undefined;
+    }, [aiOpen]);
 
     useEffect(() => {
       if (style.fontFamily) loadGoogleFont(style.fontFamily);
@@ -150,12 +162,12 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
         className="fixed z-[9999] flex items-center gap-1 flex-wrap px-2 py-1.5 rounded-lg shadow-xl border border-border bg-background"
         style={{ top, left, maxWidth: "min(640px, 94vw)" }}
         onMouseDown={(e) => {
-          // Block focus loss only when the click lands on padding/empty
-          // chrome — INPUT and TEXTAREA must keep the default mousedown
-          // behavior so they can receive focus and accept typed text.
-          // scheduleHide keeps the toolbar open while the input is active.
+          // Keep the contenteditable focused when the user clicks toolbar
+          // chrome — but skip when the click lands on a text input so it
+          // can actually receive focus and accept typed input.
           const target = e.target as HTMLElement;
-          if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+          const tag = target.tagName;
+          if (tag === "INPUT" || tag === "TEXTAREA") {
             onKeepOpen?.();
             return;
           }
@@ -286,10 +298,16 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
             }}
           >
             <input
+              ref={aiInputRef}
               type="text"
               value={aiPrompt}
+              autoFocus
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onFocus={() => onKeepOpen?.()}
               onChange={(e) => setAiPrompt(e.target.value)}
               onKeyDown={(e) => {
+                e.stopPropagation();
                 if (e.key === "Enter" && aiPrompt.trim() && !aiBusy) {
                   e.preventDefault();
                   void handleAiGenerate();

@@ -41,14 +41,6 @@ const THEMES = [
   { id: "garden2",   name: "Wildflower",        font: "Cormorant Garamond", primary: "#C18AAA", secondary: "#E8C5D5", accent: "#A8688A", neutral: "#F8EEF3", background: "#FFFCFD", text: "#3A2530" },
 ];
 
-const FONTS = [
-  "Playfair Display", "Cormorant Garamond", "Lora", "Merriweather", "Bodoni Moda", "Cinzel", "Italiana", "Tangerine", "Great Vibes", "Allura", "Parisienne",
-];
-
-const BODY_FONTS = [
-  "Inter", "Montserrat", "Josefin Sans", "Lato", "Open Sans", "Source Sans 3", "Nunito", "Raleway", "Poppins",
-];
-
 // Section keys that render a heading + body. Each gets a Title (chip),
 // Subtitle (h2), and Body (paragraph) text override.
 const SECTION_TEXT_KEYS: Array<{ key: string; label: string; defaultTitle: string; defaultSubtitle?: string }> = [
@@ -92,10 +84,15 @@ export default function WebsiteEditor() {
   const [previewSection, setPreviewSection] = useState<string>("home");
   const [editorSection, setEditorSection] = useState<string>("home");
   const [qrOpen, setQrOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings">("design");
+  const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings" | "content">("design");
   const inTab = (t: typeof activeTab) => activeTab === t;
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  // x/y are viewport coords (used to position the menu); canvasX/canvasY are
+  // coords relative to the WebsiteRenderer container (used so a newly
+  // inserted text box lands where the user right-clicked).
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; canvasX: number; canvasY: number } | null>(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
   const [urlModalOpen, setUrlModalOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
 
   useEffect(() => {
     if (!ctxMenu) return;
@@ -361,7 +358,10 @@ export default function WebsiteEditor() {
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
         }),
       });
-      if (!r.ok) throw new Error("Failed to save");
+      if (!r.ok) {
+        const text = await r.text().catch(() => "");
+        throw new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`);
+      }
       const body = (await r.json()) as WebsiteRecord;
       // The /api/website/update endpoint manages the website record only —
       // portalParty is a JOIN from the wedding-party portal table that the
@@ -374,7 +374,8 @@ export default function WebsiteEditor() {
       setPasswordInput("");
       setDirty(false);
       return true;
-    } catch {
+    } catch (err) {
+      console.error("[WebsiteEditor] saveNow failed", err);
       return false;
     } finally {
       if (!silent) setSaving(false);
@@ -414,7 +415,10 @@ export default function WebsiteEditor() {
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
         }),
       });
-      if (!r.ok) throw new Error("Failed to save");
+      if (!r.ok) {
+        const text = await r.text().catch(() => "");
+        throw new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`);
+      }
       const body = (await r.json()) as WebsiteRecord;
       // Same fix as saveNow() — PUT response is the website row only and
       // doesn't include portalParty (a JOIN the GET endpoint enriches).
@@ -428,8 +432,10 @@ export default function WebsiteEditor() {
       setPasswordInput("");
       setDirty(false);
       toast({ title: "Saved!" });
-    } catch {
-      toast({ title: "Failed to save", variant: "destructive" });
+    } catch (err) {
+      console.error("[WebsiteEditor] handleSave failed", err);
+      const detail = err instanceof Error ? err.message : "Unknown error";
+      toast({ title: "Failed to save", description: detail, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -563,10 +569,12 @@ export default function WebsiteEditor() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] md:h-screen">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] md:h-screen relative">
       {/* Sidebar */}
       <aside
-        className="w-full lg:flex-shrink-0 border-r bg-background overflow-y-auto"
+        className={`w-full lg:flex-shrink-0 border-r bg-background overflow-y-auto pb-20 lg:pb-0 ${
+          mobileView === "edit" ? "block" : "hidden"
+        } lg:block`}
         style={{ width: typeof window !== "undefined" && window.innerWidth >= 1024 ? sidebarWidth : undefined }}
       >
         <div className="p-5 border-b sticky top-0 bg-background z-10">
@@ -688,10 +696,14 @@ export default function WebsiteEditor() {
           {/* Tab rail */}
           <div className="mt-4 flex items-center gap-1 -mb-1 overflow-x-auto">
             {([
-              { id: "design",    label: t("website_editor.tab_design", { defaultValue: "Design" }),    icon: Palette },
-              { id: "pages",     label: t("website_editor.tab_pages", { defaultValue: "Pages" }),     icon: FileText },
-              { id: "animation", label: t("website_editor.tab_animation", { defaultValue: "Animation" }), icon: Sparkles },
-              { id: "settings",  label: t("website_editor.tab_settings", { defaultValue: "Settings" }),  icon: Settings },
+              // "content" is mobile-only — phones can't show the live preview
+              // and the sidebar at the same time, so a plain form-based content
+              // editor is the easiest way to type things in.
+              { id: "content",   label: t("website_editor.tab_content", { defaultValue: "Content" }),  icon: FileText, mobileOnly: true },
+              { id: "design",    label: t("website_editor.tab_design", { defaultValue: "Design" }),    icon: Palette,  mobileOnly: false },
+              { id: "pages",     label: t("website_editor.tab_pages", { defaultValue: "Pages" }),     icon: FileText, mobileOnly: false },
+              { id: "animation", label: t("website_editor.tab_animation", { defaultValue: "Animation" }), icon: Sparkles, mobileOnly: false },
+              { id: "settings",  label: t("website_editor.tab_settings", { defaultValue: "Settings" }),  icon: Settings, mobileOnly: false },
             ] as const).map((tab) => {
               const TabIcon = tab.icon;
               const active = activeTab === tab.id;
@@ -699,7 +711,7 @@ export default function WebsiteEditor() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+                  className={`${tab.mobileOnly ? "lg:hidden " : ""}flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
                 >
                   <TabIcon className="h-3.5 w-3.5" />
                   {tab.label}
@@ -708,6 +720,59 @@ export default function WebsiteEditor() {
             })}
           </div>
         </div>
+
+        {/* Mobile-only Content editor — phones can't show preview + sidebar
+            side-by-side, so this is a plain form for the highest-impact
+            text fields. Updates flow through the existing customText jsonb
+            so the live preview reflects them when the user toggles back. */}
+        {inTab("content") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_content", { defaultValue: "Page content" })}>
+          <div className="space-y-4">
+            {([
+              { key: "_heroTagline",  label: t("website_editor.content_hero_tagline", { defaultValue: "Hero tagline (e.g. We're getting married)" }), placeholder: "We're getting married" },
+              { key: "_coupleName",   label: t("website_editor.content_couple_name", { defaultValue: "Couple name (overrides profile)" }), placeholder: "Joseph & Gabriela" },
+              { key: "_heroDate",     label: t("website_editor.content_hero_date", { defaultValue: "Hero date" }), placeholder: "Saturday, April 24, 2027" },
+              { key: "_announcement", label: t("website_editor.content_announcement", { defaultValue: "Announcement banner" }), placeholder: "" },
+            ] as const).map(({ key, label, placeholder }) => (
+              <div key={key}>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">{label}</label>
+                <Input
+                  value={record.customText[key] ?? ""}
+                  placeholder={placeholder}
+                  onChange={(e) => update({ customText: { ...record.customText, [key]: e.target.value } })}
+                />
+              </div>
+            ))}
+            {([
+              { key: "welcome",        label: t("website_editor.content_welcome", { defaultValue: "Welcome message" }) },
+              { key: "story",          label: t("website_editor.content_story", { defaultValue: "Our story" }) },
+              { key: "rsvp_subtitle",  label: t("website_editor.content_rsvp_subtitle", { defaultValue: "RSVP subtitle" }) },
+              { key: "rsvp_thankyou",  label: t("website_editor.content_rsvp_thankyou", { defaultValue: "RSVP thank-you message" }) },
+            ] as const).map(({ key, label }) => (
+              <div key={key}>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">{label}</label>
+                <textarea
+                  value={record.customText[key] ?? ""}
+                  onChange={(e) => update({ customText: { ...record.customText, [key]: e.target.value } })}
+                  rows={3}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+            ))}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                {t("website_editor.content_rsvp_deadline", { defaultValue: "RSVP deadline" })}
+              </label>
+              <Input
+                value={record.customText.rsvp_deadline ?? ""}
+                placeholder="May 1, 2027"
+                onChange={(e) => update({ customText: { ...record.customText, rsvp_deadline: e.target.value } })}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t("website_editor.content_help", { defaultValue: "Tap Preview at the bottom to see your changes. Save when you're happy." })}
+            </p>
+          </div>
+        </Section>}
 
         {/* Text tools */}
         {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_text_tools", { defaultValue: "Text Tools" })}>
@@ -757,6 +822,16 @@ export default function WebsiteEditor() {
             <ColorField label={t("website_editor.color_secondary", { defaultValue: "Secondary" })} value={record.colorPalette.secondary} onChange={(v) => update({ colorPalette: { ...record.colorPalette, secondary: v } })} />
             <ColorField label={t("website_editor.color_background", { defaultValue: "Background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
             <ColorField label={t("website_editor.color_text", { defaultValue: "Text" })}      value={record.colorPalette.text}      onChange={(v) => update({ colorPalette: { ...record.colorPalette, text: v } })} />
+            <ColorField
+              label={t("website_editor.color_couple_names", { defaultValue: "Couple Names (top)" })}
+              value={record.customText._navCoupleColor || record.colorPalette.primary}
+              onChange={(v) => update({ customText: { ...record.customText, _navCoupleColor: v } })}
+            />
+            <ColorField
+              label={t("website_editor.color_footer", { defaultValue: "Footer" })}
+              value={record.customText._footerColor || record.colorPalette.primary}
+              onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
+            />
           </div>
           {/* Background opacity slider — lets the user fade the section
               backgrounds so any underlying hero image / page background
@@ -784,36 +859,6 @@ export default function WebsiteEditor() {
               </div>
             );
           })()}
-        </Section>}
-
-        {/* Typography */}
-        {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_typography", { defaultValue: "Typography" })}>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.heading_font_label", { defaultValue: "Heading font (couple names, titles)" })}</Label>
-              <select
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={record.customText._headingFont || record.font}
-                onChange={(e) => update({ customText: { ...record.customText, _headingFont: e.target.value }, font: e.target.value })}
-              >
-                {FONTS.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.body_font_label", { defaultValue: "Body font (paragraphs)" })}</Label>
-              <select
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={record.customText._bodyFont || "Inter"}
-                onChange={(e) => update({ customText: { ...record.customText, _bodyFont: e.target.value } })}
-              >
-                {BODY_FONTS.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
-            </div>
-          </div>
         </Section>}
 
         {/* Sections */}
@@ -845,6 +890,7 @@ export default function WebsiteEditor() {
         {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Hero Elements" })}>
           <div className="space-y-2.5">
             {[
+              { key: "_coupleName", label: t("website_editor.hero_couple_names", { defaultValue: "Couple Names" }) },
               { key: "_heroDateRow", label: t("website_editor.hero_date_row", { defaultValue: "Wedding Date" }) },
               { key: "_heroDateIcon", label: t("website_editor.hero_date_icon", { defaultValue: "Date Calendar Icon" }) },
               { key: "_heroVenueRow", label: t("website_editor.hero_venue_row", { defaultValue: "Venue Address" }) },
@@ -860,9 +906,16 @@ export default function WebsiteEditor() {
                     checked={!isHidden}
                     onCheckedChange={(checked) => patchRecord((prev) => {
                       const ct = { ...prev.customText };
-                      if (checked) delete ct[row.key];
-                      else ct[row.key] = EDITABLE_HIDDEN_MARKER;
-                      return { customText: ct };
+                      const tp = { ...(prev.textPositions ?? {}) };
+                      if (checked) {
+                        delete ct[row.key];
+                        // Drop any stale drag offset so the element returns
+                        // to its centered default when re-enabled.
+                        delete tp[row.key];
+                      } else {
+                        ct[row.key] = EDITABLE_HIDDEN_MARKER;
+                      }
+                      return { customText: ct, textPositions: tp };
                     })}
                   />
                 </div>
@@ -975,6 +1028,7 @@ export default function WebsiteEditor() {
           </p>
         </Section>}
 
+
         {/* Hero animation */}
         {inTab("animation") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_hero_animation", { defaultValue: "Hero Animation" })}>
           <div className="space-y-3">
@@ -1009,6 +1063,56 @@ export default function WebsiteEditor() {
                 {t("website_editor.slideshow_hint", { defaultValue: "Slideshow uses your hero image and all gallery photos. Add more photos in the Gallery section below to extend the rotation." })}
               </p>
             )}
+          </div>
+        </Section>}
+
+        {/* Gallery animation */}
+        {inTab("animation") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_gallery_animation", { defaultValue: "Gallery Animation" })}>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.style_label", { defaultValue: "Style" })}</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={record.customText._galleryAnimation ?? "grid"}
+                onChange={(e) => update({ customText: { ...record.customText, _galleryAnimation: e.target.value } })}
+              >
+                <option value="grid">{t("website_editor.gallery_anim_grid", { defaultValue: "Grid (static)" })}</option>
+                <option value="slideshow">{t("website_editor.gallery_anim_slideshow", { defaultValue: "Slideshow (fade through photos)" })}</option>
+                <option value="marquee">{t("website_editor.gallery_anim_marquee", { defaultValue: "Marquee (continuous scroll)" })}</option>
+              </select>
+            </div>
+            {(record.customText._galleryAnimation === "slideshow" || record.customText._galleryAnimation === "marquee") && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.speed_label", { defaultValue: "Speed" })}</Label>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={record.customText._galleryAnimationSpeed ?? "medium"}
+                  onChange={(e) => update({ customText: { ...record.customText, _galleryAnimationSpeed: e.target.value } })}
+                >
+                  <option value="slow">{t("website_editor.speed_slow", { defaultValue: "Slow" })}</option>
+                  <option value="medium">{t("website_editor.speed_medium", { defaultValue: "Medium" })}</option>
+                  <option value="fast">{t("website_editor.speed_fast", { defaultValue: "Fast" })}</option>
+                </select>
+              </div>
+            )}
+            {(!record.customText._galleryAnimation || record.customText._galleryAnimation === "grid") && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Entrance animation</Label>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={record.customText._galleryEntrance ?? "none"}
+                  onChange={(e) => update({ customText: { ...record.customText, _galleryEntrance: e.target.value } })}
+                >
+                  <option value="none">None</option>
+                  <option value="fade-in">Fade in</option>
+                  <option value="slide-up">Slide up</option>
+                  <option value="zoom-in">Zoom in</option>
+                </select>
+              </div>
+            )}
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {t("website_editor.gallery_anim_hint", { defaultValue: "Choose how gallery photos display. Guests can still click any photo to open the full lightbox." })}
+            </p>
           </div>
         </Section>}
 
@@ -1285,10 +1389,18 @@ export default function WebsiteEditor() {
       {/* Live preview */}
       <main
         ref={previewRef}
-        className="flex-1 overflow-y-auto bg-muted/20"
+        className={`flex-1 overflow-y-auto bg-muted/20 pb-20 lg:pb-0 ${
+          mobileView === "preview" ? "block" : "hidden"
+        } lg:block`}
         onContextMenu={(e) => {
           e.preventDefault();
-          setCtxMenu({ x: e.clientX, y: e.clientY });
+          const rect = canvasRef.current?.getBoundingClientRect();
+          setCtxMenu({
+            x: e.clientX,
+            y: e.clientY,
+            canvasX: rect ? e.clientX - rect.left : 0,
+            canvasY: rect ? e.clientY - rect.top : 0,
+          });
         }}
         onClick={() => { if (ctxMenu) setCtxMenu(null); }}
       >
@@ -1315,7 +1427,7 @@ export default function WebsiteEditor() {
             {t("website_editor.custom_url_cta", { defaultValue: "Click here to get your custom website URL" })}
           </button>
         </div>
-        <div className="bg-white">
+        <div ref={canvasRef} className="bg-white relative">
           <WebsiteRenderer
             data={livePreview!}
             editable
@@ -1354,6 +1466,34 @@ export default function WebsiteEditor() {
         </div>
       </main>
 
+      {/* Mobile-only Edit / Preview toggle. Phones only have room for one
+          pane at a time, so split the screen by tab instead of cramming the
+          sidebar above a tiny preview. lg breakpoint hides the bar. */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-[150] border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="grid grid-cols-2 gap-1 p-2 max-w-md mx-auto">
+          <button
+            onClick={() => setMobileView("edit")}
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+              mobileView === "edit"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {t("website_editor.tab_edit", { defaultValue: "Edit" })}
+          </button>
+          <button
+            onClick={() => setMobileView("preview")}
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+              mobileView === "preview"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {t("website_editor.tab_preview", { defaultValue: "Preview" })}
+          </button>
+        </div>
+      </div>
+
       {/* Trash drop zone — appears whenever a deletable text element is being
           dragged. Drop the box here to remove it (Undo restores). */}
       <div
@@ -1383,10 +1523,23 @@ export default function WebsiteEditor() {
             className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent flex items-center gap-2"
             onClick={() => {
               const key = `_custom_${Date.now()}`;
-              patchRecord((prev) => ({
-                customText: { ...prev.customText, [key]: t("website_editor.new_text", { defaultValue: "New text — click to edit" }) },
-                textPositions: { ...(prev.textPositions ?? {}), [key]: { x: 0, y: 0 } },
-              }));
+              const insertAt = ctxMenu ? { x: ctxMenu.canvasX, y: ctxMenu.canvasY } : { x: 0, y: 0 };
+              patchRecord((prev) => {
+                // CustomTextBoxes lays new boxes out at (left: 24, top: 120 + idx*56)
+                // by default, then DraggableRow applies textPositions[key] as a
+                // translate delta. To land the box at the right-click point, the
+                // delta has to compensate for that base.
+                const customCount = Object.keys(prev.customText).filter((k) => k.startsWith("_custom_")).length;
+                const baseLeft = 24;
+                const baseTop = 120 + customCount * 56;
+                return {
+                  customText: { ...prev.customText, [key]: t("website_editor.new_text", { defaultValue: "New text — click to edit" }) },
+                  textPositions: {
+                    ...(prev.textPositions ?? {}),
+                    [key]: { x: insertAt.x - baseLeft, y: insertAt.y - baseTop },
+                  },
+                };
+              });
               setCtxMenu(null);
             }}
           >
