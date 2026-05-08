@@ -1618,7 +1618,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
               <div
                 ref={(el) => { itemRefs.current[i] = el; }}
                 className={`wsg-item${visibleItems.has(i) ? " wsg-visible" : ""}`}
-                style={entrance !== "none" ? { ["--stagger" as string]: entrance === "puzzle" ? `${i * 220}ms` : `${i * 80}ms` } : undefined}
+                style={entrance !== "none" ? { ["--stagger" as string]: entrance === "puzzle" ? `${i * 600}ms` : `${i * 80}ms` } : undefined}
               >
                 <button
                   type="button"
