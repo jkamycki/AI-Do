@@ -560,35 +560,73 @@ export default function WebsiteEditor() {
               {record.published ? t("website_editor.live", { defaultValue: "Live" }) : t("website_editor.draft", { defaultValue: "Draft" })}
             </Badge>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
-              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
-              {saving ? t("website_editor.saving", { defaultValue: "Saving..." }) : dirty ? t("website_editor.save_changes", { defaultValue: "Save changes" }) : t("website_editor.saved", { defaultValue: "Saved" })}
+          {/* Action toolbar — explicit 2x2 grid so Preview + Publish sit on
+              the top row and Save + Undo sit below them. Colors follow the
+              user's request: gold for Preview & Publish (since both are
+              affirmative), green when Save has just landed or the site is
+              Published, red for Undo and Unpublish. */}
+          <div className="grid grid-cols-2 gap-2 max-w-md">
+            <Button
+              size="sm"
+              onClick={() => { setPreviewSection("home"); setPreviewOpen(true); }}
+              className="bg-amber-500 hover:bg-amber-600 text-white border-0"
+            >
+              <Eye className="h-3.5 w-3.5 mr-1.5" />
+              {t("website_editor.guest_preview", { defaultValue: "Guest Preview" })}
             </Button>
             <Button
               size="sm"
-              variant="outline"
+              onClick={handlePublish}
+              disabled={publishing}
+              className={
+                record.published
+                  ? "bg-emerald-600 hover:bg-red-600 text-white border-0 group"
+                  : "bg-amber-500 hover:bg-amber-600 text-white border-0"
+              }
+            >
+              {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Globe className="h-3.5 w-3.5 mr-1.5" />}
+              {record.published ? (
+                <>
+                  <span className="group-hover:hidden">{t("website_editor.published", { defaultValue: "Published" })}</span>
+                  <span className="hidden group-hover:inline">{t("website_editor.unpublish", { defaultValue: "Unpublish" })}</span>
+                </>
+              ) : (
+                t("website_editor.publish", { defaultValue: "Publish" })
+              )}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={!dirty || saving}
+              className={
+                !dirty && !saving
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white border-0 disabled:opacity-100 disabled:bg-emerald-600"
+                  : "bg-amber-500 hover:bg-amber-600 text-white border-0"
+              }
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : (!dirty ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />)}
+              {saving
+                ? t("website_editor.saving", { defaultValue: "Saving..." })
+                : dirty
+                  ? t("website_editor.save_changes", { defaultValue: "Save changes" })
+                  : t("website_editor.saved", { defaultValue: "Saved" })}
+            </Button>
+            <Button
+              size="sm"
               onClick={handleUndo}
               disabled={historyLen === 0 && !hasPending}
               title="Undo last change (Cmd/Ctrl+Z)"
+              className="bg-red-600 hover:bg-red-700 text-white border-0 disabled:opacity-50"
             >
               <Undo2 className="h-3.5 w-3.5 mr-1.5" />
               {t("website_editor.undo", { defaultValue: "Undo" })}
             </Button>
-            {!dirty && lastAutosaved && (
-              <span className="text-[11px] text-muted-foreground">
-                Autosaved {lastAutosaved.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-              </span>
-            )}
-            <Button size="sm" variant={record.published ? "outline" : "default"} onClick={handlePublish} disabled={publishing}>
-              {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Globe className="h-3.5 w-3.5 mr-1.5" />}
-              {record.published ? t("website_editor.unpublish", { defaultValue: "Unpublish" }) : t("website_editor.publish", { defaultValue: "Publish" })}
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => { setPreviewSection("home"); setPreviewOpen(true); }}>
-              <Eye className="h-3.5 w-3.5 mr-1.5" />
-              {t("website_editor.guest_preview", { defaultValue: "Guest Preview" })}
-            </Button>
           </div>
+          {!dirty && lastAutosaved && (
+            <span className="text-[11px] text-muted-foreground mt-2 inline-block">
+              Autosaved {lastAutosaved.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+            </span>
+          )}
           {record.published && (
             <div className="mt-3 space-y-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs">
