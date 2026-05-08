@@ -153,6 +153,45 @@ function CountdownRing({ days }: { days: number }) {
   );
 }
 
+// Compact "X / Y rooms booked" tracker for the dashboard's venue tile.
+// Shows a colored progress bar that turns amber as the block fills up and
+// red once the booked count meets/exceeds the reserved capacity.
+function RoomsTracker({ booked, capacity }: { booked: number; capacity: number }) {
+  const safeCap = Math.max(1, capacity);
+  const pct = Math.max(0, Math.min(100, (booked / safeCap) * 100));
+  const remaining = Math.max(0, capacity - booked);
+  const tone =
+    booked >= capacity ? "rose"
+    : pct >= 75 ? "amber"
+    : "emerald";
+  const barColor =
+    tone === "rose" ? "bg-rose-500"
+    : tone === "amber" ? "bg-amber-500"
+    : "bg-emerald-500";
+  const textColor =
+    tone === "rose" ? "text-rose-600 dark:text-rose-400"
+    : tone === "amber" ? "text-amber-600 dark:text-amber-400"
+    : "text-emerald-600 dark:text-emerald-400";
+  return (
+    <div className="mt-1.5">
+      <div className="flex items-baseline justify-between gap-2 text-[11px]">
+        <span className={`font-semibold ${textColor}`}>
+          {booked} / {capacity} rooms booked
+        </span>
+        <span className="text-muted-foreground">
+          {remaining > 0 ? `${remaining} left` : "Block full"}
+        </span>
+      </div>
+      <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
+        <div
+          className={`h-full ${barColor} transition-[width] duration-500 ease-out`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function StatChip({
   icon: Icon,
   label,
@@ -955,12 +994,8 @@ function DashboardContent() {
                             {h.address && (
                               <p className="text-xs text-muted-foreground leading-snug break-words">{h.address}</p>
                             )}
-                            {(h.roomsBooked > 0 || (h.roomsReserved ?? 0) > 0) && (
-                              <p className="text-xs text-muted-foreground leading-snug mt-0.5">
-                                {h.roomsReserved != null && h.roomsReserved > 0
-                                  ? t("dashboard.rooms_booked_count", { booked: h.roomsBooked, reserved: h.roomsReserved })
-                                  : t("dashboard.rooms_booked_count_no_cap", { booked: h.roomsBooked })}
-                              </p>
+                            {(h.roomsReserved ?? 0) > 0 && (
+                              <RoomsTracker booked={h.roomsBooked} capacity={h.roomsReserved!} />
                             )}
                           </div>
                         ))}
