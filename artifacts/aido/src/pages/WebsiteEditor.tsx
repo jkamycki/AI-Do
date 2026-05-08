@@ -1091,7 +1091,15 @@ export default function WebsiteEditor() {
               const ct = { ...prev.customText };
               const ts = { ...(prev.textStyles ?? {}) };
               const tp = { ...(prev.textPositions ?? {}) };
-              delete ct[key]; delete ts[key]; delete tp[key];
+              if (key.startsWith("_custom_")) {
+                // User-added text box — fully remove the row.
+                delete ct[key]; delete ts[key]; delete tp[key];
+              } else {
+                // Default field (couple names, story, schedule, etc.) — clear
+                // the text so the EditableText wrap visibly hides on the page,
+                // but keep style/position state so Undo can restore cleanly.
+                ct[key] = "";
+              }
               return { customText: ct, textStyles: ts, textPositions: tp };
             })}
           />
