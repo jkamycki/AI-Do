@@ -22,7 +22,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Clock, AlertCircle, CheckCircle2, Eye, Trash2 } from "lucide-react";
+import { Mail, Clock, AlertCircle, CheckCircle2, Eye, Trash2, Inbox, Ticket } from "lucide-react";
+import MessagesSection from "@/components/admin/MessagesSection";
 
 export default function OperationsCenterPage() {
   const { getToken } = useAuth();
@@ -31,6 +32,7 @@ export default function OperationsCenterPage() {
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<"tickets" | "messages">("tickets");
   const [followUpForm, setFollowUpForm] = useState({
     followUpEmail: "",
     followUpNotes: "",
@@ -156,9 +158,37 @@ export default function OperationsCenterPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       <div>
-        <h1 className="text-3xl font-serif font-bold text-foreground">Support Center</h1>
-        <p className="text-muted-foreground mt-1">Manage customer support tickets and follow-ups</p>
+        <h1 className="text-3xl font-serif font-bold text-foreground">Operations Center</h1>
+        <p className="text-muted-foreground mt-1">Support tickets, contact messages, and feedback in one place</p>
       </div>
+
+      <div className="flex gap-2 border-b border-border">
+        <button
+          onClick={() => setActiveTab("tickets")}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+            ${activeTab === "tickets" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+        >
+          <Ticket className="h-4 w-4" />
+          Support Tickets
+        </button>
+        <button
+          onClick={() => setActiveTab("messages")}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+            ${activeTab === "messages" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+        >
+          <Inbox className="h-4 w-4" />
+          Messages & Feedback
+        </button>
+      </div>
+
+      {activeTab === "messages" && (
+        <MessagesSection
+          title="Messages & Feedback"
+          description="Contact requests (including emails to support@aidowedding.net) and user feedback."
+        />
+      )}
+
+      {activeTab === "tickets" && (<>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -359,6 +389,8 @@ export default function OperationsCenterPage() {
           ))}
         </div>
       )}
+
+      </>)}
     </div>
   );
 }
