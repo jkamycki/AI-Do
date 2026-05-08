@@ -1575,12 +1575,11 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
   const familySide = members.filter((m) => m.side === "family" || !m.side);
 
   // When a side has an odd number of members, the trailing card spans
-  // both columns and centers itself so it doesn't sit alone in the
-  // left column with an empty slot to its right.
-  const lastItemCenterStyle = (count: number, idx: number): React.CSSProperties =>
-    count % 2 === 1 && idx === count - 1
-      ? { gridColumn: "1 / -1", justifySelf: "center", maxWidth: 220 }
-      : {};
+  // both columns and centers itself so it doesn't sit alone. Done in
+  // pure CSS via an arbitrary :last-child:nth-child(odd) selector so
+  // we don't need a wrapper div around each PartyMemberCard (which was
+  // breaking the photo-vs-name alignment under each card).
+  const oddLastGridClass = "[&>:last-child:nth-child(odd)]:sm:col-span-2 [&>:last-child:nth-child(odd)]:sm:justify-self-center [&>:last-child:nth-child(odd)]:sm:max-w-[220px]";
 
   return (
     <SectionShell id="weddingParty" titleKey="weddingParty_title" defaultTitle="Wedding Party" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx}>
@@ -1620,11 +1619,9 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
                     {ctx.editable ? "Add members from the sidebar with side set to “Groom”" : ""}
                   </p>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10">
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10 ${oddLastGridClass}`}>
                     {groomSide.map((m, i) => (
-                      <div key={`g-${i}`} style={lastItemCenterStyle(groomSide.length, i)}>
-                        <PartyMemberCard data={data} member={m} />
-                      </div>
+                      <PartyMemberCard key={`g-${i}`} data={data} member={m} />
                     ))}
                   </div>
                 )}
@@ -1648,11 +1645,9 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
                     {ctx.editable ? "Add members from the sidebar with side set to “Bride”" : ""}
                   </p>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10">
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10 ${oddLastGridClass}`}>
                     {brideSide.map((m, i) => (
-                      <div key={`b-${i}`} style={lastItemCenterStyle(brideSide.length, i)}>
-                        <PartyMemberCard data={data} member={m} />
-                      </div>
+                      <PartyMemberCard key={`b-${i}`} data={data} member={m} />
                     ))}
                   </div>
                 )}
