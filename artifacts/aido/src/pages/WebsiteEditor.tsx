@@ -822,6 +822,16 @@ export default function WebsiteEditor() {
             <ColorField label={t("website_editor.color_secondary", { defaultValue: "Secondary" })} value={record.colorPalette.secondary} onChange={(v) => update({ colorPalette: { ...record.colorPalette, secondary: v } })} />
             <ColorField label={t("website_editor.color_background", { defaultValue: "Background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
             <ColorField label={t("website_editor.color_text", { defaultValue: "Text" })}      value={record.colorPalette.text}      onChange={(v) => update({ colorPalette: { ...record.colorPalette, text: v } })} />
+            <ColorField
+              label={t("website_editor.color_couple_names", { defaultValue: "Couple Names (top)" })}
+              value={record.customText._navCoupleColor || record.colorPalette.primary}
+              onChange={(v) => update({ customText: { ...record.customText, _navCoupleColor: v } })}
+            />
+            <ColorField
+              label={t("website_editor.color_footer", { defaultValue: "Footer" })}
+              value={record.customText._footerColor || record.colorPalette.primary}
+              onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
+            />
           </div>
           {/* Background opacity slider — lets the user fade the section
               backgrounds so any underlying hero image / page background

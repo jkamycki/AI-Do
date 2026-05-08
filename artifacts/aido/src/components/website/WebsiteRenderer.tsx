@@ -115,7 +115,7 @@ function tsp(ctx: EditCtx, key: string, _deletable = false) {
     position: ctx.textPositions?.[key],
     onPositionChange: ctx.onPositionChange ? (p: TextPosition) => ctx.onPositionChange!(key, p) : undefined,
     onDelete: ctx.onDeleteElement ? () => ctx.onDeleteElement!(key) : undefined,
-    noAi: !key.startsWith("_custom_"),
+    aiEnabled: key.startsWith("_custom_"),
   };
 }
 
@@ -128,7 +128,7 @@ function tspStyle(ctx: EditCtx, key: string) {
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
-    noAi: true as const,
+    aiEnabled: false as const,
   };
 }
 
@@ -139,7 +139,7 @@ function tspNoDelete(ctx: EditCtx, key: string) {
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
-    noAi: true as const,
+    aiEnabled: false as const,
   };
 }
 
@@ -899,6 +899,8 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           onCommit={(v) => ctx.onTextChange("_coupleName", v)}
           className="text-5xl sm:text-7xl md:text-8xl mb-6 leading-tight"
           style={{ fontFamily: fontStack(headingFont(data)), color: data.heroImage ? "#fff" : data.colorPalette.text }}
+          aiEnabled={false}
+          readOnlyText
           {...tspNoDelete(ctx, "_coupleName")}
         />
         {data.customText._heroDateRow !== EDITABLE_HIDDEN_MARKER && (
@@ -915,6 +917,8 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={dateStr}
               onCommit={(v) => ctx.onTextChange("_heroDate", v)}
               style={{ color: "inherit" }}
+              aiEnabled={false}
+              readOnlyText
               {...tspStyle(ctx, "_heroDate")}
             />
           </DraggableRow>
@@ -933,6 +937,8 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={[data.couple.venue, data.couple.venueCity, data.couple.venueState].filter(Boolean).join(", ")}
               onCommit={(v) => ctx.onTextChange("_heroVenue", v)}
               style={{ color: "inherit" }}
+              aiEnabled={false}
+              readOnlyText
               {...tspStyle(ctx, "_heroVenue")}
             />
           </DraggableRow>
@@ -1023,7 +1029,7 @@ function SectionShell({
   return (
     <section id={id} className="py-20 px-6" style={{ background: backgroundWithOpacity(data, data.colorPalette.neutral) }}>
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-center gap-2 mb-3" style={{ color: data.colorPalette.primary }}>
+        <div className="flex items-center justify-center gap-2 mb-3" style={{ color: data.colorPalette.secondary }}>
           {icon}
           <EditableText
             editable={ctx.editable}
@@ -1033,7 +1039,7 @@ function SectionShell({
             className="uppercase tracking-[0.25em] text-xs"
           />
         </div>
-        <div className="w-12 h-px mx-auto mb-12" style={{ background: data.colorPalette.primary }} />
+        <div className="w-12 h-px mx-auto mb-12" style={{ background: data.colorPalette.secondary }} />
         {children}
       </div>
     </section>
@@ -1614,22 +1620,22 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
                 className={`wsg-item${visibleItems.has(i) ? " wsg-visible" : ""}`}
                 style={entrance !== "none" ? { ["--stagger" as string]: entrance === "puzzle" ? `${i * 220}ms` : `${i * 80}ms` } : undefined}
               >
-              <button
-                type="button"
-                onClick={() => setLightboxIndex(i)}
-                className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 w-full"
-                style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
-                aria-label={img.caption ?? `Photo ${i + 1}`}
-              >
-                <img
-                  src={imageUrl(img.url)}
-                  alt={img.caption ?? ""}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
-                  style={{ filter: photoFilter }}
-                />
-                {renderHoverIcon()}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(i)}
+                  className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 w-full"
+                  style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
+                  aria-label={img.caption ?? `Photo ${i + 1}`}
+                >
+                  <img
+                    src={imageUrl(img.url)}
+                    alt={img.caption ?? ""}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
+                    style={{ filter: photoFilter }}
+                  />
+                  {renderHoverIcon()}
+                </button>
               </div>
               {renderCaption(img.caption)}
             </div>
@@ -1863,7 +1869,7 @@ function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const dateStr = formatWeddingDate(data.couple.weddingDate);
   return (
     <>
-      <footer className="py-12 px-6 text-center" style={{ background: data.colorPalette.primary, color: "#fff" }}>
+      <footer className="py-12 px-6 text-center" style={{ background: data.customText._footerColor || data.colorPalette.primary, color: "#fff" }}>
         <EditableText
           as="div"
           editable={ctx.editable}
@@ -2093,7 +2099,7 @@ function TopNav({
           <Link
             href={homeHref}
             className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
-            style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
+            style={{ fontFamily: fontStack(headingFont(data)), color: data.customText._navCoupleColor || data.colorPalette.primary }}
           >
             {couple}
           </Link>
@@ -2108,7 +2114,7 @@ function TopNav({
               }
             }}
             className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
-            style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
+            style={{ fontFamily: fontStack(headingFont(data)), color: data.customText._navCoupleColor || data.colorPalette.primary }}
           >
             {couple}
           </button>
