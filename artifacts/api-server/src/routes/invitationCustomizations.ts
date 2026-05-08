@@ -7,6 +7,7 @@ import {
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { resolveWorkspaceRole, hasMinRole } from "../lib/workspaceAccess";
 import {
   generateColorPaletteFromPrimary,
   PRESET_PALETTES,
@@ -66,13 +67,13 @@ router.get("/invitation-customizations", requireAuth, async (req, res) => {
         .json({ error: "profileId query parameter is required" });
     }
 
-    // Verify user has access to this profile
-    const [profile] = await db
-      .select({ id: weddingProfiles.id })
-      .from(weddingProfiles)
-      .where(eq(weddingProfiles.id, profileId));
-
-    if (!profile) {
+    // SECURITY: verify the caller actually owns or is an active collaborator
+    // on this profile. Previously we only checked the profile existed, which
+    // let any authenticated user read another wedding's invitation
+    // customization (colors, photo URLs, text overrides) by guessing or
+    // enumerating profileId values.
+    const role = await resolveWorkspaceRole(req.userId!, profileId);
+    if (!role || !hasMinRole(role, "vendor")) {
       return res.status(404).json({ error: "Profile not found" });
     }
 
@@ -179,13 +180,13 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "profileId is required" });
     }
 
-    // Verify user has access to this profile
-    const [profile] = await db
-      .select({ id: weddingProfiles.id })
-      .from(weddingProfiles)
-      .where(eq(weddingProfiles.id, profileId));
-
-    if (!profile) {
+    // SECURITY: only the workspace owner or a collaborator with at least
+    // partner-level access may overwrite invitation customization. Same leak
+    // class as the GET handler above — without this check any authenticated
+    // user could overwrite another wedding's invitation by sending its
+    // profileId in the body.
+    const role = await resolveWorkspaceRole(req.userId!, profileId);
+    if (!role || !hasMinRole(role, "partner")) {
       return res.status(404).json({ error: "Profile not found" });
     }
 
@@ -349,12 +350,10 @@ router.post(
       }
 
       if (profileId) {
-        const [profile] = await db
-          .select({ id: weddingProfiles.id })
-          .from(weddingProfiles)
-          .where(eq(weddingProfiles.id, profileId));
-
-        if (!profile) {
+        // SECURITY: same leak class as GET/POST above — verify membership
+        // before letting an upload land on someone else's profile photo.
+        const role = await resolveWorkspaceRole(req.userId!, profileId);
+        if (!role || !hasMinRole(role, "partner")) {
           return res.status(404).json({ error: "Profile not found" });
         }
       }
