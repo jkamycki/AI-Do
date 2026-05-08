@@ -141,6 +141,13 @@ export default function PublicWebsite() {
     link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@400;500;600;700&display=swap`;
   }, [data?.font]);
 
+  // Scroll to top whenever the section changes. Must live above all
+  // conditional returns or the hook count differs across renders and React
+  // throws #310 ("Rendered more hooks than during the previous render").
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [sectionSeg]);
+
   useEffect(() => {
     if (data) {
       const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
@@ -200,11 +207,6 @@ export default function PublicWebsite() {
       </div>
     );
   }
-
-  // Scroll to top whenever the section changes.
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [sectionSeg]);
 
   return <WebsiteRenderer data={data} currentSection={currentSection} slug={slug} password={password} />;
 }

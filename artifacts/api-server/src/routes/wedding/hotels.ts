@@ -24,6 +24,46 @@ async function geocode(address: string): Promise<{ lat: number; lon: number } | 
   }
 }
 
+// Try multiple candidate address strings in order, sleeping ~1.1s between
+// requests to respect Nominatim's 1 req/sec rate limit.
+async function geocodeFirstHit(candidates: string[]): Promise<{ lat: number; lon: number; query: string } | null> {
+  let first = true;
+  for (const q of candidates) {
+    if (!q) continue;
+    if (!first) await new Promise(r => setTimeout(r, 1100));
+    first = false;
+    const hit = await geocode(q);
+    if (hit) return { ...hit, query: q };
+  }
+  return null;
+}
+
+// Build an ordered list of address strings to try, deduping comma-separated
+// segments case-insensitively so we don't send Nominatim things like
+// "Newark, NJ 07101, Newark, NJ, 07101".
+function buildAddressCandidates(parts: { name?: string | null; lines: Array<string | null | undefined> }): string[] {
+  const dedupe = (s: string): string => {
+    const seen = new Set<string>();
+    return s
+      .split(",")
+      .map(p => p.trim())
+      .filter(p => {
+        if (!p) return false;
+        const k = p.toLowerCase();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      })
+      .join(", ");
+  };
+  const lines = parts.lines.filter(Boolean) as string[];
+  const withoutName = dedupe(lines.join(", "));
+  const withName = parts.name ? dedupe([parts.name, ...lines].join(", ")) : "";
+  // Last-ditch: just city/state/zip-ish (drop the first line, often a street).
+  const cityOnly = lines.length > 1 ? dedupe(lines.slice(1).join(", ")) : "";
+  return Array.from(new Set([withoutName, withName, cityOnly].filter(Boolean)));
+}
+
 function haversineKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
   const R = 6371;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
@@ -65,8 +105,10 @@ router.post("/hotels/calculate-distance", requireAuth, async (req, res) => {
       address?: string; city?: string; state?: string; zip?: string;
     };
 
-    const hotelAddr = [address, city, state, zip].filter(Boolean).join(", ");
-    if (!hotelAddr) {
+    const hotelCandidates = buildAddressCandidates({
+      lines: [address, [city, state].filter(Boolean).join(", "), zip],
+    });
+    if (!hotelCandidates.length) {
       res.status(400).json({ error: "No hotel address provided" });
       return;
     }
@@ -88,32 +130,36 @@ router.post("/hotels/calculate-distance", requireAuth, async (req, res) => {
       return;
     }
 
-    const venueAddr = [
-      profile.venue,
-      profile.location,
-      profile.venueCity,
-      profile.venueState,
-      profile.venueZip,
-    ].filter(Boolean).join(", ");
+    const venueCandidates = buildAddressCandidates({
+      name: profile.venue,
+      lines: [
+        profile.location,
+        [profile.venueCity, profile.venueState].filter(Boolean).join(", "),
+        profile.venueZip,
+      ],
+    });
 
-    if (!venueAddr.trim()) {
+    if (!venueCandidates.length) {
       res.status(400).json({ error: "Venue address not set in your profile" });
       return;
     }
 
-    const [hotelCoords, venueCoords] = await Promise.all([
-      geocode(hotelAddr),
-      geocode(venueAddr),
-    ]);
-
-    if (!hotelCoords) {
+    // Sequentialize to respect Nominatim's 1 req/sec rate limit.
+    const hotelHit = await geocodeFirstHit(hotelCandidates);
+    if (!hotelHit) {
+      req.log.warn({ tried: hotelCandidates }, "Hotel geocode failed");
       res.status(422).json({ error: "Could not find hotel address" });
       return;
     }
-    if (!venueCoords) {
+    await new Promise(r => setTimeout(r, 1100));
+    const venueHit = await geocodeFirstHit(venueCandidates);
+    if (!venueHit) {
+      req.log.warn({ tried: venueCandidates }, "Venue geocode failed");
       res.status(422).json({ error: "Could not find venue address" });
       return;
     }
+    const hotelCoords = hotelHit;
+    const venueCoords = venueHit;
 
     const km = haversineKm(venueCoords, hotelCoords);
     const miles = km * 0.621371;

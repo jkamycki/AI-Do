@@ -125,7 +125,10 @@ interface Props {
 export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
   ({ style, onChange, anchorRect, onKeepOpen, onDelete, currentText, onAiGenerate }, ref) => {
     const { t } = useTranslation();
-    const [aiOpen, setAiOpen] = useState(false);
+    // Default the prompt input to visible whenever the AI hook is wired so
+    // users don't have to discover the sparkle button — they can type a
+    // prompt the moment any editable text is selected.
+    const [aiOpen, setAiOpen] = useState(!!onAiGenerate);
     const [aiPrompt, setAiPrompt] = useState("");
     const [aiBusy, setAiBusy] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
@@ -281,7 +284,6 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
           >
             <input
               type="text"
-              autoFocus
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
               onKeyDown={(e) => {

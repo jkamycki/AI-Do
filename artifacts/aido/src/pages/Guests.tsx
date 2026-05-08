@@ -59,7 +59,8 @@ const GROUP_OPTIONS = [
   { value: "Groom's Family", label: "Groom's Family" },
   { value: "Groom's Friends", label: "Groom's Friends" },
   { value: "Wedding Party", label: "Wedding Party" },
-  { value: "Coworkers", label: "Coworkers" },
+  { value: "Bride's Coworkers", label: "Bride's Coworkers" },
+  { value: "Groom's Coworkers", label: "Groom's Coworkers" },
   { value: "Family Friends", label: "Family Friends" },
   { value: "Other", label: "Other (type custom)…" },
 ];
@@ -72,9 +73,10 @@ function groupColorClasses(group: string | null | undefined): string {
     case "Bride's Friends": return "bg-pink-100 text-pink-900 border-pink-300 dark:bg-pink-900/40 dark:text-pink-200 dark:border-pink-700";
     case "Groom's Family":  return "bg-sky-100 text-sky-900 border-sky-300 dark:bg-sky-900/40 dark:text-sky-200 dark:border-sky-700";
     case "Groom's Friends": return "bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-700";
-    case "Wedding Party":   return "bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-900/40 dark:text-purple-200 dark:border-purple-700";
-    case "Coworkers":       return "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-700";
-    case "Family Friends":  return "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700";
+    case "Wedding Party":     return "bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-900/40 dark:text-purple-200 dark:border-purple-700";
+    case "Bride's Coworkers": return "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-700";
+    case "Groom's Coworkers": return "bg-teal-100 text-teal-900 border-teal-300 dark:bg-teal-900/40 dark:text-teal-200 dark:border-teal-700";
+    case "Family Friends":    return "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700";
     default:                return "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-600";
   }
 }

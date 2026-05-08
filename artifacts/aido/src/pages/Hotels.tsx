@@ -168,7 +168,12 @@ function HotelForm({
         </div>
         <div className="space-y-1.5">
           <Label>Cutoff Date</Label>
-          <Input type="date" value={form.cutoffDate ?? ""} onChange={e => set("cutoffDate", e.target.value)} />
+          <Input
+            type="date"
+            value={form.cutoffDate ?? ""}
+            onChange={e => set("cutoffDate", e.target.value)}
+            className="[&::-webkit-calendar-picker-indicator]:invert"
+          />
         </div>
         <div className="space-y-1.5">
           <Label>Price / Night</Label>

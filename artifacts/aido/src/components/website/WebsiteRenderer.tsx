@@ -118,6 +118,18 @@ function tsp(ctx: EditCtx, key: string, _deletable = false) {
   };
 }
 
+// Style-only variant for EditableTexts already wrapped in a DraggableRow.
+// The row owns position + delete for the whole group; if we also wired those
+// onto the inner text the user would drag just the text and leave the row's
+// icon behind.
+function tspStyle(ctx: EditCtx, key: string) {
+  if (!ctx.editable) return {};
+  return {
+    textStyle: ctx.textStyles?.[key] ?? {},
+    onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
+  };
+}
+
 function fontStack(font: string): string {
   return `'${font}', 'Playfair Display', Georgia, serif`;
 }
@@ -906,7 +918,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={dateStr}
               onCommit={(v) => ctx.onTextChange("_heroDate", v)}
               style={{ color: "inherit" }}
-              {...tsp(ctx, "_heroDate")}
+              {...tspStyle(ctx, "_heroDate")}
             />
           </DraggableRow>
         )}
@@ -927,7 +939,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={[data.couple.venue, data.couple.venueCity, data.couple.venueState].filter(Boolean).join(", ")}
               onCommit={(v) => ctx.onTextChange("_heroVenue", v)}
               style={{ color: "inherit" }}
-              {...tsp(ctx, "_heroVenue")}
+              {...tspStyle(ctx, "_heroVenue")}
             />
           </DraggableRow>
         )}
@@ -1742,21 +1754,45 @@ function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 }
 
 function BrandingFooter() {
+  const year = new Date().getFullYear();
   return (
-    <div className="py-6 px-6 text-center bg-[#1E1A2E] text-white/80">
+    <div className="py-8 px-6 text-center bg-[#1E1A2E] text-white/80 space-y-4">
       <a
         href="https://aidowedding.net?utm_source=wedding_website&utm_medium=footer"
         target="_blank"
         rel="noopener"
-        className="inline-flex items-center gap-2 text-xs hover:text-white transition-colors group"
+        className="inline-flex items-center gap-2.5 text-sm hover:text-white transition-colors group"
       >
         <span className="opacity-70">Built with</span>
-        <img src="/logo.png" alt="A.IDO" className="h-5 w-5 rounded-full" />
-        <span className="font-medium tracking-wide" style={{ color: "#D4A017" }}>
+        <img src="/logo.png" alt="A.IDO" className="h-9 w-9 rounded-full" />
+        <span className="font-semibold tracking-wide text-base" style={{ color: "#D4A017" }}>
           A.IDO
         </span>
         <span className="opacity-50 group-hover:opacity-80 transition-opacity">— Plan your wedding too →</span>
       </a>
+      <nav className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 text-xs">
+        <a href="https://aidowedding.net/privacy" target="_blank" rel="noopener" className="hover:text-white transition-colors">
+          Privacy
+        </a>
+        <span className="opacity-40">·</span>
+        <a href="https://aidowedding.net/terms" target="_blank" rel="noopener" className="hover:text-white transition-colors">
+          Terms &amp; Conditions
+        </a>
+        <span className="opacity-40">·</span>
+        <a href="https://aidowedding.net/security" target="_blank" rel="noopener" className="hover:text-white transition-colors">
+          Security
+        </a>
+        <span className="opacity-40">·</span>
+        <a href="https://aidowedding.net/data-handling" target="_blank" rel="noopener" className="hover:text-white transition-colors">
+          Data Handling
+        </a>
+      </nav>
+      <p className="text-[11px] opacity-60 max-w-2xl mx-auto leading-relaxed">
+        © {year} A.IDO. All rights reserved. A.IDO is the platform that hosts this wedding
+        website. Photos, names, schedules, and other content shown here are provided by the
+        wedding couple and are their sole responsibility. By visiting this site you agree to
+        A.IDO&rsquo;s Terms &amp; Conditions and Privacy Policy.
+      </p>
     </div>
   );
 }

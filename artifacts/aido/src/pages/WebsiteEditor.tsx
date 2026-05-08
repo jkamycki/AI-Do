@@ -1291,7 +1291,14 @@ export default function WebsiteEditor() {
         <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs flex items-center justify-between gap-3 flex-wrap">
           <span style={{ color: "#D4A017" }}>
             Live preview — changes appear here instantly. Click{" "}
-            <strong className="text-emerald-500">Save</strong>{" "}
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !dirty}
+              className="font-bold text-emerald-500 underline underline-offset-2 hover:text-emerald-600 disabled:opacity-60 disabled:no-underline disabled:cursor-default"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>{" "}
             when you're happy.
           </span>
           <button
@@ -1431,13 +1438,18 @@ export default function WebsiteEditor() {
         <div ref={setOverlayEl} className="fixed inset-0 z-[9999] bg-background overflow-auto">
           <div className="sticky top-3 right-0 z-[10000] flex justify-end px-4 pointer-events-none">
             <div className="flex items-center gap-2 pointer-events-auto bg-background/90 backdrop-blur border border-border rounded-full px-3 py-1.5 shadow-lg">
-              <span className="text-xs text-muted-foreground font-medium">{t("website_editor.preview", { defaultValue: "Preview" })}</span>
-              <Badge
-                variant={record.published ? "default" : "destructive"}
-                className={record.published ? "text-[10px] py-0 px-1.5" : "text-[10px] py-0 px-1.5 bg-red-600 hover:bg-red-600 text-white"}
-              >
-                {record.published ? t("website_editor.live", { defaultValue: "Live" }) : t("website_editor.draft", { defaultValue: "Draft" })}
-              </Badge>
+              {record.published ? (
+                <span className="text-xs text-muted-foreground font-medium">{t("website_editor.preview", { defaultValue: "Preview" })}</span>
+              ) : (
+                <>
+                  <span className="text-[10px] font-bold uppercase tracking-wide bg-red-600 text-white rounded px-1.5 py-0.5">
+                    {t("website_editor.preview", { defaultValue: "Preview" })}
+                  </span>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                    {t("website_editor.preview_hidden_notice", { defaultValue: "Your website is currently hidden and is not visible to guests." })}
+                  </span>
+                </>
+              )}
               <div className="w-px h-4 bg-border" />
               <Button
                 size="sm"
@@ -1459,12 +1471,14 @@ export default function WebsiteEditor() {
                   Open live site ↗
                 </button>
               )}
+              <div className="w-px h-4 bg-border" />
               <button
-                className="text-xs text-muted-foreground hover:text-foreground"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-foreground hover:text-primary transition-colors"
                 onClick={() => setPreviewOpen(false)}
                 title={t("website_editor.close_preview", { defaultValue: "Close preview" })}
               >
                 <X className="h-3.5 w-3.5" />
+                {t("website_editor.back_to_editor", { defaultValue: "Back to editor" })}
               </button>
             </div>
           </div>
