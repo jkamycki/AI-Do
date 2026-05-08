@@ -426,7 +426,7 @@
     "tab_payments": "المدفوعات",
     "tab_files": "الملفات",
     "payment_label": "تسمية الدفعة",
-    "payment_label_placeholder": "مثال: عربون، الدفعة النهائية…",
+    "payment_label_placeholder": "مثال: الدفعة الثانية، الدفعة النهائية…",
     "payment_amount": "المبلغ",
     "payment_due_date": "تاريخ الاستحقاق",
     "payment_status": "حالة الدفع",
@@ -435,7 +435,8 @@
     "unpaid": "غير مدفوع",
     "vendor_added": "تمت إضافة المورد",
     "vendor_updated": "تم تحديث المورد",
-    "vendor_deleted": "تمت إزالة المورد"
+    "vendor_deleted": "تمت إزالة المورد",
+    "deposit_note": "ملاحظة: لا تسجل العربون هنا ولا تضع تسمية «عربون» على دفعة — مبلغ العربون يُسجَّل في قسم تعديل المورد لتجنب احتسابه مرتين."
   },
   "guests": {
     "title": "قائمة الضيوف",

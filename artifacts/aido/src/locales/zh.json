@@ -523,7 +523,7 @@
     "tab_payments": "付款",
     "tab_files": "文件",
     "payment_label": "付款标签",
-    "payment_label_placeholder": "例如：定金、尾款…",
+    "payment_label_placeholder": "例如：第二笔付款、尾款…",
     "payment_amount": "金额",
     "payment_due_date": "到期日",
     "payment_status": "付款状态",
@@ -678,7 +678,8 @@
     "draft_type_dj_band": "DJ/乐队",
     "draft_type_hair_makeup": "发型与化妆",
     "draft_type_planner": "策划师/协调员",
-    "draft_type_other": "其他"
+    "draft_type_other": "其他",
+    "deposit_note": "注意：请勿在此处登记定金或将付款标记为\"定金\"——定金金额应在编辑供应商部分填写，以免重复计算。"
   },
   "guests": {
     "title": "宾客名单",

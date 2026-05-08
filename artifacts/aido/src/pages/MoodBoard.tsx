@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, memo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@clerk/react";
 import { useUpload } from "@workspace/object-storage-web";
 import {
@@ -196,6 +197,7 @@ function SortableImageCard({
   onAddTag: (tag: string) => void;
   onRemoveTag: (tag: string) => void;
 }) {
+  const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: image.objectPath,
   });
@@ -252,7 +254,7 @@ function SortableImageCard({
         {...attributes}
         {...listeners}
         className="absolute top-2 left-2 p-1.5 rounded-lg bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-10"
-        title="Drag to reorder"
+        title={t("moodboard.drag_to_reorder", { defaultValue: "Drag to reorder" })}
       >
         <GripVertical className="h-3.5 w-3.5" />
       </button>
@@ -273,7 +275,7 @@ function SortableImageCard({
           title="Analyze with AI"
         >
           {analyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-          {analyzing ? "Analyzing…" : "Analyze"}
+          {analyzing ? t("moodboard.analyzing", { defaultValue: "Analyzing…" }) : t("moodboard.analyze", { defaultValue: "Analyze" })}
         </button>
       )}
 
@@ -315,6 +317,7 @@ function SortableImageCard({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function MoodBoard() {
+  const { t } = useTranslation();
   const { getToken } = useAuth();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -997,13 +1000,13 @@ export default function MoodBoard() {
       {/* Header: centered title + Export PDF button top-right */}
       <div className="relative flex justify-center items-start pb-5 border-b border-border/50">
         <div className="text-center">
-          <h1 className="text-2xl font-bold tracking-tight">Your Wedding Mood Board</h1>
-          <p className="text-sm text-muted-foreground mt-1">Curate and visualize your dream wedding style.</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("moodboard.title", { defaultValue: "Your Wedding Mood Board" })}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t("moodboard.subtitle", { defaultValue: "Curate and visualize your dream wedding style." })}</p>
         </div>
         <div className="absolute right-0 top-0 flex items-center gap-2">
           {savePending && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+              <Loader2 className="h-3 w-3 animate-spin" /> {t("moodboard.saving", { defaultValue: "Saving…" })}
             </span>
           )}
           <AlertDialog>
@@ -1011,26 +1014,26 @@ export default function MoodBoard() {
               <button
                 disabled={isBoardEmpty}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title={isBoardEmpty ? "Nothing to reset" : "Clear the entire mood board"}
+                title={isBoardEmpty ? t("moodboard.nothing_to_reset", { defaultValue: "Nothing to reset" }) : t("moodboard.clear_entire_board", { defaultValue: "Clear the entire mood board" })}
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                Reset
+                {t("moodboard.reset", { defaultValue: "Reset" })}
               </button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Clear your mood board?</AlertDialogTitle>
+                <AlertDialogTitle>{t("moodboard.clear_confirm_title", { defaultValue: "Clear your mood board?" })}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This removes all images, the color palette, style tags, the AI style summary, and your notes from this mood board. Uploaded files remain in storage but will no longer appear here. This cannot be undone.
+                  {t("moodboard.clear_confirm_desc", { defaultValue: "This removes all images, the color palette, style tags, the AI style summary, and your notes from this mood board. Uploaded files remain in storage but will no longer appear here. This cannot be undone." })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("moodboard.cancel", { defaultValue: "Cancel" })}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={resetBoard}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  Clear everything
+                  {t("moodboard.clear_everything", { defaultValue: "Clear everything" })}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -1043,7 +1046,7 @@ export default function MoodBoard() {
             {generatingPdf
               ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
               : <Download className="h-3.5 w-3.5" />}
-            Export PDF
+            {t("moodboard.export_pdf", { defaultValue: "Export PDF" })}
           </button>
         </div>
       </div>
@@ -1072,7 +1075,7 @@ export default function MoodBoard() {
           {board.images.length > 0 && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                {board.images.length} image{board.images.length !== 1 ? "s" : ""} · Drag to reorder
+                {board.images.length} {board.images.length !== 1 ? t("moodboard.images_label", { defaultValue: "images" }) : t("moodboard.image_label", { defaultValue: "image" })} · {t("moodboard.drag_to_reorder_hint", { defaultValue: "Drag to reorder" })}
               </p>
               <Button
                 variant="ghost"
@@ -1082,8 +1085,8 @@ export default function MoodBoard() {
                 className="text-xs"
               >
                 {analyzingPath
-                  ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Analyzing…</>
-                  : <><RefreshCw className="h-3.5 w-3.5 mr-1" /> Analyze All</>
+                  ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> {t("moodboard.analyzing_all", { defaultValue: "Analyzing…" })}</>
+                  : <><RefreshCw className="h-3.5 w-3.5 mr-1" /> {t("moodboard.analyze_all", { defaultValue: "Analyze All" })}</>
                 }
               </Button>
             </div>
@@ -1127,7 +1130,7 @@ export default function MoodBoard() {
                     : <ImagePlus className="h-6 w-6" />
                   }
                   <span className="text-xs font-medium">
-                    {isUploading ? "Uploading…" : "Add Image"}
+                    {isUploading ? t("moodboard.uploading", { defaultValue: "Uploading…" }) : t("moodboard.add_image", { defaultValue: "Add Image" })}
                   </span>
                 </button>
               </div>
@@ -1140,14 +1143,14 @@ export default function MoodBoard() {
                 <Palette className="h-8 w-8 text-primary/60" />
               </div>
               <div>
-                <p className="font-medium text-foreground">Start your mood board</p>
+                <p className="font-medium text-foreground">{t("moodboard.start_your_board", { defaultValue: "Start your mood board" })}</p>
                 <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                  Upload photos from Pinterest, Instagram, or your camera roll. Aria will detect your style automatically.
+                  {t("moodboard.start_your_board_desc", { defaultValue: "Upload photos from Pinterest, Instagram, or your camera roll. Aria will detect your style automatically." })}
                 </p>
               </div>
               <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
                 <ImagePlus className="h-4 w-4 mr-2" />
-                Upload Your First Image
+                {t("moodboard.upload_first_image", { defaultValue: "Upload Your First Image" })}
               </Button>
             </div>
           )}
@@ -1160,11 +1163,13 @@ export default function MoodBoard() {
           <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Tag className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Style Tags</h3>
+              <h3 className="text-sm font-semibold">{t("moodboard.style_tags", { defaultValue: "Style Tags" })}</h3>
             </div>
             {board.images.length > 0 && (
               <p className="text-[11px] text-muted-foreground leading-snug">
-                Tap to add to your overall style. <span className="text-foreground/80">Drag any tag onto a photo</span> to assign it to that image.
+                {t("moodboard.style_tags_hint_1", { defaultValue: "Tap to add to your overall style." })}{" "}
+                <span className="text-foreground/80">{t("moodboard.style_tags_hint_drag", { defaultValue: "Drag any tag onto a photo" })}</span>{" "}
+                {t("moodboard.style_tags_hint_2", { defaultValue: "to assign it to that image." })}
               </p>
             )}
 
@@ -1221,7 +1226,7 @@ export default function MoodBoard() {
                 value={newTag}
                 onChange={e => setNewTag(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && addCustomTag()}
-                placeholder="Add custom tag…"
+                placeholder={t("moodboard.add_custom_tag", { defaultValue: "Add custom tag…" })}
                 className="flex-1 text-xs bg-muted/40 border border-border/40 rounded-lg px-3 py-1.5 outline-none focus:border-primary/40 text-foreground placeholder:text-muted-foreground"
               />
               <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={addCustomTag}>
@@ -1234,7 +1239,7 @@ export default function MoodBoard() {
           <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Palette className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Color Palette</h3>
+              <h3 className="text-sm font-semibold">{t("moodboard.color_palette", { defaultValue: "Color Palette" })}</h3>
             </div>
 
             {board.colorPalette.length > 0 ? (
@@ -1259,7 +1264,7 @@ export default function MoodBoard() {
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Analyze your images to automatically extract your wedding color palette.
+                {t("moodboard.palette_empty_desc", { defaultValue: "Analyze your images to automatically extract your wedding color palette." })}
               </p>
             )}
 
@@ -1272,8 +1277,8 @@ export default function MoodBoard() {
                 disabled={!!analyzingPath}
               >
                 {analyzingPath
-                  ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Analyzing images…</>
-                  : <><Wand2 className="h-3.5 w-3.5 mr-1.5" /> Extract Colors from Images</>
+                  ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> {t("moodboard.analyzing_images", { defaultValue: "Analyzing images…" })}</>
+                  : <><Wand2 className="h-3.5 w-3.5 mr-1.5" /> {t("moodboard.extract_colors", { defaultValue: "Extract Colors from Images" })}</>
                 }
               </Button>
             )}
@@ -1284,7 +1289,7 @@ export default function MoodBoard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold">AI Style Summary</h3>
+                <h3 className="text-sm font-semibold">{t("moodboard.ai_style_summary", { defaultValue: "AI Style Summary" })}</h3>
               </div>
               <Button
                 variant="ghost"
@@ -1292,7 +1297,7 @@ export default function MoodBoard() {
                 className="h-7 w-7"
                 onClick={() => generateSummaryMutation.mutate()}
                 disabled={generateSummaryMutation.isPending}
-                title="Regenerate"
+                title={t("moodboard.regenerate", { defaultValue: "Regenerate" })}
               >
                 {generateSummaryMutation.isPending
                   ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1307,7 +1312,7 @@ export default function MoodBoard() {
             ) : (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  Upload images and add style tags, then generate your personalized style summary.
+                  {t("moodboard.summary_empty_desc", { defaultValue: "Upload images and add style tags, then generate your personalized style summary." })}
                 </p>
                 <Button
                   variant="outline"
@@ -1317,8 +1322,8 @@ export default function MoodBoard() {
                   disabled={generateSummaryMutation.isPending}
                 >
                   {generateSummaryMutation.isPending
-                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</>
-                    : <><Wand2 className="h-3.5 w-3.5 mr-1.5" /> Generate Summary</>
+                    ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> {t("moodboard.generating", { defaultValue: "Generating…" })}</>
+                    : <><Wand2 className="h-3.5 w-3.5 mr-1.5" /> {t("moodboard.generate_summary", { defaultValue: "Generate Summary" })}</>
                   }
                 </Button>
               </div>
@@ -1329,12 +1334,12 @@ export default function MoodBoard() {
           <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
             <div className="flex items-center gap-2">
               <StickyNote className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Notes & Inspiration</h3>
+              <h3 className="text-sm font-semibold">{t("moodboard.notes_inspiration", { defaultValue: "Notes & Inspiration" })}</h3>
             </div>
             <Textarea
               value={board.notes ?? ""}
               onChange={e => update({ notes: e.target.value })}
-              placeholder="Jot down ideas, inspiration links, or details about your vision…"
+              placeholder={t("moodboard.notes_placeholder", { defaultValue: "Jot down ideas, inspiration links, or details about your vision…" })}
               className="resize-none text-sm min-h-[100px] bg-muted/30 border-border/40"
             />
           </div>
@@ -1344,7 +1349,7 @@ export default function MoodBoard() {
             <div className="bg-card rounded-2xl border border-border/60 p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Wand2 className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold">Discovered from Images</h3>
+                <h3 className="text-sm font-semibold">{t("moodboard.discovered_from_images", { defaultValue: "Discovered from Images" })}</h3>
               </div>
               <div className="space-y-2">
                 {(() => {
@@ -1356,7 +1361,7 @@ export default function MoodBoard() {
                     <>
                       {allKeywords.length > 0 && (
                         <div>
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Aesthetic</p>
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{t("moodboard.aesthetic", { defaultValue: "Aesthetic" })}</p>
                           <div className="flex flex-wrap gap-1">
                             {allKeywords.slice(0, 8).map(k => (
                               <span key={k} className="text-xs bg-primary/8 text-primary px-2 py-0.5 rounded-full">{k}</span>
@@ -1366,7 +1371,7 @@ export default function MoodBoard() {
                       )}
                       {allThemes.length > 0 && (
                         <div>
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Décor Themes</p>
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{t("moodboard.decor_themes", { defaultValue: "Décor Themes" })}</p>
                           <div className="flex flex-wrap gap-1">
                             {allThemes.slice(0, 6).map(t => (
                               <span key={t} className="text-xs bg-muted text-foreground px-2 py-0.5 rounded-full">{t}</span>

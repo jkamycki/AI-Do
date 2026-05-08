@@ -536,7 +536,7 @@
     "tab_payments": "Payments",
     "tab_files": "Files",
     "payment_label": "Payment Label",
-    "payment_label_placeholder": "e.g. Deposit, Final Payment…",
+    "payment_label_placeholder": "e.g. Second Payment, Final Payment…",
     "payment_amount": "Amount",
     "payment_due_date": "Due Date",
     "payment_status": "Payment Status",
@@ -691,7 +691,8 @@
     "draft_type_dj_band": "DJ/Band",
     "draft_type_hair_makeup": "Hair & Makeup",
     "draft_type_planner": "Planner/Coordinator",
-    "draft_type_other": "Other"
+    "draft_type_other": "Other",
+    "deposit_note": "Note: don't log your deposit here or label a payment as \"Deposit\" — the deposit amount belongs in the Edit Vendor section so it isn't double-counted."
   },
   "guests": {
     "title": "Guest List",

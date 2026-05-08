@@ -426,7 +426,7 @@
     "tab_payments": "Betalingen",
     "tab_files": "Bestanden",
     "payment_label": "Betalingslabel",
-    "payment_label_placeholder": "bijv. Aanbetaling, Eindbetaling…",
+    "payment_label_placeholder": "bijv. Tweede betaling, Eindbetaling…",
     "payment_amount": "Bedrag",
     "payment_due_date": "Vervaldatum",
     "payment_status": "Betalingsstatus",
@@ -435,7 +435,8 @@
     "unpaid": "Onbetaald",
     "vendor_added": "Leverancier toegevoegd",
     "vendor_updated": "Leverancier bijgewerkt",
-    "vendor_deleted": "Leverancier verwijderd"
+    "vendor_deleted": "Leverancier verwijderd",
+    "deposit_note": "Let op: log je aanbetaling hier niet en label een betaling niet als \"Aanbetaling\" — het aanbetalingsbedrag hoort in de sectie Leverancier bewerken, zodat het niet dubbel wordt geteld."
   },
   "guests": {
     "title": "Gastenlijst",

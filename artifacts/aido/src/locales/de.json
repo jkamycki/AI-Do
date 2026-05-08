@@ -523,7 +523,7 @@
     "tab_payments": "Zahlungen",
     "tab_files": "Dateien",
     "payment_label": "Zahlungsbezeichnung",
-    "payment_label_placeholder": "z. B. Anzahlung, Abschlusszahlung…",
+    "payment_label_placeholder": "z.B. Zweite Zahlung, Schlusszahlung…",
     "payment_amount": "Betrag",
     "payment_due_date": "Fälligkeitsdatum",
     "payment_status": "Zahlungsstatus",
@@ -678,7 +678,8 @@
     "draft_type_dj_band": "DJ/Band",
     "draft_type_hair_makeup": "Haare & Make-up",
     "draft_type_planner": "Planer/Koordinator",
-    "draft_type_other": "Sonstiges"
+    "draft_type_other": "Sonstiges",
+    "deposit_note": "Hinweis: Buche deine Anzahlung nicht hier und beschrifte eine Zahlung nicht als „Anzahlung\" — der Anzahlungsbetrag gehört in den Bereich Anbieter bearbeiten, damit er nicht doppelt gezählt wird."
   },
   "guests": {
     "title": "Gästeliste",

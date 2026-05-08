@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@clerk/react";
 import { useUpload } from "@workspace/object-storage-web";
 import { authFetch } from "@/lib/authFetch";
@@ -75,6 +76,7 @@ const SECTION_LIST: Array<{ id: keyof WebsiteRecord["sectionsEnabled"]; label: s
 // ---------- main ----------
 
 export default function WebsiteEditor() {
+  const { t } = useTranslation();
   const { getToken } = useAuth();
   const { toast } = useToast();
   const [record, setRecord] = useState<WebsiteRecord | null>(null);
@@ -529,12 +531,12 @@ export default function WebsiteEditor() {
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-6">
           <Globe className="h-7 w-7 text-primary" />
         </div>
-        <h1 className="text-3xl font-serif font-bold mb-3">Your Wedding Website</h1>
+        <h1 className="text-3xl font-serif font-bold mb-3">{t("website_editor.your_wedding_website", { defaultValue: "Your Wedding Website" })}</h1>
         <p className="text-muted-foreground mb-8">
-          Create a beautiful, shareable site for your guests. We'll auto-generate it using your existing wedding details — you can customize everything afterwards.
+          {t("website_editor.create_intro", { defaultValue: "Create a beautiful, shareable site for your guests. We'll auto-generate it using your existing wedding details — you can customize everything afterwards." })}
         </p>
         <Button size="lg" onClick={handleCreate} disabled={creating}>
-          {creating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</> : "Create My Wedding Website"}
+          {creating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("website_editor.creating", { defaultValue: "Creating..." })}</> : t("website_editor.create_my_website", { defaultValue: "Create My Wedding Website" })}
         </Button>
       </div>
     );
@@ -549,18 +551,18 @@ export default function WebsiteEditor() {
       >
         <div className="p-5 border-b sticky top-0 bg-background z-10">
           <div className="flex items-center justify-between gap-2 mb-3">
-            <h2 className="text-xl font-serif font-bold">Website Editor</h2>
+            <h2 className="text-xl font-serif font-bold">{t("website_editor.editor_title", { defaultValue: "Website Editor" })}</h2>
             <Badge
               variant={record.published ? "default" : "destructive"}
               className={record.published ? undefined : "bg-red-600 hover:bg-red-600 text-white"}
             >
-              {record.published ? "Live" : "Draft"}
+              {record.published ? t("website_editor.live", { defaultValue: "Live" }) : t("website_editor.draft", { defaultValue: "Draft" })}
             </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
               {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
-              {saving ? "Saving..." : dirty ? "Save changes" : "Saved"}
+              {saving ? t("website_editor.saving", { defaultValue: "Saving..." }) : dirty ? t("website_editor.save_changes", { defaultValue: "Save changes" }) : t("website_editor.saved", { defaultValue: "Saved" })}
             </Button>
             <Button
               size="sm"
@@ -570,7 +572,7 @@ export default function WebsiteEditor() {
               title="Undo last change (Cmd/Ctrl+Z)"
             >
               <Undo2 className="h-3.5 w-3.5 mr-1.5" />
-              Undo
+              {t("website_editor.undo", { defaultValue: "Undo" })}
             </Button>
             {!dirty && lastAutosaved && (
               <span className="text-[11px] text-muted-foreground">
@@ -579,11 +581,11 @@ export default function WebsiteEditor() {
             )}
             <Button size="sm" variant={record.published ? "outline" : "default"} onClick={handlePublish} disabled={publishing}>
               {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Globe className="h-3.5 w-3.5 mr-1.5" />}
-              {record.published ? "Unpublish" : "Publish"}
+              {record.published ? t("website_editor.unpublish", { defaultValue: "Unpublish" }) : t("website_editor.publish", { defaultValue: "Publish" })}
             </Button>
             <Button size="sm" variant="outline" onClick={() => { setPreviewSection("home"); setPreviewOpen(true); }}>
               <Eye className="h-3.5 w-3.5 mr-1.5" />
-              Guest Preview
+              {t("website_editor.guest_preview", { defaultValue: "Guest Preview" })}
             </Button>
           </div>
           {record.published && (
@@ -599,7 +601,7 @@ export default function WebsiteEditor() {
                   variant="ghost"
                   className="h-6 px-2"
                   onClick={() => setQrOpen((v) => !v)}
-                  title={qrOpen ? "Hide QR code" : "Generate QR code"}
+                  title={qrOpen ? t("website_editor.hide_qr", { defaultValue: "Hide QR code" }) : t("website_editor.generate_qr", { defaultValue: "Generate QR code" })}
                 >
                   <QrCode className="h-3 w-3" />
                 </Button>
@@ -615,21 +617,21 @@ export default function WebsiteEditor() {
           {/* Tab rail */}
           <div className="mt-4 flex items-center gap-1 -mb-1 overflow-x-auto">
             {([
-              { id: "design",    label: "Design",    icon: Palette },
-              { id: "pages",     label: "Pages",     icon: FileText },
-              { id: "animation", label: "Animation", icon: Sparkles },
-              { id: "settings",  label: "Settings",  icon: Settings },
-            ] as const).map((t) => {
-              const TabIcon = t.icon;
-              const active = activeTab === t.id;
+              { id: "design",    label: t("website_editor.tab_design", { defaultValue: "Design" }),    icon: Palette },
+              { id: "pages",     label: t("website_editor.tab_pages", { defaultValue: "Pages" }),     icon: FileText },
+              { id: "animation", label: t("website_editor.tab_animation", { defaultValue: "Animation" }), icon: Sparkles },
+              { id: "settings",  label: t("website_editor.tab_settings", { defaultValue: "Settings" }),  icon: Settings },
+            ] as const).map((tab) => {
+              const TabIcon = tab.icon;
+              const active = activeTab === tab.id;
               return (
                 <button
-                  key={t.id}
-                  onClick={() => setActiveTab(t.id)}
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
                 >
                   <TabIcon className="h-3.5 w-3.5" />
-                  {t.label}
+                  {tab.label}
                 </button>
               );
             })}
@@ -637,10 +639,10 @@ export default function WebsiteEditor() {
         </div>
 
         {/* Text tools */}
-        {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title="Text Tools">
+        {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_text_tools", { defaultValue: "Text Tools" })}>
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Right-click anywhere on the preview to add a new text box.
+              {t("website_editor.text_tools_hint", { defaultValue: "Right-click anywhere on the preview to add a new text box." })}
             </p>
             <Button
               size="sm"
@@ -652,46 +654,46 @@ export default function WebsiteEditor() {
               }}
             >
               <X className="h-3.5 w-3.5" />
-              Reset all to default
+              {t("website_editor.reset_all_to_default", { defaultValue: "Reset all to default" })}
             </Button>
           </div>
         </Section>}
 
         {/* Theme picker */}
-        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title="Theme">
+        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_theme", { defaultValue: "Theme" })}>
           <div className="grid grid-cols-2 gap-2">
-            {THEMES.map((t) => (
+            {THEMES.map((theme) => (
               <button
-                key={t.id}
-                onClick={() => applyTheme(t.id)}
-                className={`text-left p-3 rounded-md border transition-all ${record.theme === t.id ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/50"}`}
+                key={theme.id}
+                onClick={() => applyTheme(theme.id)}
+                className={`text-left p-3 rounded-md border transition-all ${record.theme === theme.id ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/50"}`}
               >
                 <div className="flex gap-1 mb-2">
-                  <div className="w-4 h-4 rounded-full" style={{ background: t.primary }} />
-                  <div className="w-4 h-4 rounded-full" style={{ background: t.secondary }} />
-                  <div className="w-4 h-4 rounded-full" style={{ background: t.neutral }} />
+                  <div className="w-4 h-4 rounded-full" style={{ background: theme.primary }} />
+                  <div className="w-4 h-4 rounded-full" style={{ background: theme.secondary }} />
+                  <div className="w-4 h-4 rounded-full" style={{ background: theme.neutral }} />
                 </div>
-                <div className="text-xs font-medium">{t.name}</div>
+                <div className="text-xs font-medium">{theme.name}</div>
               </button>
             ))}
           </div>
         </Section>}
 
         {/* Colors */}
-        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title="Colors">
+        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_colors", { defaultValue: "Colors" })}>
           <div className="grid grid-cols-2 gap-3">
-            <ColorField label="Primary"   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
-            <ColorField label="Secondary" value={record.colorPalette.secondary} onChange={(v) => update({ colorPalette: { ...record.colorPalette, secondary: v } })} />
-            <ColorField label="Background" value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
-            <ColorField label="Text"      value={record.colorPalette.text}      onChange={(v) => update({ colorPalette: { ...record.colorPalette, text: v } })} />
+            <ColorField label={t("website_editor.color_primary", { defaultValue: "Primary" })}   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
+            <ColorField label={t("website_editor.color_secondary", { defaultValue: "Secondary" })} value={record.colorPalette.secondary} onChange={(v) => update({ colorPalette: { ...record.colorPalette, secondary: v } })} />
+            <ColorField label={t("website_editor.color_background", { defaultValue: "Background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
+            <ColorField label={t("website_editor.color_text", { defaultValue: "Text" })}      value={record.colorPalette.text}      onChange={(v) => update({ colorPalette: { ...record.colorPalette, text: v } })} />
           </div>
         </Section>}
 
         {/* Typography */}
-        {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title="Typography">
+        {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_typography", { defaultValue: "Typography" })}>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Heading font (couple names, titles)</Label>
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.heading_font_label", { defaultValue: "Heading font (couple names, titles)" })}</Label>
               <select
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 value={record.customText._headingFont || record.font}
@@ -703,7 +705,7 @@ export default function WebsiteEditor() {
               </select>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Body font (paragraphs)</Label>
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.body_font_label", { defaultValue: "Body font (paragraphs)" })}</Label>
               <select
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 value={record.customText._bodyFont || "Inter"}
@@ -718,7 +720,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Sections */}
-        {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title="Sections">
+        {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_sections", { defaultValue: "Sections" })}>
           <div className="space-y-2.5">
             {SECTION_LIST.map((s) => {
               const Icon = s.icon;
@@ -741,64 +743,64 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Inline-edit hint */}
-        {inTab("design") && <Section icon={<FileText className="h-4 w-4" />} title="Edit Text">
+        {inTab("design") && <Section icon={<FileText className="h-4 w-4" />} title={t("website_editor.section_edit_text", { defaultValue: "Edit Text" })}>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Click any heading or paragraph in the preview to edit it directly. Press <strong>Enter</strong> on a heading or click outside to commit. Use this sidebar for theme, layout, photos, and section toggles.
+            {t("website_editor.edit_text_hint_1", { defaultValue: "Click any heading or paragraph in the preview to edit it directly. Press" })} <strong>{t("website_editor.edit_text_hint_enter", { defaultValue: "Enter" })}</strong> {t("website_editor.edit_text_hint_2", { defaultValue: "on a heading or click outside to commit. Use this sidebar for theme, layout, photos, and section toggles." })}
           </p>
         </Section>}
 
         {/* Hero animation */}
-        {inTab("animation") && <Section icon={<Sparkles className="h-4 w-4" />} title="Hero Animation">
+        {inTab("animation") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_hero_animation", { defaultValue: "Hero Animation" })}>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Style</Label>
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.style_label", { defaultValue: "Style" })}</Label>
               <select
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 value={record.customText._heroAnimation ?? "static"}
                 onChange={(e) => update({ customText: { ...record.customText, _heroAnimation: e.target.value } })}
               >
-                <option value="static">Static (single image)</option>
-                <option value="slideshow">Slideshow (cycle photos)</option>
-                <option value="kenburns">Ken Burns (slow zoom)</option>
-                <option value="pan-lr">Pan left-to-right</option>
-                <option value="marquee">Marquee (continuous scroll)</option>
+                <option value="static">{t("website_editor.anim_static", { defaultValue: "Static (single image)" })}</option>
+                <option value="slideshow">{t("website_editor.anim_slideshow", { defaultValue: "Slideshow (cycle photos)" })}</option>
+                <option value="kenburns">{t("website_editor.anim_kenburns", { defaultValue: "Ken Burns (slow zoom)" })}</option>
+                <option value="pan-lr">{t("website_editor.anim_pan_lr", { defaultValue: "Pan left-to-right" })}</option>
+                <option value="marquee">{t("website_editor.anim_marquee", { defaultValue: "Marquee (continuous scroll)" })}</option>
               </select>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Speed</Label>
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.speed_label", { defaultValue: "Speed" })}</Label>
               <select
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 value={record.customText._heroAnimationSpeed ?? "medium"}
                 onChange={(e) => update({ customText: { ...record.customText, _heroAnimationSpeed: e.target.value } })}
               >
-                <option value="slow">Slow</option>
-                <option value="medium">Medium</option>
-                <option value="fast">Fast</option>
+                <option value="slow">{t("website_editor.speed_slow", { defaultValue: "Slow" })}</option>
+                <option value="medium">{t("website_editor.speed_medium", { defaultValue: "Medium" })}</option>
+                <option value="fast">{t("website_editor.speed_fast", { defaultValue: "Fast" })}</option>
               </select>
             </div>
             {(record.customText._heroAnimation === "slideshow") && (
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Slideshow uses your hero image and all gallery photos. Add more photos in the Gallery section below to extend the rotation.
+                {t("website_editor.slideshow_hint", { defaultValue: "Slideshow uses your hero image and all gallery photos. Add more photos in the Gallery section below to extend the rotation." })}
               </p>
             )}
           </div>
         </Section>}
 
         {/* Photo effects */}
-        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Photo Effects">
+        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_photo_effects", { defaultValue: "Photo Effects" })}>
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground mb-1 block">Filter (applied to hero + gallery)</Label>
+            <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.filter_label", { defaultValue: "Filter (applied to hero + gallery)" })}</Label>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { id: "none", label: "Original" },
-                { id: "bw", label: "B&W" },
-                { id: "sepia", label: "Sepia" },
-                { id: "vintage", label: "Vintage" },
-                { id: "soft", label: "Soft" },
-                { id: "cool", label: "Cool" },
-                { id: "warm", label: "Warm" },
-                { id: "dramatic", label: "Dramatic" },
-                { id: "noir", label: "Noir" },
+                { id: "none", label: t("website_editor.filter_original", { defaultValue: "Original" }) },
+                { id: "bw", label: t("website_editor.filter_bw", { defaultValue: "B&W" }) },
+                { id: "sepia", label: t("website_editor.filter_sepia", { defaultValue: "Sepia" }) },
+                { id: "vintage", label: t("website_editor.filter_vintage", { defaultValue: "Vintage" }) },
+                { id: "soft", label: t("website_editor.filter_soft", { defaultValue: "Soft" }) },
+                { id: "cool", label: t("website_editor.filter_cool", { defaultValue: "Cool" }) },
+                { id: "warm", label: t("website_editor.filter_warm", { defaultValue: "Warm" }) },
+                { id: "dramatic", label: t("website_editor.filter_dramatic", { defaultValue: "Dramatic" }) },
+                { id: "noir", label: t("website_editor.filter_noir", { defaultValue: "Noir" }) },
               ].map((f) => {
                 const active = (record.customText._photoFilter ?? "none") === f.id;
                 return (
@@ -820,7 +822,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Hero image */}
-        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Hero Image">
+        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_hero_image", { defaultValue: "Hero Image" })}>
           {record.heroImage ? (
             <div className="relative rounded-md overflow-hidden">
               <img
@@ -879,7 +881,7 @@ export default function WebsiteEditor() {
                     );
                     update({ galleryImages: next });
                   }}
-                  placeholder="Caption…"
+                  placeholder={t("website_editor.caption_placeholder", { defaultValue: "Caption…" })}
                   className="w-full text-[10px] border border-border rounded px-1.5 py-1 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 truncate"
                 />
               </div>
@@ -940,7 +942,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Announcement banner */}
-        {inTab("settings") && <Section icon={<Megaphone className="h-4 w-4" />} title="Announcement">
+        {inTab("settings") && <Section icon={<Megaphone className="h-4 w-4" />} title={t("website_editor.section_announcement", { defaultValue: "Announcement" })}>
           <p className="text-xs text-muted-foreground mb-2">
             Show a dismissible banner at the top of your site — great for last-minute updates.
           </p>
@@ -949,7 +951,7 @@ export default function WebsiteEditor() {
             onChange={(e) =>
               update({ customText: { ...record.customText, _announcement: e.target.value } })
             }
-            placeholder="e.g. Venue has changed — please check the Travel section for updated details."
+            placeholder={t("website_editor.announcement_placeholder", { defaultValue: "e.g. Venue has changed — please check the Travel section for updated details." })}
             className="text-sm resize-none"
             rows={3}
           />
@@ -957,7 +959,7 @@ export default function WebsiteEditor() {
 
         {/* RSVP settings — responses are tracked in the portal, not here */}
         {inTab("pages") && record.sectionsEnabled.rsvp && (
-          <Section icon={<Heart className="h-4 w-4" />} title="RSVP Settings">
+          <Section icon={<Heart className="h-4 w-4" />} title={t("website_editor.section_rsvp_settings", { defaultValue: "RSVP Settings" })}>
             <div className="space-y-2">
               <div>
                 <Label className="text-xs text-muted-foreground mb-1 block">RSVP deadline (shown to guests)</Label>
@@ -966,7 +968,7 @@ export default function WebsiteEditor() {
                   onChange={(e) =>
                     update({ customText: { ...record.customText, rsvp_deadline: e.target.value } })
                   }
-                  placeholder="e.g. October 1, 2025"
+                  placeholder={t("website_editor.rsvp_deadline_placeholder", { defaultValue: "e.g. October 1, 2025" })}
                   className="h-8 text-sm"
                 />
               </div>
@@ -977,7 +979,7 @@ export default function WebsiteEditor() {
                   onChange={(e) =>
                     update({ customText: { ...record.customText, rsvp_thankyou: e.target.value } })
                   }
-                  placeholder="We'll send you more details closer to the day."
+                  placeholder={t("website_editor.rsvp_thankyou_placeholder", { defaultValue: "We'll send you more details closer to the day." })}
                   className="h-8 text-sm"
                 />
               </div>
@@ -987,26 +989,26 @@ export default function WebsiteEditor() {
 
         {/* Website visibility */}
         {inTab("settings") && (
-          <Section icon={<Globe className="h-4 w-4" />} title="Website Visibility">
+          <Section icon={<Globe className="h-4 w-4" />} title={t("website_editor.section_visibility", { defaultValue: "Website Visibility" })}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">
-                <p className="text-sm font-medium">{record.published ? "Live" : "Not published"}</p>
+                <p className="text-sm font-medium">{record.published ? t("website_editor.live", { defaultValue: "Live" }) : t("website_editor.not_published", { defaultValue: "Not published" })}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {record.published
-                    ? "Your site is viewable by anyone with the link."
-                    : "Your site is in draft. Guests can't view it yet."}
+                    ? t("website_editor.visibility_public", { defaultValue: "Your site is viewable by anyone with the link." })
+                    : t("website_editor.visibility_draft", { defaultValue: "Your site is in draft. Guests can't view it yet." })}
                 </p>
               </div>
               <Button size="sm" variant={record.published ? "outline" : "default"} onClick={handlePublish} disabled={publishing}>
                 {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
-                {record.published ? "Unpublish" : "Publish"}
+                {record.published ? t("website_editor.unpublish", { defaultValue: "Unpublish" }) : t("website_editor.publish", { defaultValue: "Publish" })}
               </Button>
             </div>
           </Section>
         )}
 
         {/* Website URL */}
-        {inTab("settings") && <Section icon={<Link2 className="h-4 w-4" />} title="Website URL">
+        {inTab("settings") && <Section icon={<Link2 className="h-4 w-4" />} title={t("website_editor.section_url", { defaultValue: "Website URL" })}>
           <SlugEditor
             slug={record.slug}
             published={record.published}
@@ -1017,7 +1019,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Password */}
-        {inTab("settings") && <Section icon={<Lock className="h-4 w-4" />} title="Password Protection">
+        {inTab("settings") && <Section icon={<Lock className="h-4 w-4" />} title={t("website_editor.section_password", { defaultValue: "Password Protection" })}>
           {record.passwordEnabled ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 dark:bg-amber-950/30 text-xs text-amber-800 dark:text-amber-200">
@@ -1031,7 +1033,7 @@ export default function WebsiteEditor() {
             <div className="flex gap-2">
               <Input
                 type="text"
-                placeholder="Optional password"
+                placeholder={t("website_editor.password_placeholder", { defaultValue: "Optional password" })}
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 className="text-sm"
@@ -1051,7 +1053,7 @@ export default function WebsiteEditor() {
           dragState.current = { active: true, startX: e.clientX, startW: sidebarWidth };
           e.preventDefault();
         }}
-        title="Drag to resize"
+        title={t("website_editor.drag_to_resize", { defaultValue: "Drag to resize" })}
       />
 
       {/* Live preview */}
@@ -1109,7 +1111,7 @@ export default function WebsiteEditor() {
       >
         <Trash2 className={`h-4 w-4 ${editableDragging ? "text-white" : ""}`} />
         <span className="text-xs font-medium">
-          {editableDragging ? "Release to delete" : "Drop to delete"}
+          {editableDragging ? t("website_editor.release_to_delete", { defaultValue: "Release to delete" }) : t("website_editor.drop_to_delete", { defaultValue: "Drop to delete" })}
         </span>
       </div>
 
@@ -1126,7 +1128,7 @@ export default function WebsiteEditor() {
             onClick={() => {
               const key = `_custom_${Date.now()}`;
               patchRecord((prev) => ({
-                customText: { ...prev.customText, [key]: "New text — click to edit" },
+                customText: { ...prev.customText, [key]: t("website_editor.new_text", { defaultValue: "New text — click to edit" }) },
                 textPositions: { ...(prev.textPositions ?? {}), [key]: { x: 0, y: 0 } },
               }));
               setCtxMenu(null);
@@ -1143,12 +1145,12 @@ export default function WebsiteEditor() {
         <div ref={setOverlayEl} className="fixed inset-0 z-[9999] bg-background overflow-auto">
           <div className="sticky top-3 right-0 z-[10000] flex justify-end px-4 pointer-events-none">
             <div className="flex items-center gap-2 pointer-events-auto bg-background/90 backdrop-blur border border-border rounded-full px-3 py-1.5 shadow-lg">
-              <span className="text-xs text-muted-foreground font-medium">Guest Preview</span>
+              <span className="text-xs text-muted-foreground font-medium">{t("website_editor.guest_preview", { defaultValue: "Guest Preview" })}</span>
               <Badge
                 variant={record.published ? "default" : "destructive"}
                 className={record.published ? "text-[10px] py-0 px-1.5" : "text-[10px] py-0 px-1.5 bg-red-600 hover:bg-red-600 text-white"}
               >
-                {record.published ? "Live" : "Draft"}
+                {record.published ? t("website_editor.live", { defaultValue: "Live" }) : t("website_editor.draft", { defaultValue: "Draft" })}
               </Badge>
               <div className="w-px h-4 bg-border" />
               <Button
@@ -1161,7 +1163,7 @@ export default function WebsiteEditor() {
                 {publishing
                   ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                   : <Globe className="h-3 w-3 mr-1" />}
-                {record.published ? "Unpublish" : "Publish"}
+                {record.published ? t("website_editor.unpublish", { defaultValue: "Unpublish" }) : t("website_editor.publish", { defaultValue: "Publish" })}
               </Button>
               {record.published && (
                 <button
@@ -1174,7 +1176,7 @@ export default function WebsiteEditor() {
               <button
                 className="text-xs text-muted-foreground hover:text-foreground"
                 onClick={() => setPreviewOpen(false)}
-                title="Close preview"
+                title={t("website_editor.close_preview", { defaultValue: "Close preview" })}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -1207,6 +1209,7 @@ function SlugEditor({
   published: boolean;
   onSaved: (newSlug: string, lastUpdated: string) => void;
 }) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState(slug);
@@ -1218,7 +1221,7 @@ function SlugEditor({
 
   const save = async () => {
     const clean = sanitize(input);
-    if (clean.length < 3) { setError("At least 3 characters required"); return; }
+    if (clean.length < 3) { setError(t("website_editor.slug_too_short", { defaultValue: "At least 3 characters required" })); return; }
     setSaving(true);
     setError(null);
     try {
@@ -1228,12 +1231,12 @@ function SlugEditor({
         body: JSON.stringify({ slug: clean }),
       });
       const body = await r.json() as { slug?: string; lastUpdated?: string; error?: string };
-      if (!r.ok) { setError(body.error ?? "Failed to update URL"); return; }
+      if (!r.ok) { setError(body.error ?? t("website_editor.failed_update_url", { defaultValue: "Failed to update URL" })); return; }
       onSaved(body.slug!, body.lastUpdated!);
       setEditing(false);
       toast({ title: "Website URL updated!" });
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("website_editor.network_error", { defaultValue: "Network error. Please try again." }));
     } finally {
       setSaving(false);
     }
@@ -1320,6 +1323,17 @@ const REGISTRY_PRESETS = [
   "Honeymoon Fund",
 ];
 
+const REGISTRY_PRESET_KEYS: Record<string, string> = {
+  "Amazon Wishlist": "website_editor.registry_amazon",
+  "Zola": "website_editor.registry_zola",
+  "Crate & Barrel": "website_editor.registry_crate",
+  "Williams-Sonoma": "website_editor.registry_williams",
+  "Target": "website_editor.registry_target",
+  "Bed Bath & Beyond": "website_editor.registry_bedbath",
+  "Pottery Barn": "website_editor.registry_pottery",
+  "Honeymoon Fund": "website_editor.registry_honeymoon",
+};
+
 function RegistryLinksEditor({
   links,
   onChange,
@@ -1327,6 +1341,7 @@ function RegistryLinksEditor({
   links: RegistryLink[];
   onChange: (next: RegistryLink[]) => void;
 }) {
+  const { t } = useTranslation();
   const add = () => onChange([...links, { name: "", url: "" }]);
   const remove = (i: number) => onChange(links.filter((_, idx) => idx !== i));
   const update = (i: number, patch: Partial<RegistryLink>) =>
@@ -1350,7 +1365,7 @@ function RegistryLinksEditor({
               }}
             >
               {REGISTRY_PRESETS.map((p) => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p} value={p}>{t(REGISTRY_PRESET_KEYS[p], { defaultValue: p })}</option>
               ))}
               <option value="__custom__">Custom name…</option>
             </select>
@@ -1391,13 +1406,14 @@ function RegistryLinksEditor({
 // ---- QR code section ----
 
 const QR_SIZES = [
-  { label: "Small (400px)", size: 400, desc: "Digital sharing, email" },
-  { label: "Medium (800px)", size: 800, desc: "Save-the-dates, small print" },
-  { label: "Large (1200px)", size: 1200, desc: "Invitations, 4×4\" print" },
-  { label: "Print (2000px)", size: 2000, desc: "Large signage, posters" },
+  { labelKey: "website_editor.qr_small", labelDefault: "Small (400px)", size: 400, desc: "Digital sharing, email" },
+  { labelKey: "website_editor.qr_medium", labelDefault: "Medium (800px)", size: 800, desc: "Save-the-dates, small print" },
+  { labelKey: "website_editor.qr_large", labelDefault: "Large (1200px)", size: 1200, desc: "Invitations, 4×4\" print" },
+  { labelKey: "website_editor.qr_print", labelDefault: "Print (2000px)", size: 2000, desc: "Large signage, posters" },
 ];
 
 function QrCodeSection({ publicUrl, published }: { publicUrl: string; published: boolean }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [selectedSize, setSelectedSize] = useState(800);
 
@@ -1467,7 +1483,7 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
               onClick={() => setSelectedSize(s.size)}
               className={`text-left px-2.5 py-2 rounded-md border text-xs transition-all ${selectedSize === s.size ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40"}`}
             >
-              <div className="font-medium leading-tight">{s.label}</div>
+              <div className="font-medium leading-tight">{t(s.labelKey, { defaultValue: s.labelDefault })}</div>
               <div className="text-[10px] opacity-60 mt-0.5">{s.desc}</div>
             </button>
           ))}

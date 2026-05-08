@@ -523,7 +523,7 @@
     "tab_payments": "Pagamenti",
     "tab_files": "File",
     "payment_label": "Etichetta Pagamento",
-    "payment_label_placeholder": "es. Acconto, Pagamento Finale…",
+    "payment_label_placeholder": "es. Secondo pagamento, Pagamento finale…",
     "payment_amount": "Importo",
     "payment_due_date": "Data Scadenza",
     "payment_status": "Stato Pagamento",
@@ -678,7 +678,8 @@
     "draft_type_dj_band": "DJ/Band",
     "draft_type_hair_makeup": "Acconciatura e Make-up",
     "draft_type_planner": "Pianificatore/Coordinatore",
-    "draft_type_other": "Altro"
+    "draft_type_other": "Altro",
+    "deposit_note": "Nota: non registrare l'acconto qui né etichettare un pagamento come \"Acconto\" — l'importo dell'acconto va nella sezione Modifica Fornitore per evitare il doppio conteggio."
   },
   "guests": {
     "title": "Lista Ospiti",

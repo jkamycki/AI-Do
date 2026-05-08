@@ -341,9 +341,9 @@ function AddEditVendorDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Primary Contact</Label>
+              <Label>{t("vendors.primary_contact", { defaultValue: "Primary Contact" })}</Label>
               <Input
-                placeholder="Contact person name"
+                placeholder={t("vendors.primary_contact_placeholder", { defaultValue: "Contact person name" })}
                 value={form.primaryContact}
                 onChange={(e) => setForm({ ...form, primaryContact: e.target.value })}
               />
@@ -480,7 +480,10 @@ function PaymentRow({
   if (editing) {
     return (
       <form onSubmit={handleEditSubmit} className="rounded-xl p-4 space-y-4 border bg-muted/20">
-        <p className="text-sm font-semibold">Edit Payment</p>
+        <p className="text-sm font-semibold">{t("vendors.edit_payment", { defaultValue: "Edit Payment" })}</p>
+        <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-md p-2.5">
+          {t("vendors.deposit_note", { defaultValue: "Note: don't log your deposit here or label a payment as \"Deposit\" — the deposit amount belongs in the Edit Vendor section so it isn't double-counted." })}
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 space-y-1.5">
             <Label className="text-xs">{t("vendors.payment_label")}</Label>
@@ -525,7 +528,7 @@ function PaymentRow({
         </div>
         <div className="flex gap-2 pt-1">
           <Button type="submit" size="sm" disabled={editMutation.isPending} className="flex-1">
-            {editMutation.isPending ? "Saving…" : "Save Changes"}
+            {editMutation.isPending ? t("vendors.saving_ellipsis", { defaultValue: "Saving…" }) : t("vendors.save_changes_btn", { defaultValue: "Save Changes" })}
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>{t("vendors.cancel")}</Button>
         </div>
@@ -570,7 +573,7 @@ function PaymentRow({
       <div className={`text-sm font-bold text-right shrink-0 ${payment.isPaid ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"}`}>
         {formatCurrency(payment.amount)}
       </div>
-      <button onClick={openEdit} title="Edit payment" className="text-muted-foreground hover:text-foreground transition-colors ml-1">
+      <button onClick={openEdit} title={t("vendors.edit_payment", { defaultValue: "Edit payment" })} className="text-muted-foreground hover:text-foreground transition-colors ml-1">
         <Edit className="h-3.5 w-3.5" />
       </button>
       <button onClick={onDelete} className="text-muted-foreground hover:text-destructive transition-colors">
@@ -621,6 +624,9 @@ function AddPaymentForm({
   return (
     <form onSubmit={handleSubmit} className="rounded-xl p-4 space-y-4 border bg-muted/20">
       <p className="text-sm font-semibold">{t("vendors.add_payment")}</p>
+      <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-md p-2.5">
+        {t("vendors.deposit_note", { defaultValue: "Note: don't log your deposit here or label a payment as \"Deposit\" — the deposit amount belongs in the Edit Vendor section so it isn't double-counted." })}
+      </p>
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1.5">
           <Label className="text-xs">{t("vendors.payment_label")}</Label>
@@ -1045,6 +1051,7 @@ function VendorDetailDialog({
 }
 
 function SummarizeEmailDialog({ open, onClose, preferredLanguage }: { open: boolean; onClose: () => void; preferredLanguage?: string }) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [emailText, setEmailText] = useState("");
   const mutation = useSummarizeVendorEmail({
@@ -1067,14 +1074,14 @@ function SummarizeEmailDialog({ open, onClose, preferredLanguage }: { open: bool
         <DialogHeader>
           <DialogTitle className="font-serif text-xl flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Summarize Vendor Reply
+            {t("vendors.summarize_reply_title", { defaultValue: "Summarize Vendor Reply" })}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Paste the vendor's email here</Label>
+            <Label>{t("vendors.paste_vendor_email", { defaultValue: "Paste the vendor's email here" })}</Label>
             <Textarea
-              placeholder="Paste the full email text you received from your vendor..."
+              placeholder={t("vendors.paste_vendor_email_placeholder", { defaultValue: "Paste the full email text you received from your vendor..." })}
               value={emailText}
               onChange={(e) => setEmailText(e.target.value)}
               rows={8}
@@ -1082,19 +1089,19 @@ function SummarizeEmailDialog({ open, onClose, preferredLanguage }: { open: bool
             />
           </div>
           <Button type="submit" disabled={mutation.isPending || !emailText.trim()} className="w-full" data-testid="btn-summarize-email">
-            {mutation.isPending ? "Summarizing..." : "Summarize Email"}
+            {mutation.isPending ? t("vendors.summarizing", { defaultValue: "Summarizing..." }) : t("vendors.summarize_email", { defaultValue: "Summarize Email" })}
           </Button>
         </form>
 
         {result && (
           <div className="space-y-4 border-t pt-4 mt-2">
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
-              <p className="text-xs font-medium text-primary uppercase tracking-wider mb-2">Summary</p>
+              <p className="text-xs font-medium text-primary uppercase tracking-wider mb-2">{t("vendors.summary_label", { defaultValue: "Summary" })}</p>
               <p className="text-sm text-foreground">{result.summary}</p>
             </div>
             {result.keyPoints.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Key Points</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{t("vendors.key_points_label", { defaultValue: "Key Points" })}</p>
                 <ul className="space-y-1.5">
                   {result.keyPoints.map((point, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
@@ -1107,7 +1114,7 @@ function SummarizeEmailDialog({ open, onClose, preferredLanguage }: { open: bool
             )}
             {result.actionItems.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Action Items</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{t("vendors.action_items_label", { defaultValue: "Action Items" })}</p>
                 <ul className="space-y-1.5">
                   {result.actionItems.map((item, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
@@ -1161,8 +1168,8 @@ function VendorCard({
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
             className="p-1.5 rounded-lg border border-border/40 hover:bg-muted hover:border-border transition-colors"
-            title="Edit vendor"
-            aria-label="Edit vendor"
+            title={t("vendors.edit_vendor_title", { defaultValue: "Edit vendor" })}
+            aria-label={t("vendors.edit_vendor_title", { defaultValue: "Edit vendor" })}
             data-testid={`btn-vendor-edit-${vendor.id}`}
           >
             <Edit className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1170,8 +1177,8 @@ function VendorCard({
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
             className="p-1.5 rounded-lg border border-border/40 hover:bg-destructive/10 hover:border-destructive/40 transition-colors"
-            title="Delete vendor"
-            aria-label="Delete vendor"
+            title={t("vendors.delete_vendor_title", { defaultValue: "Delete vendor" })}
+            aria-label={t("vendors.delete_vendor_title", { defaultValue: "Delete vendor" })}
             data-testid={`btn-vendor-delete-${vendor.id}`}
           >
             <Trash2 className="h-3.5 w-3.5 text-destructive" />

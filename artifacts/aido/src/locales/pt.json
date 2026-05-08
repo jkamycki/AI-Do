@@ -523,7 +523,7 @@
     "tab_payments": "Pagamentos",
     "tab_files": "Ficheiros",
     "payment_label": "Designação do Pagamento",
-    "payment_label_placeholder": "ex. Depósito, Pagamento Final…",
+    "payment_label_placeholder": "ex. Segundo pagamento, Pagamento final…",
     "payment_amount": "Valor",
     "payment_due_date": "Data de Vencimento",
     "payment_status": "Estado do Pagamento",
@@ -678,7 +678,8 @@
     "draft_type_dj_band": "DJ/Banda",
     "draft_type_hair_makeup": "Cabelo e Maquilhagem",
     "draft_type_planner": "Planeador/Coordenador",
-    "draft_type_other": "Outro"
+    "draft_type_other": "Outro",
+    "deposit_note": "Nota: não registe o seu sinal aqui nem rotule um pagamento como \"Sinal\" — o valor do sinal pertence à secção Editar Fornecedor para não ser contado duas vezes."
   },
   "guests": {
     "title": "Lista de Convidados",

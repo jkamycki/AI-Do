@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/authFetch";
 import { useGetProfile } from "@workspace/api-client-react";
 import { X, Send, Sparkles, ChevronDown, RotateCcw, MessageCircle } from "lucide-react";
@@ -25,6 +26,7 @@ const WELCOME_MESSAGE: Message = {
 };
 
 export function SupportChat() {
+  const { t } = useTranslation();
   const { data: profile } = useGetProfile();
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -129,7 +131,7 @@ export function SupportChat() {
       // content, surface a clear message instead of an empty bubble.
       const finalContent = serverError
         ? serverError
-        : accumulated || "Sorry, no response came back. Please try again in a moment.";
+        : accumulated || t("support_chat.no-response", { defaultValue: "Sorry, no response came back. Please try again in a moment." });
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantId
@@ -147,8 +149,8 @@ export function SupportChat() {
             ? {
                 ...m,
                 content: isAbort
-                  ? "Aria's reply took too long. Please try again."
-                  : "Sorry, something went wrong. Please try again.",
+                  ? t("support_chat.timeout", { defaultValue: "Aria's reply took too long. Please try again." })
+                  : t("support_chat.error", { defaultValue: "Sorry, something went wrong. Please try again." }),
                 streaming: false,
               }
             : m
@@ -245,7 +247,7 @@ export function SupportChat() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm leading-tight text-primary-foreground">Aria</p>
-            <p className="text-xs text-primary-foreground/80">A.IDO Support Assistant · Always here</p>
+            <p className="text-xs text-primary-foreground/80">{t("support_chat.subtitle", { defaultValue: "A.IDO Support Assistant · Always here" })}</p>
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -307,7 +309,7 @@ export function SupportChat() {
 
           {messages.length === 1 && (
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground px-1">Quick questions:</p>
+              <p className="text-xs text-muted-foreground px-1">{t("support_chat.quick-questions", { defaultValue: "Quick questions:" })}</p>
               <div className="flex flex-wrap gap-2">
                 {QUICK_PROMPTS.map(prompt => (
                   <button
@@ -332,7 +334,7 @@ export function SupportChat() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask anything about your wedding…"
+              placeholder={t("support_chat.placeholder", { defaultValue: "Ask anything about your wedding…" })}
               rows={1}
               disabled={loading}
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none max-h-24 leading-relaxed disabled:opacity-60"
@@ -352,7 +354,7 @@ export function SupportChat() {
             </button>
           </div>
           <p className="text-center text-[10px] text-muted-foreground mt-1.5">
-            Powered by A.IDO AI · Aria may occasionally make mistakes
+            {t("support_chat.powered-by", { defaultValue: "Powered by A.IDO AI · Aria may occasionally make mistakes" })}
           </p>
         </div>
       </div>

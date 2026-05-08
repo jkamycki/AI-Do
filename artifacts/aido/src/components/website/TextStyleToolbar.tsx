@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { WebsiteTextStyle } from "@workspace/db";
 
 export { type WebsiteTextStyle };
@@ -116,6 +117,7 @@ interface Props {
 
 export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
   ({ style, onChange, anchorRect, onKeepOpen, onDelete }, ref) => {
+    const { t } = useTranslation();
     useEffect(() => {
       FONT_OPTIONS.filter((f) => f.value).forEach((f) => loadGoogleFont(f.value));
     }, []);
@@ -162,7 +164,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
           className={btnClass(!!style.bold)}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => patch({ bold: !style.bold })}
-          title="Bold"
+          title={t("text_toolbar.bold", { defaultValue: "Bold" })}
         >
           <strong>B</strong>
         </button>
@@ -170,7 +172,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
           className={btnClass(!!style.italic)}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => patch({ italic: !style.italic })}
-          title="Italic"
+          title={t("text_toolbar.italic", { defaultValue: "Italic" })}
         >
           <em>I</em>
         </button>
@@ -178,7 +180,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
         {/* Color */}
         <label
           className="flex items-center gap-1 cursor-pointer"
-          title="Text color"
+          title={t("text_toolbar.text-color", { defaultValue: "Text color" })}
           onMouseDown={(e) => e.preventDefault()}
         >
           <span className="text-xs text-muted-foreground">A</span>
@@ -197,7 +199,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
               className="text-xs text-muted-foreground hover:text-foreground"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => patch({ color: undefined })}
-              title="Reset color"
+              title={t("text_toolbar.reset-color", { defaultValue: "Reset color" })}
             >
               ×
             </button>
@@ -222,7 +224,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
             className="text-xs text-muted-foreground hover:text-destructive transition-colors px-1"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onChange({})}
-            title="Reset all styles"
+            title={t("text_toolbar.reset-all-styles", { defaultValue: "Reset all styles" })}
           >
             Reset
           </button>
@@ -236,7 +238,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors px-1"
               onMouseDown={(e) => e.preventDefault()}
               onClick={onDelete}
-              title="Delete this text element"
+              title={t("text_toolbar.delete-this-text-element", { defaultValue: "Delete this text element" })}
             >
               <Trash2 className="h-3 w-3" />
             </button>

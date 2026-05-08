@@ -523,7 +523,7 @@
     "tab_payments": "支払い",
     "tab_files": "ファイル",
     "payment_label": "支払いラベル",
-    "payment_label_placeholder": "例：デポジット、最終支払い…",
+    "payment_label_placeholder": "例：2回目の支払い、最終支払い…",
     "payment_amount": "金額",
     "payment_due_date": "支払期日",
     "payment_status": "支払いステータス",
@@ -678,7 +678,8 @@
     "draft_type_dj_band": "DJ/バンド",
     "draft_type_hair_makeup": "ヘア & メイク",
     "draft_type_planner": "プランナー/コーディネーター",
-    "draft_type_other": "その他"
+    "draft_type_other": "その他",
+    "deposit_note": "注意：手付金をここに記録したり、支払いに「手付金」とラベル付けしないでください — 手付金額はベンダー編集セクションに記入し、二重計上を防ぎます。"
   },
   "guests": {
     "title": "ゲストリスト",

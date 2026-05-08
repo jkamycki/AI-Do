@@ -426,7 +426,7 @@
     "tab_payments": "결제",
     "tab_files": "파일",
     "payment_label": "결제 항목",
-    "payment_label_placeholder": "예: 계약금, 잔금…",
+    "payment_label_placeholder": "예: 2차 결제, 최종 결제…",
     "payment_amount": "금액",
     "payment_due_date": "납부 기한",
     "payment_status": "결제 상태",
@@ -435,7 +435,8 @@
     "unpaid": "미납",
     "vendor_added": "업체가 추가되었습니다",
     "vendor_updated": "업체가 업데이트되었습니다",
-    "vendor_deleted": "업체가 삭제되었습니다"
+    "vendor_deleted": "업체가 삭제되었습니다",
+    "deposit_note": "참고: 보증금을 여기에 기록하거나 결제 라벨을 \"보증금\"으로 지정하지 마세요 — 보증금 금액은 공급업체 편집 섹션에 입력하여 중복 계산을 방지하세요."
   },
   "guests": {
     "title": "하객 명단",

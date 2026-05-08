@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,13 +48,14 @@ const schema = z.object({
 
 type WizardValues = z.infer<typeof schema>;
 
-const STEPS = [
-  { id: 1, title: "Welcome to A.IDO", icon: Heart, description: "Let's start with the happy couple." },
-  { id: 2, title: "The Big Day", icon: Calendar, description: "When and where is it happening?" },
-  { id: 3, title: "The Details", icon: Sparkles, description: "Tell us a little more." },
+const STEP_DEFS = [
+  { id: 1, icon: Heart, titleKey: "onboarding.step1_title", titleDefault: "Welcome to A.IDO", descKey: "onboarding.step1_desc", descDefault: "Let's start with the happy couple." },
+  { id: 2, icon: Calendar, titleKey: "onboarding.step2_title", titleDefault: "The Big Day", descKey: "onboarding.step2_desc", descDefault: "When and where is it happening?" },
+  { id: 3, icon: Sparkles, titleKey: "onboarding.step3_title", titleDefault: "The Details", descKey: "onboarding.step3_desc", descDefault: "Tell us a little more." },
 ];
 
 export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss: () => void }) {
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const queryClient = useQueryClient();
   const saveProfile = useSaveProfile();
@@ -103,7 +105,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
     });
   }
 
-  const currentStep = STEPS[step - 1];
+  const currentStep = STEP_DEFS[step - 1];
   const Icon = currentStep.icon;
 
   return (
@@ -115,13 +117,13 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
               <Icon className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <DialogTitle className="font-serif text-xl text-primary">{currentStep.title}</DialogTitle>
-              <DialogDescription className="text-sm">{currentStep.description}</DialogDescription>
+              <DialogTitle className="font-serif text-xl text-primary">{t(currentStep.titleKey, { defaultValue: currentStep.titleDefault })}</DialogTitle>
+              <DialogDescription className="text-sm">{t(currentStep.descKey, { defaultValue: currentStep.descDefault })}</DialogDescription>
             </div>
           </div>
           {/* Progress dots */}
           <div className="flex items-center gap-2 mt-3">
-            {STEPS.map(s => (
+            {STEP_DEFS.map(s => (
               <div
                 key={s.id}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -138,24 +140,24 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
               <>
                 <div className="text-center py-2">
                   <div className="text-3xl mb-2">💍</div>
-                  <p className="text-sm text-muted-foreground">Who's getting married?</p>
+                  <p className="text-sm text-muted-foreground">{t("onboarding.who_getting_married", { defaultValue: "Who's getting married?" })}</p>
                 </div>
                 <FormField control={form.control} name="partner1Name" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Partner 1 Name</FormLabel>
-                    <FormControl><Input placeholder="e.g. Emma" {...field} /></FormControl>
+                    <FormLabel>{t("onboarding.partner1_name", { defaultValue: "Partner 1 Name" })}</FormLabel>
+                    <FormControl><Input placeholder={t("onboarding.partner1_placeholder", { defaultValue: "e.g. Emma" })} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="partner2Name" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Partner 2 Name</FormLabel>
-                    <FormControl><Input placeholder="e.g. James" {...field} /></FormControl>
+                    <FormLabel>{t("onboarding.partner2_name", { defaultValue: "Partner 2 Name" })}</FormLabel>
+                    <FormControl><Input placeholder={t("onboarding.partner2_placeholder", { defaultValue: "e.g. James" })} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <Button type="button" className="w-full mt-2" onClick={handleNext}>
-                  Next <ArrowRight className="h-4 w-4 ml-2" />
+                  {t("onboarding.next", { defaultValue: "Next" })} <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </>
             )}
@@ -164,7 +166,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
               <>
                 <FormField control={form.control} name="weddingDate" render={({ field }) => (
                   <FormItem>
-                    <FormLabel><Calendar className="h-3.5 w-3.5 inline mr-1" />Wedding Date</FormLabel>
+                    <FormLabel><Calendar className="h-3.5 w-3.5 inline mr-1" />{t("onboarding.wedding_date", { defaultValue: "Wedding Date" })}</FormLabel>
                     <FormControl><Input type="date" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -172,14 +174,14 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="ceremonyTime" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Ceremony Time</FormLabel>
+                      <FormLabel>{t("onboarding.ceremony_time", { defaultValue: "Ceremony Time" })}</FormLabel>
                       <FormControl><Input type="time" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="receptionTime" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Reception Time</FormLabel>
+                      <FormLabel>{t("onboarding.reception_time", { defaultValue: "Reception Time" })}</FormLabel>
                       <FormControl><Input type="time" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
@@ -187,21 +189,21 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                 </div>
                 <FormField control={form.control} name="venue" render={({ field }) => (
                   <FormItem>
-                    <FormLabel><MapPin className="h-3.5 w-3.5 inline mr-1" />Venue Name</FormLabel>
-                    <FormControl><Input placeholder="e.g. The Grand Ballroom" {...field} /></FormControl>
+                    <FormLabel><MapPin className="h-3.5 w-3.5 inline mr-1" />{t("onboarding.venue_name", { defaultValue: "Venue Name" })}</FormLabel>
+                    <FormControl><Input placeholder={t("onboarding.venue_placeholder", { defaultValue: "e.g. The Grand Ballroom" })} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="location" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>City / Location</FormLabel>
-                    <FormControl><Input placeholder="e.g. New York, NY" {...field} /></FormControl>
+                    <FormLabel>{t("onboarding.city_location", { defaultValue: "City / Location" })}</FormLabel>
+                    <FormControl><Input placeholder={t("onboarding.city_placeholder", { defaultValue: "e.g. New York, NY" })} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <div className="flex gap-2 mt-2">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>Back</Button>
-                  <Button type="button" className="flex-1" onClick={handleNext}>Next <ArrowRight className="h-4 w-4 ml-2" /></Button>
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>{t("onboarding.back", { defaultValue: "Back" })}</Button>
+                  <Button type="button" className="flex-1" onClick={handleNext}>{t("onboarding.next", { defaultValue: "Next" })} <ArrowRight className="h-4 w-4 ml-2" /></Button>
                 </div>
               </>
             )}
@@ -211,14 +213,14 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="guestCount" render={({ field }) => (
                     <FormItem>
-                      <FormLabel><Users className="h-3.5 w-3.5 inline mr-1" />Guest Count</FormLabel>
+                      <FormLabel><Users className="h-3.5 w-3.5 inline mr-1" />{t("onboarding.guest_count", { defaultValue: "Guest Count" })}</FormLabel>
                       <FormControl><Input type="number" min={1} {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="totalBudget" render={({ field }) => (
                     <FormItem>
-                      <FormLabel><DollarSign className="h-3.5 w-3.5 inline mr-1" />Total Budget</FormLabel>
+                      <FormLabel><DollarSign className="h-3.5 w-3.5 inline mr-1" />{t("onboarding.total_budget", { defaultValue: "Total Budget" })}</FormLabel>
                       <FormControl>
                         <MoneyInput
                           value={field.value}
@@ -232,10 +234,10 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                 </div>
                 <FormField control={form.control} name="weddingVibe" render={({ field }) => (
                   <FormItem>
-                    <FormLabel><Sparkles className="h-3.5 w-3.5 inline mr-1" />Wedding Vibe</FormLabel>
+                    <FormLabel><Sparkles className="h-3.5 w-3.5 inline mr-1" />{t("onboarding.wedding_vibe", { defaultValue: "Wedding Vibe" })}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger><SelectValue placeholder="Pick your style" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={t("onboarding.pick_your_style", { defaultValue: "Pick your style" })} /></SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {VIBES.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
@@ -246,29 +248,29 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                 )} />
                 <FormField control={form.control} name="preferredLanguage" render={({ field }) => (
                   <FormItem>
-                    <FormLabel><Globe className="h-3.5 w-3.5 inline mr-1" />Preferred Language</FormLabel>
+                    <FormLabel><Globe className="h-3.5 w-3.5 inline mr-1" />{t("onboarding.preferred_language", { defaultValue: "Preferred Language" })}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                       <FormControl>
-                        <SelectTrigger><SelectValue placeholder="Select language" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={t("onboarding.select_language", { defaultValue: "Select language" })} /></SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {LANGUAGES.map(lang => <SelectItem key={lang} value={lang}>{lang}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">AI features like Aria and vendor emails will respond in this language.</p>
+                    <p className="text-xs text-muted-foreground">{t("onboarding.language_hint", { defaultValue: "AI features like Aria and vendor emails will respond in this language." })}</p>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <div className="flex gap-2 mt-2">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(2)}>Back</Button>
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(2)}>{t("onboarding.back", { defaultValue: "Back" })}</Button>
                   <Button type="submit" className="flex-1" disabled={saveProfile.isPending}>
-                    {saveProfile.isPending ? "Setting up…" : <>
-                      <Check className="h-4 w-4 mr-2" /> Let's Plan!
+                    {saveProfile.isPending ? t("onboarding.setting_up", { defaultValue: "Setting up…" }) : <>
+                      <Check className="h-4 w-4 mr-2" /> {t("onboarding.lets_plan", { defaultValue: "Let's Plan!" })}
                     </>}
                   </Button>
                 </div>
                 {saveProfile.isError && (
-                  <p className="text-sm text-destructive text-center">Something went wrong. Please try again.</p>
+                  <p className="text-sm text-destructive text-center">{t("onboarding.something_wrong", { defaultValue: "Something went wrong. Please try again." })}</p>
                 )}
               </>
             )}
@@ -279,7 +281,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
           onClick={dismiss}
           className="absolute top-4 right-4 text-xs text-muted-foreground hover:text-foreground underline"
         >
-          Skip for now
+          {t("onboarding.skip_for_now", { defaultValue: "Skip for now" })}
         </button>
       </DialogContent>
     </Dialog>

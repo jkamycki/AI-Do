@@ -426,7 +426,7 @@
     "tab_payments": "Płatności",
     "tab_files": "Pliki",
     "payment_label": "Nazwa płatności",
-    "payment_label_placeholder": "np. Zaliczka, Płatność końcowa…",
+    "payment_label_placeholder": "np. Druga płatność, Płatność końcowa…",
     "payment_amount": "Kwota",
     "payment_due_date": "Termin płatności",
     "payment_status": "Status płatności",
@@ -435,7 +435,8 @@
     "unpaid": "Niezapłacono",
     "vendor_added": "Dostawca dodany",
     "vendor_updated": "Dostawca zaktualizowany",
-    "vendor_deleted": "Dostawca usunięty"
+    "vendor_deleted": "Dostawca usunięty",
+    "deposit_note": "Uwaga: nie wpisuj tutaj zaliczki ani nie oznaczaj płatności jako „Zaliczka\" — kwota zaliczki należy do sekcji Edytuj dostawcę, aby nie była liczona podwójnie."
   },
   "guests": {
     "title": "Lista Gości",

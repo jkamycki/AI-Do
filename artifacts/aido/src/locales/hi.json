@@ -426,7 +426,7 @@
     "tab_payments": "भुगतान",
     "tab_files": "फ़ाइलें",
     "payment_label": "भुगतान लेबल",
-    "payment_label_placeholder": "जैसे जमा, अंतिम भुगतान…",
+    "payment_label_placeholder": "जैसे: दूसरा भुगतान, अंतिम भुगतान…",
     "payment_amount": "राशि",
     "payment_due_date": "देय तिथि",
     "payment_status": "भुगतान स्थिति",
@@ -435,7 +435,8 @@
     "unpaid": "अवैतनिक",
     "vendor_added": "विक्रेता जोड़ा गया",
     "vendor_updated": "विक्रेता अपडेट किया गया",
-    "vendor_deleted": "विक्रेता हटाया गया"
+    "vendor_deleted": "विक्रेता हटाया गया",
+    "deposit_note": "नोट: अपनी जमा राशि यहाँ दर्ज न करें या किसी भुगतान को \"जमा\" लेबल न करें — जमा राशि विक्रेता संपादित अनुभाग में जाती है ताकि यह दो बार न गिनी जाए।"
   },
   "guests": {
     "title": "अतिथि सूची",

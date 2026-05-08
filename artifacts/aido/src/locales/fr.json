@@ -523,7 +523,7 @@
     "tab_payments": "Paiements",
     "tab_files": "Fichiers",
     "payment_label": "Libellé du Paiement",
-    "payment_label_placeholder": "ex. Acompte, Paiement Final…",
+    "payment_label_placeholder": "ex. Deuxième paiement, Paiement final…",
     "payment_amount": "Montant",
     "payment_due_date": "Date d'Échéance",
     "payment_status": "Statut du Paiement",
@@ -678,7 +678,8 @@
     "draft_type_dj_band": "DJ/Groupe",
     "draft_type_hair_makeup": "Coiffure & Maquillage",
     "draft_type_planner": "Planificateur/Coordinateur",
-    "draft_type_other": "Autre"
+    "draft_type_other": "Autre",
+    "deposit_note": "Note : n'enregistrez pas votre acompte ici et n'étiquetez pas un paiement comme « Acompte » — le montant de l'acompte se met dans la section Modifier le prestataire pour éviter de le compter deux fois."
   },
   "guests": {
     "title": "Liste des Invités",
