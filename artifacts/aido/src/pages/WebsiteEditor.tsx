@@ -363,7 +363,14 @@ export default function WebsiteEditor() {
       });
       if (!r.ok) throw new Error("Failed to save");
       const body = (await r.json()) as WebsiteRecord;
-      setRecord(body);
+      // The /api/website/update endpoint manages the website record only —
+      // portalParty is a JOIN from the wedding-party portal table that the
+      // GET endpoint enriches but PUT doesn't return. Preserve whatever we
+      // already had so the wedding-party section doesn't blank out on save.
+      setRecord((prev) => ({
+        ...body,
+        portalParty: body.portalParty ?? prev?.portalParty,
+      }));
       setPasswordInput("");
       setDirty(false);
       return true;
