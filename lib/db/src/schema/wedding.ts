@@ -257,6 +257,19 @@ export const contactMessages = pgTable("contact_messages", {
 
 export type ContactMessage = typeof contactMessages.$inferSelect;
 
+export const contactMessageReplies = pgTable("contact_message_replies", {
+  id: serial("id").primaryKey(),
+  contactMessageId: integer("contact_message_id").notNull(),
+  direction: text("direction").notNull(),
+  body: text("body").notNull(),
+  senderUserId: text("sender_user_id"),
+  senderEmail: text("sender_email"),
+  senderName: text("sender_name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ContactMessageReply = typeof contactMessageReplies.$inferSelect;
+
 export const feedbackSubmissions = pgTable("feedback_submissions", {
   id: serial("id").primaryKey(),
   userId: text("user_id"),
