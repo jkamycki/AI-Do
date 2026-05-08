@@ -416,7 +416,15 @@ export default function WebsiteEditor() {
       });
       if (!r.ok) throw new Error("Failed to save");
       const body = (await r.json()) as WebsiteRecord;
-      setRecord(body);
+      // Same fix as saveNow() — PUT response is the website row only and
+      // doesn't include portalParty (a JOIN the GET endpoint enriches).
+      // Preserve the populated value from prev so the wedding-party
+      // section doesn't blank out when the user clicks Save while on
+      // the Wedding Party page.
+      setRecord((prev) => ({
+        ...body,
+        portalParty: body.portalParty ?? prev?.portalParty,
+      }));
       setPasswordInput("");
       setDirty(false);
       toast({ title: "Saved!" });
@@ -956,23 +964,6 @@ export default function WebsiteEditor() {
           })()}
         </Section>}
 
-        {/* Custom URL CTA — gold link that opens a popup with the slug
-            editor. Sits in the Pages sidebar so it's visible alongside
-            FAQ Questions / Hero Elements. */}
-        {inTab("pages") && (
-          <button
-            type="button"
-            onClick={() => setUrlModalOpen(true)}
-            className="w-full text-center px-4 py-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 transition-colors"
-            style={{ color: "#D4A017" }}
-          >
-            <Link2 className="h-3.5 w-3.5 inline mr-1.5" />
-            <span className="font-semibold text-sm underline underline-offset-4">
-              {t("website_editor.custom_url_cta", { defaultValue: "Click here to get your custom website URL" })}
-            </span>
-          </button>
-        )}
-
         {/* Inline-edit hint */}
         {inTab("design") && <Section icon={<FileText className="h-4 w-4" />} title={t("website_editor.section_edit_text", { defaultValue: "Edit Text" })}>
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -1297,8 +1288,19 @@ export default function WebsiteEditor() {
         }}
         onClick={() => { if (ctxMenu) setCtxMenu(null); }}
       >
-        <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs text-muted-foreground">
-          Live preview — changes appear here instantly. Click <strong>Save changes</strong> when you're happy.
+        <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs text-muted-foreground flex items-center justify-between gap-3 flex-wrap">
+          <span>
+            Live preview — changes appear here instantly. Click <strong>Save</strong> when you're happy.
+          </span>
+          <button
+            type="button"
+            onClick={() => setUrlModalOpen(true)}
+            className="inline-flex items-center gap-1.5 font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity whitespace-nowrap"
+            style={{ color: "#D4A017" }}
+          >
+            <Link2 className="h-3 w-3" />
+            {t("website_editor.custom_url_cta", { defaultValue: "Click here to get your custom website URL" })}
+          </button>
         </div>
         <div className="bg-white">
           <WebsiteRenderer
