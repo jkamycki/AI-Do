@@ -5,6 +5,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { randomUUID } from "crypto";
 import { clerkClient } from "@clerk/express";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
+import { getSupportInboxAddresses } from "../lib/supportInbox";
 
 const OWNER_EMAILS = ["kamyckijoseph@gmail.com"];
 
@@ -156,6 +157,54 @@ router.patch("/help/messages/contact/:id/resolve", requireAuth, async (req, res)
 
     res.json({ success: true });
   } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/help/messages/contact/:id/reply", requireAuth, async (req, res) => {
+  try {
+    const admin = await isAdmin(req.userId!);
+    if (!admin) return res.status(403).json({ error: "Access denied." });
+
+    const { replyText } = req.body as { replyText?: string };
+    if (!replyText?.trim()) {
+      return res.status(400).json({ error: "Reply text is required." });
+    }
+
+    const id = parseInt(String(req.params["id"] ?? "0"), 10);
+    const [msg] = await db
+      .select()
+      .from(contactMessages)
+      .where(eq(contactMessages.id, id))
+      .limit(1);
+    if (!msg) return res.status(404).json({ error: "Message not found." });
+
+    const supportAddress = getSupportInboxAddresses()[0] ?? OWNER_EMAILS[0];
+    const subject = msg.subject.toLowerCase().startsWith("re:") ? msg.subject : `Re: ${msg.subject}`;
+    const result = await sendEmail({
+      to: msg.email,
+      replyTo: supportAddress,
+      subject,
+      text: [
+        replyText.trim(),
+        ``,
+        `— A.IDO Support`,
+      ].join("\n"),
+    });
+
+    if (!result.ok) {
+      req.log.error({ error: result.error }, "Failed to send contact-message reply");
+      return res.status(502).json({ error: `Email delivery failed: ${result.error}` });
+    }
+
+    await db
+      .update(contactMessages)
+      .set({ isRead: true })
+      .where(eq(contactMessages.id, id));
+
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "Failed to reply to contact message");
     res.status(500).json({ error: "Internal server error" });
   }
 });
