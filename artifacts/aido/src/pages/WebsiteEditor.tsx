@@ -86,7 +86,11 @@ export default function WebsiteEditor() {
   const [qrOpen, setQrOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings" | "content">("design");
   const inTab = (t: typeof activeTab) => activeTab === t;
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  // x/y are viewport coords (used to position the menu); canvasX/canvasY are
+  // coords relative to the WebsiteRenderer container (used so a newly
+  // inserted text box lands where the user right-clicked).
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; canvasX: number; canvasY: number } | null>(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
   const [urlModalOpen, setUrlModalOpen] = useState(false);
   const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
 
@@ -1363,7 +1367,13 @@ export default function WebsiteEditor() {
         } lg:block`}
         onContextMenu={(e) => {
           e.preventDefault();
-          setCtxMenu({ x: e.clientX, y: e.clientY });
+          const rect = canvasRef.current?.getBoundingClientRect();
+          setCtxMenu({
+            x: e.clientX,
+            y: e.clientY,
+            canvasX: rect ? e.clientX - rect.left : 0,
+            canvasY: rect ? e.clientY - rect.top : 0,
+          });
         }}
         onClick={() => { if (ctxMenu) setCtxMenu(null); }}
       >
@@ -1390,7 +1400,7 @@ export default function WebsiteEditor() {
             {t("website_editor.custom_url_cta", { defaultValue: "Click here to get your custom website URL" })}
           </button>
         </div>
-        <div className="bg-white">
+        <div ref={canvasRef} className="bg-white relative">
           <WebsiteRenderer
             data={livePreview!}
             editable
@@ -1486,10 +1496,23 @@ export default function WebsiteEditor() {
             className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent flex items-center gap-2"
             onClick={() => {
               const key = `_custom_${Date.now()}`;
-              patchRecord((prev) => ({
-                customText: { ...prev.customText, [key]: t("website_editor.new_text", { defaultValue: "New text — click to edit" }) },
-                textPositions: { ...(prev.textPositions ?? {}), [key]: { x: 0, y: 0 } },
-              }));
+              const insertAt = ctxMenu ? { x: ctxMenu.canvasX, y: ctxMenu.canvasY } : { x: 0, y: 0 };
+              patchRecord((prev) => {
+                // CustomTextBoxes lays new boxes out at (left: 24, top: 120 + idx*56)
+                // by default, then DraggableRow applies textPositions[key] as a
+                // translate delta. To land the box at the right-click point, the
+                // delta has to compensate for that base.
+                const customCount = Object.keys(prev.customText).filter((k) => k.startsWith("_custom_")).length;
+                const baseLeft = 24;
+                const baseTop = 120 + customCount * 56;
+                return {
+                  customText: { ...prev.customText, [key]: t("website_editor.new_text", { defaultValue: "New text — click to edit" }) },
+                  textPositions: {
+                    ...(prev.textPositions ?? {}),
+                    [key]: { x: insertAt.x - baseLeft, y: insertAt.y - baseTop },
+                  },
+                };
+              });
               setCtxMenu(null);
             }}
           >
