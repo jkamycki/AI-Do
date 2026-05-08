@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed, Share2, Check, Trash2 } from "lucide-react";
+import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed, Share2, Check } from "lucide-react";
 import { EditableText, emitEditableDrag, EDITABLE_HIDDEN_MARKER, type TextPosition } from "./EditableText";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch } from "@/lib/authFetch";
@@ -119,18 +119,27 @@ function tsp(ctx: EditCtx, key: string, _deletable = false) {
 }
 
 // Style-only variant for EditableTexts already wrapped in a DraggableRow.
-// The row owns position for the whole group; if we also wired position onto
-// the inner text the user would drag just the text and leave the row's icon
-// behind. We *do* expose onDelete so the inline toolbar's trash button shows
-// up consistently — clicking it deletes the wrapping row (icon + text) via
-// `rowKey`, matching the drag-to-trash behavior the row already supports.
-function tspStyle(ctx: EditCtx, key: string, rowKey?: string) {
+// The row owns position for the whole group; wiring position onto the inner
+// text would let users drag just the text and leave the row icon behind.
+// No onDelete: hero row elements are hidden/shown only via sidebar toggles.
+function tspStyle(ctx: EditCtx, key: string) {
   if (!ctx.editable) return {};
-  const delKey = rowKey ?? key;
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
-    onDelete: ctx.onDeleteElement ? () => ctx.onDeleteElement!(delKey) : undefined,
+  };
+}
+
+// Position + style but no delete — for hero EditableText elements whose
+// visibility is controlled exclusively through the sidebar Hero Elements
+// toggles rather than the inline toolbar trash button.
+function tspNoDelete(ctx: EditCtx, key: string) {
+  if (!ctx.editable) return {};
+  return {
+    textStyle: ctx.textStyles?.[key] ?? {},
+    onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
+    position: ctx.textPositions?.[key],
+    onPositionChange: ctx.onPositionChange ? (p: TextPosition) => ctx.onPositionChange!(key, p) : undefined,
   };
 }
 
@@ -381,29 +390,14 @@ function DraggableRow({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      {(hovered || isDragging) && (
-        <div
-          style={{ position: "absolute", top: -28, right: 0, display: "flex", alignItems: "center", gap: 4, zIndex: 300 }}
+      {hasOffset && (hovered || isDragging) && (
+        <span
+          style={{ position: "absolute", top: -20, right: 0, background: "rgba(99,102,241,0.9)", color: "#fff", borderRadius: 4, padding: "1px 6px", fontSize: 10, cursor: "pointer", userSelect: "none", zIndex: 300, lineHeight: 1.6 }}
           onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onPositionChange({ x: 0, y: 0 })}
         >
-          {hasOffset && (
-            <span
-              style={{ background: "rgba(99,102,241,0.9)", color: "#fff", borderRadius: 4, padding: "1px 6px", fontSize: 10, cursor: "pointer", userSelect: "none", lineHeight: 1.6 }}
-              onClick={() => onPositionChange({ x: 0, y: 0 })}
-            >
-              ×
-            </span>
-          )}
-          {onDelete && (
-            <button
-              style={{ background: "rgba(220,38,38,0.9)", color: "#fff", border: "none", borderRadius: 4, padding: "3px 6px", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 3, lineHeight: 1 }}
-              onClick={onDelete}
-              title="Delete"
-            >
-              <Trash2 style={{ width: 11, height: 11 }} />
-            </button>
-          )}
-        </div>
+          ×
+        </span>
       )}
       {children}
     </div>
@@ -908,7 +902,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           onCommit={(v) => ctx.onTextChange("_heroTagline", v)}
           className="uppercase tracking-[0.3em] text-xs sm:text-sm mb-6 opacity-80"
           style={{ color: data.heroImage ? "#fff" : data.colorPalette.primary, fontFamily: elementFont(data, "_heroTagline") ? bodyFontStack(elementFont(data, "_heroTagline")!) : undefined }}
-          {...tsp(ctx, "_heroTagline")}
+          {...tspNoDelete(ctx, "_heroTagline")}
         />
         <EditableText
           as="div"
@@ -918,14 +912,13 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           onCommit={(v) => ctx.onTextChange("_coupleName", v)}
           className="text-5xl sm:text-7xl md:text-8xl mb-6 leading-tight"
           style={{ fontFamily: fontStack(headingFont(data)), color: data.heroImage ? "#fff" : data.colorPalette.text }}
-          {...tsp(ctx, "_coupleName")}
+          {...tspNoDelete(ctx, "_coupleName")}
         />
         {data.customText._heroDateRow !== EDITABLE_HIDDEN_MARKER && (
           <DraggableRow
             editable={ctx.editable}
             position={ctx.textPositions?.["_heroDateRow"]}
             onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_heroDateRow", p) : undefined}
-            onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_heroDateRow") : undefined}
             className="flex items-center justify-center gap-4 text-base sm:text-lg opacity-90"
           >
             {data.customText._heroDateIcon !== EDITABLE_HIDDEN_MARKER && (
@@ -937,7 +930,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={dateStr}
               onCommit={(v) => ctx.onTextChange("_heroDate", v)}
               style={{ color: "inherit" }}
-              {...tspStyle(ctx, "_heroDate", "_heroDateRow")}
+              {...tspStyle(ctx, "_heroDate")}
             />
           </DraggableRow>
         )}
@@ -946,7 +939,6 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             editable={ctx.editable}
             position={ctx.textPositions?.["_heroVenueRow"]}
             onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_heroVenueRow", p) : undefined}
-            onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_heroVenueRow") : undefined}
             className="flex items-center justify-center gap-2 mt-3 text-sm sm:text-base opacity-80"
           >
             {data.customText._heroVenueIcon !== EDITABLE_HIDDEN_MARKER && (
@@ -958,7 +950,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
               defaultValue={[data.couple.venue, data.couple.venueCity, data.couple.venueState].filter(Boolean).join(", ")}
               onCommit={(v) => ctx.onTextChange("_heroVenue", v)}
               style={{ color: "inherit" }}
-              {...tspStyle(ctx, "_heroVenue", "_heroVenueRow")}
+              {...tspStyle(ctx, "_heroVenue")}
             />
           </DraggableRow>
         )}
@@ -967,7 +959,6 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             editable={ctx.editable}
             position={ctx.textPositions?.["_countdown"]}
             onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_countdown", p) : undefined}
-            onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_countdown") : undefined}
           >
             <CountdownTimer
               dateStr={data.couple.weddingDate}
@@ -980,7 +971,6 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             editable={ctx.editable}
             position={ctx.textPositions?.["_addToCalendarRow"]}
             onPositionChange={ctx.onPositionChange ? (p) => ctx.onPositionChange!("_addToCalendarRow", p) : undefined}
-            onDelete={ctx.onDeleteElement ? () => ctx.onDeleteElement!("_addToCalendarRow") : undefined}
           >
             <AddToCalendarButton data={data} />
           </DraggableRow>
@@ -1470,11 +1460,12 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const images = (data.galleryImages ?? []).slice().sort((a, b) => a.order - b.order);
   const photoFilter = photoFilterCss(data.customText._photoFilter);
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const animation = data.customText._galleryAnimation ?? "grid";
   const speed = data.customText._galleryAnimationSpeed ?? "medium";
   const slideshowIntervalMs = speed === "slow" ? 6000 : speed === "fast" ? 2500 : 4000;
   const marqueeDuration = speed === "slow" ? "60s" : speed === "fast" ? "20s" : "40s";
+  const entrance = (data.customText._galleryEntrance || "none") as "none" | "fade-in" | "slide-up" | "zoom-in";
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // Slideshow auto-advance. Hooks must run unconditionally — bail out inside.
   const [activeIdx, setActiveIdx] = useState(0);
@@ -1486,6 +1477,22 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
   useEffect(() => {
     if (activeIdx >= images.length) setActiveIdx(0);
   }, [images.length, activeIdx]);
+
+  const [visibleItems, setVisibleItems] = useState<Set<number>>(new Set());
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  useEffect(() => {
+    if (entrance === "none") { setVisibleItems(new Set()); return; }
+    const observers = itemRefs.current.map((el, i) => {
+      if (!el) return null;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) { setVisibleItems((prev) => new Set([...prev, i])); obs.disconnect(); } },
+        { threshold: 0.1 },
+      );
+      obs.observe(el);
+      return obs;
+    });
+    return () => { observers.forEach((obs) => obs?.disconnect()); };
+  }, [entrance, images.length]);
 
   if (images.length === 0 && !ctx.editable) return null;
 
@@ -1601,9 +1608,14 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
           {renderCaption(images[activeIdx]?.caption)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" data-gallery-anim={entrance !== "none" ? entrance : undefined}>
           {images.map((img, i) => (
-            <div key={i} className="flex flex-col gap-1.5">
+            <div
+              key={i}
+              ref={(el) => { itemRefs.current[i] = el; }}
+              className={`wsg-item flex flex-col gap-1.5${visibleItems.has(i) ? " wsg-visible" : ""}`}
+              style={entrance !== "none" ? { ["--stagger" as string]: `${i * 80}ms` } : undefined}
+            >
               <button
                 type="button"
                 onClick={() => setLightboxIndex(i)}
@@ -2182,7 +2194,7 @@ export function WebsiteRenderer({
         onSectionChange={onSectionChange}
       />
       {(showAll || currentSection === "home") && <Hero data={data} ctx={ctx} />}
-      {show("welcome", data.sectionsEnabled.welcome) && <Welcome data={data} ctx={ctx} />}
+      {data.sectionsEnabled.welcome && (showAll || currentSection === "home" || currentSection === "welcome") && <Welcome data={data} ctx={ctx} />}
       {show("story", data.sectionsEnabled.story) && <Story data={data} ctx={ctx} />}
       {show("schedule", data.sectionsEnabled.schedule) && <Schedule data={data} ctx={ctx} />}
       {show("travel", data.sectionsEnabled.travel) && <Travel data={data} ctx={ctx} />}
