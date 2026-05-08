@@ -1034,6 +1034,41 @@ export default function WebsiteEditor() {
           </div>
         </Section>}
 
+        {/* Gallery animation */}
+        {inTab("animation") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_gallery_animation", { defaultValue: "Gallery Animation" })}>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.style_label", { defaultValue: "Style" })}</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={record.customText._galleryAnimation ?? "grid"}
+                onChange={(e) => update({ customText: { ...record.customText, _galleryAnimation: e.target.value } })}
+              >
+                <option value="grid">{t("website_editor.gallery_anim_grid", { defaultValue: "Grid (static)" })}</option>
+                <option value="slideshow">{t("website_editor.gallery_anim_slideshow", { defaultValue: "Slideshow (fade through photos)" })}</option>
+                <option value="marquee">{t("website_editor.gallery_anim_marquee", { defaultValue: "Marquee (continuous scroll)" })}</option>
+              </select>
+            </div>
+            {(record.customText._galleryAnimation === "slideshow" || record.customText._galleryAnimation === "marquee") && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.speed_label", { defaultValue: "Speed" })}</Label>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={record.customText._galleryAnimationSpeed ?? "medium"}
+                  onChange={(e) => update({ customText: { ...record.customText, _galleryAnimationSpeed: e.target.value } })}
+                >
+                  <option value="slow">{t("website_editor.speed_slow", { defaultValue: "Slow" })}</option>
+                  <option value="medium">{t("website_editor.speed_medium", { defaultValue: "Medium" })}</option>
+                  <option value="fast">{t("website_editor.speed_fast", { defaultValue: "Fast" })}</option>
+                </select>
+              </div>
+            )}
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {t("website_editor.gallery_anim_hint", { defaultValue: "Choose how gallery photos display. Guests can still click any photo to open the full lightbox." })}
+            </p>
+          </div>
+        </Section>}
+
         {/* Photo effects */}
         {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_photo_effects", { defaultValue: "Photo Effects" })}>
           <div className="space-y-2">

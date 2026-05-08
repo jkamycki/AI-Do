@@ -1471,7 +1471,36 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
   const images = (data.galleryImages ?? []).slice().sort((a, b) => a.order - b.order);
   const photoFilter = photoFilterCss(data.customText._photoFilter);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const animation = data.customText._galleryAnimation ?? "grid";
+  const speed = data.customText._galleryAnimationSpeed ?? "medium";
+  const slideshowIntervalMs = speed === "slow" ? 6000 : speed === "fast" ? 2500 : 4000;
+  const marqueeDuration = speed === "slow" ? "60s" : speed === "fast" ? "20s" : "40s";
+
+  // Slideshow auto-advance. Hooks must run unconditionally — bail out inside.
+  const [activeIdx, setActiveIdx] = useState(0);
+  useEffect(() => {
+    if (animation !== "slideshow" || images.length < 2) return;
+    const id = setInterval(() => setActiveIdx((i) => (i + 1) % images.length), slideshowIntervalMs);
+    return () => clearInterval(id);
+  }, [animation, images.length, slideshowIntervalMs]);
+  useEffect(() => {
+    if (activeIdx >= images.length) setActiveIdx(0);
+  }, [images.length, activeIdx]);
+
   if (images.length === 0 && !ctx.editable) return null;
+
+  const renderHoverIcon = () => (
+    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+      <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
+    </div>
+  );
+  const renderCaption = (caption?: string) =>
+    caption ? (
+      <p className="text-sm text-center px-1" style={{ color: data.colorPalette.text, opacity: 0.75 }}>
+        {caption}
+      </p>
+    ) : null;
+
   return (
     <SectionShell id="gallery" titleKey="gallery_title" defaultTitle="Gallery" icon={<ImageIcon className="h-4 w-4" />} data={data} ctx={ctx}>
       {lightboxIndex !== null && (
@@ -1491,35 +1520,111 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         style={{ fontFamily: elementFontStack(data, "gallery_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
         {...tsp(ctx, "gallery_subtitle")}
       />
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {images.map((img, i) => (
-          <div key={i} className="flex flex-col gap-1.5">
-            <button
-              type="button"
-              onClick={() => setLightboxIndex(i)}
-              className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-              style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
-              aria-label={img.caption ?? `Photo ${i + 1}`}
-            >
-              <img
-                src={imageUrl(img.url)}
-                alt={img.caption ?? ""}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                loading="lazy"
-                style={{ filter: photoFilter }}
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
+      {animation === "marquee" && images.length > 0 ? (
+        <div className="relative overflow-hidden rounded-lg" style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}>
+          <div
+            className="flex"
+            style={{
+              width: "max-content",
+              animation: `wsa-marquee ${marqueeDuration} linear infinite`,
+              willChange: "transform",
+            }}
+          >
+            {[...images, ...images].map((img, i) => (
+              <div key={`${img.url}-${i}`} className="flex flex-col gap-1.5 mx-2">
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(i % images.length)}
+                  className="relative h-64 sm:h-80 w-64 sm:w-80 flex-shrink-0 overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2"
+                  aria-label={img.caption ?? `Photo ${(i % images.length) + 1}`}
+                >
+                  <img
+                    src={imageUrl(img.url)}
+                    alt={img.caption ?? ""}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    style={{ filter: photoFilter }}
+                  />
+                  {renderHoverIcon()}
+                </button>
+                {renderCaption(img.caption)}
               </div>
-            </button>
-            {img.caption && (
-              <p className="text-sm text-center px-1" style={{ color: data.colorPalette.text, opacity: 0.75 }}>
-                {img.caption}
-              </p>
+            ))}
+          </div>
+        </div>
+      ) : animation === "slideshow" && images.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <div className="relative w-full max-w-3xl mx-auto aspect-[4/3] overflow-hidden rounded-lg" style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}>
+            {images.map((img, i) => (
+              <button
+                key={`${img.url}-${i}`}
+                type="button"
+                onClick={() => setLightboxIndex(i)}
+                className="absolute inset-0 group focus:outline-none focus-visible:ring-2"
+                style={{
+                  opacity: i === activeIdx ? 1 : 0,
+                  transition: "opacity 1s ease-in-out",
+                  pointerEvents: i === activeIdx ? "auto" : "none",
+                }}
+                aria-label={img.caption ?? `Photo ${i + 1}`}
+                aria-hidden={i !== activeIdx}
+                tabIndex={i === activeIdx ? 0 : -1}
+              >
+                <img
+                  src={imageUrl(img.url)}
+                  alt={img.caption ?? ""}
+                  className="w-full h-full object-cover"
+                  loading={i === 0 ? "eager" : "lazy"}
+                  style={{ filter: photoFilter }}
+                />
+                {renderHoverIcon()}
+              </button>
+            ))}
+            {images.length > 1 && (
+              <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setActiveIdx(i); }}
+                    className="h-2 w-2 rounded-full transition-all"
+                    style={{
+                      background: i === activeIdx ? data.colorPalette.primary : "rgba(255,255,255,0.6)",
+                      transform: i === activeIdx ? "scale(1.3)" : "scale(1)",
+                    }}
+                    aria-label={`Go to photo ${i + 1}`}
+                  />
+                ))}
+              </div>
             )}
           </div>
-        ))}
-      </div>
+          {renderCaption(images[activeIdx]?.caption)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {images.map((img, i) => (
+            <div key={i} className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => setLightboxIndex(i)}
+                className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
+                aria-label={img.caption ?? `Photo ${i + 1}`}
+              >
+                <img
+                  src={imageUrl(img.url)}
+                  alt={img.caption ?? ""}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                  style={{ filter: photoFilter }}
+                />
+                {renderHoverIcon()}
+              </button>
+              {renderCaption(img.caption)}
+            </div>
+          ))}
+        </div>
+      )}
     </SectionShell>
   );
 }
