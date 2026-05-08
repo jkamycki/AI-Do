@@ -72,9 +72,11 @@ export default function PublicWebsite() {
   const [matchedSection, sectionParams] = useRoute("/w/:slug/:section");
   const slug = (matchedSection ? sectionParams?.slug : slugParams?.slug) ?? "";
   const sectionSeg = matchedSection ? sectionParams?.section : undefined;
-  // Only set when a specific section is in the URL. Undefined on the home
-  // page so the full scrollable site is shown.
-  const currentSection = matchedSection ? sectionFromUrlSegment(sectionSeg) : undefined;
+  // Default to the "home" page when no section is in the URL so a guest
+  // landing on /w/:slug sees the same single-page Hero the couple sees in
+  // their editor preview, instead of the entire site rendered as one long
+  // scroll. Specific sections come from the URL segment.
+  const currentSection = matchedSection ? sectionFromUrlSegment(sectionSeg) : "home";
   // Reference matchedSlug to suppress unused-var warning while keeping it
   // available for future use.
   void matchedSlug;

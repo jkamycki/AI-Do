@@ -92,23 +92,21 @@ export function RsvpFlow({
         : `/api/website/public/${encodeURIComponent(slug)}/guests/search?q=${encodeURIComponent(query.trim())}${queryArgs}`;
       const r = previewMode ? await authFetch(url) : await apiFetch(url);
       if (!r.ok) {
-        // Treat search failures as "no match" so the live site shows the
-        // same "not on the guest list — RSVP anyway" prompt the preview
-        // shows on a true zero-result search. Without this fallback, an
-        // unpublished or transient 5xx silently swallows the prompt and
-        // the user thinks the form is broken.
+        // Treat a failed lookup as "no match found" so the guest can still
+        // self-add via "RSVP anyway" — same fallback path the editor preview
+        // exposes when nothing matches the typed name.
         setMatches([]);
         setSearched(true);
+        setError("We couldn't search the guest list right now. You can still RSVP using your details below.");
         return;
       }
       const body = (await r.json()) as { matches: GuestMatch[] };
       setMatches(body.matches);
       setSearched(true);
     } catch {
-      // Same fallback for network errors — show the prompt instead of an
-      // error message that hides the path forward.
       setMatches([]);
       setSearched(true);
+      setError("We couldn't reach the guest list. You can still RSVP using your details below.");
     } finally {
       setSearching(false);
     }

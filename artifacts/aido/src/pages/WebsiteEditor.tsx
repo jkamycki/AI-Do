@@ -41,14 +41,6 @@ const THEMES = [
   { id: "garden2",   name: "Wildflower",        font: "Cormorant Garamond", primary: "#C18AAA", secondary: "#E8C5D5", accent: "#A8688A", neutral: "#F8EEF3", background: "#FFFCFD", text: "#3A2530" },
 ];
 
-const FONTS = [
-  "Playfair Display", "Cormorant Garamond", "Lora", "Merriweather", "Bodoni Moda", "Cinzel", "Italiana", "Tangerine", "Great Vibes", "Allura", "Parisienne",
-];
-
-const BODY_FONTS = [
-  "Inter", "Montserrat", "Josefin Sans", "Lato", "Open Sans", "Source Sans 3", "Nunito", "Raleway", "Poppins",
-];
-
 // Section keys that render a heading + body. Each gets a Title (chip),
 // Subtitle (h2), and Body (paragraph) text override.
 const SECTION_TEXT_KEYS: Array<{ key: string; label: string; defaultTitle: string; defaultSubtitle?: string }> = [
@@ -94,7 +86,11 @@ export default function WebsiteEditor() {
   const [qrOpen, setQrOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings" | "content">("design");
   const inTab = (t: typeof activeTab) => activeTab === t;
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  // x/y are viewport coords (used to position the menu); canvasX/canvasY are
+  // coords relative to the WebsiteRenderer container (used so a newly
+  // inserted text box lands where the user right-clicked).
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; canvasX: number; canvasY: number } | null>(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
   const [urlModalOpen, setUrlModalOpen] = useState(false);
   const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
 
@@ -362,7 +358,10 @@ export default function WebsiteEditor() {
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
         }),
       });
-      if (!r.ok) throw new Error("Failed to save");
+      if (!r.ok) {
+        const text = await r.text().catch(() => "");
+        throw new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`);
+      }
       const body = (await r.json()) as WebsiteRecord;
       // The /api/website/update endpoint manages the website record only —
       // portalParty is a JOIN from the wedding-party portal table that the
@@ -375,7 +374,8 @@ export default function WebsiteEditor() {
       setPasswordInput("");
       setDirty(false);
       return true;
-    } catch {
+    } catch (err) {
+      console.error("[WebsiteEditor] saveNow failed", err);
       return false;
     } finally {
       if (!silent) setSaving(false);
@@ -415,7 +415,10 @@ export default function WebsiteEditor() {
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
         }),
       });
-      if (!r.ok) throw new Error("Failed to save");
+      if (!r.ok) {
+        const text = await r.text().catch(() => "");
+        throw new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`);
+      }
       const body = (await r.json()) as WebsiteRecord;
       // Same fix as saveNow() — PUT response is the website row only and
       // doesn't include portalParty (a JOIN the GET endpoint enriches).
@@ -429,8 +432,10 @@ export default function WebsiteEditor() {
       setPasswordInput("");
       setDirty(false);
       toast({ title: "Saved!" });
-    } catch {
-      toast({ title: "Failed to save", variant: "destructive" });
+    } catch (err) {
+      console.error("[WebsiteEditor] handleSave failed", err);
+      const detail = err instanceof Error ? err.message : "Unknown error";
+      toast({ title: "Failed to save", description: detail, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -817,6 +822,16 @@ export default function WebsiteEditor() {
             <ColorField label={t("website_editor.color_secondary", { defaultValue: "Secondary" })} value={record.colorPalette.secondary} onChange={(v) => update({ colorPalette: { ...record.colorPalette, secondary: v } })} />
             <ColorField label={t("website_editor.color_background", { defaultValue: "Background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
             <ColorField label={t("website_editor.color_text", { defaultValue: "Text" })}      value={record.colorPalette.text}      onChange={(v) => update({ colorPalette: { ...record.colorPalette, text: v } })} />
+            <ColorField
+              label={t("website_editor.color_couple_names", { defaultValue: "Couple Names (top)" })}
+              value={record.customText._navCoupleColor || record.colorPalette.primary}
+              onChange={(v) => update({ customText: { ...record.customText, _navCoupleColor: v } })}
+            />
+            <ColorField
+              label={t("website_editor.color_footer", { defaultValue: "Footer" })}
+              value={record.customText._footerColor || record.colorPalette.primary}
+              onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
+            />
           </div>
           {/* Background opacity slider — lets the user fade the section
               backgrounds so any underlying hero image / page background
@@ -844,36 +859,6 @@ export default function WebsiteEditor() {
               </div>
             );
           })()}
-        </Section>}
-
-        {/* Typography */}
-        {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_typography", { defaultValue: "Typography" })}>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.heading_font_label", { defaultValue: "Heading font (couple names, titles)" })}</Label>
-              <select
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={record.customText._headingFont || record.font}
-                onChange={(e) => update({ customText: { ...record.customText, _headingFont: e.target.value }, font: e.target.value })}
-              >
-                {FONTS.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.body_font_label", { defaultValue: "Body font (paragraphs)" })}</Label>
-              <select
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={record.customText._bodyFont || "Inter"}
-                onChange={(e) => update({ customText: { ...record.customText, _bodyFont: e.target.value } })}
-              >
-                {BODY_FONTS.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
-            </div>
-          </div>
         </Section>}
 
         {/* Sections */}
@@ -905,6 +890,7 @@ export default function WebsiteEditor() {
         {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Hero Elements" })}>
           <div className="space-y-2.5">
             {[
+              { key: "_coupleName", label: t("website_editor.hero_couple_names", { defaultValue: "Couple Names" }) },
               { key: "_heroDateRow", label: t("website_editor.hero_date_row", { defaultValue: "Wedding Date" }) },
               { key: "_heroDateIcon", label: t("website_editor.hero_date_icon", { defaultValue: "Date Calendar Icon" }) },
               { key: "_heroVenueRow", label: t("website_editor.hero_venue_row", { defaultValue: "Venue Address" }) },
@@ -920,9 +906,16 @@ export default function WebsiteEditor() {
                     checked={!isHidden}
                     onCheckedChange={(checked) => patchRecord((prev) => {
                       const ct = { ...prev.customText };
-                      if (checked) delete ct[row.key];
-                      else ct[row.key] = EDITABLE_HIDDEN_MARKER;
-                      return { customText: ct };
+                      const tp = { ...(prev.textPositions ?? {}) };
+                      if (checked) {
+                        delete ct[row.key];
+                        // Drop any stale drag offset so the element returns
+                        // to its centered default when re-enabled.
+                        delete tp[row.key];
+                      } else {
+                        ct[row.key] = EDITABLE_HIDDEN_MARKER;
+                      }
+                      return { customText: ct, textPositions: tp };
                     })}
                   />
                 </div>
@@ -1035,6 +1028,7 @@ export default function WebsiteEditor() {
           </p>
         </Section>}
 
+
         {/* Hero animation */}
         {inTab("animation") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_hero_animation", { defaultValue: "Hero Animation" })}>
           <div className="space-y-3">
@@ -1069,6 +1063,56 @@ export default function WebsiteEditor() {
                 {t("website_editor.slideshow_hint", { defaultValue: "Slideshow uses your hero image and all gallery photos. Add more photos in the Gallery section below to extend the rotation." })}
               </p>
             )}
+          </div>
+        </Section>}
+
+        {/* Gallery animation */}
+        {inTab("animation") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_gallery_animation", { defaultValue: "Gallery Animation" })}>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.style_label", { defaultValue: "Style" })}</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={record.customText._galleryAnimation ?? "grid"}
+                onChange={(e) => update({ customText: { ...record.customText, _galleryAnimation: e.target.value } })}
+              >
+                <option value="grid">{t("website_editor.gallery_anim_grid", { defaultValue: "Grid (static)" })}</option>
+                <option value="slideshow">{t("website_editor.gallery_anim_slideshow", { defaultValue: "Slideshow (fade through photos)" })}</option>
+                <option value="marquee">{t("website_editor.gallery_anim_marquee", { defaultValue: "Marquee (continuous scroll)" })}</option>
+              </select>
+            </div>
+            {(record.customText._galleryAnimation === "slideshow" || record.customText._galleryAnimation === "marquee") && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.speed_label", { defaultValue: "Speed" })}</Label>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={record.customText._galleryAnimationSpeed ?? "medium"}
+                  onChange={(e) => update({ customText: { ...record.customText, _galleryAnimationSpeed: e.target.value } })}
+                >
+                  <option value="slow">{t("website_editor.speed_slow", { defaultValue: "Slow" })}</option>
+                  <option value="medium">{t("website_editor.speed_medium", { defaultValue: "Medium" })}</option>
+                  <option value="fast">{t("website_editor.speed_fast", { defaultValue: "Fast" })}</option>
+                </select>
+              </div>
+            )}
+            {(!record.customText._galleryAnimation || record.customText._galleryAnimation === "grid") && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Entrance animation</Label>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={record.customText._galleryEntrance ?? "none"}
+                  onChange={(e) => update({ customText: { ...record.customText, _galleryEntrance: e.target.value } })}
+                >
+                  <option value="none">None</option>
+                  <option value="fade-in">Fade in</option>
+                  <option value="slide-up">Slide up</option>
+                  <option value="zoom-in">Zoom in</option>
+                </select>
+              </div>
+            )}
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {t("website_editor.gallery_anim_hint", { defaultValue: "Choose how gallery photos display. Guests can still click any photo to open the full lightbox." })}
+            </p>
           </div>
         </Section>}
 
@@ -1350,7 +1394,13 @@ export default function WebsiteEditor() {
         } lg:block`}
         onContextMenu={(e) => {
           e.preventDefault();
-          setCtxMenu({ x: e.clientX, y: e.clientY });
+          const rect = canvasRef.current?.getBoundingClientRect();
+          setCtxMenu({
+            x: e.clientX,
+            y: e.clientY,
+            canvasX: rect ? e.clientX - rect.left : 0,
+            canvasY: rect ? e.clientY - rect.top : 0,
+          });
         }}
         onClick={() => { if (ctxMenu) setCtxMenu(null); }}
       >
@@ -1377,7 +1427,7 @@ export default function WebsiteEditor() {
             {t("website_editor.custom_url_cta", { defaultValue: "Click here to get your custom website URL" })}
           </button>
         </div>
-        <div className="bg-white">
+        <div ref={canvasRef} className="bg-white relative">
           <WebsiteRenderer
             data={livePreview!}
             editable
@@ -1473,10 +1523,23 @@ export default function WebsiteEditor() {
             className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent flex items-center gap-2"
             onClick={() => {
               const key = `_custom_${Date.now()}`;
-              patchRecord((prev) => ({
-                customText: { ...prev.customText, [key]: t("website_editor.new_text", { defaultValue: "New text — click to edit" }) },
-                textPositions: { ...(prev.textPositions ?? {}), [key]: { x: 0, y: 0 } },
-              }));
+              const insertAt = ctxMenu ? { x: ctxMenu.canvasX, y: ctxMenu.canvasY } : { x: 0, y: 0 };
+              patchRecord((prev) => {
+                // CustomTextBoxes lays new boxes out at (left: 24, top: 120 + idx*56)
+                // by default, then DraggableRow applies textPositions[key] as a
+                // translate delta. To land the box at the right-click point, the
+                // delta has to compensate for that base.
+                const customCount = Object.keys(prev.customText).filter((k) => k.startsWith("_custom_")).length;
+                const baseLeft = 24;
+                const baseTop = 120 + customCount * 56;
+                return {
+                  customText: { ...prev.customText, [key]: t("website_editor.new_text", { defaultValue: "New text — click to edit" }) },
+                  textPositions: {
+                    ...(prev.textPositions ?? {}),
+                    [key]: { x: insertAt.x - baseLeft, y: insertAt.y - baseTop },
+                  },
+                };
+              });
               setCtxMenu(null);
             }}
           >

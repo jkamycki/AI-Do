@@ -32,6 +32,18 @@
 .wsa-zoom-in   { animation: wsa-zoom-in   0.8s ease-out both; }
 .wsa-bounce-in { animation: wsa-bounce-in 0.7s ease-out both; }
 
+/* Gallery photo scroll-in animations */
+[data-gallery-anim="fade-in"] .wsg-item,
+[data-gallery-anim="slide-up"] .wsg-item,
+[data-gallery-anim="zoom-in"] .wsg-item {
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  transition-delay: var(--stagger, 0ms);
+}
+[data-gallery-anim="fade-in"] .wsg-item   { opacity: 0; }
+[data-gallery-anim="slide-up"] .wsg-item  { opacity: 0; transform: translateY(32px); }
+[data-gallery-anim="zoom-in"] .wsg-item   { opacity: 0; transform: scale(0.86); }
+[data-gallery-anim] .wsg-item.wsg-visible { opacity: 1; transform: none; }
+
 /* Hero background animations */
 @keyframes wsa-kenburns {
   0%   { transform: scale(1.05) translate(0, 0); }
