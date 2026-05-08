@@ -209,10 +209,10 @@ router.post("/seating/charts", requireAuth, async (req, res) => {
       })
       .returning();
 
-    if (resolvedProfileId && Array.isArray(tables) && tables.length > 0) {
-      await syncTableAssignments(resolvedProfileId, tables).catch(() => {});
-    }
-
+    // Saving alone no longer applies to the guest list — only an explicit
+    // load (POST /:id/apply) updates guest table assignments. This way the
+    // user can keep multiple drafts saved without disturbing whichever one
+    // is currently "live" on their guest list.
     res.json({ ...saved, createdAt: saved.createdAt.toISOString(), updatedAt: saved.updatedAt.toISOString() });
   } catch {
     res.status(500).json({ error: "Internal server error" });
@@ -264,13 +264,41 @@ router.put("/seating/charts/:id", requireAuth, async (req, res) => {
       return;
     }
 
-    const putProfileId = updated.profileId ?? (await resolveProfile(req))?.id ?? null;
-    if (putProfileId && Array.isArray(tables) && tables.length > 0) {
-      await syncTableAssignments(putProfileId, tables).catch(() => {});
-    }
-
     res.json({ ...updated, createdAt: updated.createdAt.toISOString(), updatedAt: updated.updatedAt.toISOString() });
   } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Apply a saved chart's tables to the guest list — used when the user
+// loads a saved chart in the UI. Only this endpoint mutates guest
+// tableAssignment now (other than the delete endpoints, which clear it).
+router.post("/seating/charts/:id/apply", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const userId = await resolveScopeUserId(req);
+    const chartId = parseInt(String(req.params["id"] ?? "0"), 10);
+    const [chart] = await db
+      .select()
+      .from(seatingCharts)
+      .where(and(eq(seatingCharts.id, chartId), eq(seatingCharts.userId, userId)))
+      .limit(1);
+    if (!chart) {
+      res.status(404).json({ error: "Seating chart not found" });
+      return;
+    }
+    const profileId = chart.profileId ?? (await resolveProfile(req))?.id ?? null;
+    const tables = (chart.tables ?? []) as { tableNumber: number; tableName: string; guests: string[] }[];
+    if (profileId && Array.isArray(tables) && tables.length > 0) {
+      await syncTableAssignments(profileId, tables);
+    }
+    res.json({ success: true, applied: tables.length });
+  } catch (err) {
+    req.log.error(err, "Failed to apply seating chart");
     res.status(500).json({ error: "Internal server error" });
   }
 });

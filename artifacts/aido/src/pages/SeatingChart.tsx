@@ -378,7 +378,7 @@ export default function SeatingChartPage() {
   const [chartDirty, setChartDirty] = useState(false);
   const [activeChartId, setActiveChartId] = useState<number | null>(null);
   const [showGuests, setShowGuests] = useState(true);
-  const [showSaved, setShowSaved] = useState(false);
+  const [showSaved, setShowSaved] = useState(true);
 
   const moveGuest = (fromTableNumber: number, toTableNumber: number, guestName: string) => {
     if (fromTableNumber === toTableNumber || !result) return;
@@ -664,6 +664,18 @@ export default function SeatingChartPage() {
     },
   });
 
+  const applyChartMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const r = await authedFetch(`/api/seating/charts/${id}/apply`, { method: "POST" });
+      if (!r.ok) throw new Error("Apply failed");
+      return r.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    },
+  });
+
   const loadChart = (chart: SavedChart) => {
     if (chart.tables) {
       setResult({
@@ -676,6 +688,7 @@ export default function SeatingChartPage() {
       setActiveChartId(chart.id);
       setShowGuests(false);
       setShowSaved(false);
+      applyChartMutation.mutate(chart.id);
     }
     if (chart.guests && Array.isArray(chart.guests)) {
       setGuests(chart.guests as Guest[]);
