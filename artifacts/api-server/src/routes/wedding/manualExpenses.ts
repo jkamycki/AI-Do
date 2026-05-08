@@ -25,12 +25,22 @@ function format(row: typeof manualExpenses.$inferSelect) {
     category: row.category,
     cost: Number(row.cost),
     amountPaid: Number(row.amountPaid),
+    nextPaymentDue: row.nextPaymentDue ?? null,
     notes: row.notes ?? null,
     receiptUrl: row.receiptUrl ?? null,
     receiptName: row.receiptName ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+// Accept either an ISO YYYY-MM-DD date string or null/empty. Anything
+// else gets dropped. Mirrors how the vendors route handles its own
+// next_payment_due field.
+function sanitizeNextPaymentDue(input: unknown): string | null {
+  if (input == null || input === "") return null;
+  if (typeof input !== "string") return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(input) ? input : null;
 }
 
 router.get("/manual-expenses", requireAuth, async (req, res) => {
@@ -69,7 +79,7 @@ router.post("/manual-expenses", requireAuth, async (req, res) => {
       res.status(400).json({ error: "No wedding profile found" });
       return;
     }
-    const { name, category, cost, amountPaid, notes, receiptUrl, receiptName } = req.body ?? {};
+    const { name, category, cost, amountPaid, nextPaymentDue, notes, receiptUrl, receiptName } = req.body ?? {};
     if (!name || typeof name !== "string" || !name.trim()) {
       res.status(400).json({ error: "name is required" });
       return;
@@ -89,6 +99,7 @@ router.post("/manual-expenses", requireAuth, async (req, res) => {
         category: String(category ?? "Other").slice(0, 80),
         cost: String(costNum),
         amountPaid: String(paidNum),
+        nextPaymentDue: sanitizeNextPaymentDue(nextPaymentDue),
         notes: typeof notes === "string" ? notes.slice(0, 2000) : null,
         receiptUrl: sanitizeReceiptUrl(receiptUrl),
         receiptName: typeof receiptName === "string" ? receiptName.slice(0, 200) : null,
@@ -114,7 +125,7 @@ router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
       return;
     }
     const id = parseInt(String(req.params.id), 10);
-    const { name, category, cost, amountPaid, notes, receiptUrl, receiptName } = req.body ?? {};
+    const { name, category, cost, amountPaid, nextPaymentDue, notes, receiptUrl, receiptName } = req.body ?? {};
     const updates: Partial<typeof manualExpenses.$inferInsert> = {};
     if (name !== undefined) {
       const trimmed = String(name).trim();
@@ -141,6 +152,7 @@ router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
       }
       updates.amountPaid = String(n);
     }
+    if (nextPaymentDue !== undefined) updates.nextPaymentDue = sanitizeNextPaymentDue(nextPaymentDue);
     if (notes !== undefined) updates.notes = typeof notes === "string" ? notes.slice(0, 2000) : null;
     if (receiptUrl !== undefined) updates.receiptUrl = sanitizeReceiptUrl(receiptUrl);
     if (receiptName !== undefined) updates.receiptName = typeof receiptName === "string" ? receiptName.slice(0, 200) : null;
