@@ -1772,33 +1772,12 @@ export default function WebsiteEditor() {
         </div>
       </main>
 
-      {/* Mobile-only Edit / Preview toggle. Phones only have room for one
-          pane at a time, so split the screen by tab instead of cramming the
-          sidebar above a tiny preview. lg breakpoint hides the bar. */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-[150] border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="grid grid-cols-2 gap-1 p-2 max-w-md mx-auto">
-          <button
-            onClick={() => setMobileView("edit")}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-colors ${
-              mobileView === "edit"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {t("website_editor.tab_edit", { defaultValue: "Edit" })}
-          </button>
-          <button
-            onClick={() => setMobileView("preview")}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-colors ${
-              mobileView === "preview"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {t("website_editor.tab_preview", { defaultValue: "Preview" })}
-          </button>
-        </div>
-      </div>
+      {/* Mobile-only Edit / Preview toggle was removed when the mobile
+          editor switched to a vertical split-screen layout (#309). The
+          toggle bar still lingered here referencing the deleted mobileView
+          state, which crashed the page on load with
+          "ReferenceError: mobileView is not defined". Both panes are
+          always visible on mobile now, so the bar is no longer needed. */}
 
 
       {ctxMenu && (
