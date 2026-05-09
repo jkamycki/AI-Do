@@ -340,6 +340,10 @@ export default function WebsiteEditor() {
 
   const [saveError, setSaveError] = useState(false);
 
+  // localStorage backup — every dirty save snapshot is mirrored here so a
+  // failed POST + closed tab still recovers on next mount.
+  const PENDING_SAVE_KEY = "aido_website_pending_save_v1";
+
   const buildSaveBody = (rec: WebsiteRecord) => ({
     theme: rec.theme,
     layoutStyle: rec.layoutStyle,
@@ -356,51 +360,117 @@ export default function WebsiteEditor() {
     ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
   });
 
+  const writePendingBackup = (body: ReturnType<typeof buildSaveBody>, websiteId: number) => {
+    try {
+      localStorage.setItem(PENDING_SAVE_KEY, JSON.stringify({ websiteId, savedAt: Date.now(), body }));
+    } catch { /* quota exceeded — ignore, retry will still run */ }
+  };
+  const clearPendingBackup = () => {
+    try { localStorage.removeItem(PENDING_SAVE_KEY); } catch { /* ignore */ }
+  };
+
+  // Posts a save body. Retries 5xx + network errors with exponential backoff
+  // capped at 30s. 4xx errors are not retried inside this call (the caller
+  // decides — autosave reschedules; user-triggered handleSave surfaces them).
+  const postSave = async (
+    body: ReturnType<typeof buildSaveBody>,
+    options: { maxAttempts?: number } = {},
+  ): Promise<{ ok: true; record: WebsiteRecord } | { ok: false; err: unknown; status?: number }> => {
+    const max = options.maxAttempts ?? 5;
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= max; attempt++) {
+      try {
+        const r = await authFetch("/api/website/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (r.ok) {
+          const rec = (await r.json()) as WebsiteRecord;
+          return { ok: true, record: rec };
+        }
+        if (r.status < 500) {
+          const text = await r.text().catch(() => "");
+          return { ok: false, err: new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`), status: r.status };
+        }
+        lastErr = new Error(`HTTP ${r.status}`);
+      } catch (err) {
+        lastErr = err;
+      }
+      if (attempt < max) {
+        const delay = Math.min(30000, 1000 * Math.pow(2, attempt - 1));
+        await new Promise((res) => setTimeout(res, delay));
+      }
+    }
+    return { ok: false, err: lastErr };
+  };
+
   const saveNow = async (silent: boolean): Promise<boolean> => {
     // Always snapshot the latest state from the ref to avoid stale closures.
     const rec = recordRef.current;
     if (!rec) return false;
     if (!silent) setSaving(true);
 
-    let lastErr: unknown;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const r = await authFetch("/api/website/update", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildSaveBody(rec)),
-        });
-        if (r.ok) {
-          const body = (await r.json()) as WebsiteRecord;
-          setRecord((prev) => ({
-            ...body,
-            portalParty: body.portalParty ?? prev?.portalParty,
-          }));
-          setPasswordInput("");
-          setDirty(false);
-          setSaveError(false);
-          if (!silent) setSaving(false);
-          return true;
-        }
-        // Don't retry 4xx — those are client errors (bad payload, auth).
-        if (r.status < 500) {
-          const text = await r.text().catch(() => "");
-          lastErr = new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`);
-          break;
-        }
-        lastErr = new Error(`HTTP ${r.status}`);
-      } catch (err) {
-        // Network-level error — retry.
-        lastErr = err;
-      }
-      if (attempt < 3) await new Promise((res) => setTimeout(res, attempt * 2000));
+    const body = buildSaveBody(rec);
+    // Mirror to localStorage BEFORE attempting the network — guarantees the
+    // payload survives a tab close mid-request.
+    writePendingBackup(body, rec.id);
+
+    const result = await postSave(body);
+    if (result.ok) {
+      setRecord((prev) => ({
+        ...result.record,
+        portalParty: result.record.portalParty ?? prev?.portalParty,
+      }));
+      setPasswordInput("");
+      setDirty(false);
+      setSaveError(false);
+      clearPendingBackup();
+      if (!silent) setSaving(false);
+      return true;
     }
 
-    console.error("[WebsiteEditor] save failed after retries", lastErr);
+    console.error("[WebsiteEditor] save failed after retries", result.err);
     setSaveError(true);
     if (!silent) setSaving(false);
     return false;
   };
+
+  // On mount, if the previous tab left a pending payload behind (e.g. a save
+  // failed after the user closed the editor), replay it now so the work is
+  // never lost. Runs once per `record.id` change.
+  useEffect(() => {
+    if (!record) return;
+    let cancelled = false;
+    (async () => {
+      let pending: { websiteId: number; savedAt: number; body: ReturnType<typeof buildSaveBody> } | null = null;
+      try {
+        const raw = localStorage.getItem(PENDING_SAVE_KEY);
+        if (raw) pending = JSON.parse(raw);
+      } catch { return; }
+      if (!pending || pending.websiteId !== record.id) return;
+      // If the server's lastUpdated is already newer than the pending snapshot,
+      // assume someone else (or another tab) saved it and drop the backup.
+      const serverTs = record.lastUpdated ? Date.parse(record.lastUpdated) : 0;
+      if (Number.isFinite(serverTs) && serverTs >= pending.savedAt) {
+        clearPendingBackup();
+        return;
+      }
+      const result = await postSave(pending.body);
+      if (cancelled) return;
+      if (result.ok) {
+        setRecord((prev) => ({
+          ...result.record,
+          portalParty: result.record.portalParty ?? prev?.portalParty,
+        }));
+        clearPendingBackup();
+      }
+      // If it failed, leave the backup in place — autosave will pick it up
+      // on the next dirty cycle, and the user sees the "Save failed" hint.
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record?.id]);
 
   // Autosave: 10 seconds after the last change. Reschedules itself on failure
   // so unsaved work is never silently dropped.
