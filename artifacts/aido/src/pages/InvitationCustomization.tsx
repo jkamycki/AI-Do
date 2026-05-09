@@ -55,7 +55,8 @@ export default function InvitationCustomizationPage({
       ? parseInt(params.profileId)
       : activeWorkspace?.profileId);
   const [previewTab, setPreviewTab] = useState<PreviewTab>("saveTheDate");
-  const [designMode, setDesignMode] = useState<"ai" | "custom">("ai");
+  const [saveTheDateDesignMode, setSaveTheDateDesignMode] = useState<"ai" | "custom">("ai");
+  const [rsvpInvitationDesignMode, setRsvpInvitationDesignMode] = useState<"ai" | "custom">("ai");
 
   // ── Shared brand-color state ──────────────────────────────────────────────
   const [primaryColor, setPrimaryColor] = useState("#D4A017");
@@ -663,8 +664,19 @@ export default function InvitationCustomizationPage({
       </div>
 
       <Tabs
-        value={designMode}
-        onValueChange={(v) => setDesignMode(v as "ai" | "custom")}
+        value={
+          previewTab === "saveTheDate"
+            ? saveTheDateDesignMode
+            : rsvpInvitationDesignMode
+        }
+        onValueChange={(v) => {
+          const mode = v as "ai" | "custom";
+          if (previewTab === "saveTheDate") {
+            setSaveTheDateDesignMode(mode);
+          } else {
+            setRsvpInvitationDesignMode(mode);
+          }
+        }}
       >
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger
