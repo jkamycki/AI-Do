@@ -57,6 +57,13 @@ export default function InvitationCustomizationPage({
   const [previewTab, setPreviewTab] = useState<PreviewTab>("saveTheDate");
   const [saveTheDateDesignMode, setSaveTheDateDesignMode] = useState<"ai" | "custom">("ai");
   const [rsvpInvitationDesignMode, setRsvpInvitationDesignMode] = useState<"ai" | "custom">("ai");
+  const [customDesign, setCustomDesign] = useState<{
+    saveTheDate: { backgroundColor: string; accentColor: string; fontFamily: string; fontSize: string; fontColor: string };
+    rsvpInvitation: { backgroundColor: string; accentColor: string; fontFamily: string; fontSize: string; fontColor: string };
+  }>({
+    saveTheDate: { backgroundColor: "#FFFFFF", accentColor: "#D4A017", fontFamily: "Playfair Display", fontSize: "16", fontColor: "#222222" },
+    rsvpInvitation: { backgroundColor: "#FFFFFF", accentColor: "#D4A017", fontFamily: "Playfair Display", fontSize: "16", fontColor: "#222222" },
+  });
 
   // ── Shared brand-color state ──────────────────────────────────────────────
   const [primaryColor, setPrimaryColor] = useState("#D4A017");
@@ -858,6 +865,87 @@ export default function InvitationCustomizationPage({
               </Button>
             </CardContent>
           </Card>
+
+          {/* Custom Design controls — only render when this invitation's mode is "custom".
+              These values are NOT applied to the preview/email/PDF yet. */}
+          {(() => {
+            const activeKey: "saveTheDate" | "rsvpInvitation" =
+              previewTab === "saveTheDate" ? "saveTheDate" : "rsvpInvitation";
+            const activeMode =
+              activeKey === "saveTheDate" ? saveTheDateDesignMode : rsvpInvitationDesignMode;
+            if (activeMode !== "custom") return null;
+            const fields = customDesign[activeKey];
+            const updateField = (field: keyof typeof fields, value: string) => {
+              setCustomDesign((prev) => ({
+                ...prev,
+                [activeKey]: { ...prev[activeKey], [field]: value },
+              }));
+            };
+            return (
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  <p className="text-sm font-medium">Custom Design</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block text-xs space-y-1">
+                      <span className="text-muted-foreground">Background</span>
+                      <input
+                        type="color"
+                        value={fields.backgroundColor}
+                        onChange={(e) => updateField("backgroundColor", e.target.value)}
+                        className="block h-8 w-full rounded border border-input cursor-pointer"
+                      />
+                    </label>
+                    <label className="block text-xs space-y-1">
+                      <span className="text-muted-foreground">Accent</span>
+                      <input
+                        type="color"
+                        value={fields.accentColor}
+                        onChange={(e) => updateField("accentColor", e.target.value)}
+                        className="block h-8 w-full rounded border border-input cursor-pointer"
+                      />
+                    </label>
+                    <label className="block text-xs space-y-1">
+                      <span className="text-muted-foreground">Font color</span>
+                      <input
+                        type="color"
+                        value={fields.fontColor}
+                        onChange={(e) => updateField("fontColor", e.target.value)}
+                        className="block h-8 w-full rounded border border-input cursor-pointer"
+                      />
+                    </label>
+                    <label className="block text-xs space-y-1">
+                      <span className="text-muted-foreground">Font size (px)</span>
+                      <input
+                        type="number"
+                        min={8}
+                        max={72}
+                        value={fields.fontSize}
+                        onChange={(e) => updateField("fontSize", e.target.value)}
+                        className="block h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+                      />
+                    </label>
+                  </div>
+                  <label className="block text-xs space-y-1">
+                    <span className="text-muted-foreground">Font family</span>
+                    <select
+                      value={fields.fontFamily}
+                      onChange={(e) => updateField("fontFamily", e.target.value)}
+                      className="block h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+                    >
+                      <option value="Playfair Display">Playfair Display</option>
+                      <option value="Cormorant Garamond">Cormorant Garamond</option>
+                      <option value="Lora">Lora</option>
+                      <option value="Cinzel">Cinzel</option>
+                      <option value="Great Vibes">Great Vibes</option>
+                      <option value="Tangerine">Tangerine</option>
+                      <option value="Inter">Inter</option>
+                      <option value="Montserrat">Montserrat</option>
+                    </select>
+                  </label>
+                </CardContent>
+              </Card>
+            );
+          })()}
         </div>
 
         {/* Right Panel — Preview */}
