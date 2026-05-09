@@ -765,9 +765,19 @@ function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx
         style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
         {...tsp(ctx, "rsvp_subtitle")}
       />
-      {data.customText.rsvp_deadline && (
+      {(ctx.editable || data.customText.rsvp_deadline) && (
         <p className="text-center text-sm mb-8 opacity-70" style={{ color: data.colorPalette.text }}>
-          Please RSVP by <strong>{data.customText.rsvp_deadline}</strong>
+          Please RSVP by{" "}
+          <EditableText
+            as="span"
+            editable={ctx.editable}
+            value={data.customText.rsvp_deadline ?? ""}
+            defaultValue="(tap to add a date)"
+            onCommit={(v) => ctx.onTextChange("rsvp_deadline", v)}
+            className="font-semibold"
+            style={{ color: data.colorPalette.text }}
+            {...tsp(ctx, "rsvp_deadline")}
+          />
         </p>
       )}
       {ctx.editable ? (
