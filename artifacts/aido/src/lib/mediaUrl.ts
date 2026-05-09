@@ -19,10 +19,15 @@ export function isMediaAuthRequired(url: string | null | undefined): boolean {
 
 export function resolveMediaUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  if (!API_BASE) return url;
   if (/^(blob:|data:|https?:\/\/)/i.test(url)) return url;
-  if (url.startsWith("/api/")) return `${API_BASE}${url}`;
-  if (url.startsWith("/storage/")) return `${API_BASE}/api${url}`;
-  if (url.startsWith("/objects/")) return `${API_BASE}/api/storage${url}`;
-  return url;
+  // Stored object paths (e.g. "/objects/uploads/abc") are NOT a real route on
+  // the API; the browser fetch endpoint lives at "/api/storage/objects/...".
+  // Translate the path BEFORE the API_BASE early-return, otherwise relative
+  // (same-origin) deployments hit /objects/* and 404.
+  let path = url;
+  if (path.startsWith("/storage/")) path = `/api${path}`;
+  else if (path.startsWith("/objects/")) path = `/api/storage${path}`;
+  if (!API_BASE) return path;
+  if (path.startsWith("/api/")) return `${API_BASE}${path}`;
+  return path;
 }
