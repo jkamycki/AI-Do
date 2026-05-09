@@ -93,7 +93,6 @@ export default function WebsiteEditor() {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; canvasX: number; canvasY: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [urlModalOpen, setUrlModalOpen] = useState(false);
-  const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
 
   useEffect(() => {
     if (!ctxMenu) return;
@@ -109,6 +108,7 @@ export default function WebsiteEditor() {
   const [sidebarWidth, setSidebarWidth] = useState(260);
   const dragState = useRef<{ active: boolean; startX: number; startW: number }>({ active: false, startX: 0, startW: 260 });
   const previewRef = useRef<HTMLElement | null>(null);
+  const mobilePreviewRef = useRef<HTMLDivElement | null>(null);
   const [overlayEl, setOverlayEl] = useState<HTMLDivElement | null>(null);
   // Whether ANY deletable EditableText is currently being dragged. Drives the
   // visual emphasis on the trash drop zone.
@@ -666,11 +666,40 @@ export default function WebsiteEditor() {
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] md:h-screen relative">
+      {/* Mobile: live preview pinned to the top half so the user can see
+          the page they're editing without flipping panels. lg+ shows it on
+          the right via the sibling <main> below. */}
+      <div className="lg:hidden flex-shrink-0 border-b bg-muted/20 overflow-hidden" style={{ height: "45vh" }}>
+        <div ref={(el) => { if (el && !previewRef.current) previewRef.current = el; mobilePreviewRef.current = el; }} className="h-full overflow-y-auto">
+          {livePreview && (
+            <WebsiteRenderer
+              data={livePreview}
+              editable
+              slug={record.slug ?? ""}
+              previewMode
+              scrollContainer={mobilePreviewRef.current}
+              currentSection={editorSection}
+              onSectionChange={(id) => {
+                setEditorSection(id);
+                mobilePreviewRef.current?.scrollTo({ top: 0, behavior: "auto" });
+              }}
+              onTextChange={(key, value) => patchRecord(() => ({ customText: { ...recordRef.current!.customText, [key]: value } }))}
+              onStyleChange={(key, style) => patchRecord(() => ({ textStyles: { ...(recordRef.current!.textStyles ?? {}), [key]: style } }))}
+              onPositionChange={(key, pos) => patchRecord(() => ({ textPositions: { ...(recordRef.current!.textPositions ?? {}), [key]: pos } }))}
+              onGalleryCaptionChange={(imageUrl, caption) => patchRecord(() => {
+                const next = (recordRef.current!.galleryImages ?? []).map((img) =>
+                  img.url === imageUrl ? { ...img, caption } : img,
+                );
+                return { galleryImages: next };
+              })}
+            />
+          )}
+        </div>
+      </div>
+
       {/* Sidebar */}
       <aside
-        className={`w-full lg:flex-shrink-0 border-r bg-background overflow-y-auto pb-20 lg:pb-0 ${
-          mobileView === "edit" ? "block" : "hidden"
-        } lg:block`}
+        className="w-full lg:flex-shrink-0 border-r bg-background overflow-y-auto block"
         style={{ width: typeof window !== "undefined" && window.innerWidth >= 1024 ? sidebarWidth : undefined }}
       >
         <div className="p-5 border-b sticky top-0 bg-background z-10">
@@ -1525,12 +1554,10 @@ export default function WebsiteEditor() {
         title={t("website_editor.drag_to_resize", { defaultValue: "Drag to resize" })}
       />
 
-      {/* Live preview */}
+      {/* Live preview — desktop only; mobile renders its own copy at the top. */}
       <main
         ref={previewRef}
-        className={`flex-1 overflow-y-auto bg-muted/20 pb-20 lg:pb-0 ${
-          mobileView === "preview" ? "block" : "hidden"
-        } lg:block`}
+        className="flex-1 overflow-y-auto bg-muted/20 pb-0 hidden lg:block"
         onContextMenu={(e) => {
           e.preventDefault();
           const rect = canvasRef.current?.getBoundingClientRect();
@@ -1612,34 +1639,6 @@ export default function WebsiteEditor() {
           />
         </div>
       </main>
-
-      {/* Mobile-only Edit / Preview toggle. Phones only have room for one
-          pane at a time, so split the screen by tab instead of cramming the
-          sidebar above a tiny preview. lg breakpoint hides the bar. */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-[150] border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="grid grid-cols-2 gap-1 p-2 max-w-md mx-auto">
-          <button
-            onClick={() => setMobileView("edit")}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-colors ${
-              mobileView === "edit"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {t("website_editor.tab_edit", { defaultValue: "Edit" })}
-          </button>
-          <button
-            onClick={() => setMobileView("preview")}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-colors ${
-              mobileView === "preview"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {t("website_editor.tab_preview", { defaultValue: "Preview" })}
-          </button>
-        </div>
-      </div>
 
 
       {ctxMenu && (
