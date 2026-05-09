@@ -291,15 +291,15 @@ export default function InvitationCustomizationPage({
           backgroundColor: customization.saveTheDateBackground ?? "#FFFFFF",
           accentColor: savedAccent,
           fontFamily: customization.saveTheDateFont ?? "Playfair Display",
-          fontSize: "16",
-          fontColor: "#222222",
+          fontSize: customization.saveTheDateFontSize ?? "16",
+          fontColor: customization.saveTheDateFontColor ?? "#222222",
         },
         rsvpInvitation: {
           backgroundColor: customization.digitalInvitationBackground ?? "#FFFFFF",
           accentColor: savedAccent,
           fontFamily: customization.digitalInvitationFont ?? "Playfair Display",
-          fontSize: "16",
-          fontColor: "#222222",
+          fontSize: customization.digitalInvitationFontSize ?? "16",
+          fontColor: customization.digitalInvitationFontColor ?? "#222222",
         },
       });
 
@@ -619,6 +619,10 @@ export default function InvitationCustomizationPage({
       digitalInvitationBackground: digCustom ? customDesign.rsvpInvitation.backgroundColor : null,
       saveTheDateFont: stdCustom ? customDesign.saveTheDate.fontFamily : null,
       digitalInvitationFont: digCustom ? customDesign.rsvpInvitation.fontFamily : null,
+      saveTheDateFontColor: stdCustom ? customDesign.saveTheDate.fontColor : null,
+      digitalInvitationFontColor: digCustom ? customDesign.rsvpInvitation.fontColor : null,
+      saveTheDateFontSize: stdCustom ? customDesign.saveTheDate.fontSize : null,
+      digitalInvitationFontSize: digCustom ? customDesign.rsvpInvitation.fontSize : null,
     };
   };
 

@@ -147,6 +147,10 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
       backgroundImageUrl,
       saveTheDateBackground,
       digitalInvitationBackground,
+      saveTheDateFontColor,
+      digitalInvitationFontColor,
+      saveTheDateFontSize,
+      digitalInvitationFontSize,
       textOverrides,
       useGeneratedInvitation,
     } = req.body as {
@@ -169,6 +173,10 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
       backgroundImageUrl?: string | null;
       saveTheDateBackground?: string | null;
       digitalInvitationBackground?: string | null;
+      saveTheDateFontColor?: string | null;
+      digitalInvitationFontColor?: string | null;
+      saveTheDateFontSize?: string | null;
+      digitalInvitationFontSize?: string | null;
       textOverrides?: Record<
         string,
         { x?: number; y?: number; font?: string; color?: string; fontSize?: number }
@@ -235,6 +243,10 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
           ...(backgroundImageUrl !== undefined && { backgroundImageUrl }),
           ...(saveTheDateBackground !== undefined && { saveTheDateBackground }),
           ...(digitalInvitationBackground !== undefined && { digitalInvitationBackground }),
+          ...(saveTheDateFontColor !== undefined && { saveTheDateFontColor }),
+          ...(digitalInvitationFontColor !== undefined && { digitalInvitationFontColor }),
+          ...(saveTheDateFontSize !== undefined && { saveTheDateFontSize }),
+          ...(digitalInvitationFontSize !== undefined && { digitalInvitationFontSize }),
           ...(textOverrides !== undefined && { textOverrides }),
           ...(useGeneratedInvitation !== undefined && { useGeneratedInvitation }),
           updatedAt: new Date(),
@@ -270,6 +282,10 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
           backgroundImageUrl: backgroundImageUrl || null,
           saveTheDateBackground: saveTheDateBackground || null,
           digitalInvitationBackground: digitalInvitationBackground || null,
+          saveTheDateFontColor: saveTheDateFontColor || null,
+          digitalInvitationFontColor: digitalInvitationFontColor || null,
+          saveTheDateFontSize: saveTheDateFontSize || null,
+          digitalInvitationFontSize: digitalInvitationFontSize || null,
           textOverrides: textOverrides || {},
           useGeneratedInvitation: useGeneratedInvitation ?? true,
         })
