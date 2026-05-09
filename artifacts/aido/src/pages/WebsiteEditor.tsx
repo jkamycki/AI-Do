@@ -514,6 +514,19 @@ export default function WebsiteEditor() {
   const applyTheme = (themeId: string) => {
     const t = THEMES.find((x) => x.id === themeId);
     if (!t) return;
+    // Reset all per-element / per-page colour overrides so the theme's
+    // colours actually take effect everywhere — otherwise leftover keys
+    // like _storyBg or _navLinkColor would keep painting old values on
+    // top of the new theme.
+    const RESET_KEYS = [
+      "_navLinkColor", "_navCoupleColor", "_footerColor",
+      // Per-page bg keys (legacy) plus the new shared sections bg.
+      "_welcomeBg", "_sectionsBg",
+      "_storyBg", "_scheduleBg", "_travelBg", "_registryBg",
+      "_weddingPartyBg", "_galleryBg", "_faqBg", "_rsvpBg",
+    ];
+    const nextCustomText: Record<string, string> = { ...(record?.customText ?? {}) };
+    for (const k of RESET_KEYS) delete nextCustomText[k];
     update({
       theme: t.id,
       font: t.font,
@@ -526,6 +539,7 @@ export default function WebsiteEditor() {
         background: t.background,
         text: t.text,
       },
+      customText: nextCustomText,
     });
   };
 
@@ -828,7 +842,7 @@ export default function WebsiteEditor() {
         {/* Colors */}
         {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_colors", { defaultValue: "Colors" })}>
           <div className="grid grid-cols-2 gap-3">
-            <ColorField label={t("website_editor.color_primary", { defaultValue: "Primary" })}   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
+            <ColorField label={t("website_editor.color_focus_ring", { defaultValue: "Focus Ring" })}   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
             <ColorField label={t("website_editor.color_background", { defaultValue: "Background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
             <ColorField
               label={t("website_editor.color_pages", { defaultValue: "Pages" })}
@@ -845,10 +859,19 @@ export default function WebsiteEditor() {
               value={record.customText._footerColor || record.colorPalette.primary}
               onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
             />
+            {/* Welcome page keeps its own background picker. Every other
+                non-home section (Story, Schedule, Travel, Registry, Wedding
+                Party, Gallery, FAQ, RSVP) shares a single Sections BG so the
+                user can recolour them all in one shot. */}
             <ColorField
-              label={t("website_editor.color_welcome_bg", { defaultValue: "Welcome BG" })}
+              label={t("website_editor.bg_welcome", { defaultValue: "Welcome BG" })}
               value={record.customText._welcomeBg || record.colorPalette.background}
               onChange={(v) => update({ customText: { ...record.customText, _welcomeBg: v } })}
+            />
+            <ColorField
+              label={t("website_editor.bg_sections", { defaultValue: "Body BG" })}
+              value={record.customText._sectionsBg || record.colorPalette.background}
+              onChange={(v) => update({ customText: { ...record.customText, _sectionsBg: v } })}
             />
           </div>
           {/* Background opacity slider — lets the user fade the section
