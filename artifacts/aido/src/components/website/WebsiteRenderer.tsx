@@ -922,9 +922,11 @@ function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: 
   const text = data.customText._announcement ?? "";
   const trimmed = text.trim();
   const [dismissed, setDismissed] = useState(false);
-  // Public site: hide entirely when empty/dismissed. Editor: keep the slot
-  // visible so the user has somewhere to click and start typing.
-  if ((!trimmed || dismissed) && !ctx.editable) return null;
+  // Hide when the user has toggled the announcement off via Home Elements.
+  if (data.customText._announcementHidden === EDITABLE_HIDDEN_MARKER || dismissed) return null;
+  // Public site: hide entirely when empty. Editor: keep the slot visible so
+  // the user has somewhere to click and start typing.
+  if (!trimmed && !ctx.editable) return null;
   return (
     <div
       className="relative flex items-start gap-3 px-5 py-3 text-sm"
