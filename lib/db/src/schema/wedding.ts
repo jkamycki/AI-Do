@@ -338,6 +338,7 @@ export const guests = pgTable("guests", {
   guestCountry: text("guest_country"),
   rsvpToken: text("rsvp_token"),
   rsvpSentAt: timestamp("rsvp_sent_at"),
+  rsvpRespondedAt: timestamp("rsvp_responded_at"),
   saveTheDateStatus: text("save_the_date_status").notNull().default("not_sent"),
   source: text("source").notNull().default("manual"),
   acknowledgedAt: timestamp("acknowledged_at"),

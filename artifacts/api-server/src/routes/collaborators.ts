@@ -291,7 +291,6 @@ router.get("/invite/:token", async (req, res) => {
         partner2Name: weddingProfiles.partner2Name,
         weddingDate: weddingProfiles.weddingDate,
         venue: weddingProfiles.venue,
-        inviterUserId: workspaceCollaborators.inviterUserId,
       })
       .from(workspaceCollaborators)
       .innerJoin(weddingProfiles, eq(workspaceCollaborators.profileId, weddingProfiles.id))

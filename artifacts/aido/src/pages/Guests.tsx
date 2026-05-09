@@ -676,6 +676,25 @@ export default function Guests() {
     onError: (err) => toast({ title: "Failed to send Save the Date", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
   });
 
+  const sendRsvpReminder = useMutation({
+    mutationFn: async (guestId: number) => {
+      const res = await authFetch(`/api/guests/${guestId}/send-rsvp-reminder`, { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string; details?: string };
+        throw new Error(err.details ?? err.error ?? "Failed to send RSVP reminder");
+      }
+      return res.json() as Promise<{ rsvpUrl: string; emailSent: boolean }>;
+    },
+    onSuccess: (data) => {
+      if (data?.emailSent) {
+        toast({ title: "Reminder sent", description: "RSVP reminder email delivered." });
+      } else {
+        toast({ title: "Reminder couldn't be delivered", description: "Email failed to send.", variant: "destructive" });
+      }
+    },
+    onError: (err) => toast({ title: "Failed to send reminder", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
+  });
+
   const sendRsvp = useMutation({
     mutationFn: async (guestId: number) => {
       const res = await authFetch(`/api/guests/${guestId}/send-rsvp`, { method: "POST" });
@@ -1587,8 +1606,10 @@ export default function Guests() {
         onClose={() => setSendModalGuest(null)}
         onSendSaveTheDate={(guestId) => sendSaveTheDate.mutate(guestId)}
         onSendDigitalInvitation={(guestId) => sendRsvp.mutate(guestId)}
+        onSendRsvpReminder={(guestId) => sendRsvpReminder.mutate(guestId)}
         isSendingSaveTheDate={sendSaveTheDate.isPending}
         isSendingDigital={sendRsvp.isPending}
+        isSendingRsvpReminder={sendRsvpReminder.isPending}
       />
     </div>
   );

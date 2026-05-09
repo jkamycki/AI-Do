@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Send, Loader2, AlertTriangle, Eye, Heart, CheckCircle2, XCircle,
-  MapPin, Paintbrush, ChevronRight, Calendar, User, ImageOff,
+  MapPin, Paintbrush, ChevronRight, Calendar, User, ImageOff, Mail,
 } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
 import type { Guest } from "@workspace/api-client-react";
@@ -73,8 +73,10 @@ interface Props {
   onClose: () => void;
   onSendSaveTheDate: (guestId: number) => void;
   onSendDigitalInvitation: (guestId: number) => void;
+  onSendRsvpReminder?: (guestId: number) => void;
   isSendingSaveTheDate: boolean;
   isSendingDigital: boolean;
+  isSendingRsvpReminder?: boolean;
 }
 
 function formatTime(timeStr: string | null | undefined): string | null {
@@ -503,8 +505,10 @@ export function InvitationSendModal({
   onClose,
   onSendSaveTheDate,
   onSendDigitalInvitation,
+  onSendRsvpReminder,
   isSendingSaveTheDate,
   isSendingDigital,
+  isSendingRsvpReminder,
 }: Props) {
   const [customization, setCustomization] = useState<Customization | null>(null);
   const [loadingCustomization, setLoadingCustomization] = useState(false);
@@ -687,33 +691,41 @@ export function InvitationSendModal({
                     This is exactly what will be emailed to your guest
                   </p>
                   <div className="flex justify-center">
-                    {profile && (isCustomMode ? (
-                      <SaveTheDatePreview
-                        photoUrl={customization.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl || profile.invitationPhotoUrl || null}
-                        weddingDate={profile.weddingDate ?? ""}
-                        colors={palette}
-                        font={customization.saveTheDateFont}
-                        layout={customization.saveTheDateLayout}
-                        backgroundColor={customization.saveTheDateBackground}
-                        partner1Name={profile.partner1Name ?? ""}
-                        partner2Name={profile.partner2Name ?? ""}
-                        venueCity={profile.venueCity ?? ""}
-                        venueState={profile.venueState ?? ""}
-                        venueZip={profile.venueZip ?? ""}
-                        message={customization.saveTheDateMessage || profile.saveTheDateMessage || undefined}
-                        textOverrides={Object.fromEntries(Object.entries(customization.textOverrides).filter(([k]) => k.startsWith("std:")))}
-                        onTextOverridesChange={() => {}}
-                        editable={false}
-                      />
-                    ) : (
-                      <AiSaveDatePreview
-                        profile={profile}
-                        palette={palette}
-                        photoUrl={customization.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl || profile.invitationPhotoUrl || null}
-                        photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
-                        customColors={stdCustomColors}
-                      />
-                    ))}
+                    {profile && (() => {
+                      // designMode = "custom" → same AI layout, custom styling.
+                      // Mirrors the renderer used in Invitation Customization (Phase 4).
+                      const cd = {
+                        backgroundColor: customization.saveTheDateBackground ?? "#FFFFFF",
+                        accentColor: palette.accent ?? "#D4A017",
+                        fontFamily: customization.saveTheDateFont ?? "Playfair Display",
+                        fontSize: String(customization.fontSize ?? 16),
+                        fontColor: stdCustomColors.text,
+                      };
+                      const customPalette = {
+                        ...palette,
+                        primary: cd.accentColor,
+                        secondary: cd.accentColor,
+                        accent: cd.accentColor,
+                      };
+                      return (
+                        <div
+                          style={{
+                            fontFamily: `'${cd.fontFamily}', serif`,
+                            fontSize: `${cd.fontSize}px`,
+                            color: cd.fontColor,
+                            background: cd.backgroundColor,
+                          }}
+                        >
+                          <AiSaveDatePreview
+                            profile={profile}
+                            palette={customPalette}
+                            photoUrl={customization.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl || profile.invitationPhotoUrl || null}
+                            photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
+                            customColors={stdCustomColors}
+                          />
+                        </div>
+                      );
+                    })()}
                   </div>
                   <Button
                     className="w-full gap-2"
@@ -735,29 +747,55 @@ export function InvitationSendModal({
                     This is exactly what will be emailed to your guest
                   </p>
                   <div className="flex justify-center overflow-hidden">
-                    {profile && (
-                      <RsvpPagePreview
-                        colors={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
-                        font={null}
-                        backgroundColor={null}
-                        partner1Name={profile.partner1Name ?? ""}
-                        partner2Name={profile.partner2Name ?? ""}
-                        weddingDate={profile.weddingDate ?? ""}
-                        venue={profile.venue ?? ""}
-                        photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
-                        photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
-                        onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
-                        guestName={guest?.name ?? "Guest"}
-                        venueAddress={profile.location ?? profile.venueAddress ?? ""}
-                        venueCity={profile.venueCity ?? ""}
-                        venueState={profile.venueState ?? ""}
-                        venueZip={profile.venueZip ?? ""}
-                        ceremonyTime={profile.ceremonyTime ?? ""}
-                        receptionTime={profile.receptionTime ?? ""}
-                        invitationMessage={profile.invitationMessage ?? ""}
-                        scale={0.72}
-                      />
-                    )}
+                    {profile && (() => {
+                      // designMode = "custom" → same AI layout, custom styling.
+                      // Mirrors the renderer used in Invitation Customization (Phase 4).
+                      const cd = {
+                        backgroundColor: customization.digitalInvitationBackground ?? "#FFFFFF",
+                        accentColor: palette.accent ?? "#D4A017",
+                        fontFamily: customization.digitalInvitationFont ?? "Playfair Display",
+                        fontSize: String(customization.fontSize ?? 16),
+                        fontColor: digCustomColors.text,
+                      };
+                      const customPalette = {
+                        ...palette,
+                        primary: cd.accentColor,
+                        secondary: cd.accentColor,
+                        accent: cd.accentColor,
+                      };
+                      return (
+                        <div
+                          style={{
+                            fontFamily: `'${cd.fontFamily}', serif`,
+                            fontSize: `${cd.fontSize}px`,
+                            color: cd.fontColor,
+                            background: cd.backgroundColor,
+                          }}
+                        >
+                          <RsvpPagePreview
+                            colors={{ ...customPalette, accent: cd.accentColor, primary: cd.accentColor }}
+                            font={cd.fontFamily}
+                            backgroundColor={cd.backgroundColor}
+                            partner1Name={profile.partner1Name ?? ""}
+                            partner2Name={profile.partner2Name ?? ""}
+                            weddingDate={profile.weddingDate ?? ""}
+                            venue={profile.venue ?? ""}
+                            photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
+                            photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
+                            onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
+                            guestName={guest?.name ?? "Guest"}
+                            venueAddress={profile.location ?? profile.venueAddress ?? ""}
+                            venueCity={profile.venueCity ?? ""}
+                            venueState={profile.venueState ?? ""}
+                            venueZip={profile.venueZip ?? ""}
+                            ceremonyTime={profile.ceremonyTime ?? ""}
+                            receptionTime={profile.receptionTime ?? ""}
+                            invitationMessage={profile.invitationMessage ?? ""}
+                            scale={0.72}
+                          />
+                        </div>
+                      );
+                    })()}
                   </div>
                   <Button
                     className="w-full gap-2"
@@ -842,6 +880,21 @@ export function InvitationSendModal({
                       : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
                     }
                   </Button>
+                  {/* RSVP Reminder — AI-only template, separate from invitation.
+                      Only enabled when guest has email AND hasn't responded yet. */}
+                  {guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={() => guest && onSendRsvpReminder(guest.id)}
+                      disabled={!!isSendingRsvpReminder}
+                    >
+                      {isSendingRsvpReminder
+                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending reminder…</>
+                        : <><Mail className="h-4 w-4" /> Send RSVP Reminder</>
+                      }
+                    </Button>
+                  )}
                   {!guest?.email && (
                     <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
                   )}
