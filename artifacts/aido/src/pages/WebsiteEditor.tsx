@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
-  QrCode, Download, Link2, Plus, Megaphone, Users, Undo2, Sparkles, Settings, Trash2,
+  QrCode, Download, Link2, Plus, Megaphone, Users, Undo2, Sparkles, Settings, Trash2, Smile,
 } from "lucide-react";
 import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
 import { flushPendingEditableCommits, subscribeEditableDrag, EDITABLE_HIDDEN_MARKER } from "@/components/website/EditableText";
@@ -87,13 +87,14 @@ export default function WebsiteEditor() {
   const [qrOpen, setQrOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings" | "content">("design");
   const inTab = (t: typeof activeTab) => activeTab === t;
+  const [emojiFieldOpen, setEmojiFieldOpen] = useState<string | null>(null);
+  const contentInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
   // x/y are viewport coords (used to position the menu); canvasX/canvasY are
   // coords relative to the WebsiteRenderer container (used so a newly
   // inserted text box lands where the user right-clicked).
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; canvasX: number; canvasY: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [urlModalOpen, setUrlModalOpen] = useState(false);
-  const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
 
   useEffect(() => {
     if (!ctxMenu) return;
@@ -109,6 +110,7 @@ export default function WebsiteEditor() {
   const [sidebarWidth, setSidebarWidth] = useState(260);
   const dragState = useRef<{ active: boolean; startX: number; startW: number }>({ active: false, startX: 0, startW: 260 });
   const previewRef = useRef<HTMLElement | null>(null);
+  const mobilePreviewRef = useRef<HTMLDivElement | null>(null);
   const [overlayEl, setOverlayEl] = useState<HTMLDivElement | null>(null);
   // Whether ANY deletable EditableText is currently being dragged. Drives the
   // visual emphasis on the trash drop zone.
@@ -340,6 +342,10 @@ export default function WebsiteEditor() {
 
   const [saveError, setSaveError] = useState(false);
 
+  // localStorage backup — every dirty save snapshot is mirrored here so a
+  // failed POST + closed tab still recovers on next mount.
+  const PENDING_SAVE_KEY = "aido_website_pending_save_v1";
+
   const buildSaveBody = (rec: WebsiteRecord) => ({
     theme: rec.theme,
     layoutStyle: rec.layoutStyle,
@@ -356,51 +362,117 @@ export default function WebsiteEditor() {
     ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
   });
 
+  const writePendingBackup = (body: ReturnType<typeof buildSaveBody>, websiteId: number) => {
+    try {
+      localStorage.setItem(PENDING_SAVE_KEY, JSON.stringify({ websiteId, savedAt: Date.now(), body }));
+    } catch { /* quota exceeded — ignore, retry will still run */ }
+  };
+  const clearPendingBackup = () => {
+    try { localStorage.removeItem(PENDING_SAVE_KEY); } catch { /* ignore */ }
+  };
+
+  // Posts a save body. Retries 5xx + network errors with exponential backoff
+  // capped at 30s. 4xx errors are not retried inside this call (the caller
+  // decides — autosave reschedules; user-triggered handleSave surfaces them).
+  const postSave = async (
+    body: ReturnType<typeof buildSaveBody>,
+    options: { maxAttempts?: number } = {},
+  ): Promise<{ ok: true; record: WebsiteRecord } | { ok: false; err: unknown; status?: number }> => {
+    const max = options.maxAttempts ?? 5;
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= max; attempt++) {
+      try {
+        const r = await authFetch("/api/website/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (r.ok) {
+          const rec = (await r.json()) as WebsiteRecord;
+          return { ok: true, record: rec };
+        }
+        if (r.status < 500) {
+          const text = await r.text().catch(() => "");
+          return { ok: false, err: new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`), status: r.status };
+        }
+        lastErr = new Error(`HTTP ${r.status}`);
+      } catch (err) {
+        lastErr = err;
+      }
+      if (attempt < max) {
+        const delay = Math.min(30000, 1000 * Math.pow(2, attempt - 1));
+        await new Promise((res) => setTimeout(res, delay));
+      }
+    }
+    return { ok: false, err: lastErr };
+  };
+
   const saveNow = async (silent: boolean): Promise<boolean> => {
     // Always snapshot the latest state from the ref to avoid stale closures.
     const rec = recordRef.current;
     if (!rec) return false;
     if (!silent) setSaving(true);
 
-    let lastErr: unknown;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const r = await authFetch("/api/website/update", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildSaveBody(rec)),
-        });
-        if (r.ok) {
-          const body = (await r.json()) as WebsiteRecord;
-          setRecord((prev) => ({
-            ...body,
-            portalParty: body.portalParty ?? prev?.portalParty,
-          }));
-          setPasswordInput("");
-          setDirty(false);
-          setSaveError(false);
-          if (!silent) setSaving(false);
-          return true;
-        }
-        // Don't retry 4xx — those are client errors (bad payload, auth).
-        if (r.status < 500) {
-          const text = await r.text().catch(() => "");
-          lastErr = new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`);
-          break;
-        }
-        lastErr = new Error(`HTTP ${r.status}`);
-      } catch (err) {
-        // Network-level error — retry.
-        lastErr = err;
-      }
-      if (attempt < 3) await new Promise((res) => setTimeout(res, attempt * 2000));
+    const body = buildSaveBody(rec);
+    // Mirror to localStorage BEFORE attempting the network — guarantees the
+    // payload survives a tab close mid-request.
+    writePendingBackup(body, rec.id);
+
+    const result = await postSave(body);
+    if (result.ok) {
+      setRecord((prev) => ({
+        ...result.record,
+        portalParty: result.record.portalParty ?? prev?.portalParty,
+      }));
+      setPasswordInput("");
+      setDirty(false);
+      setSaveError(false);
+      clearPendingBackup();
+      if (!silent) setSaving(false);
+      return true;
     }
 
-    console.error("[WebsiteEditor] save failed after retries", lastErr);
+    console.error("[WebsiteEditor] save failed after retries", result.err);
     setSaveError(true);
     if (!silent) setSaving(false);
     return false;
   };
+
+  // On mount, if the previous tab left a pending payload behind (e.g. a save
+  // failed after the user closed the editor), replay it now so the work is
+  // never lost. Runs once per `record.id` change.
+  useEffect(() => {
+    if (!record) return;
+    let cancelled = false;
+    (async () => {
+      let pending: { websiteId: number; savedAt: number; body: ReturnType<typeof buildSaveBody> } | null = null;
+      try {
+        const raw = localStorage.getItem(PENDING_SAVE_KEY);
+        if (raw) pending = JSON.parse(raw);
+      } catch { return; }
+      if (!pending || pending.websiteId !== record.id) return;
+      // If the server's lastUpdated is already newer than the pending snapshot,
+      // assume someone else (or another tab) saved it and drop the backup.
+      const serverTs = record.lastUpdated ? Date.parse(record.lastUpdated) : 0;
+      if (Number.isFinite(serverTs) && serverTs >= pending.savedAt) {
+        clearPendingBackup();
+        return;
+      }
+      const result = await postSave(pending.body);
+      if (cancelled) return;
+      if (result.ok) {
+        setRecord((prev) => ({
+          ...result.record,
+          portalParty: result.record.portalParty ?? prev?.portalParty,
+        }));
+        clearPendingBackup();
+      }
+      // If it failed, leave the backup in place — autosave will pick it up
+      // on the next dirty cycle, and the user sees the "Save failed" hint.
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record?.id]);
 
   // Autosave: 10 seconds after the last change. Reschedules itself on failure
   // so unsaved work is never silently dropped.
@@ -596,11 +668,40 @@ export default function WebsiteEditor() {
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] md:h-screen relative">
+      {/* Mobile: live preview pinned to the top half so the user can see
+          the page they're editing without flipping panels. lg+ shows it on
+          the right via the sibling <main> below. */}
+      <div className="lg:hidden flex-shrink-0 border-b bg-muted/20 overflow-hidden" style={{ height: "45vh" }}>
+        <div ref={(el) => { if (el && !previewRef.current) previewRef.current = el; mobilePreviewRef.current = el; }} className="h-full overflow-y-auto">
+          {livePreview && (
+            <WebsiteRenderer
+              data={livePreview}
+              editable
+              slug={record.slug ?? ""}
+              previewMode
+              scrollContainer={mobilePreviewRef.current}
+              currentSection={editorSection}
+              onSectionChange={(id) => {
+                setEditorSection(id);
+                mobilePreviewRef.current?.scrollTo({ top: 0, behavior: "auto" });
+              }}
+              onTextChange={(key, value) => patchRecord(() => ({ customText: { ...recordRef.current!.customText, [key]: value } }))}
+              onStyleChange={(key, style) => patchRecord(() => ({ textStyles: { ...(recordRef.current!.textStyles ?? {}), [key]: style } }))}
+              onPositionChange={(key, pos) => patchRecord(() => ({ textPositions: { ...(recordRef.current!.textPositions ?? {}), [key]: pos } }))}
+              onGalleryCaptionChange={(imageUrl, caption) => patchRecord(() => {
+                const next = (recordRef.current!.galleryImages ?? []).map((img) =>
+                  img.url === imageUrl ? { ...img, caption } : img,
+                );
+                return { galleryImages: next };
+              })}
+            />
+          )}
+        </div>
+      </div>
+
       {/* Sidebar */}
       <aside
-        className={`w-full lg:flex-shrink-0 border-r bg-background overflow-y-auto pb-20 lg:pb-0 ${
-          mobileView === "edit" ? "block" : "hidden"
-        } lg:block`}
+        className="w-full lg:flex-shrink-0 border-r bg-background overflow-y-auto block"
         style={{ width: typeof window !== "undefined" && window.innerWidth >= 1024 ? sidebarWidth : undefined }}
       >
         <div className="p-5 border-b sticky top-0 bg-background z-10">
@@ -704,7 +805,14 @@ export default function WebsiteEditor() {
             <div className="mt-3 space-y-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs">
                 <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                <span className="truncate flex-1 font-mono">{publicUrl}</span>
+                <a
+                  href={publicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="truncate flex-1 font-mono hover:underline"
+                >
+                  {publicUrl}
+                </a>
                 <Button size="sm" variant="ghost" className="h-6 px-2" onClick={copyLink}>
                   {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
                 </Button>
@@ -758,54 +866,129 @@ export default function WebsiteEditor() {
             side-by-side, so this is a plain form for the highest-impact
             text fields. Updates flow through the existing customText jsonb
             so the live preview reflects them when the user toggles back. */}
-        {inTab("content") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_content", { defaultValue: "Page content" })}>
-          <div className="space-y-4">
-            {([
-              { key: "_heroTagline",  label: t("website_editor.content_hero_tagline", { defaultValue: "Hero tagline (e.g. We're getting married)" }), placeholder: "We're getting married" },
-              { key: "_coupleName",   label: t("website_editor.content_couple_name", { defaultValue: "Couple name (overrides profile)" }), placeholder: "Joseph & Gabriela" },
-              { key: "_heroDate",     label: t("website_editor.content_hero_date", { defaultValue: "Hero date" }), placeholder: "Saturday, April 24, 2027" },
-              { key: "_announcement", label: t("website_editor.content_announcement", { defaultValue: "Announcement banner" }), placeholder: "" },
-            ] as const).map(({ key, label, placeholder }) => (
-              <div key={key}>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">{label}</label>
-                <Input
-                  value={record.customText[key] ?? ""}
-                  placeholder={placeholder}
-                  onChange={(e) => update({ customText: { ...record.customText, [key]: e.target.value } })}
-                />
+        {inTab("content") && (() => {
+          const CONTENT_EMOJIS = [
+            "💍", "💐", "💒", "👰", "🤵", "💕", "💖", "❤️", "🌹", "🥂",
+            "🍾", "🎉", "🎊", "✨", "💫", "🕊️", "🦋", "🌸", "📅", "✉️",
+            "🌷", "🌺", "🌻", "🌼", "🍰", "🧁", "🎂", "🎁", "💌", "👑",
+            "🥰", "😍", "😘", "💋", "🫶", "💗", "💓", "💞", "🧡", "💙",
+            "🌙", "⭐", "🌟", "☀️", "🌈", "🌊", "🏖️", "✈️", "🎵", "🎶",
+            "🍷", "🫖", "🎀", "🎈", "🪄", "📸", "🙏", "🌿", "🔮", "👫",
+          ];
+          const insertEmoji = (key: string, emoji: string, currentValue: string, onChange: (v: string) => void) => {
+            const el = contentInputRefs.current[key];
+            const start = el?.selectionStart ?? currentValue.length;
+            const end = el?.selectionEnd ?? currentValue.length;
+            onChange(currentValue.slice(0, start) + emoji + currentValue.slice(end));
+            setEmojiFieldOpen(null);
+            requestAnimationFrame(() => {
+              if (el) {
+                el.focus();
+                el.setSelectionRange(start + emoji.length, start + emoji.length);
+              }
+            });
+          };
+          const EmojiGrid = ({ fieldKey, currentValue, onChange }: { fieldKey: string; currentValue: string; onChange: (v: string) => void }) => (
+            <div className="mt-1.5 p-2 rounded-lg border border-border bg-background shadow-md">
+              <div className="grid grid-cols-10 gap-0.5">
+                {CONTENT_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    className="text-base leading-none p-1 rounded hover:bg-accent transition-colors"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => insertEmoji(fieldKey, emoji, currentValue, onChange)}
+                    title={emoji}
+                  >
+                    {emoji}
+                  </button>
+                ))}
               </div>
-            ))}
-            {([
-              { key: "welcome",        label: t("website_editor.content_welcome", { defaultValue: "Welcome message" }) },
-              { key: "story",          label: t("website_editor.content_story", { defaultValue: "Our story" }) },
-              { key: "rsvp_subtitle",  label: t("website_editor.content_rsvp_subtitle", { defaultValue: "RSVP subtitle" }) },
-              { key: "rsvp_thankyou",  label: t("website_editor.content_rsvp_thankyou", { defaultValue: "RSVP thank-you message" }) },
-            ] as const).map(({ key, label }) => (
-              <div key={key}>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">{label}</label>
-                <textarea
-                  value={record.customText[key] ?? ""}
-                  onChange={(e) => update({ customText: { ...record.customText, [key]: e.target.value } })}
-                  rows={3}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-              </div>
-            ))}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">
-                {t("website_editor.content_rsvp_deadline", { defaultValue: "RSVP deadline" })}
-              </label>
-              <Input
-                value={record.customText.rsvp_deadline ?? ""}
-                placeholder="May 1, 2027"
-                onChange={(e) => update({ customText: { ...record.customText, rsvp_deadline: e.target.value } })}
-              />
             </div>
-            <p className="text-xs text-muted-foreground">
-              {t("website_editor.content_help", { defaultValue: "Tap Preview at the bottom to see your changes. Save when you're happy." })}
-            </p>
-          </div>
-        </Section>}
+          );
+          return (
+            <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_content", { defaultValue: "Page content" })}>
+              <div className="space-y-4">
+                {([
+                  { key: "_heroTagline",  label: t("website_editor.content_hero_tagline", { defaultValue: "Hero tagline (e.g. We're getting married)" }), placeholder: "We're getting married" },
+                  { key: "_coupleName",   label: t("website_editor.content_couple_name", { defaultValue: "Couple name (overrides profile)" }), placeholder: "Alex & Jordan" },
+                  { key: "_heroDate",     label: t("website_editor.content_hero_date", { defaultValue: "Hero date" }), placeholder: "Saturday, June 15, 2025" },
+                  { key: "_announcement", label: t("website_editor.content_announcement", { defaultValue: "Announcement banner" }), placeholder: "" },
+                ] as const).map(({ key, label, placeholder }) => {
+                  const currentValue = record.customText[key] ?? "";
+                  const onChange = (v: string) => update({ customText: { ...record.customText, [key]: v } });
+                  return (
+                    <div key={key}>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-medium text-muted-foreground">{label}</label>
+                        <button
+                          type="button"
+                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          title={t("text_toolbar.insert-emoji", { defaultValue: "Insert emoji" })}
+                          onClick={() => setEmojiFieldOpen(emojiFieldOpen === key ? null : key)}
+                        >
+                          <Smile className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <Input
+                        ref={(el) => { contentInputRefs.current[key] = el; }}
+                        value={currentValue}
+                        placeholder={placeholder}
+                        onChange={(e) => onChange(e.target.value)}
+                      />
+                      {emojiFieldOpen === key && <EmojiGrid fieldKey={key} currentValue={currentValue} onChange={onChange} />}
+                    </div>
+                  );
+                })}
+                {([
+                  { key: "welcome",        label: t("website_editor.content_welcome", { defaultValue: "Welcome message" }) },
+                  { key: "story",          label: t("website_editor.content_story", { defaultValue: "Our story" }) },
+                  { key: "rsvp_subtitle",  label: t("website_editor.content_rsvp_subtitle", { defaultValue: "RSVP subtitle" }) },
+                  { key: "rsvp_thankyou",  label: t("website_editor.content_rsvp_thankyou", { defaultValue: "RSVP thank-you message" }) },
+                ] as const).map(({ key, label }) => {
+                  const currentValue = record.customText[key] ?? "";
+                  const onChange = (v: string) => update({ customText: { ...record.customText, [key]: v } });
+                  return (
+                    <div key={key}>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-medium text-muted-foreground">{label}</label>
+                        <button
+                          type="button"
+                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          title={t("text_toolbar.insert-emoji", { defaultValue: "Insert emoji" })}
+                          onClick={() => setEmojiFieldOpen(emojiFieldOpen === key ? null : key)}
+                        >
+                          <Smile className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <textarea
+                        ref={(el) => { contentInputRefs.current[key] = el; }}
+                        value={currentValue}
+                        onChange={(e) => onChange(e.target.value)}
+                        rows={3}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                      {emojiFieldOpen === key && <EmojiGrid fieldKey={key} currentValue={currentValue} onChange={onChange} />}
+                    </div>
+                  );
+                })}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">
+                    {t("website_editor.content_rsvp_deadline", { defaultValue: "RSVP deadline" })}
+                  </label>
+                  <Input
+                    value={record.customText.rsvp_deadline ?? ""}
+                    placeholder="May 1, 2025"
+                    onChange={(e) => update({ customText: { ...record.customText, rsvp_deadline: e.target.value } })}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("website_editor.content_help", { defaultValue: "Tap Preview at the bottom to see your changes. Save when you're happy." })}
+                </p>
+              </div>
+            </Section>
+          );
+        })()}
 
         {/* Text tools */}
         {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_text_tools", { defaultValue: "Text Tools" })}>
@@ -900,12 +1083,11 @@ export default function WebsiteEditor() {
                     checked={record.sectionsEnabled[s.id]}
                     onCheckedChange={(checked) => {
                       update({ sectionsEnabled: { ...record.sectionsEnabled, [s.id]: checked } });
-                      // Jump the preview to the section the user just toggled
-                      // on so they can immediately see what they're editing.
-                      if (checked) {
-                        setEditorSection(s.id);
-                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
-                      }
+                      // Jump the preview to the section the user just clicked,
+                      // regardless of whether they toggled it on or off, so
+                      // they're always looking at what their click affected.
+                      setEditorSection(s.id);
+                      previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
                     }}
                   />
                 </div>
@@ -949,10 +1131,10 @@ export default function WebsiteEditor() {
                         }
                         return { customText: ct, textPositions: tp };
                       });
-                      if (checked) {
-                        setEditorSection("home");
-                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
-                      }
+                      // Hero elements all live on the home page — jump there
+                      // on any click so the user always sees the result.
+                      setEditorSection("home");
+                      previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
                     }}
                   />
                 </div>
@@ -990,26 +1172,47 @@ export default function WebsiteEditor() {
         </Section>}
 
         {inTab("pages") && record.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
-          <div className="space-y-2.5">
+          <div className="space-y-4">
             {[
-              { key: "_scheduleCeremonyHidden",  label: "Ceremony" },
-              { key: "_scheduleCocktailHidden",  label: "Cocktail Hour" },
-              { key: "_scheduleReceptionHidden", label: "Reception" },
+              { hiddenKey: "_scheduleCeremonyHidden",  timeKey: "_scheduleCeremonyTime",  labelKey: "_scheduleCeremonyLabel",  defaultLabel: "Ceremony" },
+              { hiddenKey: "_scheduleCocktailHidden",  timeKey: "_scheduleCocktailTime",  labelKey: "_scheduleCocktailLabel",  defaultLabel: "Cocktail Hour" },
+              { hiddenKey: "_scheduleReceptionHidden", timeKey: "_scheduleReceptionTime", labelKey: "_scheduleReceptionLabel", defaultLabel: "Reception" },
             ].map((row) => {
-              const isHidden = record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
+              const isHidden = record.customText[row.hiddenKey] === EDITABLE_HIDDEN_MARKER;
               return (
-                <div key={row.key} className="flex items-center justify-between gap-3 py-1.5">
-                  <Label className="text-sm cursor-pointer">{row.label}</Label>
-                  <Switch
-                    checked={!isHidden}
-                    onCheckedChange={(checked) => {
-                      update({ customText: { ...record.customText, [row.key]: checked ? "" : EDITABLE_HIDDEN_MARKER } });
-                      if (checked) {
+                <div key={row.hiddenKey} className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label className="text-sm font-medium cursor-pointer">{row.defaultLabel}</Label>
+                    <Switch
+                      checked={!isHidden}
+                      onCheckedChange={(checked) => {
+                        update({ customText: { ...record.customText, [row.hiddenKey]: checked ? "" : EDITABLE_HIDDEN_MARKER } });
+                        // Always jump to the schedule page on click so the user
+                        // sees the row they just toggled.
                         setEditorSection("schedule");
                         previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                  </div>
+                  {!isHidden && (
+                    <div className="grid grid-cols-[auto_1fr] gap-2">
+                      <Input
+                        type="time"
+                        className="h-9 text-sm"
+                        value={record.customText[row.timeKey] ?? ""}
+                        onChange={(e) => update({ customText: { ...record.customText, [row.timeKey]: e.target.value } })}
+                        aria-label={`${row.defaultLabel} time`}
+                      />
+                      <Input
+                        type="text"
+                        className="h-9 text-sm"
+                        placeholder={row.defaultLabel}
+                        value={record.customText[row.labelKey] ?? ""}
+                        onChange={(e) => update({ customText: { ...record.customText, [row.labelKey]: e.target.value } })}
+                        aria-label={`${row.defaultLabel} label`}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1483,12 +1686,10 @@ export default function WebsiteEditor() {
         title={t("website_editor.drag_to_resize", { defaultValue: "Drag to resize" })}
       />
 
-      {/* Live preview */}
+      {/* Live preview — desktop only; mobile renders its own copy at the top. */}
       <main
         ref={previewRef}
-        className={`flex-1 overflow-y-auto bg-muted/20 pb-20 lg:pb-0 ${
-          mobileView === "preview" ? "block" : "hidden"
-        } lg:block`}
+        className="flex-1 overflow-y-auto bg-muted/20 pb-0 hidden lg:block"
         onContextMenu={(e) => {
           e.preventDefault();
           const rect = canvasRef.current?.getBoundingClientRect();

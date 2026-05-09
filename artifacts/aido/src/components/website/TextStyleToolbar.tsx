@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Trash2, Sparkles, Loader2 } from "lucide-react";
+import { Trash2, Sparkles, Loader2, Smile } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { WebsiteTextStyle } from "@workspace/db";
 import { authFetch } from "@/lib/authFetch";
@@ -111,10 +111,14 @@ interface Props {
   // lands in the contenteditable.
   currentText?: string;
   onAiGenerate?: (newText: string) => void;
+  // When provided, the toolbar shows an emoji picker button. Picking an
+  // emoji calls onInsertText with the chosen character; EditableText then
+  // splices it into the current selection and commits.
+  onInsertText?: (text: string) => void;
 }
 
 export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
-  ({ style, onChange, anchorRect, onKeepOpen, onDelete, currentText, onAiGenerate }, ref) => {
+  ({ style, onChange, anchorRect, onKeepOpen, onDelete, currentText, onAiGenerate, onInsertText }, ref) => {
     const { t } = useTranslation();
     // Keep the prompt input collapsed until the user explicitly clicks the
     // sparkle button. Auto-opening it covered too much of the canvas and made
@@ -124,6 +128,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
     const [aiPrompt, setAiPrompt] = useState("");
     const [aiBusy, setAiBusy] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
+    const [emojiOpen, setEmojiOpen] = useState(false);
     const aiInputRef = useRef<HTMLInputElement | null>(null);
     useEffect(() => {
       FONT_OPTIONS.filter((f) => f.value).forEach((f) => loadGoogleFont(f.value));
@@ -265,6 +270,21 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
           </>
         )}
 
+        {/* Emoji picker */}
+        {onInsertText && (
+          <>
+            <div className="w-px h-5 bg-border mx-0.5" />
+            <button
+              className="flex items-center gap-1 text-xs px-1 rounded transition-colors hover:bg-accent"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { setEmojiOpen((v) => !v); onKeepOpen?.(); }}
+              title={t("text_toolbar.insert-emoji", { defaultValue: "Insert emoji" })}
+            >
+              <Smile className="h-3 w-3" />
+            </button>
+          </>
+        )}
+
         {/* Delete element */}
         {onDelete && (
           <>
@@ -278,6 +298,36 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
               <Trash2 className="h-3 w-3" />
             </button>
           </>
+        )}
+
+        {/* Emoji picker panel — wedding-themed picks */}
+        {onInsertText && emojiOpen && (
+          <div
+            className="basis-full mt-1 pt-1.5 border-t border-border"
+            onMouseDown={(e) => { e.preventDefault(); onKeepOpen?.(); }}
+          >
+            <div className="grid grid-cols-10 gap-0.5">
+              {[
+                "💍", "💐", "💒", "👰", "🤵", "💕", "💖", "❤️", "🌹", "🥂",
+                "🍾", "🎉", "🎊", "✨", "💫", "🕊️", "🦋", "🌸", "📅", "✉️",
+                "🌷", "🌺", "🌻", "🌼", "🍰", "🧁", "🎂", "🎁", "💌", "👑",
+                "🥰", "😍", "😘", "💋", "🫶", "💗", "💓", "💞", "🧡", "💙",
+                "🌙", "⭐", "🌟", "☀️", "🌈", "🌊", "🏖️", "✈️", "🎵", "🎶",
+                "🍷", "🫖", "🎀", "🎈", "🪄", "📸", "🙏", "🌿", "🔮", "👫",
+              ].map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className="text-base leading-none p-1 rounded hover:bg-accent transition-colors"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => { onInsertText(emoji); setEmojiOpen(false); }}
+                  title={emoji}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* AI prompt panel — sits below the toolbar's flex row when open */}

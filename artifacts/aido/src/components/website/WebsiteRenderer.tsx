@@ -110,7 +110,7 @@ const NOOP_CTX: EditCtx = { editable: false, onTextChange: () => {} };
 // default fields it clears the customText override so the value visibly
 // empties (and the EditableText wrap auto-hides via its empty-state path).
 function tsp(ctx: EditCtx, key: string, _deletable = false) {
-  if (!ctx.editable) return {};
+  if (!ctx.editable) return { textStyle: ctx.textStyles?.[key], position: ctx.textPositions?.[key] };
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
@@ -126,7 +126,7 @@ function tsp(ctx: EditCtx, key: string, _deletable = false) {
 // text would let users drag just the text and leave the row icon behind.
 // No onDelete: hero row elements are hidden/shown only via sidebar toggles.
 function tspStyle(ctx: EditCtx, key: string) {
-  if (!ctx.editable) return {};
+  if (!ctx.editable) return { textStyle: ctx.textStyles?.[key] };
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
@@ -137,7 +137,7 @@ function tspStyle(ctx: EditCtx, key: string) {
 // Style-only, no delete, no drag — for hero elements that must stay
 // centered. Visibility is controlled exclusively via sidebar toggles.
 function tspNoDelete(ctx: EditCtx, key: string, aiEnabled = false) {
-  if (!ctx.editable) return {};
+  if (!ctx.editable) return { textStyle: ctx.textStyles?.[key] };
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
@@ -1692,19 +1692,22 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
   // commits flow through onGalleryCaptionChange so edits persist into the
   // gallery_images record.
   const captionStyle = ctx.textStyles?.gallery_caption ?? {};
-  const renderCaption = (caption: string | undefined, imageUrl: string) => {
+  const renderCaption = (caption: string | undefined, imageUrl: string, index: number) => {
     const hasText = !!(caption && caption.trim());
     if (!ctx.editable && !hasText) return null;
+    const styleKey = `_galleryCaption_${index}`;
     return (
       <EditableText
-        as="p"
+        as="div"
         editable={ctx.editable}
         value={caption ?? ""}
         defaultValue={ctx.editable ? "Add a caption…" : ""}
         onCommit={(v) => ctx.onGalleryCaptionChange?.(imageUrl, v)}
+        aiEnabled={false}
+        textStyle={data.textStyles?.[styleKey]}
+        onStyleChange={ctx.onStyleChange ? (s) => ctx.onStyleChange!(styleKey, s) : undefined}
         className="text-sm text-center px-1"
         style={{ color: captionStyle.color ?? data.colorPalette.text, opacity: 0.75 }}
-        {...tspStyle(ctx, "gallery_caption")}
       />
     );
   };
@@ -1755,7 +1758,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
                   />
                   {renderHoverIcon()}
                 </button>
-                {renderCaption(img.caption, img.url)}
+                {renderCaption(img.caption, img.url, i % images.length)}
               </div>
             ))}
           </div>
@@ -1806,7 +1809,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
               </div>
             )}
           </div>
-          {renderCaption(images[activeIdx]?.caption, images[activeIdx]?.url ?? "")}
+          {renderCaption(images[activeIdx]?.caption, images[activeIdx]?.url ?? "", activeIdx)}
         </div>
       ) : (
         <div
@@ -1839,7 +1842,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
                   {renderHoverIcon()}
                 </button>
               </div>
-              {renderCaption(img.caption, img.url)}
+              {renderCaption(img.caption, img.url, i)}
             </div>
           ))}
         </div>
@@ -2337,6 +2340,7 @@ export function WebsiteRenderer({
   onStyleChange,
   onPositionChange,
   onDeleteElement,
+  onGalleryCaptionChange,
   currentSection,
   onSectionChange,
   slug,
@@ -2350,6 +2354,10 @@ export function WebsiteRenderer({
   onStyleChange?: (key: string, style: TextStyle) => void;
   onPositionChange?: (key: string, position: TextPosition) => void;
   onDeleteElement?: (key: string) => void;
+  // Per-image gallery caption editor: takes the image URL (stable id) and
+  // the new caption string. Wired up by the website editor so inline caption
+  // edits flow back to record.galleryImages.
+  onGalleryCaptionChange?: (imageUrl: string, caption: string) => void;
   currentSection?: string;
   // When provided alongside currentSection, the TopNav drives navigation
   // through this callback instead of routing or scrolling — used by the
@@ -2362,8 +2370,8 @@ export function WebsiteRenderer({
   previewMode?: boolean;
 }) {
   const ctx: EditCtx = editable && onTextChange
-    ? { editable: true, onTextChange, textStyles: data.textStyles, onStyleChange, textPositions: data.textPositions, onPositionChange, onDeleteElement }
-    : NOOP_CTX;
+    ? { editable: true, onTextChange, textStyles: data.textStyles, onStyleChange, textPositions: data.textPositions, onPositionChange, onDeleteElement, onGalleryCaptionChange }
+    : { editable: false, onTextChange: () => {}, textStyles: data.textStyles, textPositions: data.textPositions };
 
   // Dynamically load the chosen heading + body Google Fonts so that fonts not
   // preloaded in index.html (e.g. Tangerine, Great Vibes, Allura) actually render.
