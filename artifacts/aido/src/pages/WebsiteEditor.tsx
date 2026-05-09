@@ -934,7 +934,7 @@ export default function WebsiteEditor() {
         {/* Hero elements — toggles for the rows that drag-to-trash hides
             (date, venue, countdown). Lets the user bring them back without
             needing to hit Undo. */}
-        {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Hero Elements" })}>
+        {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Home Elements" })}>
           <div className="space-y-2.5">
             {[
               { key: "_heroTaglineHidden", label: "Tagline (\"We're getting married\")" },
