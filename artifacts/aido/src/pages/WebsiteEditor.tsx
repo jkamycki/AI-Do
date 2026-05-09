@@ -294,10 +294,15 @@ export default function WebsiteEditor() {
   const recordRef = useRef<WebsiteRecord | null>(null);
   useEffect(() => { recordRef.current = record; }, [record]);
 
+  // Bumps on every user edit so saveNow can detect "user typed while POST was
+  // in flight" and avoid clobbering those edits with the server's response.
+  const editSeqRef = useRef(0);
+
   const update = (patch: Partial<WebsiteRecord>) => {
     if (recordRef.current) queueHistory(recordRef.current);
     setRecord((prev) => prev ? { ...prev, ...patch } : prev);
     setDirty(true);
+    editSeqRef.current += 1;
   };
 
   // Functional updater for callbacks fired during editing (drag, style changes, text commits).
@@ -306,6 +311,7 @@ export default function WebsiteEditor() {
     if (recordRef.current) queueHistory(recordRef.current);
     setRecord((prev) => prev ? { ...prev, ...fn(prev) } : prev);
     setDirty(true);
+    editSeqRef.current += 1;
   }, [queueHistory]);
 
   // Must be declared above any early return so the hook count stays stable.
@@ -407,7 +413,25 @@ export default function WebsiteEditor() {
     return { ok: false, err: lastErr };
   };
 
-  const saveNow = async (silent: boolean): Promise<boolean> => {
+  // Single in-flight save promise. handleSave + autosave both await this so a
+  // click that lands while autosave is mid-POST never spawns a duplicate
+  // request (which used to race the response and either fail or overwrite).
+  const inFlightSaveRef = useRef<Promise<boolean> | null>(null);
+
+  const saveNow = (silent: boolean): Promise<boolean> => {
+    const start = inFlightSaveRef.current
+      ? inFlightSaveRef.current.then(() => runSave(silent))
+      : runSave(silent);
+    const tracked = start.finally(() => {
+      // Only clear the chain head when this exact promise is the tail —
+      // otherwise a later chained save is still pending and we must wait.
+      if (inFlightSaveRef.current === tracked) inFlightSaveRef.current = null;
+    });
+    inFlightSaveRef.current = tracked;
+    return tracked;
+  };
+
+  const runSave = async (silent: boolean): Promise<boolean> => {
     // Always snapshot the latest state from the ref to avoid stale closures.
     const rec = recordRef.current;
     if (!rec) return false;
@@ -418,14 +442,37 @@ export default function WebsiteEditor() {
       // payload survives a tab close mid-request.
       writePendingBackup(body, rec.id);
 
+      // Capture edit count before POST so we can detect concurrent edits and
+      // avoid clobbering them with the server's response.
+      const seqAtSend = editSeqRef.current;
       const result = await postSave(body);
       if (result.ok) {
-        setRecord((prev) => ({
-          ...result.record,
-          portalParty: result.record.portalParty ?? prev?.portalParty,
-        }));
+        const userEditedDuringSave = editSeqRef.current !== seqAtSend;
+        setRecord((prev) => {
+          if (!prev) return result.record;
+          // If the user kept typing during the POST, keep their in-memory record
+          // and only fold in server-owned metadata (id, slug, lastUpdated, etc.).
+          // Otherwise mirror the server's authoritative response.
+          if (userEditedDuringSave) {
+            return {
+              ...prev,
+              id: result.record.id,
+              slug: result.record.slug,
+              published: result.record.published,
+              lastUpdated: result.record.lastUpdated,
+              password: result.record.password,
+              portalParty: result.record.portalParty ?? prev.portalParty,
+            };
+          }
+          return {
+            ...result.record,
+            portalParty: result.record.portalParty ?? prev.portalParty,
+          };
+        });
         setPasswordInput("");
-        setDirty(false);
+        // Only mark clean if no edits happened during the POST. Otherwise the
+        // local state is still ahead of the server and another save needs to run.
+        if (editSeqRef.current === seqAtSend) setDirty(false);
         setSaveError(false);
         clearPendingBackup();
         return true;
@@ -475,12 +522,14 @@ export default function WebsiteEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record?.id]);
 
-  // Autosave: 10 seconds after the last change. Reschedules itself on failure
-  // so unsaved work is never silently dropped.
+  // Autosave: ~1.2s after the last change so anything the user typed reaches
+  // the server almost immediately and the explicit Save button is a no-op
+  // confirmation rather than the only path that persists work. Reschedules
+  // itself on failure so unsaved work is never silently dropped.
   const autosaveFailedRef = useRef(false);
   useEffect(() => {
     if (!record || !dirty) return;
-    const delay = autosaveFailedRef.current ? 30000 : 10000;
+    const delay = autosaveFailedRef.current ? 5000 : 1200;
     const timer = setTimeout(async () => {
       const ok = await saveNow(true);
       autosaveFailedRef.current = !ok;
@@ -491,22 +540,23 @@ export default function WebsiteEditor() {
   }, [record, dirty]);
 
   const handleSave = async () => {
-    // Flush any text that the user typed but hasn't blurred yet (EditableText
-    // defers onCommit by 80 ms). Without this, clicking Save immediately after
-    // typing loses the last keystroke(s).
+    // Flush any text the user typed but hasn't blurred yet. EditableText
+    // defers onCommit by 80 ms after blur, and contentEditable / native input
+    // values aren't in record state until the element blurs at all. Without
+    // both steps, clicking Save right after typing can ship a stale snapshot.
     const active = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
     if (active && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
       active.blur();
     }
     flushPendingEditableCommits();
-    // One tick so React can process the state update triggered by the flush.
-    await new Promise((res) => setTimeout(res, 0));
-
+    // One paint frame so React applies the flushed setState before we read
+    // recordRef.current inside saveNow.
+    await new Promise<void>((res) => requestAnimationFrame(() => res()));
     const ok = await saveNow(false);
     if (ok) toast({ title: "Saved!" });
     else {
-      const detail = "Check your connection and try again.";
-      toast({ title: "Failed to save", description: detail, variant: "destructive" });
+      const detail = "We'll keep retrying in the background — your work is backed up locally.";
+      toast({ title: "Save didn't go through", description: detail, variant: "destructive" });
     }
   };
 
