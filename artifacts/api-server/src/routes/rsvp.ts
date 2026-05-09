@@ -71,6 +71,17 @@ function buildOrigin(req: import("express").Request): string {
   return `${proto}://${host}`;
 }
 
+// Origin for guest-facing links inside emails (RSVP, save-the-date, etc).
+// Email links MUST point at the frontend host, not the API server. When the
+// API is on a separate origin (Render → Vercel), req.host resolves to the
+// API and the link 404s ("Cannot GET /rsvp/<token>"). Prefer an explicitly
+// configured frontend URL; fall back to req's origin only for local dev.
+function buildPublicOrigin(req: import("express").Request): string {
+  const env = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || "";
+  if (env) return env.replace(/\/+$/, "");
+  return buildOrigin(req);
+}
+
 /**
  * Resolves a stored photo URL to an R2File regardless of whether the URL is in the
  * legacy private `/objects/...` format or the newer public
@@ -577,7 +588,7 @@ router.get("/guests/:id/rsvp-link", requireAuth, async (req, res) => {
       await db.update(guests).set({ rsvpToken: token }).where(eq(guests.id, id));
     }
 
-    const origin = buildOrigin(req);
+    const origin = buildPublicOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
     res.json({ rsvpUrl });
   } catch (err) {
@@ -683,7 +694,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       .set({ rsvpToken: token, invitationStatus: "sent", rsvpSentAt: now })
       .where(eq(guests.id, id));
 
-    const origin = buildOrigin(req);
+    const origin = buildPublicOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
 
     let emailSent = false;
@@ -922,7 +933,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
       await db.update(guests).set({ rsvpToken: token }).where(eq(guests.id, id));
     }
 
-    const origin = `${req.protocol}://${req.get("host")}`;
+    const origin = buildPublicOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
     const logoBase64 = `${origin}/logo.png`;
 
@@ -1301,7 +1312,11 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           })()
         : null;
 
-      const origin = buildOrigin(req);
+      // Photos are served by the API (/api/storage/public-objects/...).
+      // Guest-facing pages (save-the-date, rsvp) and asset paths like
+      // /logo.png live on the frontend host. Keep the two origins separate.
+      const apiOrigin = buildOrigin(req);
+      const origin = buildPublicOrigin(req);
 
       // Prefer a direct HTTPS URL for the photo — base64 data URIs are blocked
       // or truncated by some email clients (Gmail mobile, Outlook). Only fall
@@ -1313,7 +1328,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           saveTheDatePhotoUrl.startsWith("/api/storage/public-objects/") ||
           saveTheDatePhotoUrl.startsWith("/storage/public-objects/")
         ) {
-          return `${origin}${saveTheDatePhotoUrl}`;
+          return `${apiOrigin}${saveTheDatePhotoUrl}`;
         }
         return null;
       })();
