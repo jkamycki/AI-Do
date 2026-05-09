@@ -1384,7 +1384,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 
       <div className="grid sm:grid-cols-2 gap-4 max-w-3xl mx-auto mb-6">
         {/* Venue */}
-        {data.couple.venue && (
+        {data.couple.venue && data.customText._travelVenueHidden !== EDITABLE_HIDDEN_MARKER && (
           <div style={cardStyle}>
             <div className="flex items-start gap-3 mb-3">
               <div style={iconWrap}><MapPin className="h-4 w-4" /></div>
@@ -1421,7 +1421,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         )}
 
         {/* Hotel */}
-        {(hasHotel || ctx.editable) && (
+        {(hasHotel || ctx.editable) && data.customText._travelHotelHidden !== EDITABLE_HIDDEN_MARKER && (
           <div style={cardStyle}>
             <div className="flex items-start gap-3 mb-3">
               <div style={iconWrap}><Bed className="h-4 w-4" /></div>
@@ -1476,17 +1476,19 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         )}
       </div>
 
-      <EditableText
-        as="div"
-        multiline
-        editable={ctx.editable}
-        value={text}
-        defaultValue={ctx.editable ? "Add parking info, directions, or other travel notes…" : ""}
-        onCommit={(v) => ctx.onTextChange("travel", v)}
-        className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
-        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
-        {...tsp(ctx, "travel")}
-      />
+      {data.customText._travelNotesHidden !== EDITABLE_HIDDEN_MARKER && (
+        <EditableText
+          as="div"
+          multiline
+          editable={ctx.editable}
+          value={text}
+          defaultValue={ctx.editable ? "Add parking info, directions, or other travel notes…" : ""}
+          onCommit={(v) => ctx.onTextChange("travel", v)}
+          className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
+          style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+          {...tsp(ctx, "travel")}
+        />
+      )}
     </SectionShell>
   );
 }

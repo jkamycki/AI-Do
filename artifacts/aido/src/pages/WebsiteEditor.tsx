@@ -962,6 +962,33 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Schedule event toggles */}
+        {inTab("pages") && record.sectionsEnabled.travel && <Section icon={<MapPin className="h-4 w-4" />} title="Travel & Venue Items">
+          <div className="space-y-2.5">
+            {[
+              { key: "_travelVenueHidden",  label: "Venue" },
+              { key: "_travelHotelHidden",  label: "Hotel" },
+              { key: "_travelNotesHidden",  label: "Travel Notes" },
+            ].map((row) => {
+              const isHidden = record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
+              return (
+                <div key={row.key} className="flex items-center justify-between gap-3 py-1.5">
+                  <Label className="text-sm cursor-pointer">{row.label}</Label>
+                  <Switch
+                    checked={!isHidden}
+                    onCheckedChange={(checked) => {
+                      update({ customText: { ...record.customText, [row.key]: checked ? "" : EDITABLE_HIDDEN_MARKER } });
+                      if (checked) {
+                        setEditorSection("travel");
+                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
+                      }
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </Section>}
+
         {inTab("pages") && record.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
           <div className="space-y-2.5">
             {[
