@@ -16,7 +16,7 @@ import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 const router = Router();
 
 const OWNER_EMAILS = [
-  "kamyckijoseph@gmail.com",
+  process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com",
 ];
 
 async function isAdmin(userId: string): Promise<boolean> {

@@ -5,6 +5,7 @@ import {
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { ObjectPermission } from "../lib/objectAcl";
 import { requireAuth } from "../middlewares/requireAuth";
 import { uploadUrlLimiter } from "../middlewares/rateLimiter";
 
@@ -113,6 +114,16 @@ router.get("/storage/objects/*path", requireAuth, async (req: Request, res: Resp
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+
+    const canAccess = await objectStorageService.canAccessObjectEntity({
+      userId: req.userId,
+      objectFile,
+      requestedPermission: ObjectPermission.READ,
+    });
+    if (!canAccess) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
 
     const response = await objectStorageService.downloadObject(objectFile);
 

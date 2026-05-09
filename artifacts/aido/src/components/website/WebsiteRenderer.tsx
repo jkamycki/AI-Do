@@ -89,6 +89,18 @@ function formatWeddingDate(dateStr: string): string {
   });
 }
 
+function formatTime12h(time: string): string {
+  if (!time) return time;
+  const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+  if (!match) return time;
+  const h = parseInt(match[1], 10);
+  const min = match[2];
+  if (h < 0 || h > 23) return time;
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return min === "00" ? `${hour12} ${period}` : `${hour12}:${min} ${period}`;
+}
+
 type TextStyle = { fontFamily?: string; fontSize?: string; color?: string; bold?: boolean; italic?: boolean; animation?: string };
 
 // Edit mode props passed to every section (and its EditableText spans).
@@ -753,9 +765,19 @@ function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx
         style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
         {...tsp(ctx, "rsvp_subtitle")}
       />
-      {data.customText.rsvp_deadline && (
+      {(ctx.editable || data.customText.rsvp_deadline) && (
         <p className="text-center text-sm mb-8 opacity-70" style={{ color: data.colorPalette.text }}>
-          Please RSVP by <strong>{data.customText.rsvp_deadline}</strong>
+          Please RSVP by{" "}
+          <EditableText
+            as="span"
+            editable={ctx.editable}
+            value={data.customText.rsvp_deadline ?? ""}
+            defaultValue="(tap to add a date)"
+            onCommit={(v) => ctx.onTextChange("rsvp_deadline", v)}
+            className="font-semibold"
+            style={{ color: data.colorPalette.text }}
+            {...tsp(ctx, "rsvp_deadline")}
+          />
         </p>
       )}
       {ctx.editable ? (
@@ -1304,8 +1326,8 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
                 >
                   <EditableText
                     editable={ctx.editable}
-                    value={data.customText[it.key] ?? ""}
-                    defaultValue={ctx.editable ? "Add Time" : (it.time || "")}
+                    value={formatTime12h(data.customText[it.key] ?? "")}
+                    defaultValue={ctx.editable ? "Add Time" : formatTime12h(it.time || "")}
                     onCommit={(v) => ctx.onTextChange(it.key, v)}
                     {...tspStyle(ctx, it.key)}
                   />
@@ -1581,21 +1603,43 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
       />
 
       {items.length > 0 && (
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-2xl mx-auto space-y-5">
           {items.map((it, i) => (
-            <div key={i} className="text-left">
-              <h3
-                className="text-lg sm:text-xl font-medium mb-2"
-                style={{ color: data.colorPalette.primary, fontFamily: bodyFontStack(bodyFont(data)) }}
-              >
-                {it.question}
-              </h3>
-              <p
-                className="text-base leading-relaxed whitespace-pre-line"
-                style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
-              >
-                {it.answer}
-              </p>
+            <div
+              key={i}
+              className="text-left rounded-xl px-5 py-5 sm:px-6 sm:py-6"
+              style={{
+                background: `${data.colorPalette.primary}08`,
+                border: `1px solid ${data.colorPalette.primary}1f`,
+              }}
+            >
+              <div className="flex items-start gap-3 mb-3">
+                <div
+                  className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full text-xs font-semibold tabular-nums"
+                  style={{
+                    background: data.colorPalette.primary,
+                    color: "#fff",
+                    fontFamily: bodyFontStack(bodyFont(data)),
+                  }}
+                  aria-hidden
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </div>
+                <h3
+                  className="text-base sm:text-lg font-semibold leading-snug pt-1"
+                  style={{ color: data.colorPalette.primary, fontFamily: bodyFontStack(bodyFont(data)) }}
+                >
+                  {it.question}
+                </h3>
+              </div>
+              {it.answer && (
+                <p
+                  className="text-sm sm:text-base leading-relaxed whitespace-pre-line pl-11"
+                  style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)), opacity: 0.85 }}
+                >
+                  {it.answer}
+                </p>
+              )}
             </div>
           ))}
         </div>
