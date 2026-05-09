@@ -533,6 +533,17 @@ export default function WebsiteEditor() {
   const applyTheme = (themeId: string) => {
     const t = THEMES.find((x) => x.id === themeId);
     if (!t) return;
+    // Reset all per-element / per-page colour overrides so the theme's
+    // colours actually take effect everywhere — otherwise leftover keys
+    // like _storyBg or _navLinkColor would keep painting old values on
+    // top of the new theme.
+    const RESET_KEYS = [
+      "_navLinkColor", "_navCoupleColor", "_footerColor",
+      "_welcomeBg", "_storyBg", "_scheduleBg", "_travelBg", "_registryBg",
+      "_weddingPartyBg", "_galleryBg", "_faqBg", "_rsvpBg",
+    ];
+    const nextCustomText: Record<string, string> = { ...(record?.customText ?? {}) };
+    for (const k of RESET_KEYS) delete nextCustomText[k];
     update({
       theme: t.id,
       font: t.font,
@@ -545,6 +556,7 @@ export default function WebsiteEditor() {
         background: t.background,
         text: t.text,
       },
+      customText: nextCustomText,
     });
   };
 
