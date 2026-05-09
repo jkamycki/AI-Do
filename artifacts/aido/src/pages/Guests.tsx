@@ -738,6 +738,25 @@ export default function Guests() {
     onError: (err) => toast({ title: "Failed to send reminder", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
   });
 
+  const [sendingReminders, setSendingReminders] = useState(false);
+
+  const handleSendAllReminders = async () => {
+    const eligible = (data?.guests ?? []).filter(
+      g => g.rsvpStatus === "pending" && g.invitationStatus === "sent" && g.email,
+    );
+    if (!eligible.length) return;
+    setSendingReminders(true);
+    let sent = 0;
+    for (const g of eligible) {
+      try {
+        const res = await authFetch(`/api/guests/${g.id}/send-rsvp?reminder=true`, { method: "POST" });
+        if (res.ok) sent++;
+      } catch { /* continue */ }
+    }
+    setSendingReminders(false);
+    toast({ title: `Reminders sent`, description: `${sent} of ${eligible.length} reminder email${eligible.length !== 1 ? "s" : ""} delivered.` });
+  };
+
   const allGuests = data?.guests ?? [];
   const summary = data?.summary ?? { total: 0, attending: 0, declined: 0, pending: 0, plusOnes: 0 };
 
