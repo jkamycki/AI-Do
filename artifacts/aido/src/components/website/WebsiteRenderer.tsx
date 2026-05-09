@@ -1628,12 +1628,24 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
       <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
     </div>
   );
-  const renderCaption = (caption?: string) =>
-    caption ? (
-      <p className="text-sm text-center px-1" style={{ color: data.colorPalette.text, opacity: 0.75 }}>
-        {caption}
-      </p>
-    ) : null;
+  const renderCaption = (caption: string | undefined, index: number) => {
+    if (!caption) return null;
+    const styleKey = `_galleryCaption_${index}`;
+    return (
+      <EditableText
+        as="div"
+        editable={ctx.editable}
+        value={caption}
+        defaultValue={caption}
+        readOnlyText
+        aiEnabled={false}
+        textStyle={data.textStyles?.[styleKey]}
+        onStyleChange={ctx.onStyleChange ? (s) => ctx.onStyleChange!(styleKey, s) : undefined}
+        className="text-sm text-center px-1"
+        style={{ color: data.colorPalette.text, opacity: 0.75 }}
+      />
+    );
+  };
 
   return (
     <SectionShell id="gallery" titleKey="gallery_title" defaultTitle="Gallery" icon={<ImageIcon className="h-4 w-4" />} data={data} ctx={ctx}>
@@ -1681,7 +1693,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
                   />
                   {renderHoverIcon()}
                 </button>
-                {renderCaption(img.caption)}
+                {renderCaption(img.caption, i % images.length)}
               </div>
             ))}
           </div>
@@ -1732,7 +1744,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
               </div>
             )}
           </div>
-          {renderCaption(images[activeIdx]?.caption)}
+          {renderCaption(images[activeIdx]?.caption, activeIdx)}
         </div>
       ) : (
         <div
@@ -1763,7 +1775,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
                 />
                 {renderHoverIcon()}
               </button>
-              {renderCaption(img.caption)}
+              {renderCaption(img.caption, i)}
             </div>
           ))}
         </div>
