@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
@@ -1532,6 +1531,12 @@ export default function WebsiteEditor() {
             onTextChange={(key, value) => patchRecord((prev) => ({ customText: { ...prev.customText, [key]: value } }))}
             onStyleChange={(key, style) => patchRecord((prev) => ({ textStyles: { ...(prev.textStyles ?? {}), [key]: style } }))}
             onPositionChange={(key, pos) => patchRecord((prev) => ({ textPositions: { ...(prev.textPositions ?? {}), [key]: pos } }))}
+            onGalleryCaptionChange={(imageUrl, caption) => patchRecord((prev) => {
+              const next = (prev.galleryImages ?? []).map((img) =>
+                img.url === imageUrl ? { ...img, caption } : img,
+              );
+              return { galleryImages: next };
+            })}
             onDeleteElement={(key) => patchRecord((prev) => {
               const ct = { ...prev.customText };
               const ts = { ...(prev.textStyles ?? {}) };
