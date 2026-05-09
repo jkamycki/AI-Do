@@ -5,9 +5,9 @@ import { useRoute } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { authFetch } from "@/lib/authFetch";
 import { PhotoUploadSection } from "@/components/InvitationCustomization/PhotoUploadSection";
-import { RsvpPagePreview } from "@/components/InvitationCustomization/RsvpPagePreview";
 import {
   AiSaveDatePreview,
+  AiDigitalInvitationPreview,
 } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { Card, CardContent } from "@/components/ui/card";
 import { WEBSITE_THEMES } from "@/lib/websiteThemes";
@@ -1156,33 +1156,25 @@ export default function InvitationCustomizationPage({
                         customColors={previewCustomColors}
                       />
                     ) : (
-                      <RsvpPagePreview
-                        colors={
-                          isCustom
-                            ? { ...customPalette, accent: cd.accentColor, primary: cd.accentColor }
-                            : { ...displayPalette, accent: "#D4A017", primary: "#D4A017" }
-                        }
-                        font={isCustom ? cd.fontFamily : null}
-                        backgroundColor={isCustom ? cd.backgroundColor : null}
-                        fontColor={isCustom ? cd.fontColor : null}
-                        fontSize={isCustom ? cd.fontSize : null}
-                        coupleColor={isCustom ? undefined : "#D4A017"}
-                        partner1Name={displayWeddingProfile.partner1Name}
-                        partner2Name={displayWeddingProfile.partner2Name}
-                        weddingDate={displayWeddingProfile.weddingDate}
-                        venue={displayWeddingProfile.venue}
+                      <AiDigitalInvitationPreview
+                        profile={{
+                          partner1Name: displayWeddingProfile.partner1Name,
+                          partner2Name: displayWeddingProfile.partner2Name,
+                          weddingDate: displayWeddingProfile.weddingDate,
+                          venue: displayWeddingProfile.venue,
+                          venueAddress: displayWeddingProfile.location,
+                          venueCity: displayWeddingProfile.venueCity,
+                          venueState: displayWeddingProfile.venueState,
+                          venueZip: displayWeddingProfile.venueZip,
+                          ceremonyTime: displayWeddingProfile.ceremonyTime,
+                          receptionTime: displayWeddingProfile.receptionTime,
+                          invitationMessage: invitationMessage || weddingProfile?.invitationMessage,
+                        }}
+                        palette={isCustom ? customPalette : { ...displayPalette, accent: "#D4A017", primary: "#D4A017" }}
                         photoUrl={digitalInvitationPhotoUrl}
                         photoPosition={digitalInvitationPhotoPosition}
                         onPhotoPositionChange={setDigitalInvitationPhotoPosition}
-                        guestName={user?.firstName || "Guest Name"}
-                        venueAddress={displayWeddingProfile.location}
-                        venueCity={displayWeddingProfile.venueCity}
-                        venueState={displayWeddingProfile.venueState}
-                        venueZip={displayWeddingProfile.venueZip}
-                        ceremonyTime={displayWeddingProfile.ceremonyTime}
-                        receptionTime={displayWeddingProfile.receptionTime}
-                        invitationMessage={invitationMessage || weddingProfile?.invitationMessage}
-                        scale={rsvpScale}
+                        customColors={isCustom ? previewCustomColors : undefined}
                       />
                     )}
                   </div>

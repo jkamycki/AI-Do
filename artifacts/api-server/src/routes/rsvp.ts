@@ -401,6 +401,10 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
   const SERIF    = opts.overrideCoupleFont
     ? `'${opts.overrideCoupleFont}',${AI_CORMORANT}` : AI_CORMORANT;
   const FOOTER_BG = opts.overrideBg ? BG : "#15121d";
+  const timesLine = [
+    opts.ceremonyTimeStr ? `Ceremony ${opts.ceremonyTimeStr}` : null,
+    opts.receptionTimeStr ? `Reception ${opts.receptionTimeStr}` : null,
+  ].filter(Boolean).join(" · ");
   // Declare colour scheme so email clients (Gmail, Apple Mail) don't auto-invert
   // a light custom design into a dark one.
   const COLOR_SCHEME = isLightColor(BG) ? "light" : "dark";
@@ -470,6 +474,36 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${TEXT_COL};">${escapeHtml(opts.weddingDateStr)}</p>
+          </td>
+        </tr>` : ""}
+
+        ${opts.venue ? `
+        <tr>
+          <td bgcolor="${BG}" style="background:${BG};padding:12px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${SERIF};font-size:16px;font-weight:500;color:${ACCENT};">
+              <span style="color:${ACCENT};font-size:13px;">&#9679;</span>&nbsp;${escapeHtml(opts.venue)}
+            </p>
+          </td>
+        </tr>` : ""}
+
+        ${opts.venueAddress ? `
+        <tr>
+          <td bgcolor="${BG}" style="background:${BG};padding:4px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${TEXT_COL};">${escapeHtml(opts.venueAddress)}</p>
+          </td>
+        </tr>` : ""}
+
+        ${opts.cityStateZip ? `
+        <tr>
+          <td bgcolor="${BG}" style="background:${BG};padding:2px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${TEXT_COL};">${escapeHtml(opts.cityStateZip)}</p>
+          </td>
+        </tr>` : ""}
+
+        ${timesLine ? `
+        <tr>
+          <td bgcolor="${BG}" style="background:${BG};padding:8px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${ACCENT};">${escapeHtml(timesLine)}</p>
           </td>
         </tr>` : ""}
 
