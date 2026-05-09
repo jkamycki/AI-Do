@@ -818,7 +818,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       // contrasts the chosen background.
       const ACCENT = !useGenerated ? (colors.primary || "#D4A017") : "#c9a97e";
       const TEXT = !useGenerated
-        ? (bgIsLight ? "#1a1a1a" : "#ffffff")
+        ? (customization?.digitalInvitationFontColor ?? (bgIsLight ? "#1a1a1a" : "#ffffff"))
         : "#e8dcc7";
       const MUTED = !useGenerated
         ? (bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)")
@@ -923,9 +923,8 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
   }
 });
 
-// Send an AI-only RSVP reminder email. Only allowed when the guest hasn't
-// responded yet (rsvpStatus === "pending"). Uses aiRsvpReminderHtml — separate
-// from the AI invitation and Custom Design templates by design.
+// Send an RSVP reminder email — uses the same invitation card template as
+// send-rsvp so the reminder looks identical to the preview in the send modal.
 router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -945,7 +944,6 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: "Guest not found" });
     const guest = rows[0];
 
-    // Reminder is only valid for guests who haven't responded yet.
     if (guest.rsvpStatus !== "pending") {
       return res.status(400).json({ error: "Guest has already responded — no reminder needed." });
     }
@@ -953,7 +951,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Guest has no email on file." });
     }
 
-    const couple = `${profile.partner1Name ?? ""} & ${profile.partner2Name ?? ""}`.trim();
+    const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
     const weddingDateStr = profile.weddingDate
       ? (() => {
           const [y, m, d] = profile.weddingDate!.split("-").map(Number);
@@ -971,13 +969,112 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
     const rsvpUrl = `${origin}/rsvp/${token}`;
     const logoBase64 = `${apiOrigin}/logo.png`;
 
-    const html = aiRsvpReminderHtml({
-      couple,
-      guestName: guest.name,
-      weddingDateStr,
-      rsvpUrl,
-      logoBase64,
-    });
+    // Load customization so the reminder email matches the invitation preview.
+    let customization: typeof invitationCustomizations.$inferSelect | null = null;
+    try {
+      const customizationRows = await db
+        .select()
+        .from(invitationCustomizations)
+        .where(eq(invitationCustomizations.profileId, profile.id))
+        .limit(1);
+      customization = customizationRows.length > 0 ? customizationRows[0] : null;
+    } catch { /* continue with defaults */ }
+
+    const useGenerated = customization?.useGeneratedInvitation !== false;
+    const basePalette = (!useGenerated && customization?.colorPalette)
+      ? customization.colorPalette as typeof DEFAULT_COLORS
+      : DEFAULT_COLORS;
+    const colors = !useGenerated && customization?.customColors
+      ? { ...basePalette, ...(customization.customColors as Partial<typeof DEFAULT_COLORS>) }
+      : basePalette;
+
+    const digitalInvitationPhotoUrl =
+      customization?.digitalInvitationPhotoUrl
+        ?? profile.digitalInvitationPhotoUrl
+        ?? profile.invitationPhotoUrl
+        ?? null;
+    const headingFont = !useGenerated
+      ? sanitizeFont(customization?.digitalInvitationFont || customization?.selectedFont, "Playfair Display")
+      : "Playfair Display";
+
+    const digOverrides = (!useGenerated
+      ? (customization?.textOverrides as Record<string, { text?: string; objectX?: number; objectY?: number }> | null) ?? {}
+      : {}) as Record<string, { text?: string; objectX?: number; objectY?: number }>;
+    const digPhotoOverride = digOverrides["dig:photo"] ?? {};
+    const aiDigPhotoPos = (customization?.digitalInvitationPhotoPosition as { x?: number; y?: number } | null) ?? null;
+    const digPhotoObjectPos = useGenerated
+      ? `${aiDigPhotoPos?.x ?? 50}% ${aiDigPhotoPos?.y ?? 50}%`
+      : `${digPhotoOverride.objectX ?? 50}% ${digPhotoOverride.objectY ?? 50}%`;
+
+    const formatTime12h = (t: string | null | undefined): string | null => {
+      if (!t) return null;
+      const [h, m] = t.split(":").map(Number);
+      if (Number.isNaN(h) || Number.isNaN(m)) return t;
+      return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+    };
+    const ceremonyTimeStr = formatTime12h(profile.ceremonyTime);
+    const receptionTimeStr = formatTime12h(profile.receptionTime);
+    const cityStateZip = [
+      profile.venueCity,
+      [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
+    ].filter(Boolean).join(", ");
+
+    const photoPublicUrl: string | null = (() => {
+      if (!digitalInvitationPhotoUrl || digitalInvitationPhotoUrl.startsWith("blob:")) return null;
+      if (digitalInvitationPhotoUrl.startsWith("http")) return digitalInvitationPhotoUrl;
+      if (
+        digitalInvitationPhotoUrl.startsWith("/api/storage/public-objects/") ||
+        digitalInvitationPhotoUrl.startsWith("/storage/public-objects/")
+      ) return `${origin}${digitalInvitationPhotoUrl}`;
+      return null;
+    })();
+    const photoImgSrc: string | null = photoPublicUrl ?? await getImageAsBase64(digitalInvitationPhotoUrl);
+
+    const rawBg = !useGenerated && customization?.digitalInvitationBackground
+      ? customization.digitalInvitationBackground : "#1E1A2E";
+    const bgIsLight = isLightColor(rawBg);
+
+    let html: string;
+    if (useGenerated) {
+      html = aiDigitalInvitationHtml({
+        couple,
+        guestName: guest.name,
+        weddingDateStr,
+        venue: profile.venue,
+        venueAddress: profile.location,
+        cityStateZip,
+        ceremonyTimeStr,
+        receptionTimeStr,
+        invitationMessage: profile.invitationMessage,
+        rsvpUrl,
+        photoImgSrc,
+        photoObjectPos: digPhotoObjectPos,
+        logoBase64,
+      });
+    } else {
+      html = aiDigitalInvitationHtml({
+        couple: digOverrides["dig:couple"]?.text || `${couple}'s Wedding`,
+        guestName: guest.name,
+        weddingDateStr: digOverrides["dig:date-value"]?.text || weddingDateStr,
+        venue: digOverrides["dig:venue-value"]?.text || profile.venue || null,
+        venueAddress: digOverrides["dig:location"]?.text || profile.location || null,
+        cityStateZip: digOverrides["dig:city-state-zip"]?.text || cityStateZip,
+        ceremonyTimeStr,
+        receptionTimeStr,
+        invitationMessage: digOverrides["dig:message"]?.text || profile.invitationMessage || null,
+        rsvpUrl,
+        photoImgSrc,
+        photoObjectPos: digPhotoObjectPos,
+        logoBase64,
+        overrideBg: rawBg,
+        overridePageBg: rawBg,
+        overrideAccent: colors.primary || "#D4A017",
+        overrideText: customization?.digitalInvitationFontColor ?? (bgIsLight ? "#1a1a1a" : "#ffffff"),
+        overrideMuted: bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
+        overrideCardBdr: bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
+        overrideCoupleFont: headingFont,
+      });
+    }
 
     const result = await sendEmail({
       to: guest.email,
@@ -1462,7 +1559,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           overrideBg: STD_EMAIL_BG,
           overridePageBg: STD_EMAIL_BG,
           overrideAccent: colors.accent,
-          overrideText: stdBgIsLight ? "#1a1a1a" : "#ffffff",
+          overrideText: customization?.saveTheDateFontColor ?? (stdBgIsLight ? "#1a1a1a" : "#ffffff"),
           overrideMuted: stdBgIsLight ? "rgba(0,0,0,0.58)" : "rgba(255,255,255,0.58)",
           overrideCardBdr: stdBgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
           overrideCoupleFont: headingFont,
