@@ -1170,12 +1170,27 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 // stay visible regardless of which section is currently scrolled to. The
 // outer wrapper is marked position:relative so absolute positioning here
 // is anchored to the whole page.
-function CustomTextBoxes({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
+// Custom text-box keys are `_custom_<section>__<timestamp>`. Legacy keys
+// (`_custom_<timestamp>`, no section) are treated as belonging to "home".
+function sectionForCustomKey(key: string): string {
+  const m = key.match(/^_custom_([a-zA-Z]+)__\d+$/);
+  return m ? m[1] : "home";
+}
+
+function CustomTextBoxes({ data, ctx, currentSection, showAll }: {
+  data: WebsiteRendererPayload;
+  ctx: EditCtx;
+  currentSection: string;
+  showAll: boolean;
+}) {
   return (
     <>
       {Object.entries(data.customText)
         .filter(([k, v]) => {
           if (!k.startsWith("_custom_")) return false;
+          // Only show this textbox on the page it was added to (or always
+          // when the renderer is in show-all mode for full-site preview).
+          if (!showAll && sectionForCustomKey(k) !== currentSection) return false;
           if (!ctx.editable) return !!v?.trim() && v.trim() !== "New text — click to edit";
           return true;
         })
@@ -2524,7 +2539,7 @@ export function WebsiteRenderer({
           : <RsvpSection data={data} ctx={ctx} />
       )}
       <Footer data={data} ctx={ctx} />
-      <CustomTextBoxes data={data} ctx={ctx} />
+      <CustomTextBoxes data={data} ctx={ctx} currentSection={currentSection ?? "home"} showAll={showAll} />
     </div>
   );
 }
