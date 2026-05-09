@@ -15,9 +15,11 @@ import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
   QrCode, Download, Link2, Plus, Users, Undo2, Sparkles, Settings, Trash2, Smile,
+  Move,
 } from "lucide-react";
 import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
 import { flushPendingEditableCommits, subscribeEditableDrag, EDITABLE_HIDDEN_MARKER } from "@/components/website/EditableText";
+import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
@@ -101,6 +103,8 @@ export default function WebsiteEditor() {
   const previewRef = useRef<HTMLElement | null>(null);
   const mobilePreviewRef = useRef<HTMLDivElement | null>(null);
   const [overlayEl, setOverlayEl] = useState<HTMLDivElement | null>(null);
+  // URL of the hero photo whose focal point is being edited. null = dialog closed.
+  const [positioningUrl, setPositioningUrl] = useState<string | null>(null);
   // Whether ANY deletable EditableText is currently being dragged. Drives the
   // visual emphasis on the trash drop zone.
   const [editableDragging, setEditableDragging] = useState(false);
@@ -609,6 +613,33 @@ export default function WebsiteEditor() {
   const handleHeroUpload = async (file: File) => {
     const result = await upload.uploadFile(file);
     if (result) update({ heroImage: result.objectPath });
+  };
+
+  // Per-URL focal points for hero photos, JSON-encoded under _heroFocals so
+  // a single customText entry covers every image instead of polluting the
+  // map with one key per URL.
+  const readHeroFocals = (): Record<string, string> => {
+    const raw = recordRef.current?.customText._heroFocals;
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const writeHeroFocal = (url: string, position: string) => {
+    const next = { ...readHeroFocals(), [url]: position };
+    update({ customText: { ...recordRef.current!.customText, _heroFocals: JSON.stringify(next) } });
+  };
+
+  const dropHeroFocal = (url: string) => {
+    const current = readHeroFocals();
+    if (!(url in current)) return;
+    const { [url]: _drop, ...rest } = current;
+    void _drop;
+    update({ customText: { ...recordRef.current!.customText, _heroFocals: JSON.stringify(rest) } });
   };
 
   const handleGalleryUpload = async (files: FileList) => {
@@ -1511,9 +1542,21 @@ export default function WebsiteEditor() {
                   src={record.heroImage}
                   alt="Main"
                   className="w-full h-full object-cover"
+                  style={{ objectPosition: readHeroFocals()[record.heroImage] || "center" }}
                 />
                 <button
-                  onClick={() => update({ heroImage: null })}
+                  onClick={() => setPositioningUrl(record.heroImage)}
+                  className="absolute bottom-1 left-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
+                  title="Position in frame"
+                >
+                  <Move className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => {
+                    const url = record.heroImage;
+                    update({ heroImage: null });
+                    if (url) dropHeroFocal(url);
+                  }}
                   className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
                   title="Remove main photo"
                 >
@@ -1527,9 +1570,21 @@ export default function WebsiteEditor() {
                   src={img.url}
                   alt=""
                   className="w-full h-full object-cover"
+                  style={{ objectPosition: readHeroFocals()[img.url] || "center" }}
                 />
                 <button
-                  onClick={() => removeHeroImage(i)}
+                  onClick={() => setPositioningUrl(img.url)}
+                  className="absolute bottom-1 left-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
+                  title="Position in frame"
+                >
+                  <Move className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => {
+                    const url = img.url;
+                    removeHeroImage(i);
+                    dropHeroFocal(url);
+                  }}
                   className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
                 >
                   <X className="h-3 w-3" />
@@ -1875,6 +1930,19 @@ export default function WebsiteEditor() {
           </button>
         </div>
       )}
+
+      {/* Hero photo focal-point picker — lets the user choose which part of
+          a home-page photo stays centered when the hero crops to fit. */}
+      <HeroPhotoPositionDialog
+        open={!!positioningUrl}
+        imageUrl={positioningUrl}
+        initialPosition={positioningUrl ? readHeroFocals()[positioningUrl] ?? null : null}
+        onCommit={(pos) => {
+          if (positioningUrl) writeHeroFocal(positioningUrl, pos);
+          setPositioningUrl(null);
+        }}
+        onClose={() => setPositioningUrl(null)}
+      />
 
       {/* Custom URL modal — surfaces the existing SlugEditor in a focused
           popup so users can find the URL setting from the Pages tab, not
