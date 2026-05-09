@@ -90,8 +90,8 @@ export default function DataHandling() {
                     <td className="px-4 py-2.5 align-top text-zinc-200">Static assets, request metadata</td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-2.5 align-top"><strong>Postgres host</strong></td>
-                    <td className="px-4 py-2.5 align-top">Application database with encryption at rest</td>
+                    <td className="px-4 py-2.5 align-top"><strong>Neon</strong></td>
+                    <td className="px-4 py-2.5 align-top">Serverless Postgres database with encryption at rest</td>
                     <td className="px-4 py-2.5 align-top text-zinc-200">All workspace data described above</td>
                   </tr>
                 </tbody>
