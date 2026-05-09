@@ -108,6 +108,11 @@ type TextStyle = { fontFamily?: string; fontSize?: string; color?: string; bold?
 // Edit mode props passed to every section (and its EditableText spans).
 interface EditCtx {
   editable: boolean;
+  // True when rendered inside the editor's fullscreen "Preview" popup. The
+  // editor wants to show the section's layout (heading, tall background, etc.)
+  // even if the user hasn't filled in the body yet, but the public site
+  // should still hide empty sections from guests.
+  previewMode?: boolean;
   onTextChange: (key: string, value: string) => void;
   textStyles?: Record<string, TextStyle>;
   onStyleChange?: (key: string, style: TextStyle) => void;
@@ -917,9 +922,11 @@ function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: 
   const text = data.customText._announcement ?? "";
   const trimmed = text.trim();
   const [dismissed, setDismissed] = useState(false);
-  // Public site: hide entirely when empty/dismissed. Editor: keep the slot
-  // visible so the user has somewhere to click and start typing.
-  if ((!trimmed || dismissed) && !ctx.editable) return null;
+  // Hide when the user has toggled the announcement off via Home Elements.
+  if (data.customText._announcementHidden === EDITABLE_HIDDEN_MARKER || dismissed) return null;
+  // Public site: hide entirely when empty. Editor: keep the slot visible so
+  // the user has somewhere to click and start typing.
+  if (!trimmed && !ctx.editable) return null;
   return (
     <div
       className="relative flex items-start gap-3 px-5 py-3 text-sm"
@@ -1279,7 +1286,7 @@ function SectionShell({
   return (
     <section
       id={id}
-      className={`py-20 px-6${tall ? " min-h-screen flex items-center" : ""}`}
+      className={`py-20 px-6 overflow-x-clip${tall ? " min-h-screen" : ""}`}
       style={{
         // Welcome has its own _welcomeBg picker; everything else shares
         // _sectionsBg so the user can recolour all non-welcome sections at
@@ -1328,9 +1335,10 @@ function SectionShell({
 
 function Welcome({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.welcome ?? "";
-  // In edit mode, always render so the user has somewhere to type. In
-  // public mode, hide the section if there's no text.
-  if (!text && !ctx.editable) return null;
+  // In edit mode, always render so the user has somewhere to type. In the
+  // editor's Preview popup, also render so the user can verify the layout.
+  // On the published site, hide an empty section from guests.
+  if (!text && !ctx.editable && !ctx.previewMode) return null;
   return (
     <SectionShell id="welcome" titleKey="welcome_title" defaultTitle="Welcome" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx}>
       <EditableText
@@ -1338,7 +1346,7 @@ function Welcome({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         multiline
         editable={ctx.editable}
         value={text}
-        defaultValue={ctx.editable ? "Click to write a warm welcome for your guests..." : ""}
+        defaultValue={(ctx.editable || ctx.previewMode) ? "Click to write a warm welcome for your guests..." : ""}
         onCommit={(v) => ctx.onTextChange("welcome", v)}
         className="text-center text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
         style={{ color: data.customText._welcomeColor || data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
@@ -1350,7 +1358,9 @@ function Welcome({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
 
 function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.story ?? "";
-  if (!text && !ctx.editable) return null;
+  // The section is gated by sectionsEnabled.story upstream; if the user
+  // enabled it, render it everywhere — editor, preview, and published —
+  // so the layout is consistent even before the body has been filled in.
   return (
     <SectionShell id="story" titleKey="story_title" defaultTitle="Our Story" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx} tall>
       <EditableText
@@ -1368,10 +1378,10 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         multiline
         editable={ctx.editable}
         value={text}
-        defaultValue={ctx.editable ? "Tell guests how you two met, your story, your journey..." : ""}
+        defaultValue={(ctx.editable || ctx.previewMode) ? "Tell guests how you two met, your story, your journey..." : ""}
         onCommit={(v) => ctx.onTextChange("story", v)}
-        className="text-center text-base sm:text-lg leading-relaxed max-w-3xl mx-auto px-4 whitespace-pre-line break-words"
-        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+        className="text-center text-base sm:text-lg leading-relaxed mx-auto px-4 whitespace-pre-line break-words"
+        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)), maxWidth: "min(48rem, 100%)" }}
         {...tsp(ctx, "story")}
       />
     </SectionShell>
@@ -2517,8 +2527,8 @@ export function WebsiteRenderer({
   previewMode?: boolean;
 }) {
   const ctx: EditCtx = editable && onTextChange
-    ? { editable: true, onTextChange, textStyles: data.textStyles, onStyleChange, textPositions: data.textPositions, onPositionChange, onDeleteElement, onGalleryCaptionChange }
-    : { editable: false, onTextChange: () => {}, textStyles: data.textStyles, textPositions: data.textPositions };
+    ? { editable: true, previewMode, onTextChange, textStyles: data.textStyles, onStyleChange, textPositions: data.textPositions, onPositionChange, onDeleteElement, onGalleryCaptionChange }
+    : { editable: false, previewMode, onTextChange: () => {}, textStyles: data.textStyles, textPositions: data.textPositions };
 
   // Dynamically load the chosen heading + body Google Fonts so that fonts not
   // preloaded in index.html (e.g. Tangerine, Great Vibes, Allura) actually render.

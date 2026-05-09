@@ -18,8 +18,7 @@ import { authFetch } from "@/lib/authFetch";
 import type { Guest } from "@workspace/api-client-react";
 import type { TextOverrides, ColorPalette } from "@/types/invitations";
 import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
-import { RsvpPagePreview } from "@/components/InvitationCustomization/RsvpPagePreview";
-import { AiSaveDatePreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
+import { AiSaveDatePreview, AiDigitalInvitationPreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
 
 interface Customization {
@@ -60,8 +59,6 @@ interface Profile {
   receptionTime?: string | null;
   invitationMessage?: string | null;
   saveTheDateMessage?: string | null;
-  saveTheDatePhotoUrl?: string | null;
-  digitalInvitationPhotoUrl?: string | null;
   ceremonyAtVenue?: boolean;
   ceremonyVenueName?: string | null;
   ceremonyAddress?: string | null;
@@ -722,6 +719,8 @@ export function InvitationSendModal({
                       const customPalette = { ...palette, primary: cd.accentColor, secondary: cd.accentColor, accent: cd.accentColor };
                       const customColors = {
                         ...stdCustomColors,
+                        text: cd.fontColor,
+                        muted: cd.fontColor + "99",
                         font: cd.fontFamily,
                         fontSize: cd.fontSize,
                       };
@@ -729,7 +728,7 @@ export function InvitationSendModal({
                         <AiSaveDatePreview
                           profile={profile}
                           palette={customPalette}
-                          photoUrl={customization.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl || null}
+                          photoUrl={customization.saveTheDatePhotoUrl || null}
                           photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                           customColors={customColors}
                         />
@@ -770,43 +769,49 @@ export function InvitationSendModal({
                         secondary: cd.accentColor,
                         accent: cd.accentColor,
                       };
+                      const digCustomColors = {
+                        ...makeCustomColors(cd.backgroundColor, cd.accentColor),
+                        text: cd.fontColor,
+                        muted: cd.fontColor + "99",
+                        font: cd.fontFamily,
+                        fontSize: cd.fontSize,
+                      };
                       return (
-                        <RsvpPagePreview
-                          colors={customPalette}
-                          font={cd.fontFamily}
-                          fontColor={cd.fontColor}
-                          fontSize={cd.fontSize}
-                          backgroundColor={cd.backgroundColor}
-                          partner1Name={profile.partner1Name ?? ""}
-                          partner2Name={profile.partner2Name ?? ""}
-                          weddingDate={profile.weddingDate ?? ""}
-                          venue={profile.venue ?? ""}
-                          photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || null}
+                        <AiDigitalInvitationPreview
+                          profile={{
+                            partner1Name: profile.partner1Name,
+                            partner2Name: profile.partner2Name,
+                            weddingDate: profile.weddingDate,
+                            venue: profile.venue,
+                            venueAddress: profile.location ?? profile.venueAddress,
+                            venueCity: profile.venueCity,
+                            venueState: profile.venueState,
+                            venueZip: profile.venueZip,
+                            ceremonyTime: profile.ceremonyTime,
+                            receptionTime: profile.receptionTime,
+                            invitationMessage: profile.invitationMessage,
+                          }}
+                          palette={customPalette}
+                          photoUrl={customization.digitalInvitationPhotoUrl || null}
                           photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                           onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
-                          guestName={guest?.name ?? "Guest"}
-                          venueAddress={profile.location ?? profile.venueAddress ?? ""}
-                          venueCity={profile.venueCity ?? ""}
-                          venueState={profile.venueState ?? ""}
-                          venueZip={profile.venueZip ?? ""}
-                          ceremonyTime={profile.ceremonyTime ?? ""}
-                          receptionTime={profile.receptionTime ?? ""}
-                          invitationMessage={profile.invitationMessage ?? ""}
-                          scale={0.72}
+                          customColors={digCustomColors}
                         />
                       );
                     })()}
                   </div>
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() => guest && onSendDigitalInvitation(guest.id)}
-                    disabled={isSendingDigital}
-                  >
-                    {isSendingDigital
-                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
-                    }
-                  </Button>
+                  {!reminderOnly && (
+                    <Button
+                      className="w-full gap-2"
+                      onClick={() => guest && onSendDigitalInvitation(guest.id)}
+                      disabled={isSendingDigital}
+                    >
+                      {isSendingDigital
+                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                        : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
+                      }
+                    </Button>
+                  )}
                   {!guest?.email && (
                     <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
                   )}
@@ -835,11 +840,7 @@ export function InvitationSendModal({
                     <AiSaveDatePreview
                       profile={profile}
                       palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
-                      photoUrl={
-                        customization.saveTheDatePhotoUrl
-                        || profile.saveTheDatePhotoUrl
-                        || null
-                      }
+                      photoUrl={customization.saveTheDatePhotoUrl || null}
                       photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                     />
                   )}
@@ -861,51 +862,48 @@ export function InvitationSendModal({
                 <TabsContent value="digitalInvitation" className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground text-center">Email preview — this is what your guest will receive in their inbox</p>
                   {profile && (
-                    <RsvpPagePreview
-                      colors={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
-                      coupleColor="#D4A017"
-                      font={undefined}
-                      backgroundColor={null}
-                      partner1Name={profile.partner1Name ?? ""}
-                      partner2Name={profile.partner2Name ?? ""}
-                      weddingDate={profile.weddingDate ?? ""}
-                      venue={profile.venue ?? ""}
-                      photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || null}
+                    <AiDigitalInvitationPreview
+                      profile={{
+                        partner1Name: profile.partner1Name,
+                        partner2Name: profile.partner2Name,
+                        weddingDate: profile.weddingDate,
+                        venue: profile.venue,
+                        venueAddress: profile.location ?? profile.venueAddress,
+                        venueCity: profile.venueCity,
+                        venueState: profile.venueState,
+                        venueZip: profile.venueZip,
+                        ceremonyTime: profile.ceremonyTime,
+                        receptionTime: profile.receptionTime,
+                        invitationMessage: profile.invitationMessage,
+                      }}
+                      palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
+                      photoUrl={customization.digitalInvitationPhotoUrl || null}
                       photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
-                      onPhotoPositionChange={() => {}}
-                      guestName={guest?.name ?? "Guest"}
-                      venueAddress={profile.location ?? profile.venueAddress ?? ""}
-                      venueCity={profile.venueCity ?? ""}
-                      venueState={profile.venueState ?? ""}
-                      venueZip={profile.venueZip ?? ""}
-                      ceremonyTime={profile.ceremonyTime ?? ""}
-                      receptionTime={profile.receptionTime ?? ""}
-                      invitationMessage={profile.invitationMessage ?? ""}
-                      scale={0.72}
                     />
                   )}
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() => guest && onSendDigitalInvitation(guest.id)}
-                    disabled={isSendingDigital}
-                  >
-                    {isSendingDigital
-                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
-                    }
-                  </Button>
-                  {/* RSVP Reminder — AI-only template, separate from invitation.
-                      Only enabled when guest has email AND hasn't responded yet. */}
-                  {guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder && (
+                  {reminderOnly ? (
+                    guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder ? (
+                      <Button
+                        variant="outline"
+                        className="w-full gap-2"
+                        onClick={() => guest && onSendRsvpReminder(guest.id)}
+                        disabled={!!isSendingRsvpReminder}
+                      >
+                        {isSendingRsvpReminder
+                          ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending reminder…</>
+                          : <><Mail className="h-4 w-4" /> Send RSVP Reminder</>
+                        }
+                      </Button>
+                    ) : null
+                  ) : (
                     <Button
-                      variant="outline"
                       className="w-full gap-2"
-                      onClick={() => guest && onSendRsvpReminder(guest.id)}
-                      disabled={!!isSendingRsvpReminder}
+                      onClick={() => guest && onSendDigitalInvitation(guest.id)}
+                      disabled={isSendingDigital}
                     >
-                      {isSendingRsvpReminder
-                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending reminder…</>
-                        : <><Mail className="h-4 w-4" /> Send RSVP Reminder</>
+                      {isSendingDigital
+                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                        : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
                       }
                     </Button>
                   )}
