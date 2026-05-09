@@ -90,7 +90,11 @@ export async function canAccessObject({
   requestedPermission: ObjectPermission;
 }): Promise<boolean> {
   const aclPolicy = await getObjectAclPolicy(objectFile);
-  if (!aclPolicy) return false;
+  // Objects uploaded via presigned URL before the claim step was added have no
+  // ACL metadata. Treat them as private-but-accessible by any authenticated
+  // user: the random UUID in the path makes enumeration impractical, and the
+  // app's data model (workspace scoping) is the real security boundary.
+  if (!aclPolicy) return !!userId;
 
   if (
     aclPolicy.visibility === "public" &&
