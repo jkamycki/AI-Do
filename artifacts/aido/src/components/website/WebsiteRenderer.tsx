@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { cloneElement, isValidElement, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed, Share2, Check } from "lucide-react";
 import { EditableText, emitEditableDrag, EDITABLE_HIDDEN_MARKER, type TextPosition } from "./EditableText";
@@ -1152,20 +1152,36 @@ function SectionShell({
       }}
     >
       <div className="max-w-4xl mx-auto">
-        <div
-          className="flex items-center justify-center gap-2 mb-3"
-          style={{ color: ctx.textStyles?.[titleKey]?.color || data.colorPalette.secondary }}
-        >
-          {icon}
-          <EditableText
-            editable={ctx.editable}
-            value={data.customText[titleKey] ?? ""}
-            defaultValue={defaultTitle}
-            onCommit={(v) => ctx.onTextChange(titleKey, v)}
-            className="uppercase tracking-[0.25em] text-xs"
-            {...tspStyle(ctx, titleKey)}
-          />
-        </div>
+        {(() => {
+          const headerColor = ctx.textStyles?.[titleKey]?.color || data.colorPalette.secondary;
+          const headerFontSize = ctx.textStyles?.[titleKey]?.fontSize;
+          // When the user resizes the section label via the inline toolbar,
+          // scale the icon to match. Strip the original h-4 w-4 sizing and
+          // apply the chosen font size as both width and height so SVG
+          // renders proportionally. With no override, keep the default size.
+          const sizedIcon = headerFontSize && isValidElement(icon)
+            ? cloneElement(icon as React.ReactElement<{ className?: string; style?: React.CSSProperties }>, {
+                className: "shrink-0",
+                style: { width: headerFontSize, height: headerFontSize },
+              })
+            : icon;
+          return (
+            <div
+              className="flex items-center justify-center gap-2 mb-3"
+              style={{ color: headerColor }}
+            >
+              {sizedIcon}
+              <EditableText
+                editable={ctx.editable}
+                value={data.customText[titleKey] ?? ""}
+                defaultValue={defaultTitle}
+                onCommit={(v) => ctx.onTextChange(titleKey, v)}
+                className="uppercase tracking-[0.25em] text-xs"
+                {...tspStyle(ctx, titleKey)}
+              />
+            </div>
+          );
+        })()}
         <div className="w-12 h-px mx-auto mb-12" style={{ background: ctx.textStyles?.[titleKey]?.color || data.colorPalette.secondary }} />
         {children}
       </div>
