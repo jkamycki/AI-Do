@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Send, Loader2, AlertTriangle, Eye, Heart, CheckCircle2, XCircle,
-  MapPin, Paintbrush, ChevronRight, Calendar, User, ImageOff,
+  MapPin, Paintbrush, ChevronRight, Calendar, User, ImageOff, Mail,
 } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
 import type { Guest } from "@workspace/api-client-react";
@@ -73,8 +73,10 @@ interface Props {
   onClose: () => void;
   onSendSaveTheDate: (guestId: number) => void;
   onSendDigitalInvitation: (guestId: number) => void;
+  onSendRsvpReminder?: (guestId: number) => void;
   isSendingSaveTheDate: boolean;
   isSendingDigital: boolean;
+  isSendingRsvpReminder?: boolean;
 }
 
 function formatTime(timeStr: string | null | undefined): string | null {
@@ -503,8 +505,10 @@ export function InvitationSendModal({
   onClose,
   onSendSaveTheDate,
   onSendDigitalInvitation,
+  onSendRsvpReminder,
   isSendingSaveTheDate,
   isSendingDigital,
+  isSendingRsvpReminder,
 }: Props) {
   const [customization, setCustomization] = useState<Customization | null>(null);
   const [loadingCustomization, setLoadingCustomization] = useState(false);
@@ -876,6 +880,21 @@ export function InvitationSendModal({
                       : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
                     }
                   </Button>
+                  {/* RSVP Reminder — AI-only template, separate from invitation.
+                      Only enabled when guest has email AND hasn't responded yet. */}
+                  {guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={() => guest && onSendRsvpReminder(guest.id)}
+                      disabled={!!isSendingRsvpReminder}
+                    >
+                      {isSendingRsvpReminder
+                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending reminder…</>
+                        : <><Mail className="h-4 w-4" /> Send RSVP Reminder</>
+                      }
+                    </Button>
+                  )}
                   {!guest?.email && (
                     <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
                   )}

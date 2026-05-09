@@ -500,6 +500,58 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
 </html>`;
 }
 
+// ── RSVP Reminder email — AI-only template, intentionally separate from
+// the AI invitation template above. Sent only to guests who haven't yet
+// responded. Reuses the same RSVP URL but has its own copy and subject.
+interface AiRsvpReminderOpts {
+  couple: string;
+  guestName: string;
+  weddingDateStr: string | null;
+  rsvpUrl: string;
+  logoBase64?: string;
+}
+
+function aiRsvpReminderHtml(opts: AiRsvpReminderOpts): string {
+  const couple = escapeHtml(opts.couple);
+  const guestName = escapeHtml(opts.guestName);
+  const datePart = opts.weddingDateStr ? ` on <strong>${escapeHtml(opts.weddingDateStr)}</strong>` : "";
+  const logo = opts.logoBase64
+    ? `<img src="${opts.logoBase64}" alt="A.IDO" style="height:42px;width:auto;opacity:0.85;margin-bottom:18px;" />`
+    : "";
+  return `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>RSVP Reminder — ${couple}</title>
+</head>
+<body style="margin:0;padding:0;background:#1E1A2E;color:#ffffff;font-family:'Plus Jakarta Sans',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#1E1A2E;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;background:#26213a;border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:36px 32px;">
+          <tr>
+            <td align="center">
+              ${logo}
+              <p style="font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;letter-spacing:0.3em;color:#D4A017;text-transform:uppercase;margin:0 0 12px;">A friendly reminder</p>
+              <h1 style="font-family:'Cormorant Garamond',Georgia,serif;font-size:32px;line-height:1.2;margin:0 0 18px;color:#ffffff;font-weight:600;">Hi ${guestName},</h1>
+              <p style="font-size:15px;line-height:1.65;color:rgba(255,255,255,0.80);margin:0 0 22px;">
+                We noticed you haven't RSVP'd yet for ${couple}'s wedding${datePart}.
+                Your response helps us finalize the plans — please take a moment to let us know.
+              </p>
+              <a href="${opts.rsvpUrl}" style="display:inline-block;background:#D4A017;color:#1E1A2E;font-weight:700;text-decoration:none;font-size:13px;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;border-radius:8px;margin-top:6px;">RSVP Now</a>
+              <p style="font-size:12px;color:rgba(255,255,255,0.55);margin:28px 0 0;">With love,<br />${couple}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 router.get("/guests/:id/rsvp-link", requireAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -818,6 +870,78 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     req.log.error({ error: errorMsg, stack: err instanceof Error ? err.stack : undefined }, "Failed to send RSVP");
+    res.status(500).json({ error: "Internal server error", details: errorMsg });
+  }
+});
+
+// Send an AI-only RSVP reminder email. Only allowed when the guest hasn't
+// responded yet (rsvpStatus === "pending"). Uses aiRsvpReminderHtml — separate
+// from the AI invitation and Custom Design templates by design.
+router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid guest ID" });
+
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
+
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(400).json({ error: "No wedding profile found." });
+
+    const rows = await db
+      .select()
+      .from(guests)
+      .where(and(eq(guests.id, id), eq(guests.profileId, profile.id)))
+      .limit(1);
+    if (!rows.length) return res.status(404).json({ error: "Guest not found" });
+    const guest = rows[0];
+
+    // Reminder is only valid for guests who haven't responded yet.
+    if (guest.rsvpStatus !== "pending") {
+      return res.status(400).json({ error: "Guest has already responded — no reminder needed." });
+    }
+    if (!guest.email) {
+      return res.status(400).json({ error: "Guest has no email on file." });
+    }
+
+    const couple = `${profile.partner1Name ?? ""} & ${profile.partner2Name ?? ""}`.trim();
+    const weddingDateStr = profile.weddingDate
+      ? (() => {
+          const [y, m, d] = profile.weddingDate!.split("-").map(Number);
+          return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+        })()
+      : null;
+
+    const token = guest.rsvpToken ?? crypto.randomUUID();
+    if (!guest.rsvpToken) {
+      await db.update(guests).set({ rsvpToken: token }).where(eq(guests.id, id));
+    }
+
+    const origin = `${req.protocol}://${req.get("host")}`;
+    const rsvpUrl = `${origin}/rsvp/${token}`;
+    const logoBase64 = `${origin}/logo.png`;
+
+    const html = aiRsvpReminderHtml({
+      couple,
+      guestName: guest.name,
+      weddingDateStr,
+      rsvpUrl,
+      logoBase64,
+    });
+
+    const result = await sendEmail({
+      to: guest.email,
+      replyTo: "noreply@aidowedding.net",
+      fromName: `${couple} via A.IDO`,
+      subject: `Friendly Reminder: Please RSVP — ${couple}'s Wedding`,
+      text: `Hi ${guest.name},\n\nWe noticed you haven't RSVP'd yet for ${couple}'s wedding${weddingDateStr ? ` on ${weddingDateStr}` : ""}.\n\nPlease RSVP using the link below:\n${rsvpUrl}\n\nWith love,\n${couple}`,
+      html,
+    });
+
+    res.json({ rsvpUrl, emailSent: result.ok });
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    req.log.error({ error: errorMsg, stack: err instanceof Error ? err.stack : undefined }, "Failed to send RSVP reminder");
     res.status(500).json({ error: "Internal server error", details: errorMsg });
   }
 });
