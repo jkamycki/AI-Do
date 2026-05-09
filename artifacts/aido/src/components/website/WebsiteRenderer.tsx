@@ -135,12 +135,12 @@ function tspStyle(ctx: EditCtx, key: string) {
 
 // Style-only, no delete, no drag — for hero elements that must stay
 // centered. Visibility is controlled exclusively via sidebar toggles.
-function tspNoDelete(ctx: EditCtx, key: string) {
+function tspNoDelete(ctx: EditCtx, key: string, aiEnabled = false) {
   if (!ctx.editable) return {};
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
-    aiEnabled: false as const,
+    aiEnabled,
   };
 }
 
@@ -1003,16 +1003,18 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
     >
       <HeroBackground data={data} />
       <div className="relative max-w-3xl">
-        <EditableText
-          as="div"
-          editable={ctx.editable}
-          value={data.customText._heroTagline ?? ""}
-          defaultValue="We're getting married"
-          onCommit={(v) => ctx.onTextChange("_heroTagline", v)}
-          className="uppercase tracking-[0.3em] text-xs sm:text-sm mb-6 opacity-80"
-          style={{ color: (data.heroImage || (data.heroImages?.length ?? 0) > 0) ? "#fff" : data.colorPalette.primary, fontFamily: elementFont(data, "_heroTagline") ? bodyFontStack(elementFont(data, "_heroTagline")!) : undefined }}
-          {...tspNoDelete(ctx, "_heroTagline")}
-        />
+        {data.customText._heroTagline !== EDITABLE_HIDDEN_MARKER && (
+          <EditableText
+            as="div"
+            editable={ctx.editable}
+            value={data.customText._heroTagline ?? ""}
+            defaultValue="We're getting married"
+            onCommit={(v) => ctx.onTextChange("_heroTagline", v)}
+            className="uppercase tracking-[0.3em] text-xs sm:text-sm mb-6 opacity-80"
+            style={{ color: (data.heroImage || (data.heroImages?.length ?? 0) > 0) ? "#fff" : data.colorPalette.primary, fontFamily: elementFont(data, "_heroTagline") ? bodyFontStack(elementFont(data, "_heroTagline")!) : undefined }}
+            {...tspNoDelete(ctx, "_heroTagline", true)}
+          />
+        )}
         <EditableText
           as="div"
           editable={ctx.editable}
