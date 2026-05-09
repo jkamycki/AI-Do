@@ -1563,22 +1563,6 @@ export default function WebsiteEditor() {
         </div>
       </div>
 
-      {/* Trash drop zone — appears whenever a deletable text element is being
-          dragged. Drop the box here to remove it (Undo restores). */}
-      <div
-        data-aido-trash="true"
-        className={`pointer-events-auto fixed bottom-6 right-6 z-[200] flex items-center gap-2 px-4 py-3 rounded-full border-2 shadow-lg transition-all duration-200 ${
-          editableDragging
-            ? "border-red-500 bg-red-500/95 text-white scale-110"
-            : "border-border bg-background/90 text-muted-foreground opacity-50 hover:opacity-100 backdrop-blur"
-        }`}
-        title="Drag a text box here to delete"
-      >
-        <Trash2 className={`h-4 w-4 ${editableDragging ? "text-white" : ""}`} />
-        <span className="text-xs font-medium">
-          {editableDragging ? t("website_editor.release_to_delete", { defaultValue: "Release to delete" }) : t("website_editor.drop_to_delete", { defaultValue: "Drop to delete" })}
-        </span>
-      </div>
 
       {ctxMenu && (
         <div
