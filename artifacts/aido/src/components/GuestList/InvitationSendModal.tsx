@@ -727,11 +727,7 @@ export function InvitationSendModal({
                         <AiSaveDatePreview
                           profile={profile}
                           palette={customPalette}
-<<<<<<< HEAD
                           photoUrl={customization.saveTheDatePhotoUrl || null}
-=======
-                          photoUrl={customization.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl || null}
->>>>>>> origin/main
                           photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                           customColors={customColors}
                         />
@@ -783,11 +779,7 @@ export function InvitationSendModal({
                           partner2Name={profile.partner2Name ?? ""}
                           weddingDate={profile.weddingDate ?? ""}
                           venue={profile.venue ?? ""}
-<<<<<<< HEAD
                           photoUrl={customization.digitalInvitationPhotoUrl || null}
-=======
-                          photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || null}
->>>>>>> origin/main
                           photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                           onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
                           guestName={guest?.name ?? "Guest"}
@@ -843,15 +835,7 @@ export function InvitationSendModal({
                     <AiSaveDatePreview
                       profile={profile}
                       palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
-<<<<<<< HEAD
                       photoUrl={customization.saveTheDatePhotoUrl || null}
-=======
-                      photoUrl={
-                        customization.saveTheDatePhotoUrl
-                        || profile.saveTheDatePhotoUrl
-                        || null
-                      }
->>>>>>> origin/main
                       photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                     />
                   )}
