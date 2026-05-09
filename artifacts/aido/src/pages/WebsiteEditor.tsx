@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
-  QrCode, Download, Link2, Plus, Megaphone, Users, Undo2, Sparkles, Settings, Trash2,
+  QrCode, Download, Link2, Plus, Megaphone, Users, Undo2, Sparkles, Settings, Trash2, Smile,
 } from "lucide-react";
 import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
 import { flushPendingEditableCommits, subscribeEditableDrag, EDITABLE_HIDDEN_MARKER } from "@/components/website/EditableText";
@@ -87,6 +87,8 @@ export default function WebsiteEditor() {
   const [qrOpen, setQrOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings" | "content">("design");
   const inTab = (t: typeof activeTab) => activeTab === t;
+  const [emojiFieldOpen, setEmojiFieldOpen] = useState<string | null>(null);
+  const contentInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
   // x/y are viewport coords (used to position the menu); canvasX/canvasY are
   // coords relative to the WebsiteRenderer container (used so a newly
   // inserted text box lands where the user right-clicked).
@@ -857,54 +859,126 @@ export default function WebsiteEditor() {
             side-by-side, so this is a plain form for the highest-impact
             text fields. Updates flow through the existing customText jsonb
             so the live preview reflects them when the user toggles back. */}
-        {inTab("content") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_content", { defaultValue: "Page content" })}>
-          <div className="space-y-4">
-            {([
-              { key: "_heroTagline",  label: t("website_editor.content_hero_tagline", { defaultValue: "Hero tagline (e.g. We're getting married)" }), placeholder: "We're getting married" },
-              { key: "_coupleName",   label: t("website_editor.content_couple_name", { defaultValue: "Couple name (overrides profile)" }), placeholder: "Alex & Jordan" },
-              { key: "_heroDate",     label: t("website_editor.content_hero_date", { defaultValue: "Hero date" }), placeholder: "Saturday, June 15, 2025" },
-              { key: "_announcement", label: t("website_editor.content_announcement", { defaultValue: "Announcement banner" }), placeholder: "" },
-            ] as const).map(({ key, label, placeholder }) => (
-              <div key={key}>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">{label}</label>
-                <Input
-                  value={record.customText[key] ?? ""}
-                  placeholder={placeholder}
-                  onChange={(e) => update({ customText: { ...record.customText, [key]: e.target.value } })}
-                />
+        {inTab("content") && (() => {
+          const CONTENT_EMOJIS = [
+            "💍", "💐", "💒", "👰", "🤵", "💕", "💖", "❤️", "🌹", "🥂",
+            "🍾", "🎉", "🎊", "✨", "💫", "🕊️", "🦋", "🌸", "📅", "✉️",
+            "🌷", "🌺", "🌻", "🌼", "🍰", "🧁", "🎂", "🎁", "💌", "👑",
+          ];
+          const insertEmoji = (key: string, emoji: string, currentValue: string, onChange: (v: string) => void) => {
+            const el = contentInputRefs.current[key];
+            const start = el?.selectionStart ?? currentValue.length;
+            const end = el?.selectionEnd ?? currentValue.length;
+            onChange(currentValue.slice(0, start) + emoji + currentValue.slice(end));
+            setEmojiFieldOpen(null);
+            requestAnimationFrame(() => {
+              if (el) {
+                el.focus();
+                el.setSelectionRange(start + emoji.length, start + emoji.length);
+              }
+            });
+          };
+          const EmojiGrid = ({ fieldKey, currentValue, onChange }: { fieldKey: string; currentValue: string; onChange: (v: string) => void }) => (
+            <div className="mt-1.5 p-2 rounded-lg border border-border bg-background shadow-md">
+              <div className="grid grid-cols-10 gap-0.5">
+                {CONTENT_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    className="text-base leading-none p-1 rounded hover:bg-accent transition-colors"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => insertEmoji(fieldKey, emoji, currentValue, onChange)}
+                    title={emoji}
+                  >
+                    {emoji}
+                  </button>
+                ))}
               </div>
-            ))}
-            {([
-              { key: "welcome",        label: t("website_editor.content_welcome", { defaultValue: "Welcome message" }) },
-              { key: "story",          label: t("website_editor.content_story", { defaultValue: "Our story" }) },
-              { key: "rsvp_subtitle",  label: t("website_editor.content_rsvp_subtitle", { defaultValue: "RSVP subtitle" }) },
-              { key: "rsvp_thankyou",  label: t("website_editor.content_rsvp_thankyou", { defaultValue: "RSVP thank-you message" }) },
-            ] as const).map(({ key, label }) => (
-              <div key={key}>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">{label}</label>
-                <textarea
-                  value={record.customText[key] ?? ""}
-                  onChange={(e) => update({ customText: { ...record.customText, [key]: e.target.value } })}
-                  rows={3}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-              </div>
-            ))}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">
-                {t("website_editor.content_rsvp_deadline", { defaultValue: "RSVP deadline" })}
-              </label>
-              <Input
-                value={record.customText.rsvp_deadline ?? ""}
-                placeholder="May 1, 2025"
-                onChange={(e) => update({ customText: { ...record.customText, rsvp_deadline: e.target.value } })}
-              />
             </div>
-            <p className="text-xs text-muted-foreground">
-              {t("website_editor.content_help", { defaultValue: "Tap Preview at the bottom to see your changes. Save when you're happy." })}
-            </p>
-          </div>
-        </Section>}
+          );
+          return (
+            <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_content", { defaultValue: "Page content" })}>
+              <div className="space-y-4">
+                {([
+                  { key: "_heroTagline",  label: t("website_editor.content_hero_tagline", { defaultValue: "Hero tagline (e.g. We're getting married)" }), placeholder: "We're getting married" },
+                  { key: "_coupleName",   label: t("website_editor.content_couple_name", { defaultValue: "Couple name (overrides profile)" }), placeholder: "Alex & Jordan" },
+                  { key: "_heroDate",     label: t("website_editor.content_hero_date", { defaultValue: "Hero date" }), placeholder: "Saturday, June 15, 2025" },
+                  { key: "_announcement", label: t("website_editor.content_announcement", { defaultValue: "Announcement banner" }), placeholder: "" },
+                ] as const).map(({ key, label, placeholder }) => {
+                  const currentValue = record.customText[key] ?? "";
+                  const onChange = (v: string) => update({ customText: { ...record.customText, [key]: v } });
+                  return (
+                    <div key={key}>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-medium text-muted-foreground">{label}</label>
+                        <button
+                          type="button"
+                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          title={t("text_toolbar.insert-emoji", { defaultValue: "Insert emoji" })}
+                          onClick={() => setEmojiFieldOpen(emojiFieldOpen === key ? null : key)}
+                        >
+                          <Smile className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <Input
+                        ref={(el) => { contentInputRefs.current[key] = el; }}
+                        value={currentValue}
+                        placeholder={placeholder}
+                        onChange={(e) => onChange(e.target.value)}
+                      />
+                      {emojiFieldOpen === key && <EmojiGrid fieldKey={key} currentValue={currentValue} onChange={onChange} />}
+                    </div>
+                  );
+                })}
+                {([
+                  { key: "welcome",        label: t("website_editor.content_welcome", { defaultValue: "Welcome message" }) },
+                  { key: "story",          label: t("website_editor.content_story", { defaultValue: "Our story" }) },
+                  { key: "rsvp_subtitle",  label: t("website_editor.content_rsvp_subtitle", { defaultValue: "RSVP subtitle" }) },
+                  { key: "rsvp_thankyou",  label: t("website_editor.content_rsvp_thankyou", { defaultValue: "RSVP thank-you message" }) },
+                ] as const).map(({ key, label }) => {
+                  const currentValue = record.customText[key] ?? "";
+                  const onChange = (v: string) => update({ customText: { ...record.customText, [key]: v } });
+                  return (
+                    <div key={key}>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-medium text-muted-foreground">{label}</label>
+                        <button
+                          type="button"
+                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          title={t("text_toolbar.insert-emoji", { defaultValue: "Insert emoji" })}
+                          onClick={() => setEmojiFieldOpen(emojiFieldOpen === key ? null : key)}
+                        >
+                          <Smile className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <textarea
+                        ref={(el) => { contentInputRefs.current[key] = el; }}
+                        value={currentValue}
+                        onChange={(e) => onChange(e.target.value)}
+                        rows={3}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                      {emojiFieldOpen === key && <EmojiGrid fieldKey={key} currentValue={currentValue} onChange={onChange} />}
+                    </div>
+                  );
+                })}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">
+                    {t("website_editor.content_rsvp_deadline", { defaultValue: "RSVP deadline" })}
+                  </label>
+                  <Input
+                    value={record.customText.rsvp_deadline ?? ""}
+                    placeholder="May 1, 2025"
+                    onChange={(e) => update({ customText: { ...record.customText, rsvp_deadline: e.target.value } })}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("website_editor.content_help", { defaultValue: "Tap Preview at the bottom to see your changes. Save when you're happy." })}
+                </p>
+              </div>
+            </Section>
+          );
+        })()}
 
         {/* Text tools */}
         {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_text_tools", { defaultValue: "Text Tools" })}>
