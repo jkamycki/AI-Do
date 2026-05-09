@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { Heart, Mail, MapPin, Download } from "lucide-react";
 import type { ColorPalette } from "@/types/invitations";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
@@ -88,17 +88,37 @@ function CardShell({
   children,
   photoUrl,
   photoPosition = { x: 50, y: 50 },
+  onPhotoPositionChange,
   customColors,
 }: {
   children: ReactNode;
   photoUrl?: string | null;
   photoPosition?: PhotoPosition;
+  onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
 }) {
   const bg      = customColors?.bg      ?? BG;
   const accent  = customColors?.accent  ?? GOLD;
   const cardBdr = customColors?.cardBdr ?? CARD_BDR;
   const dotPat  = `radial-gradient(${accent}22 1px, transparent 1px)`;
+
+  const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
+  const handleDown = (e: React.PointerEvent) => {
+    if (!onPhotoPositionChange) return;
+    e.preventDefault();
+    panRef.current = { sx: e.clientX, sy: e.clientY, ox: photoPosition.x, oy: photoPosition.y };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const handleMove = (e: React.PointerEvent) => {
+    if (!panRef.current || !onPhotoPositionChange) return;
+    const dx = e.clientX - panRef.current.sx;
+    const dy = e.clientY - panRef.current.sy;
+    onPhotoPositionChange({
+      x: Math.max(0, Math.min(100, panRef.current.ox - dx * 0.35)),
+      y: Math.max(0, Math.min(100, panRef.current.oy - dy * 0.35)),
+    });
+  };
+  const handleUp = () => { panRef.current = null; };
 
   const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
@@ -118,14 +138,25 @@ function CardShell({
 
       {/* Optional photo */}
       {hasPhoto && (
-        <div style={{ padding: "0 20px 10px", backgroundImage: dotPat, backgroundSize: "22px 22px" }}>
+        <div
+          style={{
+            padding: "0 20px 10px", backgroundImage: dotPat, backgroundSize: "22px 22px",
+            cursor: onPhotoPositionChange ? "grab" : undefined,
+          }}
+          onPointerDown={handleDown}
+          onPointerMove={handleMove}
+          onPointerUp={handleUp}
+          onPointerCancel={handleUp}
+        >
           <AuthMediaImage
             src={photoUrl!}
             alt="Wedding photo"
+            draggable={false}
             style={{
               width: "100%", height: 130, objectFit: "cover", borderRadius: 8,
               display: "block", boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
               objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
+              pointerEvents: "none", userSelect: "none",
             }}
           />
         </div>
@@ -150,12 +181,14 @@ export function AiSaveDatePreview({
   palette: _palette,
   photoUrl,
   photoPosition,
+  onPhotoPositionChange,
   customColors,
 }: {
   profile: WeddingInfo;
   palette: ColorPalette;
   photoUrl?: string | null;
   photoPosition?: PhotoPosition;
+  onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
 }) {
   const accent      = customColors?.accent  ?? GOLD;
@@ -176,7 +209,7 @@ export function AiSaveDatePreview({
   const cityLine  = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
 
   return (
-    <CardShell photoUrl={photoUrl} photoPosition={photoPosition} customColors={customColors}>
+    <CardShell photoUrl={photoUrl} photoPosition={photoPosition} onPhotoPositionChange={onPhotoPositionChange} customColors={customColors}>
       <Badge accent={accent}><Mail style={{ width: 22, height: 22, color: accent }} /></Badge>
 
       <p style={{ fontFamily: labelFont, fontSize: 11 * sc, fontWeight: 700,
@@ -254,12 +287,14 @@ export function AiDigitalInvitationPreview({
   palette: _palette,
   photoUrl,
   photoPosition,
+  onPhotoPositionChange,
   customColors,
 }: {
   profile: WeddingInfo;
   palette: ColorPalette;
   photoUrl?: string | null;
   photoPosition?: PhotoPosition;
+  onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
 }) {
   const bg      = customColors?.bg      ?? BG;
@@ -278,7 +313,7 @@ export function AiDigitalInvitationPreview({
   ].filter(Boolean).join(" · ");
 
   return (
-    <CardShell photoUrl={photoUrl} photoPosition={photoPosition} customColors={customColors}>
+    <CardShell photoUrl={photoUrl} photoPosition={photoPosition} onPhotoPositionChange={onPhotoPositionChange} customColors={customColors}>
       <Badge accent={accent}><Heart style={{ width: 22, height: 22, color: accent, fill: accent }} /></Badge>
 
       <p style={{ fontFamily: jakarta, fontSize: 11, fontWeight: 700,
