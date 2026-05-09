@@ -1255,7 +1255,7 @@ function SectionShell({
   return (
     <section
       id={id}
-      className={`py-20 px-6${tall ? " min-h-screen" : ""}`}
+      className={`py-20 px-6 overflow-x-clip${tall ? " min-h-screen" : ""}`}
       style={{
         // Welcome has its own _welcomeBg picker; everything else shares
         // _sectionsBg so the user can recolour all non-welcome sections at
@@ -1349,8 +1349,8 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={text}
         defaultValue={(ctx.editable || ctx.previewMode) ? "Tell guests how you two met, your story, your journey..." : ""}
         onCommit={(v) => ctx.onTextChange("story", v)}
-        className="text-center text-base sm:text-lg leading-relaxed max-w-3xl mx-auto px-4 whitespace-pre-line break-words"
-        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+        className="text-center text-base sm:text-lg leading-relaxed mx-auto px-4 whitespace-pre-line break-words"
+        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)), maxWidth: "min(48rem, 100%)" }}
         {...tsp(ctx, "story")}
       />
     </SectionShell>
