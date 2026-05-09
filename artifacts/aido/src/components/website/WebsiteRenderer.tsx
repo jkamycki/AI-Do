@@ -1143,11 +1143,10 @@ function SectionShell({
       id={id}
       className="py-20 px-6"
       style={{
-        // Per-page background: stored in customText as _<id>Bg. Falls back
-        // to the legacy _welcomeBg key for the welcome page so existing
-        // sites keep their previously chosen Welcome BG, then to the
-        // theme's neutral colour if neither override is set.
-        background: (data.customText[`_${id}Bg`] || (id === "welcome" ? data.customText._welcomeBg : "") || "")
+        // Welcome has its own _welcomeBg picker; everything else shares
+        // _sectionsBg so the user can recolour all non-welcome sections at
+        // once. Falls back to the theme's neutral colour when neither is set.
+        background: (id === "welcome" ? data.customText._welcomeBg : data.customText._sectionsBg)
           || backgroundWithOpacity(data, data.colorPalette.neutral),
       }}
     >
