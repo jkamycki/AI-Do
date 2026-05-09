@@ -1840,14 +1840,24 @@ export default function WebsiteEditor() {
           <button
             className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent flex items-center gap-2"
             onClick={() => {
-              const key = `_custom_${Date.now()}`;
+              // Encode the section in the key so the textbox only renders on
+              // the page it was added to. CustomTextBoxes parses this back out.
+              const key = `_custom_${editorSection || "home"}__${Date.now()}`;
               const insertAt = ctxMenu ? { x: ctxMenu.canvasX, y: ctxMenu.canvasY } : { x: 0, y: 0 };
               patchRecord((prev) => {
                 // CustomTextBoxes lays new boxes out at (left: 24, top: 120 + idx*56)
                 // by default, then DraggableRow applies textPositions[key] as a
                 // translate delta. To land the box at the right-click point, the
                 // delta has to compensate for that base.
-                const customCount = Object.keys(prev.customText).filter((k) => k.startsWith("_custom_")).length;
+                // Match the renderer's filter: only boxes on the current
+                // section count toward the vertical stack offset.
+                const sectionOf = (k: string) => {
+                  const m = k.match(/^_custom_([a-zA-Z]+)__\d+$/);
+                  return m ? m[1] : "home";
+                };
+                const customCount = Object.keys(prev.customText).filter(
+                  (k) => k.startsWith("_custom_") && sectionOf(k) === (editorSection || "home"),
+                ).length;
                 const baseLeft = 24;
                 const baseTop = 120 + customCount * 56;
                 return {

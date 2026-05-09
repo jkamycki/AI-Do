@@ -1170,12 +1170,27 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 // stay visible regardless of which section is currently scrolled to. The
 // outer wrapper is marked position:relative so absolute positioning here
 // is anchored to the whole page.
-function CustomTextBoxes({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
+// Custom text-box keys are `_custom_<section>__<timestamp>`. Legacy keys
+// (`_custom_<timestamp>`, no section) are treated as belonging to "home".
+function sectionForCustomKey(key: string): string {
+  const m = key.match(/^_custom_([a-zA-Z]+)__\d+$/);
+  return m ? m[1] : "home";
+}
+
+function CustomTextBoxes({ data, ctx, currentSection, showAll }: {
+  data: WebsiteRendererPayload;
+  ctx: EditCtx;
+  currentSection: string;
+  showAll: boolean;
+}) {
   return (
     <>
       {Object.entries(data.customText)
         .filter(([k, v]) => {
           if (!k.startsWith("_custom_")) return false;
+          // Only show this textbox on the page it was added to (or always
+          // when the renderer is in show-all mode for full-site preview).
+          if (!showAll && sectionForCustomKey(k) !== currentSection) return false;
           if (!ctx.editable) return !!v?.trim() && v.trim() !== "New text — click to edit";
           return true;
         })
@@ -1221,6 +1236,7 @@ function SectionShell({
   children,
   data,
   ctx,
+  tall = false,
 }: {
   id: string;
   titleKey: string;
@@ -1229,11 +1245,12 @@ function SectionShell({
   children: React.ReactNode;
   data: WebsiteRendererPayload;
   ctx: EditCtx;
+  tall?: boolean;
 }) {
   return (
     <section
       id={id}
-      className="py-20 px-6"
+      className={`py-20 px-6${tall ? " min-h-screen flex items-center" : ""}`}
       style={{
         // Welcome has its own _welcomeBg picker; everything else shares
         // _sectionsBg so the user can recolour all non-welcome sections at
@@ -1242,7 +1259,7 @@ function SectionShell({
           || backgroundWithOpacity(data, data.colorPalette.neutral),
       }}
     >
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto w-full">
         {(() => {
           const headerColor = ctx.textStyles?.[titleKey]?.color || data.colorPalette.secondary;
           const headerFontSize = ctx.textStyles?.[titleKey]?.fontSize;
@@ -1306,7 +1323,7 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.story ?? "";
   if (!text && !ctx.editable) return null;
   return (
-    <SectionShell id="story" titleKey="story_title" defaultTitle="Our Story" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx}>
+    <SectionShell id="story" titleKey="story_title" defaultTitle="Our Story" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx} tall>
       <EditableText
         as="div"
         editable={ctx.editable}
@@ -1324,7 +1341,7 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={text}
         defaultValue={ctx.editable ? "Tell guests how you two met, your story, your journey..." : ""}
         onCommit={(v) => ctx.onTextChange("story", v)}
-        className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
+        className="text-center text-base sm:text-lg leading-relaxed max-w-3xl mx-auto px-4 whitespace-pre-line break-words"
         style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
         {...tsp(ctx, "story")}
       />
@@ -2524,7 +2541,7 @@ export function WebsiteRenderer({
           : <RsvpSection data={data} ctx={ctx} />
       )}
       <Footer data={data} ctx={ctx} />
-      <CustomTextBoxes data={data} ctx={ctx} />
+      <CustomTextBoxes data={data} ctx={ctx} currentSection={currentSection ?? "home"} showAll={showAll} />
     </div>
   );
 }
