@@ -119,6 +119,22 @@ export function useUpload(options: UseUploadOptions = {}) {
     []
   );
 
+  const claimUpload = useCallback(
+    async (objectPath: string): Promise<void> => {
+      const authHeaders = await buildAuthHeaders();
+      const response = await fetch(`${basePath}/uploads/claim`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ objectPath }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `Failed to claim upload (HTTP ${response.status})`);
+      }
+    },
+    [basePath, buildAuthHeaders]
+  );
+
   const uploadFile = useCallback(
     async (file: File): Promise<UploadResponse | null> => {
       setIsUploading(true);
@@ -132,6 +148,9 @@ export function useUpload(options: UseUploadOptions = {}) {
         setProgress(30);
         await uploadToPresignedUrl(file, uploadResponse.uploadURL);
 
+        setProgress(70);
+        await claimUpload(uploadResponse.objectPath);
+
         setProgress(100);
         options.onSuccess?.(uploadResponse);
         return uploadResponse;
@@ -144,7 +163,7 @@ export function useUpload(options: UseUploadOptions = {}) {
         setIsUploading(false);
       }
     },
-    [requestUploadUrl, uploadToPresignedUrl, options]
+    [requestUploadUrl, uploadToPresignedUrl, claimUpload, options]
   );
 
   const getUploadParameters = useCallback(
