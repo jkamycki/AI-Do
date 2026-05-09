@@ -337,6 +337,9 @@ export default function WebsiteEditor() {
   }, [record, previewExtra?.couple]);
 
   const [saveError, setSaveError] = useState(false);
+  // Tracks the most recent server/network error so handleSave can surface it
+  // in the failure toast for diagnosis. Cleared on every successful save.
+  const lastSaveErrorRef = useRef<{ status?: number; message: string } | null>(null);
 
   // localStorage backup — every dirty save snapshot is mirrored here so a
   // failed POST + closed tab still recovers on next mount.
@@ -437,6 +440,7 @@ export default function WebsiteEditor() {
       const seqAtSend = editSeqRef.current;
       const result = await postSave(body);
       if (result.ok) {
+        lastSaveErrorRef.current = null;
         const userEditedDuringSave = editSeqRef.current !== seqAtSend;
         setRecord((prev) => {
           if (!prev) return result.record;
@@ -469,6 +473,9 @@ export default function WebsiteEditor() {
       }
 
       console.error("[WebsiteEditor] save failed after retries", result.err);
+      const message =
+        result.err instanceof Error ? result.err.message : String(result.err ?? "Unknown error");
+      lastSaveErrorRef.current = { status: result.status, message };
       setSaveError(true);
       return false;
     } finally {
@@ -545,7 +552,10 @@ export default function WebsiteEditor() {
     const ok = await saveNow(false);
     if (ok) toast({ title: "Saved!" });
     else {
-      const detail = "We'll keep retrying in the background — your work is backed up locally.";
+      const err = lastSaveErrorRef.current;
+      const detail = err
+        ? `${err.status ? `HTTP ${err.status} — ` : ""}${err.message} (your work is backed up locally and will keep retrying)`
+        : "We'll keep retrying in the background — your work is backed up locally.";
       toast({ title: "Save didn't go through", description: detail, variant: "destructive" });
     }
   };
