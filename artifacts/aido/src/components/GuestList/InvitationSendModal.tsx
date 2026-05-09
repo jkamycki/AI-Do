@@ -524,9 +524,12 @@ export function InvitationSendModal({
   const [bypassBlock, setBypassBlock] = useState(false);
 
   useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
+
+  useEffect(() => {
     if (!guest || !profile?.id) {
       setCustomization(null);
-      setActiveTab(defaultTab);
       setBypassBlock(false);
       return;
     }
