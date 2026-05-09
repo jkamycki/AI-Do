@@ -995,7 +995,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
     >
       <HeroBackground data={data} />
       <div className="relative max-w-3xl">
-        {data.customText._heroTagline !== EDITABLE_HIDDEN_MARKER && (
+        {data.customText._heroTaglineHidden !== EDITABLE_HIDDEN_MARKER && (
           <EditableText
             as="div"
             editable={ctx.editable}
