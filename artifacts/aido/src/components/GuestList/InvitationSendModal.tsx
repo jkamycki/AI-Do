@@ -60,8 +60,6 @@ interface Profile {
   receptionTime?: string | null;
   invitationMessage?: string | null;
   saveTheDateMessage?: string | null;
-  saveTheDatePhotoUrl?: string | null;
-  digitalInvitationPhotoUrl?: string | null;
   ceremonyAtVenue?: boolean;
   ceremonyVenueName?: string | null;
   ceremonyAddress?: string | null;
@@ -729,7 +727,7 @@ export function InvitationSendModal({
                         <AiSaveDatePreview
                           profile={profile}
                           palette={customPalette}
-                          photoUrl={customization.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl || null}
+                          photoUrl={customization.saveTheDatePhotoUrl || null}
                           photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                           customColors={customColors}
                         />
@@ -781,7 +779,7 @@ export function InvitationSendModal({
                           partner2Name={profile.partner2Name ?? ""}
                           weddingDate={profile.weddingDate ?? ""}
                           venue={profile.venue ?? ""}
-                          photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || null}
+                          photoUrl={customization.digitalInvitationPhotoUrl || null}
                           photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                           onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
                           guestName={guest?.name ?? "Guest"}
@@ -835,11 +833,7 @@ export function InvitationSendModal({
                     <AiSaveDatePreview
                       profile={profile}
                       palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
-                      photoUrl={
-                        customization.saveTheDatePhotoUrl
-                        || profile.saveTheDatePhotoUrl
-                        || null
-                      }
+                      photoUrl={customization.saveTheDatePhotoUrl || null}
                       photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                     />
                   )}
