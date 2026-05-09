@@ -470,7 +470,7 @@ export default function Rsvp() {
         <div style={{ height: 1, background: CARD_BDR }} />
 
         {/* RSVP form card */}
-        <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${CARD_BDR}` }}>
+        <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ background: "rgba(255,255,255,0.09)", border: `1px solid rgba(255,255,255,0.22)` }}>
           <div className="h-1.5 w-full" style={{ background: GOLD }} />
           <div className="pt-7 pb-8 px-6 sm:px-8 space-y-6">
 
@@ -497,10 +497,10 @@ export default function Rsvp() {
                           className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all"
                           style={field.value === "attending"
                             ? { borderColor: "#22c55e", background: "rgba(34,197,94,0.12)", color: "#86efac" }
-                            : { borderColor: CARD_BDR, background: "rgba(255,255,255,0.04)", color: MUTED }
+                            : { borderColor: "rgba(255,255,255,0.22)", background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.75)" }
                           }
                         >
-                          <CheckCircle2 className="h-7 w-7" style={{ color: field.value === "attending" ? "#4ade80" : "rgba(255,255,255,0.3)" }} />
+                          <CheckCircle2 className="h-7 w-7" style={{ color: field.value === "attending" ? "#4ade80" : "rgba(255,255,255,0.5)" }} />
                           <span className="font-semibold text-sm">Joyfully Accepts</span>
                         </button>
                         <button
@@ -509,10 +509,10 @@ export default function Rsvp() {
                           className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all"
                           style={field.value === "declined"
                             ? { borderColor: "#ef4444", background: "rgba(239,68,68,0.12)", color: "#fca5a5" }
-                            : { borderColor: CARD_BDR, background: "rgba(255,255,255,0.04)", color: MUTED }
+                            : { borderColor: "rgba(255,255,255,0.22)", background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.75)" }
                           }
                         >
-                          <XCircle className="h-7 w-7" style={{ color: field.value === "declined" ? "#f87171" : "rgba(255,255,255,0.3)" }} />
+                          <XCircle className="h-7 w-7" style={{ color: field.value === "declined" ? "#f87171" : "rgba(255,255,255,0.5)" }} />
                           <span className="font-semibold text-sm">Declines with Regrets</span>
                         </button>
                       </div>

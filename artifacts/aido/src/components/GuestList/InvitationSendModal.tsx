@@ -81,6 +81,7 @@ interface Props {
   isSendingSaveTheDate: boolean;
   isSendingDigital: boolean;
   isSendingRsvpReminder?: boolean;
+  defaultTab?: "saveTheDate" | "digitalInvitation";
 }
 
 function formatTime(timeStr: string | null | undefined): string | null {
@@ -513,16 +514,17 @@ export function InvitationSendModal({
   isSendingSaveTheDate,
   isSendingDigital,
   isSendingRsvpReminder,
+  defaultTab = "saveTheDate",
 }: Props) {
   const [customization, setCustomization] = useState<Customization | null>(null);
   const [loadingCustomization, setLoadingCustomization] = useState(false);
-  const [activeTab, setActiveTab] = useState<"saveTheDate" | "digitalInvitation">("saveTheDate");
+  const [activeTab, setActiveTab] = useState<"saveTheDate" | "digitalInvitation">(defaultTab);
   const [bypassBlock, setBypassBlock] = useState(false);
 
   useEffect(() => {
     if (!guest || !profile?.id) {
       setCustomization(null);
-      setActiveTab("saveTheDate");
+      setActiveTab(defaultTab);
       setBypassBlock(false);
       return;
     }
