@@ -1094,16 +1094,20 @@ export default function InvitationCustomizationPage({
                 const customPalette = isCustom
                   ? { ...displayPalette, primary: cd.accentColor, secondary: cd.accentColor, accent: cd.accentColor }
                   : displayPalette;
-                const wrapperStyle: React.CSSProperties | undefined = isCustom
+                // Build the CustomColors object so the card shell (bg, dots,
+                // borders) actually picks up the chosen theme colors instead
+                // of always rendering the hardcoded dark-navy defaults.
+                const previewCustomColors = isCustom
                   ? {
-                      fontFamily: `'${cd.fontFamily}', serif`,
-                      fontSize: `${cd.fontSize}px`,
-                      color: cd.fontColor,
-                      background: cd.backgroundColor,
+                      bg: cd.backgroundColor,
+                      accent: cd.accentColor,
+                      text: cd.fontColor,
+                      muted: cd.fontColor + "99",
+                      cardBdr: cd.accentColor + "33",
                     }
                   : undefined;
                 return (
-                  <div style={wrapperStyle}>
+                  <div>
                     {isSTD ? (
                       <AiSaveDatePreview
                         profile={{
@@ -1121,6 +1125,7 @@ export default function InvitationCustomizationPage({
                         palette={customPalette}
                         photoUrl={saveTheDatePhotoUrl}
                         photoPosition={saveTheDatePhotoPosition}
+                        customColors={previewCustomColors}
                       />
                     ) : (
                       <RsvpPagePreview
