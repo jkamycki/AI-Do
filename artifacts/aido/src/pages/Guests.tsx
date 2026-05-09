@@ -640,6 +640,7 @@ export default function Guests() {
 
   const [sendModalGuest, setSendModalGuest] = useState<Guest | null>(null);
   const [sendModalDefaultTab, setSendModalDefaultTab] = useState<"saveTheDate" | "digitalInvitation">("saveTheDate");
+  const [sendModalReminderOnly, setSendModalReminderOnly] = useState(false);
 
   const { data: weddingProfile, isLoading: profileLoading } = useGetProfile();
   const { data, isLoading, isError } = useGetGuests();
@@ -1566,6 +1567,7 @@ export default function Guests() {
                               onClick={() => {
                                 if (g.rsvpStatus === "attending" || g.rsvpStatus === "declined") return;
                                 setSendModalDefaultTab("saveTheDate");
+                                setSendModalReminderOnly(false);
                                 setSendModalGuest(g);
                               }}
                             >
@@ -1579,6 +1581,7 @@ export default function Guests() {
                                 title="Send RSVP reminder"
                                 onClick={() => {
                                   setSendModalDefaultTab("digitalInvitation");
+                                  setSendModalReminderOnly(true);
                                   setSendModalGuest(g);
                                 }}
                               >
@@ -1671,6 +1674,7 @@ export default function Guests() {
         isSendingDigital={sendRsvp.isPending}
         isSendingRsvpReminder={sendRsvpReminder.isPending}
         defaultTab={sendModalDefaultTab}
+        reminderOnly={sendModalReminderOnly}
       />
     </div>
   );
