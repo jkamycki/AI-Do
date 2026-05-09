@@ -7,7 +7,7 @@ import { clerkClient } from "@clerk/express";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
 import { getSupportInboxAddresses, buildSupportThreadAddress, ensureContactThreadToken } from "../lib/supportInbox";
 
-const OWNER_EMAILS = ["kamyckijoseph@gmail.com"];
+const OWNER_EMAILS = [process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com"];
 
 const router = Router();
 

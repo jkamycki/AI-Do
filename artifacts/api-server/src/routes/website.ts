@@ -473,10 +473,9 @@ router.get("/website/public/:slug/guests/:guestId", async (req, res) => {
   try {
     const slug = String(req.params.slug ?? "").toLowerCase();
     const guestId = parseInt(String(req.params.guestId), 10);
-    const password = req.query.password ? String(req.query.password) : undefined;
     if (!Number.isFinite(guestId)) return res.status(400).json({ error: "Bad guest id" });
 
-    const r = await resolvePublishedSite(slug, password);
+    const r = await resolvePublishedSite(slug, req);
     if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
 
     const [guest] = await db
@@ -491,7 +490,6 @@ router.get("/website/public/:slug/guests/:guestId", async (req, res) => {
       name: guest.name,
       rsvpStatus: guest.rsvpStatus,
       mealChoice: guest.mealChoice,
-      dietaryNotes: guest.dietaryNotes,
       plusOne: guest.plusOne,
       plusOneName: guest.plusOneName,
       plusOneMealChoice: guest.plusOneMealChoice,
@@ -569,8 +567,7 @@ router.get("/website/preview/guests/:guestId", requireAuth, async (req, res) => 
 router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
   try {
     const slug = String(req.params.slug ?? "").toLowerCase();
-    const password = req.body?.password ? String(req.body.password) : undefined;
-    const r = await resolvePublishedSite(slug, password);
+    const r = await resolvePublishedSite(slug, req);
     if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
 
     const {
@@ -657,8 +654,7 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
 router.post("/website/public/:slug/rsvp", async (req, res) => {
   try {
     const slug = String(req.params.slug ?? "").toLowerCase();
-    const password = req.body?.password ? String(req.body.password) : undefined;
-    const r = await resolvePublishedSite(slug, password);
+    const r = await resolvePublishedSite(slug, req);
     if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
 
     const {

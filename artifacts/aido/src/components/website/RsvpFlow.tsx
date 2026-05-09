@@ -7,8 +7,6 @@ import type { WebsiteRendererPayload } from "./WebsiteRenderer";
 interface GuestMatch {
   id: number;
   name: string;
-  rsvpStatus: string;
-  plusOne: boolean;
 }
 
 interface GuestDetails {
@@ -65,7 +63,7 @@ export function RsvpFlow({
   const text = data.colorPalette.text;
   const bg = data.colorPalette.background;
 
-  const queryArgs = password ? `&password=${encodeURIComponent(password)}` : "";
+  const passwordHeader: Record<string, string> = password ? { "X-Site-Password": password } : {};
 
   useEffect(() => {
     if (!guest) return;
@@ -89,8 +87,8 @@ export function RsvpFlow({
     try {
       const url = previewMode
         ? `/api/website/preview/guests/search?q=${encodeURIComponent(query.trim())}`
-        : `/api/website/public/${encodeURIComponent(slug)}/guests/search?q=${encodeURIComponent(query.trim())}${queryArgs}`;
-      const r = previewMode ? await authFetch(url) : await apiFetch(url);
+        : `/api/website/public/${encodeURIComponent(slug)}/guests/search?q=${encodeURIComponent(query.trim())}`;
+      const r = previewMode ? await authFetch(url) : await apiFetch(url, { headers: passwordHeader });
       if (!r.ok) {
         // Treat a failed lookup as "no match found" so the guest can still
         // self-add via "RSVP anyway" — same fallback path the editor preview
@@ -117,8 +115,8 @@ export function RsvpFlow({
     try {
       const url = previewMode
         ? `/api/website/preview/guests/${m.id}`
-        : `/api/website/public/${encodeURIComponent(slug)}/guests/${m.id}${password ? `?password=${encodeURIComponent(password)}` : ""}`;
-      const r = previewMode ? await authFetch(url) : await apiFetch(url);
+        : `/api/website/public/${encodeURIComponent(slug)}/guests/${m.id}`;
+      const r = previewMode ? await authFetch(url) : await apiFetch(url, { headers: passwordHeader });
       if (!r.ok) {
         setError("Couldn't load your details. Please try again.");
         return;

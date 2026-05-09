@@ -98,10 +98,8 @@ export default function PublicWebsite() {
     if (!slug) return;
     setLoading(true);
     setError(null);
-    const url = password
-      ? `/api/website/public/${encodeURIComponent(slug)}?password=${encodeURIComponent(password)}`
-      : `/api/website/public/${encodeURIComponent(slug)}`;
-    apiFetch(url)
+    const url = `/api/website/public/${encodeURIComponent(slug)}`;
+    apiFetch(url, password ? { headers: { "X-Site-Password": password } } : undefined)
       .then(async (res) => {
         if (res.status === 401) {
           const body = await res.json().catch(() => ({}));
