@@ -1097,6 +1097,12 @@ export default function Guests() {
               <Download className="h-4 w-4 mr-2" /> {t("guests.export_csv")}
             </Button>
           )}
+          {allGuests.some(g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent") && (
+            <Button variant="outline" onClick={handleSendAllReminders} disabled={sendingReminders}>
+              {sendingReminders ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+              Send RSVP Reminders
+            </Button>
+          )}
           <Dialog open={isAdding} onOpenChange={setIsAdding}>
             <DialogTrigger asChild>
               <Button size="lg" className="shadow-md">
