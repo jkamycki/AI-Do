@@ -841,9 +841,12 @@ export default function WebsiteEditor() {
         {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_colors", { defaultValue: "Colors" })}>
           <div className="grid grid-cols-2 gap-3">
             <ColorField label={t("website_editor.color_primary", { defaultValue: "Primary" })}   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
-            <ColorField label={t("website_editor.color_secondary", { defaultValue: "Secondary" })} value={record.colorPalette.secondary} onChange={(v) => update({ colorPalette: { ...record.colorPalette, secondary: v } })} />
             <ColorField label={t("website_editor.color_background", { defaultValue: "Background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
-            <ColorField label={t("website_editor.color_text", { defaultValue: "Text" })}      value={record.colorPalette.text}      onChange={(v) => update({ colorPalette: { ...record.colorPalette, text: v } })} />
+            <ColorField
+              label={t("website_editor.color_pages", { defaultValue: "Pages" })}
+              value={record.customText._navLinkColor || record.colorPalette.text}
+              onChange={(v) => update({ customText: { ...record.customText, _navLinkColor: v } })}
+            />
             <ColorField
               label={t("website_editor.color_couple_names", { defaultValue: "Header (Names)" })}
               value={record.customText._navCoupleColor || record.colorPalette.primary}
@@ -901,9 +904,15 @@ export default function WebsiteEditor() {
                   </div>
                   <Switch
                     checked={record.sectionsEnabled[s.id]}
-                    onCheckedChange={(checked) =>
-                      update({ sectionsEnabled: { ...record.sectionsEnabled, [s.id]: checked } })
-                    }
+                    onCheckedChange={(checked) => {
+                      update({ sectionsEnabled: { ...record.sectionsEnabled, [s.id]: checked } });
+                      // Jump the preview to the section the user just toggled
+                      // on so they can immediately see what they're editing.
+                      if (checked) {
+                        setEditorSection(s.id);
+                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
+                      }
+                    }}
                   />
                 </div>
               );
@@ -931,19 +940,25 @@ export default function WebsiteEditor() {
                   <Label className="text-sm cursor-pointer">{row.label}</Label>
                   <Switch
                     checked={!isHidden}
-                    onCheckedChange={(checked) => patchRecord((prev) => {
-                      const ct = { ...prev.customText };
-                      const tp = { ...(prev.textPositions ?? {}) };
+                    onCheckedChange={(checked) => {
+                      patchRecord((prev) => {
+                        const ct = { ...prev.customText };
+                        const tp = { ...(prev.textPositions ?? {}) };
+                        if (checked) {
+                          delete ct[row.key];
+                          // Drop any stale drag offset so the element returns
+                          // to its centered default when re-enabled.
+                          delete tp[row.key];
+                        } else {
+                          ct[row.key] = EDITABLE_HIDDEN_MARKER;
+                        }
+                        return { customText: ct, textPositions: tp };
+                      });
                       if (checked) {
-                        delete ct[row.key];
-                        // Drop any stale drag offset so the element returns
-                        // to its centered default when re-enabled.
-                        delete tp[row.key];
-                      } else {
-                        ct[row.key] = EDITABLE_HIDDEN_MARKER;
+                        setEditorSection("home");
+                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
                       }
-                      return { customText: ct, textPositions: tp };
-                    })}
+                    }}
                   />
                 </div>
               );
@@ -965,9 +980,13 @@ export default function WebsiteEditor() {
                   <Label className="text-sm cursor-pointer">{row.label}</Label>
                   <Switch
                     checked={!isHidden}
-                    onCheckedChange={(checked) =>
-                      update({ customText: { ...record.customText, [row.key]: checked ? "" : EDITABLE_HIDDEN_MARKER } })
-                    }
+                    onCheckedChange={(checked) => {
+                      update({ customText: { ...record.customText, [row.key]: checked ? "" : EDITABLE_HIDDEN_MARKER } });
+                      if (checked) {
+                        setEditorSection("schedule");
+                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
+                      }
+                    }}
                   />
                 </div>
               );
