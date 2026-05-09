@@ -857,11 +857,26 @@ export default function WebsiteEditor() {
               value={record.customText._footerColor || record.colorPalette.primary}
               onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
             />
-            <ColorField
-              label={t("website_editor.color_welcome_bg", { defaultValue: "Welcome BG" })}
-              value={record.customText._welcomeBg || record.colorPalette.background}
-              onChange={(v) => update({ customText: { ...record.customText, _welcomeBg: v } })}
-            />
+            {/* Per-page background colour. Home is excluded — it uses the
+                hero image / hero photos background and has its own controls. */}
+            {([
+              { id: "welcome",      key: "_welcomeBg",      label: t("website_editor.bg_welcome",      { defaultValue: "Welcome BG" }) },
+              { id: "story",        key: "_storyBg",        label: t("website_editor.bg_story",        { defaultValue: "Our Story BG" }) },
+              { id: "schedule",     key: "_scheduleBg",     label: t("website_editor.bg_schedule",     { defaultValue: "Schedule BG" }) },
+              { id: "travel",       key: "_travelBg",       label: t("website_editor.bg_travel",       { defaultValue: "Travel BG" }) },
+              { id: "registry",     key: "_registryBg",     label: t("website_editor.bg_registry",     { defaultValue: "Registry BG" }) },
+              { id: "weddingParty", key: "_weddingPartyBg", label: t("website_editor.bg_wedding_party",{ defaultValue: "Wedding Party BG" }) },
+              { id: "gallery",      key: "_galleryBg",      label: t("website_editor.bg_gallery",      { defaultValue: "Gallery BG" }) },
+              { id: "faq",          key: "_faqBg",          label: t("website_editor.bg_faq",          { defaultValue: "FAQ BG" }) },
+              { id: "rsvp",         key: "_rsvpBg",         label: t("website_editor.bg_rsvp",         { defaultValue: "RSVP BG" }) },
+            ]).map((row) => (
+              <ColorField
+                key={row.key}
+                label={row.label}
+                value={record.customText[row.key] || record.colorPalette.background}
+                onChange={(v) => update({ customText: { ...record.customText, [row.key]: v } })}
+              />
+            ))}
           </div>
           {/* Background opacity slider — lets the user fade the section
               backgrounds so any underlying hero image / page background

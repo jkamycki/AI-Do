@@ -1143,9 +1143,12 @@ function SectionShell({
       id={id}
       className="py-20 px-6"
       style={{
-        background: id === "welcome" && data.customText._welcomeBg
-          ? data.customText._welcomeBg
-          : backgroundWithOpacity(data, data.colorPalette.neutral),
+        // Per-page background: stored in customText as _<id>Bg. Falls back
+        // to the legacy _welcomeBg key for the welcome page so existing
+        // sites keep their previously chosen Welcome BG, then to the
+        // theme's neutral colour if neither override is set.
+        background: (data.customText[`_${id}Bg`] || (id === "welcome" ? data.customText._welcomeBg : "") || "")
+          || backgroundWithOpacity(data, data.colorPalette.neutral),
       }}
     >
       <div className="max-w-4xl mx-auto">
