@@ -53,6 +53,36 @@ router.post("/storage/uploads/request-url", requireAuth, uploadUrlLimiter, async
 });
 
 /**
+ * POST /storage/uploads/claim
+ *
+ * After the client has finished uploading to the presigned URL, call this
+ * endpoint to set the ACL policy on the newly created object (owner = the
+ * authenticated user, visibility = private). Without this step the object
+ * has no ACL metadata and the GET /storage/objects/* endpoint returns 403.
+ */
+router.post("/storage/uploads/claim", requireAuth, async (req: Request, res: Response) => {
+  const { objectPath } = req.body as { objectPath?: unknown };
+  if (typeof objectPath !== "string" || !objectPath.startsWith("/objects/")) {
+    res.status(400).json({ error: "Valid objectPath is required" });
+    return;
+  }
+  try {
+    await objectStorageService.trySetObjectEntityAclPolicy(objectPath, {
+      owner: req.userId,
+      visibility: "private",
+    });
+    res.json({ ok: true });
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
+    req.log.error({ err: error }, "Error claiming uploaded object");
+    res.status(500).json({ error: "Failed to claim object" });
+  }
+});
+
+/**
  * GET /storage/public-objects/*
  *
  * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.
