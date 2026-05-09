@@ -596,11 +596,19 @@ export default function WebsiteEditor() {
         <div className="p-5 border-b sticky top-0 bg-background z-10">
           <div className="flex items-center justify-between gap-2 mb-3">
             <h2 className="text-xl font-serif font-bold">{t("website_editor.editor_title", { defaultValue: "Website Editor" })}</h2>
-            {saveError && (
-              <span className="text-[10px] font-medium text-destructive bg-destructive/10 rounded px-2 py-0.5">
-                Save failed — retrying…
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {saveError && (
+                <span className="text-[10px] font-medium text-destructive bg-destructive/10 rounded px-2 py-0.5">
+                  Save failed — retrying…
+                </span>
+              )}
+              <Badge
+                variant={record.published ? "default" : "destructive"}
+                className={record.published ? undefined : "bg-red-600 hover:bg-red-600 text-white"}
+              >
+                {record.published ? t("website_editor.live", { defaultValue: "Live" }) : t("website_editor.draft", { defaultValue: "Draft" })}
+              </Badge>
+            </div>
           </div>
           {/* Action toolbar — 2x2 grid. Brand gold backgrounds for the
               affirmative actions (Preview, Publish, Save), green when
@@ -925,7 +933,7 @@ export default function WebsiteEditor() {
         {/* Hero elements — toggles for the rows that drag-to-trash hides
             (date, venue, countdown). Lets the user bring them back without
             needing to hit Undo. */}
-        {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Hero Elements" })}>
+        {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Home Elements" })}>
           <div className="space-y-2.5">
             {[
               { key: "_heroTaglineHidden", label: "Tagline (\"We're getting married\")" },

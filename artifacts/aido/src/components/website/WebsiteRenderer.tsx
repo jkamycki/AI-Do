@@ -1305,7 +1305,7 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
                   <EditableText
                     editable={ctx.editable}
                     value={data.customText[it.key] ?? ""}
-                    defaultValue={it.time || (ctx.editable ? "Add Time" : "")}
+                    defaultValue={ctx.editable ? "Add Time" : (it.time || "")}
                     onCommit={(v) => ctx.onTextChange(it.key, v)}
                     {...tspStyle(ctx, it.key)}
                   />
