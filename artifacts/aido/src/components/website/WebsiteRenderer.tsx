@@ -1236,6 +1236,7 @@ function SectionShell({
   children,
   data,
   ctx,
+  tall = false,
 }: {
   id: string;
   titleKey: string;
@@ -1244,11 +1245,12 @@ function SectionShell({
   children: React.ReactNode;
   data: WebsiteRendererPayload;
   ctx: EditCtx;
+  tall?: boolean;
 }) {
   return (
     <section
       id={id}
-      className="py-20 px-6"
+      className={`py-20 px-6${tall ? " min-h-screen flex items-center" : ""}`}
       style={{
         // Welcome has its own _welcomeBg picker; everything else shares
         // _sectionsBg so the user can recolour all non-welcome sections at
@@ -1257,7 +1259,7 @@ function SectionShell({
           || backgroundWithOpacity(data, data.colorPalette.neutral),
       }}
     >
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto w-full">
         {(() => {
           const headerColor = ctx.textStyles?.[titleKey]?.color || data.colorPalette.secondary;
           const headerFontSize = ctx.textStyles?.[titleKey]?.fontSize;
@@ -1321,7 +1323,7 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.story ?? "";
   if (!text && !ctx.editable) return null;
   return (
-    <SectionShell id="story" titleKey="story_title" defaultTitle="Our Story" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx}>
+    <SectionShell id="story" titleKey="story_title" defaultTitle="Our Story" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx} tall>
       <EditableText
         as="div"
         editable={ctx.editable}
