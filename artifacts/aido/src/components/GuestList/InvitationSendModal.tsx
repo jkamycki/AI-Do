@@ -60,7 +60,6 @@ interface Profile {
   receptionTime?: string | null;
   invitationMessage?: string | null;
   saveTheDateMessage?: string | null;
-  invitationPhotoUrl?: string | null;
   saveTheDatePhotoUrl?: string | null;
   digitalInvitationPhotoUrl?: string | null;
   ceremonyAtVenue?: boolean;
@@ -730,7 +729,7 @@ export function InvitationSendModal({
                         <AiSaveDatePreview
                           profile={profile}
                           palette={customPalette}
-                          photoUrl={customization.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl || profile.invitationPhotoUrl || null}
+                          photoUrl={customization.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl || null}
                           photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                           customColors={customColors}
                         />
@@ -782,7 +781,7 @@ export function InvitationSendModal({
                           partner2Name={profile.partner2Name ?? ""}
                           weddingDate={profile.weddingDate ?? ""}
                           venue={profile.venue ?? ""}
-                          photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
+                          photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || null}
                           photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                           onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
                           guestName={guest?.name ?? "Guest"}
@@ -839,7 +838,7 @@ export function InvitationSendModal({
                       photoUrl={
                         customization.saveTheDatePhotoUrl
                         || profile.saveTheDatePhotoUrl
-                        || profile.invitationPhotoUrl
+                        || null
                       }
                       photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                     />
@@ -871,7 +870,7 @@ export function InvitationSendModal({
                       partner2Name={profile.partner2Name ?? ""}
                       weddingDate={profile.weddingDate ?? ""}
                       venue={profile.venue ?? ""}
-                      photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
+                      photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || null}
                       photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                       onPhotoPositionChange={() => {}}
                       guestName={guest?.name ?? "Guest"}
