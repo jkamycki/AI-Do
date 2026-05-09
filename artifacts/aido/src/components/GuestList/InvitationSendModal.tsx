@@ -60,9 +60,6 @@ interface Profile {
   receptionTime?: string | null;
   invitationMessage?: string | null;
   saveTheDateMessage?: string | null;
-  invitationPhotoUrl?: string | null;
-  saveTheDatePhotoUrl?: string | null;
-  digitalInvitationPhotoUrl?: string | null;
   ceremonyAtVenue?: boolean;
   ceremonyVenueName?: string | null;
   ceremonyAddress?: string | null;
@@ -82,6 +79,7 @@ interface Props {
   isSendingDigital: boolean;
   isSendingRsvpReminder?: boolean;
   defaultTab?: "saveTheDate" | "digitalInvitation";
+  reminderOnly?: boolean;
 }
 
 function formatTime(timeStr: string | null | undefined): string | null {
@@ -515,6 +513,7 @@ export function InvitationSendModal({
   isSendingDigital,
   isSendingRsvpReminder,
   defaultTab = "saveTheDate",
+  reminderOnly = false,
 }: Props) {
   const [customization, setCustomization] = useState<Customization | null>(null);
   const [loadingCustomization, setLoadingCustomization] = useState(false);
@@ -522,9 +521,12 @@ export function InvitationSendModal({
   const [bypassBlock, setBypassBlock] = useState(false);
 
   useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
+
+  useEffect(() => {
     if (!guest || !profile?.id) {
       setCustomization(null);
-      setActiveTab(defaultTab);
       setBypassBlock(false);
       return;
     }
@@ -691,14 +693,16 @@ export function InvitationSendModal({
               </div>
 
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "saveTheDate" | "digitalInvitation")}>
-                <TabsList className="w-full">
-                  <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
-                    <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
-                  </TabsTrigger>
-                  <TabsTrigger value="digitalInvitation" className="flex-1 text-xs">
-                    <Heart className="h-3.5 w-3.5 mr-1" /> RSVP Invitation
-                  </TabsTrigger>
-                </TabsList>
+                {!reminderOnly && (
+                  <TabsList className="w-full">
+                    <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
+                      <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
+                    </TabsTrigger>
+                    <TabsTrigger value="digitalInvitation" className="flex-1 text-xs">
+                      <Heart className="h-3.5 w-3.5 mr-1" /> RSVP Invitation
+                    </TabsTrigger>
+                  </TabsList>
+                )}
 
                 <TabsContent value="saveTheDate" className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground text-center">
@@ -723,7 +727,11 @@ export function InvitationSendModal({
                         <AiSaveDatePreview
                           profile={profile}
                           palette={customPalette}
-                          photoUrl={customization.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl || profile.invitationPhotoUrl || null}
+<<<<<<< HEAD
+                          photoUrl={customization.saveTheDatePhotoUrl || null}
+=======
+                          photoUrl={customization.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl || null}
+>>>>>>> origin/main
                           photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                           customColors={customColors}
                         />
@@ -775,7 +783,11 @@ export function InvitationSendModal({
                           partner2Name={profile.partner2Name ?? ""}
                           weddingDate={profile.weddingDate ?? ""}
                           venue={profile.venue ?? ""}
-                          photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
+<<<<<<< HEAD
+                          photoUrl={customization.digitalInvitationPhotoUrl || null}
+=======
+                          photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || null}
+>>>>>>> origin/main
                           photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                           onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
                           guestName={guest?.name ?? "Guest"}
@@ -791,16 +803,18 @@ export function InvitationSendModal({
                       );
                     })()}
                   </div>
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() => guest && onSendDigitalInvitation(guest.id)}
-                    disabled={isSendingDigital}
-                  >
-                    {isSendingDigital
-                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
-                    }
-                  </Button>
+                  {!reminderOnly && (
+                    <Button
+                      className="w-full gap-2"
+                      onClick={() => guest && onSendDigitalInvitation(guest.id)}
+                      disabled={isSendingDigital}
+                    >
+                      {isSendingDigital
+                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                        : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
+                      }
+                    </Button>
+                  )}
                   {!guest?.email && (
                     <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
                   )}
@@ -812,14 +826,16 @@ export function InvitationSendModal({
             /* ── AI-Generated Mode ── */
             <div className="space-y-4">
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "saveTheDate" | "digitalInvitation")}>
-                <TabsList className="w-full">
-                  <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
-                    <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
-                  </TabsTrigger>
-                  <TabsTrigger value="digitalInvitation" className="flex-1 text-xs">
-                    <Heart className="h-3.5 w-3.5 mr-1" /> RSVP Invitation
-                  </TabsTrigger>
-                </TabsList>
+                {!reminderOnly && (
+                  <TabsList className="w-full">
+                    <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
+                      <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
+                    </TabsTrigger>
+                    <TabsTrigger value="digitalInvitation" className="flex-1 text-xs">
+                      <Heart className="h-3.5 w-3.5 mr-1" /> RSVP Invitation
+                    </TabsTrigger>
+                  </TabsList>
+                )}
 
                 <TabsContent value="saveTheDate" className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground text-center">Email preview — this is what your guest will receive in their inbox</p>
@@ -827,11 +843,15 @@ export function InvitationSendModal({
                     <AiSaveDatePreview
                       profile={profile}
                       palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
+<<<<<<< HEAD
+                      photoUrl={customization.saveTheDatePhotoUrl || null}
+=======
                       photoUrl={
                         customization.saveTheDatePhotoUrl
                         || profile.saveTheDatePhotoUrl
-                        || profile.invitationPhotoUrl
+                        || null
                       }
+>>>>>>> origin/main
                       photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                     />
                   )}
@@ -862,7 +882,7 @@ export function InvitationSendModal({
                       partner2Name={profile.partner2Name ?? ""}
                       weddingDate={profile.weddingDate ?? ""}
                       venue={profile.venue ?? ""}
-                      photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
+                      photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || null}
                       photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                       onPhotoPositionChange={() => {}}
                       guestName={guest?.name ?? "Guest"}
@@ -876,19 +896,21 @@ export function InvitationSendModal({
                       scale={0.72}
                     />
                   )}
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() => guest && onSendDigitalInvitation(guest.id)}
-                    disabled={isSendingDigital}
-                  >
-                    {isSendingDigital
-                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
-                    }
-                  </Button>
+                  {!reminderOnly && (
+                    <Button
+                      className="w-full gap-2"
+                      onClick={() => guest && onSendDigitalInvitation(guest.id)}
+                      disabled={isSendingDigital}
+                    >
+                      {isSendingDigital
+                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                        : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
+                      }
+                    </Button>
+                  )}
                   {/* RSVP Reminder — AI-only template, separate from invitation.
                       Only enabled when guest has email AND hasn't responded yet. */}
-                  {guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder && (
+                  {reminderOnly && guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder && (
                     <Button
                       variant="outline"
                       className="w-full gap-2"
