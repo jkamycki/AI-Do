@@ -520,6 +520,9 @@ export default function WebsiteEditor() {
     // top of the new theme.
     const RESET_KEYS = [
       "_navLinkColor", "_navCoupleColor", "_footerColor",
+      // Per-element text colour overrides — must clear so section text
+      // picks up the new theme's colorPalette.text instead of the old hue.
+      "_welcomeColor",
       // Per-page bg keys (legacy) plus the new shared sections bg.
       "_welcomeBg", "_sectionsBg",
       "_storyBg", "_scheduleBg", "_travelBg", "_registryBg",
@@ -540,6 +543,12 @@ export default function WebsiteEditor() {
         text: t.text,
       },
       customText: nextCustomText,
+      // Clear per-element text styles (colour, size, font overrides) so they
+      // inherit the new theme cleanly. Custom floating text boxes (_custom_*)
+      // are preserved since those are intentional user additions.
+      textStyles: Object.fromEntries(
+        Object.entries(record?.textStyles ?? {}).filter(([k]) => k.startsWith("_custom_"))
+      ),
     });
   };
 
