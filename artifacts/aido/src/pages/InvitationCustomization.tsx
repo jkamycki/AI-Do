@@ -1137,7 +1137,7 @@ export default function InvitationCustomizationPage({
                         colors={
                           isCustom
                             ? { ...customPalette, accent: cd.accentColor, primary: cd.accentColor }
-                            : displayPalette
+                            : { ...displayPalette, accent: "#D4A017", primary: "#D4A017" }
                         }
                         font={isCustom ? cd.fontFamily : null}
                         backgroundColor={isCustom ? cd.backgroundColor : null}
