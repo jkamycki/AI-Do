@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
@@ -338,110 +337,91 @@ export default function WebsiteEditor() {
     };
   }, [record, previewExtra?.couple]);
 
+  const [saveError, setSaveError] = useState(false);
+
+  const buildSaveBody = (rec: WebsiteRecord) => ({
+    theme: rec.theme,
+    layoutStyle: rec.layoutStyle,
+    font: rec.font,
+    accentColor: rec.accentColor,
+    colorPalette: rec.colorPalette,
+    sectionsEnabled: rec.sectionsEnabled,
+    customText: rec.customText,
+    textStyles: rec.textStyles ?? {},
+    textPositions: rec.textPositions ?? {},
+    galleryImages: rec.galleryImages,
+    heroImages: rec.heroImages ?? [],
+    heroImage: rec.heroImage,
+    ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
+  });
+
   const saveNow = async (silent: boolean): Promise<boolean> => {
-    if (!record) return false;
+    // Always snapshot the latest state from the ref to avoid stale closures.
+    const rec = recordRef.current;
+    if (!rec) return false;
     if (!silent) setSaving(true);
-    try {
-      const r = await authFetch("/api/website/update", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          theme: record.theme,
-          layoutStyle: record.layoutStyle,
-          font: record.font,
-          accentColor: record.accentColor,
-          colorPalette: record.colorPalette,
-          sectionsEnabled: record.sectionsEnabled,
-          customText: record.customText,
-          textStyles: record.textStyles ?? {},
-          textPositions: record.textPositions ?? {},
-          galleryImages: record.galleryImages,
-          heroImages: record.heroImages ?? [],
-          heroImage: record.heroImage,
-          ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
-        }),
-      });
-      if (!r.ok) {
-        const text = await r.text().catch(() => "");
-        throw new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`);
+
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const r = await authFetch("/api/website/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildSaveBody(rec)),
+        });
+        if (r.ok) {
+          const body = (await r.json()) as WebsiteRecord;
+          setRecord((prev) => ({
+            ...body,
+            portalParty: body.portalParty ?? prev?.portalParty,
+          }));
+          setPasswordInput("");
+          setDirty(false);
+          setSaveError(false);
+          if (!silent) setSaving(false);
+          return true;
+        }
+        // Don't retry 4xx — those are client errors (bad payload, auth).
+        if (r.status < 500) {
+          const text = await r.text().catch(() => "");
+          lastErr = new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`);
+          break;
+        }
+        lastErr = new Error(`HTTP ${r.status}`);
+      } catch (err) {
+        // Network-level error — retry.
+        lastErr = err;
       }
-      const body = (await r.json()) as WebsiteRecord;
-      // The /api/website/update endpoint manages the website record only —
-      // portalParty is a JOIN from the wedding-party portal table that the
-      // GET endpoint enriches but PUT doesn't return. Preserve whatever we
-      // already had so the wedding-party section doesn't blank out on save.
-      setRecord((prev) => ({
-        ...body,
-        portalParty: body.portalParty ?? prev?.portalParty,
-      }));
-      setPasswordInput("");
-      setDirty(false);
-      return true;
-    } catch (err) {
-      console.error("[WebsiteEditor] saveNow failed", err);
-      return false;
-    } finally {
-      if (!silent) setSaving(false);
+      if (attempt < 3) await new Promise((res) => setTimeout(res, attempt * 2000));
     }
+
+    console.error("[WebsiteEditor] save failed after retries", lastErr);
+    setSaveError(true);
+    if (!silent) setSaving(false);
+    return false;
   };
 
-  // Autosave: 10 seconds after the last change.
+  // Autosave: 10 seconds after the last change. Reschedules itself on failure
+  // so unsaved work is never silently dropped.
+  const autosaveFailedRef = useRef(false);
   useEffect(() => {
     if (!record || !dirty) return;
+    const delay = autosaveFailedRef.current ? 30000 : 10000;
     const timer = setTimeout(async () => {
       const ok = await saveNow(true);
+      autosaveFailedRef.current = !ok;
       if (ok) setLastAutosaved(new Date());
-    }, 10000);
+    }, delay);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record, dirty]);
 
   const handleSave = async () => {
-    if (!record) return;
-    setSaving(true);
-    try {
-      const r = await authFetch("/api/website/update", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          theme: record.theme,
-          layoutStyle: record.layoutStyle,
-          font: record.font,
-          accentColor: record.accentColor,
-          colorPalette: record.colorPalette,
-          sectionsEnabled: record.sectionsEnabled,
-          customText: record.customText,
-          textStyles: record.textStyles ?? {},
-          textPositions: record.textPositions ?? {},
-          galleryImages: record.galleryImages,
-          heroImages: record.heroImages ?? [],
-          heroImage: record.heroImage,
-          ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
-        }),
-      });
-      if (!r.ok) {
-        const text = await r.text().catch(() => "");
-        throw new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`);
-      }
-      const body = (await r.json()) as WebsiteRecord;
-      // Same fix as saveNow() — PUT response is the website row only and
-      // doesn't include portalParty (a JOIN the GET endpoint enriches).
-      // Preserve the populated value from prev so the wedding-party
-      // section doesn't blank out when the user clicks Save while on
-      // the Wedding Party page.
-      setRecord((prev) => ({
-        ...body,
-        portalParty: body.portalParty ?? prev?.portalParty,
-      }));
-      setPasswordInput("");
-      setDirty(false);
-      toast({ title: "Saved!" });
-    } catch (err) {
-      console.error("[WebsiteEditor] handleSave failed", err);
-      const detail = err instanceof Error ? err.message : "Unknown error";
+    const ok = await saveNow(false);
+    if (ok) toast({ title: "Saved!" });
+    else {
+      const detail = "Check your connection and try again.";
       toast({ title: "Failed to save", description: detail, variant: "destructive" });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -533,6 +513,19 @@ export default function WebsiteEditor() {
   const applyTheme = (themeId: string) => {
     const t = THEMES.find((x) => x.id === themeId);
     if (!t) return;
+    // Reset all per-element / per-page colour overrides so the theme's
+    // colours actually take effect everywhere — otherwise leftover keys
+    // like _storyBg or _navLinkColor would keep painting old values on
+    // top of the new theme.
+    const RESET_KEYS = [
+      "_navLinkColor", "_navCoupleColor", "_footerColor",
+      // Per-page bg keys (legacy) plus the new shared sections bg.
+      "_welcomeBg", "_sectionsBg",
+      "_storyBg", "_scheduleBg", "_travelBg", "_registryBg",
+      "_weddingPartyBg", "_galleryBg", "_faqBg", "_rsvpBg",
+    ];
+    const nextCustomText: Record<string, string> = { ...(record?.customText ?? {}) };
+    for (const k of RESET_KEYS) delete nextCustomText[k];
     update({
       theme: t.id,
       font: t.font,
@@ -545,6 +538,7 @@ export default function WebsiteEditor() {
         background: t.background,
         text: t.text,
       },
+      customText: nextCustomText,
     });
   };
 
@@ -602,12 +596,11 @@ export default function WebsiteEditor() {
         <div className="p-5 border-b sticky top-0 bg-background z-10">
           <div className="flex items-center justify-between gap-2 mb-3">
             <h2 className="text-xl font-serif font-bold">{t("website_editor.editor_title", { defaultValue: "Website Editor" })}</h2>
-            <Badge
-              variant={record.published ? "default" : "destructive"}
-              className={record.published ? undefined : "bg-red-600 hover:bg-red-600 text-white"}
-            >
-              {record.published ? t("website_editor.live", { defaultValue: "Live" }) : t("website_editor.draft", { defaultValue: "Draft" })}
-            </Badge>
+            {saveError && (
+              <span className="text-[10px] font-medium text-destructive bg-destructive/10 rounded px-2 py-0.5">
+                Save failed — retrying…
+              </span>
+            )}
           </div>
           {/* Action toolbar — 2x2 grid. Brand gold backgrounds for the
               affirmative actions (Preview, Publish, Save), green when
@@ -840,7 +833,7 @@ export default function WebsiteEditor() {
         {/* Colors */}
         {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_colors", { defaultValue: "Colors" })}>
           <div className="grid grid-cols-2 gap-3">
-            <ColorField label={t("website_editor.color_primary", { defaultValue: "Primary" })}   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
+            <ColorField label={t("website_editor.color_focus_ring", { defaultValue: "Focus Ring" })}   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
             <ColorField label={t("website_editor.color_background", { defaultValue: "Background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
             <ColorField
               label={t("website_editor.color_pages", { defaultValue: "Pages" })}
@@ -857,10 +850,19 @@ export default function WebsiteEditor() {
               value={record.customText._footerColor || record.colorPalette.primary}
               onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
             />
+            {/* Welcome page keeps its own background picker. Every other
+                non-home section (Story, Schedule, Travel, Registry, Wedding
+                Party, Gallery, FAQ, RSVP) shares a single Sections BG so the
+                user can recolour them all in one shot. */}
             <ColorField
-              label={t("website_editor.color_welcome_bg", { defaultValue: "Welcome BG" })}
+              label={t("website_editor.bg_welcome", { defaultValue: "Welcome BG" })}
               value={record.customText._welcomeBg || record.colorPalette.background}
               onChange={(v) => update({ customText: { ...record.customText, _welcomeBg: v } })}
+            />
+            <ColorField
+              label={t("website_editor.bg_sections", { defaultValue: "Body BG" })}
+              value={record.customText._sectionsBg || record.colorPalette.background}
+              onChange={(v) => update({ customText: { ...record.customText, _sectionsBg: v } })}
             />
           </div>
           {/* Background opacity slider — lets the user fade the section
@@ -926,6 +928,7 @@ export default function WebsiteEditor() {
         {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Hero Elements" })}>
           <div className="space-y-2.5">
             {[
+              { key: "_heroTaglineHidden", label: "Tagline (\"We're getting married\")" },
               { key: "_coupleName", label: t("website_editor.hero_couple_names", { defaultValue: "Couple Names" }) },
               { key: "_heroDateRow", label: t("website_editor.hero_date_row", { defaultValue: "Wedding Date" }) },
               { key: "_heroDateIcon", label: t("website_editor.hero_date_icon", { defaultValue: "Date Calendar Icon" }) },
@@ -1520,6 +1523,12 @@ export default function WebsiteEditor() {
             onTextChange={(key, value) => patchRecord((prev) => ({ customText: { ...prev.customText, [key]: value } }))}
             onStyleChange={(key, style) => patchRecord((prev) => ({ textStyles: { ...(prev.textStyles ?? {}), [key]: style } }))}
             onPositionChange={(key, pos) => patchRecord((prev) => ({ textPositions: { ...(prev.textPositions ?? {}), [key]: pos } }))}
+            onGalleryCaptionChange={(imageUrl, caption) => patchRecord((prev) => {
+              const next = (prev.galleryImages ?? []).map((img) =>
+                img.url === imageUrl ? { ...img, caption } : img,
+              );
+              return { galleryImages: next };
+            })}
             onDeleteElement={(key) => patchRecord((prev) => {
               const ct = { ...prev.customText };
               const ts = { ...(prev.textStyles ?? {}) };

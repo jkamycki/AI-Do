@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { cloneElement, isValidElement, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed, Share2, Check } from "lucide-react";
 import { EditableText, emitEditableDrag, EDITABLE_HIDDEN_MARKER, type TextPosition } from "./EditableText";
@@ -100,6 +100,7 @@ interface EditCtx {
   textPositions?: Record<string, TextPosition>;
   onPositionChange?: (key: string, position: TextPosition) => void;
   onDeleteElement?: (key: string) => void;
+  onGalleryCaptionChange?: (imageUrl: string, caption: string) => void;
 }
 const NOOP_CTX: EditCtx = { editable: false, onTextChange: () => {} };
 
@@ -135,12 +136,12 @@ function tspStyle(ctx: EditCtx, key: string) {
 
 // Style-only, no delete, no drag — for hero elements that must stay
 // centered. Visibility is controlled exclusively via sidebar toggles.
-function tspNoDelete(ctx: EditCtx, key: string) {
+function tspNoDelete(ctx: EditCtx, key: string, aiEnabled = false) {
   if (!ctx.editable) return {};
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
-    aiEnabled: false as const,
+    aiEnabled,
   };
 }
 
@@ -521,22 +522,22 @@ function calcTimeLeft(dateStr: string) {
   };
 }
 
-function CountdownTimer({ dateStr, accentColor }: { dateStr: string; accentColor: string }) {
+function CountdownTimer({ dateStr, accentColor, data, ctx }: { dateStr: string; accentColor: string; data: WebsiteRendererPayload; ctx: EditCtx }) {
   const [left, setLeft] = useState(() => calcTimeLeft(dateStr));
   useEffect(() => {
     const id = setInterval(() => setLeft(calcTimeLeft(dateStr)), 1000);
     return () => clearInterval(id);
   }, [dateStr]);
   if (!left) return null;
-  const units = [
-    { label: "Days", value: left.days },
-    { label: "Hours", value: left.hours },
-    { label: "Mins", value: left.minutes },
-    { label: "Secs", value: left.seconds },
+  const units: Array<{ key: string; label: string; value: number }> = [
+    { key: "_countdownLabelDays",    label: "Days",  value: left.days },
+    { key: "_countdownLabelHours",   label: "Hours", value: left.hours },
+    { key: "_countdownLabelMinutes", label: "Mins",  value: left.minutes },
+    { key: "_countdownLabelSeconds", label: "Secs",  value: left.seconds },
   ];
   return (
     <div className="flex items-center justify-center gap-4 sm:gap-8 mt-8">
-      {units.map(({ label, value }) => (
+      {units.map(({ key, label, value }) => (
         <div key={label} className="flex flex-col items-center">
           <span
             className="text-3xl sm:text-5xl font-bold tabular-nums leading-none"
@@ -544,9 +545,17 @@ function CountdownTimer({ dateStr, accentColor }: { dateStr: string; accentColor
           >
             {String(value).padStart(2, "0")}
           </span>
-          <span className="text-[10px] sm:text-xs uppercase tracking-widest mt-2 opacity-70">
-            {label}
-          </span>
+          <EditableText
+            as="span"
+            editable={ctx.editable}
+            value={label}
+            defaultValue={label}
+            readOnlyText
+            aiEnabled={false}
+            textStyle={data.textStyles?.[key]}
+            onStyleChange={ctx.onStyleChange ? (s) => ctx.onStyleChange!(key, s) : undefined}
+            className="text-[10px] sm:text-xs uppercase tracking-widest mt-2 opacity-70"
+          />
         </div>
       ))}
     </div>
@@ -995,16 +1004,18 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
     >
       <HeroBackground data={data} />
       <div className="relative max-w-3xl">
-        <EditableText
-          as="div"
-          editable={ctx.editable}
-          value={data.customText._heroTagline ?? ""}
-          defaultValue="We're getting married"
-          onCommit={(v) => ctx.onTextChange("_heroTagline", v)}
-          className="uppercase tracking-[0.3em] text-xs sm:text-sm mb-6 opacity-80"
-          style={{ color: (data.heroImage || (data.heroImages?.length ?? 0) > 0) ? "#fff" : data.colorPalette.primary, fontFamily: elementFont(data, "_heroTagline") ? bodyFontStack(elementFont(data, "_heroTagline")!) : undefined }}
-          {...tspNoDelete(ctx, "_heroTagline")}
-        />
+        {data.customText._heroTaglineHidden !== EDITABLE_HIDDEN_MARKER && (
+          <EditableText
+            as="div"
+            editable={ctx.editable}
+            value={data.customText._heroTagline ?? ""}
+            defaultValue="We're getting married"
+            onCommit={(v) => ctx.onTextChange("_heroTagline", v)}
+            className="uppercase tracking-[0.3em] text-xs sm:text-sm mb-6 opacity-80"
+            style={{ color: (data.heroImage || (data.heroImages?.length ?? 0) > 0) ? "#fff" : data.colorPalette.primary, fontFamily: elementFont(data, "_heroTagline") ? bodyFontStack(elementFont(data, "_heroTagline")!) : undefined }}
+            {...tspNoDelete(ctx, "_heroTagline", true)}
+          />
+        )}
         <EditableText
           as="div"
           editable={ctx.editable}
@@ -1060,6 +1071,8 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             <CountdownTimer
               dateStr={data.couple.weddingDate}
               accentColor={(data.heroImage || (data.heroImages?.length ?? 0) > 0) ? "rgba(255,255,255,0.9)" : data.colorPalette.primary}
+              data={data}
+              ctx={ctx}
             />
           </DraggableRow>
         )}
@@ -1143,23 +1156,45 @@ function SectionShell({
       id={id}
       className="py-20 px-6"
       style={{
-        background: id === "welcome" && data.customText._welcomeBg
-          ? data.customText._welcomeBg
-          : backgroundWithOpacity(data, data.colorPalette.neutral),
+        // Welcome has its own _welcomeBg picker; everything else shares
+        // _sectionsBg so the user can recolour all non-welcome sections at
+        // once. Falls back to the theme's neutral colour when neither is set.
+        background: (id === "welcome" ? data.customText._welcomeBg : data.customText._sectionsBg)
+          || backgroundWithOpacity(data, data.colorPalette.neutral),
       }}
     >
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-center gap-2 mb-3" style={{ color: data.colorPalette.secondary }}>
-          {icon}
-          <EditableText
-            editable={ctx.editable}
-            value={data.customText[titleKey] ?? ""}
-            defaultValue={defaultTitle}
-            onCommit={(v) => ctx.onTextChange(titleKey, v)}
-            className="uppercase tracking-[0.25em] text-xs"
-          />
-        </div>
-        <div className="w-12 h-px mx-auto mb-12" style={{ background: data.colorPalette.secondary }} />
+        {(() => {
+          const headerColor = ctx.textStyles?.[titleKey]?.color || data.colorPalette.secondary;
+          const headerFontSize = ctx.textStyles?.[titleKey]?.fontSize;
+          // When the user resizes the section label via the inline toolbar,
+          // scale the icon to match. Strip the original h-4 w-4 sizing and
+          // apply the chosen font size as both width and height so SVG
+          // renders proportionally. With no override, keep the default size.
+          const sizedIcon = headerFontSize && isValidElement(icon)
+            ? cloneElement(icon as React.ReactElement<{ className?: string; style?: React.CSSProperties }>, {
+                className: "shrink-0",
+                style: { width: headerFontSize, height: headerFontSize },
+              })
+            : icon;
+          return (
+            <div
+              className="flex items-center justify-center gap-2 mb-3"
+              style={{ color: headerColor }}
+            >
+              {sizedIcon}
+              <EditableText
+                editable={ctx.editable}
+                value={data.customText[titleKey] ?? ""}
+                defaultValue={defaultTitle}
+                onCommit={(v) => ctx.onTextChange(titleKey, v)}
+                className="uppercase tracking-[0.25em] text-xs"
+                {...tspStyle(ctx, titleKey)}
+              />
+            </div>
+          );
+        })()}
+        <div className="w-12 h-px mx-auto mb-12" style={{ background: ctx.textStyles?.[titleKey]?.color || data.colorPalette.secondary }} />
         {children}
       </div>
     </section>
@@ -1354,7 +1389,18 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             <div className="flex items-start gap-3 mb-3">
               <div style={iconWrap}><MapPin className="h-4 w-4" /></div>
               <div>
-                <div className="text-[11px] uppercase tracking-wider opacity-70" style={{ color: data.colorPalette.text }}>Venue</div>
+                <EditableText
+                  as="div"
+                  editable={ctx.editable}
+                  value="Venue"
+                  defaultValue="Venue"
+                  readOnlyText
+                  aiEnabled={false}
+                  textStyle={data.textStyles?._travelVenueLabel}
+                  onStyleChange={ctx.onStyleChange ? (s) => ctx.onStyleChange!("_travelVenueLabel", s) : undefined}
+                  className="text-[11px] uppercase tracking-wider opacity-70"
+                  style={{ color: data.colorPalette.text }}
+                />
                 <div className="text-base sm:text-lg font-medium" style={{ color: data.colorPalette.text }}>{data.couple.venue}</div>
                 {data.couple.location && (
                   <div className="text-sm opacity-75" style={{ color: data.colorPalette.text }}>{data.couple.location}</div>
@@ -1380,7 +1426,18 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             <div className="flex items-start gap-3 mb-3">
               <div style={iconWrap}><Bed className="h-4 w-4" /></div>
               <div className="flex-1 min-w-0">
-                <div className="text-[11px] uppercase tracking-wider opacity-70" style={{ color: data.colorPalette.text }}>Hotel</div>
+                <EditableText
+                  as="div"
+                  editable={ctx.editable}
+                  value="Hotel"
+                  defaultValue="Hotel"
+                  readOnlyText
+                  aiEnabled={false}
+                  textStyle={data.textStyles?._travelHotelLabel}
+                  onStyleChange={ctx.onStyleChange ? (s) => ctx.onStyleChange!("_travelHotelLabel", s) : undefined}
+                  className="text-[11px] uppercase tracking-wider opacity-70"
+                  style={{ color: data.colorPalette.text }}
+                />
                 <EditableText
                   as="div"
                   editable={ctx.editable}
@@ -1628,21 +1685,24 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
       <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
     </div>
   );
-  const renderCaption = (caption: string | undefined, index: number) => {
-    if (!caption) return null;
-    const styleKey = `_galleryCaption_${index}`;
+  // Captions use a shared style key so the user picks color/font/size once
+  // in the inline toolbar and every gallery caption follows. Per-image text
+  // commits flow through onGalleryCaptionChange so edits persist into the
+  // gallery_images record.
+  const captionStyle = ctx.textStyles?.gallery_caption ?? {};
+  const renderCaption = (caption: string | undefined, imageUrl: string) => {
+    const hasText = !!(caption && caption.trim());
+    if (!ctx.editable && !hasText) return null;
     return (
       <EditableText
-        as="div"
+        as="p"
         editable={ctx.editable}
-        value={caption}
-        defaultValue={caption}
-        readOnlyText
-        aiEnabled={false}
-        textStyle={data.textStyles?.[styleKey]}
-        onStyleChange={ctx.onStyleChange ? (s) => ctx.onStyleChange!(styleKey, s) : undefined}
+        value={caption ?? ""}
+        defaultValue={ctx.editable ? "Add a caption…" : ""}
+        onCommit={(v) => ctx.onGalleryCaptionChange?.(imageUrl, v)}
         className="text-sm text-center px-1"
-        style={{ color: data.colorPalette.text, opacity: 0.75 }}
+        style={{ color: captionStyle.color ?? data.colorPalette.text, opacity: 0.75 }}
+        {...tspStyle(ctx, "gallery_caption")}
       />
     );
   };
@@ -1693,7 +1753,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
                   />
                   {renderHoverIcon()}
                 </button>
-                {renderCaption(img.caption, i % images.length)}
+                {renderCaption(img.caption, img.url)}
               </div>
             ))}
           </div>
@@ -1744,7 +1804,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
               </div>
             )}
           </div>
-          {renderCaption(images[activeIdx]?.caption, activeIdx)}
+          {renderCaption(images[activeIdx]?.caption, images[activeIdx]?.url ?? "")}
         </div>
       ) : (
         <div
@@ -1759,23 +1819,25 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
               className={`wsg-item flex flex-col gap-1.5${visibleItems.has(i) ? " wsg-visible" : ""}`}
               style={entrance !== "none" ? { ["--stagger" as string]: entrance === "puzzle" ? `${i * 4000}ms` : `${i * 80}ms` } : undefined}
             >
-              <button
-                type="button"
-                onClick={() => setLightboxIndex(i)}
-                className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 w-full"
-                style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
-                aria-label={img.caption ?? `Photo ${i + 1}`}
-              >
-                <img
-                  src={imageUrl(img.url)}
-                  alt={img.caption ?? ""}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
-                  style={{ filter: photoFilter }}
-                />
-                {renderHoverIcon()}
-              </button>
-              {renderCaption(img.caption, i)}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(i)}
+                  className="relative aspect-square overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 w-full"
+                  style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
+                  aria-label={img.caption ?? `Photo ${i + 1}`}
+                >
+                  <img
+                    src={imageUrl(img.url)}
+                    alt={img.caption ?? ""}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
+                    style={{ filter: photoFilter }}
+                  />
+                  {renderHoverIcon()}
+                </button>
+              </div>
+              {renderCaption(img.caption, img.url)}
             </div>
           ))}
         </div>

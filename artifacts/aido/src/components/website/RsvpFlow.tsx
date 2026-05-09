@@ -227,7 +227,7 @@ export function RsvpFlow({
     <section
       id="rsvp"
       className="py-20 px-6 min-h-[60vh]"
-      style={{ background: data.colorPalette.background }}
+      style={{ background: data.customText._rsvpBg || data.colorPalette.background }}
     >
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-center gap-2 mb-3" style={{ color: accent }}>
