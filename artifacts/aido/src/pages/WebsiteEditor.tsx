@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@clerk/react";
 import { useUpload } from "@workspace/object-storage-web";
 import { authFetch } from "@/lib/authFetch";
+import { AuthMediaImage } from "@/components/AuthMediaImage";
 import { WEBSITE_THEMES as THEMES } from "@/lib/websiteThemes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1492,8 +1493,8 @@ export default function WebsiteEditor() {
           <div className="grid grid-cols-3 gap-2 mb-3 items-start">
             {record.heroImage && (
               <div className="relative aspect-square rounded-md overflow-hidden">
-                <img
-                  src={record.heroImage.startsWith("/objects/") ? `/api/storage${record.heroImage}` : record.heroImage}
+                <AuthMediaImage
+                  src={record.heroImage}
                   alt="Main"
                   className="w-full h-full object-cover"
                 />
@@ -1508,8 +1509,8 @@ export default function WebsiteEditor() {
             )}
             {(record.heroImages ?? []).map((img, i) => (
               <div key={i} className="relative aspect-square rounded-md overflow-hidden">
-                <img
-                  src={img.url.startsWith("/objects/") ? `/api/storage${img.url}` : img.url}
+                <AuthMediaImage
+                  src={img.url}
                   alt=""
                   className="w-full h-full object-cover"
                 />
@@ -1544,8 +1545,8 @@ export default function WebsiteEditor() {
             {record.galleryImages.map((img, i) => (
               <div key={i} className="flex flex-col gap-1">
                 <div className="relative aspect-square rounded-md overflow-hidden">
-                  <img
-                    src={img.url.startsWith("/objects/") ? `/api/storage${img.url}` : img.url}
+                  <AuthMediaImage
+                    src={img.url}
                     alt=""
                     className="w-full h-full object-cover"
                   />
