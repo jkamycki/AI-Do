@@ -1836,12 +1836,7 @@ export default function WebsiteEditor() {
         </div>
       </main>
 
-      {/* Mobile-only Edit / Preview toggle was removed when the mobile
-          editor switched to a vertical split-screen layout (#309). The
-          toggle bar still lingered here referencing the deleted mobileView
-          state, which crashed the page on load with
-          "ReferenceError: mobileView is not defined". Both panes are
-          always visible on mobile now, so the bar is no longer needed. */}
+
 
 
       {ctxMenu && (

@@ -719,6 +719,50 @@ export default function Guests() {
     onError: (err) => toast({ title: "Failed to send RSVP Invitation", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
   });
 
+  const [sendingReminders, setSendingReminders] = useState(false);
+
+  const sendReminder = useMutation({
+    mutationFn: async (guestId: number) => {
+      const res = await authFetch(`/api/guests/${guestId}/send-rsvp?reminder=true`, { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string; details?: string };
+        throw new Error(err.details ?? err.error ?? "Failed to send reminder");
+      }
+      return res.json() as Promise<{ rsvpUrl: string; emailSent: boolean }>;
+    },
+    onSuccess: (data) => {
+      if (data.emailSent) {
+        toast({ title: "Reminder sent!", description: "RSVP reminder email delivered." });
+      } else {
+        toast({ title: "No email on file", description: "Guest has no email address to send the reminder to." });
+      }
+    },
+    onError: (err) => toast({ title: "Failed to send reminder", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
+  });
+
+  const handleSendAllReminders = async () => {
+    const pending = allGuests.filter(
+      g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent"
+    );
+    if (pending.length === 0) {
+      toast({ title: "No pending guests", description: "All invited guests with email addresses have already responded." });
+      return;
+    }
+    setSendingReminders(true);
+    let sent = 0;
+    for (const g of pending) {
+      try {
+        const res = await authFetch(`/api/guests/${g.id}/send-rsvp?reminder=true`, { method: "POST" });
+        if (res.ok) {
+          const data = await res.json() as { emailSent: boolean };
+          if (data.emailSent) sent++;
+        }
+      } catch { /* continue */ }
+    }
+    setSendingReminders(false);
+    toast({ title: `${sent} reminder${sent !== 1 ? "s" : ""} sent`, description: `Emailed ${sent} of ${pending.length} pending guests.` });
+  };
+
   const allGuests = data?.guests ?? [];
   const summary = data?.summary ?? { total: 0, attending: 0, declined: 0, pending: 0, plusOnes: 0 };
 
@@ -1076,6 +1120,12 @@ export default function Guests() {
           {allGuests.length > 0 && (
             <Button variant="outline" onClick={() => exportCSV(allGuests)}>
               <Download className="h-4 w-4 mr-2" /> {t("guests.export_csv")}
+            </Button>
+          )}
+          {allGuests.some(g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent") && (
+            <Button variant="outline" onClick={handleSendAllReminders} disabled={sendingReminders}>
+              {sendingReminders ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+              Send RSVP Reminders
             </Button>
           )}
           <Dialog open={isAdding} onOpenChange={setIsAdding}>
@@ -1525,6 +1575,18 @@ export default function Guests() {
                             >
                               <Send className="h-3.5 w-3.5" />
                             </Button>
+                            {g.rsvpStatus === "pending" && g.invitationStatus === "sent" && g.email && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-amber-500 hover:text-amber-600"
+                                title="Send RSVP reminder"
+                                disabled={sendReminder.isPending}
+                                onClick={() => sendReminder.mutate(g.id)}
+                              >
+                                <Mail className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost" size="icon" className="h-8 w-8"
                               onClick={() => { handleAcknowledge(g.id); setEditGuest(g); }}
