@@ -832,8 +832,8 @@ export default function WebsiteEditor() {
           <div className="space-y-4">
             {([
               { key: "_heroTagline",  label: t("website_editor.content_hero_tagline", { defaultValue: "Hero tagline (e.g. We're getting married)" }), placeholder: "We're getting married" },
-              { key: "_coupleName",   label: t("website_editor.content_couple_name", { defaultValue: "Couple name (overrides profile)" }), placeholder: "Joseph & Gabriela" },
-              { key: "_heroDate",     label: t("website_editor.content_hero_date", { defaultValue: "Hero date" }), placeholder: "Saturday, April 24, 2027" },
+              { key: "_coupleName",   label: t("website_editor.content_couple_name", { defaultValue: "Couple name (overrides profile)" }), placeholder: "Alex & Jordan" },
+              { key: "_heroDate",     label: t("website_editor.content_hero_date", { defaultValue: "Hero date" }), placeholder: "Saturday, June 15, 2025" },
               { key: "_announcement", label: t("website_editor.content_announcement", { defaultValue: "Announcement banner" }), placeholder: "" },
             ] as const).map(({ key, label, placeholder }) => (
               <div key={key}>
@@ -867,7 +867,7 @@ export default function WebsiteEditor() {
               </label>
               <Input
                 value={record.customText.rsvp_deadline ?? ""}
-                placeholder="May 1, 2027"
+                placeholder="May 1, 2025"
                 onChange={(e) => update({ customText: { ...record.customText, rsvp_deadline: e.target.value } })}
               />
             </div>
