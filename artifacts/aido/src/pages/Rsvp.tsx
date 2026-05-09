@@ -179,6 +179,9 @@ export default function Rsvp() {
   // are derived from background lightness so contrast is correct on light or dark.
   const BG = info?.backgroundColor || DEFAULT_BG;
   const GOLD = info?.colorPalette?.primary || DEFAULT_GOLD;
+  // In AI mode (no custom background) pin the couple name to the brand gold,
+  // regardless of whatever primary color is in the palette.
+  const COUPLE_COLOR = info?.backgroundColor ? GOLD : DEFAULT_GOLD;
   const _bgIsLight = isLightHex(BG);
   const WHITE = _bgIsLight ? "#1a1a1a" : "#ffffff";
   const MUTED = _bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)";
@@ -367,7 +370,7 @@ export default function Rsvp() {
             </p>
 
             {/* Couple name */}
-            <h1 style={{ fontFamily: cormorant, fontSize: "2.3rem", fontWeight: 400, fontStyle: "italic", color: GOLD, lineHeight: 1.2, margin: "0 0 16px" }}>
+            <h1 style={{ fontFamily: cormorant, fontSize: "2.3rem", fontWeight: 400, fontStyle: "italic", color: COUPLE_COLOR, lineHeight: 1.2, margin: "0 0 16px" }}>
               {couple}
             </h1>
 
