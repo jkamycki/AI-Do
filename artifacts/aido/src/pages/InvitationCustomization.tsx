@@ -971,47 +971,74 @@ export default function InvitationCustomizationPage({
             </div>
 
             <div ref={previewContainerRef} className="flex-1 overflow-auto p-3 sm:p-4">
-              {isSTD ? (
-                <AiSaveDatePreview
-                  profile={{
-                    partner1Name: displayWeddingProfile.partner1Name,
-                    partner2Name: displayWeddingProfile.partner2Name,
-                    weddingDate: displayWeddingProfile.weddingDate,
-                    venue: displayWeddingProfile.venue,
-                    venueCity: displayWeddingProfile.venueCity,
-                    venueState: displayWeddingProfile.venueState,
-                    venueZip: displayWeddingProfile.venueZip,
-                    ceremonyTime: displayWeddingProfile.ceremonyTime,
-                    receptionTime: displayWeddingProfile.receptionTime,
-                    saveTheDateMessage: saveTheDateMessage || weddingProfile?.saveTheDateMessage,
-                  }}
-                  palette={displayPalette}
-                  photoUrl={saveTheDatePhotoUrl}
-                  photoPosition={saveTheDatePhotoPosition}
-                />
-              ) : (
-                <RsvpPagePreview
-                  colors={{ ...displayPalette, accent: "#D4A017", primary: "#D4A017" }}
-                  font={null}
-                  backgroundColor={null}
-                  partner1Name={displayWeddingProfile.partner1Name}
-                  partner2Name={displayWeddingProfile.partner2Name}
-                  weddingDate={displayWeddingProfile.weddingDate}
-                  venue={displayWeddingProfile.venue}
-                  photoUrl={digitalInvitationPhotoUrl}
-                  photoPosition={digitalInvitationPhotoPosition}
-                  onPhotoPositionChange={setDigitalInvitationPhotoPosition}
-                  guestName={user?.firstName || "Guest Name"}
-                  venueAddress={displayWeddingProfile.location}
-                  venueCity={displayWeddingProfile.venueCity}
-                  venueState={displayWeddingProfile.venueState}
-                  venueZip={displayWeddingProfile.venueZip}
-                  ceremonyTime={displayWeddingProfile.ceremonyTime}
-                  receptionTime={displayWeddingProfile.receptionTime}
-                  invitationMessage={invitationMessage || weddingProfile?.invitationMessage}
-                  scale={rsvpScale}
-                />
-              )}
+              {(() => {
+                // Same AI layout in both modes. In "custom" mode we only swap
+                // colors/font/size by feeding the existing palette/font/backgroundColor
+                // props and wrapping in a styled div for inheritable typography.
+                const activeMode = isSTD ? saveTheDateDesignMode : rsvpInvitationDesignMode;
+                const cd = isSTD ? customDesign.saveTheDate : customDesign.rsvpInvitation;
+                const isCustom = activeMode === "custom";
+                const customPalette = isCustom
+                  ? { ...displayPalette, primary: cd.accentColor, secondary: cd.accentColor, accent: cd.accentColor }
+                  : displayPalette;
+                const wrapperStyle: React.CSSProperties | undefined = isCustom
+                  ? {
+                      fontFamily: `'${cd.fontFamily}', serif`,
+                      fontSize: `${cd.fontSize}px`,
+                      color: cd.fontColor,
+                      background: cd.backgroundColor,
+                    }
+                  : undefined;
+                return (
+                  <div style={wrapperStyle}>
+                    {isSTD ? (
+                      <AiSaveDatePreview
+                        profile={{
+                          partner1Name: displayWeddingProfile.partner1Name,
+                          partner2Name: displayWeddingProfile.partner2Name,
+                          weddingDate: displayWeddingProfile.weddingDate,
+                          venue: displayWeddingProfile.venue,
+                          venueCity: displayWeddingProfile.venueCity,
+                          venueState: displayWeddingProfile.venueState,
+                          venueZip: displayWeddingProfile.venueZip,
+                          ceremonyTime: displayWeddingProfile.ceremonyTime,
+                          receptionTime: displayWeddingProfile.receptionTime,
+                          saveTheDateMessage: saveTheDateMessage || weddingProfile?.saveTheDateMessage,
+                        }}
+                        palette={customPalette}
+                        photoUrl={saveTheDatePhotoUrl}
+                        photoPosition={saveTheDatePhotoPosition}
+                      />
+                    ) : (
+                      <RsvpPagePreview
+                        colors={
+                          isCustom
+                            ? { ...customPalette, accent: cd.accentColor, primary: cd.accentColor }
+                            : { ...displayPalette, accent: "#D4A017", primary: "#D4A017" }
+                        }
+                        font={isCustom ? cd.fontFamily : null}
+                        backgroundColor={isCustom ? cd.backgroundColor : null}
+                        partner1Name={displayWeddingProfile.partner1Name}
+                        partner2Name={displayWeddingProfile.partner2Name}
+                        weddingDate={displayWeddingProfile.weddingDate}
+                        venue={displayWeddingProfile.venue}
+                        photoUrl={digitalInvitationPhotoUrl}
+                        photoPosition={digitalInvitationPhotoPosition}
+                        onPhotoPositionChange={setDigitalInvitationPhotoPosition}
+                        guestName={user?.firstName || "Guest Name"}
+                        venueAddress={displayWeddingProfile.location}
+                        venueCity={displayWeddingProfile.venueCity}
+                        venueState={displayWeddingProfile.venueState}
+                        venueZip={displayWeddingProfile.venueZip}
+                        ceremonyTime={displayWeddingProfile.ceremonyTime}
+                        receptionTime={displayWeddingProfile.receptionTime}
+                        invitationMessage={invitationMessage || weddingProfile?.invitationMessage}
+                        scale={rsvpScale}
+                      />
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </Card>
         </div>
