@@ -881,7 +881,7 @@ export default function WebsiteEditor() {
               onChange={(v) => update({ customText: { ...record.customText, _welcomeBg: v } })}
             />
             <ColorField
-              label={t("website_editor.bg_sections", { defaultValue: "Sections BG" })}
+              label={t("website_editor.bg_sections", { defaultValue: "Body BG" })}
               value={record.customText._sectionsBg || record.colorPalette.background}
               onChange={(v) => update({ customText: { ...record.customText, _sectionsBg: v } })}
             />
