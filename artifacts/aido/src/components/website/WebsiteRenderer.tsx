@@ -89,6 +89,18 @@ function formatWeddingDate(dateStr: string): string {
   });
 }
 
+function formatTime12h(time: string): string {
+  if (!time) return time;
+  const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+  if (!match) return time;
+  const h = parseInt(match[1], 10);
+  const min = match[2];
+  if (h < 0 || h > 23) return time;
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return min === "00" ? `${hour12} ${period}` : `${hour12}:${min} ${period}`;
+}
+
 type TextStyle = { fontFamily?: string; fontSize?: string; color?: string; bold?: boolean; italic?: boolean; animation?: string };
 
 // Edit mode props passed to every section (and its EditableText spans).
@@ -1304,8 +1316,8 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
                 >
                   <EditableText
                     editable={ctx.editable}
-                    value={data.customText[it.key] ?? ""}
-                    defaultValue={ctx.editable ? "Add Time" : (it.time || "")}
+                    value={formatTime12h(data.customText[it.key] ?? "")}
+                    defaultValue={ctx.editable ? "Add Time" : formatTime12h(it.time || "")}
                     onCommit={(v) => ctx.onTextChange(it.key, v)}
                     {...tspStyle(ctx, it.key)}
                   />
