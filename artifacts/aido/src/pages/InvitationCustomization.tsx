@@ -1108,6 +1108,7 @@ export default function InvitationCustomizationPage({
                       muted: cd.fontColor + "99",
                       cardBdr: cd.accentColor + "33",
                       font: cd.fontFamily,
+                      fontSize: cd.fontSize,
                     }
                   : undefined;
                 return (
@@ -1140,6 +1141,8 @@ export default function InvitationCustomizationPage({
                         }
                         font={isCustom ? cd.fontFamily : null}
                         backgroundColor={isCustom ? cd.backgroundColor : null}
+                        fontColor={isCustom ? cd.fontColor : null}
+                        fontSize={isCustom ? cd.fontSize : null}
                         partner1Name={displayWeddingProfile.partner1Name}
                         partner2Name={displayWeddingProfile.partner2Name}
                         weddingDate={displayWeddingProfile.weddingDate}

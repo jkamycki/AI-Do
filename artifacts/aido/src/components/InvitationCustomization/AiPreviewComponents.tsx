@@ -67,6 +67,7 @@ export interface CustomColors {
   muted: string;
   cardBdr: string;
   font?: string;
+  fontSize?: string;
 }
 
 // ── Badge circle ──────────────────────────────────────────────────────────────
@@ -164,6 +165,11 @@ export function AiSaveDatePreview({
   const displayFont = customColors?.font
     ? `'${customColors.font}', ${cormorant}`
     : cormorant;
+  // Scale all font sizes proportionally when a custom base size is set.
+  const baseFs = customColors?.fontSize ? parseFloat(customColors.fontSize) : 16;
+  const sc = customColors ? baseFs / 16 : 1;
+  // In custom mode apply the user's font everywhere, including labels.
+  const labelFont = customColors ? displayFont : jakarta;
 
   const couple    = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -173,13 +179,13 @@ export function AiSaveDatePreview({
     <CardShell photoUrl={photoUrl} photoPosition={photoPosition} customColors={customColors}>
       <Badge accent={accent}><Mail style={{ width: 22, height: 22, color: accent }} /></Badge>
 
-      <p style={{ fontFamily: jakarta, fontSize: 11, fontWeight: 700,
+      <p style={{ fontFamily: labelFont, fontSize: 11 * sc, fontWeight: 700,
                   letterSpacing: "0.42em", textTransform: "uppercase",
                   color: accent, marginTop: 12 }}>
         Save the Date
       </p>
 
-      <h2 style={{ fontFamily: displayFont, fontSize: "2.1rem", fontWeight: 400,
+      <h2 style={{ fontFamily: displayFont, fontSize: `${2.1 * sc}rem`, fontWeight: 400,
                    fontStyle: "italic", color: accent, lineHeight: 1.2, margin: "8px 0 0" }}>
         {couple}
       </h2>
@@ -187,7 +193,7 @@ export function AiSaveDatePreview({
       <div style={{ height: 1, background: cardBdr, margin: "14px 16px" }} />
 
       {dateStr && (
-        <p style={{ fontFamily: displayFont, fontSize: 10, fontWeight: 600,
+        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, fontWeight: 600,
                     letterSpacing: "0.12em", textTransform: "uppercase", color: text, marginBottom: 10 }}>
           {dateStr}
         </p>
@@ -196,30 +202,30 @@ export function AiSaveDatePreview({
       {!customColors && profile.venue && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 4 }}>
           <MapPin style={{ width: 12, height: 12, color: accent, flexShrink: 0 }} />
-          <p style={{ fontFamily: displayFont, fontSize: "1rem", fontWeight: 500, color: accent, margin: 0 }}>
+          <p style={{ fontFamily: displayFont, fontSize: `${1 * sc}rem`, fontWeight: 500, color: accent, margin: 0 }}>
             {profile.venue}
           </p>
         </div>
       )}
 
       {!customColors && profile.venueAddress && (
-        <p style={{ fontFamily: displayFont, fontSize: 10, color: text, margin: "2px 0 0" }}>
+        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: text, margin: "2px 0 0" }}>
           {profile.venueAddress}
         </p>
       )}
       {!customColors && cityLine && (
-        <p style={{ fontFamily: displayFont, fontSize: 10, color: text, margin: "1px 0 0" }}>
+        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: text, margin: "1px 0 0" }}>
           {cityLine}
         </p>
       )}
       {profile.saveTheDateMessage && (
-        <p style={{ fontFamily: displayFont, fontSize: "0.95rem", fontStyle: "italic",
+        <p style={{ fontFamily: displayFont, fontSize: `${0.95 * sc}rem`, fontStyle: "italic",
                     color: text, lineHeight: 1.7, margin: "14px 0 0" }}>
           &ldquo;{profile.saveTheDateMessage}&rdquo;
         </p>
       )}
 
-      <p style={{ fontFamily: displayFont, fontSize: 12, fontStyle: "italic",
+      <p style={{ fontFamily: displayFont, fontSize: 12 * sc, fontStyle: "italic",
                   color: muted, margin: "12px 0 0" }}>
         Formal invitation to follow
       </p>
@@ -228,7 +234,7 @@ export function AiSaveDatePreview({
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           background: `${accent}1a`, border: `1px solid ${cardBdr}`,
-          color: muted, fontFamily: jakarta, fontSize: 10,
+          color: muted, fontFamily: labelFont, fontSize: 10 * sc,
           fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase",
           padding: "8px 20px", borderRadius: 6,
         }}>
