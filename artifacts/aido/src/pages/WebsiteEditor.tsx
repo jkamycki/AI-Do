@@ -970,12 +970,11 @@ export default function WebsiteEditor() {
                     checked={record.sectionsEnabled[s.id]}
                     onCheckedChange={(checked) => {
                       update({ sectionsEnabled: { ...record.sectionsEnabled, [s.id]: checked } });
-                      // Jump the preview to the section the user just toggled
-                      // on so they can immediately see what they're editing.
-                      if (checked) {
-                        setEditorSection(s.id);
-                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
-                      }
+                      // Jump the preview to the section the user just clicked,
+                      // regardless of whether they toggled it on or off, so
+                      // they're always looking at what their click affected.
+                      setEditorSection(s.id);
+                      previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
                     }}
                   />
                 </div>
@@ -1019,10 +1018,10 @@ export default function WebsiteEditor() {
                         }
                         return { customText: ct, textPositions: tp };
                       });
-                      if (checked) {
-                        setEditorSection("home");
-                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
-                      }
+                      // Hero elements all live on the home page — jump there
+                      // on any click so the user always sees the result.
+                      setEditorSection("home");
+                      previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
                     }}
                   />
                 </div>
@@ -1047,10 +1046,10 @@ export default function WebsiteEditor() {
                     checked={!isHidden}
                     onCheckedChange={(checked) => {
                       update({ customText: { ...record.customText, [row.key]: checked ? "" : EDITABLE_HIDDEN_MARKER } });
-                      if (checked) {
-                        setEditorSection("schedule");
-                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
-                      }
+                      // Always jump to the schedule page on click so the user
+                      // sees the row they just toggled.
+                      setEditorSection("schedule");
+                      previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
                     }}
                   />
                 </div>
