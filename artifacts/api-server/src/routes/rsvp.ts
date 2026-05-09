@@ -1461,6 +1461,7 @@ router.get("/save-the-date/:token", async (req, res) => {
       fontFamily: string | null;
       textOverrides: Record<string, unknown>;
       photoObjectPosition: string;
+      saveTheDatePhotoUrl: string | null;
     } = {
       useGeneratedInvitation: true,
       backgroundColor: null,
@@ -1468,6 +1469,7 @@ router.get("/save-the-date/:token", async (req, res) => {
       fontFamily: null,
       textOverrides: {},
       photoObjectPosition: "50% 50%",
+      saveTheDatePhotoUrl: null,
     };
     try {
       const custRows = await db
@@ -1499,6 +1501,7 @@ router.get("/save-the-date/:token", async (req, res) => {
           fontFamily: useGenerated ? null : (cust.digitalInvitationFont ?? cust.selectedFont ?? null),
           textOverrides: useGenerated ? {} : allOverrides,
           photoObjectPosition: `${ox}% ${oy}%`,
+          saveTheDatePhotoUrl: cust.saveTheDatePhotoUrl ?? null,
         };
       }
     } catch {
@@ -1524,7 +1527,7 @@ router.get("/save-the-date/:token", async (req, res) => {
       ceremonyState: profile.ceremonyState,
       ceremonyZip: profile.ceremonyZip,
       saveTheDateMessage: (profile as any).saveTheDateMessage ?? null,
-      hasPhoto: !!(profile as any).saveTheDatePhotoUrl,
+      hasPhoto: !!(customizationData.saveTheDatePhotoUrl || (profile as any).saveTheDatePhotoUrl),
       // Custom design colours — null values mean "use the AI-generated dark theme"
       useGeneratedInvitation: customizationData.useGeneratedInvitation,
       customBackgroundColor: customizationData.backgroundColor,
