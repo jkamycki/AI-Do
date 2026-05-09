@@ -1593,21 +1593,43 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
       />
 
       {items.length > 0 && (
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-2xl mx-auto space-y-5">
           {items.map((it, i) => (
-            <div key={i} className="text-left">
-              <h3
-                className="text-lg sm:text-xl font-medium mb-2"
-                style={{ color: data.colorPalette.primary, fontFamily: bodyFontStack(bodyFont(data)) }}
-              >
-                {it.question}
-              </h3>
-              <p
-                className="text-base leading-relaxed whitespace-pre-line"
-                style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
-              >
-                {it.answer}
-              </p>
+            <div
+              key={i}
+              className="text-left rounded-xl px-5 py-5 sm:px-6 sm:py-6"
+              style={{
+                background: `${data.colorPalette.primary}08`,
+                border: `1px solid ${data.colorPalette.primary}1f`,
+              }}
+            >
+              <div className="flex items-start gap-3 mb-3">
+                <div
+                  className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full text-xs font-semibold tabular-nums"
+                  style={{
+                    background: data.colorPalette.primary,
+                    color: "#fff",
+                    fontFamily: bodyFontStack(bodyFont(data)),
+                  }}
+                  aria-hidden
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </div>
+                <h3
+                  className="text-base sm:text-lg font-semibold leading-snug pt-1"
+                  style={{ color: data.colorPalette.primary, fontFamily: bodyFontStack(bodyFont(data)) }}
+                >
+                  {it.question}
+                </h3>
+              </div>
+              {it.answer && (
+                <p
+                  className="text-sm sm:text-base leading-relaxed whitespace-pre-line pl-11"
+                  style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)), opacity: 0.85 }}
+                >
+                  {it.answer}
+                </p>
+              )}
             </div>
           ))}
         </div>
