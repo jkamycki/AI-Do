@@ -1327,7 +1327,9 @@ function Welcome({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
 
 function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.story ?? "";
-  if (!text && !ctx.editable && !ctx.previewMode) return null;
+  // The section is gated by sectionsEnabled.story upstream; if the user
+  // enabled it, render it everywhere — editor, preview, and published —
+  // so the layout is consistent even before the body has been filled in.
   return (
     <SectionShell id="story" titleKey="story_title" defaultTitle="Our Story" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx} tall>
       <EditableText
