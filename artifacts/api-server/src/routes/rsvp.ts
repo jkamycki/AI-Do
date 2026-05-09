@@ -693,6 +693,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       .where(eq(guests.id, id));
 
     const origin = buildFrontendOrigin(req);
+    const apiOrigin = buildOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
 
     let emailSent = false;
@@ -821,7 +822,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       // Use a direct public URL for the logo. Base64 data URIs are blocked or
       // truncated by some email clients (Gmail mobile, Outlook), so a public
       // HTTPS URL is more reliable.
-      const logoBase64 = `${origin}/logo.png`;
+      const logoBase64 = `${apiOrigin}/logo.png`;
       let html: string;
       if (useGenerated) {
         html = aiDigitalInvitationHtml({
@@ -932,8 +933,9 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
     }
 
     const origin = buildFrontendOrigin(req);
+    const apiOrigin = buildOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
-    const logoBase64 = `${origin}/logo.png`;
+    const logoBase64 = `${apiOrigin}/logo.png`;
 
     const html = aiRsvpReminderHtml({
       couple,
