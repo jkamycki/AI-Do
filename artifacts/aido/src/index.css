@@ -51,7 +51,7 @@
 }
 [data-gallery-anim="puzzle"] .wsg-item { opacity: 0; }
 [data-gallery-anim="puzzle"].wsg-grid-ready .wsg-item {
-  animation: wsg-puzzle-snap 0.6s ease-out forwards;
+  animation: wsg-puzzle-snap 1.5s ease-in-out forwards;
   animation-delay: var(--stagger, 0ms);
 }
 

@@ -21,6 +21,7 @@ import { flushPendingEditableCommits, subscribeEditableDrag, EDITABLE_HIDDEN_MAR
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
   slug: string;
+  heroImages: Array<{ url: string; order: number }>;
   passwordEnabled: boolean;
   published: boolean;
   publishedAt: string | null;
@@ -320,6 +321,7 @@ export default function WebsiteEditor() {
       textStyles: record.textStyles ?? {},
       textPositions: record.textPositions ?? {},
       galleryImages: record.galleryImages,
+      heroImages: record.heroImages ?? [],
       heroImage: record.heroImage,
       portalParty: record.portalParty,
       couple: previewExtra?.couple ?? {
@@ -354,6 +356,7 @@ export default function WebsiteEditor() {
           textStyles: record.textStyles ?? {},
           textPositions: record.textPositions ?? {},
           galleryImages: record.galleryImages,
+          heroImages: record.heroImages ?? [],
           heroImage: record.heroImage,
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
         }),
@@ -411,6 +414,7 @@ export default function WebsiteEditor() {
           textStyles: record.textStyles ?? {},
           textPositions: record.textPositions ?? {},
           galleryImages: record.galleryImages,
+          heroImages: record.heroImages ?? [],
           heroImage: record.heroImage,
           ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
         }),
@@ -508,9 +512,38 @@ export default function WebsiteEditor() {
     update({ galleryImages: next });
   };
 
+  const handleHeroImagesUpload = async (files: FileList) => {
+    if (!record) return;
+    const newImages = [...(record.heroImages ?? [])];
+    for (const file of Array.from(files).slice(0, 10)) {
+      const result = await upload.uploadFile(file);
+      if (result) {
+        newImages.push({ url: result.objectPath, order: newImages.length });
+      }
+    }
+    update({ heroImages: newImages });
+  };
+
+  const removeHeroImage = (index: number) => {
+    if (!record) return;
+    const next = (record.heroImages ?? []).filter((_, i) => i !== index).map((img, i) => ({ ...img, order: i }));
+    update({ heroImages: next });
+  };
+
   const applyTheme = (themeId: string) => {
     const t = THEMES.find((x) => x.id === themeId);
     if (!t) return;
+    // Reset all per-element / per-page colour overrides so the theme's
+    // colours actually take effect everywhere — otherwise leftover keys
+    // like _storyBg or _navLinkColor would keep painting old values on
+    // top of the new theme.
+    const RESET_KEYS = [
+      "_navLinkColor", "_navCoupleColor", "_footerColor",
+      "_welcomeBg", "_storyBg", "_scheduleBg", "_travelBg", "_registryBg",
+      "_weddingPartyBg", "_galleryBg", "_faqBg", "_rsvpBg",
+    ];
+    const nextCustomText: Record<string, string> = { ...(record?.customText ?? {}) };
+    for (const k of RESET_KEYS) delete nextCustomText[k];
     update({
       theme: t.id,
       font: t.font,
@@ -523,6 +556,7 @@ export default function WebsiteEditor() {
         background: t.background,
         text: t.text,
       },
+      customText: nextCustomText,
     });
   };
 
@@ -818,10 +852,13 @@ export default function WebsiteEditor() {
         {/* Colors */}
         {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_colors", { defaultValue: "Colors" })}>
           <div className="grid grid-cols-2 gap-3">
-            <ColorField label={t("website_editor.color_primary", { defaultValue: "Primary" })}   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
-            <ColorField label={t("website_editor.color_secondary", { defaultValue: "Secondary" })} value={record.colorPalette.secondary} onChange={(v) => update({ colorPalette: { ...record.colorPalette, secondary: v } })} />
+            <ColorField label={t("website_editor.color_focus_ring", { defaultValue: "Focus Ring" })}   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
             <ColorField label={t("website_editor.color_background", { defaultValue: "Background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
-            <ColorField label={t("website_editor.color_text", { defaultValue: "Text" })}      value={record.colorPalette.text}      onChange={(v) => update({ colorPalette: { ...record.colorPalette, text: v } })} />
+            <ColorField
+              label={t("website_editor.color_pages", { defaultValue: "Pages" })}
+              value={record.customText._navLinkColor || record.colorPalette.text}
+              onChange={(v) => update({ customText: { ...record.customText, _navLinkColor: v } })}
+            />
             <ColorField
               label={t("website_editor.color_couple_names", { defaultValue: "Header (Names)" })}
               value={record.customText._navCoupleColor || record.colorPalette.primary}
@@ -832,11 +869,26 @@ export default function WebsiteEditor() {
               value={record.customText._footerColor || record.colorPalette.primary}
               onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
             />
-            <ColorField
-              label={t("website_editor.color_welcome_bg", { defaultValue: "Welcome BG" })}
-              value={record.customText._welcomeBg || record.colorPalette.background}
-              onChange={(v) => update({ customText: { ...record.customText, _welcomeBg: v } })}
-            />
+            {/* Per-page background colour. Home is excluded — it uses the
+                hero image / hero photos background and has its own controls. */}
+            {([
+              { id: "welcome",      key: "_welcomeBg",      label: t("website_editor.bg_welcome",      { defaultValue: "Welcome BG" }) },
+              { id: "story",        key: "_storyBg",        label: t("website_editor.bg_story",        { defaultValue: "Our Story BG" }) },
+              { id: "schedule",     key: "_scheduleBg",     label: t("website_editor.bg_schedule",     { defaultValue: "Schedule BG" }) },
+              { id: "travel",       key: "_travelBg",       label: t("website_editor.bg_travel",       { defaultValue: "Travel BG" }) },
+              { id: "registry",     key: "_registryBg",     label: t("website_editor.bg_registry",     { defaultValue: "Registry BG" }) },
+              { id: "weddingParty", key: "_weddingPartyBg", label: t("website_editor.bg_wedding_party",{ defaultValue: "Wedding Party BG" }) },
+              { id: "gallery",      key: "_galleryBg",      label: t("website_editor.bg_gallery",      { defaultValue: "Gallery BG" }) },
+              { id: "faq",          key: "_faqBg",          label: t("website_editor.bg_faq",          { defaultValue: "FAQ BG" }) },
+              { id: "rsvp",         key: "_rsvpBg",         label: t("website_editor.bg_rsvp",         { defaultValue: "RSVP BG" }) },
+            ]).map((row) => (
+              <ColorField
+                key={row.key}
+                label={row.label}
+                value={record.customText[row.key] || record.colorPalette.background}
+                onChange={(v) => update({ customText: { ...record.customText, [row.key]: v } })}
+              />
+            ))}
           </div>
           {/* Background opacity slider — lets the user fade the section
               backgrounds so any underlying hero image / page background
@@ -1103,9 +1155,9 @@ export default function WebsiteEditor() {
                 <option value="fast">{t("website_editor.speed_fast", { defaultValue: "Fast" })}</option>
               </select>
             </div>
-            {(record.customText._heroAnimation === "slideshow") && (
+            {(record.customText._heroAnimation === "slideshow" || record.customText._heroAnimation === "marquee") && (
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                {t("website_editor.slideshow_hint", { defaultValue: "Slideshow uses your hero image and all gallery photos. Add more photos in the Gallery section below to extend the rotation." })}
+                Uses your hero image and any photos added in the <strong>Home Photos</strong> section in the Design tab. Gallery photos stay in the gallery only.
               </p>
             )}
           </div>
@@ -1121,7 +1173,7 @@ export default function WebsiteEditor() {
                 value={record.customText._galleryAnimation ?? "grid"}
                 onChange={(e) => update({ customText: { ...record.customText, _galleryAnimation: e.target.value } })}
               >
-                <option value="grid">{t("website_editor.gallery_anim_grid", { defaultValue: "Grid (static)" })}</option>
+                <option value="grid">Puzzle (photos fade in one by one)</option>
                 <option value="slideshow">{t("website_editor.gallery_anim_slideshow", { defaultValue: "Slideshow (fade through photos)" })}</option>
                 <option value="marquee">{t("website_editor.gallery_anim_marquee", { defaultValue: "Marquee (continuous scroll)" })}</option>
               </select>
@@ -1140,26 +1192,6 @@ export default function WebsiteEditor() {
                 </select>
               </div>
             )}
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Entrance animation</Label>
-              <select
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={record.customText._galleryEntrance ?? "none"}
-                onChange={(e) => update({ customText: { ...record.customText, _galleryEntrance: e.target.value } })}
-              >
-                <option value="none">None</option>
-                <option value="fade-in">Fade in</option>
-                <option value="slide-up">Slide up</option>
-                <option value="zoom-in">Zoom in</option>
-                <option value="puzzle">Puzzle build</option>
-              </select>
-              {record.customText._galleryEntrance && record.customText._galleryEntrance !== "none"
-                && record.customText._galleryAnimation && record.customText._galleryAnimation !== "grid" && (
-                <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed mt-1">
-                  Entrance animations only run when Style is set to Grid.
-                </p>
-              )}
-            </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               {t("website_editor.gallery_anim_hint", { defaultValue: "Choose how gallery photos display. Guests can still click any photo to open the full lightbox." })}
             </p>
@@ -1201,38 +1233,58 @@ export default function WebsiteEditor() {
           </div>
         </Section>}
 
-        {/* Hero image */}
-        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_hero_image", { defaultValue: "Hero Image" })}>
-          {record.heroImage ? (
-            <div className="relative rounded-md overflow-hidden">
-              <img
-                src={record.heroImage.startsWith("/objects/") ? `/api/storage${record.heroImage}` : record.heroImage}
-                alt="Hero"
-                className="w-full h-32 object-cover"
-              />
-              <button
-                onClick={() => update({ heroImage: null })}
-                className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ) : (
-            <label className="flex items-center justify-center gap-2 w-full px-4 py-8 rounded-md border-2 border-dashed border-border cursor-pointer hover:border-primary/50 transition-colors text-sm text-muted-foreground">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleHeroUpload(file);
-                  e.target.value = "";
-                }}
-                disabled={upload.isUploading}
-              />
-              {upload.isUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <><ImageIcon className="h-4 w-4" /> Upload hero image</>}
-            </label>
-          )}
+        {/* Home Page Photos — primary background + extras for slideshow/marquee */}
+        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Home Page Photos">
+          <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
+            Photos shown on the home page background. Add multiple for slideshows and marquees. These are separate from the Gallery section.
+          </p>
+          <div className="grid grid-cols-3 gap-2 mb-3 items-start">
+            {record.heroImage && (
+              <div className="relative aspect-square rounded-md overflow-hidden">
+                <img
+                  src={record.heroImage.startsWith("/objects/") ? `/api/storage${record.heroImage}` : record.heroImage}
+                  alt="Main"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={() => update({ heroImage: null })}
+                  className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
+                  title="Remove main photo"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+            {(record.heroImages ?? []).map((img, i) => (
+              <div key={i} className="relative aspect-square rounded-md overflow-hidden">
+                <img
+                  src={img.url.startsWith("/objects/") ? `/api/storage${img.url}` : img.url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={() => removeHeroImage(i)}
+                  className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <label className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-md border-2 border-dashed border-border cursor-pointer hover:border-primary/50 transition-colors text-sm text-muted-foreground">
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) handleHeroImagesUpload(e.target.files);
+                e.target.value = "";
+              }}
+              disabled={upload.isUploading}
+            />
+            {upload.isUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <>Add photos</>}
+          </label>
         </Section>}
 
         {/* Gallery */}
