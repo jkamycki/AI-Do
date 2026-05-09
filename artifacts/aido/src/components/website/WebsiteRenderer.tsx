@@ -1324,7 +1324,7 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={text}
         defaultValue={ctx.editable ? "Tell guests how you two met, your story, your journey..." : ""}
         onCommit={(v) => ctx.onTextChange("story", v)}
-        className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
+        className="text-center text-base sm:text-lg leading-relaxed max-w-3xl mx-auto px-4 whitespace-pre-line break-words"
         style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
         {...tsp(ctx, "story")}
       />
