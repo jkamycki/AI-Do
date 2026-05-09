@@ -864,6 +864,9 @@ export default function WebsiteEditor() {
             "💍", "💐", "💒", "👰", "🤵", "💕", "💖", "❤️", "🌹", "🥂",
             "🍾", "🎉", "🎊", "✨", "💫", "🕊️", "🦋", "🌸", "📅", "✉️",
             "🌷", "🌺", "🌻", "🌼", "🍰", "🧁", "🎂", "🎁", "💌", "👑",
+            "🥰", "😍", "😘", "💋", "🫶", "💗", "💓", "💞", "🧡", "💙",
+            "🌙", "⭐", "🌟", "☀️", "🌈", "🌊", "🏖️", "✈️", "🎵", "🎶",
+            "🍷", "🫖", "🎀", "🎈", "🪄", "📸", "🙏", "🌿", "🔮", "👫",
           ];
           const insertEmoji = (key: string, emoji: string, currentValue: string, onChange: (v: string) => void) => {
             const el = contentInputRefs.current[key];
