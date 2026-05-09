@@ -1061,26 +1061,47 @@ export default function WebsiteEditor() {
 
         {/* Schedule event toggles */}
         {inTab("pages") && record.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
-          <div className="space-y-2.5">
+          <div className="space-y-4">
             {[
-              { key: "_scheduleCeremonyHidden",  label: "Ceremony" },
-              { key: "_scheduleCocktailHidden",  label: "Cocktail Hour" },
-              { key: "_scheduleReceptionHidden", label: "Reception" },
+              { hiddenKey: "_scheduleCeremonyHidden",  timeKey: "_scheduleCeremonyTime",  labelKey: "_scheduleCeremonyLabel",  defaultLabel: "Ceremony" },
+              { hiddenKey: "_scheduleCocktailHidden",  timeKey: "_scheduleCocktailTime",  labelKey: "_scheduleCocktailLabel",  defaultLabel: "Cocktail Hour" },
+              { hiddenKey: "_scheduleReceptionHidden", timeKey: "_scheduleReceptionTime", labelKey: "_scheduleReceptionLabel", defaultLabel: "Reception" },
             ].map((row) => {
-              const isHidden = record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
+              const isHidden = record.customText[row.hiddenKey] === EDITABLE_HIDDEN_MARKER;
               return (
-                <div key={row.key} className="flex items-center justify-between gap-3 py-1.5">
-                  <Label className="text-sm cursor-pointer">{row.label}</Label>
-                  <Switch
-                    checked={!isHidden}
-                    onCheckedChange={(checked) => {
-                      update({ customText: { ...record.customText, [row.key]: checked ? "" : EDITABLE_HIDDEN_MARKER } });
-                      // Always jump to the schedule page on click so the user
-                      // sees the row they just toggled.
-                      setEditorSection("schedule");
-                      previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
-                    }}
-                  />
+                <div key={row.hiddenKey} className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label className="text-sm font-medium cursor-pointer">{row.defaultLabel}</Label>
+                    <Switch
+                      checked={!isHidden}
+                      onCheckedChange={(checked) => {
+                        update({ customText: { ...record.customText, [row.hiddenKey]: checked ? "" : EDITABLE_HIDDEN_MARKER } });
+                        // Always jump to the schedule page on click so the user
+                        // sees the row they just toggled.
+                        setEditorSection("schedule");
+                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
+                      }}
+                    />
+                  </div>
+                  {!isHidden && (
+                    <div className="grid grid-cols-[auto_1fr] gap-2">
+                      <Input
+                        type="time"
+                        className="h-9 text-sm"
+                        value={record.customText[row.timeKey] ?? ""}
+                        onChange={(e) => update({ customText: { ...record.customText, [row.timeKey]: e.target.value } })}
+                        aria-label={`${row.defaultLabel} time`}
+                      />
+                      <Input
+                        type="text"
+                        className="h-9 text-sm"
+                        placeholder={row.defaultLabel}
+                        value={record.customText[row.labelKey] ?? ""}
+                        onChange={(e) => update({ customText: { ...record.customText, [row.labelKey]: e.target.value } })}
+                        aria-label={`${row.defaultLabel} label`}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
