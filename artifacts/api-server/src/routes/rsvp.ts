@@ -982,6 +982,8 @@ router.post("/rsvp/:token", async (req, res) => {
       plusOneLastName,
       plusOneMealChoice,
       dietaryRestrictions,
+      rsvpMessage,
+      notes,
     } = req.body;
 
     if (attendance !== "attending" && attendance !== "declined") {
@@ -996,11 +998,19 @@ router.post("/rsvp/:token", async (req, res) => {
       return val.trim();
     };
 
+    const trimOrNull = (val: unknown): string | null =>
+      typeof val === "string" && val.trim() ? val.trim() : null;
+
     const updateData: Partial<typeof guests.$inferInsert> = {
+      // rsvpStatus reflects the chosen response — "attending" or "declined".
+      // Anything other than the default "pending" means the guest has responded.
       rsvpStatus: attendance,
-      dietaryNotes: typeof dietaryRestrictions === "string" && dietaryRestrictions.trim()
-        ? dietaryRestrictions.trim()
-        : null,
+      // Stamp the moment the guest submitted; presence of this column is the
+      // canonical "Responded" signal alongside rsvpStatus !== "pending".
+      rsvpRespondedAt: new Date(),
+      dietaryNotes: trimOrNull(dietaryRestrictions),
+      rsvpMessage: trimOrNull(rsvpMessage),
+      notes: trimOrNull(notes) ?? guest.notes,
     };
 
     if (attendance === "attending") {
@@ -1025,9 +1035,21 @@ router.post("/rsvp/:token", async (req, res) => {
       updateData.mealChoice = null;
     }
 
-    await db.update(guests).set(updateData).where(eq(guests.id, guest.id));
+    const [updated] = await db
+      .update(guests)
+      .set(updateData)
+      .where(eq(guests.id, guest.id))
+      .returning();
 
-    res.json({ success: true, status: attendance });
+    res.json({
+      success: true,
+      status: attendance,
+      // Echo the canonical updated record so any planner client that re-fetches
+      // (Guests.tsx via react-query refetchOnWindowFocus / invalidate) sees the
+      // same shape it already renders.
+      guest: updated,
+      respondedAt: updated.rsvpRespondedAt,
+    });
   } catch (err) {
     req.log.error(err, "Failed to submit RSVP");
     res.status(500).json({ error: "Internal server error" });
