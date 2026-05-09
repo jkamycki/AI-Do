@@ -880,7 +880,21 @@ export function InvitationSendModal({
                       scale={0.72}
                     />
                   )}
-                  {!reminderOnly && (
+                  {reminderOnly ? (
+                    guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder ? (
+                      <Button
+                        variant="outline"
+                        className="w-full gap-2"
+                        onClick={() => guest && onSendRsvpReminder(guest.id)}
+                        disabled={!!isSendingRsvpReminder}
+                      >
+                        {isSendingRsvpReminder
+                          ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending reminder…</>
+                          : <><Mail className="h-4 w-4" /> Send RSVP Reminder</>
+                        }
+                      </Button>
+                    ) : null
+                  ) : (
                     <Button
                       className="w-full gap-2"
                       onClick={() => guest && onSendDigitalInvitation(guest.id)}
@@ -889,21 +903,6 @@ export function InvitationSendModal({
                       {isSendingDigital
                         ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
                         : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
-                      }
-                    </Button>
-                  )}
-                  {/* RSVP Reminder — AI-only template, separate from invitation.
-                      Only enabled when guest has email AND hasn't responded yet. */}
-                  {reminderOnly && guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder && (
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2"
-                      onClick={() => guest && onSendRsvpReminder(guest.id)}
-                      disabled={!!isSendingRsvpReminder}
-                    >
-                      {isSendingRsvpReminder
-                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending reminder…</>
-                        : <><Mail className="h-4 w-4" /> Send RSVP Reminder</>
                       }
                     </Button>
                   )}
