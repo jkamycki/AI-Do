@@ -10,6 +10,7 @@ interface RsvpPagePreviewProps {
   backgroundColor: string | null;
   fontColor?: string | null;
   fontSize?: string | null;
+  coupleColor?: string;
   partner1Name: string;
   partner2Name: string;
   weddingDate: string;
@@ -68,6 +69,7 @@ export function RsvpPagePreview({
   backgroundColor,
   fontColor,
   fontSize,
+  coupleColor,
   partner1Name,
   partner2Name,
   weddingDate,
@@ -87,9 +89,9 @@ export function RsvpPagePreview({
 }: RsvpPagePreviewProps) {
   const bg = backgroundColor || "#1E1A2E";
   const accent = colors.accent || colors.primary || "#D4A017";
-  // In AI mode (no custom background) always use the brand gold for the couple
-  // name, matching AiSaveDatePreview's hardcoded GOLD constant.
-  const coupleNameColor = backgroundColor ? accent : "#D4A017";
+  // coupleColor is explicitly passed as #D4A017 in AI mode and omitted in
+  // custom mode so it falls back to the user's accent.
+  const coupleNameColor = coupleColor ?? accent;
   const isLight = isLightColor(bg);
   // Use custom font color when provided (custom mode), otherwise derive from background.
   const textColor = fontColor || (isLight ? "#1a1a1a" : "#ffffff");

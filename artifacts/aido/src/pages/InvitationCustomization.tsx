@@ -1143,6 +1143,7 @@ export default function InvitationCustomizationPage({
                         backgroundColor={isCustom ? cd.backgroundColor : null}
                         fontColor={isCustom ? cd.fontColor : null}
                         fontSize={isCustom ? cd.fontSize : null}
+                        coupleColor={isCustom ? undefined : "#D4A017"}
                         partner1Name={displayWeddingProfile.partner1Name}
                         partner2Name={displayWeddingProfile.partner2Name}
                         weddingDate={displayWeddingProfile.weddingDate}
