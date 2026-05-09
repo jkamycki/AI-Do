@@ -533,6 +533,17 @@ export default function WebsiteEditor() {
   const applyTheme = (themeId: string) => {
     const t = THEMES.find((x) => x.id === themeId);
     if (!t) return;
+    // Reset all per-element / per-page colour overrides so the theme's
+    // colours actually take effect everywhere — otherwise leftover keys
+    // like _storyBg or _navLinkColor would keep painting old values on
+    // top of the new theme.
+    const RESET_KEYS = [
+      "_navLinkColor", "_navCoupleColor", "_footerColor",
+      "_welcomeBg", "_storyBg", "_scheduleBg", "_travelBg", "_registryBg",
+      "_weddingPartyBg", "_galleryBg", "_faqBg", "_rsvpBg",
+    ];
+    const nextCustomText: Record<string, string> = { ...(record?.customText ?? {}) };
+    for (const k of RESET_KEYS) delete nextCustomText[k];
     update({
       theme: t.id,
       font: t.font,
@@ -545,6 +556,7 @@ export default function WebsiteEditor() {
         background: t.background,
         text: t.text,
       },
+      customText: nextCustomText,
     });
   };
 
@@ -840,7 +852,7 @@ export default function WebsiteEditor() {
         {/* Colors */}
         {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_colors", { defaultValue: "Colors" })}>
           <div className="grid grid-cols-2 gap-3">
-            <ColorField label={t("website_editor.color_primary", { defaultValue: "Primary" })}   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
+            <ColorField label={t("website_editor.color_focus_ring", { defaultValue: "Focus Ring" })}   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
             <ColorField label={t("website_editor.color_background", { defaultValue: "Background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
             <ColorField
               label={t("website_editor.color_pages", { defaultValue: "Pages" })}
@@ -857,11 +869,26 @@ export default function WebsiteEditor() {
               value={record.customText._footerColor || record.colorPalette.primary}
               onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
             />
-            <ColorField
-              label={t("website_editor.color_welcome_bg", { defaultValue: "Welcome BG" })}
-              value={record.customText._welcomeBg || record.colorPalette.background}
-              onChange={(v) => update({ customText: { ...record.customText, _welcomeBg: v } })}
-            />
+            {/* Per-page background colour. Home is excluded — it uses the
+                hero image / hero photos background and has its own controls. */}
+            {([
+              { id: "welcome",      key: "_welcomeBg",      label: t("website_editor.bg_welcome",      { defaultValue: "Welcome BG" }) },
+              { id: "story",        key: "_storyBg",        label: t("website_editor.bg_story",        { defaultValue: "Our Story BG" }) },
+              { id: "schedule",     key: "_scheduleBg",     label: t("website_editor.bg_schedule",     { defaultValue: "Schedule BG" }) },
+              { id: "travel",       key: "_travelBg",       label: t("website_editor.bg_travel",       { defaultValue: "Travel BG" }) },
+              { id: "registry",     key: "_registryBg",     label: t("website_editor.bg_registry",     { defaultValue: "Registry BG" }) },
+              { id: "weddingParty", key: "_weddingPartyBg", label: t("website_editor.bg_wedding_party",{ defaultValue: "Wedding Party BG" }) },
+              { id: "gallery",      key: "_galleryBg",      label: t("website_editor.bg_gallery",      { defaultValue: "Gallery BG" }) },
+              { id: "faq",          key: "_faqBg",          label: t("website_editor.bg_faq",          { defaultValue: "FAQ BG" }) },
+              { id: "rsvp",         key: "_rsvpBg",         label: t("website_editor.bg_rsvp",         { defaultValue: "RSVP BG" }) },
+            ]).map((row) => (
+              <ColorField
+                key={row.key}
+                label={row.label}
+                value={record.customText[row.key] || record.colorPalette.background}
+                onChange={(v) => update({ customText: { ...record.customText, [row.key]: v } })}
+              />
+            ))}
           </div>
           {/* Background opacity slider — lets the user fade the section
               backgrounds so any underlying hero image / page background
