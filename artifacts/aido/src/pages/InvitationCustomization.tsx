@@ -667,8 +667,18 @@ export default function InvitationCustomizationPage({
         onValueChange={(v) => setDesignMode(v as "ai" | "custom")}
       >
         <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="ai">AI Generated</TabsTrigger>
-          <TabsTrigger value="custom">Custom Design</TabsTrigger>
+          <TabsTrigger
+            value="ai"
+            className="data-[state=active]:bg-[#D4A017] data-[state=active]:text-white"
+          >
+            AI Generated
+          </TabsTrigger>
+          <TabsTrigger
+            value="custom"
+            className="data-[state=active]:bg-[#D4A017] data-[state=active]:text-white"
+          >
+            Custom Design
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
