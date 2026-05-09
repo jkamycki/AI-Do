@@ -8,14 +8,13 @@ import { WEBSITE_THEMES as THEMES } from "@/lib/websiteThemes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
-  QrCode, Download, Link2, Plus, Megaphone, Users, Undo2, Sparkles, Settings, Trash2, Smile,
+  QrCode, Download, Link2, Plus, Users, Undo2, Sparkles, Settings, Trash2, Smile,
 } from "lucide-react";
 import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
 import { flushPendingEditableCommits, subscribeEditableDrag, EDITABLE_HIDDEN_MARKER } from "@/components/website/EditableText";
@@ -1177,6 +1176,7 @@ export default function WebsiteEditor() {
               { key: "_heroVenueIcon", label: t("website_editor.hero_venue_icon", { defaultValue: "Venue Pin Icon" }) },
               { key: "_countdown", label: t("website_editor.hero_countdown", { defaultValue: "Countdown Timer" }) },
               { key: "_addToCalendarRow", label: t("website_editor.hero_add_to_calendar", { defaultValue: "Add to Calendar Button" }) },
+              { key: "_announcementHidden", label: t("website_editor.hero_announcement", { defaultValue: "Announcement Banner" }) },
             ].map((row) => {
               const isHidden = record.customText[row.key] === " __aido_hidden__ " || record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
               return (
@@ -1638,21 +1638,6 @@ export default function WebsiteEditor() {
           )}
         </Section>}
 
-        {/* Announcement banner */}
-        {inTab("settings") && <Section icon={<Megaphone className="h-4 w-4" />} title={t("website_editor.section_announcement", { defaultValue: "Announcement" })}>
-          <p className="text-xs text-muted-foreground mb-2">
-            Show a dismissible banner at the top of your site — great for last-minute updates.
-          </p>
-          <Textarea
-            value={record.customText._announcement ?? ""}
-            onChange={(e) =>
-              update({ customText: { ...record.customText, _announcement: e.target.value } })
-            }
-            placeholder={t("website_editor.announcement_placeholder", { defaultValue: "e.g. Venue has changed — please check the Travel section for updated details." })}
-            className="text-sm resize-none"
-            rows={3}
-          />
-        </Section>}
 
         {/* RSVP settings — responses are tracked in the portal, not here */}
         {inTab("pages") && record.sectionsEnabled.rsvp && (
