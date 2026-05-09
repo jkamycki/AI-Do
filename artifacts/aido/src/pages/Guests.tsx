@@ -639,6 +639,7 @@ export default function Guests() {
   const [pendingGuestData, setPendingGuestData] = useState<GuestFormValues | null>(null);
 
   const [sendModalGuest, setSendModalGuest] = useState<Guest | null>(null);
+  const [sendModalDefaultTab, setSendModalDefaultTab] = useState<"saveTheDate" | "digitalInvitation">("saveTheDate");
 
   const { data: weddingProfile, isLoading: profileLoading } = useGetProfile();
   const { data, isLoading, isError } = useGetGuests();
@@ -737,6 +738,25 @@ export default function Guests() {
     },
     onError: (err) => toast({ title: "Failed to send reminder", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
   });
+
+  const [sendingReminders, setSendingReminders] = useState(false);
+
+  const handleSendAllReminders = async () => {
+    const eligible = (data?.guests ?? []).filter(
+      g => g.rsvpStatus === "pending" && g.invitationStatus === "sent" && g.email,
+    );
+    if (!eligible.length) return;
+    setSendingReminders(true);
+    let sent = 0;
+    for (const g of eligible) {
+      try {
+        const res = await authFetch(`/api/guests/${g.id}/send-rsvp?reminder=true`, { method: "POST" });
+        if (res.ok) sent++;
+      } catch { /* continue */ }
+    }
+    setSendingReminders(false);
+    toast({ title: `Reminders sent`, description: `${sent} of ${eligible.length} reminder email${eligible.length !== 1 ? "s" : ""} delivered.` });
+  };
 
   const allGuests = data?.guests ?? [];
   const summary = data?.summary ?? { total: 0, attending: 0, declined: 0, pending: 0, plusOnes: 0 };
@@ -1545,6 +1565,7 @@ export default function Guests() {
                               }
                               onClick={() => {
                                 if (g.rsvpStatus === "attending" || g.rsvpStatus === "declined") return;
+                                setSendModalDefaultTab("saveTheDate");
                                 setSendModalGuest(g);
                               }}
                             >
@@ -1556,8 +1577,10 @@ export default function Guests() {
                                 size="icon"
                                 className="h-8 w-8 text-amber-500 hover:text-amber-600"
                                 title="Send RSVP reminder"
-                                disabled={sendReminder.isPending}
-                                onClick={() => sendReminder.mutate(g.id)}
+                                onClick={() => {
+                                  setSendModalDefaultTab("digitalInvitation");
+                                  setSendModalGuest(g);
+                                }}
                               >
                                 <Mail className="h-3.5 w-3.5" />
                               </Button>
@@ -1647,6 +1670,7 @@ export default function Guests() {
         isSendingSaveTheDate={sendSaveTheDate.isPending}
         isSendingDigital={sendRsvp.isPending}
         isSendingRsvpReminder={sendRsvpReminder.isPending}
+        defaultTab={sendModalDefaultTab}
       />
     </div>
   );
