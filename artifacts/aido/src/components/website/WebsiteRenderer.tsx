@@ -918,24 +918,38 @@ function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx
 
 // ---------- announcement banner ----------
 
-function AnnouncementBanner({ data }: { data: WebsiteRendererPayload }) {
-  const text = data.customText._announcement?.trim();
+function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
+  const text = data.customText._announcement ?? "";
+  const trimmed = text.trim();
   const [dismissed, setDismissed] = useState(false);
-  if (!text || dismissed) return null;
+  // Public site: hide entirely when empty/dismissed. Editor: keep the slot
+  // visible so the user has somewhere to click and start typing.
+  if ((!trimmed || dismissed) && !ctx.editable) return null;
   return (
     <div
       className="relative flex items-start gap-3 px-5 py-3 text-sm"
       style={{ background: `${data.colorPalette.primary}18`, borderBottom: `2px solid ${data.colorPalette.primary}55` }}
     >
-      <span className="flex-1 text-center" style={{ color: data.colorPalette.text }}>{text}</span>
-      <button
-        onClick={() => setDismissed(true)}
-        className="flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity"
-        aria-label="Dismiss"
+      <EditableText
+        as="span"
+        editable={ctx.editable}
+        value={text}
+        defaultValue={ctx.editable ? "Click to add an announcement..." : ""}
+        onCommit={(v) => ctx.onTextChange("_announcement", v)}
+        className="flex-1 text-center"
         style={{ color: data.colorPalette.text }}
-      >
-        <X className="h-4 w-4" />
-      </button>
+        {...tspStyle(ctx, "_announcement")}
+      />
+      {!ctx.editable && (
+        <button
+          onClick={() => setDismissed(true)}
+          className="flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+          aria-label="Dismiss"
+          style={{ color: data.colorPalette.text }}
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }
@@ -1255,7 +1269,7 @@ function SectionShell({
   return (
     <section
       id={id}
-      className={`py-20 px-6${tall ? " min-h-screen flex items-center" : ""}`}
+      className={`py-20 px-6${tall ? " min-h-screen" : ""}`}
       style={{
         // Welcome has its own _welcomeBg picker; everything else shares
         // _sectionsBg so the user can recolour all non-welcome sections at
@@ -2525,7 +2539,7 @@ export function WebsiteRenderer({
 
   return (
     <div style={{ background: data.colorPalette.background, color: data.colorPalette.text, fontFamily: "system-ui, -apple-system, sans-serif", position: "relative" }}>
-      <AnnouncementBanner data={data} />
+      <AnnouncementBanner data={data} ctx={ctx} />
       <TopNav
         data={data}
         scrollContainer={scrollContainer}
