@@ -56,8 +56,7 @@ export default function InvitationCustomizationPage({
       ? parseInt(params.profileId)
       : activeWorkspace?.profileId);
   const [previewTab, setPreviewTab] = useState<PreviewTab>("saveTheDate");
-  const [saveTheDateDesignMode, setSaveTheDateDesignMode] = useState<"ai" | "custom">("ai");
-  const [rsvpInvitationDesignMode, setRsvpInvitationDesignMode] = useState<"ai" | "custom">("ai");
+  const [designMode, setDesignMode] = useState<"ai" | "custom">("ai");
   const [customDesign, setCustomDesign] = useState<{
     saveTheDate: { backgroundColor: string; accentColor: string; fontFamily: string; fontSize: string; fontColor: string };
     rsvpInvitation: { backgroundColor: string; accentColor: string; fontFamily: string; fontSize: string; fontColor: string };
@@ -281,8 +280,7 @@ export default function InvitationCustomizationPage({
       // Restore the per-invitation design mode + custom design fields from
       // the saved record so the toggle and panel reflect what was last saved.
       if (customization.useGeneratedInvitation === false) {
-        if (customization.saveTheDateBackground) setSaveTheDateDesignMode("custom");
-        if (customization.digitalInvitationBackground) setRsvpInvitationDesignMode("custom");
+        if (customization.saveTheDateBackground || customization.digitalInvitationBackground) setDesignMode("custom");
       }
       const savedAccent =
         customization.customColors?.accent ??
@@ -585,9 +583,9 @@ export default function InvitationCustomizationPage({
     stdPhotoUrl = saveTheDatePhotoUrl,
     digPhotoUrl = digitalInvitationPhotoUrl,
   ) => {
-    const stdCustom = saveTheDateDesignMode === "custom";
-    const digCustom = rsvpInvitationDesignMode === "custom";
-    const eitherCustom = stdCustom || digCustom;
+    const stdCustom = designMode === "custom";
+    const digCustom = designMode === "custom";
+    const eitherCustom = designMode === "custom";
     // Custom accent: pick from whichever invitation type is currently in
     // custom mode (prefer STD if both are custom). The accent is shared on
     // the colorPalette / customColors record because the legacy renderer
@@ -668,8 +666,7 @@ export default function InvitationCustomizationPage({
     digitalInvitationPhotoUrl,
     digitalInvitationPhotoPosition,
     backgroundImageUrl,
-    saveTheDateDesignMode,
-    rsvpInvitationDesignMode,
+    designMode,
     customDesign,
   ]);
 
@@ -728,19 +725,8 @@ export default function InvitationCustomizationPage({
       </div>
 
       <Tabs
-        value={
-          previewTab === "saveTheDate"
-            ? saveTheDateDesignMode
-            : rsvpInvitationDesignMode
-        }
-        onValueChange={(v) => {
-          const mode = v as "ai" | "custom";
-          if (previewTab === "saveTheDate") {
-            setSaveTheDateDesignMode(mode);
-          } else {
-            setRsvpInvitationDesignMode(mode);
-          }
-        }}
+        value={designMode}
+        onValueChange={(v) => setDesignMode(v as "ai" | "custom")}
       >
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger
@@ -928,9 +914,7 @@ export default function InvitationCustomizationPage({
           {(() => {
             const activeKey: "saveTheDate" | "rsvpInvitation" =
               previewTab === "saveTheDate" ? "saveTheDate" : "rsvpInvitation";
-            const activeMode =
-              activeKey === "saveTheDate" ? saveTheDateDesignMode : rsvpInvitationDesignMode;
-            if (activeMode !== "custom") return null;
+            if (designMode !== "custom") return null;
             const fields = customDesign[activeKey];
             const updateField = (field: keyof typeof fields, value: string) => {
               setCustomDesign((prev) => ({
@@ -1088,7 +1072,7 @@ export default function InvitationCustomizationPage({
                 // Same AI layout in both modes. In "custom" mode we only swap
                 // colors/font/size by feeding the existing palette/font/backgroundColor
                 // props and wrapping in a styled div for inheritable typography.
-                const activeMode = isSTD ? saveTheDateDesignMode : rsvpInvitationDesignMode;
+                const activeMode = designMode;
                 const cd = isSTD ? customDesign.saveTheDate : customDesign.rsvpInvitation;
                 const isCustom = activeMode === "custom";
                 const customPalette = isCustom
