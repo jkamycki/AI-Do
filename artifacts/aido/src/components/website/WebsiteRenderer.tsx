@@ -1255,7 +1255,7 @@ function SectionShell({
   return (
     <section
       id={id}
-      className={`py-20 px-6${tall ? " min-h-screen flex items-center" : ""}`}
+      className={`py-20 px-6${tall ? " min-h-screen" : ""}`}
       style={{
         // Welcome has its own _welcomeBg picker; everything else shares
         // _sectionsBg so the user can recolour all non-welcome sections at
