@@ -337,6 +337,9 @@ export default function WebsiteEditor() {
   }, [record, previewExtra?.couple]);
 
   const [saveError, setSaveError] = useState(false);
+  // Tracks the most recent server/network error so handleSave can surface it
+  // in the failure toast for diagnosis. Cleared on every successful save.
+  const lastSaveErrorRef = useRef<{ status?: number; message: string } | null>(null);
 
   // localStorage backup — every dirty save snapshot is mirrored here so a
   // failed POST + closed tab still recovers on next mount.
@@ -437,6 +440,7 @@ export default function WebsiteEditor() {
       const seqAtSend = editSeqRef.current;
       const result = await postSave(body);
       if (result.ok) {
+        lastSaveErrorRef.current = null;
         const userEditedDuringSave = editSeqRef.current !== seqAtSend;
         setRecord((prev) => {
           if (!prev) return result.record;
@@ -469,6 +473,9 @@ export default function WebsiteEditor() {
       }
 
       console.error("[WebsiteEditor] save failed after retries", result.err);
+      const message =
+        result.err instanceof Error ? result.err.message : String(result.err ?? "Unknown error");
+      lastSaveErrorRef.current = { status: result.status, message };
       setSaveError(true);
       return false;
     } finally {
@@ -545,7 +552,10 @@ export default function WebsiteEditor() {
     const ok = await saveNow(false);
     if (ok) toast({ title: "Saved!" });
     else {
-      const detail = "We'll keep retrying in the background — your work is backed up locally.";
+      const err = lastSaveErrorRef.current;
+      const detail = err
+        ? `${err.status ? `HTTP ${err.status} — ` : ""}${err.message} (your work is backed up locally and will keep retrying)`
+        : "We'll keep retrying in the background — your work is backed up locally.";
       toast({ title: "Save didn't go through", description: detail, variant: "destructive" });
     }
   };
@@ -782,7 +792,7 @@ export default function WebsiteEditor() {
           <div className="grid grid-cols-2 gap-2 max-w-md">
             <Button
               size="sm"
-              onClick={() => { setPreviewSection("home"); setPreviewOpen(true); }}
+              onClick={() => { setPreviewSection(editorSection || "home"); setPreviewOpen(true); }}
               className="border-0 font-bold"
               style={{ background: "#D4A017", color: "#2A1745" }}
             >
@@ -1840,14 +1850,24 @@ export default function WebsiteEditor() {
           <button
             className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent flex items-center gap-2"
             onClick={() => {
-              const key = `_custom_${Date.now()}`;
+              // Encode the section in the key so the textbox only renders on
+              // the page it was added to. CustomTextBoxes parses this back out.
+              const key = `_custom_${editorSection || "home"}__${Date.now()}`;
               const insertAt = ctxMenu ? { x: ctxMenu.canvasX, y: ctxMenu.canvasY } : { x: 0, y: 0 };
               patchRecord((prev) => {
                 // CustomTextBoxes lays new boxes out at (left: 24, top: 120 + idx*56)
                 // by default, then DraggableRow applies textPositions[key] as a
                 // translate delta. To land the box at the right-click point, the
                 // delta has to compensate for that base.
-                const customCount = Object.keys(prev.customText).filter((k) => k.startsWith("_custom_")).length;
+                // Match the renderer's filter: only boxes on the current
+                // section count toward the vertical stack offset.
+                const sectionOf = (k: string) => {
+                  const m = k.match(/^_custom_([a-zA-Z]+)__\d+$/);
+                  return m ? m[1] : "home";
+                };
+                const customCount = Object.keys(prev.customText).filter(
+                  (k) => k.startsWith("_custom_") && sectionOf(k) === (editorSection || "home"),
+                ).length;
                 const baseLeft = 24;
                 const baseTop = 120 + customCount * 56;
                 return {
