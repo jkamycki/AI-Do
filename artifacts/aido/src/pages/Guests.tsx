@@ -719,8 +719,6 @@ export default function Guests() {
     onError: (err) => toast({ title: "Failed to send RSVP Invitation", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
   });
 
-  const [sendingReminders, setSendingReminders] = useState(false);
-
   const sendReminder = useMutation({
     mutationFn: async (guestId: number) => {
       const res = await authFetch(`/api/guests/${guestId}/send-rsvp?reminder=true`, { method: "POST" });
@@ -739,29 +737,6 @@ export default function Guests() {
     },
     onError: (err) => toast({ title: "Failed to send reminder", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
   });
-
-  const handleSendAllReminders = async () => {
-    const pending = allGuests.filter(
-      g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent"
-    );
-    if (pending.length === 0) {
-      toast({ title: "No pending guests", description: "All invited guests with email addresses have already responded." });
-      return;
-    }
-    setSendingReminders(true);
-    let sent = 0;
-    for (const g of pending) {
-      try {
-        const res = await authFetch(`/api/guests/${g.id}/send-rsvp?reminder=true`, { method: "POST" });
-        if (res.ok) {
-          const data = await res.json() as { emailSent: boolean };
-          if (data.emailSent) sent++;
-        }
-      } catch { /* continue */ }
-    }
-    setSendingReminders(false);
-    toast({ title: `${sent} reminder${sent !== 1 ? "s" : ""} sent`, description: `Emailed ${sent} of ${pending.length} pending guests.` });
-  };
 
   const allGuests = data?.guests ?? [];
   const summary = data?.summary ?? { total: 0, attending: 0, declined: 0, pending: 0, plusOnes: 0 };
@@ -1120,12 +1095,6 @@ export default function Guests() {
           {allGuests.length > 0 && (
             <Button variant="outline" onClick={() => exportCSV(allGuests)}>
               <Download className="h-4 w-4 mr-2" /> {t("guests.export_csv")}
-            </Button>
-          )}
-          {allGuests.some(g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent") && (
-            <Button variant="outline" onClick={handleSendAllReminders} disabled={sendingReminders}>
-              {sendingReminders ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
-              Send RSVP Reminders
             </Button>
           )}
           <Dialog open={isAdding} onOpenChange={setIsAdding}>
