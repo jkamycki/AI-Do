@@ -82,6 +82,7 @@ interface Props {
   isSendingDigital: boolean;
   isSendingRsvpReminder?: boolean;
   defaultTab?: "saveTheDate" | "digitalInvitation";
+  reminderOnly?: boolean;
 }
 
 function formatTime(timeStr: string | null | undefined): string | null {
@@ -515,6 +516,7 @@ export function InvitationSendModal({
   isSendingDigital,
   isSendingRsvpReminder,
   defaultTab = "saveTheDate",
+  reminderOnly = false,
 }: Props) {
   const [customization, setCustomization] = useState<Customization | null>(null);
   const [loadingCustomization, setLoadingCustomization] = useState(false);
@@ -691,14 +693,16 @@ export function InvitationSendModal({
               </div>
 
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "saveTheDate" | "digitalInvitation")}>
-                <TabsList className="w-full">
-                  <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
-                    <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
-                  </TabsTrigger>
-                  <TabsTrigger value="digitalInvitation" className="flex-1 text-xs">
-                    <Heart className="h-3.5 w-3.5 mr-1" /> RSVP Invitation
-                  </TabsTrigger>
-                </TabsList>
+                {!reminderOnly && (
+                  <TabsList className="w-full">
+                    <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
+                      <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
+                    </TabsTrigger>
+                    <TabsTrigger value="digitalInvitation" className="flex-1 text-xs">
+                      <Heart className="h-3.5 w-3.5 mr-1" /> RSVP Invitation
+                    </TabsTrigger>
+                  </TabsList>
+                )}
 
                 <TabsContent value="saveTheDate" className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground text-center">
@@ -812,14 +816,16 @@ export function InvitationSendModal({
             /* ── AI-Generated Mode ── */
             <div className="space-y-4">
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "saveTheDate" | "digitalInvitation")}>
-                <TabsList className="w-full">
-                  <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
-                    <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
-                  </TabsTrigger>
-                  <TabsTrigger value="digitalInvitation" className="flex-1 text-xs">
-                    <Heart className="h-3.5 w-3.5 mr-1" /> RSVP Invitation
-                  </TabsTrigger>
-                </TabsList>
+                {!reminderOnly && (
+                  <TabsList className="w-full">
+                    <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
+                      <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
+                    </TabsTrigger>
+                    <TabsTrigger value="digitalInvitation" className="flex-1 text-xs">
+                      <Heart className="h-3.5 w-3.5 mr-1" /> RSVP Invitation
+                    </TabsTrigger>
+                  </TabsList>
+                )}
 
                 <TabsContent value="saveTheDate" className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground text-center">Email preview — this is what your guest will receive in their inbox</p>
