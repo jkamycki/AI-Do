@@ -75,13 +75,8 @@ export default function DataHandling() {
                     <td className="px-4 py-2.5 align-top text-zinc-200">Sender, recipient, subject, body</td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-2.5 align-top"><strong>OpenAI</strong></td>
+                    <td className="px-4 py-2.5 align-top"><strong>OpenRouter</strong></td>
                     <td className="px-4 py-2.5 align-top">AI inference (Aria, contract analyzer, mood board suggestions, etc.)</td>
-                    <td className="px-4 py-2.5 align-top text-zinc-200">Prompt + context for the requested feature</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-2.5 align-top"><strong>Groq</strong></td>
-                    <td className="px-4 py-2.5 align-top">AI inference (fast Llama-based responses)</td>
                     <td className="px-4 py-2.5 align-top text-zinc-200">Prompt + context for the requested feature</td>
                   </tr>
                   <tr>
@@ -95,8 +90,8 @@ export default function DataHandling() {
                     <td className="px-4 py-2.5 align-top text-zinc-200">Static assets, request metadata</td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-2.5 align-top"><strong>Postgres host</strong></td>
-                    <td className="px-4 py-2.5 align-top">Application database with encryption at rest</td>
+                    <td className="px-4 py-2.5 align-top"><strong>Neon</strong></td>
+                    <td className="px-4 py-2.5 align-top">Serverless Postgres database with encryption at rest</td>
                     <td className="px-4 py-2.5 align-top text-zinc-200">All workspace data described above</td>
                   </tr>
                 </tbody>

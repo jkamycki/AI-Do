@@ -436,53 +436,54 @@ export default function WebsiteEditor() {
     const rec = recordRef.current;
     if (!rec) return false;
     if (!silent) setSaving(true);
+    try {
+      const body = buildSaveBody(rec);
+      // Mirror to localStorage BEFORE attempting the network — guarantees the
+      // payload survives a tab close mid-request.
+      writePendingBackup(body, rec.id);
 
-    const body = buildSaveBody(rec);
-    // Mirror to localStorage BEFORE attempting the network — guarantees the
-    // payload survives a tab close mid-request.
-    writePendingBackup(body, rec.id);
-
-    // Capture edit count before POST so we can detect concurrent edits and
-    // avoid clobbering them with the server's response.
-    const seqAtSend = editSeqRef.current;
-    const result = await postSave(body);
-    if (result.ok) {
-      const userEditedDuringSave = editSeqRef.current !== seqAtSend;
-      setRecord((prev) => {
-        if (!prev) return result.record;
-        // If the user kept typing during the POST, keep their in-memory record
-        // and only fold in server-owned metadata (id, slug, lastUpdated, etc.).
-        // Otherwise mirror the server's authoritative response.
-        if (userEditedDuringSave) {
+      // Capture edit count before POST so we can detect concurrent edits and
+      // avoid clobbering them with the server's response.
+      const seqAtSend = editSeqRef.current;
+      const result = await postSave(body);
+      if (result.ok) {
+        const userEditedDuringSave = editSeqRef.current !== seqAtSend;
+        setRecord((prev) => {
+          if (!prev) return result.record;
+          // If the user kept typing during the POST, keep their in-memory record
+          // and only fold in server-owned metadata (id, slug, lastUpdated, etc.).
+          // Otherwise mirror the server's authoritative response.
+          if (userEditedDuringSave) {
+            return {
+              ...prev,
+              id: result.record.id,
+              slug: result.record.slug,
+              published: result.record.published,
+              lastUpdated: result.record.lastUpdated,
+              password: result.record.password,
+              portalParty: result.record.portalParty ?? prev.portalParty,
+            };
+          }
           return {
-            ...prev,
-            id: result.record.id,
-            slug: result.record.slug,
-            published: result.record.published,
-            lastUpdated: result.record.lastUpdated,
-            password: result.record.password,
+            ...result.record,
             portalParty: result.record.portalParty ?? prev.portalParty,
           };
-        }
-        return {
-          ...result.record,
-          portalParty: result.record.portalParty ?? prev.portalParty,
-        };
-      });
-      setPasswordInput("");
-      // Only mark clean if no edits happened during the POST. Otherwise the
-      // local state is still ahead of the server and another save needs to run.
-      if (editSeqRef.current === seqAtSend) setDirty(false);
-      setSaveError(false);
-      clearPendingBackup();
-      if (!silent) setSaving(false);
-      return true;
-    }
+        });
+        setPasswordInput("");
+        // Only mark clean if no edits happened during the POST. Otherwise the
+        // local state is still ahead of the server and another save needs to run.
+        if (editSeqRef.current === seqAtSend) setDirty(false);
+        setSaveError(false);
+        clearPendingBackup();
+        return true;
+      }
 
-    console.error("[WebsiteEditor] save failed after retries", result.err);
-    setSaveError(true);
-    if (!silent) setSaving(false);
-    return false;
+      console.error("[WebsiteEditor] save failed after retries", result.err);
+      setSaveError(true);
+      return false;
+    } finally {
+      if (!silent) setSaving(false);
+    }
   };
 
   // On mount, if the previous tab left a pending payload behind (e.g. a save
@@ -539,9 +540,14 @@ export default function WebsiteEditor() {
   }, [record, dirty]);
 
   const handleSave = async () => {
-    // Flush any debounced EditableText blur commits so the latest typed text
-    // is in record state before we build the save body. Without this, a click
-    // on Save right after typing can ship a stale snapshot.
+    // Flush any text the user typed but hasn't blurred yet. EditableText
+    // defers onCommit by 80 ms after blur, and contentEditable / native input
+    // values aren't in record state until the element blurs at all. Without
+    // both steps, clicking Save right after typing can ship a stale snapshot.
+    const active = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    if (active && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+      active.blur();
+    }
     flushPendingEditableCommits();
     // One paint frame so React applies the flushed setState before we read
     // recordRef.current inside saveNow.
