@@ -110,7 +110,7 @@ const NOOP_CTX: EditCtx = { editable: false, onTextChange: () => {} };
 // default fields it clears the customText override so the value visibly
 // empties (and the EditableText wrap auto-hides via its empty-state path).
 function tsp(ctx: EditCtx, key: string, _deletable = false) {
-  if (!ctx.editable) return {};
+  if (!ctx.editable) return { textStyle: ctx.textStyles?.[key], position: ctx.textPositions?.[key] };
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
@@ -126,7 +126,7 @@ function tsp(ctx: EditCtx, key: string, _deletable = false) {
 // text would let users drag just the text and leave the row icon behind.
 // No onDelete: hero row elements are hidden/shown only via sidebar toggles.
 function tspStyle(ctx: EditCtx, key: string) {
-  if (!ctx.editable) return {};
+  if (!ctx.editable) return { textStyle: ctx.textStyles?.[key] };
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
@@ -137,7 +137,7 @@ function tspStyle(ctx: EditCtx, key: string) {
 // Style-only, no delete, no drag — for hero elements that must stay
 // centered. Visibility is controlled exclusively via sidebar toggles.
 function tspNoDelete(ctx: EditCtx, key: string) {
-  if (!ctx.editable) return {};
+  if (!ctx.editable) return { textStyle: ctx.textStyles?.[key] };
   return {
     textStyle: ctx.textStyles?.[key] ?? {},
     onStyleChange: ctx.onStyleChange ? (s: TextStyle) => ctx.onStyleChange!(key, s) : undefined,
@@ -2327,7 +2327,7 @@ export function WebsiteRenderer({
 }) {
   const ctx: EditCtx = editable && onTextChange
     ? { editable: true, onTextChange, textStyles: data.textStyles, onStyleChange, textPositions: data.textPositions, onPositionChange, onDeleteElement }
-    : NOOP_CTX;
+    : { editable: false, onTextChange: () => {}, textStyles: data.textStyles, textPositions: data.textPositions };
 
   // Dynamically load the chosen heading + body Google Fonts so that fonts not
   // preloaded in index.html (e.g. Tangerine, Great Vibes, Allura) actually render.
