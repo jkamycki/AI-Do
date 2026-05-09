@@ -910,7 +910,7 @@ export function InvitationSendModal({
                   )}
                   {/* RSVP Reminder — AI-only template, separate from invitation.
                       Only enabled when guest has email AND hasn't responded yet. */}
-                  {guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder && (
+                  {reminderOnly && guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder && (
                     <Button
                       variant="outline"
                       className="w-full gap-2"
