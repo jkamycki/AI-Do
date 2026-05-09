@@ -1144,6 +1144,33 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Schedule event toggles */}
+        {inTab("pages") && record.sectionsEnabled.travel && <Section icon={<MapPin className="h-4 w-4" />} title="Travel & Venue Items">
+          <div className="space-y-2.5">
+            {[
+              { key: "_travelVenueHidden",  label: "Venue" },
+              { key: "_travelHotelHidden",  label: "Hotel" },
+              { key: "_travelNotesHidden",  label: "Travel Notes" },
+            ].map((row) => {
+              const isHidden = record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
+              return (
+                <div key={row.key} className="flex items-center justify-between gap-3 py-1.5">
+                  <Label className="text-sm cursor-pointer">{row.label}</Label>
+                  <Switch
+                    checked={!isHidden}
+                    onCheckedChange={(checked) => {
+                      update({ customText: { ...record.customText, [row.key]: checked ? "" : EDITABLE_HIDDEN_MARKER } });
+                      if (checked) {
+                        setEditorSection("travel");
+                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
+                      }
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </Section>}
+
         {inTab("pages") && record.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
           <div className="space-y-4">
             {[
@@ -1744,6 +1771,34 @@ export default function WebsiteEditor() {
           />
         </div>
       </main>
+
+      {/* Mobile-only Edit / Preview toggle. Phones only have room for one
+          pane at a time, so split the screen by tab instead of cramming the
+          sidebar above a tiny preview. lg breakpoint hides the bar. */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-[150] border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="grid grid-cols-2 gap-1 p-2 max-w-md mx-auto">
+          <button
+            onClick={() => setMobileView("edit")}
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+              mobileView === "edit"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {t("website_editor.tab_edit", { defaultValue: "Edit" })}
+          </button>
+          <button
+            onClick={() => setMobileView("preview")}
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+              mobileView === "preview"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {t("website_editor.tab_preview", { defaultValue: "Preview" })}
+          </button>
+        </div>
+      </div>
 
 
       {ctxMenu && (
