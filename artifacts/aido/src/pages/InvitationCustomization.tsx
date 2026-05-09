@@ -55,6 +55,7 @@ export default function InvitationCustomizationPage({
       ? parseInt(params.profileId)
       : activeWorkspace?.profileId);
   const [previewTab, setPreviewTab] = useState<PreviewTab>("saveTheDate");
+  const [designMode, setDesignMode] = useState<"ai" | "custom">("ai");
 
   // ── Shared brand-color state ──────────────────────────────────────────────
   const [primaryColor, setPrimaryColor] = useState("#D4A017");
@@ -660,6 +661,16 @@ export default function InvitationCustomizationPage({
           Customize your Save the Date and RSVP Invitation designs
         </p>
       </div>
+
+      <Tabs
+        value={designMode}
+        onValueChange={(v) => setDesignMode(v as "ai" | "custom")}
+      >
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="ai">AI Generated</TabsTrigger>
+          <TabsTrigger value="custom">Custom Design</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Left Panel */}
