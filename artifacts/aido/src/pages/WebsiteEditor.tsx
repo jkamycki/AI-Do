@@ -782,7 +782,7 @@ export default function WebsiteEditor() {
           <div className="grid grid-cols-2 gap-2 max-w-md">
             <Button
               size="sm"
-              onClick={() => { setPreviewSection("home"); setPreviewOpen(true); }}
+              onClick={() => { setPreviewSection(editorSection || "home"); setPreviewOpen(true); }}
               className="border-0 font-bold"
               style={{ background: "#D4A017", color: "#2A1745" }}
             >
