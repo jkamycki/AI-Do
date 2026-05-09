@@ -1168,6 +1168,7 @@ export default function WebsiteEditor() {
         {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Home Elements" })}>
           <div className="space-y-2.5">
             {[
+              { key: "_announcementHidden", label: t("website_editor.hero_announcement", { defaultValue: "Announcement Banner" }) },
               { key: "_heroTaglineHidden", label: "Tagline (\"We're getting married\")" },
               { key: "_coupleName", label: t("website_editor.hero_couple_names", { defaultValue: "Couple Names" }) },
               { key: "_heroDateRow", label: t("website_editor.hero_date_row", { defaultValue: "Wedding Date" }) },
