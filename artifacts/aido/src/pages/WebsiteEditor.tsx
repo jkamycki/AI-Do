@@ -874,32 +874,6 @@ export default function WebsiteEditor() {
               onChange={(v) => update({ customText: { ...record.customText, _sectionsBg: v } })}
             />
           </div>
-          {/* Background opacity slider — lets the user fade the section
-              backgrounds so any underlying hero image / page background
-              shows through. */}
-          {(() => {
-            const raw = record.customText._backgroundOpacity;
-            const opacity = raw === undefined || raw === "" ? 100 : Math.max(0, Math.min(100, parseInt(raw, 10) || 100));
-            return (
-              <div className="mt-4 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">
-                    {t("website_editor.background_opacity", { defaultValue: "Background opacity" })}
-                  </Label>
-                  <span className="text-xs text-muted-foreground tabular-nums">{opacity}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={opacity}
-                  onChange={(e) => update({ customText: { ...record.customText, _backgroundOpacity: e.target.value } })}
-                  className="w-full accent-primary cursor-pointer"
-                />
-              </div>
-            );
-          })()}
         </Section>}
 
         {/* Sections */}
