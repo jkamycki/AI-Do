@@ -19,7 +19,7 @@ import type { Guest } from "@workspace/api-client-react";
 import type { TextOverrides, ColorPalette } from "@/types/invitations";
 import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
 import { RsvpPagePreview } from "@/components/InvitationCustomization/RsvpPagePreview";
-import { AiSaveDatePreview, AiDigitalInvitationPreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
+import { AiSaveDatePreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
 
 interface Customization {
@@ -38,6 +38,10 @@ interface Customization {
   digitalInvitationLayout: string;
   saveTheDateBackground: string | null;
   digitalInvitationBackground: string | null;
+  saveTheDateFontColor: string | null;
+  digitalInvitationFontColor: string | null;
+  saveTheDateFontSize: string | null;
+  digitalInvitationFontSize: string | null;
   textOverrides: TextOverrides;
 }
 
@@ -542,6 +546,10 @@ export function InvitationSendModal({
           digitalInvitationLayout: data.digitalInvitationLayout || data.selectedLayout || "classic",
           saveTheDateBackground: data.saveTheDateBackground ?? null,
           digitalInvitationBackground: data.digitalInvitationBackground ?? null,
+          saveTheDateFontColor: data.saveTheDateFontColor ?? null,
+          digitalInvitationFontColor: data.digitalInvitationFontColor ?? null,
+          saveTheDateFontSize: data.saveTheDateFontSize ?? null,
+          digitalInvitationFontSize: data.digitalInvitationFontSize ?? null,
           textOverrides: data.textOverrides ?? {},
         });
       })
@@ -562,6 +570,10 @@ export function InvitationSendModal({
           digitalInvitationLayout: "classic",
           saveTheDateBackground: null,
           digitalInvitationBackground: null,
+          saveTheDateFontColor: null,
+          digitalInvitationFontColor: null,
+          saveTheDateFontSize: null,
+          digitalInvitationFontSize: null,
           textOverrides: {},
         });
       })
@@ -692,38 +704,27 @@ export function InvitationSendModal({
                   </p>
                   <div className="flex justify-center">
                     {profile && (() => {
-                      // designMode = "custom" → same AI layout, custom styling.
-                      // Mirrors the renderer used in Invitation Customization (Phase 4).
                       const cd = {
                         backgroundColor: customization.saveTheDateBackground ?? "#FFFFFF",
                         accentColor: palette.accent ?? "#D4A017",
                         fontFamily: customization.saveTheDateFont ?? "Playfair Display",
-                        fontSize: String(customization.fontSize ?? 16),
-                        fontColor: stdCustomColors.text,
+                        fontSize: customization.saveTheDateFontSize ?? "16",
+                        fontColor: customization.saveTheDateFontColor ?? stdCustomColors.text,
                       };
-                      const customPalette = {
-                        ...palette,
-                        primary: cd.accentColor,
-                        secondary: cd.accentColor,
-                        accent: cd.accentColor,
+                      const customPalette = { ...palette, primary: cd.accentColor, secondary: cd.accentColor, accent: cd.accentColor };
+                      const customColors = {
+                        ...stdCustomColors,
+                        font: cd.fontFamily,
+                        fontSize: cd.fontSize,
                       };
                       return (
-                        <div
-                          style={{
-                            fontFamily: `'${cd.fontFamily}', serif`,
-                            fontSize: `${cd.fontSize}px`,
-                            color: cd.fontColor,
-                            background: cd.backgroundColor,
-                          }}
-                        >
-                          <AiSaveDatePreview
-                            profile={profile}
-                            palette={customPalette}
-                            photoUrl={customization.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl || profile.invitationPhotoUrl || null}
-                            photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
-                            customColors={stdCustomColors}
-                          />
-                        </div>
+                        <AiSaveDatePreview
+                          profile={profile}
+                          palette={customPalette}
+                          photoUrl={customization.saveTheDatePhotoUrl || profile.saveTheDatePhotoUrl || profile.invitationPhotoUrl || null}
+                          photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
+                          customColors={customColors}
+                        />
                       );
                     })()}
                   </div>
@@ -748,14 +749,12 @@ export function InvitationSendModal({
                   </p>
                   <div className="flex justify-center overflow-hidden">
                     {profile && (() => {
-                      // designMode = "custom" → same AI layout, custom styling.
-                      // Mirrors the renderer used in Invitation Customization (Phase 4).
                       const cd = {
                         backgroundColor: customization.digitalInvitationBackground ?? "#FFFFFF",
                         accentColor: palette.accent ?? "#D4A017",
                         fontFamily: customization.digitalInvitationFont ?? "Playfair Display",
-                        fontSize: String(customization.fontSize ?? 16),
-                        fontColor: digCustomColors.text,
+                        fontSize: customization.digitalInvitationFontSize ?? "16",
+                        fontColor: customization.digitalInvitationFontColor ?? digCustomColors.text,
                       };
                       const customPalette = {
                         ...palette,
@@ -764,36 +763,29 @@ export function InvitationSendModal({
                         accent: cd.accentColor,
                       };
                       return (
-                        <div
-                          style={{
-                            fontFamily: `'${cd.fontFamily}', serif`,
-                            fontSize: `${cd.fontSize}px`,
-                            color: cd.fontColor,
-                            background: cd.backgroundColor,
-                          }}
-                        >
-                          <RsvpPagePreview
-                            colors={{ ...customPalette, accent: cd.accentColor, primary: cd.accentColor }}
-                            font={cd.fontFamily}
-                            backgroundColor={cd.backgroundColor}
-                            partner1Name={profile.partner1Name ?? ""}
-                            partner2Name={profile.partner2Name ?? ""}
-                            weddingDate={profile.weddingDate ?? ""}
-                            venue={profile.venue ?? ""}
-                            photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
-                            photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
-                            onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
-                            guestName={guest?.name ?? "Guest"}
-                            venueAddress={profile.location ?? profile.venueAddress ?? ""}
-                            venueCity={profile.venueCity ?? ""}
-                            venueState={profile.venueState ?? ""}
-                            venueZip={profile.venueZip ?? ""}
-                            ceremonyTime={profile.ceremonyTime ?? ""}
-                            receptionTime={profile.receptionTime ?? ""}
-                            invitationMessage={profile.invitationMessage ?? ""}
-                            scale={0.72}
-                          />
-                        </div>
+                        <RsvpPagePreview
+                          colors={customPalette}
+                          font={cd.fontFamily}
+                          fontColor={cd.fontColor}
+                          fontSize={cd.fontSize}
+                          backgroundColor={cd.backgroundColor}
+                          partner1Name={profile.partner1Name ?? ""}
+                          partner2Name={profile.partner2Name ?? ""}
+                          weddingDate={profile.weddingDate ?? ""}
+                          venue={profile.venue ?? ""}
+                          photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
+                          photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
+                          onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
+                          guestName={guest?.name ?? "Guest"}
+                          venueAddress={profile.location ?? profile.venueAddress ?? ""}
+                          venueCity={profile.venueCity ?? ""}
+                          venueState={profile.venueState ?? ""}
+                          venueZip={profile.venueZip ?? ""}
+                          ceremonyTime={profile.ceremonyTime ?? ""}
+                          receptionTime={profile.receptionTime ?? ""}
+                          invitationMessage={profile.invitationMessage ?? ""}
+                          scale={0.72}
+                        />
                       );
                     })()}
                   </div>
@@ -832,7 +824,7 @@ export function InvitationSendModal({
                   {profile && (
                     <AiSaveDatePreview
                       profile={profile}
-                      palette={palette}
+                      palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
                       photoUrl={
                         customization.saveTheDatePhotoUrl
                         || profile.saveTheDatePhotoUrl
@@ -859,15 +851,27 @@ export function InvitationSendModal({
                 <TabsContent value="digitalInvitation" className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground text-center">Email preview — this is what your guest will receive in their inbox</p>
                   {profile && (
-                    <AiDigitalInvitationPreview
-                      profile={profile}
-                      palette={palette}
-                      photoUrl={
-                        customization.digitalInvitationPhotoUrl
-                        || profile.digitalInvitationPhotoUrl
-                        || profile.invitationPhotoUrl
-                      }
+                    <RsvpPagePreview
+                      colors={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
+                      coupleColor="#D4A017"
+                      font={undefined}
+                      backgroundColor={null}
+                      partner1Name={profile.partner1Name ?? ""}
+                      partner2Name={profile.partner2Name ?? ""}
+                      weddingDate={profile.weddingDate ?? ""}
+                      venue={profile.venue ?? ""}
+                      photoUrl={customization.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || null}
                       photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
+                      onPhotoPositionChange={() => {}}
+                      guestName={guest?.name ?? "Guest"}
+                      venueAddress={profile.location ?? profile.venueAddress ?? ""}
+                      venueCity={profile.venueCity ?? ""}
+                      venueState={profile.venueState ?? ""}
+                      venueZip={profile.venueZip ?? ""}
+                      ceremonyTime={profile.ceremonyTime ?? ""}
+                      receptionTime={profile.receptionTime ?? ""}
+                      invitationMessage={profile.invitationMessage ?? ""}
+                      scale={0.72}
                     />
                   )}
                   <Button

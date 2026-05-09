@@ -8,6 +8,9 @@ interface RsvpPagePreviewProps {
   colors: ColorPalette;
   font: string | null;
   backgroundColor: string | null;
+  fontColor?: string | null;
+  fontSize?: string | null;
+  coupleColor?: string;
   partner1Name: string;
   partner2Name: string;
   weddingDate: string;
@@ -64,6 +67,9 @@ export function RsvpPagePreview({
   colors,
   font,
   backgroundColor,
+  fontColor,
+  fontSize,
+  coupleColor,
   partner1Name,
   partner2Name,
   weddingDate,
@@ -83,18 +89,28 @@ export function RsvpPagePreview({
 }: RsvpPagePreviewProps) {
   const bg = backgroundColor || "#1E1A2E";
   const accent = colors.accent || colors.primary || "#D4A017";
+  // coupleColor is explicitly passed as #D4A017 in AI mode and omitted in
+  // custom mode so it falls back to the user's accent.
+  const coupleNameColor = coupleColor ?? accent;
   const isLight = isLightColor(bg);
-  const textColor = isLight ? "#1a1a1a" : "#ffffff";
-  const textMuted = isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)";
-  const textFaint = isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.35)";
+  // Use custom font color when provided (custom mode), otherwise derive from background.
+  const textColor = fontColor || (isLight ? "#1a1a1a" : "#ffffff");
+  const textMuted = fontColor ? fontColor + "99" : (isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)");
+  const textFaint = fontColor ? fontColor + "55" : (isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.35)");
   const cardBg = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
   const cardBorder = isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)";
   const accentText = isLightColor(accent) ? "#1a1a1a" : "#ffffff";
   const couple = [partner1Name, partner2Name].filter(Boolean).join(" & ") || "The Couple";
   const dateStr = weddingDate ? formatDate(weddingDate) : "Wedding Day";
-  const coupleFont = font
+  // Apply custom font family to all text when set; falls back to defaults.
+  const serifStack = font
     ? `'${font}', 'Cormorant Garamond', Georgia, serif`
     : "'Cormorant Garamond', 'Playfair Display', Georgia, serif";
+  const coupleFont = serifStack;
+  const bodyFont = font ? serifStack : jakarta;
+  // Scale font sizes when a custom base size is provided (default 16px).
+  const baseFs = fontSize ? parseFloat(fontSize) : 16;
+  const sc = fontSize ? baseFs / 16 : 1;
 
   const cityStateZip = [
     venueCity,
@@ -200,7 +216,7 @@ export function RsvpPagePreview({
 
           {/* "Wedding RSVP" label */}
           <p style={{
-            fontFamily: jakarta, fontSize: 9, fontWeight: 600,
+            fontFamily: bodyFont, fontSize: 9 * sc, fontWeight: 600,
             letterSpacing: "0.4em", textTransform: "uppercase",
             color: accent, marginBottom: 10,
           }}>Wedding RSVP</p>
@@ -208,42 +224,42 @@ export function RsvpPagePreview({
           {/* Couple names — gold */}
           <h1 style={{
             fontFamily: coupleFont,
-            fontSize: 34, fontWeight: 400, fontStyle: "italic",
-            color: accent, lineHeight: 1.15, letterSpacing: "0.02em",
+            fontSize: 34 * sc, fontWeight: 400, fontStyle: "italic",
+            color: coupleNameColor, lineHeight: 1.15, letterSpacing: "0.02em",
             marginBottom: 8,
           }}>{couple}</h1>
 
-          {/* Date — white */}
+          {/* Date */}
           <p style={{
-            fontFamily: jakarta, fontSize: 10, letterSpacing: "0.1em",
+            fontFamily: bodyFont, fontSize: 10 * sc, letterSpacing: "0.1em",
             textTransform: "uppercase", color: textColor, marginBottom: 8,
           }}>{dateStr}</p>
 
-          {/* Venue — gold; address — white; times — gold */}
+          {/* Venue — gold; address — text; times — gold */}
           {(venue || venueAddress || cityStateZip || timesLine) && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
               {venue && (
                 <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                   <MapPin style={{ width: 12, height: 12, color: accent }} />
-                  <p style={{ fontFamily: coupleFont, fontSize: 16, fontWeight: 500, color: accent }}>{venue}</p>
+                  <p style={{ fontFamily: coupleFont, fontSize: 16 * sc, fontWeight: 500, color: accent }}>{venue}</p>
                 </div>
               )}
               {venueAddress && (
-                <p style={{ fontFamily: jakarta, fontSize: 10, color: textColor }}>{venueAddress}</p>
+                <p style={{ fontFamily: bodyFont, fontSize: 10 * sc, color: textColor }}>{venueAddress}</p>
               )}
               {cityStateZip && (
-                <p style={{ fontFamily: jakarta, fontSize: 10, color: textColor }}>{cityStateZip}</p>
+                <p style={{ fontFamily: bodyFont, fontSize: 10 * sc, color: textColor }}>{cityStateZip}</p>
               )}
               {timesLine && (
-                <p style={{ fontFamily: jakarta, fontSize: 10, color: accent, marginTop: 3 }}>{timesLine}</p>
+                <p style={{ fontFamily: bodyFont, fontSize: 10 * sc, color: accent, marginTop: 3 }}>{timesLine}</p>
               )}
             </div>
           )}
 
-          {/* Invitation message — white */}
+          {/* Invitation message */}
           {invitationMessage && (
             <p style={{
-              fontFamily: coupleFont, fontSize: 15, fontStyle: "italic",
+              fontFamily: coupleFont, fontSize: 15 * sc, fontStyle: "italic",
               lineHeight: 1.7, color: textColor,
               margin: "14px auto 0", maxWidth: 300,
             }}>
@@ -256,7 +272,7 @@ export function RsvpPagePreview({
             <div style={{
               display: "flex", alignItems: "center", gap: 6,
               background: cardBg, color: textMuted,
-              fontFamily: jakarta, fontSize: 10, fontWeight: 600,
+              fontFamily: bodyFont, fontSize: 10 * sc, fontWeight: 600,
               letterSpacing: "0.18em", textTransform: "uppercase",
               padding: "8px 20px", borderRadius: 6,
               border: `1px solid ${cardBorder}`,
@@ -283,7 +299,7 @@ export function RsvpPagePreview({
           }} />
 
           <p style={{
-            fontFamily: jakarta, fontSize: 11, color: textMuted,
+            fontFamily: bodyFont, fontSize: 11 * sc, color: textMuted,
             textAlign: "center", marginBottom: 14,
           }}>
             Dear <span style={{ color: textColor, fontWeight: 600 }}>{guestName}</span>, will you be joining us?
@@ -297,7 +313,7 @@ export function RsvpPagePreview({
               display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
             }}>
               <CheckCircle2 style={{ width: 22, height: 22, color: accent }} />
-              <span style={{ fontFamily: jakarta, fontSize: 10, fontWeight: 600, color: accent }}>
+              <span style={{ fontFamily: bodyFont, fontSize: 10 * sc, fontWeight: 600, color: accent }}>
                 Joyfully Accepts
               </span>
             </div>
@@ -307,7 +323,7 @@ export function RsvpPagePreview({
               display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
             }}>
               <XCircle style={{ width: 22, height: 22, color: textFaint }} />
-              <span style={{ fontFamily: jakarta, fontSize: 10, fontWeight: 600, color: textMuted }}>
+              <span style={{ fontFamily: bodyFont, fontSize: 10 * sc, fontWeight: 600, color: textMuted }}>
                 Declines with Regrets
               </span>
             </div>
@@ -318,8 +334,8 @@ export function RsvpPagePreview({
             background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 8,
             padding: "10px 14px", marginBottom: 10,
           }}>
-            <p style={{ fontFamily: jakarta, fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: textFaint, marginBottom: 4 }}>Meal Preference</p>
-            <p style={{ fontFamily: jakarta, fontSize: 11, color: textMuted }}>Select an option…</p>
+            <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: textFaint, marginBottom: 4 }}>Meal Preference</p>
+            <p style={{ fontFamily: bodyFont, fontSize: 11 * sc, color: textMuted }}>Select an option…</p>
           </div>
 
           {/* Submit button */}
@@ -327,7 +343,7 @@ export function RsvpPagePreview({
             background: accent, borderRadius: 8, padding: "12px",
             textAlign: "center",
           }}>
-            <span style={{ fontFamily: jakarta, fontSize: 11, fontWeight: 700, color: accentText }}>
+            <span style={{ fontFamily: bodyFont, fontSize: 11 * sc, fontWeight: 700, color: accentText }}>
               Submit RSVP
             </span>
           </div>

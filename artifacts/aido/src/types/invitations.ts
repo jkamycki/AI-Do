@@ -33,6 +33,10 @@ export interface InvitationCustomization {
   selectedFont: string;
   saveTheDateFont?: string;
   digitalInvitationFont?: string;
+  saveTheDateFontColor?: string | null;
+  digitalInvitationFontColor?: string | null;
+  saveTheDateFontSize?: string | null;
+  digitalInvitationFontSize?: string | null;
   selectedLayout: string;
   saveTheDateLayout?: string;
   digitalInvitationLayout?: string;

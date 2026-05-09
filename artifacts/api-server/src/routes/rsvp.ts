@@ -855,12 +855,17 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         });
       }
 
+      const isReminder = req.query.reminder === "true";
       const result = await sendEmail({
         to: guest.email,
         replyTo: `noreply@aidowedding.net`,
         fromName: `${couple} via A.IDO`,
-        subject: `You're invited — ${couple}'s Wedding`,
-        text: `Dear ${guest.name},\n\nYou are cordially invited to ${couple}'s Wedding${weddingDateStr ? ` on ${weddingDateStr}` : ""}${profile.venue ? ` at ${profile.venue}` : ""}.\n\n${profile.invitationMessage ? `"${profile.invitationMessage}"\n\n` : ""}Please RSVP using the link below:\n\n${rsvpUrl}\n\nWith love,\n${couple}`,
+        subject: isReminder
+          ? `Reminder: Please RSVP — ${couple}'s Wedding`
+          : `You're invited — ${couple}'s Wedding`,
+        text: isReminder
+          ? `Dear ${guest.name},\n\nThis is a friendly reminder that we haven't received your RSVP yet for ${couple}'s Wedding${weddingDateStr ? ` on ${weddingDateStr}` : ""}${profile.venue ? ` at ${profile.venue}` : ""}.\n\nPlease RSVP using the link below:\n\n${rsvpUrl}\n\nWith love,\n${couple}`
+          : `Dear ${guest.name},\n\nYou are cordially invited to ${couple}'s Wedding${weddingDateStr ? ` on ${weddingDateStr}` : ""}${profile.venue ? ` at ${profile.venue}` : ""}.\n\n${profile.invitationMessage ? `"${profile.invitationMessage}"\n\n` : ""}Please RSVP using the link below:\n\n${rsvpUrl}\n\nWith love,\n${couple}`,
         html,
       });
       emailSent = result.ok;
