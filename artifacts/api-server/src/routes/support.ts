@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
+import rateLimit from "express-rate-limit";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../middlewares/requireAuth";
 import { aiLimiter, incrementDailySupport } from "../middlewares/rateLimiter";
@@ -9,7 +10,22 @@ import { sendEmail, FROM_EMAIL } from "../lib/resend";
 
 const router = Router();
 
-const OWNER_EMAILS = ["kamyckijoseph@gmail.com"];
+const OWNER_EMAILS = [process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com"];
+
+// Stricter per-IP rate limit for the public support bot endpoint (C-3).
+const supportBotLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { error: "Too many requests. Please wait a few minutes and try again." },
+  handler: (_req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.write(`data: ${JSON.stringify({ error: "Too many requests. Please wait a few minutes and try again." })}\n\n`);
+    res.end();
+  },
+});
 
 // Tool the support chat assistant can invoke to file a real ticket on
 // behalf of the signed-in user. Mirrors the public POST /help/support-ticket
@@ -235,7 +251,7 @@ async function fileSupportTicket(args: Record<string, unknown>, userId: string |
   }
 }
 
-router.post("/support/bot", async (req, res) => {
+router.post("/support/bot", supportBotLimiter, aiLimiter, async (req, res) => {
   try {
     const { messages, preferredLanguage } = req.body as {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
@@ -358,9 +374,9 @@ router.post("/support/bot", async (req, res) => {
       } else if (status === 504) {
         userMsg = "Support assistant's reply took too long. Please try again.";
       } else if (status === 404 || detail.toLowerCase().includes("model")) {
-        userMsg = `AI model not found. (${detail || "no detail"})`;
+        userMsg = "AI model configuration error. Please contact support.";
       } else if (detail) {
-        userMsg = `Support assistant encountered an error: ${detail}`;
+        userMsg = "Support assistant encountered an error. Please try again.";
       }
       res.write(`data: ${JSON.stringify({ error: userMsg })}\n\n`);
       res.end();
@@ -606,9 +622,9 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
       } else if (status === 504) {
         userMsg = "Aria's reply took too long to come back. Please try again — usually this clears within a few seconds.";
       } else if (status === 404 || detail.toLowerCase().includes("model")) {
-        userMsg = `AI model not found. (${detail || "no detail"})`;
+        userMsg = "AI model configuration error. Please contact support.";
       } else if (detail) {
-        userMsg = `Aria encountered an error: ${detail}`;
+        userMsg = "Aria encountered an error. Please try again.";
       }
       res.write(`data: ${JSON.stringify({ error: userMsg })}\n\n`);
       res.end();

@@ -1,9 +1,46 @@
 import { Router } from "express";
+import { scrypt, randomBytes, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
+import rateLimit from "express-rate-limit";
 import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty } from "@workspace/db";
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteHeroImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
 import { and, eq, ilike, desc, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile } from "../lib/workspaceAccess";
+
+const scryptAsync = promisify(scrypt);
+
+// ─── Password hashing helpers (H-5) ─────────────────────────────────────────
+// Format: "scrypt:<salt_hex>:<hash_hex>" — distinguishable from legacy plaintext.
+async function hashPassword(plain: string): Promise<string> {
+  const salt = randomBytes(16).toString("hex");
+  const hash = (await scryptAsync(plain, salt, 64)) as Buffer;
+  return `scrypt:${salt}:${hash.toString("hex")}`;
+}
+
+async function verifyPassword(plain: string, stored: string): Promise<boolean> {
+  if (stored.startsWith("scrypt:")) {
+    const parts = stored.split(":");
+    if (parts.length !== 3) return false;
+    const [, salt, hashHex] = parts;
+    const expected = Buffer.from(hashHex, "hex");
+    const actual = (await scryptAsync(plain, salt, 64)) as Buffer;
+    if (expected.length !== actual.length) return false;
+    return timingSafeEqual(expected, actual);
+  }
+  // Legacy plaintext — direct comparison.
+  return plain === stored;
+}
+
+// ─── Per-IP rate limiters for public endpoints ───────────────────────────────
+const guestSearchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { error: "Too many requests. Please slow down." },
+});
 
 const router = Router();
 
@@ -187,7 +224,7 @@ router.put("/website/update", requireAuth, async (req, res) => {
     if ("heroImage" in body) updates.heroImage = body.heroImage ?? null;
     if ("password" in body) {
       const p = body.password?.trim();
-      updates.password = p ? p : null;
+      updates.password = p ? await hashPassword(p) : null;
     }
 
     const [updated] = await db
@@ -281,9 +318,9 @@ router.put("/website/slug", requireAuth, async (req, res) => {
 // ---------- GET /api/website/public/:slug ----------
 //
 // Public, unauthenticated. Returns the rendered website data the guest site
-// needs to display the page. If the website has a password set, the body
-// must include the matching password (via `?password=...` or POST body, but
-// here we keep it GET-only and accept the password as a query string).
+// needs to display the page. If the website has a password set, the caller
+// must supply it via the X-Site-Password request header (NOT a query param,
+// to avoid passwords appearing in server logs and browser history).
 
 router.get("/website/public/:slug", async (req, res) => {
   try {
@@ -299,12 +336,19 @@ router.get("/website/public/:slug", async (req, res) => {
     if (!row.published) return res.status(404).json({ error: "Not found" });
 
     if (row.password) {
-      const supplied = String(req.query.password ?? "");
-      if (supplied !== row.password) {
+      const supplied = req.headers["x-site-password"];
+      const suppliedStr = typeof supplied === "string" ? supplied : "";
+      const passwordValid = await verifyPassword(suppliedStr, row.password);
+      if (!passwordValid) {
         return res.status(401).json({
           passwordRequired: true,
           coupleNames: null,
         });
+      }
+      // Transparent migration: re-hash legacy plaintext passwords on first match.
+      if (!row.password.startsWith("scrypt:")) {
+        const hashed = await hashPassword(suppliedStr);
+        await db.update(weddingWebsites).set({ password: hashed }).where(eq(weddingWebsites.id, row.id));
       }
     }
 
@@ -362,38 +406,55 @@ router.get("/website/public/:slug", async (req, res) => {
 // /rsvp/:token POST writes). The published flag must be true and the password
 // (if set) must match — same gating as the public site itself.
 
-async function resolvePublishedSite(slug: string, password: string | undefined) {
+// resolvePublishedSite reads the password from the X-Site-Password header
+// (GET requests) or falls back to the request body (POST requests). This
+// keeps passwords out of query strings, URLs, and server logs.
+import type { Request as ExpressRequest } from "express";
+
+async function resolvePublishedSite(slug: string, req: ExpressRequest) {
   const [row] = await db
     .select()
     .from(weddingWebsites)
     .where(eq(weddingWebsites.slug, slug.toLowerCase()))
     .limit(1);
   if (!row || !row.published) return { ok: false as const, status: 404 };
-  if (row.password && row.password !== (password ?? "")) {
-    return { ok: false as const, status: 401 };
+  if (row.password) {
+    // Accept password from header (GET) or from body (POST, for backward compat).
+    const headerVal = req.headers["x-site-password"];
+    const supplied =
+      typeof headerVal === "string"
+        ? headerVal
+        : (req.body?.password ? String(req.body.password) : "");
+    const valid = await verifyPassword(supplied, row.password);
+    if (!valid) {
+      return { ok: false as const, status: 401 };
+    }
+    // Transparent migration: re-hash legacy plaintext on first successful match.
+    if (!row.password.startsWith("scrypt:")) {
+      const hashed = await hashPassword(supplied);
+      await db.update(weddingWebsites).set({ password: hashed }).where(eq(weddingWebsites.id, row.id));
+    }
   }
   return { ok: true as const, site: row };
 }
 
-// GET /api/website/public/:slug/guests/search?q=name&password=...
+// GET /api/website/public/:slug/guests/search?q=name
 // Returns guests on this wedding's list whose name fuzzy-matches the query.
 // Limit 10 to keep the page responsive and reduce enumeration risk.
-router.get("/website/public/:slug/guests/search", async (req, res) => {
+// H-2: Strict rate limit + removed rsvpStatus/plusOne from response.
+router.get("/website/public/:slug/guests/search", guestSearchLimiter, async (req, res) => {
   try {
     const slug = String(req.params.slug ?? "").toLowerCase();
     const q = String(req.query.q ?? "").trim();
-    const password = req.query.password ? String(req.query.password) : undefined;
     if (q.length < 2) return res.json({ matches: [] });
 
-    const r = await resolvePublishedSite(slug, password);
+    const r = await resolvePublishedSite(slug, req);
     if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
 
     const rows = await db
       .select({
         id: guests.id,
         name: guests.name,
-        rsvpStatus: guests.rsvpStatus,
-        plusOne: guests.plusOne,
       })
       .from(guests)
       .where(and(eq(guests.profileId, r.site.profileId), ilike(guests.name, `%${q.replace(/[%_]/g, "\\$&")}%`)))
@@ -412,10 +473,9 @@ router.get("/website/public/:slug/guests/:guestId", async (req, res) => {
   try {
     const slug = String(req.params.slug ?? "").toLowerCase();
     const guestId = parseInt(String(req.params.guestId), 10);
-    const password = req.query.password ? String(req.query.password) : undefined;
     if (!Number.isFinite(guestId)) return res.status(400).json({ error: "Bad guest id" });
 
-    const r = await resolvePublishedSite(slug, password);
+    const r = await resolvePublishedSite(slug, req);
     if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
 
     const [guest] = await db
@@ -430,7 +490,6 @@ router.get("/website/public/:slug/guests/:guestId", async (req, res) => {
       name: guest.name,
       rsvpStatus: guest.rsvpStatus,
       mealChoice: guest.mealChoice,
-      dietaryNotes: guest.dietaryNotes,
       plusOne: guest.plusOne,
       plusOneName: guest.plusOneName,
       plusOneMealChoice: guest.plusOneMealChoice,
@@ -508,8 +567,7 @@ router.get("/website/preview/guests/:guestId", requireAuth, async (req, res) => 
 router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
   try {
     const slug = String(req.params.slug ?? "").toLowerCase();
-    const password = req.body?.password ? String(req.body.password) : undefined;
-    const r = await resolvePublishedSite(slug, password);
+    const r = await resolvePublishedSite(slug, req);
     if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
 
     const {
@@ -596,8 +654,7 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
 router.post("/website/public/:slug/rsvp", async (req, res) => {
   try {
     const slug = String(req.params.slug ?? "").toLowerCase();
-    const password = req.body?.password ? String(req.body.password) : undefined;
-    const r = await resolvePublishedSite(slug, password);
+    const r = await resolvePublishedSite(slug, req);
     if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
 
     const {

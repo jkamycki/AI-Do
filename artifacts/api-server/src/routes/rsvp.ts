@@ -125,7 +125,7 @@ async function getImageAsBase64(photoUrl: string | null | undefined): Promise<st
       const contentType = response.headers.get("Content-Type") || "image/jpeg";
       return `data:${contentType};base64,${base64}`;
     } catch (err) {
-      console.error("[getImageAsBase64] failed for URL:", photoUrl, err);
+      console.error("[getImageAsBase64] failed:", (err as Error)?.message ?? err);
       return null;
     }
   }
@@ -1067,7 +1067,6 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
     } catch (custErr) {
       console.error("[send-save-the-date] customization SELECT failed:", custErr);
     }
-    console.log("[send-save-the-date] photoUrl =", customization?.saveTheDatePhotoUrl ?? "(null/missing)");
 
     // When useGeneratedInvitation is true (or we couldn't load customization),
     // skip custom colours/photo and use the AI-generated defaults.
