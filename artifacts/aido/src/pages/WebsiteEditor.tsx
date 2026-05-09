@@ -1478,15 +1478,17 @@ export default function WebsiteEditor() {
             </button>{" "}
             when you're happy.
           </span>
-          <button
-            type="button"
-            onClick={() => setUrlModalOpen(true)}
-            className="inline-flex items-center gap-1.5 font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity whitespace-nowrap"
-            style={{ color: "#D4A017" }}
-          >
-            <Link2 className="h-3 w-3" />
-            {t("website_editor.custom_url_cta", { defaultValue: "Click here to get your custom website URL" })}
-          </button>
+          {record.published && (
+            <button
+              type="button"
+              onClick={() => setUrlModalOpen(true)}
+              className="inline-flex items-center gap-1.5 font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity whitespace-nowrap"
+              style={{ color: "#D4A017" }}
+            >
+              <Link2 className="h-3 w-3" />
+              {t("website_editor.custom_url_cta", { defaultValue: "Click here to get your custom website URL" })}
+            </button>
+          )}
         </div>
         <div ref={canvasRef} className="bg-white relative">
           <WebsiteRenderer
