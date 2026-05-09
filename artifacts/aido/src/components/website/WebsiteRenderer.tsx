@@ -100,6 +100,7 @@ interface EditCtx {
   textPositions?: Record<string, TextPosition>;
   onPositionChange?: (key: string, position: TextPosition) => void;
   onDeleteElement?: (key: string) => void;
+  onGalleryCaptionChange?: (imageUrl: string, caption: string) => void;
 }
 const NOOP_CTX: EditCtx = { editable: false, onTextChange: () => {} };
 
@@ -1650,12 +1651,27 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
       <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
     </div>
   );
-  const renderCaption = (caption?: string) =>
-    caption ? (
-      <p className="text-sm text-center px-1" style={{ color: data.colorPalette.text, opacity: 0.75 }}>
-        {caption}
-      </p>
-    ) : null;
+  // Captions use a shared style key so the user picks color/font/size once
+  // in the inline toolbar and every gallery caption follows. Per-image text
+  // commits flow through onGalleryCaptionChange so edits persist into the
+  // gallery_images record.
+  const captionStyle = ctx.textStyles?.gallery_caption ?? {};
+  const renderCaption = (caption: string | undefined, imageUrl: string) => {
+    const hasText = !!(caption && caption.trim());
+    if (!ctx.editable && !hasText) return null;
+    return (
+      <EditableText
+        as="p"
+        editable={ctx.editable}
+        value={caption ?? ""}
+        defaultValue={ctx.editable ? "Add a caption…" : ""}
+        onCommit={(v) => ctx.onGalleryCaptionChange?.(imageUrl, v)}
+        className="text-sm text-center px-1"
+        style={{ color: captionStyle.color ?? data.colorPalette.text, opacity: 0.75 }}
+        {...tspStyle(ctx, "gallery_caption")}
+      />
+    );
+  };
 
   return (
     <SectionShell id="gallery" titleKey="gallery_title" defaultTitle="Gallery" icon={<ImageIcon className="h-4 w-4" />} data={data} ctx={ctx}>
@@ -1703,7 +1719,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
                   />
                   {renderHoverIcon()}
                 </button>
-                {renderCaption(img.caption)}
+                {renderCaption(img.caption, img.url)}
               </div>
             ))}
           </div>
@@ -1754,7 +1770,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
               </div>
             )}
           </div>
-          {renderCaption(images[activeIdx]?.caption)}
+          {renderCaption(images[activeIdx]?.caption, images[activeIdx]?.url ?? "")}
         </div>
       ) : (
         <div
@@ -1763,12 +1779,13 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
           data-gallery-anim={entrance !== "none" ? entrance : undefined}
         >
           {images.map((img, i) => (
-            <div key={i} className="flex flex-col gap-1.5">
-              <div
-                ref={(el) => { itemRefs.current[i] = el; }}
-                className={`wsg-item${visibleItems.has(i) ? " wsg-visible" : ""}`}
-                style={entrance !== "none" ? { ["--stagger" as string]: entrance === "puzzle" ? `${i * 4000}ms` : `${i * 80}ms` } : undefined}
-              >
+            <div
+              key={i}
+              ref={(el) => { itemRefs.current[i] = el; }}
+              className={`wsg-item flex flex-col gap-1.5${visibleItems.has(i) ? " wsg-visible" : ""}`}
+              style={entrance !== "none" ? { ["--stagger" as string]: entrance === "puzzle" ? `${i * 4000}ms` : `${i * 80}ms` } : undefined}
+            >
+              <div>
                 <button
                   type="button"
                   onClick={() => setLightboxIndex(i)}
@@ -1786,7 +1803,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
                   {renderHoverIcon()}
                 </button>
               </div>
-              {renderCaption(img.caption)}
+              {renderCaption(img.caption, img.url)}
             </div>
           ))}
         </div>
