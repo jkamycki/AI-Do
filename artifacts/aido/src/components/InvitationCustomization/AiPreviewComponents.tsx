@@ -66,6 +66,7 @@ export interface CustomColors {
   text: string;
   muted: string;
   cardBdr: string;
+  font?: string;
 }
 
 // ── Badge circle ──────────────────────────────────────────────────────────────
@@ -156,10 +157,13 @@ export function AiSaveDatePreview({
   photoPosition?: PhotoPosition;
   customColors?: CustomColors;
 }) {
-  const accent  = customColors?.accent  ?? GOLD;
-  const text    = customColors?.text    ?? WHITE;
-  const muted   = customColors?.muted   ?? MUTED;
-  const cardBdr = customColors?.cardBdr ?? CARD_BDR;
+  const accent      = customColors?.accent  ?? GOLD;
+  const text        = customColors?.text    ?? WHITE;
+  const muted       = customColors?.muted   ?? MUTED;
+  const cardBdr     = customColors?.cardBdr ?? CARD_BDR;
+  const displayFont = customColors?.font
+    ? `'${customColors.font}', ${cormorant}`
+    : cormorant;
 
   const couple    = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -175,7 +179,7 @@ export function AiSaveDatePreview({
         Save the Date
       </p>
 
-      <h2 style={{ fontFamily: cormorant, fontSize: "2.1rem", fontWeight: 400,
+      <h2 style={{ fontFamily: displayFont, fontSize: "2.1rem", fontWeight: 400,
                    fontStyle: "italic", color: accent, lineHeight: 1.2, margin: "8px 0 0" }}>
         {couple}
       </h2>
@@ -183,7 +187,7 @@ export function AiSaveDatePreview({
       <div style={{ height: 1, background: cardBdr, margin: "14px 16px" }} />
 
       {dateStr && (
-        <p style={{ fontFamily: jakarta, fontSize: 10, fontWeight: 600,
+        <p style={{ fontFamily: displayFont, fontSize: 10, fontWeight: 600,
                     letterSpacing: "0.12em", textTransform: "uppercase", color: text, marginBottom: 10 }}>
           {dateStr}
         </p>
@@ -192,30 +196,30 @@ export function AiSaveDatePreview({
       {!customColors && profile.venue && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 4 }}>
           <MapPin style={{ width: 12, height: 12, color: accent, flexShrink: 0 }} />
-          <p style={{ fontFamily: cormorant, fontSize: "1rem", fontWeight: 500, color: accent, margin: 0 }}>
+          <p style={{ fontFamily: displayFont, fontSize: "1rem", fontWeight: 500, color: accent, margin: 0 }}>
             {profile.venue}
           </p>
         </div>
       )}
 
       {!customColors && profile.venueAddress && (
-        <p style={{ fontFamily: jakarta, fontSize: 10, color: text, margin: "2px 0 0" }}>
+        <p style={{ fontFamily: displayFont, fontSize: 10, color: text, margin: "2px 0 0" }}>
           {profile.venueAddress}
         </p>
       )}
       {!customColors && cityLine && (
-        <p style={{ fontFamily: jakarta, fontSize: 10, color: text, margin: "1px 0 0" }}>
+        <p style={{ fontFamily: displayFont, fontSize: 10, color: text, margin: "1px 0 0" }}>
           {cityLine}
         </p>
       )}
       {profile.saveTheDateMessage && (
-        <p style={{ fontFamily: cormorant, fontSize: "0.95rem", fontStyle: "italic",
+        <p style={{ fontFamily: displayFont, fontSize: "0.95rem", fontStyle: "italic",
                     color: text, lineHeight: 1.7, margin: "14px 0 0" }}>
           &ldquo;{profile.saveTheDateMessage}&rdquo;
         </p>
       )}
 
-      <p style={{ fontFamily: cormorant, fontSize: 12, fontStyle: "italic",
+      <p style={{ fontFamily: displayFont, fontSize: 12, fontStyle: "italic",
                   color: muted, margin: "12px 0 0" }}>
         Formal invitation to follow
       </p>

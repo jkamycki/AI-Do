@@ -622,6 +622,25 @@ export default function InvitationCustomizationPage({
     };
   };
 
+  // ── Load Google Font when a custom font is selected ──────────────────────
+  useEffect(() => {
+    if (designMode !== "custom") return;
+    const fonts = new Set([
+      customDesign.saveTheDate.fontFamily,
+      customDesign.rsvpInvitation.fontFamily,
+    ]);
+    fonts.forEach((family) => {
+      if (!family) return;
+      const id = `gfont-${family.replace(/\s+/g, "-")}`;
+      if (document.getElementById(id)) return;
+      const link = document.createElement("link");
+      link.id = id;
+      link.rel = "stylesheet";
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap`;
+      document.head.appendChild(link);
+    });
+  }, [designMode, customDesign.saveTheDate.fontFamily, customDesign.rsvpInvitation.fontFamily]);
+
   // ── Auto-save (debounced 1s, skip initial load) ───────────────────────────
   useEffect(() => {
     if (!profileId) return;
@@ -1088,6 +1107,7 @@ export default function InvitationCustomizationPage({
                       text: cd.fontColor,
                       muted: cd.fontColor + "99",
                       cardBdr: cd.accentColor + "33",
+                      font: cd.fontFamily,
                     }
                   : undefined;
                 return (
