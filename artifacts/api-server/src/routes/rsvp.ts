@@ -931,7 +931,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
       await db.update(guests).set({ rsvpToken: token }).where(eq(guests.id, id));
     }
 
-    const origin = `${req.protocol}://${req.get("host")}`;
+    const origin = buildFrontendOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
     const logoBase64 = `${origin}/logo.png`;
 
