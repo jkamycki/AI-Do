@@ -868,6 +868,8 @@ export default function WebsiteEditor() {
             so the live preview reflects them when the user toggles back. */}
         {inTab("content") && (() => {
           const CONTENT_EMOJIS = [
+            "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃",
+            "😉", "😊", "😇", "🤩", "😗", "☺️", "😚", "😋", "😎", "🥲",
             "💍", "💐", "💒", "👰", "🤵", "💕", "💖", "❤️", "🌹", "🥂",
             "🍾", "🎉", "🎊", "✨", "💫", "🕊️", "🦋", "🌸", "📅", "✉️",
             "🌷", "🌺", "🌻", "🌼", "🍰", "🧁", "🎂", "🎁", "💌", "👑",
