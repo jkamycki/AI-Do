@@ -71,6 +71,15 @@ function buildOrigin(req: import("express").Request): string {
   return `${proto}://${host}`;
 }
 
+// User-facing RSVP links must point to the frontend site, not the API server.
+// In production FRONTEND_URL is set to the Vercel deployment; in dev we fall
+// back to the request's own origin.
+function buildFrontendOrigin(req: import("express").Request): string {
+  const fromEnv = process.env.FRONTEND_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  return buildOrigin(req);
+}
+
 /**
  * Resolves a stored photo URL to an R2File regardless of whether the URL is in the
  * legacy private `/objects/...` format or the newer public
@@ -577,7 +586,7 @@ router.get("/guests/:id/rsvp-link", requireAuth, async (req, res) => {
       await db.update(guests).set({ rsvpToken: token }).where(eq(guests.id, id));
     }
 
-    const origin = buildOrigin(req);
+    const origin = buildFrontendOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
     res.json({ rsvpUrl });
   } catch (err) {
@@ -683,7 +692,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       .set({ rsvpToken: token, invitationStatus: "sent", rsvpSentAt: now })
       .where(eq(guests.id, id));
 
-    const origin = buildOrigin(req);
+    const origin = buildFrontendOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
 
     let emailSent = false;
@@ -1302,6 +1311,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         : null;
 
       const origin = buildOrigin(req);
+      const frontendOrigin = buildFrontendOrigin(req);
 
       // Prefer a direct HTTPS URL for the photo — base64 data URIs are blocked
       // or truncated by some email clients (Gmail mobile, Outlook). Only fall
@@ -1394,7 +1404,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           ceremonyTimeStr,
           receptionTimeStr,
           saveTheDateMessage: (profile as any).saveTheDateMessage ?? null,
-          viewUrl: `${origin}/save-the-date/${token}`,
+          viewUrl: `${frontendOrigin}/save-the-date/${token}`,
           photoImgSrc,
           photoObjectPos: stdPhotoObjectPos,
           logoBase64,
@@ -1409,7 +1419,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           ceremonyTimeStr: null,
           receptionTimeStr: null,
           saveTheDateMessage: stdOverrides["std:message"]?.text || (profile as any).saveTheDateMessage || null,
-          viewUrl: `${origin}/save-the-date/${token}`,
+          viewUrl: `${frontendOrigin}/save-the-date/${token}`,
           photoImgSrc,
           photoObjectPos: stdPhotoObjectPos,
           logoBase64,
@@ -1429,7 +1439,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         replyTo: `noreply@aidowedding.net`,
         fromName: `${couple} via A.IDO`,
         subject: `Save the Date — ${couple}'s Wedding`,
-        text: `Save the Date!\n\n${couple}\n\n${weddingDateStr ?? ""}${locationLine ? `\n${locationLine}` : ""}${timesLine ? `\n${timesLine}` : ""}\n\nFormal invitation to follow.\n\nView & Download your Save the Date:\n${origin}/save-the-date/${token}\n\nWith love,\n${couple}`,
+        text: `Save the Date!\n\n${couple}\n\n${weddingDateStr ?? ""}${locationLine ? `\n${locationLine}` : ""}${timesLine ? `\n${timesLine}` : ""}\n\nFormal invitation to follow.\n\nView & Download your Save the Date:\n${frontendOrigin}/save-the-date/${token}\n\nWith love,\n${couple}`,
         html,
       });
       emailSent = result.ok;
