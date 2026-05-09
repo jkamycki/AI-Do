@@ -412,30 +412,31 @@ export default function WebsiteEditor() {
     const rec = recordRef.current;
     if (!rec) return false;
     if (!silent) setSaving(true);
+    try {
+      const body = buildSaveBody(rec);
+      // Mirror to localStorage BEFORE attempting the network — guarantees the
+      // payload survives a tab close mid-request.
+      writePendingBackup(body, rec.id);
 
-    const body = buildSaveBody(rec);
-    // Mirror to localStorage BEFORE attempting the network — guarantees the
-    // payload survives a tab close mid-request.
-    writePendingBackup(body, rec.id);
+      const result = await postSave(body);
+      if (result.ok) {
+        setRecord((prev) => ({
+          ...result.record,
+          portalParty: result.record.portalParty ?? prev?.portalParty,
+        }));
+        setPasswordInput("");
+        setDirty(false);
+        setSaveError(false);
+        clearPendingBackup();
+        return true;
+      }
 
-    const result = await postSave(body);
-    if (result.ok) {
-      setRecord((prev) => ({
-        ...result.record,
-        portalParty: result.record.portalParty ?? prev?.portalParty,
-      }));
-      setPasswordInput("");
-      setDirty(false);
-      setSaveError(false);
-      clearPendingBackup();
+      console.error("[WebsiteEditor] save failed after retries", result.err);
+      setSaveError(true);
+      return false;
+    } finally {
       if (!silent) setSaving(false);
-      return true;
     }
-
-    console.error("[WebsiteEditor] save failed after retries", result.err);
-    setSaveError(true);
-    if (!silent) setSaving(false);
-    return false;
   };
 
   // On mount, if the previous tab left a pending payload behind (e.g. a save
@@ -490,6 +491,17 @@ export default function WebsiteEditor() {
   }, [record, dirty]);
 
   const handleSave = async () => {
+    // Flush any text that the user typed but hasn't blurred yet (EditableText
+    // defers onCommit by 80 ms). Without this, clicking Save immediately after
+    // typing loses the last keystroke(s).
+    const active = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    if (active && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+      active.blur();
+    }
+    flushPendingEditableCommits();
+    // One tick so React can process the state update triggered by the flush.
+    await new Promise((res) => setTimeout(res, 0));
+
     const ok = await saveNow(false);
     if (ok) toast({ title: "Saved!" });
     else {
