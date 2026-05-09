@@ -340,6 +340,10 @@ export default function WebsiteEditor() {
 
   const [saveError, setSaveError] = useState(false);
 
+  // localStorage backup — every dirty save snapshot is mirrored here so a
+  // failed POST + closed tab still recovers on next mount.
+  const PENDING_SAVE_KEY = "aido_website_pending_save_v1";
+
   const buildSaveBody = (rec: WebsiteRecord) => ({
     theme: rec.theme,
     layoutStyle: rec.layoutStyle,
@@ -356,51 +360,117 @@ export default function WebsiteEditor() {
     ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
   });
 
+  const writePendingBackup = (body: ReturnType<typeof buildSaveBody>, websiteId: number) => {
+    try {
+      localStorage.setItem(PENDING_SAVE_KEY, JSON.stringify({ websiteId, savedAt: Date.now(), body }));
+    } catch { /* quota exceeded — ignore, retry will still run */ }
+  };
+  const clearPendingBackup = () => {
+    try { localStorage.removeItem(PENDING_SAVE_KEY); } catch { /* ignore */ }
+  };
+
+  // Posts a save body. Retries 5xx + network errors with exponential backoff
+  // capped at 30s. 4xx errors are not retried inside this call (the caller
+  // decides — autosave reschedules; user-triggered handleSave surfaces them).
+  const postSave = async (
+    body: ReturnType<typeof buildSaveBody>,
+    options: { maxAttempts?: number } = {},
+  ): Promise<{ ok: true; record: WebsiteRecord } | { ok: false; err: unknown; status?: number }> => {
+    const max = options.maxAttempts ?? 5;
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= max; attempt++) {
+      try {
+        const r = await authFetch("/api/website/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (r.ok) {
+          const rec = (await r.json()) as WebsiteRecord;
+          return { ok: true, record: rec };
+        }
+        if (r.status < 500) {
+          const text = await r.text().catch(() => "");
+          return { ok: false, err: new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`), status: r.status };
+        }
+        lastErr = new Error(`HTTP ${r.status}`);
+      } catch (err) {
+        lastErr = err;
+      }
+      if (attempt < max) {
+        const delay = Math.min(30000, 1000 * Math.pow(2, attempt - 1));
+        await new Promise((res) => setTimeout(res, delay));
+      }
+    }
+    return { ok: false, err: lastErr };
+  };
+
   const saveNow = async (silent: boolean): Promise<boolean> => {
     // Always snapshot the latest state from the ref to avoid stale closures.
     const rec = recordRef.current;
     if (!rec) return false;
     if (!silent) setSaving(true);
 
-    let lastErr: unknown;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const r = await authFetch("/api/website/update", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildSaveBody(rec)),
-        });
-        if (r.ok) {
-          const body = (await r.json()) as WebsiteRecord;
-          setRecord((prev) => ({
-            ...body,
-            portalParty: body.portalParty ?? prev?.portalParty,
-          }));
-          setPasswordInput("");
-          setDirty(false);
-          setSaveError(false);
-          if (!silent) setSaving(false);
-          return true;
-        }
-        // Don't retry 4xx — those are client errors (bad payload, auth).
-        if (r.status < 500) {
-          const text = await r.text().catch(() => "");
-          lastErr = new Error(`HTTP ${r.status}${text ? `: ${text}` : ""}`);
-          break;
-        }
-        lastErr = new Error(`HTTP ${r.status}`);
-      } catch (err) {
-        // Network-level error — retry.
-        lastErr = err;
-      }
-      if (attempt < 3) await new Promise((res) => setTimeout(res, attempt * 2000));
+    const body = buildSaveBody(rec);
+    // Mirror to localStorage BEFORE attempting the network — guarantees the
+    // payload survives a tab close mid-request.
+    writePendingBackup(body, rec.id);
+
+    const result = await postSave(body);
+    if (result.ok) {
+      setRecord((prev) => ({
+        ...result.record,
+        portalParty: result.record.portalParty ?? prev?.portalParty,
+      }));
+      setPasswordInput("");
+      setDirty(false);
+      setSaveError(false);
+      clearPendingBackup();
+      if (!silent) setSaving(false);
+      return true;
     }
 
-    console.error("[WebsiteEditor] save failed after retries", lastErr);
+    console.error("[WebsiteEditor] save failed after retries", result.err);
     setSaveError(true);
     if (!silent) setSaving(false);
     return false;
   };
+
+  // On mount, if the previous tab left a pending payload behind (e.g. a save
+  // failed after the user closed the editor), replay it now so the work is
+  // never lost. Runs once per `record.id` change.
+  useEffect(() => {
+    if (!record) return;
+    let cancelled = false;
+    (async () => {
+      let pending: { websiteId: number; savedAt: number; body: ReturnType<typeof buildSaveBody> } | null = null;
+      try {
+        const raw = localStorage.getItem(PENDING_SAVE_KEY);
+        if (raw) pending = JSON.parse(raw);
+      } catch { return; }
+      if (!pending || pending.websiteId !== record.id) return;
+      // If the server's lastUpdated is already newer than the pending snapshot,
+      // assume someone else (or another tab) saved it and drop the backup.
+      const serverTs = record.lastUpdated ? Date.parse(record.lastUpdated) : 0;
+      if (Number.isFinite(serverTs) && serverTs >= pending.savedAt) {
+        clearPendingBackup();
+        return;
+      }
+      const result = await postSave(pending.body);
+      if (cancelled) return;
+      if (result.ok) {
+        setRecord((prev) => ({
+          ...result.record,
+          portalParty: result.record.portalParty ?? prev?.portalParty,
+        }));
+        clearPendingBackup();
+      }
+      // If it failed, leave the backup in place — autosave will pick it up
+      // on the next dirty cycle, and the user sees the "Save failed" hint.
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record?.id]);
 
   // Autosave: 10 seconds after the last change. Reschedules itself on failure
   // so unsaved work is never silently dropped.
@@ -520,6 +590,9 @@ export default function WebsiteEditor() {
     // top of the new theme.
     const RESET_KEYS = [
       "_navLinkColor", "_navCoupleColor", "_footerColor",
+      // Per-element text colour overrides — must clear so section text
+      // picks up the new theme's colorPalette.text instead of the old hue.
+      "_welcomeColor",
       // Per-page bg keys (legacy) plus the new shared sections bg.
       "_welcomeBg", "_sectionsBg",
       "_storyBg", "_scheduleBg", "_travelBg", "_registryBg",
@@ -540,6 +613,12 @@ export default function WebsiteEditor() {
         text: t.text,
       },
       customText: nextCustomText,
+      // Clear per-element text styles (colour, size, font overrides) so they
+      // inherit the new theme cleanly. Custom floating text boxes (_custom_*)
+      // are preserved since those are intentional user additions.
+      textStyles: Object.fromEntries(
+        Object.entries(record?.textStyles ?? {}).filter(([k]) => k.startsWith("_custom_"))
+      ),
     });
   };
 
@@ -874,32 +953,6 @@ export default function WebsiteEditor() {
               onChange={(v) => update({ customText: { ...record.customText, _sectionsBg: v } })}
             />
           </div>
-          {/* Background opacity slider — lets the user fade the section
-              backgrounds so any underlying hero image / page background
-              shows through. */}
-          {(() => {
-            const raw = record.customText._backgroundOpacity;
-            const opacity = raw === undefined || raw === "" ? 100 : Math.max(0, Math.min(100, parseInt(raw, 10) || 100));
-            return (
-              <div className="mt-4 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">
-                    {t("website_editor.background_opacity", { defaultValue: "Background opacity" })}
-                  </Label>
-                  <span className="text-xs text-muted-foreground tabular-nums">{opacity}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={opacity}
-                  onChange={(e) => update({ customText: { ...record.customText, _backgroundOpacity: e.target.value } })}
-                  className="w-full accent-primary cursor-pointer"
-                />
-              </div>
-            );
-          })()}
         </Section>}
 
         {/* Sections */}
@@ -917,12 +970,11 @@ export default function WebsiteEditor() {
                     checked={record.sectionsEnabled[s.id]}
                     onCheckedChange={(checked) => {
                       update({ sectionsEnabled: { ...record.sectionsEnabled, [s.id]: checked } });
-                      // Jump the preview to the section the user just toggled
-                      // on so they can immediately see what they're editing.
-                      if (checked) {
-                        setEditorSection(s.id);
-                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
-                      }
+                      // Jump the preview to the section the user just clicked,
+                      // regardless of whether they toggled it on or off, so
+                      // they're always looking at what their click affected.
+                      setEditorSection(s.id);
+                      previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
                     }}
                   />
                 </div>
@@ -966,10 +1018,10 @@ export default function WebsiteEditor() {
                         }
                         return { customText: ct, textPositions: tp };
                       });
-                      if (checked) {
-                        setEditorSection("home");
-                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
-                      }
+                      // Hero elements all live on the home page — jump there
+                      // on any click so the user always sees the result.
+                      setEditorSection("home");
+                      previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
                     }}
                   />
                 </div>
@@ -994,10 +1046,10 @@ export default function WebsiteEditor() {
                     checked={!isHidden}
                     onCheckedChange={(checked) => {
                       update({ customText: { ...record.customText, [row.key]: checked ? "" : EDITABLE_HIDDEN_MARKER } });
-                      if (checked) {
-                        setEditorSection("schedule");
-                        previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
-                      }
+                      // Always jump to the schedule page on click so the user
+                      // sees the row they just toggled.
+                      setEditorSection("schedule");
+                      previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
                     }}
                   />
                 </div>
@@ -1504,15 +1556,17 @@ export default function WebsiteEditor() {
             </button>{" "}
             when you're happy.
           </span>
-          <button
-            type="button"
-            onClick={() => setUrlModalOpen(true)}
-            className="inline-flex items-center gap-1.5 font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity whitespace-nowrap"
-            style={{ color: "#D4A017" }}
-          >
-            <Link2 className="h-3 w-3" />
-            {t("website_editor.custom_url_cta", { defaultValue: "Click here to get your custom website URL" })}
-          </button>
+          {record.published && (
+            <button
+              type="button"
+              onClick={() => setUrlModalOpen(true)}
+              className="inline-flex items-center gap-1.5 font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity whitespace-nowrap"
+              style={{ color: "#D4A017" }}
+            >
+              <Link2 className="h-3 w-3" />
+              {t("website_editor.custom_url_cta", { defaultValue: "Click here to get your custom website URL" })}
+            </button>
+          )}
         </div>
         <div ref={canvasRef} className="bg-white relative">
           <WebsiteRenderer
@@ -1587,22 +1641,6 @@ export default function WebsiteEditor() {
         </div>
       </div>
 
-      {/* Trash drop zone — appears whenever a deletable text element is being
-          dragged. Drop the box here to remove it (Undo restores). */}
-      <div
-        data-aido-trash="true"
-        className={`pointer-events-auto fixed bottom-6 right-6 z-[200] flex items-center gap-2 px-4 py-3 rounded-full border-2 shadow-lg transition-all duration-200 ${
-          editableDragging
-            ? "border-red-500 bg-red-500/95 text-white scale-110"
-            : "border-border bg-background/90 text-muted-foreground opacity-50 hover:opacity-100 backdrop-blur"
-        }`}
-        title="Drag a text box here to delete"
-      >
-        <Trash2 className={`h-4 w-4 ${editableDragging ? "text-white" : ""}`} />
-        <span className="text-xs font-medium">
-          {editableDragging ? t("website_editor.release_to_delete", { defaultValue: "Release to delete" }) : t("website_editor.drop_to_delete", { defaultValue: "Drop to delete" })}
-        </span>
-      </div>
 
       {ctxMenu && (
         <div
