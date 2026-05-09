@@ -83,6 +83,9 @@ export function RsvpPagePreview({
 }: RsvpPagePreviewProps) {
   const bg = backgroundColor || "#1E1A2E";
   const accent = colors.accent || colors.primary || "#D4A017";
+  // In AI mode (no custom background) always use the brand gold for the couple
+  // name, matching AiSaveDatePreview's hardcoded GOLD constant.
+  const coupleNameColor = backgroundColor ? accent : "#D4A017";
   const isLight = isLightColor(bg);
   const textColor = isLight ? "#1a1a1a" : "#ffffff";
   const textMuted = isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)";
@@ -209,7 +212,7 @@ export function RsvpPagePreview({
           <h1 style={{
             fontFamily: coupleFont,
             fontSize: 34, fontWeight: 400, fontStyle: "italic",
-            color: accent, lineHeight: 1.15, letterSpacing: "0.02em",
+            color: coupleNameColor, lineHeight: 1.15, letterSpacing: "0.02em",
             marginBottom: 8,
           }}>{couple}</h1>
 
