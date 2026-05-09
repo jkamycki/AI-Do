@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
+import { AuthMediaImage } from "@/components/AuthMediaImage";
 
 const TAG_DRAG_TYPE = "application/x-mood-tag";
 
@@ -114,16 +115,12 @@ async function authFetch(url: string, options: RequestInit = {}, getToken: () =>
   });
 }
 
-// ─── Storage URL helper ──────────────────────────────────────────────────────
-
-function objectUrl(objectPath: string) {
-  return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
-}
-
 // ─── Authenticated image loader ───────────────────────────────────────────────
 // The storage route requires a Bearer token; <img> tags can't send one.
-// This component fetches the image with the Clerk token and renders it from a
-// local blob URL, bypassing the auth issue for both new and saved images.
+// AuthMediaImage handles the auth + cross-origin (VITE_API_URL) URL resolution
+// for already-saved images. While an upload is in flight we still have a
+// local blob URL on hand and render that directly so the user sees their photo
+// immediately, before the server URL has been fetched back as a blob.
 
 const AuthImage = memo(function AuthImage({
   objectPath,
@@ -136,46 +133,10 @@ const AuthImage = memo(function AuthImage({
   alt: string;
   className?: string;
 }) {
-  const { getToken } = useAuth();
-  const [src, setSrc] = useState<string | null>(blobUrl ?? null);
-  const blobRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (blobUrl) {
-      setSrc(blobUrl);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const token = await getToken();
-        const res = await fetch(objectUrl(objectPath), {
-          credentials: "include",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!res.ok || cancelled) return;
-        const blob = await res.blob();
-        if (cancelled) return;
-        const url = URL.createObjectURL(blob);
-        blobRef.current = url;
-        setSrc(url);
-      } catch {
-        // silently fail — broken image placeholder shown
-      }
-    })();
-    return () => {
-      cancelled = true;
-      if (blobRef.current) {
-        URL.revokeObjectURL(blobRef.current);
-        blobRef.current = null;
-      }
-    };
-  }, [objectPath, blobUrl, getToken]);
-
-  if (!src) {
-    return <div className={cn("bg-muted animate-pulse", className)} />;
+  if (blobUrl) {
+    return <img src={blobUrl} alt={alt} className={className} />;
   }
-  return <img src={src} alt={alt} className={className} />;
+  return <AuthMediaImage src={objectPath} alt={alt} className={className} />;
 });
 
 // ─── Sortable Image Card ──────────────────────────────────────────────────────
