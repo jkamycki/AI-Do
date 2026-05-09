@@ -803,16 +803,18 @@ export function InvitationSendModal({
                       );
                     })()}
                   </div>
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() => guest && onSendDigitalInvitation(guest.id)}
-                    disabled={isSendingDigital}
-                  >
-                    {isSendingDigital
-                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
-                    }
-                  </Button>
+                  {!reminderOnly && (
+                    <Button
+                      className="w-full gap-2"
+                      onClick={() => guest && onSendDigitalInvitation(guest.id)}
+                      disabled={isSendingDigital}
+                    >
+                      {isSendingDigital
+                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                        : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
+                      }
+                    </Button>
+                  )}
                   {!guest?.email && (
                     <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
                   )}
@@ -894,19 +896,21 @@ export function InvitationSendModal({
                       scale={0.72}
                     />
                   )}
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() => guest && onSendDigitalInvitation(guest.id)}
-                    disabled={isSendingDigital}
-                  >
-                    {isSendingDigital
-                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
-                    }
-                  </Button>
+                  {!reminderOnly && (
+                    <Button
+                      className="w-full gap-2"
+                      onClick={() => guest && onSendDigitalInvitation(guest.id)}
+                      disabled={isSendingDigital}
+                    >
+                      {isSendingDigital
+                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                        : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
+                      }
+                    </Button>
+                  )}
                   {/* RSVP Reminder — AI-only template, separate from invitation.
                       Only enabled when guest has email AND hasn't responded yet. */}
-                  {guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder && (
+                  {reminderOnly && guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder && (
                     <Button
                       variant="outline"
                       className="w-full gap-2"
