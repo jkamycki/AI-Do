@@ -178,10 +178,11 @@ export default function Rsvp() {
   // background and accent come from the saved customization; text/muted/border
   // are derived from background lightness so contrast is correct on light or dark.
   const BG = info?.backgroundColor || DEFAULT_BG;
-  const GOLD = info?.colorPalette?.primary || DEFAULT_GOLD;
-  // In AI mode (no custom background) pin the couple name to the brand gold,
-  // regardless of whatever primary color is in the palette.
-  const COUPLE_COLOR = info?.backgroundColor ? GOLD : DEFAULT_GOLD;
+  // In AI mode (no custom background) pin all gold accents to the brand gold
+  // so every accent element matches the couple name. In custom mode, fall back
+  // to the user's palette primary.
+  const GOLD = info?.backgroundColor ? (info?.colorPalette?.primary || DEFAULT_GOLD) : DEFAULT_GOLD;
+  const COUPLE_COLOR = GOLD;
   const _bgIsLight = isLightHex(BG);
   const WHITE = _bgIsLight ? "#1a1a1a" : "#ffffff";
   const MUTED = _bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)";
