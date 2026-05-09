@@ -10,6 +10,7 @@ import {
   AiSaveDatePreview,
 } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { Card, CardContent } from "@/components/ui/card";
+import { WEBSITE_THEMES } from "@/lib/websiteThemes";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -937,10 +938,66 @@ export default function InvitationCustomizationPage({
                 [activeKey]: { ...prev[activeKey], [field]: value },
               }));
             };
+            const isThemeActive = (themeId: string) => {
+              const t = WEBSITE_THEMES.find((x) => x.id === themeId);
+              if (!t) return false;
+              return (
+                fields.backgroundColor.toLowerCase() === t.background.toLowerCase() &&
+                fields.accentColor.toLowerCase() === t.primary.toLowerCase() &&
+                fields.fontColor.toLowerCase() === t.text.toLowerCase() &&
+                fields.fontFamily === t.font
+              );
+            };
             return (
               <Card>
                 <CardContent className="p-4 space-y-3">
                   <p className="text-sm font-medium">Custom Design</p>
+
+                  {/* Theme presets — same swatches as the website editor.
+                      Clicking one populates the colour + font fields below
+                      so the Save the Date / RSVP invitation can match the
+                      wedding website at a tap. */}
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Quick themes (same as the website editor)
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {WEBSITE_THEMES.map((theme) => {
+                        const active = isThemeActive(theme.id);
+                        return (
+                          <button
+                            key={theme.id}
+                            type="button"
+                            onClick={() => {
+                              setCustomDesign((prev) => ({
+                                ...prev,
+                                [activeKey]: {
+                                  ...prev[activeKey],
+                                  backgroundColor: theme.background,
+                                  accentColor: theme.primary,
+                                  fontColor: theme.text,
+                                  fontFamily: theme.font,
+                                },
+                              }));
+                            }}
+                            className={`text-left p-2 rounded-md border transition-all ${
+                              active
+                                ? "border-primary ring-2 ring-primary/20"
+                                : "border-border hover:border-primary/50"
+                            }`}
+                          >
+                            <div className="flex gap-1 mb-1.5">
+                              <div className="w-3.5 h-3.5 rounded-full" style={{ background: theme.primary }} />
+                              <div className="w-3.5 h-3.5 rounded-full" style={{ background: theme.secondary }} />
+                              <div className="w-3.5 h-3.5 rounded-full" style={{ background: theme.neutral }} />
+                            </div>
+                            <div className="text-[11px] font-medium leading-tight">{theme.name}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block text-xs space-y-1">
                       <span className="text-muted-foreground">Background</span>
@@ -1070,7 +1127,7 @@ export default function InvitationCustomizationPage({
                         colors={
                           isCustom
                             ? { ...customPalette, accent: cd.accentColor, primary: cd.accentColor }
-                            : { ...displayPalette, accent: "#D4A017", primary: "#D4A017" }
+                            : displayPalette
                         }
                         font={isCustom ? cd.fontFamily : null}
                         backgroundColor={isCustom ? cd.backgroundColor : null}
