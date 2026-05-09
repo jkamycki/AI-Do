@@ -521,22 +521,22 @@ function calcTimeLeft(dateStr: string) {
   };
 }
 
-function CountdownTimer({ dateStr, accentColor }: { dateStr: string; accentColor: string }) {
+function CountdownTimer({ dateStr, accentColor, data, ctx }: { dateStr: string; accentColor: string; data: WebsiteRendererPayload; ctx: EditCtx }) {
   const [left, setLeft] = useState(() => calcTimeLeft(dateStr));
   useEffect(() => {
     const id = setInterval(() => setLeft(calcTimeLeft(dateStr)), 1000);
     return () => clearInterval(id);
   }, [dateStr]);
   if (!left) return null;
-  const units = [
-    { label: "Days", value: left.days },
-    { label: "Hours", value: left.hours },
-    { label: "Mins", value: left.minutes },
-    { label: "Secs", value: left.seconds },
+  const units: Array<{ key: string; label: string; value: number }> = [
+    { key: "_countdownLabelDays",    label: "Days",  value: left.days },
+    { key: "_countdownLabelHours",   label: "Hours", value: left.hours },
+    { key: "_countdownLabelMinutes", label: "Mins",  value: left.minutes },
+    { key: "_countdownLabelSeconds", label: "Secs",  value: left.seconds },
   ];
   return (
     <div className="flex items-center justify-center gap-4 sm:gap-8 mt-8">
-      {units.map(({ label, value }) => (
+      {units.map(({ key, label, value }) => (
         <div key={label} className="flex flex-col items-center">
           <span
             className="text-3xl sm:text-5xl font-bold tabular-nums leading-none"
@@ -544,9 +544,17 @@ function CountdownTimer({ dateStr, accentColor }: { dateStr: string; accentColor
           >
             {String(value).padStart(2, "0")}
           </span>
-          <span className="text-[10px] sm:text-xs uppercase tracking-widest mt-2 opacity-70">
-            {label}
-          </span>
+          <EditableText
+            as="span"
+            editable={ctx.editable}
+            value={label}
+            defaultValue={label}
+            readOnlyText
+            aiEnabled={false}
+            textStyle={data.textStyles?.[key]}
+            onStyleChange={ctx.onStyleChange ? (s) => ctx.onStyleChange!(key, s) : undefined}
+            className="text-[10px] sm:text-xs uppercase tracking-widest mt-2 opacity-70"
+          />
         </div>
       ))}
     </div>
@@ -1060,6 +1068,8 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             <CountdownTimer
               dateStr={data.couple.weddingDate}
               accentColor={(data.heroImage || (data.heroImages?.length ?? 0) > 0) ? "rgba(255,255,255,0.9)" : data.colorPalette.primary}
+              data={data}
+              ctx={ctx}
             />
           </DraggableRow>
         )}
@@ -1377,7 +1387,18 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             <div className="flex items-start gap-3 mb-3">
               <div style={iconWrap}><MapPin className="h-4 w-4" /></div>
               <div>
-                <div className="text-[11px] uppercase tracking-wider opacity-70" style={{ color: data.colorPalette.text }}>Venue</div>
+                <EditableText
+                  as="div"
+                  editable={ctx.editable}
+                  value="Venue"
+                  defaultValue="Venue"
+                  readOnlyText
+                  aiEnabled={false}
+                  textStyle={data.textStyles?._travelVenueLabel}
+                  onStyleChange={ctx.onStyleChange ? (s) => ctx.onStyleChange!("_travelVenueLabel", s) : undefined}
+                  className="text-[11px] uppercase tracking-wider opacity-70"
+                  style={{ color: data.colorPalette.text }}
+                />
                 <div className="text-base sm:text-lg font-medium" style={{ color: data.colorPalette.text }}>{data.couple.venue}</div>
                 {data.couple.location && (
                   <div className="text-sm opacity-75" style={{ color: data.colorPalette.text }}>{data.couple.location}</div>
@@ -1403,7 +1424,18 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             <div className="flex items-start gap-3 mb-3">
               <div style={iconWrap}><Bed className="h-4 w-4" /></div>
               <div className="flex-1 min-w-0">
-                <div className="text-[11px] uppercase tracking-wider opacity-70" style={{ color: data.colorPalette.text }}>Hotel</div>
+                <EditableText
+                  as="div"
+                  editable={ctx.editable}
+                  value="Hotel"
+                  defaultValue="Hotel"
+                  readOnlyText
+                  aiEnabled={false}
+                  textStyle={data.textStyles?._travelHotelLabel}
+                  onStyleChange={ctx.onStyleChange ? (s) => ctx.onStyleChange!("_travelHotelLabel", s) : undefined}
+                  className="text-[11px] uppercase tracking-wider opacity-70"
+                  style={{ color: data.colorPalette.text }}
+                />
                 <EditableText
                   as="div"
                   editable={ctx.editable}
