@@ -3,7 +3,9 @@ import { Link } from "wouter";
 import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed, Share2, Check } from "lucide-react";
 import { EditableText, emitEditableDrag, EDITABLE_HIDDEN_MARKER, type TextPosition } from "./EditableText";
 import { RsvpFlow } from "./RsvpFlow";
-import { apiFetch } from "@/lib/authFetch";
+import { apiFetch, authFetch } from "@/lib/authFetch";
+import { resolveMediaUrl, isMediaAuthRequired } from "@/lib/mediaUrl";
+import { AuthMediaImage } from "@/components/AuthMediaImage";
 
 // camelCase section id <-> kebab-case URL slug
 const SECTION_TO_URL: Record<string, string> = {
@@ -183,8 +185,39 @@ function bodyFontStack(font: string): string {
 }
 
 function imageUrl(url: string): string {
-  if (url.startsWith("/objects/")) return `/api/storage${url}`;
-  return url;
+  return resolveMediaUrl(url) ?? url;
+}
+
+// Fetches a protected media URL as a blob so CSS background-image can use it.
+// Falls back to the resolved URL when auth isn't required or fetch fails.
+function useAuthBlobUrl(url: string | null | undefined): string | null {
+  const resolved = resolveMediaUrl(url);
+  const [blobSrc, setBlobSrc] = useState<string | null>(null);
+  const blobRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (blobRef.current) { URL.revokeObjectURL(blobRef.current); blobRef.current = null; }
+    setBlobSrc(null);
+    if (!resolved || !isMediaAuthRequired(url)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await authFetch(resolved);
+        if (!res.ok || cancelled) return;
+        const blob = await res.blob();
+        if (cancelled) return;
+        const next = URL.createObjectURL(blob);
+        blobRef.current = next;
+        setBlobSrc(next);
+      } catch { /* fall back to direct URL */ }
+    })();
+    return () => {
+      cancelled = true;
+      if (blobRef.current) { URL.revokeObjectURL(blobRef.current); blobRef.current = null; }
+    };
+  }, [resolved, url]);
+
+  return blobSrc ?? resolved;
 }
 
 function headingFont(data: WebsiteRendererPayload): string {
@@ -271,8 +304,8 @@ function Lightbox({
         className="flex flex-col items-center max-w-5xl mx-12 max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <img
-          src={imageUrl(img.url)}
+        <AuthMediaImage
+          src={img.url}
           alt={img.caption ?? ""}
           className="max-h-[80vh] max-w-full object-contain rounded-lg shadow-2xl"
         />
@@ -922,6 +955,30 @@ function photoFilterCss(key: string | undefined | null): string {
   return PHOTO_FILTERS[(key || "none") as keyof typeof PHOTO_FILTERS] ?? "none";
 }
 
+// Single slide/tile that resolves auth for its background URL via a hook.
+function AuthBgSlide({
+  url,
+  className,
+  style,
+}: {
+  url: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const blobUrl = useAuthBlobUrl(url);
+  return (
+    <div
+      className={className}
+      style={{
+        ...style,
+        backgroundImage: blobUrl
+          ? `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.55)), url('${blobUrl}')`
+          : style?.backgroundImage,
+      }}
+    />
+  );
+}
+
 function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
   const mode = (data.customText._heroAnimation || "static") as "static" | "slideshow" | "kenburns" | "pan-lr" | "marquee";
   const speed = (data.customText._heroAnimationSpeed || "medium") as "slow" | "medium" | "fast";
@@ -950,12 +1007,12 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
           }}
         >
           {strip.map((url, i) => (
-            <div
+            <AuthBgSlide
               key={url + i}
+              url={url}
               className="h-full flex-shrink-0"
               style={{
                 width: "60vw",
-                backgroundImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.55)), url('${imageUrl(url)}')`,
                 backgroundPosition: "center",
                 backgroundSize: "cover",
                 backgroundRepeat: "no-repeat",
@@ -996,11 +1053,11 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
   return (
     <div className="absolute inset-0 overflow-hidden">
       {slideshowImages.map((url, i) => (
-        <div
+        <AuthBgSlide
           key={url + i}
+          url={url}
           className="absolute inset-0"
           style={{
-            backgroundImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.55)), url('${imageUrl(url)}')`,
             backgroundPosition: "center",
             backgroundSize: "cover",
             backgroundRepeat: "no-repeat",
@@ -1793,8 +1850,8 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
                   className="relative h-64 sm:h-80 w-64 sm:w-80 flex-shrink-0 overflow-hidden rounded-lg group focus:outline-none focus-visible:ring-2"
                   aria-label={img.caption ?? `Photo ${(i % images.length) + 1}`}
                 >
-                  <img
-                    src={imageUrl(img.url)}
+                  <AuthMediaImage
+                    src={img.url}
                     alt={img.caption ?? ""}
                     className="w-full h-full object-cover"
                     loading="lazy"
@@ -1825,8 +1882,8 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
                 aria-hidden={i !== activeIdx}
                 tabIndex={i === activeIdx ? 0 : -1}
               >
-                <img
-                  src={imageUrl(img.url)}
+                <AuthMediaImage
+                  src={img.url}
                   alt={img.caption ?? ""}
                   className="w-full h-full object-cover"
                   loading={i === 0 ? "eager" : "lazy"}
@@ -1876,8 +1933,8 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
                   style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
                   aria-label={img.caption ?? `Photo ${i + 1}`}
                 >
-                  <img
-                    src={imageUrl(img.url)}
+                  <AuthMediaImage
+                    src={img.url}
                     alt={img.caption ?? ""}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     loading="lazy"
@@ -1935,8 +1992,8 @@ function PartyMemberCard({ data, member }: { data: WebsiteRendererPayload; membe
         style={{ background: `${data.colorPalette.primary}15`, border: `1px solid ${data.colorPalette.primary}33` }}
       >
         {member.photo ? (
-          <img
-            src={imageUrl(member.photo)}
+          <AuthMediaImage
+            src={member.photo}
             alt={member.name}
             className="w-full h-full object-cover"
             style={{ objectPosition: `${member.photoX ?? 50}% ${member.photoY ?? 50}%` }}
