@@ -641,8 +641,32 @@ export default function WebsiteEditor() {
 
   const handlePublish = async () => {
     if (!record) return;
+    // Flush + save BEFORE flipping the publish flag. /api/website/publish
+    // returns the full website row and we replace local state with it — if
+    // there are unsaved customText edits (e.g. AI-generated story copy that
+    // was committed less than the 1s autosave window ago), the server's
+    // response would clobber them and the published site would render the
+    // stale text. Saving first guarantees the DB row already matches.
+    const active = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    if (active && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+      active.blur();
+    }
+    flushPendingEditableCommits();
+    await new Promise<void>((res) => requestAnimationFrame(() => res()));
+
     setPublishing(true);
     try {
+      if (dirtyRef.current) {
+        const saved = await saveNow(true);
+        if (!saved) {
+          const err = lastSaveErrorRef.current;
+          const detail = err
+            ? `${err.status ? `HTTP ${err.status} — ` : ""}${err.message} (your work is backed up locally and will keep retrying)`
+            : "Your work is backed up locally and will keep retrying in the background.";
+          toast({ title: "Couldn't save before publishing", description: detail, variant: "destructive" });
+          return;
+        }
+      }
       const r = await authFetch("/api/website/publish", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -650,7 +674,10 @@ export default function WebsiteEditor() {
       });
       if (!r.ok) throw new Error("Failed");
       const body = (await r.json()) as WebsiteRecord;
-      setRecord(body);
+      setRecord((prev) => ({
+        ...body,
+        portalParty: body.portalParty ?? prev?.portalParty,
+      }));
       if (body.published) {
         setPreviewSection("home");
         setEditorSection("home");
