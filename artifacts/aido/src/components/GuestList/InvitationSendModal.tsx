@@ -624,25 +624,39 @@ export function InvitationSendModal({
 
   const isCustomMode = customization ? !customization.useGeneratedInvitation : false;
 
-  // Custom color palettes for email previews — derived from the user's chosen background + accent
-  const makeCustomColors = (bg: string | null | undefined, accent: string): CustomColors => {
-    const bgHex = bg || "#1E1A2E";
-    const isLight = (() => {
-      const c = bgHex.replace("#", "");
-      if (c.length !== 6) return false;
-      const r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
-      return r * 0.299 + g * 0.587 + b * 0.114 > 160;
-    })();
-    return {
-      bg: bgHex,
-      accent,
-      text: isLight ? "#1a1a1a" : "#ffffff",
-      muted: isLight ? "rgba(0,0,0,0.58)" : "rgba(255,255,255,0.58)",
-      cardBdr: isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
-    };
-  };
-  const stdCustomColors  = makeCustomColors(customization?.saveTheDateBackground,    palette.accent || "#D4A017");
-  const digCustomColors  = makeCustomColors(customization?.digitalInvitationBackground, palette.accent || "#D4A017");
+  // Build previewCustomColors using the exact same formula as InvitationCustomization's
+  // previewCustomColors — this guarantees both previews are pixel-for-pixel identical.
+  const sharedAccent = palette.accent || "#D4A017";
+  const stdFontColor = customization?.saveTheDateFontColor ?? "#222222";
+  const digFontColor = customization?.digitalInvitationFontColor ?? "#222222";
+  const stdPreviewColors: CustomColors | undefined = isCustomMode && customization
+    ? {
+        bg: customization.saveTheDateBackground ?? "#FFFFFF",
+        accent: sharedAccent,
+        text: stdFontColor,
+        muted: stdFontColor + "99",
+        cardBdr: sharedAccent + "33",
+        font: customization.saveTheDateFont ?? "Playfair Display",
+        fontSize: customization.saveTheDateFontSize ?? "16",
+      }
+    : undefined;
+  const digPreviewColors: CustomColors | undefined = isCustomMode && customization
+    ? {
+        bg: customization.digitalInvitationBackground ?? "#FFFFFF",
+        accent: sharedAccent,
+        text: digFontColor,
+        muted: digFontColor + "99",
+        cardBdr: sharedAccent + "33",
+        font: customization.digitalInvitationFont ?? "Playfair Display",
+        fontSize: customization.digitalInvitationFontSize ?? "16",
+      }
+    : undefined;
+  const stdPalette = stdPreviewColors
+    ? { ...palette, primary: sharedAccent, secondary: sharedAccent, accent: sharedAccent }
+    : palette;
+  const digPalette = digPreviewColors
+    ? { ...palette, primary: sharedAccent, secondary: sharedAccent, accent: sharedAccent }
+    : palette;
 
   const completeness = evaluateCustomDesignCompleteness({
     customization: customization
@@ -730,32 +744,15 @@ export function InvitationSendModal({
                     This is exactly what will be emailed to your guest
                   </p>
                   <div className="flex justify-center">
-                    {profile && (() => {
-                      const cd = {
-                        backgroundColor: customization.saveTheDateBackground ?? "#FFFFFF",
-                        accentColor: palette.accent ?? "#D4A017",
-                        fontFamily: customization.saveTheDateFont ?? "Playfair Display",
-                        fontSize: customization.saveTheDateFontSize ?? "16",
-                        fontColor: customization.saveTheDateFontColor ?? stdCustomColors.text,
-                      };
-                      const customPalette = { ...palette, primary: cd.accentColor, secondary: cd.accentColor, accent: cd.accentColor };
-                      const customColors = {
-                        ...stdCustomColors,
-                        text: cd.fontColor,
-                        muted: cd.fontColor + "99",
-                        font: cd.fontFamily,
-                        fontSize: cd.fontSize,
-                      };
-                      return (
-                        <AiSaveDatePreview
-                          profile={profile}
-                          palette={customPalette}
-                          photoUrl={customization.saveTheDatePhotoUrl || null}
-                          photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
-                          customColors={customColors}
-                        />
-                      );
-                    })()}
+                    {profile && (
+                      <AiSaveDatePreview
+                        profile={profile}
+                        palette={stdPalette}
+                        photoUrl={customization.saveTheDatePhotoUrl || null}
+                        photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
+                        customColors={stdPreviewColors}
+                      />
+                    )}
                   </div>
                   <Button
                     className="w-full gap-2"
@@ -777,50 +774,28 @@ export function InvitationSendModal({
                     This is exactly what will be emailed to your guest
                   </p>
                   <div className="flex justify-center overflow-hidden">
-                    {profile && (() => {
-                      const cd = {
-                        backgroundColor: customization.digitalInvitationBackground ?? "#FFFFFF",
-                        accentColor: palette.accent ?? "#D4A017",
-                        fontFamily: customization.digitalInvitationFont ?? "Playfair Display",
-                        fontSize: customization.digitalInvitationFontSize ?? "16",
-                        fontColor: customization.digitalInvitationFontColor ?? digCustomColors.text,
-                      };
-                      const customPalette = {
-                        ...palette,
-                        primary: cd.accentColor,
-                        secondary: cd.accentColor,
-                        accent: cd.accentColor,
-                      };
-                      const digCustomColors = {
-                        ...makeCustomColors(cd.backgroundColor, cd.accentColor),
-                        text: cd.fontColor,
-                        muted: cd.fontColor + "99",
-                        font: cd.fontFamily,
-                        fontSize: cd.fontSize,
-                      };
-                      return (
-                        <AiDigitalInvitationPreview
-                          profile={{
-                            partner1Name: profile.partner1Name,
-                            partner2Name: profile.partner2Name,
-                            weddingDate: profile.weddingDate,
-                            venue: profile.venue,
-                            venueAddress: profile.location ?? profile.venueAddress,
-                            venueCity: profile.venueCity,
-                            venueState: profile.venueState,
-                            venueZip: profile.venueZip,
-                            ceremonyTime: profile.ceremonyTime,
-                            receptionTime: profile.receptionTime,
-                            invitationMessage: profile.invitationMessage,
-                          }}
-                          palette={customPalette}
-                          photoUrl={customization.digitalInvitationPhotoUrl || null}
-                          photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
-                          onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
-                          customColors={digCustomColors}
-                        />
-                      );
-                    })()}
+                    {profile && (
+                      <AiDigitalInvitationPreview
+                        profile={{
+                          partner1Name: profile.partner1Name,
+                          partner2Name: profile.partner2Name,
+                          weddingDate: profile.weddingDate,
+                          venue: profile.venue,
+                          venueAddress: profile.location ?? profile.venueAddress,
+                          venueCity: profile.venueCity,
+                          venueState: profile.venueState,
+                          venueZip: profile.venueZip,
+                          ceremonyTime: profile.ceremonyTime,
+                          receptionTime: profile.receptionTime,
+                          invitationMessage: profile.invitationMessage,
+                        }}
+                        palette={digPalette}
+                        photoUrl={customization.digitalInvitationPhotoUrl || null}
+                        photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
+                        onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
+                        customColors={digPreviewColors}
+                      />
+                    )}
                   </div>
                   {reminderOnly ? (
                     guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder ? (
