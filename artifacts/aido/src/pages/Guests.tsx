@@ -689,6 +689,7 @@ export default function Guests() {
     },
     onSuccess: (data) => {
       invalidate();
+      setSendModalGuest(null);
       if (data?.emailSent) {
         toast({ title: "Reminder sent", description: "RSVP reminder email delivered." });
       } else {
