@@ -443,7 +443,7 @@ export default function Rsvp() {
           </div>
         </div>{/* end cardRef */}
 
-        {/* Download button */}
+        {/* Download button — dark pill so the white label reads on a white page. */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
           <button
             type="button"
@@ -451,7 +451,7 @@ export default function Rsvp() {
             disabled={downloadingPdf}
             style={{
               display: "inline-flex", alignItems: "center", gap: 8,
-              background: "rgba(255,255,255,0.06)", border: `1px solid ${CARD_BDR}`,
+              background: BG, border: `1px solid ${GOLD}55`,
               color: WHITE, fontFamily: jakarta, fontSize: 11, fontWeight: 600,
               letterSpacing: "0.18em", textTransform: "uppercase",
               padding: "12px 28px", borderRadius: 8, cursor: "pointer",
@@ -471,11 +471,11 @@ export default function Rsvp() {
           )}
         </div>
 
-        {/* Divider */}
-        <div style={{ height: 1, background: CARD_BDR }} />
-
-        {/* RSVP form card */}
-        <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ background: "rgba(255,255,255,0.09)", border: `1px solid rgba(255,255,255,0.22)` }}>
+        {/* RSVP form card — uses the same dark/themed BG as the invitation card
+            above so the white text + gold accents inside stay readable. The
+            page outside is white; the card's dark fill stops at the rounded
+            edge. */}
+        <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ background: BG, border: `1px solid ${GOLD}33` }}>
           <div className="h-1.5 w-full" style={{ background: GOLD }} />
           <div className="pt-7 pb-8 px-6 sm:px-8 space-y-6">
 
@@ -711,8 +711,9 @@ export default function Rsvp() {
 
       </div>
 
-      {/* Footer */}
-      <p style={{ fontFamily: jakarta, fontSize: 11, color: MUTED, marginTop: 28, textAlign: "center" }}>
+      {/* Footer — page is white, so use a dark muted colour instead of the
+          dark-card MUTED (white@55%) which would be invisible on white. */}
+      <p style={{ fontFamily: jakarta, fontSize: 11, color: "rgba(0,0,0,0.55)", marginTop: 28, textAlign: "center" }}>
         Planning your own wedding?{" "}
         <a href="https://aidowedding.net" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>
           Try A.IDO free
