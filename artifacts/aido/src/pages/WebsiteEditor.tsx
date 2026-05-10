@@ -1379,7 +1379,7 @@ export default function WebsiteEditor() {
               return (
                 <div key={row.hiddenKey} className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
-                    <Label className="text-sm font-medium cursor-pointer">{row.defaultLabel}</Label>
+                    <Label className="text-sm font-medium cursor-pointer text-foreground">{row.defaultLabel}</Label>
                     <Switch
                       checked={!isHidden}
                       onCheckedChange={(checked) => {
