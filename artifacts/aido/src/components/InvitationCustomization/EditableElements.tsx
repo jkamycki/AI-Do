@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import type { CSSProperties } from "react";
 import type { ElementOverride } from "@/types/invitations";
 import { Button } from "@/components/ui/button";
@@ -234,6 +234,35 @@ export function EditableText({
   );
 }
 
+// Draws an image into a <canvas> with cover-crop at objectX/objectY%.
+// html2canvas copies <canvas> content natively, so this is the most
+// reliable way to get correct cropping in PDF exports.
+function PhotoCanvas({ src, width, height, objectX, objectY }: {
+  src: string; width: number; height: number; objectX: number; objectY: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
+      const sw = img.naturalWidth * scale;
+      const sh = img.naturalHeight * scale;
+      const sx = (sw - width) * (objectX / 100);
+      const sy = (sh - height) * (objectY / 100);
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(img, -sx, -sy, sw, sh);
+    };
+    img.src = src;
+  }, [src, width, height, objectX, objectY]);
+  useEffect(() => { draw(); }, [draw]);
+  return <canvas ref={canvasRef} width={width} height={height} style={{ display: "block", width: "100%", height: "100%" }} />;
+}
+
 export interface EditableImageProps {
   id: string;
   src: string | null;
@@ -317,11 +346,13 @@ export function EditableImage({
             : "",
       ].join(" ")}
       style={{
-        left: x,
+        // In non-editable mode resolve the -50% centering to an absolute px
+        // value because html2canvas does not apply CSS transforms reliably.
+        left: editable ? x : x - width / 2,
         top: y,
         width,
         height,
-        transform: "translateX(-50%)",
+        transform: editable ? "translateX(-50%)" : "none",
         backgroundColor: fallbackBg,
         border: src ? "1px solid #e5e7eb" : "2px dashed #cbd5e1",
       }}
@@ -342,18 +373,10 @@ export function EditableImage({
             draggable={false}
           />
         ) : (
-          // background-image div so html2canvas captures cover+position correctly
-          // (html2canvas does not support object-fit on <img> elements)
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              backgroundImage: `url('${src}')`,
-              backgroundSize: "cover",
-              backgroundPosition: `${objectX}% ${objectY}%`,
-              pointerEvents: "none",
-            }}
-          />
+          // Canvas-based render so html2canvas captures the correct cover crop.
+          // html2canvas ignores object-fit on <img> and may not apply CSS
+          // transforms, so we draw the image manually with the right crop.
+          <PhotoCanvas src={src} width={width} height={height} objectX={objectX} objectY={objectY} />
         )
       ) : (
         <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm pointer-events-none">
