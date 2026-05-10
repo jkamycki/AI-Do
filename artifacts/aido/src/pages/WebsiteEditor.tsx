@@ -1702,6 +1702,20 @@ export default function WebsiteEditor() {
             />
             {upload.isUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <>Add photos</>}
           </label>
+          {/* Cover (default) crops the photo to fill the hero. Contain shows
+              the whole photo with the site's background color filling the bars. */}
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/30 px-3 py-2">
+            <div className="min-w-0">
+              <Label className="text-xs font-medium">Show whole photo</Label>
+              <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                Off: photo fills the frame and may crop. On: shows the entire photo with side bars.
+              </p>
+            </div>
+            <Switch
+              checked={record.customText._heroFit === "contain"}
+              onCheckedChange={(checked) => update({ customText: { ...record.customText, _heroFit: checked ? "contain" : "" } })}
+            />
+          </div>
         </Section>}
 
         {/* Gallery */}
