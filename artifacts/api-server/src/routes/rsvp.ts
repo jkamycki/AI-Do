@@ -810,9 +810,9 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       // Prefer the per-invitation dedicated column, then the JSONB backup key,
       // then the shared palette primary as last resort.
       const ACCENT = !useGenerated
-        ? (customization?.digitalInvitationAccentColor
+        ? ((customization?.digitalInvitationAccentColor
             ?? (customization?.customColors as Record<string, string> | null)?.digitalInvitationAccent
-            ?? colors.primary
+            ?? colors.primary)
             || "#D4A017")
         : "#c9a97e";
       const TEXT = !useGenerated
@@ -1073,9 +1073,9 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         // card colour doesn't repaint the entire email body — same rule the
         // public RSVP / save-the-date pages and the other email branch follow.
         overridePageBg: bgIsLight ? "#f3f4f6" : "#1a1a1a",
-        overrideAccent: customization?.digitalInvitationAccentColor
+        overrideAccent: (customization?.digitalInvitationAccentColor
           ?? (customization?.customColors as Record<string, string> | null)?.digitalInvitationAccent
-          ?? colors.primary
+          ?? colors.primary)
           || "#D4A017",
         overrideText: customization?.digitalInvitationFontColor ?? (bgIsLight ? "#1a1a1a" : "#ffffff"),
         overrideMuted: bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
