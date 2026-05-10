@@ -1038,6 +1038,13 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
   const animDuration = speed === "slow" ? "30s" : speed === "fast" ? "12s" : "20s";
   const marqueeDuration = speed === "slow" ? "60s" : speed === "fast" ? "25s" : "40s";
   const photoFilter = photoFilterCss(data.customText._photoFilter);
+  // "contain" lets the user see the whole cropped photo (with a colored
+  // backdrop filling the extra space). Default "cover" keeps the existing
+  // bleed-edge look for sites that don't opt in.
+  const fit = (data.customText._heroFit === "contain" ? "contain" : "cover") as "cover" | "contain";
+  // When letterboxing in contain mode, fall back to the palette background
+  // so the bars match the rest of the site instead of showing black.
+  const backdrop = fit === "contain" ? data.colorPalette.background : undefined;
 
   const heroAndGallery: string[] = [
     ...(data.heroImage ? [data.heroImage] : []),
@@ -1049,7 +1056,7 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
     // Duplicate the list so the loop is seamless when translateX hits -50%
     const strip = [...heroAndGallery, ...heroAndGallery];
     return (
-      <div className="absolute inset-0 overflow-hidden" style={{ background: `linear-gradient(135deg, ${data.colorPalette.primary}22, ${data.colorPalette.secondary}22)` }}>
+      <div className="absolute inset-0 overflow-hidden" style={{ background: backdrop ?? `linear-gradient(135deg, ${data.colorPalette.primary}22, ${data.colorPalette.secondary}22)` }}>
         <div
           className="flex h-full"
           style={{
@@ -1067,7 +1074,7 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
                 className="h-full w-full"
                 style={{
                   backgroundPosition: focal,
-                  backgroundSize: "cover",
+                  backgroundSize: fit,
                   backgroundRepeat: "no-repeat",
                   filter: photoFilter,
                 }}
@@ -1121,7 +1128,7 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
         : {};
 
   return (
-    <div className="absolute inset-0 overflow-hidden">
+    <div className="absolute inset-0 overflow-hidden" style={backdrop ? { background: backdrop } : undefined}>
       {slideshowImages.map((url, i) => {
         const focal = heroFocalFor(data, url);
         const zoom = heroZoomFor(data, url);
@@ -1131,7 +1138,7 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
             className="absolute inset-0"
             style={{
               backgroundPosition: focal,
-              backgroundSize: "cover",
+              backgroundSize: fit,
               backgroundRepeat: "no-repeat",
               opacity: mode === "slideshow" ? (i === activeIdx ? 1 : 0) : 1,
               transition: mode === "slideshow" ? "opacity 1s ease-in-out" : undefined,
@@ -1159,7 +1166,7 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
                 className="absolute inset-0"
                 style={{
                   backgroundPosition: focal,
-                  backgroundSize: "cover",
+                  backgroundSize: fit,
                   backgroundRepeat: "no-repeat",
                   opacity: mode === "slideshow" ? (i === activeIdx ? 1 : 0) : 1,
                   transition: mode === "slideshow" ? "opacity 1s ease-in-out" : undefined,
