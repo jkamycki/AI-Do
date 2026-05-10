@@ -274,7 +274,8 @@ export default function InvitationCustomizationPage({
       return r.json() as Promise<InvitationCustomization>;
     },
     enabled: !!profileId,
-    refetchOnMount: true,
+    staleTime: 0,
+    refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
 
@@ -299,12 +300,6 @@ export default function InvitationCustomizationPage({
       // the saved record so the toggle and panel reflect what was last saved.
       if (customization.useGeneratedInvitation === false) {
         if (customization.saveTheDateBackground || customization.digitalInvitationBackground) setDesignMode("custom");
-        // Restore which invitation type was being previewed. If the RSVP
-        // Invitation had a custom font color set (from the theme picker) and
-        // the STD did not, the user was most recently editing the RSVP side.
-        if (customization.digitalInvitationFontColor && !customization.saveTheDateFontColor) {
-          setPreviewTab("digitalInvitation");
-        }
       }
       const savedAccent =
         customization.customColors?.accent ??
@@ -615,16 +610,10 @@ export default function InvitationCustomizationPage({
     const stdCustom = designMode === "custom";
     const digCustom = designMode === "custom";
     const eitherCustom = designMode === "custom";
-    // Custom accent: pick from whichever invitation type the user is
-    // currently editing (previewTab). The accent is shared on the
-    // colorPalette / customColors record because the legacy renderer uses
-    // one accent across both invitations — so the most-recently-edited
-    // side wins.
-    const customAccent = eitherCustom
-      ? previewTab === "saveTheDate"
-        ? d.saveTheDate.accentColor
-        : d.rsvpInvitation.accentColor
-      : null;
+    // Both invitation types share one customColors.accent in the DB. The
+    // theme click handler keeps both accentColors in sync, so picking either
+    // side is equivalent here.
+    const customAccent = eitherCustom ? d.saveTheDate.accentColor : null;
     const finalCustomColors = customAccent
       ? { ...(customColors ?? {}), accent: customAccent, primary: customAccent }
       : customColors;
@@ -1006,6 +995,10 @@ export default function InvitationCustomizationPage({
                             key={theme.id}
                             type="button"
                             onClick={() => {
+                              // Sync the accent to both invitation types since the
+                              // DB stores a single shared customColors.accent. This
+                              // keeps the STD and RSVP previews consistent.
+                              const otherKey = activeKey === "saveTheDate" ? "rsvpInvitation" : "saveTheDate";
                               const newCustomDesign = {
                                 ...customDesign,
                                 [activeKey]: {
@@ -1015,33 +1008,26 @@ export default function InvitationCustomizationPage({
                                   fontColor: theme.text,
                                   fontFamily: theme.font,
                                 },
+                                [otherKey]: {
+                                  ...customDesign[otherKey],
+                                  accentColor: theme.primary,
+                                },
                               };
                               setCustomDesign(newCustomDesign);
-                              // Sync latestValuesRef immediately so the unmount-save
-                              // cleanup (keepalive fetch) sends the NEW theme if the
-                              // user leaves the tab before React re-renders.
-                              latestValuesRef.current = { ...latestValuesRef.current, customDesign: newCustomDesign };
                               skipNextAutoSave.current = true;
                               const payload = buildPayload(undefined, undefined, newCustomDesign);
-                              // Optimistic cache update — works even when old is
-                              // null/undefined (query not yet completed on first visit).
+                              // Update the query cache optimistically so the theme
+                              // persists if the user navigates away and back before
+                              // the API response completes.
                               queryClient.setQueryData(
                                 ["invitation-customizations", profileId],
                                 (old: InvitationCustomization | null | undefined) =>
-                                  old != null ? { ...old, ...payload } : (payload as InvitationCustomization),
+                                  old ? { ...old, ...payload } : old,
                               );
                               authedFetch("/api/invitation-customizations", {
                                 method: "POST",
                                 body: JSON.stringify(payload),
-                              })
-                                .then(r => r.ok ? r.json() : null)
-                                .then((saved: InvitationCustomization | null) => {
-                                  // Authoritative update: replace optimistic cache with the
-                                  // actual server response so any background refetch that
-                                  // arrives with stale data can't overwrite the theme.
-                                  if (saved) queryClient.setQueryData(["invitation-customizations", profileId], saved);
-                                })
-                                .catch(() => {});
+                              }).catch(() => {});
                             }}
                             className={`text-left p-2 rounded-md border transition-all ${
                               active
