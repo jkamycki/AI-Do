@@ -156,7 +156,7 @@ async function getImageAsBase64(photoUrl: string | null | undefined): Promise<st
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AI_BG = "#1E1A2E";
-const AI_PAGE_BG = "#14111f";
+const AI_PAGE_BG = "#1E1A2E";
 const AI_GOLD = "#D4A017";
 const AI_WHITE = "#ffffff";
 const AI_MUTED = "rgba(255,255,255,0.58)";
@@ -220,7 +220,7 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
   const CARD_BDR = opts.overrideCardBdr  ?? AI_CARD_BDR;
   const SERIF    = opts.overrideCoupleFont
     ? `'${opts.overrideCoupleFont}',${AI_CORMORANT}` : AI_CORMORANT;
-  const FOOTER_BG = opts.overrideBg ? BG : "#15121d";
+  const FOOTER_BG = BG;
   const BTN_TXT  = isLightColor(ACCENT) ? "#000000" : (opts.overrideBg ? TEXT_COL : AI_BG);
   const COLOR_SCHEME = isLightColor(BG) ? "light" : "dark";
 
@@ -400,7 +400,7 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
   const CARD_BDR = opts.overrideCardBdr  ?? AI_CARD_BDR;
   const SERIF    = opts.overrideCoupleFont
     ? `'${opts.overrideCoupleFont}',${AI_CORMORANT}` : AI_CORMORANT;
-  const FOOTER_BG = opts.overrideBg ? BG : "#15121d";
+  const FOOTER_BG = BG;
   const timesLine = [
     opts.ceremonyTimeStr ? `Ceremony ${opts.ceremonyTimeStr}` : null,
     opts.receptionTimeStr ? `Reception ${opts.receptionTimeStr}` : null,
