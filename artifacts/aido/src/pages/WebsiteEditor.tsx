@@ -542,6 +542,15 @@ export default function WebsiteEditor() {
   const autosaveFailedRef = useRef(false);
   const [autoSaving, setAutoSaving] = useState(false);
   const [autoSaveSeq, setAutoSaveSeq] = useState(0);
+  // Stays true for 2s after any successful save so the button flashes green
+  // even when the user immediately starts editing again (which sets dirty=true).
+  const [savedFlash, setSavedFlash] = useState(false);
+  const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashSaved = () => {
+    setSavedFlash(true);
+    if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+    savedFlashTimerRef.current = setTimeout(() => setSavedFlash(false), 2000);
+  };
   useEffect(() => {
     if (!record || !dirty) return;
     const delay = autosaveFailedRef.current ? 5000 : 1000;
@@ -550,7 +559,7 @@ export default function WebsiteEditor() {
       const ok = await saveNow(true);
       setAutoSaving(false);
       autosaveFailedRef.current = !ok;
-      if (ok) setLastAutosaved(new Date());
+      if (ok) { setLastAutosaved(new Date()); flashSaved(); }
       else setAutoSaveSeq(n => n + 1); // reschedule retry
     }, delay);
     return () => clearTimeout(timer);
@@ -574,7 +583,7 @@ export default function WebsiteEditor() {
     setSaving(true);
     try {
       const ok = await saveNow(false);
-      if (ok) toast({ title: "Saved!" });
+      if (ok) { toast({ title: "Saved!" }); flashSaved(); }
       else {
         const err = lastSaveErrorRef.current;
         const detail = err
@@ -924,7 +933,13 @@ export default function WebsiteEditor() {
           <div className="grid grid-cols-2 gap-2 max-w-md">
             <Button
               size="sm"
-              onClick={() => { setPreviewSection(editorSection || "home"); setPreviewOpen(true); }}
+              onClick={() => {
+                // Flush any pending inline-text commit before showing preview
+                // so the user sees their latest edits, not a stale snapshot.
+                flushPendingEditableCommits();
+                setPreviewSection(editorSection || "home");
+                setPreviewOpen(true);
+              }}
               className="border-0 font-bold"
               style={{ background: "#D4A017", color: "#2A1745" }}
             >
@@ -961,22 +976,22 @@ export default function WebsiteEditor() {
               onClick={handleSave}
               disabled={saving}
               className={
-                !dirty && !saving && !autoSaving
+                savedFlash || (!dirty && !saving && !autoSaving)
                   ? "bg-emerald-600 hover:bg-emerald-700 border-0 font-bold"
                   : "border-0 font-bold"
               }
               style={
-                !dirty && !saving && !autoSaving
+                savedFlash || (!dirty && !saving && !autoSaving)
                   ? { color: "#2A1745" }
                   : { background: "#D4A017", color: "#2A1745" }
               }
             >
-              {(saving || autoSaving) ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : (!dirty ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />)}
+              {(saving || autoSaving) ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : (savedFlash || !dirty ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />)}
               {(saving || autoSaving)
                 ? t("website_editor.saving", { defaultValue: "Saving..." })
-                : dirty
-                  ? t("website_editor.save", { defaultValue: "Save" })
-                  : t("website_editor.saved", { defaultValue: "Saved" })}
+                : (savedFlash || !dirty)
+                  ? t("website_editor.saved", { defaultValue: "Saved" })
+                  : t("website_editor.save", { defaultValue: "Save" })}
             </Button>
             <Button
               size="sm"
@@ -1004,6 +1019,15 @@ export default function WebsiteEditor() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="truncate flex-1 font-mono hover:underline"
+                  onClick={(e) => {
+                    // Flush and save before opening the published site so the
+                    // visitor sees the latest edits rather than a stale snapshot.
+                    if (dirty) {
+                      e.preventDefault();
+                      flushPendingEditableCommits();
+                      saveNow(true).then(() => window.open(publicUrl, "_blank"));
+                    }
+                  }}
                 >
                   {publicUrl}
                 </a>
