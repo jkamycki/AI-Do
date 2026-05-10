@@ -20,6 +20,7 @@ import {
 import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
 import { flushPendingEditableCommits, subscribeEditableDrag, EDITABLE_HIDDEN_MARKER } from "@/components/website/EditableText";
 import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
+import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
@@ -705,6 +706,63 @@ export default function WebsiteEditor() {
       }
     }
     update({ heroImages: newImages });
+  };
+
+  // ----- Hero photo crop-on-upload flow -------------------------------------
+  // Upfront cropper. The user picks files → ImageCropDialog walks each one
+  // → each cropped (or skipped) file is uploaded sequentially and appended
+  // to record.heroImages. Sequential uploads avoid the race where two
+  // parallel uploads each read the same recordRef snapshot and one append
+  // wins, dropping the other from heroImages.
+  const [heroCropQueue, setHeroCropQueue] = useState<File[]>([]);
+  const [heroCropTotal, setHeroCropTotal] = useState(0);
+  const heroUploadChainRef = useRef<Promise<void>>(Promise.resolve());
+
+  const heroCropItem: CropQueueItem | null = heroCropQueue.length > 0
+    ? {
+        file: heroCropQueue[0],
+        index: heroCropTotal - heroCropQueue.length,
+        total: heroCropTotal,
+      }
+    : null;
+
+  const startHeroCropFlow = (files: FileList) => {
+    const arr = Array.from(files).slice(0, 10);
+    if (arr.length === 0) return;
+    setHeroCropQueue(arr);
+    setHeroCropTotal(arr.length);
+  };
+
+  const enqueueHeroUpload = (file: File) => {
+    heroUploadChainRef.current = heroUploadChainRef.current.then(async () => {
+      const result = await upload.uploadFile(file);
+      if (!result) return;
+      const cur = recordRef.current;
+      if (!cur) return;
+      const next = [
+        ...(cur.heroImages ?? []),
+        { url: result.objectPath, order: cur.heroImages?.length ?? 0 },
+      ];
+      update({ heroImages: next });
+    });
+  };
+
+  const advanceHeroCropQueue = () => setHeroCropQueue((q) => q.slice(1));
+
+  const onHeroCropComplete = (croppedFile: File) => {
+    enqueueHeroUpload(croppedFile);
+    advanceHeroCropQueue();
+  };
+
+  const onHeroCropSkip = () => {
+    const original = heroCropQueue[0];
+    if (original) enqueueHeroUpload(original);
+    advanceHeroCropQueue();
+  };
+
+  const onHeroCropCancelAll = () => {
+    setHeroCropQueue([]);
+    setHeroCropTotal(0);
   };
 
   const removeHeroImage = (index: number) => {
@@ -1654,7 +1712,7 @@ export default function WebsiteEditor() {
               multiple
               className="hidden"
               onChange={(e) => {
-                if (e.target.files) handleHeroImagesUpload(e.target.files);
+                if (e.target.files) startHeroCropFlow(e.target.files);
                 e.target.value = "";
               }}
               disabled={upload.isUploading}
@@ -1985,6 +2043,17 @@ export default function WebsiteEditor() {
           </button>
         </div>
       )}
+
+      {/* Hero photo crop dialog — runs once per uploaded photo so the user
+          sees the whole image and chooses the crop themselves before the
+          file is uploaded. */}
+      <ImageCropDialog
+        item={heroCropItem}
+        initialAspect="wide"
+        onComplete={onHeroCropComplete}
+        onSkip={onHeroCropSkip}
+        onCancelAll={onHeroCropCancelAll}
+      />
 
       {/* Hero photo focal-point picker — lets the user choose which part of
           a home-page photo stays centered when the hero crops to fit. */}
