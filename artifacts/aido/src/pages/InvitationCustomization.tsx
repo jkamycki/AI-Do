@@ -601,7 +601,12 @@ export default function InvitationCustomizationPage({
   const buildPayload = (
     stdPhotoUrl = saveTheDatePhotoUrl,
     digPhotoUrl = digitalInvitationPhotoUrl,
+    customDesignOverride?: {
+      saveTheDate: { backgroundColor: string; accentColor: string; fontFamily: string; fontSize: string; fontColor: string };
+      rsvpInvitation: { backgroundColor: string; accentColor: string; fontFamily: string; fontSize: string; fontColor: string };
+    },
   ) => {
+    const d = customDesignOverride ?? customDesign;
     const stdCustom = designMode === "custom";
     const digCustom = designMode === "custom";
     const eitherCustom = designMode === "custom";
@@ -610,9 +615,9 @@ export default function InvitationCustomizationPage({
     // the colorPalette / customColors record because the legacy renderer
     // uses one accent across both invitations.
     const customAccent = stdCustom
-      ? customDesign.saveTheDate.accentColor
+      ? d.saveTheDate.accentColor
       : digCustom
-      ? customDesign.rsvpInvitation.accentColor
+      ? d.rsvpInvitation.accentColor
       : null;
     const finalCustomColors = customAccent
       ? { ...(customColors ?? {}), accent: customAccent, primary: customAccent }
@@ -634,14 +639,14 @@ export default function InvitationCustomizationPage({
       useGeneratedInvitation: !eitherCustom,
       // Per-invitation custom styling. Null when that invitation is in AI
       // mode so the public renderer falls back to AI defaults cleanly.
-      saveTheDateBackground: stdCustom ? customDesign.saveTheDate.backgroundColor : null,
-      digitalInvitationBackground: digCustom ? customDesign.rsvpInvitation.backgroundColor : null,
-      saveTheDateFont: stdCustom ? customDesign.saveTheDate.fontFamily : null,
-      digitalInvitationFont: digCustom ? customDesign.rsvpInvitation.fontFamily : null,
-      saveTheDateFontColor: stdCustom ? customDesign.saveTheDate.fontColor : null,
-      digitalInvitationFontColor: digCustom ? customDesign.rsvpInvitation.fontColor : null,
-      saveTheDateFontSize: stdCustom ? customDesign.saveTheDate.fontSize : null,
-      digitalInvitationFontSize: digCustom ? customDesign.rsvpInvitation.fontSize : null,
+      saveTheDateBackground: stdCustom ? d.saveTheDate.backgroundColor : null,
+      digitalInvitationBackground: digCustom ? d.rsvpInvitation.backgroundColor : null,
+      saveTheDateFont: stdCustom ? d.saveTheDate.fontFamily : null,
+      digitalInvitationFont: digCustom ? d.rsvpInvitation.fontFamily : null,
+      saveTheDateFontColor: stdCustom ? d.saveTheDate.fontColor : null,
+      digitalInvitationFontColor: digCustom ? d.rsvpInvitation.fontColor : null,
+      saveTheDateFontSize: stdCustom ? d.saveTheDate.fontSize : null,
+      digitalInvitationFontSize: digCustom ? d.rsvpInvitation.fontSize : null,
     };
   };
 
@@ -995,16 +1000,25 @@ export default function InvitationCustomizationPage({
                             key={theme.id}
                             type="button"
                             onClick={() => {
-                              setCustomDesign((prev) => ({
-                                ...prev,
+                              const newCustomDesign = {
+                                ...customDesign,
                                 [activeKey]: {
-                                  ...prev[activeKey],
+                                  ...customDesign[activeKey],
                                   backgroundColor: theme.background,
                                   accentColor: theme.primary,
                                   fontColor: theme.text,
                                   fontFamily: theme.font,
                                 },
-                              }));
+                              };
+                              setCustomDesign(newCustomDesign);
+                              // Save immediately so InvitationSendModal always
+                              // gets the selected theme even when navigated to
+                              // before the 1-second debounce fires.
+                              skipNextAutoSave.current = true;
+                              authedFetch("/api/invitation-customizations", {
+                                method: "POST",
+                                body: JSON.stringify(buildPayload(undefined, undefined, newCustomDesign)),
+                              }).catch(() => {});
                             }}
                             className={`text-left p-2 rounded-md border transition-all ${
                               active
