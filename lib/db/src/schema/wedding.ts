@@ -340,6 +340,11 @@ export const guests = pgTable("guests", {
   rsvpSentAt: timestamp("rsvp_sent_at"),
   rsvpRespondedAt: timestamp("rsvp_responded_at"),
   saveTheDateStatus: text("save_the_date_status").notNull().default("not_sent"),
+  // Tracks whether the planner has sent the "you haven't RSVP'd" nudge
+  // email. Set to "sent" by the /guests/:id/send-rsvp-reminder route and
+  // shown alongside Save the Date / RSVP Invitation status on the guest
+  // list. The planner can also flip it manually.
+  rsvpReminderStatus: text("rsvp_reminder_status").notNull().default("not_sent"),
   source: text("source").notNull().default("manual"),
   acknowledgedAt: timestamp("acknowledged_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
