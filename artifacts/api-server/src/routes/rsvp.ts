@@ -896,6 +896,9 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         html,
       });
       emailSent = result.ok;
+      if (result.ok && isReminder) {
+        await db.update(guests).set({ rsvpReminderStatus: "sent" }).where(eq(guests.id, id));
+      }
     }
 
     res.json({ rsvpUrl, emailSent });
