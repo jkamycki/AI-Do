@@ -1230,7 +1230,7 @@ router.get("/preview/save-the-date/:token", async (req, res) => {
       ? (() => { const [y, m, d] = profile.weddingDate!.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }); })()
       : null;
     const location = [profile.venue, profile.venueCity, profile.venueState].filter(Boolean).join(", ");
-    const title = escapeHtml(`Save the Date`);
+    const title = escapeHtml(`Save the Date — ${couple}`);
     const description = escapeHtml([`${guestName}, save the date for the wedding of ${couple}`, dateStr, location].filter(Boolean).join(" · "));
     const imageUrl = escapeHtml(`${apiOrigin}/api/save-the-date/${token}/photo`);
     const destinationUrl = escapeHtml(`${frontendOrigin}/save-the-date/${token}`);
