@@ -193,7 +193,7 @@ export default function SaveTheDate() {
         )}
 
         {/* Content */}
-        <div style={{ backgroundImage: DOT_PAT, backgroundSize: "22px 22px", backgroundColor: BG, padding: "16px 28px 32px", textAlign: "center" }}>
+        <div style={{ backgroundImage: DOT_PAT, backgroundSize: "22px 22px", backgroundColor: BG, padding: "16px 24px 28px", textAlign: "center" }}>
 
           {/* Badge */}
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
@@ -212,7 +212,7 @@ export default function SaveTheDate() {
           </p>
 
           {/* Couple name */}
-          <h1 style={{ fontFamily: SERIF, fontSize: "2.3rem", fontWeight: 400, fontStyle: "italic", color: GOLD, lineHeight: 1.2, margin: "0 0 16px" }}>
+          <h1 style={{ fontFamily: SERIF, fontSize: "2.1rem", fontWeight: 400, fontStyle: "italic", color: GOLD, lineHeight: 1.2, margin: "0 0 16px" }}>
             {coupleText}
           </h1>
 
@@ -252,38 +252,39 @@ export default function SaveTheDate() {
             Formal invitation to follow
           </p>
 
+          {/* Download button — styled to match the preview's "View & Download" button */}
+          <div style={{ marginTop: 16 }}>
+            <button
+              onClick={downloadPdf}
+              disabled={downloadingPdf}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: `${GOLD}1a`, border: `1px solid ${CARD_BDR}`,
+                color: MUTED, fontFamily: jakarta, fontSize: 10, fontWeight: 600,
+                letterSpacing: "0.18em", textTransform: "uppercase",
+                padding: "8px 20px", borderRadius: 6, cursor: "pointer",
+                opacity: downloadingPdf ? 0.5 : 1,
+              }}
+            >
+              {downloadingPdf ? (
+                <><Loader2 style={{ width: 11, height: 11 }} className="animate-spin" /> Generating PDF…</>
+              ) : (
+                <><Download style={{ width: 11, height: 11 }} /> Download as PDF</>
+              )}
+            </button>
+          </div>
+
         </div>
-      </div>
 
-      {/* Download button — outside the captured card */}
-      <div style={{ marginTop: 28 }}>
-        <button
-          onClick={downloadPdf}
-          disabled={downloadingPdf}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            background: "rgba(255,255,255,0.06)", border: `1px solid ${CARD_BDR}`,
-            color: WHITE, fontFamily: jakarta, fontSize: 11, fontWeight: 600,
-            letterSpacing: "0.18em", textTransform: "uppercase",
-            padding: "12px 28px", borderRadius: 8, cursor: "pointer",
-            opacity: downloadingPdf ? 0.5 : 1,
-          }}
-        >
-          {downloadingPdf ? (
-            <><Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> Generating PDF…</>
-          ) : (
-            <><Download style={{ width: 14, height: 14 }} /> Download as PDF</>
-          )}
-        </button>
-      </div>
+        {/* Footer — matches email card footer */}
+        <div style={{ backgroundColor: BG, padding: "16px 24px", textAlign: "center", borderTop: `1px solid ${CARD_BDR}` }}>
+          <p style={{ margin: "0 0 4px", fontFamily: jakarta, fontSize: 10, color: MUTED, letterSpacing: "0.5px" }}>Planning your own wedding?</p>
+          <p style={{ margin: 0, fontFamily: jakarta, fontSize: 10, color: MUTED }}>
+            <a href="https://aidowedding.net" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>Try A.IDO free</a> — AI-powered wedding planning
+          </p>
+        </div>
 
-      {/* Footer */}
-      <p style={{ fontFamily: jakarta, fontSize: 11, color: MUTED, marginTop: 28, textAlign: "center" }}>
-        Planning your own wedding?{" "}
-        <a href="https://aidowedding.net" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>
-          Try A.IDO free
-        </a>
-      </p>
+      </div>
 
     </div>
   );
