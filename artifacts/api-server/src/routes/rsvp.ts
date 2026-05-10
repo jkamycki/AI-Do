@@ -609,7 +609,8 @@ router.get("/guests/:id/rsvp-link", requireAuth, async (req, res) => {
 
     const origin = buildFrontendOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
-    res.json({ rsvpUrl, previewUrl: rsvpUrl });
+    const previewUrl = `${origin}/invite/rsvp/${token}`;
+    res.json({ rsvpUrl, previewUrl });
   } catch (err) {
     req.log.error(err, "Failed to generate RSVP link");
     res.status(500).json({ error: "Internal server error" });
@@ -716,7 +717,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
     const origin = buildFrontendOrigin(req);
     const apiOrigin = buildOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
-    const previewUrl = rsvpUrl;
+    const previewUrl = `${origin}/invite/rsvp/${token}`;
 
     let emailSent = false;
     if (guest.email) {
@@ -973,7 +974,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
     const origin = buildFrontendOrigin(req);
     const apiOrigin = buildOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
-    const previewUrl = rsvpUrl;
+    const previewUrl = `${origin}/invite/rsvp/${token}`;
     const logoBase64 = `${apiOrigin}/logo.png`;
 
     // Load customization so the reminder email matches the invitation preview.
@@ -1230,7 +1231,7 @@ router.get("/preview/save-the-date/:token", async (req, res) => {
       ? (() => { const [y, m, d] = profile.weddingDate!.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }); })()
       : null;
     const location = [profile.venue, profile.venueCity, profile.venueState].filter(Boolean).join(", ");
-    const title = escapeHtml(`Save the Date`);
+    const title = escapeHtml(`Save the Date — ${couple}`);
     const description = escapeHtml([`${guestName}, save the date for the wedding of ${couple}`, dateStr, location].filter(Boolean).join(" · "));
     const imageUrl = escapeHtml(`${apiOrigin}/api/save-the-date/${token}/photo`);
     const destinationUrl = escapeHtml(`${frontendOrigin}/save-the-date/${token}`);
@@ -1531,7 +1532,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
 
     const frontendOriginStd = buildFrontendOrigin(req);
     const saveTheDateUrl = `${frontendOriginStd}/save-the-date/${token}`;
-    const saveTheDatePreviewUrl = saveTheDateUrl;
+    const saveTheDatePreviewUrl = `${frontendOriginStd}/invite/save-the-date/${token}`;
 
     let emailSent = false;
     if (guest.email) {
