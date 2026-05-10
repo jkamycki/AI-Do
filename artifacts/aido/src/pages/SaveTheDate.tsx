@@ -24,6 +24,7 @@ interface SaveTheDateInfo {
   ceremonyZip: string | null;
   saveTheDateMessage: string | null;
   hasPhoto: boolean;
+  photoVersion: string;
   useGeneratedInvitation: boolean;
   customBackgroundColor: string | null;
   customAccentColor: string | null;
@@ -179,7 +180,7 @@ export default function SaveTheDate() {
         {info.hasPhoto && (
           <div style={{ padding: "0 20px 12px", backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
             <img
-              src={`/api/save-the-date/${token}/photo`}
+              src={`/api/save-the-date/${token}/photo?v=${info.photoVersion}`}
               alt={couple}
               crossOrigin="anonymous"
               style={{
