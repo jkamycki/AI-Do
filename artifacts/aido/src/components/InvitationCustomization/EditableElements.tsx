@@ -328,18 +328,33 @@ export function EditableImage({
       data-editable-id={id}
     >
       {src ? (
-        <AuthMediaImage
-          src={src}
-          alt=""
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: `${objectX}% ${objectY}%`,
-            pointerEvents: "none",
-          }}
-          draggable={false}
-        />
+        editable ? (
+          <AuthMediaImage
+            src={src}
+            alt=""
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: `${objectX}% ${objectY}%`,
+              pointerEvents: "none",
+            }}
+            draggable={false}
+          />
+        ) : (
+          // background-image div so html2canvas captures cover+position correctly
+          // (html2canvas does not support object-fit on <img> elements)
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              backgroundImage: `url('${src}')`,
+              backgroundSize: "cover",
+              backgroundPosition: `${objectX}% ${objectY}%`,
+              pointerEvents: "none",
+            }}
+          />
+        )
       ) : (
         <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm pointer-events-none">
           {placeholder}
