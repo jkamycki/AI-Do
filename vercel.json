@@ -10,11 +10,11 @@
     },
     {
       "source": "/invite/rsvp/(.*)",
-      "destination": "https://ai-do.onrender.com/api/preview/rsvp/$1"
+      "destination": "/og-rsvp.html"
     },
     {
       "source": "/invite/save-the-date/(.*)",
-      "destination": "https://ai-do.onrender.com/api/preview/save-the-date/$1"
+      "destination": "/og-savethedate.html"
     },
     {
       "source": "/(.*)",
