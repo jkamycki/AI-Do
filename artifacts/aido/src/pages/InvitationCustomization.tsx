@@ -274,8 +274,7 @@ export default function InvitationCustomizationPage({
       return r.json() as Promise<InvitationCustomization>;
     },
     enabled: !!profileId,
-    staleTime: 0,
-    refetchOnMount: "always",
+    refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
 
@@ -300,6 +299,12 @@ export default function InvitationCustomizationPage({
       // the saved record so the toggle and panel reflect what was last saved.
       if (customization.useGeneratedInvitation === false) {
         if (customization.saveTheDateBackground || customization.digitalInvitationBackground) setDesignMode("custom");
+        // Restore which invitation type was being previewed. If the RSVP
+        // Invitation had a custom font color set (from the theme picker) and
+        // the STD did not, the user was most recently editing the RSVP side.
+        if (customization.digitalInvitationFontColor && !customization.saveTheDateFontColor) {
+          setPreviewTab("digitalInvitation");
+        }
       }
       const savedAccent =
         customization.customColors?.accent ??
@@ -1013,18 +1018,25 @@ export default function InvitationCustomizationPage({
                               setCustomDesign(newCustomDesign);
                               skipNextAutoSave.current = true;
                               const payload = buildPayload(undefined, undefined, newCustomDesign);
-                              // Update the query cache optimistically so the theme
-                              // persists if the user navigates away and back before
-                              // the API response completes.
+                              // Optimistic cache update — works even when old is
+                              // null/undefined (query not yet completed on first visit).
                               queryClient.setQueryData(
                                 ["invitation-customizations", profileId],
                                 (old: InvitationCustomization | null | undefined) =>
-                                  old ? { ...old, ...payload } : old,
+                                  old != null ? { ...old, ...payload } : (payload as InvitationCustomization),
                               );
                               authedFetch("/api/invitation-customizations", {
                                 method: "POST",
                                 body: JSON.stringify(payload),
-                              }).catch(() => {});
+                              })
+                                .then(r => r.ok ? r.json() : null)
+                                .then((saved: InvitationCustomization | null) => {
+                                  // Authoritative update: replace optimistic cache with the
+                                  // actual server response so any background refetch that
+                                  // arrives with stale data can't overwrite the theme.
+                                  if (saved) queryClient.setQueryData(["invitation-customizations", profileId], saved);
+                                })
+                                .catch(() => {});
                             }}
                             className={`text-left p-2 rounded-md border transition-all ${
                               active
