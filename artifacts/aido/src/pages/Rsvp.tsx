@@ -188,9 +188,9 @@ export default function Rsvp() {
   const MUTED = _bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)";
   const CARD_BDR = _bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)";
   const DOT_PAT = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
-  // Page sits *behind* the card. Always white so the card colour stops at
-  // the rounded edge — no bleed into the surrounding viewport.
-  const PAGE_BG = "#ffffff";
+  // Page sits *behind* the card. Always light grey so the card colour
+  // stops at the rounded edge — no bleed into the surrounding viewport.
+  const PAGE_BG = "#f3f4f6";
   const PAGE_BG_PATTERN: string | undefined = undefined;
 
   const couple = [info?.partner1Name, info?.partner2Name].filter(Boolean).join(" & ") || "The Couple";
