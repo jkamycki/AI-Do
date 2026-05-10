@@ -950,8 +950,11 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
     if (guest.rsvpStatus !== "pending") {
       return res.status(400).json({ error: "Guest has already responded — no reminder needed." });
     }
+
+    // No email — just mark the reminder as sent without sending anything.
     if (!guest.email) {
-      return res.status(400).json({ error: "Guest has no email on file." });
+      await db.update(guests).set({ rsvpReminderStatus: "sent" }).where(eq(guests.id, id));
+      return res.json({ rsvpUrl: null, emailSent: false });
     }
 
     const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
