@@ -373,9 +373,6 @@ export function EditableImage({
             draggable={false}
           />
         ) : (
-          // Canvas-based render so html2canvas captures the correct cover crop.
-          // html2canvas ignores object-fit on <img> and may not apply CSS
-          // transforms, so we draw the image manually with the right crop.
           <PhotoCanvas src={src} width={width} height={height} objectX={objectX} objectY={objectY} />
         )
       ) : (

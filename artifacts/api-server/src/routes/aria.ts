@@ -1838,29 +1838,38 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     // because it isn't scanning across 35 lookalike function signatures.
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     const lastUserText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
+
+    // Detect "add a vendor / photographer / florist …" without a real business
+    // name. Computed before skipTools so it can gate tools entirely.
+    const VENDOR_CATEGORY_INTENT = /\b(add|create|new)\s+(a|an)\s+(vendor|photographer|videographer|florist|caterer|catering|dj|band|musician|officiant|hair|makeup|transport(?:ation)?|limo|cake|baker|stationery|invitation|rental|planner|venue|coordinator)s?\b/i;
+    const HAS_PROPER_NOUN = /[A-Z][a-z]{2,}|"[^"]+"|'[^']+'/;
+    const vendorGatherIntent = VENDOR_CATEGORY_INTENT.test(lastUserText) &&
+      !HAS_PROPER_NOUN.test(lastUserText.replace(VENDOR_CATEGORY_INTENT, ""));
+
+    // Skip tools for: chitchat, general advice, OR "add a vendor/photographer"
+    // without a business name. Skipping tools streams content directly (no
+    // buffering, no JSON sanitization) so the model's plain-text gathering
+    // question reaches the client cleanly instead of being stripped to empty
+    // and replaced with the generic "Sorry — I didn't catch that" fallback.
     const skipTools = !!lastUserText
-      && (isConversationalMessage(lastUserText) || isInfoQuestion(lastUserText));
+      && (isConversationalMessage(lastUserText) || isInfoQuestion(lastUserText) || vendorGatherIntent);
     let filteredTools = skipTools ? [] : pickToolsForMessages(recent as Array<{ role: string; content: string }>);
     // Tools that returned a doNotRetry error this turn — pruned from the next
     // loop iteration so the model can't keep guessing args after a rejection.
     const bannedTools = new Set<string>();
 
-    // Front-line block: when the user's most recent message is a bare
-    // "add a vendor" / "add a photographer" with no proper-noun business
-    // name in it, take add_vendor off the table entirely so the model
-    // cannot fabricate a name. This is more reliable than relying on the
-    // model to read the system prompt's "ask first" rule under token
-    // pressure — the small instruct model frequently ignores it and the
-    // user sees a red rejection pill before we get a question back.
-    const VENDOR_CATEGORY_INTENT = /\b(add|create|new)\s+(a|an)\s+(vendor|photographer|videographer|florist|caterer|catering|dj|band|musician|officiant|hair|makeup|transport(?:ation)?|limo|cake|baker|stationery|invitation|rental|planner|venue|coordinator)s?\b/i;
-    const HAS_PROPER_NOUN = /[A-Z][a-z]{2,}|"[^"]+"|'[^']+'/; // "Bloom & Co", or quoted business name
-    if (
-      VENDOR_CATEGORY_INTENT.test(lastUserText) &&
-      !HAS_PROPER_NOUN.test(lastUserText.replace(VENDOR_CATEGORY_INTENT, ""))
-    ) {
-      bannedTools.add("add_vendor");
-      filteredTools = filteredTools.filter((tool) => tool.function.name !== "add_vendor");
+    // When the immediately preceding assistant message confirms a vendor was
+    // just added ("✅ Added **X**"), block add_vendor on the follow-up turn.
+    // The user is responding to the "any payments?" prompt — the model should
+    // call update_vendor + add_vendor_payment, not re-add the same vendor.
+    // Server-side enforcement is more reliable than the system prompt rule alone.
+    if (!skipTools) {
+      const lastAssistantContent = [...recent].reverse().find(m => m.role === "assistant")?.content;
+      if (typeof lastAssistantContent === "string" && /✅ Added \*\*/.test(lastAssistantContent)) {
+        filteredTools = filteredTools.filter(t => t.function.name !== "add_vendor");
+      }
     }
+
     req.log.info({
       userId,
       skipTools,
