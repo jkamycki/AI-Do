@@ -1826,6 +1826,10 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const MAX_TOOL_LOOPS = 4;
     // Up to 3 automatic continuations when a text response hits max_tokens.
     const MAX_TEXT_CONTINUATIONS = 3;
+    // Master accumulator for the buffered (tool-equipped) text path — collects
+    // content from ALL continuation iterations before sending so the model
+    // cannot produce 3 identical paragraphs by repeating itself on "Continue.".
+    let masterContentAccum = "";
 
     // Decide whether tools are needed at all, and if so which subset.
     // Three tiers, each cheaper than the last:
@@ -2001,39 +2005,19 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       }
 
       if (toolCalls.length === 0) {
-        // For buffered (tool-equipped) requests, flush the accumulated text now
-        // that we know the model produced a pure text response (no tool calls).
-        // Strip any raw JSON blobs the small model may have echoed from a tool
-        // result. If the strip ate everything, fall back to a friendly nudge
-        // so the user never sees a stuck loading indicator with no message.
-        if (!skipTools && contentAccum) {
-          const TOOL_NAME_PATTERN = /\{[^{}]{0,200}"name"\s*:\s*"[a-z_]+"[^{}]*(?:"(?:parameters|arguments)"\s*:\s*(?:\{[^{}]*\}|[^{}]*))?[^{}]*\}/gi;
-          const sanitized = contentAccum
-            .replace(TOOL_NAME_PATTERN, "")
-            .replace(/\{[^{}]{80,}\}/g, (blob) => {
-              const keyCount = (blob.match(/"[^"]+"\s*:/g) ?? []).length;
-              return keyCount >= 3 ? "" : blob;
-            })
-            .replace(/\n{3,}/g, "\n\n")
-            .trim();
-          if (sanitized) {
-            send({ type: "content", content: sanitized });
-          } else {
-            // Strip ate everything (model wrote a tool-call envelope as
-            // text and nothing else). Don't leave the user with silence.
-            req.log.warn({ userId, lastUserPreview: lastUserText.slice(0, 80) }, "Aria response sanitized to empty");
-            send({ type: "content", content: "Sorry — I didn't quite catch that. Could you tell me a bit more about what you'd like me to do?" });
-          }
-        } else if (!skipTools && !contentAccum) {
-          // Model returned no content AND no tool calls. Edge case (rate
-          // limit / cut connection). Send a fallback so the loader clears.
-          req.log.warn({ userId, lastUserPreview: lastUserText.slice(0, 80) }, "Aria stream finished with no content and no tool calls");
-          send({ type: "content", content: "I didn't get a response — could you try that again?" });
+        // Collect text into the master accumulator (buffered path only).
+        // We gather ALL continuation iterations here before sending so the
+        // model cannot produce the same paragraph 3× by repeating itself on
+        // "Continue." — each iteration's text is appended, not re-sent.
+        if (!skipTools) {
+          masterContentAccum += contentAccum;
         }
 
         // If the model was cut off mid-response, add its partial reply to
         // the conversation and request a seamless continuation. The client
         // sees one unbroken stream — no gap, no "click to continue" needed.
+        // NOTE: content is NOT sent here; we wait until all iterations are
+        // done so duplicate paragraphs from model repetition are collapsed.
         if (finishReason === "length" && contentAccum && textContinuations < MAX_TEXT_CONTINUATIONS) {
           convo.push({ role: "assistant", content: contentAccum });
           convo.push({ role: "user", content: "Continue." });
@@ -2041,6 +2025,44 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
           // Don't count against toolLoops — this is a text continuation only.
           continue;
         }
+
+        // For buffered (tool-equipped) requests, flush the accumulated text now
+        // that we know the model produced a pure text response (no tool calls).
+        // Strip any raw JSON blobs the small model may have echoed from a tool
+        // result. If the strip ate everything, fall back to a friendly nudge
+        // so the user never sees a stuck loading indicator with no message.
+        if (!skipTools && masterContentAccum) {
+          const TOOL_NAME_PATTERN = /\{[^{}]{0,200}"name"\s*:\s*"[a-z_]+"[^{}]*(?:"(?:parameters|arguments)"\s*:\s*(?:\{[^{}]*\}|[^{}]*))?[^{}]*\}/gi;
+          const sanitized = masterContentAccum
+            .replace(TOOL_NAME_PATTERN, "")
+            .replace(/\{[^{}]{80,}\}/g, (blob) => {
+              const keyCount = (blob.match(/"[^"]+"\s*:/g) ?? []).length;
+              return keyCount >= 3 ? "" : blob;
+            })
+            .replace(/\n{3,}/g, "\n\n")
+            .trim();
+          // Deduplicate repeated paragraphs — guards against the model echoing
+          // the same question/message across multiple continuation iterations.
+          const paragraphs = sanitized.split(/\n{2,}/);
+          const seen = new Set<string>();
+          const deduped = paragraphs
+            .filter(p => { const t = p.trim(); if (!t || seen.has(t)) return false; seen.add(t); return true; })
+            .join("\n\n");
+          if (deduped) {
+            send({ type: "content", content: deduped });
+          } else {
+            // Strip ate everything (model wrote a tool-call envelope as
+            // text and nothing else). Don't leave the user with silence.
+            req.log.warn({ userId, lastUserPreview: lastUserText.slice(0, 80) }, "Aria response sanitized to empty");
+            send({ type: "content", content: "Sorry — I didn't quite catch that. Could you tell me a bit more about what you'd like me to do?" });
+          }
+        } else if (!skipTools && !masterContentAccum) {
+          // Model returned no content AND no tool calls. Edge case (rate
+          // limit / cut connection). Send a fallback so the loader clears.
+          req.log.warn({ userId, lastUserPreview: lastUserText.slice(0, 80) }, "Aria stream finished with no content and no tool calls");
+          send({ type: "content", content: "I didn't get a response — could you try that again?" });
+        }
+
         // Pure text response — done
         send({ type: "done", actions: performedActions.map(a => ({ name: a.name, ok: a.result.ok, error: a.result.ok ? undefined : a.result.error })) });
         res.write("data: [DONE]\n\n");
