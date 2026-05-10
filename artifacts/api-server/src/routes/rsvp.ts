@@ -716,6 +716,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
     const origin = buildFrontendOrigin(req);
     const apiOrigin = buildOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
+    const previewUrl = `${origin}/api/preview/rsvp/${token}`;
 
     let emailSent = false;
     if (guest.email) {
@@ -917,7 +918,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       }
     }
 
-    res.json({ rsvpUrl, emailSent });
+    res.json({ rsvpUrl, previewUrl, emailSent });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     req.log.error({ error: errorMsg, stack: err instanceof Error ? err.stack : undefined }, "Failed to send RSVP");
@@ -969,6 +970,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
     const origin = buildFrontendOrigin(req);
     const apiOrigin = buildOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
+    const previewUrl = `${origin}/api/preview/rsvp/${token}`;
     const logoBase64 = `${apiOrigin}/logo.png`;
 
     // Load customization so the reminder email matches the invitation preview.
@@ -1100,7 +1102,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
       await db.update(guests).set({ rsvpReminderStatus: "sent" }).where(eq(guests.id, id));
     }
 
-    res.json({ rsvpUrl, emailSent: result.ok });
+    res.json({ rsvpUrl, previewUrl, emailSent: result.ok });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     req.log.error({ error: errorMsg, stack: err instanceof Error ? err.stack : undefined }, "Failed to send RSVP reminder");
@@ -1156,6 +1158,86 @@ router.get("/rsvp/:token/photo", async (req, res) => {
   } catch (err) {
     req.log.error(err, "Failed to serve invitation photo");
     res.status(404).end();
+  }
+});
+
+// ── Link-preview endpoints (OG meta tags for chat-app share cards) ──────────
+// These are intentionally placed before the JSON endpoints so Express matches
+// the more-specific `/preview/rsvp/:token` path first.
+
+router.get("/preview/rsvp/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const rows = await db
+      .select({ profileId: guests.profileId, firstName: guests.firstName, lastName: guests.lastName })
+      .from(guests)
+      .where(eq(guests.rsvpToken, token))
+      .limit(1);
+    if (!rows.length) return res.status(404).end();
+
+    const { profileId, firstName, lastName } = rows[0];
+    const profiles = await db
+      .select({ partner1Name: weddingProfiles.partner1Name, partner2Name: weddingProfiles.partner2Name, weddingDate: weddingProfiles.weddingDate, venue: weddingProfiles.venue, venueCity: weddingProfiles.venueCity, venueState: weddingProfiles.venueState })
+      .from(weddingProfiles).where(eq(weddingProfiles.id, profileId)).limit(1);
+    const profile = profiles[0] ?? {};
+
+    const frontendOrigin = buildFrontendOrigin(req);
+    const apiOrigin = buildOrigin(req);
+    const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+    const guestName = [firstName, lastName].filter(Boolean).join(" ") || "Guest";
+    const dateStr = profile.weddingDate
+      ? (() => { const [y, m, d] = profile.weddingDate!.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }); })()
+      : null;
+    const location = [profile.venue, profile.venueCity, profile.venueState].filter(Boolean).join(", ");
+    const title = escapeHtml(`${couple} — Wedding Invitation`);
+    const description = escapeHtml([`${guestName}, you're invited to celebrate the wedding of ${couple}`, dateStr, location].filter(Boolean).join(" · "));
+    const imageUrl = escapeHtml(`${apiOrigin}/api/rsvp/${token}/photo`);
+    const destinationUrl = escapeHtml(`${frontendOrigin}/rsvp/${token}`);
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:image" content="${imageUrl}"><meta property="og:url" content="${destinationUrl}"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${imageUrl}"><meta http-equiv="refresh" content="0; url=${destinationUrl}"></head><body><script>window.location.replace("${destinationUrl}")</script><p>Redirecting to your invitation…</p></body></html>`);
+  } catch (err) {
+    req.log.error(err, "Failed to serve RSVP preview");
+    res.status(500).end();
+  }
+});
+
+router.get("/preview/save-the-date/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const rows = await db
+      .select({ profileId: guests.profileId, firstName: guests.firstName, lastName: guests.lastName })
+      .from(guests)
+      .where(eq(guests.rsvpToken, token))
+      .limit(1);
+    if (!rows.length) return res.status(404).end();
+
+    const { profileId, firstName, lastName } = rows[0];
+    const profiles = await db
+      .select({ partner1Name: weddingProfiles.partner1Name, partner2Name: weddingProfiles.partner2Name, weddingDate: weddingProfiles.weddingDate, venue: weddingProfiles.venue, venueCity: weddingProfiles.venueCity, venueState: weddingProfiles.venueState })
+      .from(weddingProfiles).where(eq(weddingProfiles.id, profileId)).limit(1);
+    const profile = profiles[0] ?? {};
+
+    const frontendOrigin = buildFrontendOrigin(req);
+    const apiOrigin = buildOrigin(req);
+    const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+    const guestName = [firstName, lastName].filter(Boolean).join(" ") || "Guest";
+    const dateStr = profile.weddingDate
+      ? (() => { const [y, m, d] = profile.weddingDate!.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }); })()
+      : null;
+    const location = [profile.venue, profile.venueCity, profile.venueState].filter(Boolean).join(", ");
+    const title = escapeHtml(`Save the Date — ${couple}`);
+    const description = escapeHtml([`${guestName}, save the date for the wedding of ${couple}`, dateStr, location].filter(Boolean).join(" · "));
+    const imageUrl = escapeHtml(`${apiOrigin}/api/save-the-date/${token}/photo`);
+    const destinationUrl = escapeHtml(`${frontendOrigin}/save-the-date/${token}`);
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:image" content="${imageUrl}"><meta property="og:url" content="${destinationUrl}"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${imageUrl}"><meta http-equiv="refresh" content="0; url=${destinationUrl}"></head><body><script>window.location.replace("${destinationUrl}")</script><p>Redirecting to your Save the Date…</p></body></html>`);
+  } catch (err) {
+    req.log.error(err, "Failed to serve save-the-date preview");
+    res.status(500).end();
   }
 });
 
@@ -1444,6 +1526,10 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       await db.update(guests).set({ saveTheDateStatus: "sent" }).where(eq(guests.id, id));
     }
 
+    const frontendOriginStd = buildFrontendOrigin(req);
+    const saveTheDateUrl = `${frontendOriginStd}/save-the-date/${token}`;
+    const saveTheDatePreviewUrl = `${frontendOriginStd}/api/preview/save-the-date/${token}`;
+
     let emailSent = false;
     if (guest.email) {
       const formatTime12h = (timeStr: string | null | undefined): string | null => {
@@ -1609,7 +1695,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       emailSent = result.ok;
     }
 
-    res.json({ emailSent });
+    res.json({ emailSent, saveTheDateUrl, previewUrl: saveTheDatePreviewUrl });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     req.log.error({ error: errorMsg, stack: err instanceof Error ? err.stack : undefined }, "Failed to send save-the-date");

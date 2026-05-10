@@ -639,6 +639,7 @@ export default function Guests() {
   const [pendingGuestData, setPendingGuestData] = useState<GuestFormValues | null>(null);
 
   const [sendModalGuest, setSendModalGuest] = useState<Guest | null>(null);
+  const [linkDialog, setLinkDialog] = useState<{ url: string; previewUrl: string; type: "saveTheDate" | "rsvp"; guestName: string } | null>(null);
   const [sendModalDefaultTab, setSendModalDefaultTab] = useState<"saveTheDate" | "digitalInvitation">("saveTheDate");
   const [sendModalReminderOnly, setSendModalReminderOnly] = useState(false);
 
@@ -665,10 +666,14 @@ export default function Guests() {
       }
       return res.json();
     },
-    onSuccess: (data: { emailSent?: boolean }, guestId) => {
+    onSuccess: (data: { emailSent?: boolean; saveTheDateUrl?: string; previewUrl?: string }, guestId) => {
+      const guestName = sendModalGuest ? [sendModalGuest.firstName, sendModalGuest.lastName].filter(Boolean).join(" ") || "Guest" : "Guest";
       optimisticUpdate(guestId, { saveTheDateStatus: "sent" } as any);
       invalidate();
       setSendModalGuest(null);
+      if (data?.saveTheDateUrl) {
+        setLinkDialog({ url: data.saveTheDateUrl, previewUrl: data.previewUrl ?? data.saveTheDateUrl, type: "saveTheDate", guestName });
+      }
       if (data?.emailSent) {
         toast({ title: "Save the Date sent!", description: "Email delivered to guest." });
       } else {
@@ -687,9 +692,13 @@ export default function Guests() {
       }
       return res.json() as Promise<{ rsvpUrl: string; emailSent: boolean }>;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: { rsvpUrl: string; previewUrl?: string; emailSent: boolean }) => {
+      const guestName = sendModalGuest ? [sendModalGuest.firstName, sendModalGuest.lastName].filter(Boolean).join(" ") || "Guest" : "Guest";
       invalidate();
       setSendModalGuest(null);
+      if (data?.rsvpUrl) {
+        setLinkDialog({ url: data.rsvpUrl, previewUrl: data.previewUrl ?? data.rsvpUrl, type: "rsvp", guestName });
+      }
       if (data?.emailSent) {
         toast({ title: "Reminder sent", description: "RSVP reminder email delivered." });
       } else {
@@ -709,11 +718,15 @@ export default function Guests() {
       return res.json() as Promise<{ rsvpUrl: string; emailSent: boolean }>;
     },
     onSuccess: (data, guestId) => {
+      const guestName = sendModalGuest ? [sendModalGuest.firstName, sendModalGuest.lastName].filter(Boolean).join(" ") || "Guest" : "Guest";
       // Track "sent" on invitationStatus, not rsvpStatus — rsvpStatus is reserved
       // for the guest's actual response (attending / maybe / declined / pending).
       optimisticUpdate(guestId, { invitationStatus: "sent" });
       invalidate();
       setSendModalGuest(null);
+      if (data.rsvpUrl) {
+        setLinkDialog({ url: data.rsvpUrl, previewUrl: (data as any).previewUrl ?? data.rsvpUrl, type: "rsvp", guestName });
+      }
       if (data.emailSent) {
         toast({ title: "RSVP Invitation sent!", description: "Email delivered to guest." });
       } else {
@@ -1740,6 +1753,41 @@ export default function Guests() {
               submitLabel="Save Changes"
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Copy-link dialog — shown after sending a save-the-date or RSVP */}
+      <Dialog open={!!linkDialog} onOpenChange={(open) => { if (!open) setLinkDialog(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              {linkDialog?.type === "saveTheDate" ? "Save the Date link" : "RSVP link"} for {linkDialog?.guestName}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Copy this link and send it directly to your guest. When shared in a chat app it will show a preview card.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2">
+            <Input
+              readOnly
+              value={linkDialog?.previewUrl ?? ""}
+              className="text-xs font-mono"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 gap-1.5"
+              onClick={() => {
+                if (!linkDialog) return;
+                navigator.clipboard.writeText(linkDialog.previewUrl).then(() => {
+                  toast({ title: "Link copied!", description: "Paste it in any chat app to share." });
+                });
+              }}
+            >
+              <Copy className="h-4 w-4" /> Copy
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
