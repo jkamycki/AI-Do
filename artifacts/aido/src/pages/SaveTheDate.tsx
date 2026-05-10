@@ -3,6 +3,8 @@ import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Download, AlertCircle, MapPin, Mail } from "lucide-react";
+import type { ColorPalette, TextOverrides } from "@/types/invitations";
+import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
 
 interface SaveTheDateInfo {
   guestName: string;
@@ -31,6 +33,10 @@ interface SaveTheDateInfo {
   customFontFamily: string | null;
   customTextOverrides: Record<string, Record<string, unknown>>;
   photoObjectPosition: string;
+  // Pixel-parity fields: full palette + layout so the public page can render
+  // the exact same canvas the editor's SaveTheDatePreview renders.
+  customColorPalette: ColorPalette | null;
+  customLayout: string | null;
 }
 
 const AI_BG    = "#1E1A2E";
@@ -92,8 +98,14 @@ export default function SaveTheDate() {
   const WHITE    = isLight ? "#1a1a1a" : AI_WHITE;
   const MUTED    = isLight ? "rgba(0,0,0,0.58)" : AI_MUTED;
   const CARD_BDR = isLight ? "rgba(0,0,0,0.12)" : AI_CARD_BDR;
-  const PAGE_BG  = BG;
+  // The page sits *behind* the card in every mode. Always paint it light
+  // grey so the card colour stops at the rounded edge — no bleed past the
+  // card outline.
+  const PAGE_BG  = "#f3f4f6";
   const DOT_PAT  = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
+  // Dot pattern was an AI-theme decoration on the dark page — drop it now
+  // that the page is light, since gold dots on light grey read as noise.
+  const PAGE_BG_PATTERN: string | undefined = undefined;
   const SERIF    = info?.customFontFamily
     ? `'${info.customFontFamily}', ${cormorant}`
     : cormorant;
@@ -158,8 +170,67 @@ export default function SaveTheDate() {
     );
   }
 
+  // In custom mode, render the same SaveTheDatePreview canvas the editor uses
+  // so the public page is pixel-identical to what the couple designed (free
+  // text positioning, font/colour overrides, layout decorations, etc.).
+  if (useCustom && info.customColorPalette) {
+    const photoUrl = info.hasPhoto ? `/api/save-the-date/${token}/photo` : null;
+    return (
+      <div className="min-h-screen flex flex-col items-center py-10 px-4" style={{ background: PAGE_BG }}>
+        <SaveTheDatePreview
+          ref={cardRef}
+          photoUrl={photoUrl}
+          weddingDate={info.weddingDate ?? ""}
+          colors={info.customColorPalette}
+          font={info.customFontFamily ?? ""}
+          layout={info.customLayout ?? "classic"}
+          backgroundColor={info.customBackgroundColor}
+          partner1Name={info.partner1Name ?? undefined}
+          partner2Name={info.partner2Name ?? undefined}
+          location={info.venueAddress ?? undefined}
+          venueCity={info.venueCity ?? undefined}
+          venueState={info.venueState ?? undefined}
+          venueZip={info.venueZip ?? undefined}
+          message={info.saveTheDateMessage ?? undefined}
+          textOverrides={info.customTextOverrides as TextOverrides}
+          onTextOverridesChange={() => { /* read-only on the public link */ }}
+          editable={false}
+        />
+
+        {/* Download button — outside the captured canvas */}
+        <div style={{ marginTop: 28 }}>
+          <button
+            onClick={downloadPdf}
+            disabled={downloadingPdf}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              background: "rgba(0,0,0,0.04)", border: `1px solid rgba(0,0,0,0.12)`,
+              color: "#1a1a1a", fontFamily: jakarta, fontSize: 11, fontWeight: 600,
+              letterSpacing: "0.18em", textTransform: "uppercase",
+              padding: "12px 28px", borderRadius: 8, cursor: "pointer",
+              opacity: downloadingPdf ? 0.5 : 1,
+            }}
+          >
+            {downloadingPdf ? (
+              <><Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> Generating PDF…</>
+            ) : (
+              <><Download style={{ width: 14, height: 14 }} /> Download as PDF</>
+            )}
+          </button>
+        </div>
+
+        <p style={{ fontFamily: jakarta, fontSize: 11, color: "rgba(0,0,0,0.58)", marginTop: 28, textAlign: "center" }}>
+          Planning your own wedding?{" "}
+          <a href="https://aidowedding.net" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>
+            Try A.IDO free
+          </a>
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col items-center py-10 px-4" style={{ background: PAGE_BG, backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
+    <div className="min-h-screen flex flex-col items-center py-10 px-4" style={{ background: PAGE_BG, backgroundImage: PAGE_BG_PATTERN, backgroundSize: PAGE_BG_PATTERN ? "22px 22px" : undefined }}>
 
       {/* Card — this is what gets captured for the PDF */}
       <div

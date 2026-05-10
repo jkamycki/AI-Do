@@ -1,14 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { ZoomIn } from "lucide-react";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 
 interface Props {
   open: boolean;
   imageUrl: string | null;
   initialPosition: string | null;
-  onCommit: (position: string) => void;
+  initialZoom: number | null;
+  onCommit: (position: string, zoom: number) => void;
   onClose: () => void;
+}
+
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
+
+function clampZoom(n: number): number {
+  if (Number.isNaN(n)) return 1;
+  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, n));
 }
 
 // Parse "30% 70%" into {x, y}. Falls back to centered when missing/malformed.
@@ -31,8 +42,9 @@ function clamp(n: number): number {
 // preview matches what the visitor will see.
 const PREVIEW_ASPECT = 16 / 10;
 
-export function HeroPhotoPositionDialog({ open, imageUrl, initialPosition, onCommit, onClose }: Props) {
+export function HeroPhotoPositionDialog({ open, imageUrl, initialPosition, initialZoom, onCommit, onClose }: Props) {
   const [pos, setPos] = useState(() => parsePosition(initialPosition));
+  const [zoom, setZoom] = useState(() => clampZoom(initialZoom ?? 1));
   const frameRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef(false);
 
@@ -40,8 +52,11 @@ export function HeroPhotoPositionDialog({ open, imageUrl, initialPosition, onCom
   // (potentially different) image — otherwise reopening leaves the marker
   // wherever the user dragged it last time.
   useEffect(() => {
-    if (open) setPos(parsePosition(initialPosition));
-  }, [open, initialPosition, imageUrl]);
+    if (open) {
+      setPos(parsePosition(initialPosition));
+      setZoom(clampZoom(initialZoom ?? 1));
+    }
+  }, [open, initialPosition, initialZoom, imageUrl]);
 
   const moveFromEvent = (clientX: number, clientY: number) => {
     const el = frameRef.current;
@@ -67,10 +82,13 @@ export function HeroPhotoPositionDialog({ open, imageUrl, initialPosition, onCom
   };
 
   const handleApply = () => {
-    onCommit(`${Math.round(pos.x)}% ${Math.round(pos.y)}%`);
+    onCommit(`${Math.round(pos.x)}% ${Math.round(pos.y)}%`, zoom);
   };
 
-  const handleReset = () => setPos({ x: 50, y: 50 });
+  const handleReset = () => {
+    setPos({ x: 50, y: 50 });
+    setZoom(1);
+  };
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -96,7 +114,13 @@ export function HeroPhotoPositionDialog({ open, imageUrl, initialPosition, onCom
               src={imageUrl}
               alt=""
               className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-              style={{ objectPosition: `${pos.x}% ${pos.y}%` }}
+              style={{
+                objectPosition: `${pos.x}% ${pos.y}%`,
+                // Anchor the zoom at the user's chosen focal point so the
+                // marker tracks the same pixel as we scale up.
+                transformOrigin: `${pos.x}% ${pos.y}%`,
+                transform: zoom === 1 ? undefined : `scale(${zoom})`,
+              }}
             />
           )}
           {/* Crosshair marker */}
@@ -114,8 +138,23 @@ export function HeroPhotoPositionDialog({ open, imageUrl, initialPosition, onCom
           </div>
         </div>
 
+        <div className="flex items-center gap-3">
+          <ZoomIn className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Slider
+            value={[zoom]}
+            min={MIN_ZOOM}
+            max={MAX_ZOOM}
+            step={0.05}
+            onValueChange={(v) => setZoom(clampZoom(v[0] ?? 1))}
+            className="flex-1"
+          />
+          <span className="text-[11px] text-muted-foreground w-10 text-right tabular-nums">
+            {Math.round(zoom * 100)}%
+          </span>
+        </div>
+
         <p className="text-[11px] text-muted-foreground">
-          Tip: aim for faces or the most important detail. The home page background uses <code>cover</code> sizing, so areas outside the frame may be cropped on narrower screens.
+          Tip: aim for faces or the most important detail, then zoom in to fill the frame. The home page background uses <code>cover</code> sizing, so areas outside the frame may be cropped on narrower screens.
         </p>
 
         <DialogFooter className="gap-2 sm:gap-2">

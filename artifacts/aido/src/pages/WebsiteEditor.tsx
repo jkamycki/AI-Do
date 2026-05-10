@@ -20,6 +20,7 @@ import {
 import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
 import { flushPendingEditableCommits, subscribeEditableDrag, EDITABLE_HIDDEN_MARKER } from "@/components/website/EditableText";
 import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
+import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
@@ -610,11 +611,6 @@ export default function WebsiteEditor() {
     }
   };
 
-  const handleHeroUpload = async (file: File) => {
-    const result = await upload.uploadFile(file);
-    if (result) update({ heroImage: result.objectPath });
-  };
-
   // Per-URL focal points for hero photos, JSON-encoded under _heroFocals so
   // a single customText entry covers every image instead of polluting the
   // map with one key per URL.
@@ -642,6 +638,41 @@ export default function WebsiteEditor() {
     update({ customText: { ...recordRef.current!.customText, _heroFocals: JSON.stringify(rest) } });
   };
 
+  // Per-URL zoom levels (1.0 = native cover, up to 4.0). Same JSON-map shape
+  // as _heroFocals so a single customText entry covers every hero photo.
+  const readHeroZooms = (): Record<string, number> => {
+    const raw = recordRef.current?.customText._heroZooms;
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return {};
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+        if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  };
+
+  const writeHeroZoom = (url: string, zoom: number) => {
+    const current = readHeroZooms();
+    // zoom of 1.0 is the default — drop the entry instead of storing redundant data.
+    const next = { ...current };
+    if (zoom === 1) delete next[url];
+    else next[url] = zoom;
+    update({ customText: { ...recordRef.current!.customText, _heroZooms: JSON.stringify(next) } });
+  };
+
+  const dropHeroZoom = (url: string) => {
+    const current = readHeroZooms();
+    if (!(url in current)) return;
+    const { [url]: _drop, ...rest } = current;
+    void _drop;
+    update({ customText: { ...recordRef.current!.customText, _heroZooms: JSON.stringify(rest) } });
+  };
+
   const handleGalleryUpload = async (files: FileList) => {
     if (!record) return;
     const newImages = [...record.galleryImages];
@@ -660,16 +691,61 @@ export default function WebsiteEditor() {
     update({ galleryImages: next });
   };
 
-  const handleHeroImagesUpload = async (files: FileList) => {
-    if (!record) return;
-    const newImages = [...(record.heroImages ?? [])];
-    for (const file of Array.from(files).slice(0, 10)) {
-      const result = await upload.uploadFile(file);
-      if (result) {
-        newImages.push({ url: result.objectPath, order: newImages.length });
+  // ----- Hero photo crop-on-upload flow -------------------------------------
+  // Upfront cropper. The user picks files → ImageCropDialog walks each one
+  // → each cropped (or skipped) file is uploaded sequentially and appended
+  // to record.heroImages. Sequential uploads avoid the race where two
+  // parallel uploads each read the same recordRef snapshot and one append
+  // wins, dropping the other from heroImages.
+  const [heroCropQueue, setHeroCropQueue] = useState<File[]>([]);
+  const [heroCropTotal, setHeroCropTotal] = useState(0);
+  const heroUploadChainRef = useRef<Promise<void>>(Promise.resolve());
+
+  const heroCropItem: CropQueueItem | null = heroCropQueue.length > 0
+    ? {
+        file: heroCropQueue[0],
+        index: heroCropTotal - heroCropQueue.length,
+        total: heroCropTotal,
       }
-    }
-    update({ heroImages: newImages });
+    : null;
+
+  const startHeroCropFlow = (files: FileList) => {
+    const arr = Array.from(files).slice(0, 10);
+    if (arr.length === 0) return;
+    setHeroCropQueue(arr);
+    setHeroCropTotal(arr.length);
+  };
+
+  const enqueueHeroUpload = (file: File) => {
+    heroUploadChainRef.current = heroUploadChainRef.current.then(async () => {
+      const result = await upload.uploadFile(file);
+      if (!result) return;
+      const cur = recordRef.current;
+      if (!cur) return;
+      const next = [
+        ...(cur.heroImages ?? []),
+        { url: result.objectPath, order: cur.heroImages?.length ?? 0 },
+      ];
+      update({ heroImages: next });
+    });
+  };
+
+  const advanceHeroCropQueue = () => setHeroCropQueue((q) => q.slice(1));
+
+  const onHeroCropComplete = (croppedFile: File) => {
+    enqueueHeroUpload(croppedFile);
+    advanceHeroCropQueue();
+  };
+
+  const onHeroCropSkip = () => {
+    const original = heroCropQueue[0];
+    if (original) enqueueHeroUpload(original);
+    advanceHeroCropQueue();
+  };
+
+  const onHeroCropCancelAll = () => {
+    setHeroCropQueue([]);
+    setHeroCropTotal(0);
   };
 
   const removeHeroImage = (index: number) => {
@@ -1211,7 +1287,6 @@ export default function WebsiteEditor() {
               { key: "_heroVenueIcon", label: t("website_editor.hero_venue_icon", { defaultValue: "Venue Pin Icon" }) },
               { key: "_countdown", label: t("website_editor.hero_countdown", { defaultValue: "Countdown Timer" }) },
               { key: "_addToCalendarRow", label: t("website_editor.hero_add_to_calendar", { defaultValue: "Add to Calendar Button" }) },
-              { key: "_announcementHidden", label: t("website_editor.hero_announcement", { defaultValue: "Announcement Banner" }) },
             ].map((row) => {
               const isHidden = record.customText[row.key] === " __aido_hidden__ " || record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
               return (
@@ -1614,7 +1689,15 @@ export default function WebsiteEditor() {
                   src={record.heroImage}
                   alt="Main"
                   className="w-full h-full object-cover"
-                  style={{ objectPosition: readHeroFocals()[record.heroImage] || "center" }}
+                  style={(() => {
+                    const focal = readHeroFocals()[record.heroImage] || "center";
+                    const z = readHeroZooms()[record.heroImage] ?? 1;
+                    return {
+                      objectPosition: focal,
+                      transformOrigin: focal,
+                      transform: z === 1 ? undefined : `scale(${z})`,
+                    };
+                  })()}
                 />
                 <button
                   onClick={() => setPositioningUrl(record.heroImage)}
@@ -1627,7 +1710,10 @@ export default function WebsiteEditor() {
                   onClick={() => {
                     const url = record.heroImage;
                     update({ heroImage: null });
-                    if (url) dropHeroFocal(url);
+                    if (url) {
+                      dropHeroFocal(url);
+                      dropHeroZoom(url);
+                    }
                   }}
                   className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
                   title="Remove main photo"
@@ -1642,7 +1728,15 @@ export default function WebsiteEditor() {
                   src={img.url}
                   alt=""
                   className="w-full h-full object-cover"
-                  style={{ objectPosition: readHeroFocals()[img.url] || "center" }}
+                  style={(() => {
+                    const focal = readHeroFocals()[img.url] || "center";
+                    const z = readHeroZooms()[img.url] ?? 1;
+                    return {
+                      objectPosition: focal,
+                      transformOrigin: focal,
+                      transform: z === 1 ? undefined : `scale(${z})`,
+                    };
+                  })()}
                 />
                 <button
                   onClick={() => setPositioningUrl(img.url)}
@@ -1656,6 +1750,7 @@ export default function WebsiteEditor() {
                     const url = img.url;
                     removeHeroImage(i);
                     dropHeroFocal(url);
+                    dropHeroZoom(url);
                   }}
                   className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
                 >
@@ -1671,13 +1766,27 @@ export default function WebsiteEditor() {
               multiple
               className="hidden"
               onChange={(e) => {
-                if (e.target.files) handleHeroImagesUpload(e.target.files);
+                if (e.target.files) startHeroCropFlow(e.target.files);
                 e.target.value = "";
               }}
               disabled={upload.isUploading}
             />
             {upload.isUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <>Add photos</>}
           </label>
+          {/* Cover (default) crops the photo to fill the hero. Contain shows
+              the whole photo with the site's background color filling the bars. */}
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/30 px-3 py-2">
+            <div className="min-w-0">
+              <Label className="text-xs font-medium">Show whole photo</Label>
+              <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                Off: photo fills the frame and may crop. On: shows the entire photo with side bars.
+              </p>
+            </div>
+            <Switch
+              checked={record.customText._heroFit === "contain"}
+              onCheckedChange={(checked) => update({ customText: { ...record.customText, _heroFit: checked ? "contain" : "" } })}
+            />
+          </div>
         </Section>}
 
         {/* Gallery */}
@@ -2003,14 +2112,29 @@ export default function WebsiteEditor() {
         </div>
       )}
 
+      {/* Hero photo crop dialog — runs once per uploaded photo so the user
+          sees the whole image and chooses the crop themselves before the
+          file is uploaded. */}
+      <ImageCropDialog
+        item={heroCropItem}
+        initialAspect="wide"
+        onComplete={onHeroCropComplete}
+        onSkip={onHeroCropSkip}
+        onCancelAll={onHeroCropCancelAll}
+      />
+
       {/* Hero photo focal-point picker — lets the user choose which part of
           a home-page photo stays centered when the hero crops to fit. */}
       <HeroPhotoPositionDialog
         open={!!positioningUrl}
         imageUrl={positioningUrl}
         initialPosition={positioningUrl ? readHeroFocals()[positioningUrl] ?? null : null}
-        onCommit={(pos) => {
-          if (positioningUrl) writeHeroFocal(positioningUrl, pos);
+        initialZoom={positioningUrl ? readHeroZooms()[positioningUrl] ?? null : null}
+        onCommit={(pos, zoom) => {
+          if (positioningUrl) {
+            writeHeroFocal(positioningUrl, pos);
+            writeHeroZoom(positioningUrl, zoom);
+          }
           setPositioningUrl(null);
         }}
         onClose={() => setPositioningUrl(null)}

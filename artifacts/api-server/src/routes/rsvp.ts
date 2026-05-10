@@ -156,7 +156,10 @@ async function getImageAsBase64(photoUrl: string | null | undefined): Promise<st
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AI_BG = "#1E1A2E";
-const AI_PAGE_BG = "#1E1A2E";
+// Page sits behind the card. Always light grey so the card colour stops
+// at the rounded edge — applies to every email path (custom + AI) and
+// every public link. No bleed past the card outline.
+const AI_PAGE_BG = "#f3f4f6";
 const AI_GOLD = "#D4A017";
 const AI_WHITE = "#ffffff";
 const AI_MUTED = "rgba(255,255,255,0.58)";
@@ -811,7 +814,10 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       const rawBg = !useGenerated && customization?.digitalInvitationBackground
         ? customization.digitalInvitationBackground : "#1E1A2E";
       const bgIsLight = isLightColor(rawBg);
-      const PAGE_BG = !useGenerated ? rawBg : "#1a1614";
+      // Page sits behind the card. In custom mode keep it neutral so the
+      // chosen card colour doesn't repaint the entire email body. AI mode
+      // keeps the existing dark theme.
+      const PAGE_BG = !useGenerated ? (bgIsLight ? "#f3f4f6" : "#1a1a1a") : "#1a1614";
       const BG = rawBg;
       // Mirror RsvpPagePreview: the user's primary colour drives the gold
       // "accent" in the design, and body text is plain black/white that
@@ -1067,7 +1073,10 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         photoObjectPos: digPhotoObjectPos,
         logoBase64,
         overrideBg: rawBg,
-        overridePageBg: rawBg,
+        // Page sits behind the card. Keep it neutral so the user's chosen
+        // card colour doesn't repaint the entire email body — same rule the
+        // public RSVP / save-the-date pages and the other email branch follow.
+        overridePageBg: bgIsLight ? "#f3f4f6" : "#1a1a1a",
         overrideAccent: colors.primary || "#D4A017",
         overrideText: customization?.digitalInvitationFontColor ?? (bgIsLight ? "#1a1a1a" : "#ffffff"),
         overrideMuted: bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
@@ -1557,7 +1566,10 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           photoObjectPos: stdPhotoObjectPos,
           logoBase64,
           overrideBg: STD_EMAIL_BG,
-          overridePageBg: STD_EMAIL_BG,
+          // Page sits behind the card. Keep it neutral so changing the card
+          // colour doesn't repaint the entire email body — same rule the
+          // public save-the-date / RSVP pages now follow.
+          overridePageBg: stdBgIsLight ? "#f3f4f6" : "#1a1a1a",
           overrideAccent: colors.accent,
           overrideText: customization?.saveTheDateFontColor ?? (stdBgIsLight ? "#1a1a1a" : "#ffffff"),
           overrideMuted: stdBgIsLight ? "rgba(0,0,0,0.58)" : "rgba(255,255,255,0.58)",
@@ -1605,6 +1617,10 @@ router.get("/save-the-date/:token", async (req, res) => {
       textOverrides: Record<string, unknown>;
       photoObjectPosition: string;
       saveTheDatePhotoUrl: string | null;
+      // Surface the full palette + layout so the public page can render the
+      // exact same canvas component the editor preview uses (pixel parity).
+      colorPalette: Record<string, string> | null;
+      layout: string | null;
     } = {
       useGeneratedInvitation: true,
       backgroundColor: null,
@@ -1613,6 +1629,8 @@ router.get("/save-the-date/:token", async (req, res) => {
       textOverrides: {},
       photoObjectPosition: "50% 50%",
       saveTheDatePhotoUrl: null,
+      colorPalette: null,
+      layout: null,
     };
     try {
       const custRows = await db
@@ -1627,24 +1645,37 @@ router.get("/save-the-date/:token", async (req, res) => {
         const customColors = (cust.customColors ?? {}) as Record<string, string>;
         const mergedAccent = customColors.accent ?? palette.accent ?? null;
         const allOverrides = ((cust.textOverrides ?? {}) as Record<string, Record<string, unknown>>);
-        // RSVP page shows the digital invitation photo — use dig:photo position
-        // (custom mode) or digitalInvitationPhotoPosition (AI mode).
-        const aiDigPos = (cust.digitalInvitationPhotoPosition as { x?: number; y?: number } | null) ?? null;
-        const digPhotoOverride = allOverrides["dig:photo"] ?? {};
+        // This route serves the SAVE THE DATE page — prefer the save-the-date
+        // fields and only fall back to the digital invitation fields when an
+        // STD-specific value isn't set. The previous code did the opposite,
+        // so couples who customized both invites saw the digital design on
+        // their save-the-date link.
+        const stdPhotoPos = (cust.saveTheDatePhotoPosition as { x?: number; y?: number } | null) ?? null;
+        const stdPhotoOverride = allOverrides["std:photo"] ?? {};
         const ox = useGenerated
-          ? (aiDigPos?.x ?? 50)
-          : ((digPhotoOverride.objectX as number | undefined) ?? 50);
+          ? (stdPhotoPos?.x ?? 50)
+          : ((stdPhotoOverride.objectX as number | undefined) ?? stdPhotoPos?.x ?? 50);
         const oy = useGenerated
-          ? (aiDigPos?.y ?? 50)
-          : ((digPhotoOverride.objectY as number | undefined) ?? 50);
+          ? (stdPhotoPos?.y ?? 50)
+          : ((stdPhotoOverride.objectY as number | undefined) ?? stdPhotoPos?.y ?? 50);
+        // Merge the AI-generated palette with the user's customColors so
+        // primary / secondary / accent / neutral all flow to the public page.
+        const mergedPalette: Record<string, string> = {
+          primary: customColors.primary ?? palette.primary ?? "#1f2937",
+          secondary: customColors.secondary ?? palette.secondary ?? "#9ca3af",
+          accent: customColors.accent ?? palette.accent ?? "#d4a017",
+          neutral: customColors.neutral ?? palette.neutral ?? "#f3f4f6",
+        };
         customizationData = {
           useGeneratedInvitation: useGenerated,
-          backgroundColor: useGenerated ? null : (cust.digitalInvitationBackground ?? cust.saveTheDateBackground ?? null),
+          backgroundColor: useGenerated ? null : (cust.saveTheDateBackground ?? cust.digitalInvitationBackground ?? null),
           accentColor: useGenerated ? null : mergedAccent,
-          fontFamily: useGenerated ? null : (cust.digitalInvitationFont ?? cust.selectedFont ?? null),
+          fontFamily: useGenerated ? null : (cust.saveTheDateFont ?? cust.digitalInvitationFont ?? cust.selectedFont ?? null),
           textOverrides: useGenerated ? {} : allOverrides,
           photoObjectPosition: `${ox}% ${oy}%`,
           saveTheDatePhotoUrl: cust.saveTheDatePhotoUrl ?? null,
+          colorPalette: useGenerated ? null : mergedPalette,
+          layout: useGenerated ? null : (cust.saveTheDateLayout ?? cust.digitalInvitationLayout ?? cust.selectedLayout ?? "classic"),
         };
       }
     } catch {
@@ -1681,6 +1712,8 @@ router.get("/save-the-date/:token", async (req, res) => {
       customFontFamily: customizationData.fontFamily,
       customTextOverrides: customizationData.textOverrides,
       photoObjectPosition: customizationData.photoObjectPosition,
+      customColorPalette: customizationData.colorPalette,
+      customLayout: customizationData.layout,
     });
   } catch (err) {
     req.log.error(err, "Failed to get save-the-date info");

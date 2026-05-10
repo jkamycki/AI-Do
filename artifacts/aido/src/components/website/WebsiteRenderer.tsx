@@ -1015,6 +1015,22 @@ function heroFocalFor(data: WebsiteRendererPayload, url: string): string {
   }
 }
 
+// Per-URL zoom levels (1.0 = native cover, 4.0 = max). Same JSON-map shape
+// as _heroFocals. Returns 1 when missing/malformed so non-zoomed photos
+// don't get a redundant transform.
+function heroZoomFor(data: WebsiteRendererPayload, url: string): number {
+  const raw = data.customText._heroZooms;
+  if (!raw) return 1;
+  try {
+    const parsed = JSON.parse(raw);
+    const value = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>)[url] : undefined;
+    if (typeof value !== "number" || !Number.isFinite(value)) return 1;
+    return Math.max(1, Math.min(4, value));
+  } catch {
+    return 1;
+  }
+}
+
 function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
   const mode = (data.customText._heroAnimation || "static") as "static" | "slideshow" | "kenburns" | "pan-lr" | "marquee";
   const speed = (data.customText._heroAnimationSpeed || "medium") as "slow" | "medium" | "fast";
@@ -1022,6 +1038,13 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
   const animDuration = speed === "slow" ? "30s" : speed === "fast" ? "12s" : "20s";
   const marqueeDuration = speed === "slow" ? "60s" : speed === "fast" ? "25s" : "40s";
   const photoFilter = photoFilterCss(data.customText._photoFilter);
+  // "contain" lets the user see the whole cropped photo (with a colored
+  // backdrop filling the extra space). Default "cover" keeps the existing
+  // bleed-edge look for sites that don't opt in.
+  const fit = (data.customText._heroFit === "contain" ? "contain" : "cover") as "cover" | "contain";
+  // When letterboxing in contain mode, fall back to the palette background
+  // so the bars match the rest of the site instead of showing black.
+  const backdrop = fit === "contain" ? data.colorPalette.background : undefined;
 
   const heroAndGallery: string[] = [
     ...(data.heroImage ? [data.heroImage] : []),
@@ -1033,7 +1056,7 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
     // Duplicate the list so the loop is seamless when translateX hits -50%
     const strip = [...heroAndGallery, ...heroAndGallery];
     return (
-      <div className="absolute inset-0 overflow-hidden" style={{ background: `linear-gradient(135deg, ${data.colorPalette.primary}22, ${data.colorPalette.secondary}22)` }}>
+      <div className="absolute inset-0 overflow-hidden" style={{ background: backdrop ?? `linear-gradient(135deg, ${data.colorPalette.primary}22, ${data.colorPalette.secondary}22)` }}>
         <div
           className="flex h-full"
           style={{
@@ -1042,20 +1065,38 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
             willChange: "transform",
           }}
         >
-          {strip.map((url, i) => (
-            <AuthBgSlide
-              key={url + i}
-              url={url}
-              className="h-full flex-shrink-0"
-              style={{
-                width: "60vw",
-                backgroundPosition: heroFocalFor(data, url),
-                backgroundSize: "cover",
-                backgroundRepeat: "no-repeat",
-                filter: photoFilter,
-              }}
-            />
-          ))}
+          {strip.map((url, i) => {
+            const focal = heroFocalFor(data, url);
+            const zoom = heroZoomFor(data, url);
+            const slide = (
+              <AuthBgSlide
+                url={url}
+                className="h-full w-full"
+                style={{
+                  backgroundPosition: focal,
+                  backgroundSize: fit,
+                  backgroundRepeat: "no-repeat",
+                  filter: photoFilter,
+                }}
+              />
+            );
+            return (
+              <div
+                key={url + i}
+                className="h-full flex-shrink-0 overflow-hidden relative"
+                style={{
+                  width: "60vw",
+                  // Wrapping the slide in a scale wrapper layers the user's
+                  // zoom on top of the marquee's translateX animation without
+                  // them clobbering each other on the same transform property.
+                  transform: zoom === 1 ? undefined : `scale(${zoom})`,
+                  transformOrigin: focal,
+                }}
+              >
+                {slide}
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -1087,23 +1128,57 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
         : {};
 
   return (
-    <div className="absolute inset-0 overflow-hidden">
-      {slideshowImages.map((url, i) => (
-        <AuthBgSlide
-          key={url + i}
-          url={url}
-          className="absolute inset-0"
-          style={{
-            backgroundPosition: heroFocalFor(data, url),
-            backgroundSize: "cover",
-            backgroundRepeat: "no-repeat",
-            opacity: mode === "slideshow" ? (i === activeIdx ? 1 : 0) : 1,
-            transition: mode === "slideshow" ? "opacity 1s ease-in-out" : undefined,
-            filter: photoFilter,
-            ...animationStyle,
-          }}
-        />
-      ))}
+    <div className="absolute inset-0 overflow-hidden" style={backdrop ? { background: backdrop } : undefined}>
+      {slideshowImages.map((url, i) => {
+        const focal = heroFocalFor(data, url);
+        const zoom = heroZoomFor(data, url);
+        const slide = (
+          <AuthBgSlide
+            url={url}
+            className="absolute inset-0"
+            style={{
+              backgroundPosition: focal,
+              backgroundSize: fit,
+              backgroundRepeat: "no-repeat",
+              opacity: mode === "slideshow" ? (i === activeIdx ? 1 : 0) : 1,
+              transition: mode === "slideshow" ? "opacity 1s ease-in-out" : undefined,
+              filter: photoFilter,
+              ...animationStyle,
+            }}
+          />
+        );
+        // Static / slideshow can take the user's zoom directly on the slide.
+        // Kenburns / pan-lr already use `transform` for their CSS animation —
+        // wrap them so the user's scale layers without clobbering the keyframes.
+        if (zoom === 1) return <div key={url + i} className="absolute inset-0">{slide}</div>;
+        const animated = mode === "kenburns" || mode === "pan-lr";
+        return (
+          <div
+            key={url + i}
+            className="absolute inset-0"
+            style={animated
+              ? { transform: `scale(${zoom})`, transformOrigin: focal }
+              : undefined}
+          >
+            {animated ? slide : (
+              <AuthBgSlide
+                url={url}
+                className="absolute inset-0"
+                style={{
+                  backgroundPosition: focal,
+                  backgroundSize: fit,
+                  backgroundRepeat: "no-repeat",
+                  opacity: mode === "slideshow" ? (i === activeIdx ? 1 : 0) : 1,
+                  transition: mode === "slideshow" ? "opacity 1s ease-in-out" : undefined,
+                  filter: photoFilter,
+                  transform: `scale(${zoom})`,
+                  transformOrigin: focal,
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

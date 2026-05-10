@@ -18,6 +18,10 @@ interface Props {
   onComplete: (croppedFile: File) => void;
   onSkip: () => void;
   onCancelAll: () => void;
+  // Per-flow default aspect for the crop frame. Hero photos pre-select
+  // "wide" because the rendered hero is far wider than tall; avatars and
+  // tiles still benefit from the "square" default.
+  initialAspect?: AspectChoice;
 }
 
 type AspectChoice = "free" | "square" | "wide";
@@ -84,12 +88,12 @@ async function getCroppedFile(
   return new File([blob], `${baseName}-cropped.jpg`, { type: "image/jpeg" });
 }
 
-export function ImageCropDialog({ item, onComplete, onSkip, onCancelAll }: Props) {
+export function ImageCropDialog({ item, onComplete, onSkip, onCancelAll, initialAspect = "square" }: Props) {
   const [src, setSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [aspect, setAspect] = useState<AspectChoice>("square");
+  const [aspect, setAspect] = useState<AspectChoice>(initialAspect);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
   const lastFileRef = useRef<File | null>(null);
@@ -104,14 +108,14 @@ export function ImageCropDialog({ item, onComplete, onSkip, onCancelAll }: Props
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setRotation(0);
-    setAspect("square");
+    setAspect(initialAspect);
     setCroppedAreaPixels(null);
     lastFileRef.current = item.file;
     fileToDataUrl(item.file).then(url => {
       if (!cancelled && lastFileRef.current === item.file) setSrc(url);
     }).catch(() => { if (!cancelled) setSrc(null); });
     return () => { cancelled = true; };
-  }, [item]);
+  }, [item, initialAspect]);
 
   const handleCropComplete = useCallback((_: Area, areaPixels: Area) => {
     setCroppedAreaPixels(areaPixels);

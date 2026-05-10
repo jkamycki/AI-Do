@@ -124,7 +124,10 @@ function CardShell({
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
   return (
     <div style={{
-      backgroundColor: bg, backgroundImage: dotPat, backgroundSize: "22px 22px",
+      // Outer wrapper sits *outside* the rounded card. Light grey so the
+      // chosen card colour stops at the rounded edge — matches the public
+      // link + email behaviour (everything outside the card is light grey).
+      backgroundColor: "#f3f4f6",
       borderRadius: 16, padding: "16px 12px",
     }}>
     <div
@@ -135,7 +138,7 @@ function CardShell({
       <div style={{
         display: "flex", justifyContent: "center",
         paddingTop: 20, paddingBottom: 4,
-        backgroundImage: dotPat, backgroundSize: "22px 22px",
+        backgroundColor: bg, backgroundImage: dotPat, backgroundSize: "22px 22px",
       }}>
         <img src="/logo.png" alt="A.IDO" style={{ height: 48, width: "auto", objectFit: "contain", opacity: 0.85 }} />
       </div>
@@ -144,7 +147,8 @@ function CardShell({
       {hasPhoto && (
         <div
           style={{
-            padding: "0 20px 10px", backgroundImage: dotPat, backgroundSize: "22px 22px",
+            padding: "0 20px 10px",
+            backgroundColor: bg, backgroundImage: dotPat, backgroundSize: "22px 22px",
             cursor: onPhotoPositionChange ? "grab" : undefined,
           }}
           onPointerDown={handleDown}
