@@ -688,6 +688,7 @@ export default function Guests() {
       return res.json() as Promise<{ rsvpUrl: string; emailSent: boolean }>;
     },
     onSuccess: (data) => {
+      invalidate();
       if (data?.emailSent) {
         toast({ title: "Reminder sent", description: "RSVP reminder email delivered." });
       } else {
@@ -757,6 +758,7 @@ export default function Guests() {
       } catch { /* continue */ }
     }
     setSendingReminders(false);
+    invalidate();
     toast({ title: `Reminders sent`, description: `${sent} of ${eligible.length} reminder email${eligible.length !== 1 ? "s" : ""} delivered.` });
   };
 
