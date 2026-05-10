@@ -1016,6 +1016,10 @@ export default function InvitationCustomizationPage({
                                 },
                               };
                               setCustomDesign(newCustomDesign);
+                              // Sync latestValuesRef immediately so the unmount-save
+                              // cleanup (keepalive fetch) sends the NEW theme if the
+                              // user leaves the tab before React re-renders.
+                              latestValuesRef.current = { ...latestValuesRef.current, customDesign: newCustomDesign };
                               skipNextAutoSave.current = true;
                               const payload = buildPayload(undefined, undefined, newCustomDesign);
                               // Optimistic cache update — works even when old is
