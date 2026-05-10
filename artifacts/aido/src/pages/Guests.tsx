@@ -741,6 +741,7 @@ export default function Guests() {
   });
 
   const [sendingReminders, setSendingReminders] = useState(false);
+  const [confirmRemindersOpen, setConfirmRemindersOpen] = useState(false);
 
   const handleSendAllReminders = async () => {
     const eligible = (data?.guests ?? []).filter(
@@ -1119,10 +1120,30 @@ export default function Guests() {
             </Button>
           )}
           {allGuests.some(g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent") && (
-            <Button variant="outline" onClick={handleSendAllReminders} disabled={sendingReminders}>
-              {sendingReminders ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
-              Send RSVP Reminders
-            </Button>
+            <AlertDialog open={confirmRemindersOpen} onOpenChange={setConfirmRemindersOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" disabled={sendingReminders}>
+                  {sendingReminders ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+                  Send RSVP Reminders
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Send RSVP Reminders?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    You are about to send an RSVP reminder to{" "}
+                    <strong>{allGuests.filter(g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent").length}</strong>{" "}
+                    guest{allGuests.filter(g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent").length !== 1 ? "s" : ""} who {allGuests.filter(g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent").length !== 1 ? "have" : "has"} not yet responded. Do you want to continue?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => { setConfirmRemindersOpen(false); handleSendAllReminders(); }}>
+                    Send Reminders
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           <Dialog open={isAdding} onOpenChange={setIsAdding}>
             <DialogTrigger asChild>
