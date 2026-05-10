@@ -1857,6 +1857,19 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     // Tools that returned a doNotRetry error this turn — pruned from the next
     // loop iteration so the model can't keep guessing args after a rejection.
     const bannedTools = new Set<string>();
+
+    // When the immediately preceding assistant message confirms a vendor was
+    // just added ("✅ Added **X**"), block add_vendor on the follow-up turn.
+    // The user is responding to the "any payments?" prompt — the model should
+    // call update_vendor + add_vendor_payment, not re-add the same vendor.
+    // Server-side enforcement is more reliable than the system prompt rule alone.
+    if (!skipTools) {
+      const lastAssistantContent = [...recent].reverse().find(m => m.role === "assistant")?.content;
+      if (typeof lastAssistantContent === "string" && /✅ Added \*\*/.test(lastAssistantContent)) {
+        filteredTools = filteredTools.filter(t => t.function.name !== "add_vendor");
+      }
+    }
+
     req.log.info({
       userId,
       skipTools,
