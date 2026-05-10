@@ -489,14 +489,7 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
           </td>
         </tr>` : ""}
 
-        ${opts.venueAddress ? `
-        <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:4px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${TEXT_COL};">${escapeHtml(opts.venueAddress)}</p>
-          </td>
-        </tr>` : ""}
-
-        ${opts.cityStateZip ? `
+                ${opts.cityStateZip ? `
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:2px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${TEXT_COL};">${escapeHtml(opts.cityStateZip)}</p>

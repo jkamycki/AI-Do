@@ -250,11 +250,6 @@ export function AiSaveDatePreview({
         </div>
       )}
 
-      {!customColors && profile.venueAddress && (
-        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: text, margin: "2px 0 0" }}>
-          {profile.venueAddress}
-        </p>
-      )}
       {!customColors && cityLine && (
         <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: text, margin: "1px 0 0" }}>
           {cityLine}
