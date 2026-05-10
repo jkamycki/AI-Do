@@ -689,6 +689,7 @@ export default function Guests() {
     },
     onSuccess: (data) => {
       invalidate();
+      setSendModalGuest(null);
       if (data?.emailSent) {
         toast({ title: "Reminder sent", description: "RSVP reminder email delivered." });
       } else {
@@ -1137,32 +1138,35 @@ export default function Guests() {
               <Download className="h-4 w-4 mr-2" /> {t("guests.export_csv")}
             </Button>
           )}
-          {allGuests.some(g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent") && (
-            <AlertDialog open={confirmRemindersOpen} onOpenChange={setConfirmRemindersOpen}>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" disabled={sendingReminders}>
-                  {sendingReminders ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
-                  Send RSVP Reminders
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Send RSVP Reminders?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    You are about to send an RSVP reminder to{" "}
-                    <strong>{allGuests.filter(g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent").length}</strong>{" "}
-                    guest{allGuests.filter(g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent").length !== 1 ? "s" : ""} who {allGuests.filter(g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent").length !== 1 ? "have" : "has"} not yet responded. Do you want to continue?
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => { setConfirmRemindersOpen(false); handleSendAllReminders(); }}>
-                    Send Reminders
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+          {allGuests.length > 0 && (() => {
+            const eligibleCount = allGuests.filter(g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent").length;
+            return (
+              <AlertDialog open={confirmRemindersOpen} onOpenChange={setConfirmRemindersOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" disabled={sendingReminders || eligibleCount === 0} title={eligibleCount === 0 ? "No guests with a pending RSVP and a sent invitation" : undefined}>
+                    {sendingReminders ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+                    Send RSVP Reminders
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Send RSVP Reminders?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      You are about to send an RSVP reminder to{" "}
+                      <strong>{eligibleCount}</strong>{" "}
+                      guest{eligibleCount !== 1 ? "s" : ""} who {eligibleCount !== 1 ? "have" : "has"} not yet responded. Do you want to continue?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => { setConfirmRemindersOpen(false); handleSendAllReminders(); }}>
+                      Send Reminders
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            );
+          })()}
           <Dialog open={isAdding} onOpenChange={setIsAdding}>
             <DialogTrigger asChild>
               <Button size="lg" className="shadow-md">
