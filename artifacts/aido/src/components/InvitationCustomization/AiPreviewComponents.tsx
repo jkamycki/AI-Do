@@ -122,20 +122,24 @@ function CardShell({
 
   const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
+  // The user's chosen card colour (`bg`) only paints the info section so the
+  // logo and photo sit on a neutral surface — the colour shouldn't bleed into
+  // the outer frame, the photo's surround, or the page behind the card.
+  const NEUTRAL = "#ffffff";
   return (
     <div style={{
-      backgroundColor: bg, backgroundImage: dotPat, backgroundSize: "22px 22px",
+      backgroundColor: NEUTRAL,
       borderRadius: 16, padding: "16px 12px",
     }}>
     <div
       className="rounded-xl overflow-hidden shadow-2xl max-w-sm mx-auto border"
-      style={{ background: bg, borderColor: cardBdr }}
+      style={{ background: NEUTRAL, borderColor: cardBdr }}
     >
       {/* A.IDO logo */}
       <div style={{
         display: "flex", justifyContent: "center",
         paddingTop: 20, paddingBottom: 4,
-        backgroundImage: dotPat, backgroundSize: "22px 22px",
+        backgroundColor: NEUTRAL,
       }}>
         <img src="/logo.png" alt="A.IDO" style={{ height: 48, width: "auto", objectFit: "contain", opacity: 0.85 }} />
       </div>
@@ -144,7 +148,7 @@ function CardShell({
       {hasPhoto && (
         <div
           style={{
-            padding: "0 20px 10px", backgroundImage: dotPat, backgroundSize: "22px 22px",
+            padding: "0 20px 10px", backgroundColor: NEUTRAL,
             cursor: onPhotoPositionChange ? "grab" : undefined,
           }}
           onPointerDown={handleDown}
@@ -166,7 +170,8 @@ function CardShell({
         </div>
       )}
 
-      {/* Main content */}
+      {/* Main content — this is the only section that carries the user's
+          chosen colour (and the dotted accent pattern). */}
       <div style={{
         backgroundImage: dotPat, backgroundSize: "22px 22px",
         backgroundColor: bg, padding: "16px 24px 28px", textAlign: "center",

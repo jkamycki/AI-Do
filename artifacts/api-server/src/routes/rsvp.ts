@@ -223,6 +223,9 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
   const FOOTER_BG = BG;
   const BTN_TXT  = isLightColor(ACCENT) ? "#000000" : (opts.overrideBg ? TEXT_COL : AI_BG);
   const COLOR_SCHEME = isLightColor(BG) ? "light" : "dark";
+  // Logo + photo sit on a neutral white surround. Only the info cells use BG.
+  const LOGO_BG = "#ffffff";
+  const PHOTO_BG = "#ffffff";
 
   const timesLine = [
     opts.ceremonyTimeStr ? `Ceremony ${opts.ceremonyTimeStr}` : null,
@@ -252,15 +255,15 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${PAGE_BG}" style="background:${PAGE_BG};padding:32px 16px;">
     <tr><td bgcolor="${PAGE_BG}" align="center">
 
-      <table class="dig-card" role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${BG}" style="max-width:420px;width:100%;background:${BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
+      <table class="dig-card" role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${LOGO_BG}" style="max-width:420px;width:100%;background:${LOGO_BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:20px 0 6px;text-align:center;">
+          <td bgcolor="${LOGO_BG}" style="background:${LOGO_BG};padding:20px 0 6px;text-align:center;">
             ${aiLogoBlock(opts.logoBase64, ACCENT)}
           </td>
         </tr>
 
-        ${aiPhotoBlock(opts.photoImgSrc, opts.couple, opts.photoObjectPos, BG)}
+        ${aiPhotoBlock(opts.photoImgSrc, opts.couple, opts.photoObjectPos, PHOTO_BG)}
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 0 4px;text-align:center;">
@@ -401,6 +404,11 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
   const SERIF    = opts.overrideCoupleFont
     ? `'${opts.overrideCoupleFont}',${AI_CORMORANT}` : AI_CORMORANT;
   const FOOTER_BG = BG;
+  // The user's chosen card colour (BG) only paints the info section. The
+  // logo and photo sit on a neutral white surround so the colour doesn't
+  // bleed into every cell of the card. Mirrors the editor preview.
+  const LOGO_BG = "#ffffff";
+  const PHOTO_BG = "#ffffff";
   const timesLine = [
     opts.ceremonyTimeStr ? `Ceremony ${opts.ceremonyTimeStr}` : null,
     opts.receptionTimeStr ? `Reception ${opts.receptionTimeStr}` : null,
@@ -432,15 +440,15 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${PAGE_BG}" style="background:${PAGE_BG};padding:32px 16px;">
     <tr><td bgcolor="${PAGE_BG}" align="center">
 
-      <table class="std-card" role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${BG}" style="max-width:420px;width:100%;background:${BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
+      <table class="std-card" role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${LOGO_BG}" style="max-width:420px;width:100%;background:${LOGO_BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:20px 0 6px;text-align:center;">
+          <td bgcolor="${LOGO_BG}" style="background:${LOGO_BG};padding:20px 0 6px;text-align:center;">
             ${aiLogoBlock(opts.logoBase64, ACCENT)}
           </td>
         </tr>
 
-        ${aiPhotoBlock(opts.photoImgSrc, `Save the Date — ${opts.couple}`, opts.photoObjectPos, BG)}
+        ${aiPhotoBlock(opts.photoImgSrc, `Save the Date — ${opts.couple}`, opts.photoObjectPos, PHOTO_BG)}
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 0 4px;text-align:center;">
