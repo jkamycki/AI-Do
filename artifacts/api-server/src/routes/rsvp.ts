@@ -487,13 +487,6 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
           </td>
         </tr>` : ""}
 
-        ${timesLine ? `
-        <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:8px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${ACCENT};">${escapeHtml(timesLine)}</p>
-          </td>
-        </tr>` : ""}
-
         ${opts.saveTheDateMessage ? `
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:18px 28px 0;text-align:center;">
@@ -1541,7 +1534,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           weddingDateStr: stdOverrides["std:date"]?.text || weddingDateStr,
           venue: null,
           venueAddress: null,
-          cityStateZip: "",
+          cityStateZip: stdCityStateZip,
           ceremonyTimeStr: null,
           receptionTimeStr: null,
           saveTheDateMessage: stdOverrides["std:message"]?.text || (profile as any).saveTheDateMessage || null,
