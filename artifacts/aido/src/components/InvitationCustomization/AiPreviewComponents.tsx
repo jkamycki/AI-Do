@@ -124,7 +124,10 @@ function CardShell({
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
   return (
     <div style={{
-      backgroundColor: bg, backgroundImage: dotPat, backgroundSize: "22px 22px",
+      // Outer wrapper sits *outside* the rounded card. White so the chosen
+      // card colour stops at the rounded edge — matches the public link +
+      // email behaviour (everything outside the card is white).
+      backgroundColor: "#ffffff",
       borderRadius: 16, padding: "16px 12px",
     }}>
     <div
