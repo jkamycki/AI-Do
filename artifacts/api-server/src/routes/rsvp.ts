@@ -609,7 +609,8 @@ router.get("/guests/:id/rsvp-link", requireAuth, async (req, res) => {
 
     const origin = buildFrontendOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
-    res.json({ rsvpUrl });
+    const previewUrl = `${origin}/api/preview/rsvp/${token}`;
+    res.json({ rsvpUrl, previewUrl });
   } catch (err) {
     req.log.error(err, "Failed to generate RSVP link");
     res.status(500).json({ error: "Internal server error" });
@@ -1192,7 +1193,7 @@ router.get("/preview/rsvp/:token", async (req, res) => {
       ? (() => { const [y, m, d] = profile.weddingDate!.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }); })()
       : null;
     const location = [profile.venue, profile.venueCity, profile.venueState].filter(Boolean).join(", ");
-    const title = escapeHtml(`${couple} — Wedding Invitation`);
+    const title = escapeHtml(`${couple} have sent you a wedding invite`);
     const description = escapeHtml([`${guestName}, you're invited to celebrate the wedding of ${couple}`, dateStr, location].filter(Boolean).join(" · "));
     const imageUrl = escapeHtml(`${apiOrigin}/api/rsvp/${token}/photo`);
     const destinationUrl = escapeHtml(`${frontendOrigin}/rsvp/${token}`);
@@ -1230,7 +1231,7 @@ router.get("/preview/save-the-date/:token", async (req, res) => {
       ? (() => { const [y, m, d] = profile.weddingDate!.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }); })()
       : null;
     const location = [profile.venue, profile.venueCity, profile.venueState].filter(Boolean).join(", ");
-    const title = escapeHtml(`Save the Date — ${couple}`);
+    const title = escapeHtml(`Save the Date`);
     const description = escapeHtml([`${guestName}, save the date for the wedding of ${couple}`, dateStr, location].filter(Boolean).join(" · "));
     const imageUrl = escapeHtml(`${apiOrigin}/api/save-the-date/${token}/photo`);
     const destinationUrl = escapeHtml(`${frontendOrigin}/save-the-date/${token}`);
@@ -1252,7 +1253,7 @@ router.get("/rsvp/:token", async (req, res) => {
       .where(eq(guests.rsvpToken, req.params.token))
       .limit(1);
 
-    if (!rows.length) return res.status(404).json({ error: "Invalid or expired RSVP link." });
+    if (!rows.length) return res.status(404).json({ error: "Invalid RSVP link." });
     const guest = rows[0];
 
     const profiles = await db
@@ -1348,7 +1349,7 @@ router.post("/rsvp/:token", async (req, res) => {
       .where(eq(guests.rsvpToken, req.params.token))
       .limit(1);
 
-    if (!rows.length) return res.status(404).json({ error: "Invalid or expired RSVP link." });
+    if (!rows.length) return res.status(404).json({ error: "Invalid RSVP link." });
     const guest = rows[0];
 
     const {
