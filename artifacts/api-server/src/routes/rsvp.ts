@@ -896,6 +896,9 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         html,
       });
       emailSent = result.ok;
+      if (result.ok && isReminder) {
+        await db.update(guests).set({ rsvpReminderStatus: "sent" }).where(eq(guests.id, id));
+      }
     }
 
     res.json({ rsvpUrl, emailSent });
@@ -1070,6 +1073,13 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
       text: `Hi ${guest.name},\n\nWe noticed you haven't RSVP'd yet for ${couple}'s wedding${weddingDateStr ? ` on ${weddingDateStr}` : ""}.\n\nPlease RSVP using the link below:\n${rsvpUrl}\n\nWith love,\n${couple}`,
       html,
     });
+
+    // Mark the reminder as sent so the planner can see at a glance which
+    // guests have already been nudged. Only flip on a successful send so a
+    // network failure doesn't lie about the state.
+    if (result.ok) {
+      await db.update(guests).set({ rsvpReminderStatus: "sent" }).where(eq(guests.id, id));
+    }
 
     res.json({ rsvpUrl, emailSent: result.ok });
   } catch (err) {
