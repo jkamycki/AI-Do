@@ -816,18 +816,23 @@ export function InvitationSendModal({
                     )}
                   </div>
                   {reminderOnly ? (
-                    guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder ? (
-                      <Button
-                        variant="outline"
-                        className="w-full gap-2"
-                        onClick={() => guest && onSendRsvpReminder(guest.id)}
-                        disabled={!!isSendingRsvpReminder}
-                      >
-                        {isSendingRsvpReminder
-                          ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending reminder…</>
-                          : <><Mail className="h-4 w-4" /> Send RSVP Reminder</>
-                        }
-                      </Button>
+                    guest?.rsvpStatus === "pending" && onSendRsvpReminder ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          className="w-full gap-2"
+                          onClick={() => guest && onSendRsvpReminder(guest.id)}
+                          disabled={!!isSendingRsvpReminder}
+                        >
+                          {isSendingRsvpReminder
+                            ? <><Loader2 className="h-4 w-4 animate-spin" /> {guest?.email ? "Sending reminder…" : "Marking as sent…"}</>
+                            : <><Mail className="h-4 w-4" /> {guest?.email ? "Send RSVP Reminder" : "Mark Reminder as Sent"}</>
+                          }
+                        </Button>
+                        {!guest?.email && (
+                          <p className="text-xs text-muted-foreground text-center">No email on file — reminder status will be marked as sent.</p>
+                        )}
+                      </>
                     ) : null
                   ) : (
                     <Button
@@ -841,7 +846,7 @@ export function InvitationSendModal({
                       }
                     </Button>
                   )}
-                  {!guest?.email && (
+                  {!reminderOnly && !guest?.email && (
                     <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
                   )}
                 </TabsContent>
@@ -911,18 +916,23 @@ export function InvitationSendModal({
                     />
                   )}
                   {reminderOnly ? (
-                    guest?.rsvpStatus === "pending" && guest?.email && onSendRsvpReminder ? (
-                      <Button
-                        variant="outline"
-                        className="w-full gap-2"
-                        onClick={() => guest && onSendRsvpReminder(guest.id)}
-                        disabled={!!isSendingRsvpReminder}
-                      >
-                        {isSendingRsvpReminder
-                          ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending reminder…</>
-                          : <><Mail className="h-4 w-4" /> Send RSVP Reminder</>
-                        }
-                      </Button>
+                    guest?.rsvpStatus === "pending" && onSendRsvpReminder ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          className="w-full gap-2"
+                          onClick={() => guest && onSendRsvpReminder(guest.id)}
+                          disabled={!!isSendingRsvpReminder}
+                        >
+                          {isSendingRsvpReminder
+                            ? <><Loader2 className="h-4 w-4 animate-spin" /> {guest?.email ? "Sending reminder…" : "Marking as sent…"}</>
+                            : <><Mail className="h-4 w-4" /> {guest?.email ? "Send RSVP Reminder" : "Mark Reminder as Sent"}</>
+                          }
+                        </Button>
+                        {!guest?.email && (
+                          <p className="text-xs text-muted-foreground text-center">No email on file — reminder status will be marked as sent.</p>
+                        )}
+                      </>
                     ) : null
                   ) : (
                     <Button
@@ -936,7 +946,7 @@ export function InvitationSendModal({
                       }
                     </Button>
                   )}
-                  {!guest?.email && (
+                  {!reminderOnly && !guest?.email && (
                     <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
                   )}
                 </TabsContent>

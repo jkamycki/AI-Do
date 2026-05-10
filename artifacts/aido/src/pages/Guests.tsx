@@ -1667,12 +1667,12 @@ export default function Guests() {
                             >
                               <Send className="h-3.5 w-3.5" />
                             </Button>
-                            {g.rsvpStatus === "pending" && g.invitationStatus === "sent" && g.email && (
+                            {g.rsvpStatus === "pending" && g.invitationStatus === "sent" && (g.email || (g as any).saveTheDateStatus === "sent") && (
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-amber-500 hover:text-amber-600"
-                                title="Send RSVP reminder"
+                                title={g.email ? "Send RSVP reminder" : "Mark RSVP reminder as sent"}
                                 onClick={() => {
                                   setSendModalDefaultTab("digitalInvitation");
                                   setSendModalReminderOnly(true);
