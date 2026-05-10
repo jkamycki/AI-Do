@@ -2621,8 +2621,10 @@ export function WebsiteRenderer({
   // preloaded in index.html (e.g. Tangerine, Great Vibes, Allura) actually render.
   const headingFontName = headingFont(data);
   const bodyFontName = bodyFont(data);
+  const faqQuestionFont = data.customText._faqQuestionFont ?? "";
+  const faqAnswerFont = data.customText._faqAnswerFont ?? "";
   useEffect(() => {
-    const families = Array.from(new Set([headingFontName, bodyFontName].filter(Boolean)));
+    const families = Array.from(new Set([headingFontName, bodyFontName, faqQuestionFont, faqAnswerFont].filter(Boolean)));
     families.forEach((family) => {
       const id = `aido-font-${family.replace(/\s+/g, "-").toLowerCase()}`;
       if (document.getElementById(id)) return;
@@ -2632,7 +2634,7 @@ export function WebsiteRenderer({
       link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family).replace(/%20/g, "+")}:wght@400;500;600;700&display=swap`;
       document.head.appendChild(link);
     });
-  }, [headingFontName, bodyFontName]);
+  }, [headingFontName, bodyFontName, faqQuestionFont, faqAnswerFont]);
 
   const pageMode = !!currentSection;
   const showAll = !pageMode;
