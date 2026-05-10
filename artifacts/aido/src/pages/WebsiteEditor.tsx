@@ -911,11 +911,11 @@ export default function WebsiteEditor() {
                 setEditorSection(id);
                 mobilePreviewRef.current?.scrollTo({ top: 0, behavior: "auto" });
               }}
-              onTextChange={(key, value) => patchRecord(() => ({ customText: { ...recordRef.current!.customText, [key]: value } }))}
-              onStyleChange={(key, style) => patchRecord(() => ({ textStyles: { ...(recordRef.current!.textStyles ?? {}), [key]: style } }))}
-              onPositionChange={(key, pos) => patchRecord(() => ({ textPositions: { ...(recordRef.current!.textPositions ?? {}), [key]: pos } }))}
-              onGalleryCaptionChange={(imageUrl, caption) => patchRecord(() => {
-                const next = (recordRef.current!.galleryImages ?? []).map((img) =>
+              onTextChange={(key, value) => patchRecord((prev) => ({ customText: { ...prev.customText, [key]: value } }))}
+              onStyleChange={(key, style) => patchRecord((prev) => ({ textStyles: { ...(prev.textStyles ?? {}), [key]: style } }))}
+              onPositionChange={(key, pos) => patchRecord((prev) => ({ textPositions: { ...(prev.textPositions ?? {}), [key]: pos } }))}
+              onGalleryCaptionChange={(imageUrl, caption) => patchRecord((prev) => {
+                const next = (prev.galleryImages ?? []).map((img) =>
                   img.url === imageUrl ? { ...img, caption } : img,
                 );
                 return { galleryImages: next };
