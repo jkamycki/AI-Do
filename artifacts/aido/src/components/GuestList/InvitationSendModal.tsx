@@ -540,8 +540,11 @@ export function InvitationSendModal({
       return r.json();
     },
     enabled: !!guest && !!profile?.id,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    // Prefer the optimistic cache updates from the customization page over an
+    // immediate re-fetch. 30 s is long enough to cover theme-pick → modal-open
+    // in the same session without showing stale data across sessions.
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   const customization: Customization | null = rawCustomization
@@ -634,8 +637,14 @@ export function InvitationSendModal({
   // previewCustomColors — this guarantees both previews are pixel-for-pixel identical.
   // Each invitation type uses its own saved accent color so STD and RSVP are independent.
   const fallbackAccent = palette.accent || "#D4A017";
-  const stdAccent = (isCustomMode && customization?.saveTheDateAccentColor) || fallbackAccent;
-  const digAccent = (isCustomMode && customization?.digitalInvitationAccentColor) || fallbackAccent;
+  // Prefer the dedicated per-invitation column, then the JSONB backup key
+  // stored inside customColors (written by buildPayload as a migration safety net).
+  const stdAccent =
+    (isCustomMode && (customization?.saveTheDateAccentColor || customization?.customColors?.saveTheDateAccent)) ||
+    fallbackAccent;
+  const digAccent =
+    (isCustomMode && (customization?.digitalInvitationAccentColor || customization?.customColors?.digitalInvitationAccent)) ||
+    fallbackAccent;
   const stdFontColor = customization?.saveTheDateFontColor ?? "#222222";
   const digFontColor = customization?.digitalInvitationFontColor ?? "#222222";
   const stdPreviewColors: CustomColors | undefined = isCustomMode && customization
