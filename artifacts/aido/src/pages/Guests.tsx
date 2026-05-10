@@ -915,6 +915,22 @@ export default function Guests() {
     });
   }
 
+  function handleReminderChange(guest: Guest, newStatus: string) {
+    const prev = (guest as any).rsvpReminderStatus ?? "not_sent";
+    optimisticUpdate(guest.id, { rsvpReminderStatus: newStatus } as any);
+    authFetch(`/api/guests/${guest.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rsvpReminderStatus: newStatus }),
+    }).then(async res => {
+      if (!res.ok) throw new Error();
+      invalidate();
+    }).catch(() => {
+      optimisticUpdate(guest.id, { rsvpReminderStatus: prev } as any);
+      toast({ title: "Failed to update reminder status", variant: "destructive" });
+    });
+  }
+
   function handleMealChange(guest: Guest, newMeal: string) {
     const val = newMeal === "none" ? null : newMeal;
     optimisticUpdate(guest.id, { mealChoice: val });
@@ -1449,6 +1465,34 @@ export default function Guests() {
                                       {opt.value === "sent" ? "Sent" : "Not Sent"}
                                     </DropdownMenuItem>
                                   ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            {/* RSVP Reminder — flips to "sent" automatically when
+                                the planner uses the Send RSVP Reminder button,
+                                and can also be toggled manually here. */}
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">RSVP Reminder</span>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${(g as any).rsvpReminderStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}>
+                                    {(g as any).rsvpReminderStatus === "sent" ? "Sent" : "Not Sent"}
+                                    <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-28">
+                                  <DropdownMenuItem
+                                    className={`text-xs cursor-pointer ${(g as any).rsvpReminderStatus !== "sent" ? "opacity-50 pointer-events-none" : ""}`}
+                                    onClick={() => handleReminderChange(g, "not_sent")}
+                                  >
+                                    Not Sent
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className={`text-xs font-medium cursor-pointer ${(g as any).rsvpReminderStatus === "sent" ? "opacity-50 pointer-events-none" : ""}`}
+                                    onClick={() => handleReminderChange(g, "sent")}
+                                  >
+                                    Sent
+                                  </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
