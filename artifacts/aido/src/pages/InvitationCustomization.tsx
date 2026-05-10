@@ -1011,13 +1011,19 @@ export default function InvitationCustomizationPage({
                                 },
                               };
                               setCustomDesign(newCustomDesign);
-                              // Save immediately so InvitationSendModal always
-                              // gets the selected theme even when navigated to
-                              // before the 1-second debounce fires.
                               skipNextAutoSave.current = true;
+                              const payload = buildPayload(undefined, undefined, newCustomDesign);
+                              // Update the query cache optimistically so the theme
+                              // persists if the user navigates away and back before
+                              // the API response completes.
+                              queryClient.setQueryData(
+                                ["invitation-customizations", profileId],
+                                (old: InvitationCustomization | null | undefined) =>
+                                  old ? { ...old, ...payload } : old,
+                              );
                               authedFetch("/api/invitation-customizations", {
                                 method: "POST",
-                                body: JSON.stringify(buildPayload(undefined, undefined, newCustomDesign)),
+                                body: JSON.stringify(payload),
                               }).catch(() => {});
                             }}
                             className={`text-left p-2 rounded-md border transition-all ${
