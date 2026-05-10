@@ -204,6 +204,13 @@ function sectionTextColor(data: WebsiteRendererPayload, id: string): string {
   return hexIsLight(bg) ? data.colorPalette.text : "#FFFFFF";
 }
 
+// Merges a base color into tsp/tspStyle results so EditableText inherits it
+// even when no explicit textStyle.color is stored. User-set colors (spread last)
+// override the base, so custom styling from the inline toolbar is preserved.
+function withBaseColor<T extends { textStyle?: TextStyle }>(props: T, baseColor: string): T {
+  return { ...props, textStyle: { color: baseColor, ...(props.textStyle ?? {}) } };
+}
+
 function imageUrl(url: string): string {
   return resolveMediaUrl(url) ?? url;
 }
@@ -817,7 +824,7 @@ function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx
         onCommit={(v) => ctx.onTextChange("rsvp_subtitle", v)}
         className="block text-center text-3xl sm:text-4xl mb-10"
         style={{ fontFamily: fontStack(headingFont(data)), color: labelColor }}
-        {...tsp(ctx, "rsvp_subtitle")}
+        {...withBaseColor(tsp(ctx, "rsvp_subtitle"), labelColor)}
       />
       {(ctx.editable || data.customText.rsvp_deadline) && (
         <p className="text-center text-sm mb-8 opacity-70" style={{ color: labelColor }}>
@@ -830,7 +837,7 @@ function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx
             onCommit={(v) => ctx.onTextChange("rsvp_deadline", v)}
             className="font-semibold"
             style={{ color: labelColor }}
-            {...tsp(ctx, "rsvp_deadline")}
+            {...withBaseColor(tsp(ctx, "rsvp_deadline"), labelColor)}
           />
         </p>
       )}
@@ -1442,7 +1449,7 @@ function Welcome({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         onCommit={(v) => ctx.onTextChange("welcome", v)}
         className="text-center text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
         style={{ color: data.customText._welcomeColor || labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}
-        {...tsp(ctx, "welcome")}
+        {...withBaseColor(tsp(ctx, "welcome"), labelColor)}
       />
     </SectionShell>
   );
@@ -1464,7 +1471,7 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         onCommit={(v) => ctx.onTextChange("story_subtitle", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
         style={{ fontFamily: elementFontStack(data, "story_subtitle", headingFont(data), "heading"), color: labelColor }}
-        {...tsp(ctx, "story_subtitle")}
+        {...withBaseColor(tsp(ctx, "story_subtitle"), labelColor)}
       />
       <EditableText
         as="div"
@@ -1475,7 +1482,7 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         onCommit={(v) => ctx.onTextChange("story", v)}
         className="text-center text-base sm:text-lg leading-relaxed mx-auto px-4 whitespace-pre-line break-words"
         style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)), maxWidth: "min(48rem, 100%)" }}
-        {...tsp(ctx, "story")}
+        {...withBaseColor(tsp(ctx, "story"), labelColor)}
       />
     </SectionShell>
   );
@@ -1533,7 +1540,7 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
                     value={formatTime12h(data.customText[it.key] ?? "")}
                     defaultValue={ctx.editable ? "Add Time" : formatTime12h(it.time || "")}
                     onCommit={(v) => ctx.onTextChange(it.key, v)}
-                    {...tspStyle(ctx, it.key)}
+                    {...withBaseColor(tspStyle(ctx, it.key), data.colorPalette.primary)}
                   />
                 </div>
                 <div className="flex-1 text-base" style={{ color: labelColor }}>
@@ -1542,7 +1549,7 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
                     value={data.customText[it.labelKey] ?? ""}
                     defaultValue={it.defaultLabel}
                     onCommit={(v) => ctx.onTextChange(it.labelKey, v)}
-                    {...tspStyle(ctx, it.labelKey)}
+                    {...withBaseColor(tspStyle(ctx, it.labelKey), labelColor)}
                   />
                 </div>
               </div>
@@ -1559,7 +1566,7 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
           onCommit={(v) => ctx.onTextChange("schedule", v)}
           className="text-center text-base sm:text-lg leading-relaxed whitespace-pre-line"
           style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}
-          {...tsp(ctx, "schedule")}
+          {...withBaseColor(tsp(ctx, "schedule"), labelColor)}
         />
       </div>
     </SectionShell>
@@ -1606,7 +1613,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         onCommit={(v) => ctx.onTextChange("travel_subtitle", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
         style={{ fontFamily: elementFontStack(data, "travel_subtitle", headingFont(data), "heading"), color: labelColor }}
-        {...tsp(ctx, "travel_subtitle")}
+        {...withBaseColor(tsp(ctx, "travel_subtitle"), labelColor)}
       />
 
       <div className="grid sm:grid-cols-2 gap-4 max-w-3xl mx-auto mb-6">
@@ -1673,7 +1680,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   onCommit={(v) => ctx.onTextChange("_hotelName", v)}
                   className="text-base sm:text-lg font-medium"
                   style={{ color: labelColor }}
-                  {...tsp(ctx, "_hotelName")}
+                  {...withBaseColor(tsp(ctx, "_hotelName"), labelColor)}
                 />
                 <EditableText
                   as="div"
@@ -1683,7 +1690,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   onCommit={(v) => ctx.onTextChange("_hotelAddress", v)}
                   className="text-sm opacity-75"
                   style={{ color: labelColor }}
-                  {...tsp(ctx, "_hotelAddress")}
+                  {...withBaseColor(tsp(ctx, "_hotelAddress"), labelColor)}
                 />
               </div>
             </div>
@@ -1713,7 +1720,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           onCommit={(v) => ctx.onTextChange("travel", v)}
           className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
           style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}
-          {...tsp(ctx, "travel")}
+          {...withBaseColor(tsp(ctx, "travel"), labelColor)}
         />
       )}
     </SectionShell>
@@ -1736,7 +1743,7 @@ function Registry({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
         onCommit={(v) => ctx.onTextChange("registry_subtitle", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
         style={{ fontFamily: elementFontStack(data, "registry_subtitle", headingFont(data), "heading"), color: labelColor }}
-        {...tsp(ctx, "registry_subtitle")}
+        {...withBaseColor(tsp(ctx, "registry_subtitle"), labelColor)}
       />
       {links.length > 0 && (
         <div className="flex flex-wrap justify-center gap-3 mb-8">
@@ -1770,7 +1777,7 @@ function Registry({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
           onCommit={(v) => ctx.onTextChange("registry", v)}
           className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
           style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}
-          {...tsp(ctx, "registry")}
+          {...withBaseColor(tsp(ctx, "registry"), labelColor)}
         />
       )}
     </SectionShell>
@@ -1808,7 +1815,7 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         onCommit={(v) => ctx.onTextChange("faq_subtitle", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
         style={{ fontFamily: elementFontStack(data, "faq_subtitle", headingFont(data), "heading"), color: labelColor }}
-        {...tsp(ctx, "faq_subtitle")}
+        {...withBaseColor(tsp(ctx, "faq_subtitle"), labelColor)}
       />
 
       {items.length > 0 && (
@@ -1876,7 +1883,7 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           onCommit={(v) => ctx.onTextChange("faq", v)}
           className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
           style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}
-          {...tsp(ctx, "faq")}
+          {...withBaseColor(tsp(ctx, "faq"), labelColor)}
         />
       )}
 
@@ -1996,7 +2003,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         onCommit={(v) => ctx.onTextChange("gallery_subtitle", v)}
         className="block text-center text-3xl sm:text-4xl mb-10"
         style={{ fontFamily: elementFontStack(data, "gallery_subtitle", headingFont(data), "heading"), color: labelColor }}
-        {...tsp(ctx, "gallery_subtitle")}
+        {...withBaseColor(tsp(ctx, "gallery_subtitle"), labelColor)}
       />
       {animation === "marquee" && images.length > 0 ? (
         <div className="relative overflow-hidden rounded-lg" style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}>
@@ -2248,7 +2255,7 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
         onCommit={(v) => ctx.onTextChange("weddingParty_subtitle", v)}
         className="block text-center text-base sm:text-lg max-w-2xl mx-auto mb-12 opacity-80"
         style={{ color: labelColor, fontFamily: elementFontStack(data, "weddingParty_subtitle", bodyFont(data), "body") }}
-        {...tsp(ctx, "weddingParty_subtitle")}
+        {...withBaseColor(tsp(ctx, "weddingParty_subtitle"), labelColor)}
       />
       {members.length === 0 ? (
         <p className="text-center text-sm opacity-60" style={{ color: labelColor }}>
