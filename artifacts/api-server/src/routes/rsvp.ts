@@ -480,15 +480,6 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
           </td>
         </tr>` : ""}
 
-        ${opts.venue ? `
-        <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:12px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${SERIF};font-size:16px;font-weight:500;color:${ACCENT};">
-              <span style="color:${ACCENT};font-size:13px;">&#9679;</span>&nbsp;${escapeHtml(opts.venue)}
-            </p>
-          </td>
-        </tr>` : ""}
-
                 ${opts.cityStateZip ? `
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:2px 24px 0;text-align:center;">

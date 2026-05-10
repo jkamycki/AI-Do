@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Download, AlertCircle, MapPin, Mail } from "lucide-react";
+import { Loader2, Download, AlertCircle, Mail } from "lucide-react";
 import type { ColorPalette, TextOverrides } from "@/types/invitations";
 import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
 
@@ -187,7 +187,7 @@ export default function SaveTheDate() {
           backgroundColor={info.customBackgroundColor}
           partner1Name={info.partner1Name ?? undefined}
           partner2Name={info.partner2Name ?? undefined}
-          location={info.venueAddress ?? undefined}
+          location={undefined}
           venueCity={info.venueCity ?? undefined}
           venueState={info.venueState ?? undefined}
           venueZip={info.venueZip ?? undefined}
@@ -296,16 +296,6 @@ export default function SaveTheDate() {
             <p style={{ fontFamily: jakarta, fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: WHITE, margin: "0 0 10px" }}>
               {dateText}
             </p>
-          )}
-
-          {/* Venue */}
-          {info.venue && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, margin: "0 0 4px" }}>
-              <MapPin style={{ width: 13, height: 13, color: GOLD, flexShrink: 0 }} />
-              <p style={{ fontFamily: SERIF, fontSize: "1.1rem", fontWeight: 500, color: GOLD, margin: 0 }}>
-                {info.venue}
-              </p>
-            </div>
           )}
 
           {venueCityStateZip && (

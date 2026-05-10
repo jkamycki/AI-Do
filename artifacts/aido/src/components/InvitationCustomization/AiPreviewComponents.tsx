@@ -241,16 +241,7 @@ export function AiSaveDatePreview({
         </p>
       )}
 
-      {!customColors && profile.venue && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 4 }}>
-          <MapPin style={{ width: 12, height: 12, color: accent, flexShrink: 0 }} />
-          <p style={{ fontFamily: displayFont, fontSize: `${1 * sc}rem`, fontWeight: 500, color: accent, margin: 0 }}>
-            {profile.venue}
-          </p>
-        </div>
-      )}
-
-      {!customColors && cityLine && (
+      {cityLine && (
         <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: text, margin: "1px 0 0" }}>
           {cityLine}
         </p>
