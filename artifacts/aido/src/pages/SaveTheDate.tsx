@@ -98,15 +98,15 @@ export default function SaveTheDate() {
   const WHITE    = isLight ? "#1a1a1a" : AI_WHITE;
   const MUTED    = isLight ? "rgba(0,0,0,0.58)" : AI_MUTED;
   const CARD_BDR = isLight ? "rgba(0,0,0,0.12)" : AI_CARD_BDR;
-  // The page background sits *behind* the card. In custom mode the user's
-  // background color belongs to the card only — keep the page neutral so
-  // changing the card color doesn't repaint the whole window. AI mode keeps
-  // the existing dotted dark theme.
-  const PAGE_BG  = useCustom ? "#f3f4f6" : BG;
+  // The page sits *behind* the card in every mode. Always paint it a
+  // neutral grey so the rounded card outline is visible — neither the AI
+  // dark theme nor a custom card colour should bleed past the card edges
+  // into the surrounding viewport.
+  const PAGE_BG  = "#f3f4f6";
   const DOT_PAT  = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
-  // The AI mode card prints the dotted pattern on top of its bg. The custom
-  // mode page is plain (no dots) since the dots are an AI-theme decoration.
-  const PAGE_BG_PATTERN = useCustom ? undefined : DOT_PAT;
+  // Dot pattern was an AI-theme decoration on the dark page — drop it now
+  // that the page is light, since gold dots on light grey read as noise.
+  const PAGE_BG_PATTERN: string | undefined = undefined;
   const SERIF    = info?.customFontFamily
     ? `'${info.customFontFamily}', ${cormorant}`
     : cormorant;
