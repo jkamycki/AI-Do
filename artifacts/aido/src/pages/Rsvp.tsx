@@ -188,13 +188,11 @@ export default function Rsvp() {
   const MUTED = _bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)";
   const CARD_BDR = _bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)";
   const DOT_PAT = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
-  // Whether the couple chose a custom background. In custom mode the colour
-  // belongs to the card only — the surrounding page stays neutral so changing
-  // the design doesn't repaint the whole window. AI mode keeps the dotted
-  // dark theme it always had.
-  const useCustomBg = !!info?.backgroundColor;
-  const PAGE_BG = useCustomBg ? "#f3f4f6" : BG;
-  const PAGE_BG_PATTERN = useCustomBg ? undefined : DOT_PAT;
+  // The page sits *behind* the card in every mode. Always paint it a
+  // neutral grey so the card outline stays visible — neither the AI dark
+  // theme nor a custom card colour should bleed past the card edges.
+  const PAGE_BG = "#f3f4f6";
+  const PAGE_BG_PATTERN: string | undefined = undefined;
 
   const couple = [info?.partner1Name, info?.partner2Name].filter(Boolean).join(" & ") || "The Couple";
 

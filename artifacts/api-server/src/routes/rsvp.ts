@@ -156,7 +156,10 @@ async function getImageAsBase64(photoUrl: string | null | undefined): Promise<st
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AI_BG = "#1E1A2E";
-const AI_PAGE_BG = "#1E1A2E";
+// Page sits behind the card. Kept neutral so the card outline stays
+// visible — applies to every email path (custom + AI) and every public
+// link. The chosen card colour stops at the card edge.
+const AI_PAGE_BG = "#f3f4f6";
 const AI_GOLD = "#D4A017";
 const AI_WHITE = "#ffffff";
 const AI_MUTED = "rgba(255,255,255,0.58)";
