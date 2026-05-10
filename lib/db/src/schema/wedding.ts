@@ -519,6 +519,8 @@ export const invitationCustomizations = pgTable("invitation_customizations", {
   digitalInvitationFontColor: text("digital_invitation_font_color"),
   saveTheDateFontSize: text("save_the_date_font_size"),
   digitalInvitationFontSize: text("digital_invitation_font_size"),
+  saveTheDateAccentColor: text("save_the_date_accent_color"),
+  digitalInvitationAccentColor: text("digital_invitation_accent_color"),
 
   // Per-element overrides keyed like "std:heading", "dig:couple".
   // Each value: { x?, y?, font?, color?, fontSize? }

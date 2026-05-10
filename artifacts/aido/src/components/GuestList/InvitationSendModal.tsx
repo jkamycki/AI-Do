@@ -42,6 +42,8 @@ interface Customization {
   digitalInvitationFontColor: string | null;
   saveTheDateFontSize: string | null;
   digitalInvitationFontSize: string | null;
+  saveTheDateAccentColor: string | null;
+  digitalInvitationAccentColor: string | null;
   textOverrides: TextOverrides;
 }
 
@@ -563,6 +565,8 @@ export function InvitationSendModal({
         digitalInvitationFontColor: rawCustomization.digitalInvitationFontColor ?? null,
         saveTheDateFontSize: rawCustomization.saveTheDateFontSize ?? null,
         digitalInvitationFontSize: rawCustomization.digitalInvitationFontSize ?? null,
+        saveTheDateAccentColor: rawCustomization.saveTheDateAccentColor ?? null,
+        digitalInvitationAccentColor: rawCustomization.digitalInvitationAccentColor ?? null,
         textOverrides: rawCustomization.textOverrides ?? {},
       }
     : null;
@@ -595,6 +599,8 @@ export function InvitationSendModal({
               digitalInvitationFontColor: old.digitalInvitationFontColor ?? null,
               saveTheDateFontSize: old.saveTheDateFontSize ?? null,
               digitalInvitationFontSize: old.digitalInvitationFontSize ?? null,
+              saveTheDateAccentColor: old.saveTheDateAccentColor ?? null,
+              digitalInvitationAccentColor: old.digitalInvitationAccentColor ?? null,
               textOverrides: old.textOverrides ?? {},
             }
           : null;
@@ -626,16 +632,19 @@ export function InvitationSendModal({
 
   // Build previewCustomColors using the exact same formula as InvitationCustomization's
   // previewCustomColors — this guarantees both previews are pixel-for-pixel identical.
-  const sharedAccent = palette.accent || "#D4A017";
+  // Each invitation type uses its own saved accent color so STD and RSVP are independent.
+  const fallbackAccent = palette.accent || "#D4A017";
+  const stdAccent = (isCustomMode && customization?.saveTheDateAccentColor) || fallbackAccent;
+  const digAccent = (isCustomMode && customization?.digitalInvitationAccentColor) || fallbackAccent;
   const stdFontColor = customization?.saveTheDateFontColor ?? "#222222";
   const digFontColor = customization?.digitalInvitationFontColor ?? "#222222";
   const stdPreviewColors: CustomColors | undefined = isCustomMode && customization
     ? {
         bg: customization.saveTheDateBackground ?? "#FFFFFF",
-        accent: sharedAccent,
+        accent: stdAccent,
         text: stdFontColor,
         muted: stdFontColor + "99",
-        cardBdr: sharedAccent + "33",
+        cardBdr: stdAccent + "33",
         font: customization.saveTheDateFont ?? "Playfair Display",
         fontSize: customization.saveTheDateFontSize ?? "16",
       }
@@ -643,19 +652,19 @@ export function InvitationSendModal({
   const digPreviewColors: CustomColors | undefined = isCustomMode && customization
     ? {
         bg: customization.digitalInvitationBackground ?? "#FFFFFF",
-        accent: sharedAccent,
+        accent: digAccent,
         text: digFontColor,
         muted: digFontColor + "99",
-        cardBdr: sharedAccent + "33",
+        cardBdr: digAccent + "33",
         font: customization.digitalInvitationFont ?? "Playfair Display",
         fontSize: customization.digitalInvitationFontSize ?? "16",
       }
     : undefined;
   const stdPalette = stdPreviewColors
-    ? { ...palette, primary: sharedAccent, secondary: sharedAccent, accent: sharedAccent }
+    ? { ...palette, primary: stdAccent, secondary: stdAccent, accent: stdAccent }
     : palette;
   const digPalette = digPreviewColors
-    ? { ...palette, primary: sharedAccent, secondary: sharedAccent, accent: sharedAccent }
+    ? { ...palette, primary: digAccent, secondary: digAccent, accent: digAccent }
     : palette;
 
   const completeness = evaluateCustomDesignCompleteness({
