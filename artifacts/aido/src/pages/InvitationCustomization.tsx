@@ -610,10 +610,15 @@ export default function InvitationCustomizationPage({
     const stdCustom = designMode === "custom";
     const digCustom = designMode === "custom";
     const eitherCustom = designMode === "custom";
-    // Both invitation types share one customColors.accent in the DB. The
-    // theme click handler keeps both accentColors in sync, so picking either
-    // side is equivalent here.
-    const customAccent = eitherCustom ? d.saveTheDate.accentColor : null;
+    // Custom accent: pick from whichever invitation type is currently in
+    // custom mode (prefer STD if both are custom). The accent is shared on
+    // the colorPalette / customColors record because the legacy renderer
+    // uses one accent across both invitations.
+    const customAccent = stdCustom
+      ? d.saveTheDate.accentColor
+      : digCustom
+      ? d.rsvpInvitation.accentColor
+      : null;
     const finalCustomColors = customAccent
       ? { ...(customColors ?? {}), accent: customAccent, primary: customAccent }
       : customColors;
@@ -995,10 +1000,6 @@ export default function InvitationCustomizationPage({
                             key={theme.id}
                             type="button"
                             onClick={() => {
-                              // Sync the accent to both invitation types since the
-                              // DB stores a single shared customColors.accent. This
-                              // keeps the STD and RSVP previews consistent.
-                              const otherKey = activeKey === "saveTheDate" ? "rsvpInvitation" : "saveTheDate";
                               const newCustomDesign = {
                                 ...customDesign,
                                 [activeKey]: {
@@ -1008,25 +1009,15 @@ export default function InvitationCustomizationPage({
                                   fontColor: theme.text,
                                   fontFamily: theme.font,
                                 },
-                                [otherKey]: {
-                                  ...customDesign[otherKey],
-                                  accentColor: theme.primary,
-                                },
                               };
                               setCustomDesign(newCustomDesign);
+                              // Save immediately so InvitationSendModal always
+                              // gets the selected theme even when navigated to
+                              // before the 1-second debounce fires.
                               skipNextAutoSave.current = true;
-                              const payload = buildPayload(undefined, undefined, newCustomDesign);
-                              // Update the query cache optimistically so the theme
-                              // persists if the user navigates away and back before
-                              // the API response completes.
-                              queryClient.setQueryData(
-                                ["invitation-customizations", profileId],
-                                (old: InvitationCustomization | null | undefined) =>
-                                  old ? { ...old, ...payload } : old,
-                              );
                               authedFetch("/api/invitation-customizations", {
                                 method: "POST",
-                                body: JSON.stringify(payload),
+                                body: JSON.stringify(buildPayload(undefined, undefined, newCustomDesign)),
                               }).catch(() => {});
                             }}
                             className={`text-left p-2 rounded-md border transition-all ${
