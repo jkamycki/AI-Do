@@ -642,6 +642,41 @@ export default function WebsiteEditor() {
     update({ customText: { ...recordRef.current!.customText, _heroFocals: JSON.stringify(rest) } });
   };
 
+  // Per-URL zoom levels (1.0 = native cover, up to 4.0). Same JSON-map shape
+  // as _heroFocals so a single customText entry covers every hero photo.
+  const readHeroZooms = (): Record<string, number> => {
+    const raw = recordRef.current?.customText._heroZooms;
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return {};
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+        if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  };
+
+  const writeHeroZoom = (url: string, zoom: number) => {
+    const current = readHeroZooms();
+    // zoom of 1.0 is the default — drop the entry instead of storing redundant data.
+    const next = { ...current };
+    if (zoom === 1) delete next[url];
+    else next[url] = zoom;
+    update({ customText: { ...recordRef.current!.customText, _heroZooms: JSON.stringify(next) } });
+  };
+
+  const dropHeroZoom = (url: string) => {
+    const current = readHeroZooms();
+    if (!(url in current)) return;
+    const { [url]: _drop, ...rest } = current;
+    void _drop;
+    update({ customText: { ...recordRef.current!.customText, _heroZooms: JSON.stringify(rest) } });
+  };
+
   const handleGalleryUpload = async (files: FileList) => {
     if (!record) return;
     const newImages = [...record.galleryImages];
@@ -1542,7 +1577,15 @@ export default function WebsiteEditor() {
                   src={record.heroImage}
                   alt="Main"
                   className="w-full h-full object-cover"
-                  style={{ objectPosition: readHeroFocals()[record.heroImage] || "center" }}
+                  style={(() => {
+                    const focal = readHeroFocals()[record.heroImage] || "center";
+                    const z = readHeroZooms()[record.heroImage] ?? 1;
+                    return {
+                      objectPosition: focal,
+                      transformOrigin: focal,
+                      transform: z === 1 ? undefined : `scale(${z})`,
+                    };
+                  })()}
                 />
                 <button
                   onClick={() => setPositioningUrl(record.heroImage)}
@@ -1555,7 +1598,10 @@ export default function WebsiteEditor() {
                   onClick={() => {
                     const url = record.heroImage;
                     update({ heroImage: null });
-                    if (url) dropHeroFocal(url);
+                    if (url) {
+                      dropHeroFocal(url);
+                      dropHeroZoom(url);
+                    }
                   }}
                   className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
                   title="Remove main photo"
@@ -1570,7 +1616,15 @@ export default function WebsiteEditor() {
                   src={img.url}
                   alt=""
                   className="w-full h-full object-cover"
-                  style={{ objectPosition: readHeroFocals()[img.url] || "center" }}
+                  style={(() => {
+                    const focal = readHeroFocals()[img.url] || "center";
+                    const z = readHeroZooms()[img.url] ?? 1;
+                    return {
+                      objectPosition: focal,
+                      transformOrigin: focal,
+                      transform: z === 1 ? undefined : `scale(${z})`,
+                    };
+                  })()}
                 />
                 <button
                   onClick={() => setPositioningUrl(img.url)}
@@ -1584,6 +1638,7 @@ export default function WebsiteEditor() {
                     const url = img.url;
                     removeHeroImage(i);
                     dropHeroFocal(url);
+                    dropHeroZoom(url);
                   }}
                   className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
                 >
@@ -1937,8 +1992,12 @@ export default function WebsiteEditor() {
         open={!!positioningUrl}
         imageUrl={positioningUrl}
         initialPosition={positioningUrl ? readHeroFocals()[positioningUrl] ?? null : null}
-        onCommit={(pos) => {
-          if (positioningUrl) writeHeroFocal(positioningUrl, pos);
+        initialZoom={positioningUrl ? readHeroZooms()[positioningUrl] ?? null : null}
+        onCommit={(pos, zoom) => {
+          if (positioningUrl) {
+            writeHeroFocal(positioningUrl, pos);
+            writeHeroZoom(positioningUrl, zoom);
+          }
           setPositioningUrl(null);
         }}
         onClose={() => setPositioningUrl(null)}
