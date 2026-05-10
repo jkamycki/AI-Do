@@ -3,8 +3,6 @@ import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Download, AlertCircle, Mail } from "lucide-react";
-import type { ColorPalette, TextOverrides } from "@/types/invitations";
-import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
 
 interface SaveTheDateInfo {
   guestName: string;
@@ -31,11 +29,11 @@ interface SaveTheDateInfo {
   customBackgroundColor: string | null;
   customAccentColor: string | null;
   customFontFamily: string | null;
+  customFontColor: string | null;
+  customFontSize: string | null;
   customTextOverrides: Record<string, Record<string, unknown>>;
   photoObjectPosition: string;
-  // Pixel-parity fields: full palette + layout so the public page can render
-  // the exact same canvas the editor's SaveTheDatePreview renders.
-  customColorPalette: ColorPalette | null;
+  customColorPalette: Record<string, string> | null;
   customLayout: string | null;
 }
 
@@ -95,8 +93,13 @@ export default function SaveTheDate() {
   const BG       = useCustom ? (info.customBackgroundColor!) : AI_BG;
   const GOLD     = useCustom ? (info.customAccentColor ?? AI_GOLD) : AI_GOLD;
   const isLight  = useCustom ? isLightHex(BG) : false;
-  const WHITE    = isLight ? "#1a1a1a" : AI_WHITE;
-  const MUTED    = isLight ? "rgba(0,0,0,0.58)" : AI_MUTED;
+  // In custom mode use the saved font color if available; otherwise derive from bg.
+  const WHITE    = (useCustom && info?.customFontColor)
+    ? info.customFontColor
+    : (isLight ? "#1a1a1a" : AI_WHITE);
+  const MUTED    = (useCustom && info?.customFontColor)
+    ? info.customFontColor + "99"
+    : (isLight ? "rgba(0,0,0,0.58)" : AI_MUTED);
   const CARD_BDR = isLight ? "rgba(0,0,0,0.12)" : AI_CARD_BDR;
   // The page sits *behind* the card in every mode. Always paint it light
   // grey so the card colour stops at the rounded edge — no bleed past the
@@ -109,6 +112,10 @@ export default function SaveTheDate() {
   const SERIF    = info?.customFontFamily
     ? `'${info.customFontFamily}', ${cormorant}`
     : cormorant;
+  // In custom mode all text uses the custom font (matches AiSaveDatePreview.labelFont = displayFont).
+  const LABEL_FONT = useCustom ? SERIF : jakarta;
+  // Font size scaling: proportional to the custom base size, defaulting to 1 (no scaling).
+  const sc = (useCustom && info?.customFontSize) ? parseFloat(info.customFontSize) / 16 : 1;
 
   // Respect any text overrides from the custom canvas design
   const overrides = info?.customTextOverrides ?? {};
@@ -171,65 +178,6 @@ export default function SaveTheDate() {
     );
   }
 
-  // In custom mode, render the same SaveTheDatePreview canvas the editor uses
-  // so the public page is pixel-identical to what the couple designed (free
-  // text positioning, font/colour overrides, layout decorations, etc.).
-  if (useCustom && info.customColorPalette) {
-    const photoUrl = info.hasPhoto ? `/api/save-the-date/${token}/photo` : null;
-    return (
-      <div className="min-h-screen flex flex-col items-center py-10 px-4" style={{ background: PAGE_BG }}>
-        <SaveTheDatePreview
-          ref={cardRef}
-          photoUrl={photoUrl}
-          weddingDate={info.weddingDate ?? ""}
-          colors={info.customColorPalette}
-          font={info.customFontFamily ?? ""}
-          layout={info.customLayout ?? "classic"}
-          backgroundColor={info.customBackgroundColor}
-          partner1Name={info.partner1Name ?? undefined}
-          partner2Name={info.partner2Name ?? undefined}
-          location={undefined}
-          venueCity={info.venueCity ?? undefined}
-          venueState={info.venueState ?? undefined}
-          venueZip={info.venueZip ?? undefined}
-          message={info.saveTheDateMessage ?? undefined}
-          textOverrides={info.customTextOverrides as TextOverrides}
-          onTextOverridesChange={() => { /* read-only on the public link */ }}
-          editable={false}
-        />
-
-        {/* Download button — outside the captured canvas */}
-        <div style={{ marginTop: 28 }}>
-          <button
-            onClick={downloadPdf}
-            disabled={downloadingPdf}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              background: "rgba(0,0,0,0.04)", border: `1px solid rgba(0,0,0,0.12)`,
-              color: "#1a1a1a", fontFamily: jakarta, fontSize: 11, fontWeight: 600,
-              letterSpacing: "0.18em", textTransform: "uppercase",
-              padding: "12px 28px", borderRadius: 8, cursor: "pointer",
-              opacity: downloadingPdf ? 0.5 : 1,
-            }}
-          >
-            {downloadingPdf ? (
-              <><Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> Generating PDF…</>
-            ) : (
-              <><Download style={{ width: 14, height: 14 }} /> Download as PDF</>
-            )}
-          </button>
-        </div>
-
-        <p style={{ fontFamily: jakarta, fontSize: 11, color: "rgba(0,0,0,0.58)", marginTop: 28, textAlign: "center" }}>
-          Planning your own wedding?{" "}
-          <a href="https://aidowedding.net" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>
-            Try A.IDO free
-          </a>
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex flex-col items-center py-10 px-4" style={{ background: PAGE_BG, backgroundImage: PAGE_BG_PATTERN, backgroundSize: PAGE_BG_PATTERN ? "22px 22px" : undefined }}>
 
@@ -280,12 +228,12 @@ export default function SaveTheDate() {
           </div>
 
           {/* "Save the Date" label */}
-          <p style={{ fontFamily: jakarta, fontSize: 11, fontWeight: 700, letterSpacing: "0.42em", textTransform: "uppercase", color: GOLD, margin: "0 0 10px" }}>
+          <p style={{ fontFamily: LABEL_FONT, fontSize: 11 * sc, fontWeight: 700, letterSpacing: "0.42em", textTransform: "uppercase", color: GOLD, margin: "0 0 10px" }}>
             Save the Date
           </p>
 
           {/* Couple name */}
-          <h1 style={{ fontFamily: SERIF, fontSize: "2.1rem", fontWeight: 400, fontStyle: "italic", color: GOLD, lineHeight: 1.2, margin: "0 0 16px" }}>
+          <h1 style={{ fontFamily: SERIF, fontSize: `${2.1 * sc}rem`, fontWeight: 400, fontStyle: "italic", color: GOLD, lineHeight: 1.2, margin: "0 0 16px" }}>
             {coupleText}
           </h1>
 
@@ -294,24 +242,24 @@ export default function SaveTheDate() {
 
           {/* Date */}
           {dateText && (
-            <p style={{ fontFamily: jakarta, fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: WHITE, margin: "0 0 10px" }}>
+            <p style={{ fontFamily: LABEL_FONT, fontSize: 11 * sc, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: WHITE, margin: "0 0 10px" }}>
               {dateText}
             </p>
           )}
 
           {venueCityStateZip && (
-            <p style={{ fontFamily: jakarta, fontSize: 11, color: WHITE, margin: "3px 0 0" }}>{venueCityStateZip}</p>
+            <p style={{ fontFamily: LABEL_FONT, fontSize: 11 * sc, color: WHITE, margin: "3px 0 0" }}>{venueCityStateZip}</p>
           )}
 
           {/* Message */}
           {msgText && (
-            <p style={{ fontFamily: SERIF, fontSize: "1rem", fontStyle: "italic", color: WHITE, lineHeight: 1.7, margin: "16px 0 0" }}>
+            <p style={{ fontFamily: SERIF, fontSize: `${1 * sc}rem`, fontStyle: "italic", color: WHITE, lineHeight: 1.7, margin: "16px 0 0" }}>
               &ldquo;{msgText}&rdquo;
             </p>
           )}
 
           {/* Formal invitation to follow */}
-          <p style={{ fontFamily: SERIF, fontSize: 13, fontStyle: "italic", color: MUTED, margin: "14px 0 0" }}>
+          <p style={{ fontFamily: SERIF, fontSize: 13 * sc, fontStyle: "italic", color: MUTED, margin: "14px 0 0" }}>
             Formal invitation to follow
           </p>
 
@@ -323,16 +271,16 @@ export default function SaveTheDate() {
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
                 background: `${GOLD}1a`, border: `1px solid ${CARD_BDR}`,
-                color: MUTED, fontFamily: jakarta, fontSize: 10, fontWeight: 600,
+                color: MUTED, fontFamily: LABEL_FONT, fontSize: 10 * sc, fontWeight: 600,
                 letterSpacing: "0.18em", textTransform: "uppercase",
                 padding: "8px 20px", borderRadius: 6, cursor: "pointer",
                 opacity: downloadingPdf ? 0.5 : 1,
               }}
             >
               {downloadingPdf ? (
-                <><Loader2 style={{ width: 11, height: 11 }} className="animate-spin" /> Generating PDF…</>
+                <><Loader2 style={{ width: Math.round(11 * sc), height: Math.round(11 * sc) }} className="animate-spin" /> Generating PDF…</>
               ) : (
-                <><Download style={{ width: 11, height: 11 }} /> Download as PDF</>
+                <><Download style={{ width: Math.round(11 * sc), height: Math.round(11 * sc) }} /> Download as PDF</>
               )}
             </button>
           </div>

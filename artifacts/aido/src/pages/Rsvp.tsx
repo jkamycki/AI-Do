@@ -77,6 +77,9 @@ interface RsvpInfo {
   backgroundColor: string | null;
   font: string | null;
   layout: string | null;
+  // Independent per-invitation accent / font color (may differ from STD accent)
+  accentColor: string | null;
+  fontColor: string | null;
 }
 
 function formatTime(timeStr: string | null | undefined) {
@@ -177,15 +180,23 @@ export default function Rsvp() {
   // Pull the planner's custom design colours through to the public RSVP page —
   // background and accent come from the saved customization; text/muted/border
   // are derived from background lightness so contrast is correct on light or dark.
+  const isCustomMode = !!(info?.backgroundColor);
   const BG = info?.backgroundColor || DEFAULT_BG;
-  // In AI mode (no custom background) pin all gold accents to the brand gold
-  // so every accent element matches the couple name. In custom mode, fall back
-  // to the user's palette primary.
-  const GOLD = info?.backgroundColor ? (info?.colorPalette?.primary || DEFAULT_GOLD) : DEFAULT_GOLD;
+  // Use the invitation's own accent color when set; fall back to palette primary,
+  // then brand gold. This mirrors AiDigitalInvitationPreview which uses
+  // customColors.accent = digitalInvitationAccentColor.
+  const GOLD = isCustomMode
+    ? (info?.accentColor || info?.colorPalette?.primary || DEFAULT_GOLD)
+    : DEFAULT_GOLD;
   const COUPLE_COLOR = GOLD;
   const _bgIsLight = isLightHex(BG);
-  const WHITE = _bgIsLight ? "#1a1a1a" : "#ffffff";
-  const MUTED = _bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)";
+  // In custom mode use the saved font color when available, otherwise derive from bg.
+  const WHITE = (isCustomMode && info?.fontColor)
+    ? info.fontColor
+    : (_bgIsLight ? "#1a1a1a" : "#ffffff");
+  const MUTED = (isCustomMode && info?.fontColor)
+    ? info.fontColor + "99"
+    : (_bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)");
   const CARD_BDR = _bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)";
   const DOT_PAT = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
   // Page sits *behind* the card. Always light grey so the card colour
