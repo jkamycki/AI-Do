@@ -501,11 +501,11 @@ export default function Rsvp() {
                           onClick={() => field.onChange("attending")}
                           className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all"
                           style={field.value === "attending"
-                            ? { borderColor: "#22c55e", background: "rgba(34,197,94,0.12)", color: "#86efac" }
-                            : { borderColor: "rgba(255,255,255,0.22)", background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.75)" }
+                            ? { borderColor: "#22c55e", background: "rgba(34,197,94,0.12)", color: "#22c55e" }
+                            : { borderColor: CARD_BDR, background: _bgIsLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.08)", color: MUTED }
                           }
                         >
-                          <CheckCircle2 className="h-7 w-7" style={{ color: field.value === "attending" ? "#4ade80" : "rgba(255,255,255,0.5)" }} />
+                          <CheckCircle2 className="h-7 w-7" style={{ color: field.value === "attending" ? "#4ade80" : MUTED }} />
                           <span className="font-semibold text-sm">Joyfully Accepts</span>
                         </button>
                         <button
@@ -513,11 +513,11 @@ export default function Rsvp() {
                           onClick={() => field.onChange("declined")}
                           className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all"
                           style={field.value === "declined"
-                            ? { borderColor: "#ef4444", background: "rgba(239,68,68,0.12)", color: "#fca5a5" }
-                            : { borderColor: "rgba(255,255,255,0.22)", background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.75)" }
+                            ? { borderColor: "#ef4444", background: "rgba(239,68,68,0.12)", color: "#ef4444" }
+                            : { borderColor: CARD_BDR, background: _bgIsLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.08)", color: MUTED }
                           }
                         >
-                          <XCircle className="h-7 w-7" style={{ color: field.value === "declined" ? "#f87171" : "rgba(255,255,255,0.5)" }} />
+                          <XCircle className="h-7 w-7" style={{ color: field.value === "declined" ? "#f87171" : MUTED }} />
                           <span className="font-semibold text-sm">Declines with Regrets</span>
                         </button>
                       </div>
@@ -534,7 +534,7 @@ export default function Rsvp() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="flex items-center gap-2" style={{ color: MUTED, fontFamily: jakarta }}>
-                            <User className="h-3.5 w-3.5" style={{ color: "rgba(255,255,255,0.3)" }} />
+                            <User className="h-3.5 w-3.5" style={{ color: MUTED }} />
                             Your Meal Selection
                           </FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
@@ -639,7 +639,7 @@ export default function Rsvp() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="flex items-center gap-2" style={{ color: MUTED, fontFamily: jakarta }}>
-                                  <User className="h-3.5 w-3.5" style={{ color: "rgba(255,255,255,0.3)" }} />
+                                  <User className="h-3.5 w-3.5" style={{ color: MUTED }} />
                                   Plus-one Meal Selection
                                 </FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
