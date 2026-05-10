@@ -290,6 +290,11 @@ export default function WebsiteEditor() {
   const recordRef = useRef<WebsiteRecord | null>(null);
   useEffect(() => { recordRef.current = record; }, [record]);
 
+  // Mirror dirty into a ref so the beforeunload handler (which runs outside
+  // React's lifecycle) can read the current dirty state synchronously.
+  const dirtyRef = useRef(false);
+  useEffect(() => { dirtyRef.current = dirty; }, [dirty]);
+
   // Bumps on every user edit so saveNow can detect "user typed while POST was
   // in flight" and avoid clobbering those edits with the server's response.
   const editSeqRef = useRef(0);
@@ -529,6 +534,24 @@ export default function WebsiteEditor() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record?.id]);
+
+  // Fire a best-effort save when the user closes the tab or navigates away
+  // while there are unsaved changes. sendBeacon is used because it survives
+  // page unload; the localStorage backup also covers the case where the
+  // beacon fails (replayed on next mount).
+  useEffect(() => {
+    const onUnload = () => {
+      if (!dirtyRef.current || !recordRef.current) return;
+      flushPendingEditableCommits();
+      // Fire-and-forget via saveNow — React state updates won't apply but
+      // the network request still goes out. localStorage backup is the
+      // safety net if the tab closes before the response arrives.
+      saveNow(true);
+    };
+    window.addEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("beforeunload", onUnload);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Autosave: ~1s after the last change so anything the user typed reaches
   // the server almost immediately and the explicit Save button is a no-op
@@ -1022,11 +1045,11 @@ export default function WebsiteEditor() {
                   onClick={(e) => {
                     // Flush and save before opening the published site so the
                     // visitor sees the latest edits rather than a stale snapshot.
-                    if (dirty) {
-                      e.preventDefault();
-                      flushPendingEditableCommits();
-                      saveNow(true).then(() => window.open(publicUrl, "_blank"));
-                    }
+                    // requestAnimationFrame waits one paint so flushPendingEditableCommits'
+                    // state update lands in recordRef before saveNow reads it.
+                    e.preventDefault();
+                    flushPendingEditableCommits();
+                    requestAnimationFrame(() => saveNow(true).then(() => window.open(publicUrl, "_blank")));
                   }}
                 >
                   {publicUrl}
@@ -2258,7 +2281,10 @@ export default function WebsiteEditor() {
               {record.published && (
                 <button
                   className="text-xs text-primary hover:underline"
-                  onClick={() => window.open(publicUrl, "_blank")}
+                  onClick={() => {
+                    flushPendingEditableCommits();
+                    requestAnimationFrame(() => saveNow(true).then(() => window.open(publicUrl, "_blank")));
+                  }}
                 >
                   Open live site ↗
                 </button>
