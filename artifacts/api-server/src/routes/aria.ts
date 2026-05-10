@@ -1814,8 +1814,23 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     // Groq llama-3.1-8b-instant has a 20K TPM budget — plenty for the
     // system prompt + tools schema (~3,700 tok) + history + 600 output tokens.
     const recent = messages.slice(-6);
+
+    // Detect when the user is responding to the vendor gathering question.
+    // The small model often re-asks the question when the user provides an
+    // unconventional name (lowercase, numbers, short words like "test 101").
+    // Injecting explicit context breaks the loop reliably without touching
+    // the system prompt character budget for every other request.
+    const lastAssistantInRecent = [...recent].reverse().find(m => m.role === "assistant");
+    const lastAssistantText = typeof lastAssistantInRecent?.content === "string" ? lastAssistantInRecent.content : "";
+    const prevWasGatheringQuestion = /What'?s the vendor'?s name|vendor'?s name and category/i.test(lastAssistantText);
+    const lastUserMsgForContext = [...messages].reverse().find(m => m.role === "user");
+    const lastUserTextForContext = typeof lastUserMsgForContext?.content === "string" ? lastUserMsgForContext.content.trim() : "";
+    const gatheringFollowUpHint = prevWasGatheringQuestion && lastUserTextForContext.length > 0 && lastUserTextForContext.length <= 200
+      ? `\n\nCURRENT CONTEXT — VENDOR NAME PROVIDED: The user just answered your gathering question. Their message "${lastUserTextForContext}" IS their vendor's name (and possibly category/cost). Accept it immediately. Proceed to Turn 3 of CASE B: write a one-line summary in present/future tense and end with 'Reply "yes" to save.' Do NOT ask the gathering question again.`
+      : "";
+
     const convo: Array<Record<string, unknown>> = [
-      { role: "system", content: SYSTEM_PROMPT + langInstruction },
+      { role: "system", content: SYSTEM_PROMPT + langInstruction + gatheringFollowUpHint },
       ...recent,
     ];
     const performedActions: ActionRecord[] = [];
