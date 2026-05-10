@@ -1792,7 +1792,18 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 
       {items.length > 0 && (
         <div className="max-w-2xl mx-auto space-y-5">
-          {items.map((it, i) => (
+          {items.map((it, i) => {
+            const qColor  = data.customText._faqQuestionColor || data.colorPalette.primary;
+            const qFamily = data.customText._faqQuestionFont  ? bodyFontStack(data.customText._faqQuestionFont) : bodyFontStack(bodyFont(data));
+            const qSize   = data.customText._faqQuestionSize  ? `${data.customText._faqQuestionSize}px` : undefined;
+            const qWeight = data.customText._faqQuestionBold === "true" ? "700" : "600";
+            const qStyle  = data.customText._faqQuestionItalic === "true" ? "italic" : "normal";
+            const aColor  = data.customText._faqAnswerColor || data.colorPalette.text;
+            const aFamily = data.customText._faqAnswerFont  ? bodyFontStack(data.customText._faqAnswerFont) : bodyFontStack(bodyFont(data));
+            const aSize   = data.customText._faqAnswerSize  ? `${data.customText._faqAnswerSize}px` : undefined;
+            const aWeight = data.customText._faqAnswerBold === "true" ? "700" : "400";
+            const aStyle  = data.customText._faqAnswerItalic === "true" ? "italic" : "normal";
+            return (
             <div
               key={i}
               className="text-left rounded-xl px-5 py-5 sm:px-6 sm:py-6"
@@ -1814,22 +1825,23 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   {String(i + 1).padStart(2, "0")}
                 </div>
                 <h3
-                  className="text-base sm:text-lg font-semibold leading-snug pt-1"
-                  style={{ color: data.colorPalette.primary, fontFamily: bodyFontStack(bodyFont(data)) }}
+                  className="leading-snug pt-1"
+                  style={{ color: qColor, fontFamily: qFamily, fontSize: qSize, fontWeight: qWeight, fontStyle: qStyle }}
                 >
                   {it.question}
                 </h3>
               </div>
               {it.answer && (
                 <p
-                  className="text-sm sm:text-base leading-relaxed whitespace-pre-line pl-11"
-                  style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)), opacity: 0.85 }}
+                  className="leading-relaxed whitespace-pre-line pl-11"
+                  style={{ color: aColor, fontFamily: aFamily, fontSize: aSize, fontWeight: aWeight, fontStyle: aStyle, opacity: 0.85 }}
                 >
                   {it.answer}
                 </p>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

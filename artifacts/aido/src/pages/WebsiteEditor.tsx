@@ -770,6 +770,9 @@ export default function WebsiteEditor() {
       "_welcomeBg", "_sectionsBg",
       "_storyBg", "_scheduleBg", "_travelBg", "_registryBg",
       "_weddingPartyBg", "_galleryBg", "_faqBg", "_rsvpBg",
+      // FAQ per-element style overrides
+      "_faqQuestionFont", "_faqQuestionSize", "_faqQuestionColor", "_faqQuestionBold", "_faqQuestionItalic",
+      "_faqAnswerFont", "_faqAnswerSize", "_faqAnswerColor", "_faqAnswerBold", "_faqAnswerItalic",
     ];
     const nextCustomText: Record<string, string> = { ...(record?.customText ?? {}) };
     for (const k of RESET_KEYS) delete nextCustomText[k];
@@ -1489,6 +1492,75 @@ export default function WebsiteEditor() {
               </div>
             );
           })()}
+        </Section>}
+
+        {/* FAQ style — font, size, color, bold/italic for questions and answers */}
+        {inTab("pages") && record.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title="FAQ Style">
+          {(["question", "answer"] as const).map((part) => {
+            const fontKey  = part === "question" ? "_faqQuestionFont"   : "_faqAnswerFont";
+            const sizeKey  = part === "question" ? "_faqQuestionSize"   : "_faqAnswerSize";
+            const colorKey = part === "question" ? "_faqQuestionColor"  : "_faqAnswerColor";
+            const boldKey  = part === "question" ? "_faqQuestionBold"   : "_faqAnswerBold";
+            const italicKey = part === "question" ? "_faqQuestionItalic" : "_faqAnswerItalic";
+            const defaultColor = part === "question" ? record.colorPalette.primary : record.colorPalette.text;
+            const sizeVal = record.customText[sizeKey];
+            return (
+              <div key={part} className="mb-4">
+                <p className="text-xs font-semibold mb-2 capitalize">{part}s</p>
+                <div className="space-y-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Font</Label>
+                    <select
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                      value={record.customText[fontKey] ?? ""}
+                      onChange={(e) => update({ customText: { ...record.customText, [fontKey]: e.target.value } })}
+                    >
+                      <option value="">Theme default</option>
+                      {["Georgia","Playfair Display","Cormorant Garamond","Times New Roman","Plus Jakarta Sans","Inter","Lato","Montserrat","Raleway","Lora","Merriweather","Dancing Script","Cinzel"].map((f) => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">
+                      Size{sizeVal ? `: ${sizeVal}px` : " (default)"}
+                    </Label>
+                    <input
+                      type="range"
+                      min={part === "question" ? 13 : 11}
+                      max={part === "question" ? 28 : 22}
+                      value={sizeVal ?? (part === "question" ? "18" : "14")}
+                      onChange={(e) => update({ customText: { ...record.customText, [sizeKey]: e.target.value } })}
+                      className="w-full"
+                    />
+                  </div>
+                  <ColorField
+                    label="Color"
+                    value={record.customText[colorKey] || defaultColor}
+                    onChange={(v) => update({ customText: { ...record.customText, [colorKey]: v } })}
+                  />
+                  <div className="flex items-center gap-4 pt-1">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id={`faq-${part}-bold`}
+                        checked={record.customText[boldKey] === "true"}
+                        onCheckedChange={(c) => update({ customText: { ...record.customText, [boldKey]: c ? "true" : "" } })}
+                      />
+                      <Label htmlFor={`faq-${part}-bold`} className="text-xs cursor-pointer">Bold</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id={`faq-${part}-italic`}
+                        checked={record.customText[italicKey] === "true"}
+                        onCheckedChange={(c) => update({ customText: { ...record.customText, [italicKey]: c ? "true" : "" } })}
+                      />
+                      <Label htmlFor={`faq-${part}-italic`} className="text-xs cursor-pointer">Italic</Label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </Section>}
 
         {/* Inline-edit hint */}
