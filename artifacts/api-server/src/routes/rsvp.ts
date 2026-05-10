@@ -1671,6 +1671,9 @@ router.get("/save-the-date/:token", async (req, res) => {
       ceremonyZip: profile.ceremonyZip,
       saveTheDateMessage: (profile as any).saveTheDateMessage ?? null,
       hasPhoto: !!(customizationData.saveTheDatePhotoUrl || (profile as any).saveTheDatePhotoUrl),
+      photoVersion: crypto.createHash("md5")
+        .update(customizationData.saveTheDatePhotoUrl || (profile as any).saveTheDatePhotoUrl || "")
+        .digest("hex").substring(0, 8),
       // Custom design colours — null values mean "use the AI-generated dark theme"
       useGeneratedInvitation: customizationData.useGeneratedInvitation,
       customBackgroundColor: customizationData.backgroundColor,
