@@ -189,6 +189,21 @@ function bodyFontStack(font: string): string {
   return `'${font}', system-ui, -apple-system, sans-serif`;
 }
 
+function hexIsLight(hex: string): boolean {
+  const c = hex.replace("#", "");
+  if (c.length !== 6) return true;
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  return r * 0.299 + g * 0.587 + b * 0.114 > 128;
+}
+
+function sectionTextColor(data: WebsiteRendererPayload, id: string): string {
+  const bg = (id === "welcome" ? data.customText._welcomeBg : data.customText._sectionsBg)
+    || data.colorPalette.neutral;
+  return hexIsLight(bg) ? data.colorPalette.text : "#FFFFFF";
+}
+
 function imageUrl(url: string): string {
   return resolveMediaUrl(url) ?? url;
 }
@@ -754,6 +769,7 @@ function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const labelColor = sectionTextColor(data, "rsvp");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -785,7 +801,7 @@ function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx
     borderRadius: "0.5rem",
     border: `1px solid ${data.colorPalette.primary}44`,
     background: data.colorPalette.background,
-    color: data.colorPalette.text,
+    color: labelColor,
     fontSize: "0.9rem",
     outline: "none",
     fontFamily: "inherit",
@@ -800,11 +816,11 @@ function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx
         defaultValue="We'd love to know if you can make it"
         onCommit={(v) => ctx.onTextChange("rsvp_subtitle", v)}
         className="block text-center text-3xl sm:text-4xl mb-10"
-        style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+        style={{ fontFamily: fontStack(headingFont(data)), color: labelColor }}
         {...tsp(ctx, "rsvp_subtitle")}
       />
       {(ctx.editable || data.customText.rsvp_deadline) && (
-        <p className="text-center text-sm mb-8 opacity-70" style={{ color: data.colorPalette.text }}>
+        <p className="text-center text-sm mb-8 opacity-70" style={{ color: labelColor }}>
           Please RSVP by{" "}
           <EditableText
             as="span"
@@ -813,19 +829,19 @@ function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx
             defaultValue="(tap to add a date)"
             onCommit={(v) => ctx.onTextChange("rsvp_deadline", v)}
             className="font-semibold"
-            style={{ color: data.colorPalette.text }}
+            style={{ color: labelColor }}
             {...tsp(ctx, "rsvp_deadline")}
           />
         </p>
       )}
       {ctx.editable ? (
-        <p className="text-center text-sm opacity-60 py-8" style={{ color: data.colorPalette.text }}>
+        <p className="text-center text-sm opacity-60 py-8" style={{ color: labelColor }}>
           RSVP form will appear here for guests on the published site.
         </p>
       ) : done ? (
         <div className="flex flex-col items-center gap-4 py-10">
           <CheckCircle2 className="h-12 w-12" style={{ color: data.colorPalette.primary }} />
-          <p className="text-xl font-medium text-center" style={{ color: data.colorPalette.text, fontFamily: fontStack(headingFont(data)) }}>
+          <p className="text-xl font-medium text-center" style={{ color: labelColor, fontFamily: fontStack(headingFont(data)) }}>
             {attending === "no" ? "We're sorry you can't make it 💙" : "Thank you! We can't wait to celebrate with you!"}
           </p>
           <EditableText
@@ -835,24 +851,24 @@ function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx
             defaultValue="We'll send you more details closer to the day."
             onCommit={() => {}}
             className="text-sm text-center max-w-sm"
-            style={{ color: data.colorPalette.text, opacity: 0.75 }}
+            style={{ color: labelColor, opacity: 0.75 }}
           />
         </div>
       ) : (
         <form onSubmit={submit} className="max-w-lg mx-auto space-y-4">
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: data.colorPalette.text }}>Name *</label>
+              <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: labelColor }}>Name *</label>
               <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: data.colorPalette.text }}>Email</label>
+              <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: labelColor }}>Email</label>
               <input style={inputStyle} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium mb-2 opacity-70" style={{ color: data.colorPalette.text }}>Will you attend?</label>
+            <label className="block text-xs font-medium mb-2 opacity-70" style={{ color: labelColor }}>Will you attend?</label>
             <div className="flex gap-2">
               {(["yes", "no", "maybe"] as const).map((opt) => (
                 <button
@@ -875,7 +891,7 @@ function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx
           {attending !== "no" && (
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: data.colorPalette.text }}>Additional guests</label>
+                <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: labelColor }}>Additional guests</label>
                 <select style={inputStyle} value={plusOne} onChange={(e) => setPlusOne(Number(e.target.value))}>
                   {[0,1,2,3,4,5].map((n) => (
                     <option key={n} value={n}>{n === 0 ? "Just me" : `+${n} guest${n > 1 ? "s" : ""}`}</option>
@@ -883,14 +899,14 @@ function RsvpSection({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: data.colorPalette.text }}>Dietary restrictions</label>
+                <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: labelColor }}>Dietary restrictions</label>
                 <input style={inputStyle} value={dietary} onChange={(e) => setDietary(e.target.value)} placeholder="Vegetarian, gluten-free…" />
               </div>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: data.colorPalette.text }}>Message to the couple (optional)</label>
+            <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: labelColor }}>Message to the couple (optional)</label>
             <textarea
               style={{ ...inputStyle, resize: "vertical", minHeight: "80px" }}
               value={message}
@@ -1325,7 +1341,7 @@ function CustomTextBoxes({ data, ctx, currentSection, showAll }: {
               style={{
                 display: "inline-block",
                 background: "transparent",
-                color: data.colorPalette.text,
+                color: sectionTextColor(data, currentSection),
                 padding: "6px 14px",
                 borderRadius: 8,
                 fontSize: 18,
@@ -1414,6 +1430,7 @@ function Welcome({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
   // editor's Preview popup, also render so the user can verify the layout.
   // On the published site, hide an empty section from guests.
   if (!text && !ctx.editable && !ctx.previewMode) return null;
+  const labelColor = sectionTextColor(data, "welcome");
   return (
     <SectionShell id="welcome" titleKey="welcome_title" defaultTitle="Welcome" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx}>
       <EditableText
@@ -1424,7 +1441,7 @@ function Welcome({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         defaultValue={(ctx.editable || ctx.previewMode) ? "Click to write a warm welcome for your guests..." : ""}
         onCommit={(v) => ctx.onTextChange("welcome", v)}
         className="text-center text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
-        style={{ color: data.customText._welcomeColor || data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+        style={{ color: data.customText._welcomeColor || labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}
         {...tsp(ctx, "welcome")}
       />
     </SectionShell>
@@ -1436,6 +1453,7 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   // The section is gated by sectionsEnabled.story upstream; if the user
   // enabled it, render it everywhere — editor, preview, and published —
   // so the layout is consistent even before the body has been filled in.
+  const labelColor = sectionTextColor(data, "story");
   return (
     <SectionShell id="story" titleKey="story_title" defaultTitle="Our Story" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx} tall>
       <EditableText
@@ -1445,7 +1463,7 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         defaultValue="How we got here"
         onCommit={(v) => ctx.onTextChange("story_subtitle", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
-        style={{ fontFamily: elementFontStack(data, "story_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "story_subtitle", headingFont(data), "heading"), color: labelColor }}
         {...tsp(ctx, "story_subtitle")}
       />
       <EditableText
@@ -1456,7 +1474,7 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         defaultValue={(ctx.editable || ctx.previewMode) ? "Tell guests how you two met, your story, your journey..." : ""}
         onCommit={(v) => ctx.onTextChange("story", v)}
         className="text-center text-base sm:text-lg leading-relaxed mx-auto px-4 whitespace-pre-line break-words"
-        style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)), maxWidth: "min(48rem, 100%)" }}
+        style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)), maxWidth: "min(48rem, 100%)" }}
         {...tsp(ctx, "story")}
       />
     </SectionShell>
@@ -1476,6 +1494,7 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
   const items = allItems.filter((i) => data.customText[i.hiddenKey] !== EDITABLE_HIDDEN_MARKER);
   const visibleItems = ctx.editable ? items : items.filter((i) => i.time);
   if (!ctx.editable && visibleItems.length === 0 && !customSchedule) return null;
+  const labelColor = sectionTextColor(data, "schedule");
   return (
     <SectionShell id="schedule" titleKey="schedule_title" defaultTitle="Schedule" icon={<Clock className="h-4 w-4" />} data={data} ctx={ctx}>
       <div className="max-w-2xl mx-auto">
@@ -1505,9 +1524,6 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
                   className="w-28 text-sm font-medium px-3 py-1.5 rounded-md"
                   style={{
                     color: data.colorPalette.primary,
-                    // When the time isn't filled in yet, show the slot as a
-                    // dashed "Add time" box in editor mode so users see
-                    // exactly where to click. Hidden on the public site.
                     border: ctx.editable && !hasTime ? `1px dashed ${data.colorPalette.primary}66` : "none",
                     background: ctx.editable && !hasTime ? `${data.colorPalette.primary}08` : "transparent",
                   }}
@@ -1520,7 +1536,7 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
                     {...tspStyle(ctx, it.key)}
                   />
                 </div>
-                <div className="flex-1 text-base" style={{ color: data.colorPalette.text }}>
+                <div className="flex-1 text-base" style={{ color: labelColor }}>
                   <EditableText
                     editable={ctx.editable}
                     value={data.customText[it.labelKey] ?? ""}
@@ -1542,7 +1558,7 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
           defaultValue={ctx.editable ? "Add any extra schedule notes — dress code, parking, after-party, etc." : ""}
           onCommit={(v) => ctx.onTextChange("schedule", v)}
           className="text-center text-base sm:text-lg leading-relaxed whitespace-pre-line"
-          style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+          style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}
           {...tsp(ctx, "schedule")}
         />
       </div>
@@ -1556,6 +1572,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const hotelAddress = (data.customText._hotelAddress ?? "").trim();
   const hasHotel = !!hotelName;
   if (!text && !data.couple.venue && !hasHotel && !ctx.editable) return null;
+  const labelColor = sectionTextColor(data, "travel");
 
   const venueQuery = encodeURIComponent(
     [data.couple.venue, data.couple.venueCity, data.couple.venueState, data.couple.location].filter(Boolean).join(", "),
@@ -1588,7 +1605,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         defaultValue="Where & how to get there"
         onCommit={(v) => ctx.onTextChange("travel_subtitle", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
-        style={{ fontFamily: elementFontStack(data, "travel_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "travel_subtitle", headingFont(data), "heading"), color: labelColor }}
         {...tsp(ctx, "travel_subtitle")}
       />
 
@@ -1609,11 +1626,11 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   textStyle={data.textStyles?._travelVenueLabel}
                   onStyleChange={ctx.onStyleChange ? (s) => ctx.onStyleChange!("_travelVenueLabel", s) : undefined}
                   className="text-[11px] uppercase tracking-wider opacity-70"
-                  style={{ color: data.colorPalette.text }}
+                  style={{ color: labelColor }}
                 />
-                <div className="text-base sm:text-lg font-medium" style={{ color: data.colorPalette.text }}>{data.couple.venue}</div>
+                <div className="text-base sm:text-lg font-medium" style={{ color: labelColor }}>{data.couple.venue}</div>
                 {data.couple.location && (
-                  <div className="text-sm opacity-75" style={{ color: data.colorPalette.text }}>{data.couple.location}</div>
+                  <div className="text-sm opacity-75" style={{ color: labelColor }}>{data.couple.location}</div>
                 )}
               </div>
             </div>
@@ -1646,7 +1663,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   textStyle={data.textStyles?._travelHotelLabel}
                   onStyleChange={ctx.onStyleChange ? (s) => ctx.onStyleChange!("_travelHotelLabel", s) : undefined}
                   className="text-[11px] uppercase tracking-wider opacity-70"
-                  style={{ color: data.colorPalette.text }}
+                  style={{ color: labelColor }}
                 />
                 <EditableText
                   as="div"
@@ -1655,7 +1672,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   defaultValue={ctx.editable ? "Hotel name" : ""}
                   onCommit={(v) => ctx.onTextChange("_hotelName", v)}
                   className="text-base sm:text-lg font-medium"
-                  style={{ color: data.colorPalette.text }}
+                  style={{ color: labelColor }}
                   {...tsp(ctx, "_hotelName")}
                 />
                 <EditableText
@@ -1665,7 +1682,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   defaultValue={ctx.editable ? "Address (street, city, state)" : ""}
                   onCommit={(v) => ctx.onTextChange("_hotelAddress", v)}
                   className="text-sm opacity-75"
-                  style={{ color: data.colorPalette.text }}
+                  style={{ color: labelColor }}
                   {...tsp(ctx, "_hotelAddress")}
                 />
               </div>
@@ -1695,7 +1712,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           defaultValue={ctx.editable ? "Add parking info, directions, or other travel notes…" : ""}
           onCommit={(v) => ctx.onTextChange("travel", v)}
           className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
-          style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+          style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}
           {...tsp(ctx, "travel")}
         />
       )}
@@ -1704,6 +1721,8 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 }
 
 function Registry({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
+
+  const labelColor = sectionTextColor(data, "registry");
   const text = data.customText.registry ?? "";
   const links = parseRegistryLinks(data.customText._registryLinks);
   if (!text && links.length === 0 && !ctx.editable) return null;
@@ -1716,7 +1735,7 @@ function Registry({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
         defaultValue="With love"
         onCommit={(v) => ctx.onTextChange("registry_subtitle", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
-        style={{ fontFamily: elementFontStack(data, "registry_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "registry_subtitle", headingFont(data), "heading"), color: labelColor }}
         {...tsp(ctx, "registry_subtitle")}
       />
       {links.length > 0 && (
@@ -1750,7 +1769,7 @@ function Registry({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
           defaultValue={ctx.editable ? "Add a note about your registry or gift preferences..." : ""}
           onCommit={(v) => ctx.onTextChange("registry", v)}
           className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
-          style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+          style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}
           {...tsp(ctx, "registry")}
         />
       )}
@@ -1762,7 +1781,9 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   type FaqItem = { question: string; answer: string };
   let items: FaqItem[] = [];
   try {
-    const raw = data.customText.faq_items_json;
+  
+  const labelColor = sectionTextColor(data, "faq");
+  const raw = data.customText.faq_items_json;
     if (raw) {
       const parsed = JSON.parse(raw) as FaqItem[];
       if (Array.isArray(parsed)) {
@@ -1786,7 +1807,7 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         defaultValue="Good to know"
         onCommit={(v) => ctx.onTextChange("faq_subtitle", v)}
         className="block text-center text-3xl sm:text-4xl mb-8"
-        style={{ fontFamily: elementFontStack(data, "faq_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "faq_subtitle", headingFont(data), "heading"), color: labelColor }}
         {...tsp(ctx, "faq_subtitle")}
       />
 
@@ -1798,7 +1819,7 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             const qSize   = data.customText._faqQuestionSize  ? `${data.customText._faqQuestionSize}px` : undefined;
             const qWeight = data.customText._faqQuestionBold === "true" ? "700" : "600";
             const qStyle  = data.customText._faqQuestionItalic === "true" ? "italic" : "normal";
-            const aColor  = data.customText._faqAnswerColor || data.colorPalette.text;
+            const aColor  = data.customText._faqAnswerColor || labelColor;
             const aFamily = data.customText._faqAnswerFont  ? bodyFontStack(data.customText._faqAnswerFont) : bodyFontStack(bodyFont(data));
             const aSize   = data.customText._faqAnswerSize  ? `${data.customText._faqAnswerSize}px` : undefined;
             const aWeight = data.customText._faqAnswerBold === "true" ? "700" : "400";
@@ -1854,7 +1875,7 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           defaultValue=""
           onCommit={(v) => ctx.onTextChange("faq", v)}
           className="text-center text-base sm:text-lg leading-relaxed max-w-2xl mx-auto whitespace-pre-line"
-          style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}
+          style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}
           {...tsp(ctx, "faq")}
         />
       )}
@@ -1869,6 +1890,8 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 }
 
 function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
+
+  const labelColor = sectionTextColor(data, "gallery");
   const images = (data.galleryImages ?? []).slice().sort((a, b) => a.order - b.order);
   const photoFilter = photoFilterCss(data.customText._photoFilter);
   const animation = data.customText._galleryAnimation ?? "grid";
@@ -1951,7 +1974,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         textStyle={data.textStyles?.[styleKey]}
         onStyleChange={ctx.onStyleChange ? (s) => ctx.onStyleChange!(styleKey, s) : undefined}
         className="text-sm text-center px-1"
-        style={{ color: captionStyle.color ?? data.colorPalette.text, opacity: 0.75 }}
+        style={{ color: captionStyle.color ?? labelColor, opacity: 0.75 }}
       />
     );
   };
@@ -1972,7 +1995,7 @@ function Gallery({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) 
         defaultValue="Moments"
         onCommit={(v) => ctx.onTextChange("gallery_subtitle", v)}
         className="block text-center text-3xl sm:text-4xl mb-10"
-        style={{ fontFamily: elementFontStack(data, "gallery_subtitle", headingFont(data), "heading"), color: data.colorPalette.text }}
+        style={{ fontFamily: elementFontStack(data, "gallery_subtitle", headingFont(data), "heading"), color: labelColor }}
         {...tsp(ctx, "gallery_subtitle")}
       />
       {animation === "marquee" && images.length > 0 ? (
@@ -2127,7 +2150,7 @@ export function parseWeddingPartyMembers(raw: string | undefined): WeddingPartyM
   }
 }
 
-function PartyMemberCard({ data, member }: { data: WebsiteRendererPayload; member: WeddingPartyMember }) {
+function PartyMemberCard({ data, member, labelColor }: { data: WebsiteRendererPayload; member: WeddingPartyMember; labelColor: string }) {
   return (
     <div className="flex flex-col items-center text-center">
       <div
@@ -2149,7 +2172,7 @@ function PartyMemberCard({ data, member }: { data: WebsiteRendererPayload; membe
       <div className="text-2xl sm:text-3xl mb-1" style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}>
         {member.name || "Name"}
       </div>
-      <div className="text-sm opacity-80" style={{ color: data.colorPalette.text, fontFamily: bodyFontStack(bodyFont(data)) }}>
+      <div className="text-sm opacity-80" style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}>
         {member.role || "Role"}
       </div>
     </div>
@@ -2158,6 +2181,8 @@ function PartyMemberCard({ data, member }: { data: WebsiteRendererPayload; membe
 
 function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   // Portal party members take precedence over manually-entered ones
+
+  const labelColor = sectionTextColor(data, "weddingParty");
   const rawMembers: WeddingPartyMember[] = data.portalParty && data.portalParty.length > 0
     ? data.portalParty.map((m) => ({
         photo: m.photoUrl ?? "",
@@ -2222,11 +2247,11 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
         defaultValue="Meet our family & friends standing with us"
         onCommit={(v) => ctx.onTextChange("weddingParty_subtitle", v)}
         className="block text-center text-base sm:text-lg max-w-2xl mx-auto mb-12 opacity-80"
-        style={{ color: data.colorPalette.text, fontFamily: elementFontStack(data, "weddingParty_subtitle", bodyFont(data), "body") }}
+        style={{ color: labelColor, fontFamily: elementFontStack(data, "weddingParty_subtitle", bodyFont(data), "body") }}
         {...tsp(ctx, "weddingParty_subtitle")}
       />
       {members.length === 0 ? (
-        <p className="text-center text-sm opacity-60" style={{ color: data.colorPalette.text }}>
+        <p className="text-center text-sm opacity-60" style={{ color: labelColor }}>
           No wedding party members yet — add some from the sidebar.
         </p>
       ) : (
@@ -2237,7 +2262,7 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
               <div className="md:pr-12 md:border-r" style={{ borderColor: `${data.colorPalette.primary}33` }}>
                 <h3
                   className="text-center text-2xl sm:text-3xl mb-10"
-                  style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+                  style={{ fontFamily: fontStack(headingFont(data)), color: labelColor }}
                 >
                   <EditableText
                     editable={ctx.editable}
@@ -2247,13 +2272,13 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
                   />
                 </h3>
                 {groomSide.length === 0 ? (
-                  <p className="text-center text-xs opacity-50" style={{ color: data.colorPalette.text }}>
+                  <p className="text-center text-xs opacity-50" style={{ color: labelColor }}>
                     {ctx.editable ? "Add members from the sidebar with side set to “Groom”" : ""}
                   </p>
                 ) : (
                   <div className={`grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10 ${oddLastGridClass}`}>
                     {groomSide.map((m, i) => (
-                      <PartyMemberCard key={`g-${i}`} data={data} member={m} />
+                      <PartyMemberCard key={`g-${i}`} data={data} member={m} labelColor={labelColor} />
                     ))}
                   </div>
                 )}
@@ -2263,7 +2288,7 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
               <div className="md:pl-12">
                 <h3
                   className="text-center text-2xl sm:text-3xl mb-10"
-                  style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+                  style={{ fontFamily: fontStack(headingFont(data)), color: labelColor }}
                 >
                   <EditableText
                     editable={ctx.editable}
@@ -2273,13 +2298,13 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
                   />
                 </h3>
                 {brideSide.length === 0 ? (
-                  <p className="text-center text-xs opacity-50" style={{ color: data.colorPalette.text }}>
+                  <p className="text-center text-xs opacity-50" style={{ color: labelColor }}>
                     {ctx.editable ? "Add members from the sidebar with side set to “Bride”" : ""}
                   </p>
                 ) : (
                   <div className={`grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10 ${oddLastGridClass}`}>
                     {brideSide.map((m, i) => (
-                      <PartyMemberCard key={`b-${i}`} data={data} member={m} />
+                      <PartyMemberCard key={`b-${i}`} data={data} member={m} labelColor={labelColor} />
                     ))}
                   </div>
                 )}
@@ -2291,7 +2316,7 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
             <div className="max-w-4xl mx-auto">
               <h3
                 className="text-center text-2xl sm:text-3xl mb-10"
-                style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.text }}
+                style={{ fontFamily: fontStack(headingFont(data)), color: labelColor }}
               >
                 <EditableText
                   editable={ctx.editable}
@@ -2302,7 +2327,7 @@ function WeddingParty({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCt
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
                 {familySide.map((m, i) => (
-                  <PartyMemberCard key={`f-${i}`} data={data} member={m} />
+                  <PartyMemberCard key={`f-${i}`} data={data} member={m} labelColor={labelColor} />
                 ))}
               </div>
             </div>
