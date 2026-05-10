@@ -1627,21 +1627,24 @@ router.get("/save-the-date/:token", async (req, res) => {
         const customColors = (cust.customColors ?? {}) as Record<string, string>;
         const mergedAccent = customColors.accent ?? palette.accent ?? null;
         const allOverrides = ((cust.textOverrides ?? {}) as Record<string, Record<string, unknown>>);
-        // RSVP page shows the digital invitation photo — use dig:photo position
-        // (custom mode) or digitalInvitationPhotoPosition (AI mode).
-        const aiDigPos = (cust.digitalInvitationPhotoPosition as { x?: number; y?: number } | null) ?? null;
-        const digPhotoOverride = allOverrides["dig:photo"] ?? {};
+        // This route serves the SAVE THE DATE page — prefer the save-the-date
+        // fields and only fall back to the digital invitation fields when an
+        // STD-specific value isn't set. The previous code did the opposite,
+        // so couples who customized both invites saw the digital design on
+        // their save-the-date link.
+        const stdPhotoPos = (cust.saveTheDatePhotoPosition as { x?: number; y?: number } | null) ?? null;
+        const stdPhotoOverride = allOverrides["std:photo"] ?? {};
         const ox = useGenerated
-          ? (aiDigPos?.x ?? 50)
-          : ((digPhotoOverride.objectX as number | undefined) ?? 50);
+          ? (stdPhotoPos?.x ?? 50)
+          : ((stdPhotoOverride.objectX as number | undefined) ?? stdPhotoPos?.x ?? 50);
         const oy = useGenerated
-          ? (aiDigPos?.y ?? 50)
-          : ((digPhotoOverride.objectY as number | undefined) ?? 50);
+          ? (stdPhotoPos?.y ?? 50)
+          : ((stdPhotoOverride.objectY as number | undefined) ?? stdPhotoPos?.y ?? 50);
         customizationData = {
           useGeneratedInvitation: useGenerated,
-          backgroundColor: useGenerated ? null : (cust.digitalInvitationBackground ?? cust.saveTheDateBackground ?? null),
+          backgroundColor: useGenerated ? null : (cust.saveTheDateBackground ?? cust.digitalInvitationBackground ?? null),
           accentColor: useGenerated ? null : mergedAccent,
-          fontFamily: useGenerated ? null : (cust.digitalInvitationFont ?? cust.selectedFont ?? null),
+          fontFamily: useGenerated ? null : (cust.saveTheDateFont ?? cust.digitalInvitationFont ?? cust.selectedFont ?? null),
           textOverrides: useGenerated ? {} : allOverrides,
           photoObjectPosition: `${ox}% ${oy}%`,
           saveTheDatePhotoUrl: cust.saveTheDatePhotoUrl ?? null,
