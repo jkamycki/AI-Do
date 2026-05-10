@@ -1522,7 +1522,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           cityStateZip: stdCityStateZip,
           ceremonyTimeStr,
           receptionTimeStr,
-          saveTheDateMessage: (profile as any).saveTheDateMessage ?? null,
+          saveTheDateMessage: (profile as any).saveTheDateMessage || `Mark your calendar! ${couple} are getting married and we'd love to celebrate with you.`,
           viewUrl: `${frontendOrigin}/save-the-date/${token}`,
           photoImgSrc,
           photoObjectPos: stdPhotoObjectPos,
@@ -1537,7 +1537,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           cityStateZip: stdCityStateZip,
           ceremonyTimeStr: null,
           receptionTimeStr: null,
-          saveTheDateMessage: stdOverrides["std:message"]?.text || (profile as any).saveTheDateMessage || null,
+          saveTheDateMessage: stdOverrides["std:message"]?.text || (profile as any).saveTheDateMessage || `Mark your calendar! ${couple} are getting married and we'd love to celebrate with you.`,
           viewUrl: `${frontendOrigin}/save-the-date/${token}`,
           photoImgSrc,
           photoObjectPos: stdPhotoObjectPos,
@@ -1677,7 +1677,7 @@ router.get("/save-the-date/:token", async (req, res) => {
       ceremonyCity: profile.ceremonyCity,
       ceremonyState: profile.ceremonyState,
       ceremonyZip: profile.ceremonyZip,
-      saveTheDateMessage: (profile as any).saveTheDateMessage ?? null,
+      saveTheDateMessage: (profile as any).saveTheDateMessage || (`Mark your calendar! ${[profile.partner1Name, profile.partner2Name].filter(Boolean).join(' & ')}` + " are getting married and we'd love to celebrate with you.") || null,
       hasPhoto: !!(customizationData.saveTheDatePhotoUrl || (profile as any).saveTheDatePhotoUrl),
       photoVersion: crypto.createHash("md5")
         .update(customizationData.saveTheDatePhotoUrl || (profile as any).saveTheDatePhotoUrl || "")

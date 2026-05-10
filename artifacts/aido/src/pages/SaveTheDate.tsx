@@ -114,7 +114,8 @@ export default function SaveTheDate() {
   const overrides = info?.customTextOverrides ?? {};
   const coupleText = (overrides["std:couple"]?.text as string | undefined) || couple;
   const dateText   = (overrides["std:date"]?.text as string | undefined) || weddingDateStr || "";
-  const msgText    = (overrides["std:message"]?.text as string | undefined) || info?.saveTheDateMessage || null;
+  const defaultMsg = couple ? `Mark your calendar! ${couple} are getting married and we'd love to celebrate with you.` : null;
+  const msgText    = (overrides["std:message"]?.text as string | undefined) || info?.saveTheDateMessage || defaultMsg;
   const photoPos   = info?.photoObjectPosition ?? "50% 50%";
 
   const downloadPdf = async () => {
@@ -247,17 +248,17 @@ export default function SaveTheDate() {
           <img src="/logo.png" alt="A.IDO" style={{ height: 48, width: "auto", objectFit: "contain", opacity: 0.85 }} />
         </div>
 
-        {/* Photo */}
+        {/* Photo — rendered as background-image so html2canvas captures it correctly
+            (html2canvas does not support object-fit/object-position on <img>) */}
         {info.hasPhoto && (
           <div style={{ padding: "0 20px 12px", backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
-            <img
-              src={`/api/save-the-date/${token}/photo?v=${info.photoVersion}`}
-              alt={couple}
-              crossOrigin="anonymous"
+            <div
               style={{
-                width: "100%", height: 200, objectFit: "cover",
-                objectPosition: photoPos,
-                borderRadius: 8, display: "block",
+                width: "100%", height: 200,
+                backgroundImage: `url('/api/save-the-date/${token}/photo?v=${info.photoVersion}')`,
+                backgroundSize: "cover",
+                backgroundPosition: photoPos,
+                borderRadius: 8,
                 boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
               }}
             />
