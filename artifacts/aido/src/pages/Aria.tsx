@@ -211,6 +211,7 @@ export default function Aria() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const sendingRef = useRef(false);
 
   // Load conversations on mount / when user changes
   useEffect(() => {
@@ -351,7 +352,8 @@ export default function Aria() {
 
   async function send(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || streaming) return;
+    if (!trimmed || streaming || sendingRef.current) return;
+    sendingRef.current = true;
 
     // Ensure there's an active conversation
     let convoId = activeId;
@@ -502,6 +504,7 @@ export default function Aria() {
     } finally {
       clearTimeout(timeoutId);
       setStreaming(false);
+      sendingRef.current = false;
     }
   }
 
