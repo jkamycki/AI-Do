@@ -799,7 +799,14 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       // Mirror RsvpPagePreview: the user's primary colour drives the gold
       // "accent" in the design, and body text is plain black/white that
       // contrasts the chosen background.
-      const ACCENT = !useGenerated ? (colors.primary || "#D4A017") : "#c9a97e";
+      // Prefer the per-invitation dedicated column, then the JSONB backup key,
+      // then the shared palette primary as last resort.
+      const ACCENT = !useGenerated
+        ? (customization?.digitalInvitationAccentColor
+            ?? (customization?.customColors as Record<string, string> | null)?.digitalInvitationAccent
+            ?? colors.primary
+            || "#D4A017")
+        : "#c9a97e";
       const TEXT = !useGenerated
         ? (customization?.digitalInvitationFontColor ?? (bgIsLight ? "#1a1a1a" : "#ffffff"))
         : "#e8dcc7";
@@ -1057,7 +1064,10 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         // card colour doesn't repaint the entire email body — same rule the
         // public RSVP / save-the-date pages and the other email branch follow.
         overridePageBg: bgIsLight ? "#f3f4f6" : "#1a1a1a",
-        overrideAccent: colors.primary || "#D4A017",
+        overrideAccent: customization?.digitalInvitationAccentColor
+          ?? (customization?.customColors as Record<string, string> | null)?.digitalInvitationAccent
+          ?? colors.primary
+          || "#D4A017",
         overrideText: customization?.digitalInvitationFontColor ?? (bgIsLight ? "#1a1a1a" : "#ffffff"),
         overrideMuted: bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
         overrideCardBdr: bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
@@ -1557,7 +1567,12 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           // colour doesn't repaint the entire email body — same rule the
           // public save-the-date / RSVP pages now follow.
           overridePageBg: stdBgIsLight ? "#f3f4f6" : "#1a1a1a",
-          overrideAccent: colors.accent,
+          // Prefer the per-invitation dedicated column, then the JSONB backup key
+          // (stored by the frontend as customColors.saveTheDateAccent), then the
+          // shared palette accent as last resort.
+          overrideAccent: customization?.saveTheDateAccentColor
+            ?? (customization?.customColors as Record<string, string> | null)?.saveTheDateAccent
+            ?? colors.accent,
           overrideText: customization?.saveTheDateFontColor ?? (stdBgIsLight ? "#1a1a1a" : "#ffffff"),
           overrideMuted: stdBgIsLight ? "rgba(0,0,0,0.58)" : "rgba(255,255,255,0.58)",
           overrideCardBdr: stdBgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
@@ -1630,7 +1645,14 @@ router.get("/save-the-date/:token", async (req, res) => {
         const useGenerated = cust.useGeneratedInvitation !== false;
         const palette = (cust.colorPalette ?? {}) as Record<string, string>;
         const customColors = (cust.customColors ?? {}) as Record<string, string>;
-        const mergedAccent = customColors.accent ?? palette.accent ?? null;
+        // Prefer the per-invitation dedicated column, then the JSONB backup key,
+        // then the shared accent as last resort.
+        const mergedAccent =
+          (cust.saveTheDateAccentColor)
+          ?? customColors.saveTheDateAccent
+          ?? customColors.accent
+          ?? palette.accent
+          ?? null;
         const allOverrides = ((cust.textOverrides ?? {}) as Record<string, Record<string, unknown>>);
         // This route serves the SAVE THE DATE page — prefer the save-the-date
         // fields and only fall back to the digital invitation fields when an
