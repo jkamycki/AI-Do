@@ -9,6 +9,14 @@
       "source": "/api/(.*)",
       "destination": "https://ai-do.onrender.com/api/$1"
     },
+    {
+      "source": "/invite/rsvp/(.*)",
+      "destination": "https://ai-do.onrender.com/api/preview/rsvp/$1"
+    },
+    {
+      "source": "/invite/save-the-date/(.*)",
+      "destination": "https://ai-do.onrender.com/api/preview/save-the-date/$1"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
