@@ -1605,6 +1605,10 @@ router.get("/save-the-date/:token", async (req, res) => {
       textOverrides: Record<string, unknown>;
       photoObjectPosition: string;
       saveTheDatePhotoUrl: string | null;
+      // Surface the full palette + layout so the public page can render the
+      // exact same canvas component the editor preview uses (pixel parity).
+      colorPalette: Record<string, string> | null;
+      layout: string | null;
     } = {
       useGeneratedInvitation: true,
       backgroundColor: null,
@@ -1613,6 +1617,8 @@ router.get("/save-the-date/:token", async (req, res) => {
       textOverrides: {},
       photoObjectPosition: "50% 50%",
       saveTheDatePhotoUrl: null,
+      colorPalette: null,
+      layout: null,
     };
     try {
       const custRows = await db
@@ -1640,6 +1646,14 @@ router.get("/save-the-date/:token", async (req, res) => {
         const oy = useGenerated
           ? (stdPhotoPos?.y ?? 50)
           : ((stdPhotoOverride.objectY as number | undefined) ?? stdPhotoPos?.y ?? 50);
+        // Merge the AI-generated palette with the user's customColors so
+        // primary / secondary / accent / neutral all flow to the public page.
+        const mergedPalette: Record<string, string> = {
+          primary: customColors.primary ?? palette.primary ?? "#1f2937",
+          secondary: customColors.secondary ?? palette.secondary ?? "#9ca3af",
+          accent: customColors.accent ?? palette.accent ?? "#d4a017",
+          neutral: customColors.neutral ?? palette.neutral ?? "#f3f4f6",
+        };
         customizationData = {
           useGeneratedInvitation: useGenerated,
           backgroundColor: useGenerated ? null : (cust.saveTheDateBackground ?? cust.digitalInvitationBackground ?? null),
@@ -1648,6 +1662,8 @@ router.get("/save-the-date/:token", async (req, res) => {
           textOverrides: useGenerated ? {} : allOverrides,
           photoObjectPosition: `${ox}% ${oy}%`,
           saveTheDatePhotoUrl: cust.saveTheDatePhotoUrl ?? null,
+          colorPalette: useGenerated ? null : mergedPalette,
+          layout: useGenerated ? null : (cust.saveTheDateLayout ?? cust.digitalInvitationLayout ?? cust.selectedLayout ?? "classic"),
         };
       }
     } catch {
@@ -1684,6 +1700,8 @@ router.get("/save-the-date/:token", async (req, res) => {
       customFontFamily: customizationData.fontFamily,
       customTextOverrides: customizationData.textOverrides,
       photoObjectPosition: customizationData.photoObjectPosition,
+      customColorPalette: customizationData.colorPalette,
+      customLayout: customizationData.layout,
     });
   } catch (err) {
     req.log.error(err, "Failed to get save-the-date info");
