@@ -98,11 +98,9 @@ export default function SaveTheDate() {
   const WHITE    = isLight ? "#1a1a1a" : AI_WHITE;
   const MUTED    = isLight ? "rgba(0,0,0,0.58)" : AI_MUTED;
   const CARD_BDR = isLight ? "rgba(0,0,0,0.12)" : AI_CARD_BDR;
-  // The page sits *behind* the card in every mode. Always paint it a
-  // neutral grey so the rounded card outline is visible — neither the AI
-  // dark theme nor a custom card colour should bleed past the card edges
-  // into the surrounding viewport.
-  const PAGE_BG  = "#f3f4f6";
+  // The page sits *behind* the card in every mode. Always paint it white so
+  // the card colour stops at the rounded edge — no bleed past the card outline.
+  const PAGE_BG  = "#ffffff";
   const DOT_PAT  = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
   // Dot pattern was an AI-theme decoration on the dark page — drop it now
   // that the page is light, since gold dots on light grey read as noise.
