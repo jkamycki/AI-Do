@@ -123,6 +123,10 @@ function CardShell({
   const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
   return (
+    <div style={{
+      backgroundColor: bg, backgroundImage: dotPat, backgroundSize: "22px 22px",
+      borderRadius: 16, padding: "16px 12px",
+    }}>
     <div
       className="rounded-xl overflow-hidden shadow-2xl max-w-sm mx-auto border"
       style={{ background: bg, borderColor: cardBdr }}
@@ -169,6 +173,7 @@ function CardShell({
       }}>
         {children}
       </div>
+    </div>
     </div>
   );
 }
