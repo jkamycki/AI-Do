@@ -609,7 +609,7 @@ router.get("/guests/:id/rsvp-link", requireAuth, async (req, res) => {
 
     const origin = buildFrontendOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
-    const previewUrl = `${origin}/api/preview/rsvp/${token}`;
+    const previewUrl = `${origin}/invite/rsvp/${token}`;
     res.json({ rsvpUrl, previewUrl });
   } catch (err) {
     req.log.error(err, "Failed to generate RSVP link");
@@ -717,7 +717,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
     const origin = buildFrontendOrigin(req);
     const apiOrigin = buildOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
-    const previewUrl = `${origin}/api/preview/rsvp/${token}`;
+    const previewUrl = `${origin}/invite/rsvp/${token}`;
 
     let emailSent = false;
     if (guest.email) {
@@ -974,7 +974,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
     const origin = buildFrontendOrigin(req);
     const apiOrigin = buildOrigin(req);
     const rsvpUrl = `${origin}/rsvp/${token}`;
-    const previewUrl = `${origin}/api/preview/rsvp/${token}`;
+    const previewUrl = `${origin}/invite/rsvp/${token}`;
     const logoBase64 = `${apiOrigin}/logo.png`;
 
     // Load customization so the reminder email matches the invitation preview.
@@ -1532,7 +1532,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
 
     const frontendOriginStd = buildFrontendOrigin(req);
     const saveTheDateUrl = `${frontendOriginStd}/save-the-date/${token}`;
-    const saveTheDatePreviewUrl = `${frontendOriginStd}/api/preview/save-the-date/${token}`;
+    const saveTheDatePreviewUrl = `${frontendOriginStd}/invite/save-the-date/${token}`;
 
     let emailSent = false;
     if (guest.email) {
