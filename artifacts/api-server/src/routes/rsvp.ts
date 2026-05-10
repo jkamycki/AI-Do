@@ -811,7 +811,10 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       const rawBg = !useGenerated && customization?.digitalInvitationBackground
         ? customization.digitalInvitationBackground : "#1E1A2E";
       const bgIsLight = isLightColor(rawBg);
-      const PAGE_BG = !useGenerated ? rawBg : "#1a1614";
+      // Page sits behind the card. In custom mode keep it neutral so the
+      // chosen card colour doesn't repaint the entire email body. AI mode
+      // keeps the existing dark theme.
+      const PAGE_BG = !useGenerated ? (bgIsLight ? "#f3f4f6" : "#1a1a1a") : "#1a1614";
       const BG = rawBg;
       // Mirror RsvpPagePreview: the user's primary colour drives the gold
       // "accent" in the design, and body text is plain black/white that
@@ -1557,7 +1560,10 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           photoObjectPos: stdPhotoObjectPos,
           logoBase64,
           overrideBg: STD_EMAIL_BG,
-          overridePageBg: STD_EMAIL_BG,
+          // Page sits behind the card. Keep it neutral so changing the card
+          // colour doesn't repaint the entire email body — same rule the
+          // public save-the-date / RSVP pages now follow.
+          overridePageBg: stdBgIsLight ? "#f3f4f6" : "#1a1a1a",
           overrideAccent: colors.accent,
           overrideText: customization?.saveTheDateFontColor ?? (stdBgIsLight ? "#1a1a1a" : "#ffffff"),
           overrideMuted: stdBgIsLight ? "rgba(0,0,0,0.58)" : "rgba(255,255,255,0.58)",
