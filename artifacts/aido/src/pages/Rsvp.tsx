@@ -334,18 +334,16 @@ export default function Rsvp() {
         <div
           ref={cardRef}
           className="w-full rounded-2xl overflow-hidden shadow-2xl"
-          // Card outer is neutral white so the user's chosen colour only
-          // paints the info section below — logo and photo sit on white.
-          style={{ background: "#ffffff", border: `1px solid ${CARD_BDR}` }}
+          style={{ background: BG, border: `1px solid ${CARD_BDR}` }}
         >
           {/* Logo */}
-          <div style={{ display: "flex", justifyContent: "center", paddingTop: 24, paddingBottom: 6, background: "#ffffff" }}>
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: 24, paddingBottom: 6, backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
             <img src="/logo.png" alt="A.IDO" style={{ height: 48, width: "auto", objectFit: "contain", opacity: 0.85 }} />
           </div>
 
           {/* Photo */}
           {info.photoUrl && (
-            <div style={{ padding: "0 20px 12px", background: "#ffffff" }}>
+            <div style={{ padding: "0 20px 12px", backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
               <img
                 src={info.photoUrl}
                 alt={couple}

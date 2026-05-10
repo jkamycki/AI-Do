@@ -239,21 +239,18 @@ export default function SaveTheDate() {
         className="w-full rounded-2xl overflow-hidden shadow-2xl"
         style={{
           maxWidth: 420,
-          // Card outer background sits behind the logo + photo, which should
-          // be neutral. Only the info section (further down) carries the
-          // user's chosen colour.
-          background: "#ffffff",
+          background: BG,
           border: `1px solid ${CARD_BDR}`,
         }}
       >
         {/* Logo */}
-        <div style={{ display: "flex", justifyContent: "center", paddingTop: 24, paddingBottom: 6, background: "#ffffff" }}>
+        <div style={{ display: "flex", justifyContent: "center", paddingTop: 24, paddingBottom: 6, backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
           <img src="/logo.png" alt="A.IDO" style={{ height: 48, width: "auto", objectFit: "contain", opacity: 0.85 }} />
         </div>
 
         {/* Photo */}
         {info.hasPhoto && (
-          <div style={{ padding: "0 20px 12px", background: "#ffffff" }}>
+          <div style={{ padding: "0 20px 12px", backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
             <img
               src={`/api/save-the-date/${token}/photo?v=${info.photoVersion}`}
               alt={couple}
