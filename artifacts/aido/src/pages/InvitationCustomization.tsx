@@ -1024,46 +1024,59 @@ export default function InvitationCustomizationPage({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="block text-xs space-y-1">
-                      <span className="text-muted-foreground">Background</span>
-                      <input
-                        type="color"
-                        value={fields.backgroundColor}
-                        onChange={(e) => updateField("backgroundColor", e.target.value)}
-                        className="block h-8 w-full rounded border border-input cursor-pointer"
-                      />
-                    </label>
-                    <label className="block text-xs space-y-1">
-                      <span className="text-muted-foreground">Accent</span>
-                      <input
-                        type="color"
-                        value={fields.accentColor}
-                        onChange={(e) => updateField("accentColor", e.target.value)}
-                        className="block h-8 w-full rounded border border-input cursor-pointer"
-                      />
-                    </label>
-                    <label className="block text-xs space-y-1">
-                      <span className="text-muted-foreground">Font color</span>
-                      <input
-                        type="color"
-                        value={fields.fontColor}
-                        onChange={(e) => updateField("fontColor", e.target.value)}
-                        className="block h-8 w-full rounded border border-input cursor-pointer"
-                      />
-                    </label>
-                    <label className="block text-xs space-y-1">
-                      <span className="text-muted-foreground">Font size (px)</span>
-                      <input
-                        type="number"
-                        min={8}
-                        max={72}
-                        value={fields.fontSize}
-                        onChange={(e) => updateField("fontSize", e.target.value)}
-                        className="block h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
-                      />
-                    </label>
+                  {/* Custom palette — three colour codes combine into a
+                      Quick-Theme-style palette. The first sets the card,
+                      the second the accent (couple name + dividers), and
+                      the third the body text. We don't label each swatch
+                      individually so the row reads as one unit, matching
+                      the Quick Theme cards above. */}
+                  <div className="space-y-2">
+                    <div className="text-xs text-muted-foreground">Your palette</div>
+                    <div className="flex items-center gap-2 p-2 rounded-md border border-border bg-muted/20">
+                      <label className="flex-1 cursor-pointer">
+                        <span className="sr-only">Card colour</span>
+                        <input
+                          type="color"
+                          value={fields.backgroundColor}
+                          onChange={(e) => updateField("backgroundColor", e.target.value)}
+                          className="block h-9 w-full rounded border border-input cursor-pointer"
+                        />
+                      </label>
+                      <label className="flex-1 cursor-pointer">
+                        <span className="sr-only">Accent colour</span>
+                        <input
+                          type="color"
+                          value={fields.accentColor}
+                          onChange={(e) => updateField("accentColor", e.target.value)}
+                          className="block h-9 w-full rounded border border-input cursor-pointer"
+                        />
+                      </label>
+                      <label className="flex-1 cursor-pointer">
+                        <span className="sr-only">Text colour</span>
+                        <input
+                          type="color"
+                          value={fields.fontColor}
+                          onChange={(e) => updateField("fontColor", e.target.value)}
+                          className="block h-9 w-full rounded border border-input cursor-pointer"
+                        />
+                      </label>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-tight">
+                      Pick three colours — they style the card, the accent (couple name &amp; dividers), and the body text.
+                    </p>
                   </div>
+
+                  <label className="block text-xs space-y-1">
+                    <span className="text-muted-foreground">Font size (px)</span>
+                    <input
+                      type="number"
+                      min={8}
+                      max={72}
+                      value={fields.fontSize}
+                      onChange={(e) => updateField("fontSize", e.target.value)}
+                      className="block h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+                    />
+                  </label>
                   <label className="block text-xs space-y-1">
                     <span className="text-muted-foreground">Font family</span>
                     <select
