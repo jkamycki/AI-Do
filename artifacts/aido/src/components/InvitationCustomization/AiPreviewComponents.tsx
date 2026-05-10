@@ -137,7 +137,7 @@ function CardShell({
         paddingTop: 20, paddingBottom: 4,
         backgroundImage: dotPat, backgroundSize: "22px 22px",
       }}>
-        <img src="/logo.png" alt="A.IDO" style={{ height: 48, width: "auto", objectFit: "contain" }} />
+        <img src="/logo.png" alt="A.IDO" style={{ height: 48, width: "auto", objectFit: "contain", opacity: 0.85 }} />
       </div>
 
       {/* Optional photo */}
@@ -157,7 +157,7 @@ function CardShell({
             alt="Wedding photo"
             draggable={false}
             style={{
-              width: "100%", height: 130, objectFit: "cover", borderRadius: 8,
+              width: "100%", height: 200, objectFit: "cover", borderRadius: 8,
               display: "block", boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
               objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
               pointerEvents: "none", userSelect: "none",
