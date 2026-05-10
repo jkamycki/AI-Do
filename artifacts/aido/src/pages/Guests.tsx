@@ -1764,13 +1764,13 @@ export default function Guests() {
               {linkDialog?.type === "saveTheDate" ? "Save the Date link" : "RSVP link"} for {linkDialog?.guestName}
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Copy this link and send it directly to your guest. When shared in a chat app it will show a preview card.
+              Copy this link and send it directly to your guest. They can open it to view and respond to the invitation.
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2">
             <Input
               readOnly
-              value={linkDialog?.previewUrl ?? ""}
+              value={linkDialog?.url ?? ""}
               className="text-xs font-mono"
               onFocus={(e) => e.currentTarget.select()}
             />
@@ -1780,8 +1780,8 @@ export default function Guests() {
               className="shrink-0 gap-1.5"
               onClick={() => {
                 if (!linkDialog) return;
-                navigator.clipboard.writeText(linkDialog.previewUrl).then(() => {
-                  toast({ title: "Link copied!", description: "Paste it in any chat app to share." });
+                navigator.clipboard.writeText(linkDialog.url).then(() => {
+                  toast({ title: "Link copied!", description: "Send this link directly to your guest." });
                 });
               }}
             >
