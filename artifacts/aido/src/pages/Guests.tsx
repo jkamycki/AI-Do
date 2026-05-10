@@ -1507,6 +1507,16 @@ export default function Guests() {
                               ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
+                          {/* Plus-one meal — read-only chip below the main meal,
+                              shown only when a plus-one exists and they picked
+                              one. The Guest type from api-client-react doesn't
+                              know about this column yet, so we cast narrowly. */}
+                          {g.plusOne && (g as Guest & { plusOneMealChoice?: string | null }).plusOneMealChoice && (
+                            <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-border/40 text-muted-foreground capitalize">
+                              <span className="opacity-60">+1:</span>
+                              {(g as Guest & { plusOneMealChoice?: string | null }).plusOneMealChoice!.replace(/_/g, " ")}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                           {g.tableAssignment || "—"}
