@@ -1070,7 +1070,10 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         photoObjectPos: digPhotoObjectPos,
         logoBase64,
         overrideBg: rawBg,
-        overridePageBg: rawBg,
+        // Page sits behind the card. Keep it neutral so the user's chosen
+        // card colour doesn't repaint the entire email body — same rule the
+        // public RSVP / save-the-date pages and the other email branch follow.
+        overridePageBg: bgIsLight ? "#f3f4f6" : "#1a1a1a",
         overrideAccent: colors.primary || "#D4A017",
         overrideText: customization?.digitalInvitationFontColor ?? (bgIsLight ? "#1a1a1a" : "#ffffff"),
         overrideMuted: bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
