@@ -141,7 +141,7 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     const profileId = profile?.id ?? null;
     if (!profileId) return res.status(400).json({ error: "No wedding profile found." });
 
-    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, aptUnit, guestCity, guestState, guestZip, guestCountry, saveTheDateStatus } = req.body;
+    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, aptUnit, guestCity, guestState, guestZip, guestCountry, saveTheDateStatus, rsvpReminderStatus } = req.body;
 
     if (name !== undefined || email !== undefined) {
       const checkName = (name ?? "").trim();
@@ -183,6 +183,7 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     if (guestZip !== undefined) updateData.guestZip = guestZip || null;
     if (guestCountry !== undefined) updateData.guestCountry = guestCountry || null;
     if (saveTheDateStatus !== undefined) updateData.saveTheDateStatus = saveTheDateStatus;
+    if (rsvpReminderStatus !== undefined) updateData.rsvpReminderStatus = rsvpReminderStatus;
 
     const [updated] = await db
       .update(guests)

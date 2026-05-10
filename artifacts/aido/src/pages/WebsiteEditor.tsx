@@ -245,6 +245,8 @@ export default function WebsiteEditor() {
     historyRef.current = historyRef.current.slice(0, -1);
     setHistoryLen(historyRef.current.length);
     setRecord(prev);
+    recordRef.current = prev;
+    editSeqRef.current += 1;
     setDirty(true);
   }, []);
 
