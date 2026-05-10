@@ -434,7 +434,9 @@ export default function WebsiteEditor() {
     // Always snapshot the latest state from the ref to avoid stale closures.
     const rec = recordRef.current;
     if (!rec) return false;
-    if (!silent) setSaving(true);
+    // setSaving is managed by the caller (handleSave) for non-silent saves
+    // so the button spinner appears immediately on click, before any chained
+    // in-flight save resolves.
     try {
       const body = buildSaveBody(rec);
       // Mirror to localStorage BEFORE attempting the network — guarantees the
@@ -484,8 +486,11 @@ export default function WebsiteEditor() {
       lastSaveErrorRef.current = { status: result.status, message };
       setSaveError(true);
       return false;
-    } finally {
-      if (!silent) setSaving(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err ?? "Unknown error");
+      lastSaveErrorRef.current = { message };
+      setSaveError(true);
+      return false;
     }
   };
 
@@ -525,12 +530,18 @@ export default function WebsiteEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record?.id]);
 
-  // Autosave: ~1.2s after the last change so anything the user typed reaches
+  // Autosave: ~1s after the last change so anything the user typed reaches
   // the server almost immediately and the explicit Save button is a no-op
   // confirmation rather than the only path that persists work. Reschedules
   // itself on failure so unsaved work is never silently dropped.
+  //
+  // autoSaveSeq is incremented on each failure. Without it, a failed save
+  // leaves dirty=true and record unchanged — the effect deps don't change, so
+  // the retry timer is never scheduled. The seq bump forces the effect to re-run
+  // regardless of whether record or dirty changed.
   const autosaveFailedRef = useRef(false);
   const [autoSaving, setAutoSaving] = useState(false);
+  const [autoSaveSeq, setAutoSaveSeq] = useState(0);
   useEffect(() => {
     if (!record || !dirty) return;
     const delay = autosaveFailedRef.current ? 5000 : 1000;
@@ -540,10 +551,11 @@ export default function WebsiteEditor() {
       setAutoSaving(false);
       autosaveFailedRef.current = !ok;
       if (ok) setLastAutosaved(new Date());
+      else setAutoSaveSeq(n => n + 1); // reschedule retry
     }, delay);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [record, dirty]);
+  }, [record, dirty, autoSaveSeq]);
 
   const handleSave = async () => {
     // Flush any text the user typed but hasn't blurred yet. EditableText
@@ -558,14 +570,20 @@ export default function WebsiteEditor() {
     // One paint frame so React applies the flushed setState before we read
     // recordRef.current inside saveNow.
     await new Promise<void>((res) => requestAnimationFrame(() => res()));
-    const ok = await saveNow(false);
-    if (ok) toast({ title: "Saved!" });
-    else {
-      const err = lastSaveErrorRef.current;
-      const detail = err
-        ? `${err.status ? `HTTP ${err.status} — ` : ""}${err.message} (your work is backed up locally and will keep retrying)`
-        : "We'll keep retrying in the background — your work is backed up locally.";
-      toast({ title: "Save didn't go through", description: detail, variant: "destructive" });
+    // Show spinner immediately — before any in-flight auto-save resolves.
+    setSaving(true);
+    try {
+      const ok = await saveNow(false);
+      if (ok) toast({ title: "Saved!" });
+      else {
+        const err = lastSaveErrorRef.current;
+        const detail = err
+          ? `${err.status ? `HTTP ${err.status} — ` : ""}${err.message} (your work is backed up locally and will keep retrying)`
+          : "We'll keep retrying in the background — your work is backed up locally.";
+        toast({ title: "Save didn't go through", description: detail, variant: "destructive" });
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -941,7 +959,7 @@ export default function WebsiteEditor() {
             <Button
               size="sm"
               onClick={handleSave}
-              disabled={saving || autoSaving}
+              disabled={saving}
               className={
                 !dirty && !saving && !autoSaving
                   ? "bg-emerald-600 hover:bg-emerald-700 border-0 font-bold"
