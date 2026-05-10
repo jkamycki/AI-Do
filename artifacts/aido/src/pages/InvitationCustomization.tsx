@@ -615,14 +615,15 @@ export default function InvitationCustomizationPage({
     const stdCustom = designMode === "custom";
     const digCustom = designMode === "custom";
     const eitherCustom = designMode === "custom";
-    // Custom accent: pick from whichever invitation type is currently in
-    // custom mode (prefer STD if both are custom). The accent is shared on
-    // the colorPalette / customColors record because the legacy renderer
-    // uses one accent across both invitations.
-    const customAccent = stdCustom
-      ? d.saveTheDate.accentColor
-      : digCustom
-      ? d.rsvpInvitation.accentColor
+    // Custom accent: pick from whichever invitation type the user is
+    // currently editing (previewTab). The accent is shared on the
+    // colorPalette / customColors record because the legacy renderer uses
+    // one accent across both invitations — so the most-recently-edited
+    // side wins.
+    const customAccent = eitherCustom
+      ? previewTab === "saveTheDate"
+        ? d.saveTheDate.accentColor
+        : d.rsvpInvitation.accentColor
       : null;
     const finalCustomColors = customAccent
       ? { ...(customColors ?? {}), accent: customAccent, primary: customAccent }

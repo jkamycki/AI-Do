@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -514,8 +515,7 @@ export function InvitationSendModal({
   defaultTab = "saveTheDate",
   reminderOnly = false,
 }: Props) {
-  const [customization, setCustomization] = useState<Customization | null>(null);
-  const [loadingCustomization, setLoadingCustomization] = useState(false);
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"saveTheDate" | "digitalInvitation">(defaultTab);
   const [bypassBlock, setBypassBlock] = useState(false);
 
@@ -524,64 +524,86 @@ export function InvitationSendModal({
   }, [defaultTab]);
 
   useEffect(() => {
-    if (!guest || !profile?.id) {
-      setCustomization(null);
-      setBypassBlock(false);
-      return;
-    }
-    setLoadingCustomization(true);
-    authFetch(`/api/invitation-customizations?profileId=${profile.id}`)
-      .then(r => r.json())
-      .then((data) => {
-        setCustomization({
-          useGeneratedInvitation: data.useGeneratedInvitation !== false,
-          saveTheDatePhotoUrl: data.saveTheDatePhotoUrl ?? null,
-          digitalInvitationPhotoUrl: data.digitalInvitationPhotoUrl ?? null,
-          saveTheDatePhotoPosition: data.saveTheDatePhotoPosition ?? null,
-          digitalInvitationPhotoPosition: data.digitalInvitationPhotoPosition ?? null,
-          colorPalette: data.colorPalette ?? null,
-          customColors: data.customColors ?? null,
-          selectedFont: data.selectedFont ?? null,
-          selectedLayout: data.selectedLayout ?? null,
-          saveTheDateFont: data.saveTheDateFont || data.selectedFont || "Playfair Display",
-          digitalInvitationFont: data.digitalInvitationFont || data.selectedFont || "Playfair Display",
-          saveTheDateLayout: data.saveTheDateLayout || data.selectedLayout || "classic",
-          digitalInvitationLayout: data.digitalInvitationLayout || data.selectedLayout || "classic",
-          saveTheDateBackground: data.saveTheDateBackground ?? null,
-          digitalInvitationBackground: data.digitalInvitationBackground ?? null,
-          saveTheDateFontColor: data.saveTheDateFontColor ?? null,
-          digitalInvitationFontColor: data.digitalInvitationFontColor ?? null,
-          saveTheDateFontSize: data.saveTheDateFontSize ?? null,
-          digitalInvitationFontSize: data.digitalInvitationFontSize ?? null,
-          textOverrides: data.textOverrides ?? {},
-        });
-      })
-      .catch(() => {
-        setCustomization({
-          useGeneratedInvitation: true,
-          saveTheDatePhotoUrl: null,
-          digitalInvitationPhotoUrl: null,
-          saveTheDatePhotoPosition: null,
-          digitalInvitationPhotoPosition: null,
-          colorPalette: null,
-          customColors: null,
-          selectedFont: null,
-          selectedLayout: null,
-          saveTheDateFont: "Playfair Display",
-          digitalInvitationFont: "Playfair Display",
-          saveTheDateLayout: "classic",
-          digitalInvitationLayout: "classic",
-          saveTheDateBackground: null,
-          digitalInvitationBackground: null,
-          saveTheDateFontColor: null,
-          digitalInvitationFontColor: null,
-          saveTheDateFontSize: null,
-          digitalInvitationFontSize: null,
-          textOverrides: {},
-        });
-      })
-      .finally(() => setLoadingCustomization(false));
-  }, [guest?.id, profile?.id]);
+    if (!guest) setBypassBlock(false);
+  }, [guest?.id]);
+
+  // Share the cache key with InvitationCustomization so the optimistic theme
+  // updates from the customization page are reflected here immediately.
+  const { data: rawCustomization, isLoading: loadingCustomization } = useQuery({
+    queryKey: ["invitation-customizations", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return null;
+      const r = await authFetch(`/api/invitation-customizations?profileId=${profile.id}`);
+      if (!r.ok) throw new Error("Failed to fetch customizations");
+      return r.json();
+    },
+    enabled: !!guest && !!profile?.id,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+
+  const customization: Customization | null = rawCustomization
+    ? {
+        useGeneratedInvitation: rawCustomization.useGeneratedInvitation !== false,
+        saveTheDatePhotoUrl: rawCustomization.saveTheDatePhotoUrl ?? null,
+        digitalInvitationPhotoUrl: rawCustomization.digitalInvitationPhotoUrl ?? null,
+        saveTheDatePhotoPosition: rawCustomization.saveTheDatePhotoPosition ?? null,
+        digitalInvitationPhotoPosition: rawCustomization.digitalInvitationPhotoPosition ?? null,
+        colorPalette: rawCustomization.colorPalette ?? null,
+        customColors: rawCustomization.customColors ?? null,
+        selectedFont: rawCustomization.selectedFont ?? null,
+        selectedLayout: rawCustomization.selectedLayout ?? null,
+        saveTheDateFont: rawCustomization.saveTheDateFont || rawCustomization.selectedFont || "Playfair Display",
+        digitalInvitationFont: rawCustomization.digitalInvitationFont || rawCustomization.selectedFont || "Playfair Display",
+        saveTheDateLayout: rawCustomization.saveTheDateLayout || rawCustomization.selectedLayout || "classic",
+        digitalInvitationLayout: rawCustomization.digitalInvitationLayout || rawCustomization.selectedLayout || "classic",
+        saveTheDateBackground: rawCustomization.saveTheDateBackground ?? null,
+        digitalInvitationBackground: rawCustomization.digitalInvitationBackground ?? null,
+        saveTheDateFontColor: rawCustomization.saveTheDateFontColor ?? null,
+        digitalInvitationFontColor: rawCustomization.digitalInvitationFontColor ?? null,
+        saveTheDateFontSize: rawCustomization.saveTheDateFontSize ?? null,
+        digitalInvitationFontSize: rawCustomization.digitalInvitationFontSize ?? null,
+        textOverrides: rawCustomization.textOverrides ?? {},
+      }
+    : null;
+
+  const setCustomization = (
+    updater: (c: Customization | null) => Customization | null,
+  ) => {
+    if (!profile?.id) return;
+    queryClient.setQueryData<typeof rawCustomization>(
+      ["invitation-customizations", profile.id],
+      (old: typeof rawCustomization) => {
+        const cur = old
+          ? {
+              useGeneratedInvitation: old.useGeneratedInvitation !== false,
+              saveTheDatePhotoUrl: old.saveTheDatePhotoUrl ?? null,
+              digitalInvitationPhotoUrl: old.digitalInvitationPhotoUrl ?? null,
+              saveTheDatePhotoPosition: old.saveTheDatePhotoPosition ?? null,
+              digitalInvitationPhotoPosition: old.digitalInvitationPhotoPosition ?? null,
+              colorPalette: old.colorPalette ?? null,
+              customColors: old.customColors ?? null,
+              selectedFont: old.selectedFont ?? null,
+              selectedLayout: old.selectedLayout ?? null,
+              saveTheDateFont: old.saveTheDateFont || old.selectedFont || "Playfair Display",
+              digitalInvitationFont: old.digitalInvitationFont || old.selectedFont || "Playfair Display",
+              saveTheDateLayout: old.saveTheDateLayout || old.selectedLayout || "classic",
+              digitalInvitationLayout: old.digitalInvitationLayout || old.selectedLayout || "classic",
+              saveTheDateBackground: old.saveTheDateBackground ?? null,
+              digitalInvitationBackground: old.digitalInvitationBackground ?? null,
+              saveTheDateFontColor: old.saveTheDateFontColor ?? null,
+              digitalInvitationFontColor: old.digitalInvitationFontColor ?? null,
+              saveTheDateFontSize: old.saveTheDateFontSize ?? null,
+              digitalInvitationFontSize: old.digitalInvitationFontSize ?? null,
+              textOverrides: old.textOverrides ?? {},
+            }
+          : null;
+        const next = updater(cur);
+        if (!next) return old;
+        return { ...(old ?? {}), ...next };
+      },
+    );
+  };
 
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
