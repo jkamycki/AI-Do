@@ -1000,6 +1000,21 @@ function AuthBgSlide({
   );
 }
 
+// Per-URL focal points the user picks via HeroPhotoPositionDialog. Stored
+// as a JSON map under customText._heroFocals so a single key covers every
+// hero photo. Falls back to "center" when missing or malformed.
+function heroFocalFor(data: WebsiteRendererPayload, url: string): string {
+  const raw = data.customText._heroFocals;
+  if (!raw) return "center";
+  try {
+    const parsed = JSON.parse(raw);
+    const value = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>)[url] : undefined;
+    return typeof value === "string" && value.trim() ? value : "center";
+  } catch {
+    return "center";
+  }
+}
+
 function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
   const mode = (data.customText._heroAnimation || "static") as "static" | "slideshow" | "kenburns" | "pan-lr" | "marquee";
   const speed = (data.customText._heroAnimationSpeed || "medium") as "slow" | "medium" | "fast";
@@ -1034,7 +1049,7 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
               className="h-full flex-shrink-0"
               style={{
                 width: "60vw",
-                backgroundPosition: "center",
+                backgroundPosition: heroFocalFor(data, url),
                 backgroundSize: "cover",
                 backgroundRepeat: "no-repeat",
                 filter: photoFilter,
@@ -1079,7 +1094,7 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
           url={url}
           className="absolute inset-0"
           style={{
-            backgroundPosition: "center",
+            backgroundPosition: heroFocalFor(data, url),
             backgroundSize: "cover",
             backgroundRepeat: "no-repeat",
             opacity: mode === "slideshow" ? (i === activeIdx ? 1 : 0) : 1,
