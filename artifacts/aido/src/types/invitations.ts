@@ -3,6 +3,10 @@ export interface ColorPalette {
   secondary: string;
   accent: string;
   neutral: string;
+  // Per-invitation accent backup stored in customColors JSONB so the send
+  // modal shows independent accents even before the dedicated DB columns exist.
+  saveTheDateAccent?: string;
+  digitalInvitationAccent?: string;
 }
 
 export interface ElementOverride {
