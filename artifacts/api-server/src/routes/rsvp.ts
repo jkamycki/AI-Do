@@ -1193,7 +1193,7 @@ router.get("/preview/rsvp/:token", async (req, res) => {
       ? (() => { const [y, m, d] = profile.weddingDate!.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }); })()
       : null;
     const location = [profile.venue, profile.venueCity, profile.venueState].filter(Boolean).join(", ");
-    const title = escapeHtml(`${couple} have sent you a wedding invite`);
+    const title = escapeHtml(`${couple} are inviting you to their wedding, please RSVP`);
     const description = escapeHtml([`${guestName}, you're invited to celebrate the wedding of ${couple}`, dateStr, location].filter(Boolean).join(" · "));
     const imageUrl = escapeHtml(`${apiOrigin}/api/rsvp/${token}/photo`);
     const destinationUrl = escapeHtml(`${frontendOrigin}/rsvp/${token}`);
