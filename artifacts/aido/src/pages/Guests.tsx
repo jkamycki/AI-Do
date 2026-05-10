@@ -1770,7 +1770,7 @@ export default function Guests() {
           <div className="flex gap-2">
             <Input
               readOnly
-              value={linkDialog?.previewUrl ?? ""}
+              value={linkDialog?.url ?? ""}
               className="text-xs font-mono"
               onFocus={(e) => e.currentTarget.select()}
             />
@@ -1780,7 +1780,7 @@ export default function Guests() {
               className="shrink-0 gap-1.5"
               onClick={() => {
                 if (!linkDialog) return;
-                navigator.clipboard.writeText(linkDialog.previewUrl).then(() => {
+                navigator.clipboard.writeText(linkDialog.url).then(() => {
                   toast({ title: "Link copied!", description: "Send this link directly to your guest." });
                 });
               }}
