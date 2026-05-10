@@ -611,11 +611,6 @@ export default function WebsiteEditor() {
     }
   };
 
-  const handleHeroUpload = async (file: File) => {
-    const result = await upload.uploadFile(file);
-    if (result) update({ heroImage: result.objectPath });
-  };
-
   // Per-URL focal points for hero photos, JSON-encoded under _heroFocals so
   // a single customText entry covers every image instead of polluting the
   // map with one key per URL.
@@ -694,18 +689,6 @@ export default function WebsiteEditor() {
     if (!record) return;
     const next = record.galleryImages.filter((_, i) => i !== index).map((img, i) => ({ ...img, order: i }));
     update({ galleryImages: next });
-  };
-
-  const handleHeroImagesUpload = async (files: FileList) => {
-    if (!record) return;
-    const newImages = [...(record.heroImages ?? [])];
-    for (const file of Array.from(files).slice(0, 10)) {
-      const result = await upload.uploadFile(file);
-      if (result) {
-        newImages.push({ url: result.objectPath, order: newImages.length });
-      }
-    }
-    update({ heroImages: newImages });
   };
 
   // ----- Hero photo crop-on-upload flow -------------------------------------
