@@ -392,6 +392,8 @@ interface AiSaveTheDateOpts {
   overrideMuted?: string;
   overrideCardBdr?: string;
   overrideCoupleFont?: string;
+  // Font size override: base size in px (e.g. "18"). Scales all text proportionally.
+  overrideFontSize?: string;
 }
 
 function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
@@ -403,6 +405,11 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
   const CARD_BDR = opts.overrideCardBdr  ?? AI_CARD_BDR;
   const SERIF    = opts.overrideCoupleFont
     ? `'${opts.overrideCoupleFont}',${AI_CORMORANT}` : AI_CORMORANT;
+  // In custom mode every text element uses the chosen font (matches AiSaveDatePreview
+  // where labelFont = displayFont when customColors is set).
+  const LABEL_FONT = opts.overrideCoupleFont ? SERIF : AI_JAKARTA;
+  // Scale all font sizes proportionally when a custom base size is provided.
+  const sc = opts.overrideFontSize ? parseFloat(opts.overrideFontSize) / 16 : 1;
   const FOOTER_BG = BG;
   const timesLine = [
     opts.ceremonyTimeStr ? `Ceremony ${opts.ceremonyTimeStr}` : null,
@@ -455,13 +462,13 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:700;letter-spacing:4.5px;text-transform:uppercase;color:${ACCENT};">Save the Date</p>
+            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;font-weight:700;letter-spacing:4.5px;text-transform:uppercase;color:${ACCENT};">Save the Date</p>
           </td>
         </tr>
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:8px 24px 0;text-align:center;">
-            <h1 style="margin:0;font-family:${SERIF};font-size:32px;font-weight:400;font-style:italic;color:${ACCENT};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
+            <h1 style="margin:0;font-family:${SERIF};font-size:${Math.round(32*sc)}px;font-weight:400;font-style:italic;color:${ACCENT};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
           </td>
         </tr>
 
@@ -476,33 +483,33 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
         ${opts.weddingDateStr ? `
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${TEXT_COL};">${escapeHtml(opts.weddingDateStr)}</p>
+            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${TEXT_COL};">${escapeHtml(opts.weddingDateStr)}</p>
           </td>
         </tr>` : ""}
 
-                ${opts.cityStateZip ? `
+        ${opts.cityStateZip ? `
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:2px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${TEXT_COL};">${escapeHtml(opts.cityStateZip)}</p>
+            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;color:${TEXT_COL};">${escapeHtml(opts.cityStateZip)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.saveTheDateMessage ? `
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:18px 28px 0;text-align:center;">
-            <p style="margin:0;font-family:${SERIF};font-size:15px;font-style:italic;color:${TEXT_COL};line-height:1.7;">&ldquo;${escapeHtml(opts.saveTheDateMessage)}&rdquo;</p>
+            <p style="margin:0;font-family:${SERIF};font-size:${Math.round(15*sc)}px;font-style:italic;color:${TEXT_COL};line-height:1.7;">&ldquo;${escapeHtml(opts.saveTheDateMessage)}&rdquo;</p>
           </td>
         </tr>` : ""}
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${SERIF};font-size:13px;font-style:italic;color:${MUTED};">Formal invitation to follow</p>
+            <p style="margin:0;font-family:${SERIF};font-size:${Math.round(13*sc)}px;font-style:italic;color:${MUTED};">Formal invitation to follow</p>
           </td>
         </tr>
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:18px 24px 28px;text-align:center;">
-            <a href="${opts.viewUrl}" style="display:inline-block;background:${ACCENT}1a;border:1px solid ${CARD_BDR};color:${MUTED};font-family:${AI_JAKARTA};font-size:11px;font-weight:600;text-decoration:none;letter-spacing:2px;text-transform:uppercase;padding:12px 28px;border-radius:6px;">&darr;&nbsp;View &amp; Download</a>
+            <a href="${opts.viewUrl}" style="display:inline-block;background:${ACCENT}1a;border:1px solid ${CARD_BDR};color:${MUTED};font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;font-weight:600;text-decoration:none;letter-spacing:2px;text-transform:uppercase;padding:12px 28px;border-radius:6px;">&darr;&nbsp;View &amp; Download</a>
           </td>
         </tr>
 
@@ -796,6 +803,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       // keeps the existing dark theme.
       const PAGE_BG = !useGenerated ? (bgIsLight ? "#f3f4f6" : "#1a1a1a") : "#1a1614";
       const BG = rawBg;
+      // Use the digital invitation's own accent color when available (may differ from STD).
       // Mirror RsvpPagePreview: the user's primary colour drives the gold
       // "accent" in the design, and body text is plain black/white that
       // contrasts the chosen background.
@@ -890,6 +898,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       }
 
       const isReminder = req.query.reminder === "true";
+
       const result = await sendEmail({
         to: guest.email,
         replyTo: `noreply@aidowedding.net`,
@@ -1181,6 +1190,9 @@ router.get("/rsvp/:token", async (req, res) => {
             digitalInvitationBackground: invitationCustomizations.digitalInvitationBackground,
             digitalInvitationFont: invitationCustomizations.digitalInvitationFont,
             digitalInvitationLayout: invitationCustomizations.digitalInvitationLayout,
+            digitalInvitationAccentColor: invitationCustomizations.digitalInvitationAccentColor,
+            digitalInvitationFontColor: invitationCustomizations.digitalInvitationFontColor,
+            useGeneratedInvitation: invitationCustomizations.useGeneratedInvitation,
           })
           .from(invitationCustomizations)
           .where(eq(invitationCustomizations.profileId, profile.id))
@@ -1232,6 +1244,10 @@ router.get("/rsvp/:token", async (req, res) => {
       backgroundColor: c?.digitalInvitationBackground ?? null,
       font: c?.digitalInvitationFont ?? null,
       layout: c?.digitalInvitationLayout ?? null,
+      // Independent accent / font color for the RSVP invitation (may differ from STD).
+      // null = not in custom mode, fall back to colorPalette.primary.
+      accentColor: (c?.useGeneratedInvitation === false) ? (c?.digitalInvitationAccentColor ?? null) : null,
+      fontColor: (c?.useGeneratedInvitation === false) ? (c?.digitalInvitationFontColor ?? null) : null,
     });
   } catch (err) {
     req.log.error(err, "Failed to get RSVP info");
@@ -1577,6 +1593,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           overrideMuted: stdBgIsLight ? "rgba(0,0,0,0.58)" : "rgba(255,255,255,0.58)",
           overrideCardBdr: stdBgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
           overrideCoupleFont: headingFont,
+          overrideFontSize: customization?.saveTheDateFontSize ?? undefined,
         });
       }
 
@@ -1616,6 +1633,8 @@ router.get("/save-the-date/:token", async (req, res) => {
       backgroundColor: string | null;
       accentColor: string | null;
       fontFamily: string | null;
+      fontColor: string | null;
+      fontSize: string | null;
       textOverrides: Record<string, unknown>;
       photoObjectPosition: string;
       saveTheDatePhotoUrl: string | null;
@@ -1628,6 +1647,8 @@ router.get("/save-the-date/:token", async (req, res) => {
       backgroundColor: null,
       accentColor: null,
       fontFamily: null,
+      fontColor: null,
+      fontSize: null,
       textOverrides: {},
       photoObjectPosition: "50% 50%",
       saveTheDatePhotoUrl: null,
@@ -1680,6 +1701,8 @@ router.get("/save-the-date/:token", async (req, res) => {
           backgroundColor: useGenerated ? null : (cust.saveTheDateBackground ?? cust.digitalInvitationBackground ?? null),
           accentColor: useGenerated ? null : mergedAccent,
           fontFamily: useGenerated ? null : (cust.saveTheDateFont ?? cust.digitalInvitationFont ?? cust.selectedFont ?? null),
+          fontColor: useGenerated ? null : (cust.saveTheDateFontColor ?? null),
+          fontSize: useGenerated ? null : (cust.saveTheDateFontSize ?? null),
           textOverrides: useGenerated ? {} : allOverrides,
           photoObjectPosition: `${ox}% ${oy}%`,
           saveTheDatePhotoUrl: cust.saveTheDatePhotoUrl ?? null,
@@ -1719,6 +1742,8 @@ router.get("/save-the-date/:token", async (req, res) => {
       customBackgroundColor: customizationData.backgroundColor,
       customAccentColor: customizationData.accentColor,
       customFontFamily: customizationData.fontFamily,
+      customFontColor: customizationData.fontColor,
+      customFontSize: customizationData.fontSize,
       customTextOverrides: customizationData.textOverrides,
       photoObjectPosition: customizationData.photoObjectPosition,
       customColorPalette: customizationData.colorPalette,
