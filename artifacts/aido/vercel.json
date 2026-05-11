@@ -9,14 +9,6 @@
       "source": "/api/(.*)",
       "destination": "https://ai-do.onrender.com/api/$1"
     },
-    {
-      "source": "/invite/rsvp/(.*)",
-      "destination": "/og-rsvp.html"
-    },
-    {
-      "source": "/invite/save-the-date/(.*)",
-      "destination": "/og-savethedate.html"
-    },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
