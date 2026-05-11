@@ -339,36 +339,36 @@ export default function WebsiteEditor() {
   // in flight" and avoid clobbering those edits with the server's response.
   const editSeqRef = useRef(0);
 
-  // recordRef is also mirrored to `record` via a passive useEffect below, but
-  // that effect fires after browser paint — so a synchronous read of
-  // recordRef.current immediately after setRecord (e.g. handleSave reading it
-  // inside saveNow, one rAF after flushing edits) can land on stale data and
-  // POST the pre-edit body. Updating the ref inside the updater closes the
-  // window: any caller reading recordRef.current after patchRecord/update
-  // returns sees the freshly merged record, no matter when React commits.
+  // recordRef must be the canonical "latest edited record" so callers reading
+  // it synchronously (visibilitychange / pagehide / unmount save paths,
+  // saveNow inside autosave, queueHistory across rapid edits) always see the
+  // freshly merged value. We previously updated the ref inside the setRecord
+  // updater, but React 18 batches state updates — the updater can run after
+  // the calling code returns, so a follow-up `recordRef.current` read landed
+  // on the pre-edit body. Mutate the ref first, then call setRecord with the
+  // computed value so React state and the ref stay in lockstep.
   const update = (patch: Partial<WebsiteRecord>) => {
-    if (recordRef.current) queueHistory(recordRef.current);
-    setRecord((prev) => {
-      if (!prev) return prev;
-      const next = { ...prev, ...patch };
-      recordRef.current = next;
-      return next;
-    });
+    if (!recordRef.current) return;
+    const prev = recordRef.current;
+    const next = { ...prev, ...patch };
+    queueHistory(prev);
+    recordRef.current = next;
+    setRecord(next);
     dirtyRef.current = true;
     setDirty(true);
     editSeqRef.current += 1;
   };
 
   // Functional updater for callbacks fired during editing (drag, style changes, text commits).
-  // Uses prev state to avoid stale-closure bugs when rapid events fire before a re-render.
+  // Reads from recordRef so rapid back-to-back calls see each other's writes
+  // without waiting for React to commit.
   const patchRecord = useCallback((fn: (prev: WebsiteRecord) => Partial<WebsiteRecord>) => {
-    if (recordRef.current) queueHistory(recordRef.current);
-    setRecord((prev) => {
-      if (!prev) return prev;
-      const next = { ...prev, ...fn(prev) };
-      recordRef.current = next;
-      return next;
-    });
+    if (!recordRef.current) return;
+    const prev = recordRef.current;
+    const next = { ...prev, ...fn(prev) };
+    queueHistory(prev);
+    recordRef.current = next;
+    setRecord(next);
     dirtyRef.current = true;
     setDirty(true);
     editSeqRef.current += 1;
@@ -594,21 +594,48 @@ export default function WebsiteEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record?.id]);
 
-  // Fire a best-effort save when the user closes the tab or navigates away
-  // while there are unsaved changes. sendBeacon is used because it survives
-  // page unload; the localStorage backup also covers the case where the
-  // beacon fails (replayed on next mount).
+  // Fire a best-effort save whenever the user leaves the editor with unsaved
+  // changes — closing the tab, navigating away in the SPA, switching tabs, or
+  // backgrounding the window. The localStorage backup written inside saveNow
+  // covers the case where the network request gets cancelled mid-flight; on
+  // the next mount we replay it. We also force-blur any focused editable and
+  // flush pending commits so text the user typed but hasn't blurred yet still
+  // reaches the save payload.
   useEffect(() => {
-    const onUnload = () => {
-      if (!dirtyRef.current || !recordRef.current) return;
+    const flushAndSave = () => {
+      // Blur active contentEditable / INPUT / TEXTAREA so the typed value
+      // commits before the snapshot is taken. EditableText schedules its
+      // commit on blur with an 80ms debounce; flushPendingEditableCommits
+      // fires those callbacks synchronously.
+      const active = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+      if (active && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+        try { active.blur(); } catch { /* ignore */ }
+      }
       flushPendingEditableCommits();
-      // Fire-and-forget via saveNow — React state updates won't apply but
-      // the network request still goes out. localStorage backup is the
-      // safety net if the tab closes before the response arrives.
+      if (!dirtyRef.current || !recordRef.current) return;
+      // Fire-and-forget — saveNow writes the localStorage backup BEFORE the
+      // network call, so the data survives even if the request is cancelled
+      // by tab close, navigation, or background-tab throttling. patchRecord
+      // mutates recordRef synchronously before queuing the setRecord, so
+      // saveNow's read of recordRef.current already reflects the just-flushed
+      // commits — no need to wait a render frame.
       saveNow(true);
     };
-    window.addEventListener("beforeunload", onUnload);
-    return () => window.removeEventListener("beforeunload", onUnload);
+    const onVisibility = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") flushAndSave();
+    };
+    window.addEventListener("beforeunload", flushAndSave);
+    window.addEventListener("pagehide", flushAndSave);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("beforeunload", flushAndSave);
+      window.removeEventListener("pagehide", flushAndSave);
+      document.removeEventListener("visibilitychange", onVisibility);
+      // Component unmount (e.g. SPA navigation to a different route) — the
+      // autosave debounce timer is about to be cleared, so flush + save here
+      // to capture anything still in flight.
+      flushAndSave();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
