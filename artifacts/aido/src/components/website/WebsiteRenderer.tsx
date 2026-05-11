@@ -963,7 +963,7 @@ function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: 
         onCommit={(v) => ctx.onTextChange("_announcement", v)}
         className="flex-1 text-center"
         style={{ color: data.colorPalette.text }}
-        {...tspStyle(ctx, "_announcement")}
+        {...tspNoDelete(ctx, "_announcement", true)}
       />
       {!ctx.editable && (
         <button
