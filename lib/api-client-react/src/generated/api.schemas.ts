@@ -216,6 +216,7 @@ export interface ChecklistItem {
   description: string;
   isCompleted: boolean;
   completedAt?: string;
+  resolveNote?: string;
 }
 
 export interface Checklist {

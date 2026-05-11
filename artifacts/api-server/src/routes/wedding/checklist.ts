@@ -33,6 +33,7 @@ router.get("/checklist", requireAuth, async (req, res) => {
         description: item.description,
         isCompleted: item.isCompleted,
         completedAt: item.completedAt?.toISOString() ?? undefined,
+        resolveNote: item.resolveNote ?? undefined,
       })),
       generatedAt: new Date().toISOString(),
     });
@@ -117,6 +118,7 @@ Return ONLY a JSON array (no markdown):
         description: item.description,
         isCompleted: item.isCompleted,
         completedAt: item.completedAt?.toISOString() ?? undefined,
+        resolveNote: item.resolveNote ?? undefined,
       })),
       generatedAt: new Date().toISOString(),
     });
@@ -139,16 +141,23 @@ router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const { isCompleted, task, description, month } = req.body;
+    const { isCompleted, task, description, month, resolveNote } = req.body;
 
     const updates: Record<string, unknown> = {};
     if (isCompleted !== undefined) {
       updates.isCompleted = isCompleted;
       updates.completedAt = isCompleted ? new Date() : null;
+      if (!isCompleted && resolveNote === undefined) {
+        updates.resolveNote = null;
+      }
     }
     if (task !== undefined) updates.task = task;
     if (description !== undefined) updates.description = description;
     if (month !== undefined) updates.month = month;
+    if (resolveNote !== undefined) {
+      const trimmed = typeof resolveNote === "string" ? resolveNote.trim() : "";
+      updates.resolveNote = trimmed.length > 0 ? trimmed : null;
+    }
 
     const [item] = await db
       .update(checklistItems)
@@ -172,6 +181,7 @@ router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
       description: item.description,
       isCompleted: item.isCompleted,
       completedAt: item.completedAt?.toISOString() ?? undefined,
+      resolveNote: item.resolveNote ?? undefined,
     });
   } catch (err) {
     req.log.error(err, "Failed to update checklist item");
@@ -229,6 +239,7 @@ router.post("/checklist/items", requireAuth, async (req, res) => {
       description: item.description,
       isCompleted: item.isCompleted,
       completedAt: item.completedAt?.toISOString() ?? undefined,
+      resolveNote: item.resolveNote ?? undefined,
     });
   } catch (err) {
     req.log.error(err, "Failed to add checklist item");

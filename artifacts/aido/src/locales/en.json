@@ -494,7 +494,13 @@
     "could_not_delete": "Could not delete task",
     "could_not_add": "Could not add task",
     "reset_button": "Reset",
-    "resetting": "Resetting…"
+    "resetting": "Resetting…",
+    "note_label": "Note",
+    "add_note": "Add note",
+    "edit_note": "Edit note",
+    "remove_note": "Remove note",
+    "note_placeholder": "Add a note (e.g. booked with Posh DJs)",
+    "save_note": "Save note"
   },
   "vendors": {
     "title": "Vendors",

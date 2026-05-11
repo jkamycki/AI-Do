@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckSquare, Wand2, ClipboardList, Pencil, Trash2, Plus, Check, X, RotateCcw } from "lucide-react";
+import { CheckSquare, Wand2, ClipboardList, Pencil, Trash2, Plus, Check, X, RotateCcw, StickyNote } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Progress } from "@/components/ui/progress";
 
@@ -29,6 +29,7 @@ type ChecklistItem = {
   description: string;
   isCompleted: boolean;
   completedAt?: string;
+  resolveNote?: string;
 };
 
 export default function Checklist() {
@@ -48,6 +49,9 @@ export default function Checklist() {
   const [addingToMonth, setAddingToMonth] = useState<string | null>(null);
   const [newTask, setNewTask] = useState("");
   const [newDescription, setNewDescription] = useState("");
+
+  const [noteEditingId, setNoteEditingId] = useState<number | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
@@ -128,11 +132,45 @@ export default function Checklist() {
   };
 
   const handleToggle = (id: number, currentStatus: boolean) => {
+    const becomingComplete = !currentStatus;
     toggleItem.mutate(
-      { id, data: { isCompleted: !currentStatus } },
-      { onSuccess: invalidate }
+      { id, data: { isCompleted: becomingComplete } },
+      {
+        onSuccess: () => {
+          invalidate();
+          if (becomingComplete) {
+            setNoteEditingId(id);
+            setNoteDraft("");
+          } else if (noteEditingId === id) {
+            setNoteEditingId(null);
+            setNoteDraft("");
+          }
+        },
+      }
     );
   };
+
+  function startNoteEdit(item: ChecklistItem) {
+    setNoteEditingId(item.id);
+    setNoteDraft(item.resolveNote ?? "");
+  }
+
+  function cancelNoteEdit() {
+    setNoteEditingId(null);
+    setNoteDraft("");
+  }
+
+  function submitNote() {
+    if (noteEditingId == null) return;
+    updateItem.mutate(
+      { id: noteEditingId, data: { resolveNote: noteDraft.trim() } },
+      { onSuccess: () => { setNoteEditingId(null); setNoteDraft(""); } }
+    );
+  }
+
+  function clearNote(item: ChecklistItem) {
+    updateItem.mutate({ id: item.id, data: { resolveNote: "" } });
+  }
 
   function startEdit(item: ChecklistItem) {
     setEditingId(item.id);
@@ -349,6 +387,60 @@ export default function Checklist() {
                                 <p className={`text-sm ${item.isCompleted ? 'text-muted-foreground/60' : 'text-muted-foreground'}`}>
                                   {item.description}
                                 </p>
+                                {noteEditingId === item.id ? (
+                                  <div className="pt-2 space-y-2">
+                                    <Textarea
+                                      value={noteDraft}
+                                      onChange={e => setNoteDraft(e.target.value)}
+                                      placeholder={t("checklist.note_placeholder")}
+                                      className="text-sm resize-none min-h-[60px]"
+                                      autoFocus
+                                      data-testid={`input-checklist-note-${item.id}`}
+                                      onKeyDown={e => {
+                                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitNote();
+                                        if (e.key === "Escape") cancelNoteEdit();
+                                      }}
+                                    />
+                                    <div className="flex gap-2">
+                                      <Button size="sm" onClick={submitNote} disabled={updateItem.isPending} data-testid={`btn-checklist-note-save-${item.id}`}>
+                                        <Check className="h-3.5 w-3.5 mr-1.5" /> {t("checklist.save_note")}
+                                      </Button>
+                                      <Button size="sm" variant="ghost" onClick={cancelNoteEdit}>
+                                        <X className="h-3.5 w-3.5 mr-1.5" /> {t("common.cancel")}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : item.resolveNote ? (
+                                  <div className="pt-2 flex items-start gap-2 text-sm">
+                                    <StickyNote className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" />
+                                    <span className="text-foreground/80 italic flex-1 whitespace-pre-wrap break-words" data-testid={`text-checklist-note-${item.id}`}>
+                                      {item.resolveNote}
+                                    </span>
+                                    <button
+                                      onClick={() => startNoteEdit(item)}
+                                      className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline shrink-0"
+                                      data-testid={`btn-checklist-note-edit-${item.id}`}
+                                    >
+                                      {t("checklist.edit_note")}
+                                    </button>
+                                    <button
+                                      onClick={() => clearNote(item)}
+                                      className="text-xs text-muted-foreground hover:text-destructive underline-offset-2 hover:underline shrink-0"
+                                      data-testid={`btn-checklist-note-clear-${item.id}`}
+                                    >
+                                      {t("checklist.remove_note")}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => startNoteEdit(item)}
+                                    className="pt-2 text-xs text-muted-foreground hover:text-primary flex items-center gap-1.5"
+                                    data-testid={`btn-checklist-note-add-${item.id}`}
+                                  >
+                                    <StickyNote className="h-3.5 w-3.5" />
+                                    {t("checklist.add_note")}
+                                  </button>
+                                )}
                               </div>
                               <div className="flex items-start gap-1 opacity-100 md:opacity-60 md:group-hover:opacity-100 transition-opacity shrink-0 pt-1">
                                 <button
