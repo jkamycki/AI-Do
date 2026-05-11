@@ -200,6 +200,8 @@ interface AiDigitalInviteOpts {
   ceremonyTimeStr: string | null;
   receptionTimeStr: string | null;
   invitationMessage: string | null;
+  // Couple-set RSVP deadline, already formatted for display ("October 15, 2026").
+  rsvpByDateStr?: string | null;
   rsvpUrl: string;
   photoImgSrc: string | null;
   photoObjectPos: string;
@@ -319,6 +321,15 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:8px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${ACCENT};">${escapeHtml(timesLine)}</p>
+          </td>
+        </tr>` : ""}
+
+        ${opts.rsvpByDateStr ? `
+        <tr>
+          <td bgcolor="${BG}" style="background:${BG};padding:10px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${ACCENT};">
+              RSVP By: <span style="color:${TEXT_COL};font-weight:600;">${escapeHtml(opts.rsvpByDateStr)}</span>
+            </p>
           </td>
         </tr>` : ""}
 
@@ -777,6 +788,16 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
       ].filter(Boolean).join(", ");
 
+      const rsvpByDateStr = customization?.rsvpByDate
+        ? (() => {
+            const [yy, mm, dd] = customization.rsvpByDate!.split("-").map(Number);
+            if (!yy || !mm || !dd) return null;
+            return new Date(yy, mm - 1, dd).toLocaleDateString("en-US", {
+              year: "numeric", month: "long", day: "numeric",
+            });
+          })()
+        : null;
+
       const monthDayYear = profile.weddingDate
         ? (() => {
             const [y, m, d] = profile.weddingDate.split("-").map(Number);
@@ -868,6 +889,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           ceremonyTimeStr,
           receptionTimeStr,
           invitationMessage: profile.invitationMessage,
+          rsvpByDateStr,
           rsvpUrl,
           photoImgSrc,
           photoObjectPos: digPhotoObjectPos,
@@ -884,6 +906,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           ceremonyTimeStr,
           receptionTimeStr,
           invitationMessage: digOverrides["dig:message"]?.text || profile.invitationMessage || null,
+          rsvpByDateStr,
           rsvpUrl,
           photoImgSrc,
           photoObjectPos: digPhotoObjectPos,
@@ -1032,6 +1055,16 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
       [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
     ].filter(Boolean).join(", ");
 
+    const rsvpByDateStr = customization?.rsvpByDate
+      ? (() => {
+          const [yy, mm, dd] = customization.rsvpByDate!.split("-").map(Number);
+          if (!yy || !mm || !dd) return null;
+          return new Date(yy, mm - 1, dd).toLocaleDateString("en-US", {
+            year: "numeric", month: "long", day: "numeric",
+          });
+        })()
+      : null;
+
     const photoPublicUrl: string | null = (() => {
       if (!digitalInvitationPhotoUrl || digitalInvitationPhotoUrl.startsWith("blob:")) return null;
       if (digitalInvitationPhotoUrl.startsWith("http")) return digitalInvitationPhotoUrl;
@@ -1059,6 +1092,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         ceremonyTimeStr,
         receptionTimeStr,
         invitationMessage: profile.invitationMessage,
+        rsvpByDateStr,
         rsvpUrl,
         photoImgSrc,
         photoObjectPos: digPhotoObjectPos,
@@ -1075,6 +1109,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         ceremonyTimeStr,
         receptionTimeStr,
         invitationMessage: digOverrides["dig:message"]?.text || profile.invitationMessage || null,
+        rsvpByDateStr,
         rsvpUrl,
         photoImgSrc,
         photoObjectPos: digPhotoObjectPos,
@@ -1284,6 +1319,7 @@ router.get("/rsvp/:token", async (req, res) => {
             digitalInvitationAccentColor: invitationCustomizations.digitalInvitationAccentColor,
             digitalInvitationFontColor: invitationCustomizations.digitalInvitationFontColor,
             useGeneratedInvitation: invitationCustomizations.useGeneratedInvitation,
+            rsvpByDate: invitationCustomizations.rsvpByDate,
           })
           .from(invitationCustomizations)
           .where(eq(invitationCustomizations.profileId, profile.id))
@@ -1330,6 +1366,8 @@ router.get("/rsvp/:token", async (req, res) => {
         return pos ? `${pos.x ?? 50}% ${pos.y ?? 50}%` : "50% 50%";
       })(),
       invitationMessage: profile?.invitationMessage ?? null,
+      // Couple-set RSVP deadline shown on the public invitation card.
+      rsvpByDate: c?.rsvpByDate ?? null,
       // Custom design theming — used to style the RSVP page
       colorPalette: mergedPalette,
       backgroundColor: c?.digitalInvitationBackground ?? null,

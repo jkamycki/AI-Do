@@ -113,6 +113,7 @@ router.get("/invitation-customizations", requireAuth, async (req, res) => {
         backgroundImageUrl: null,
         textOverrides: {},
         useGeneratedInvitation: true,
+        rsvpByDate: null,
       });
     }
 
@@ -157,6 +158,7 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
       digitalInvitationAccentColor,
       textOverrides,
       useGeneratedInvitation,
+      rsvpByDate,
     } = req.body as {
       profileId: number;
       primaryColor?: string;
@@ -188,6 +190,7 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
         { x?: number; y?: number; font?: string; color?: string; fontSize?: number }
       >;
       useGeneratedInvitation?: boolean;
+      rsvpByDate?: string | null;
     };
 
     if (!profileId) {
@@ -210,6 +213,26 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
       if (!hexRegex.test(primaryColor)) {
         return res.status(400).json({ error: "Invalid primary color format" });
       }
+    }
+
+    // Validate RSVP-by date — must be ISO YYYY-MM-DD or empty/null. We store
+    // it as text so the same string round-trips through <input type="date">
+    // without timezone drift, but reject anything that isn't a real calendar
+    // date so a typo doesn't end up rendered on the invitation.
+    let normalizedRsvpByDate: string | null | undefined = rsvpByDate;
+    if (rsvpByDate !== undefined && rsvpByDate !== null && rsvpByDate !== "") {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(rsvpByDate);
+      if (!m) {
+        return res.status(400).json({ error: "rsvpByDate must be in YYYY-MM-DD format" });
+      }
+      const [, ys, ms, ds] = m;
+      const y = Number(ys), mo = Number(ms), d = Number(ds);
+      const probe = new Date(y, mo - 1, d);
+      if (probe.getFullYear() !== y || probe.getMonth() !== mo - 1 || probe.getDate() !== d) {
+        return res.status(400).json({ error: "rsvpByDate is not a valid calendar date" });
+      }
+    } else if (rsvpByDate === "") {
+      normalizedRsvpByDate = null;
     }
 
     // Reject blob: URLs — they are local browser-session URLs and cannot be persisted
@@ -257,6 +280,7 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
           ...(digitalInvitationAccentColor !== undefined && { digitalInvitationAccentColor }),
           ...(textOverrides !== undefined && { textOverrides }),
           ...(useGeneratedInvitation !== undefined && { useGeneratedInvitation }),
+          ...(rsvpByDate !== undefined && { rsvpByDate: normalizedRsvpByDate }),
           updatedAt: new Date(),
         })
         .where(eq(invitationCustomizations.profileId, profileId))
@@ -298,6 +322,7 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
           digitalInvitationAccentColor: digitalInvitationAccentColor || null,
           textOverrides: textOverrides || {},
           useGeneratedInvitation: useGeneratedInvitation ?? true,
+          rsvpByDate: normalizedRsvpByDate ?? null,
         })
         .returning();
       result = created;

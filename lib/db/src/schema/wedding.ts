@@ -544,6 +544,11 @@ export const invitationCustomizations = pgTable("invitation_customizations", {
   // Sending mode: true = use the AI-generated email template, false = use user's custom design
   useGeneratedInvitation: boolean("use_generated_invitation").notNull().default(true),
 
+  // Couple-set RSVP deadline shown on the RSVP invitation (preview, email, and
+  // public RSVP page). Stored as an ISO date string "YYYY-MM-DD" so the same
+  // format works in <input type="date"> on the client and in the JSON payload.
+  rsvpByDate: text("rsvp_by_date"),
+
   // Metadata
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
