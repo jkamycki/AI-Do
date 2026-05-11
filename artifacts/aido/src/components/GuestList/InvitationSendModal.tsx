@@ -573,6 +573,7 @@ export function InvitationSendModal({
         saveTheDateAccentColor: rawCustomization.saveTheDateAccentColor ?? null,
         digitalInvitationAccentColor: rawCustomization.digitalInvitationAccentColor ?? null,
         textOverrides: rawCustomization.textOverrides ?? {},
+        rsvpByDate: rawCustomization.rsvpByDate ?? null,
       }
     : null;
 
@@ -607,6 +608,7 @@ export function InvitationSendModal({
               saveTheDateAccentColor: old.saveTheDateAccentColor ?? null,
               digitalInvitationAccentColor: old.digitalInvitationAccentColor ?? null,
               textOverrides: old.textOverrides ?? {},
+              rsvpByDate: old.rsvpByDate ?? null,
             }
           : null;
         const next = updater(cur);
@@ -912,6 +914,7 @@ export function InvitationSendModal({
                         ceremonyTime: profile.ceremonyTime,
                         receptionTime: profile.receptionTime,
                         invitationMessage: profile.invitationMessage,
+                        rsvpByDate: customization.rsvpByDate ?? null,
                       }}
                       palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
                       photoUrl={customization.digitalInvitationPhotoUrl || null}
