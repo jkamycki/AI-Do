@@ -1059,29 +1059,7 @@ export default function WebsiteEditor() {
               <Undo2 className="h-3.5 w-3.5 mr-1.5" />
               {t("website_editor.undo", { defaultValue: "Undo" })}
             </Button>
-            <div
-              role="status"
-              aria-live="polite"
-              className={`inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-md text-xs font-semibold border ${
-                saveError
-                  ? "border-destructive/30 bg-destructive/10 text-destructive"
-                  : (saving || autoSaving)
-                    ? "border-amber-400/40 bg-amber-50 text-amber-800"
-                    : "border-emerald-200 bg-emerald-50 text-emerald-700"
-              }`}
-            >
-              {saveError
-                ? <><X className="h-3.5 w-3.5" /> {t("website_editor.save_failed_retry", { defaultValue: "Save failed — retrying…" })}</>
-                : (saving || autoSaving || dirty)
-                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("website_editor.saving", { defaultValue: "Saving..." })}</>
-                  : <><Check className="h-3.5 w-3.5" /> {t("website_editor.all_changes_saved", { defaultValue: "All changes saved" })}</>}
-            </div>
           </div>
-          {!dirty && lastAutosaved && (
-            <span className="text-[11px] text-muted-foreground mt-2 inline-block">
-              Autosaved {lastAutosaved.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-            </span>
-          )}
           {record.published && (
             <div className="mt-3 space-y-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs">
@@ -2108,23 +2086,8 @@ export default function WebsiteEditor() {
         onClick={() => { if (ctxMenu) setCtxMenu(null); }}
       >
         <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs flex items-center justify-between gap-3 flex-wrap">
-          <span style={{ color: "#D4A017" }} className="inline-flex items-center gap-1.5">
-            {t("website_editor.live_preview_autosave", { defaultValue: "Live preview — every change saves automatically." })}
-            {saveError ? (
-              <span className="text-destructive font-semibold">
-                {t("website_editor.save_failed_retry", { defaultValue: "Save failed — retrying…" })}
-              </span>
-            ) : (saving || autoSaving || dirty) ? (
-              <span className="inline-flex items-center gap-1 text-amber-700 font-semibold">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                {t("website_editor.saving", { defaultValue: "Saving..." })}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
-                <Check className="h-3 w-3" />
-                {t("website_editor.all_changes_saved", { defaultValue: "All changes saved" })}
-              </span>
-            )}
+          <span style={{ color: "#D4A017" }}>
+            {t("website_editor.live_preview_label", { defaultValue: "Live preview" })}
           </span>
           {record.published && (
             <button
