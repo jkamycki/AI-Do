@@ -1382,6 +1382,8 @@ function Router() {
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />
       <Route path="/sso-callback" component={SsoCallbackPage} />
+      <Route path="/invite/rsvp/:token">{(params) => <Redirect to={`/rsvp/${params.token}`} />}</Route>
+      <Route path="/invite/save-the-date/:token">{(params) => <Redirect to={`/save-the-date/${params.token}`} />}</Route>
       <Route path="/invite/:token" component={InviteAccept} />
       <Route path="/collect/:token" component={GuestCollect} />
       <Route path="/rsvp/:token" component={Rsvp} />
