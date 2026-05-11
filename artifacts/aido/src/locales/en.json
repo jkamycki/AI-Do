@@ -499,7 +499,7 @@
     "add_note": "Add note",
     "edit_note": "Edit note",
     "remove_note": "Remove note",
-    "note_placeholder": "Add a note (e.g. booked with Posh DJs)",
+    "note_placeholder": "Add a note (e.g. Booked the Venue, Booked the Dj, Guest Invitations Sent)",
     "save_note": "Save note"
   },
   "vendors": {
