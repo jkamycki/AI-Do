@@ -702,7 +702,7 @@ export default function Guests() {
       if (data?.emailSent) {
         toast({ title: "Reminder sent", description: "RSVP reminder email delivered." });
       } else {
-        toast({ title: "Reminder couldn't be delivered", description: "Email failed to send.", variant: "destructive" });
+        toast({ title: "No email on file", description: "Copy the link below to send manually." });
       }
     },
     onError: (err) => toast({ title: "Failed to send reminder", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),

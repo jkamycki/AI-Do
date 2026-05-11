@@ -951,10 +951,16 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Guest has already responded — no reminder needed." });
     }
 
-    // No email — just mark the reminder as sent without sending anything.
+    // No email — mark the reminder as sent and return the link so the
+    // planner can copy it and send manually.
     if (!guest.email) {
-      await db.update(guests).set({ rsvpReminderStatus: "sent" }).where(eq(guests.id, id));
-      return res.json({ rsvpUrl: null, emailSent: false });
+      const token = guest.rsvpToken ?? crypto.randomUUID();
+      const updates: Partial<typeof guests.$inferInsert> = { rsvpReminderStatus: "sent" };
+      if (!guest.rsvpToken) updates.rsvpToken = token;
+      await db.update(guests).set(updates).where(eq(guests.id, id));
+      const origin = buildFrontendOrigin(req);
+      const rsvpUrl = `${origin}/rsvp/${token}`;
+      return res.json({ rsvpUrl, previewUrl: rsvpUrl, emailSent: false });
     }
 
     const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
