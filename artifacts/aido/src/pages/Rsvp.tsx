@@ -73,6 +73,9 @@ interface RsvpInfo {
   photoUrl: string | null;
   photoObjectPosition?: string | null;
   invitationMessage: string | null;
+  // Couple-set RSVP deadline (YYYY-MM-DD); rendered as "RSVP By: (Date)" on
+  // the invitation card so guests know when they need to respond by.
+  rsvpByDate: string | null;
   colorPalette: { primary: string; secondary: string; accent: string; neutral: string } | null;
   backgroundColor: string | null;
   font: string | null;
@@ -211,6 +214,16 @@ export default function Rsvp() {
         const [y, m, d] = info.weddingDate.split("-").map(Number);
         return new Date(y, m - 1, d).toLocaleDateString("en-US", {
           weekday: "long", year: "numeric", month: "long", day: "numeric",
+        });
+      })()
+    : null;
+
+  const rsvpByDateStr = info?.rsvpByDate
+    ? (() => {
+        const [y, m, d] = info.rsvpByDate.split("-").map(Number);
+        if (!y || !m || !d) return null;
+        return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+          year: "numeric", month: "long", day: "numeric",
         });
       })()
     : null;
@@ -442,6 +455,15 @@ export default function Rsvp() {
             {/* Times */}
             {timesLine && !hasSeparateCeremony && (
               <p style={{ fontFamily: jakarta, fontSize: 11, color: GOLD, margin: "8px 0 0" }}>{timesLine}</p>
+            )}
+
+            {/* RSVP By date — couple-set deadline so guests know when to reply. */}
+            {rsvpByDateStr && (
+              <p style={{ fontFamily: jakarta, fontSize: 11, fontWeight: 600,
+                          letterSpacing: "0.12em", textTransform: "uppercase",
+                          color: GOLD, margin: "10px 0 0" }}>
+                RSVP By: <span style={{ color: WHITE, fontWeight: 600 }}>{rsvpByDateStr}</span>
+              </p>
             )}
 
             {/* Invitation message */}

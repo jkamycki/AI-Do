@@ -17,6 +17,9 @@ export interface WeddingInfo {
   receptionTime?: string | null;
   saveTheDateMessage?: string | null;
   invitationMessage?: string | null;
+  // Couple-set RSVP deadline as YYYY-MM-DD; rendered as "RSVP By: <date>" on
+  // the digital invitation preview (and matching email + public RSVP page).
+  rsvpByDate?: string | null;
 }
 
 export interface PhotoPosition { x: number; y: number }
@@ -351,6 +354,16 @@ export function AiDigitalInvitationPreview({
       {timesLine && (
         <p style={{ fontFamily: jakarta, fontSize: 10, color: accent, margin: "6px 0 0" }}>
           {timesLine}
+        </p>
+      )}
+
+      {formatDate(profile.rsvpByDate, { year: "numeric", month: "long", day: "numeric" }) && (
+        <p style={{ fontFamily: jakarta, fontSize: 10, fontWeight: 600,
+                    letterSpacing: "0.12em", textTransform: "uppercase",
+                    color: accent, margin: "10px 0 0" }}>
+          RSVP By: <span style={{ color: text, fontWeight: 600 }}>
+            {formatDate(profile.rsvpByDate, { year: "numeric", month: "long", day: "numeric" })}
+          </span>
         </p>
       )}
 

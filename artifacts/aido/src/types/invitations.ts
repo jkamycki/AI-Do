@@ -51,6 +51,9 @@ export interface InvitationCustomization {
   digitalInvitationBackground?: string | null;
   textOverrides?: TextOverrides;
   useGeneratedInvitation?: boolean;
+  // Couple-set RSVP deadline (YYYY-MM-DD) shown on the RSVP invitation
+  // preview, email, and public RSVP page.
+  rsvpByDate?: string | null;
   updatedAt?: string;
   createdAt?: string;
 }

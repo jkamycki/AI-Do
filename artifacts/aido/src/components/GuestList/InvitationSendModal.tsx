@@ -45,6 +45,8 @@ interface Customization {
   saveTheDateAccentColor: string | null;
   digitalInvitationAccentColor: string | null;
   textOverrides: TextOverrides;
+  // Couple-set RSVP deadline (YYYY-MM-DD) shown on the RSVP invitation.
+  rsvpByDate?: string | null;
 }
 
 interface Profile {
@@ -806,6 +808,7 @@ export function InvitationSendModal({
                           ceremonyTime: profile.ceremonyTime,
                           receptionTime: profile.receptionTime,
                           invitationMessage: profile.invitationMessage,
+                          rsvpByDate: customization.rsvpByDate ?? null,
                         }}
                         palette={digPalette}
                         photoUrl={customization.digitalInvitationPhotoUrl || null}

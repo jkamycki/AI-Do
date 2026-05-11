@@ -90,6 +90,9 @@ export default function InvitationCustomizationPage({
   // ── Messages ──────────────────────────────────────────────────────────────
   const [saveTheDateMessage, setSaveTheDateMessage] = useState("");
   const [invitationMessage, setInvitationMessage] = useState("");
+  // RSVP deadline shown on the RSVP invitation (preview, email, public page).
+  // Stored as ISO YYYY-MM-DD so it round-trips through <input type="date">.
+  const [rsvpByDate, setRsvpByDate] = useState<string>("");
   const [showStdAiPanel, setShowStdAiPanel] = useState(false);
   const [stdAiDetails, setStdAiDetails] = useState("");
   const [stdGenerating, setStdGenerating] = useState(false);
@@ -115,6 +118,7 @@ export default function InvitationCustomizationPage({
     backgroundImageUrl,
     designMode,
     customDesign,
+    rsvpByDate,
   });
   const saveTheDateBlobUrlRef = useRef<string | null>(null);
   const digitalInvitationBlobUrlRef = useRef<string | null>(null);
@@ -144,6 +148,7 @@ export default function InvitationCustomizationPage({
     backgroundImageUrl,
     designMode,
     customDesign,
+    rsvpByDate,
   };
 
   useEffect(() => {
@@ -191,6 +196,7 @@ export default function InvitationCustomizationPage({
         digitalInvitationFontColor: isCustom ? v.customDesign.rsvpInvitation.fontColor : null,
         saveTheDateFontSize: isCustom ? v.customDesign.saveTheDate.fontSize : null,
         digitalInvitationFontSize: isCustom ? v.customDesign.rsvpInvitation.fontSize : null,
+        rsvpByDate: v.rsvpByDate || null,
       });
 
       const apiBase = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
@@ -298,6 +304,7 @@ export default function InvitationCustomizationPage({
 
       setSaveTheDatePhotoUrl(customization.saveTheDatePhotoUrl);
       setDigitalInvitationPhotoUrl(customization.digitalInvitationPhotoUrl);
+      setRsvpByDate(customization.rsvpByDate ?? "");
 
       // Restore the per-invitation design mode + custom design fields from
       // the saved record so the toggle and panel reflect what was last saved.
@@ -658,6 +665,8 @@ export default function InvitationCustomizationPage({
       // legacy shared customColors.accent.
       saveTheDateAccentColor: stdCustom ? d.saveTheDate.accentColor : null,
       digitalInvitationAccentColor: digCustom ? d.rsvpInvitation.accentColor : null,
+      // Couple-set RSVP deadline; null clears a previously-saved value.
+      rsvpByDate: rsvpByDate || null,
     };
   };
 
@@ -726,6 +735,7 @@ export default function InvitationCustomizationPage({
     backgroundImageUrl,
     designMode,
     customDesign,
+    rsvpByDate,
   ]);
 
   // Flush any pending position changes to the DB when navigating away so the
@@ -966,6 +976,42 @@ export default function InvitationCustomizationPage({
               </Button>
             </CardContent>
           </Card>
+
+          {/* RSVP By date — only meaningful for the RSVP invitation, so hide it
+              when the user is editing the Save the Date. Autosaves through the
+              same debounced effect as the rest of this tab. */}
+          {!isSTD && (
+            <Card>
+              <CardContent className="p-4 space-y-2">
+                <label htmlFor="rsvpByDate" className="text-sm font-medium block">
+                  RSVP By
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Date you want guests to RSVP by. Shown as "RSVP By: (Date)" on the invitation preview, email, and the public RSVP page.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="rsvpByDate"
+                    type="date"
+                    value={rsvpByDate}
+                    onChange={(e) => setRsvpByDate(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  {rsvpByDate && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 text-xs h-9 px-2"
+                      onClick={() => setRsvpByDate("")}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Custom Design controls — only render when this invitation's mode is "custom".
               These values are NOT applied to the preview/email/PDF yet. */}
@@ -1213,6 +1259,7 @@ export default function InvitationCustomizationPage({
                           ceremonyTime: displayWeddingProfile.ceremonyTime,
                           receptionTime: displayWeddingProfile.receptionTime,
                           invitationMessage: invitationMessage || weddingProfile?.invitationMessage,
+                          rsvpByDate,
                         }}
                         palette={isCustom ? customPalette : { ...displayPalette, accent: "#D4A017", primary: "#D4A017" }}
                         photoUrl={digitalInvitationPhotoUrl}
