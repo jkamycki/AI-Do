@@ -154,6 +154,46 @@ export default function WebsiteEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Collaborator live sync: re-fetch /api/website/me every 5s, but only when
+  // the local session has no unsaved edits and the user isn't actively
+  // editing. Otherwise polling could clobber in-progress text or fight the
+  // autosave round-trip. When another collaborator (partner / planner) saves
+  // an edit, this picks it up within 5s so both workstations stay in sync
+  // without needing a full WebSocket layer. Per-user UI language is already
+  // independent (localStorage in i18n.ts), so each collaborator keeps their
+  // own language regardless of remote updates.
+  useEffect(() => {
+    if (!record) return;
+    const COLLAB_POLL_INTERVAL_MS = 5000;
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled) return;
+      // Skip when the user is mid-edit or has unflushed work — we'd otherwise
+      // overwrite their cursor/state with a remote snapshot.
+      if (dirtyRef.current || inFlightSaveRef.current) return;
+      const active = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+      if (active && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
+      try {
+        const r = await authFetch("/api/website/me");
+        if (cancelled || !r.ok) return;
+        const remote = (await r.json()) as WebsiteRecord;
+        // Only adopt remote state if it's strictly newer. Comparing lastUpdated
+        // avoids spurious re-renders when the remote and local timestamps match
+        // (same save round-trip), and prevents a slow response from rolling us
+        // back to an older snapshot.
+        const localTs = recordRef.current?.lastUpdated ? Date.parse(recordRef.current.lastUpdated) : 0;
+        const remoteTs = remote.lastUpdated ? Date.parse(remote.lastUpdated) : 0;
+        if (Number.isFinite(remoteTs) && remoteTs > localTs) {
+          setRecord((prev) => ({ ...remote, portalParty: remote.portalParty ?? prev?.portalParty }));
+          recordRef.current = { ...remote, portalParty: remote.portalParty ?? recordRef.current?.portalParty };
+        }
+      } catch { /* network blip — try again next tick */ }
+    };
+    const id = setInterval(tick, COLLAB_POLL_INTERVAL_MS);
+    return () => { cancelled = true; clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record?.id]);
+
   // Load couple data so the live preview can render even before the server
   // joins it. We fetch on demand from the public endpoint after first save.
   const [previewExtra, setPreviewExtra] = useState<{ couple: WebsiteRendererPayload["couple"] } | null>(null);
@@ -684,14 +724,31 @@ export default function WebsiteEditor() {
     setPublishing(true);
     try {
       if (dirtyRef.current) {
-        const saved = await saveNow(true);
-        if (!saved) {
+        // Race the pre-publish save against a 6s timeout. saveNow chains onto
+        // the in-flight autosave promise, so a stuck retry loop (server 5xx,
+        // dropped network) would otherwise pin Publish forever and the button
+        // appears to do nothing. After 6s we proceed and let the publish
+        // endpoint run with whatever the server currently has — the user
+        // explicitly clicked Publish, and the localStorage backup + autosave
+        // retry will eventually push the latest edits.
+        let timedOut = false;
+        const saved = await Promise.race<boolean>([
+          saveNow(true),
+          new Promise<boolean>((res) => setTimeout(() => { timedOut = true; res(false); }, 6000)),
+        ]);
+        if (!saved && !timedOut) {
           const err = lastSaveErrorRef.current;
           const detail = err
             ? `${err.status ? `HTTP ${err.status} — ` : ""}${err.message} (your work is backed up locally and will keep retrying)`
             : "Your work is backed up locally and will keep retrying in the background.";
           toast({ title: "Couldn't save before publishing", description: detail, variant: "destructive" });
           return;
+        }
+        if (timedOut) {
+          toast({
+            title: "Publishing anyway…",
+            description: "Save is still retrying in the background — your latest edits will sync once the connection recovers.",
+          });
         }
       }
       const r = await authFetch("/api/website/publish", {
