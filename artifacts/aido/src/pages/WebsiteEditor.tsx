@@ -299,9 +299,22 @@ export default function WebsiteEditor() {
   // in flight" and avoid clobbering those edits with the server's response.
   const editSeqRef = useRef(0);
 
+  // recordRef is also mirrored to `record` via a passive useEffect below, but
+  // that effect fires after browser paint — so a synchronous read of
+  // recordRef.current immediately after setRecord (e.g. handleSave reading it
+  // inside saveNow, one rAF after flushing edits) can land on stale data and
+  // POST the pre-edit body. Updating the ref inside the updater closes the
+  // window: any caller reading recordRef.current after patchRecord/update
+  // returns sees the freshly merged record, no matter when React commits.
   const update = (patch: Partial<WebsiteRecord>) => {
     if (recordRef.current) queueHistory(recordRef.current);
-    setRecord((prev) => prev ? { ...prev, ...patch } : prev);
+    setRecord((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      recordRef.current = next;
+      return next;
+    });
+    dirtyRef.current = true;
     setDirty(true);
     editSeqRef.current += 1;
   };
@@ -310,7 +323,13 @@ export default function WebsiteEditor() {
   // Uses prev state to avoid stale-closure bugs when rapid events fire before a re-render.
   const patchRecord = useCallback((fn: (prev: WebsiteRecord) => Partial<WebsiteRecord>) => {
     if (recordRef.current) queueHistory(recordRef.current);
-    setRecord((prev) => prev ? { ...prev, ...fn(prev) } : prev);
+    setRecord((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...fn(prev) };
+      recordRef.current = next;
+      return next;
+    });
+    dirtyRef.current = true;
     setDirty(true);
     editSeqRef.current += 1;
   }, [queueHistory]);
