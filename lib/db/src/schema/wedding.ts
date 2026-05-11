@@ -573,6 +573,10 @@ export type WebsiteTextStyle = {
   bold?: boolean;
   italic?: boolean;
   animation?: string;
+  // Explicit box width set by dragging the corner resize handle sideways.
+  // When present, the rendered text wraps inside this width so users can
+  // pull a heading into a square-shaped paragraph instead of a long single line.
+  width?: string;
 };
 export type WebsiteTextStyles = Record<string, WebsiteTextStyle>;
 
