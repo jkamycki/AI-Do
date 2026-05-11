@@ -1480,8 +1480,8 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={text}
         defaultValue={(ctx.editable || ctx.previewMode) ? "Tell guests how you two met, your story, your journey..." : ""}
         onCommit={(v) => ctx.onTextChange("story", v)}
-        className="text-center text-base sm:text-lg leading-relaxed mx-auto px-4 whitespace-pre-line break-words"
-        style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)), maxWidth: "min(48rem, 100%)" }}
+        className="text-center text-base sm:text-lg leading-relaxed max-w-3xl mx-auto px-4 whitespace-pre-line break-words"
+        style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)), textAlign: "center", marginLeft: "auto", marginRight: "auto" }}
         {...withBaseColor(tsp(ctx, "story"), labelColor)}
       />
     </SectionShell>
