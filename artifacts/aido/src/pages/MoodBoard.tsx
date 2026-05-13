@@ -103,6 +103,11 @@ function applyApiBase(url: string): string {
   return url.startsWith("/") && _API ? `${_API}${url}` : url;
 }
 function objectUrl(objectPath: string): string {
+function objectUrl(objectPath: string): string {
+  if (objectPath.startsWith("/api/storage/public-objects/")) return objectPath;
+  if (objectPath.startsWith("/storage/public-objects/")) return `/api${objectPath}`;
+  return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
+} main
   return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
 }
 async function authFetch(url: string, options: RequestInit = {}, getToken: () => Promise<string | null>) {
@@ -661,11 +666,7 @@ export default function MoodBoard() {
       let partner1 = "";
       let partner2 = "";
       try {
-        const profileRes = await authFetch(
-          `${import.meta.env.BASE_URL}api/profile`.replace(/\/+/g, "/"),
-          {},
-          getToken
-        );
+        const profileRes = await authFetch("/api/profile", {}, getToken);
         if (profileRes.ok) {
           const p = await profileRes.json() as { partner1Name?: string; partner2Name?: string };
           partner1 = p.partner1Name ?? "";
@@ -789,7 +790,12 @@ export default function MoodBoard() {
           }
           const x = MARGIN + col * (IMG_W + GAP);
           try {
-            const res = await authFetch(objectUrl(board.images[i].objectPath), {}, getToken);
+            const token = await getToken();
+            const res = await fetch(applyApiBase(objectUrl(board.images[i].objectPath)), {
+              credentials: "include",
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+            if (!res.ok) throw new Error(`image fetch failed: ${res.status}`);
             const blob = await res.blob();
             const dataUrl = await blobToDataUrl(blob);
             // CONTAIN-fit so no part of the user's photo is clipped.
