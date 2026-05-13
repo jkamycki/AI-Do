@@ -946,9 +946,6 @@ function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: 
   const trimmed = text.trim();
   const [dismissed, setDismissed] = useState(false);
   const marqueeDuration = "20s";
-  const marqueeTrackStyle: React.CSSProperties = ctx.editable
-    ? { color: data.colorPalette.text, animation: `wsa-marquee-ltr-single ${marqueeDuration} linear infinite` }
-    : { color: data.colorPalette.text, animation: `wsa-marquee-ltr ${marqueeDuration} linear infinite` };
   // Hide when the user has toggled the announcement off via Home Elements.
   if (isEditableHiddenMarker(data.customText._announcementHidden) || dismissed) return null;
   // Public site: hide entirely when empty. Editor: keep the slot visible so
@@ -962,7 +959,12 @@ function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: 
       <div className="flex-1 overflow-hidden whitespace-nowrap">
         <div
           className="inline-flex min-w-max items-center"
-          style={marqueeTrackStyle}
+          style={{
+            color: data.colorPalette.text,
+            animation: ctx.editable
+              ? `wsa-marquee-ltr-single ${marqueeDuration} linear infinite`
+              : `wsa-marquee-ltr ${marqueeDuration} linear infinite`,
+          }}
           aria-label={trimmed}
         >
           {ctx.editable ? (
