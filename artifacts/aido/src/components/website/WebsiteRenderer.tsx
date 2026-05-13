@@ -136,7 +136,7 @@ function tsp(ctx: EditCtx, key: string, _deletable = false) {
     position: ctx.textPositions?.[key],
     onPositionChange: ctx.onPositionChange ? (p: TextPosition) => ctx.onPositionChange!(key, p) : undefined,
     onDelete: ctx.onDeleteElement ? () => ctx.onDeleteElement!(key) : undefined,
-    aiEnabled: key.startsWith("_custom_"),
+    aiEnabled: true,
   };
 }
 
