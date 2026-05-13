@@ -6,10 +6,6 @@ import { isEditableHiddenMarker } from "./hiddenMarker";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch, authFetch } from "@/lib/authFetch";
 import { resolveMediaUrl, isMediaAuthRequired } from "@/lib/mediaUrl";
-import { AuthMediaImage } from "@/components/AuthMediaImage"; main
-import { RsvpFlow } from "./RsvpFlow";
-import { apiFetch, authFetch } from "@/lib/authFetch";
-import { resolveMediaUrl, isMediaAuthRequired } from "@/lib/mediaUrl";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 
 // camelCase section id <-> kebab-case URL slug

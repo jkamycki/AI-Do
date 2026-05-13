@@ -21,8 +21,6 @@ import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type 
 import { flushPendingEditableCommits, subscribeEditableDrag } from "@/components/website/EditableText";
 import { EDITABLE_HIDDEN_MARKER, isEditableHiddenMarker } from "@/components/website/hiddenMarker";
 import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
-import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";main
-import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 
 interface WebsiteRecord extends WebsiteRendererPayload {

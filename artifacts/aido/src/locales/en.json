@@ -29,7 +29,7 @@
     "checklist_title": "Smart Checklist",
     "checklist_desc": "Month-by-month tasks tailored to your date.",
     "emails_title": "Vendor Tracking & Communication Center",
-"emails_desc": "Keep every vendor organized, manage conversations, and send polished emails with deliverability best practices to avoid spam folders.", main
+"emails_desc": "Keep every vendor organized, manage conversations, and send polished emails with deliverability best practices to avoid spam folders.",
     "contracts_title": "Contract Analyzer",
     "contracts_desc": "AI reviews your vendor contracts and flags risks before you sign.",
     "profile_title": "Wedding Profile",
@@ -37,7 +37,7 @@
     "seating_title": "Wedding Website Builder",
 "seating_desc": "Create and publish your wedding website with a built-in QR code generator and trusted share links that guests can open confidently.",
 "collector_title": "Guest List Tracking & Digital Invitations",
-"collector_desc": "Track RSVPs, meal choices, and guest details while sending digital invites optimized for inbox delivery instead of spam.", main
+"collector_desc": "Track RSVPs, meal choices, and guest details while sending digital invites optimized for inbox delivery instead of spam.",
     "assistant_title": "AI Assistant + Day-Of",
     "assistant_desc": "Your AI planning companion — and emergency support when your wedding day arrives."
   },
