@@ -158,18 +158,24 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
 
     doc.moveDown(0.5);
 
-    // Brand-aligned category palette (warm gold base + brand gradient accents)
+    // Brand-aligned category palette (warm gold + magenta/purple/blue system)
     const categoryColors: Record<string, string> = {
-      preparation: "#E8A87C", // peach
+      preparation: BRAND_GOLD_LIGHT,
       ceremony: BRAND_PRIMARY,
-      cocktail: BRAND_GOLD,
+      cocktail: "#D9A63A",
       reception: BRAND_PURPLE,
       dancing: BRAND_PINK,
       photos: BRAND_BLUE,
-      vendors: "#6B7280",
-      travel: "#10B981",
-      other: TEXT_LIGHT,
+      vendors: "#8C6A2B",
+      travel: "#5E7CE2",
+      other: "#A18A5D",
     };
+
+    // subtle timeline rail for visual continuity
+    const railX = margin + 8;
+    const railTop = doc.y + 8;
+    const railBottom = doc.page.height - 88;
+    doc.moveTo(railX, railTop).lineTo(railX, railBottom).strokeColor(BRAND_RULE).lineWidth(1).stroke();
 
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
@@ -185,7 +191,13 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
 
       const rowY = doc.y;
 
+      // event card
+      const cardX = margin + 18;
+      const cardW = contentW - 18;
+      doc.roundedRect(cardX, rowY - 2, cardW, estimatedHeight - 10, 10).fillAndStroke("#F4ECFF", "#D9C6F3");
+
       doc.circle(margin + 8, rowY + 10, 5).fill(dotColor);
+      doc.circle(margin + 8, rowY + 10, 2.2).fill("#FFFFFF");
 
       if (i < events.length - 1) {
         doc.moveTo(margin + 8, rowY + 16).lineTo(margin + 8, rowY + estimatedHeight - 4)
@@ -193,18 +205,18 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
       }
 
       doc.fillColor(BRAND_PRIMARY).font("Helvetica-Bold").fontSize(10)
-        .text(event.time, margin + 22, rowY + 4, { width: 68 });
+        .text(event.time, margin + 30, rowY + 8, { width: 72 });
 
-      const titleX = margin + 98;
-      const titleW = contentW - 98 - 60;
+      const titleX = margin + 112;
+      const titleW = contentW - 128 - 60;
 
       doc.fillColor(TEXT_DARK).font("Helvetica-Bold").fontSize(11)
-        .text(event.title, titleX, rowY + 4, { width: titleW });
+        .text(event.title, titleX, rowY + 8, { width: titleW });
 
       const titleHeight = doc.heightOfString(event.title, { width: titleW });
 
       doc.fillColor(TEXT_MEDIUM).font("Helvetica").fontSize(9)
-        .text(event.description ?? "", titleX, rowY + 6 + titleHeight, {
+        .text(event.description ?? "", titleX, rowY + 10 + titleHeight, {
           width: titleW, lineGap: 2,
         });
 
@@ -213,9 +225,9 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
       });
 
       const catLabel = (event.category ?? "").charAt(0).toUpperCase() + (event.category ?? "").slice(1);
-      doc.roundedRect(pageW - margin - 56, rowY + 4, 56, 16, 8).fill(dotColor + "22");
+      doc.roundedRect(pageW - margin - 56, rowY + 8, 56, 16, 8).fill(dotColor + "22");
       doc.fillColor(dotColor).font("Helvetica-Bold").fontSize(7.5)
-        .text(catLabel, pageW - margin - 56, rowY + 7, { width: 56, align: "center" });
+        .text(catLabel, pageW - margin - 56, rowY + 11, { width: 56, align: "center" });
 
       doc.y = rowY + Math.max(titleHeight + descHeight + 22, 44);
       doc.moveDown(0.3);
