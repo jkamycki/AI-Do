@@ -103,11 +103,19 @@ function applyApiBase(url: string): string {
   return url.startsWith("/") && _API ? `${_API}${url}` : url;
 }
 function objectUrl(objectPath: string): string {
+function objectUrl(objectPath: string): string {
   if (objectPath.startsWith("http://") || objectPath.startsWith("https://")) return objectPath;
   if (objectPath.startsWith("/api/storage/objects/")) return objectPath;
   if (objectPath.startsWith("/api/storage/public-objects/")) return objectPath;
   if (objectPath.startsWith("/storage/public-objects/")) return `/api${objectPath}`;
   return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
+} main
+  if (objectPath.startsWith("http://") || objectPath.startsWith("https://")) return objectPath;
+  if (objectPath.startsWith("/api/storage/objects/")) return objectPath;
+  if (objectPath.startsWith("/api/storage/public-objects/")) return objectPath;
+  if (objectPath.startsWith("/storage/public-objects/")) return `/api${objectPath}`;
+  return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
+} main
 }
 async function authFetch(url: string, options: RequestInit = {}, getToken: () => Promise<string | null>) {
   const token = await getToken();
@@ -793,32 +801,32 @@ export default function MoodBoard() {
           }
           const x = MARGIN + col * (IMG_W + GAP);
           try {
-            const rawPath = board.images[i].objectPath;
-            const resolved = objectUrl(rawPath);
-            const resolvedUrl = applyApiBase(resolved);
-            const isPublicPath = resolved.startsWith("/api/storage/public-objects/")
-              || resolved.startsWith("/storage/public-objects/")
-              || resolved.startsWith("http://")
-              || resolved.startsWith("https://");
+const rawPath = board.images[i].objectPath;
+const resolved = objectUrl(rawPath);
+const resolvedUrl = applyApiBase(resolved);
+const isPublicPath = resolved.startsWith("/api/storage/public-objects/")
+  || resolved.startsWith("/storage/public-objects/")
+  || resolved.startsWith("http://")
+  || resolved.startsWith("https://");
 
-            let res: Response;
-            if (isPublicPath) {
-              // Public objects are best fetched without auth headers to avoid
-              // CORS/preflight issues on some storage/CDN setups.
-              res = await fetch(resolvedUrl);
-            } else {
-              const token = await getToken();
-              res = await fetch(resolvedUrl, {
-                credentials: "include",
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-              });
-            }
+let res: Response;
+if (isPublicPath) {
+  // Public objects are best fetched without auth headers to avoid
+  // CORS/preflight issues on some storage/CDN setups.
+  res = await fetch(resolvedUrl);
+} else {
+  const token = await getToken();
+  res = await fetch(resolvedUrl, {
+    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+}
 
-            if (!res.ok && !isPublicPath) {
-              // Fallback for deployments where objects are publicly readable
-              // but auth/credentials fetch fails due to proxy/CORS policy.
-              res = await fetch(resolvedUrl);
-            }
+if (!res.ok && !isPublicPath) {
+  // Fallback for deployments where objects are publicly readable
+  // but auth/credentials fetch fails due to proxy/CORS policy.
+  res = await fetch(resolvedUrl);
+} main
             if (!res.ok) throw new Error(`image fetch failed: ${res.status}`);
             const blob = await res.blob();
             const dataUrl = await blobToDataUrl(blob);
