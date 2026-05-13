@@ -738,6 +738,7 @@ export default function WebsiteEditor() {
 
   const handlePublish = async () => {
     if (!record) return;
+    const pendingPassword = passwordInput.trim();
     // Flush + save BEFORE flipping the publish flag. /api/website/publish
     // returns the full website row and we replace local state with it — if
     // there are unsaved customText edits (e.g. AI-generated story copy that
@@ -754,6 +755,21 @@ export default function WebsiteEditor() {
     setPublishing(true);
     try {
       if (dirtyRef.current) {
+        if (pendingPassword) {
+          // Never publish without first persisting a newly entered password.
+          // The password field lives in local component state (not record),
+          // so the guest-facing gate would be missing if we timed out and
+          // published before this save completes.
+          const saved = await saveNow(true);
+          if (!saved) {
+            const err = lastSaveErrorRef.current;
+            const detail = err
+              ? `${err.status ? `HTTP ${err.status} — ` : ""}${err.message} (your work is backed up locally and will keep retrying)`
+              : "Your work is backed up locally and will keep retrying in the background.";
+            toast({ title: "Couldn't save password before publishing", description: detail, variant: "destructive" });
+            return;
+          }
+        } else {
         // Race the pre-publish save against a 6s timeout. saveNow chains onto
         // the in-flight autosave promise, so a stuck retry loop (server 5xx,
         // dropped network) would otherwise pin Publish forever and the button
@@ -779,6 +795,7 @@ export default function WebsiteEditor() {
             title: "Publishing anyway…",
             description: "Save is still retrying in the background — your latest edits will sync once the connection recovers.",
           });
+        }
         }
       }
       const r = await authFetch("/api/website/publish", {
