@@ -1324,7 +1324,10 @@ function CustomTextBoxes({ data, ctx, currentSection, showAll }: {
           if (!k.startsWith("_custom_")) return false;
           // Only show this textbox on the page it was added to (or always
           // when the renderer is in show-all mode for full-site preview).
-          if (!showAll && sectionForCustomKey(k) !== currentSection) return false;
+          if (!showAll) {
+            const scope = sectionForCustomKey(k);
+            if (scope !== "global" && scope !== currentSection) return false;
+          }
           if (!ctx.editable) return !!v?.trim() && v.trim() !== "New text — click to edit";
           return true;
         })
