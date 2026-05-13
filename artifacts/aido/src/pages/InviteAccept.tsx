@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { Heart, CheckCircle2, XCircle, Crown, Briefcase, Eye, AlertCircle, Loader2, Mail, ArrowLeft } from "lucide-react";
+import { CheckCircle2, XCircle, Crown, Briefcase, Eye, AlertCircle, Loader2, Mail, ArrowLeft } from "lucide-react";
 
 type CollabRole = "partner" | "planner" | "vendor";
 type AuthMode = "signup" | "signin";
@@ -380,10 +380,11 @@ export default function InviteAcceptPage() {
 
         {/* Logo / Brand */}
         <div className="text-center space-y-2">
-          <div className="flex items-center justify-center gap-2 text-primary font-serif font-bold text-2xl mb-4">
-            <Heart className="h-7 w-7 fill-primary" />
-            A.IDO
-          </div>
+          <img
+            src={`${import.meta.env.BASE_URL}logo.svg`}
+            alt="A.IDO"
+            className="h-10 w-auto mx-auto mb-4"
+          />
           <h1 className="text-3xl font-serif text-foreground">You're Invited!</h1>
           <p className="text-muted-foreground text-base">
             You've been invited to collaborate on a wedding workspace.
