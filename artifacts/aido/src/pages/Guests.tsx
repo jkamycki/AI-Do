@@ -1841,9 +1841,9 @@ export default function Guests() {
             {t("guests.subtitle")}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {allGuests.length > 0 && (
-            <Button variant="outline" onClick={() => exportCSV(allGuests)}>
+            <Button variant="outline" className="whitespace-nowrap" onClick={() => exportCSV(allGuests)}>
               <Download className="h-4 w-4 mr-2" /> {t("guests.export_csv")}
             </Button>
           )}
@@ -1851,6 +1851,7 @@ export default function Guests() {
             <>
               <Button
                 variant="secondary"
+                className="whitespace-nowrap"
                 disabled={
                   sendingSaveTheDates || saveTheDateEligible.length === 0
                 }
@@ -1868,6 +1869,7 @@ export default function Guests() {
               </Button>
               <Button
                 variant="secondary"
+                className="whitespace-nowrap"
                 disabled={sendingInvitations || invitationEligible.length === 0}
                 onClick={() => setConfirmBulkSend("invitation")}
               >
@@ -1883,6 +1885,7 @@ export default function Guests() {
               </Button>
               <Button
                 variant="outline"
+                className="whitespace-nowrap"
                 disabled={sendingReminders || reminderEligible.length === 0}
                 onClick={() => setConfirmBulkSend("reminder")}
               >
@@ -1952,7 +1955,7 @@ export default function Guests() {
           )}
           <Dialog open={isAdding} onOpenChange={setIsAdding}>
             <DialogTrigger asChild>
-              <Button size="lg" className="shadow-md">
+              <Button size="lg" className="shadow-md whitespace-nowrap">
                 <Plus className="mr-2 h-4 w-4" /> {t("guests.add_guest")}
               </Button>
             </DialogTrigger>
