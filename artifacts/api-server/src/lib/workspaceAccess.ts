@@ -68,7 +68,34 @@ export async function resolveProfile(req: Request) {
       : null;
 
   if (!workspaceId || isNaN(workspaceId)) {
-    return getProfileByUserId(req.userId!);
+    const ownProfile = await getProfileByUserId(req.userId!);
+    if (ownProfile) return ownProfile;
+
+    // Collaboration-first fallback: if the caller doesn't have their own
+    // profile yet but is an active collaborator on exactly one workspace,
+    // default to that workspace so shared data (profile, guests, etc.)
+    // loads consistently without requiring an explicit workspace selection.
+    const shared = await db
+      .select({ profileId: workspaceCollaborators.profileId })
+      .from(workspaceCollaborators)
+      .where(
+        and(
+          eq(workspaceCollaborators.inviteeUserId, req.userId!),
+          eq(workspaceCollaborators.status, "active")
+        )
+      )
+      .limit(2);
+
+    if (shared.length === 1) {
+      const rows = await db
+        .select()
+        .from(weddingProfiles)
+        .where(eq(weddingProfiles.id, shared[0].profileId))
+        .limit(1);
+      return rows[0] ?? null;
+    }
+
+    return null;
   }
 
   const role = await resolveWorkspaceRole(req.userId!, workspaceId);
