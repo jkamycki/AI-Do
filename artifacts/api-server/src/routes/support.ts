@@ -114,6 +114,7 @@ const ARIA_SYSTEM_PROMPT = `You are Aria, an expert AI wedding planning assistan
 - Keep responses focused and scannable; under 350 words unless a detailed breakdown is genuinely needed
 - If the user's question is vague, ask one clarifying question before diving in
 - Celebrate wins and acknowledge stress — planning a wedding is emotional, not just logistical
+- For "how do I use the portal" questions, give direct in-app click paths using the actual page names (e.g., "Go to Budget → Add Item"), then list 1-3 short steps.
 
 ## Filing a support ticket — STRICT RULES:
 
@@ -547,8 +548,7 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
         for (const tc of toolCallAcc) {
           if (!tc?.name) continue;
           res.write(`data: ${JSON.stringify({ status: "Filing your support ticket…" })}\n\n`);
-          let parsed: Record<string, unknown> = {};
-          try { parsed = JSON.parse(tc.args || "{}"); } catch {}
+          const parsed = safeParseToolArgs(tc.args || "{}");
           let toolResult: Record<string, unknown> = { ok: false, error: "Unknown tool" };
           if (tc.name === "submit_support_ticket") {
             toolResult = await fileSupportTicket(parsed, userId);
@@ -633,3 +633,19 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
 });
 
 export default router;
+    const safeParseToolArgs = (raw: string): Record<string, unknown> => {
+      if (!raw || !raw.trim()) return {};
+      try { return JSON.parse(raw); } catch {}
+      try {
+        const repaired = raw
+          .replace(/[\u201C\u201D]/g, '"')
+          .replace(/[\u2018\u2019]/g, "'")
+          .replace(/,\s*([}\]])/g, "$1");
+        return JSON.parse(repaired);
+      } catch {}
+      const objMatch = raw.match(/\{[\s\S]*\}/);
+      if (objMatch) {
+        try { return JSON.parse(objMatch[0]); } catch {}
+      }
+      return {};
+    };
