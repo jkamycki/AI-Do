@@ -1003,6 +1003,24 @@ export default function WebsiteEditor() {
     }
   };
 
+  const handleDeleteElement = (key: string) => {
+    patchRecord((prev) => {
+      const ct = { ...prev.customText };
+      const ts = { ...(prev.textStyles ?? {}) };
+      const tp = { ...(prev.textPositions ?? {}) };
+      if (key.startsWith("_custom_")) {
+        // User-added text box — fully remove the row.
+        delete ct[key]; delete ts[key]; delete tp[key];
+      } else {
+        // Default field (couple names, story, schedule, etc.) — flag
+        // it hidden via the sentinel marker so the deletion persists
+        // across editor page changes, preview, and the published site.
+        ct[key] = EDITABLE_HIDDEN_MARKER;
+      }
+      return { customText: ct, textStyles: ts, textPositions: tp };
+    });
+  };
+
   // ---- render ----
 
   if (loading) {
@@ -1052,6 +1070,7 @@ export default function WebsiteEditor() {
               onTextChange={(key, value) => patchRecord((prev) => ({ customText: { ...prev.customText, [key]: value } }))}
               onStyleChange={(key, style) => patchRecord((prev) => ({ textStyles: { ...(prev.textStyles ?? {}), [key]: style } }))}
               onPositionChange={(key, pos) => patchRecord((prev) => ({ textPositions: { ...(prev.textPositions ?? {}), [key]: pos } }))}
+              onDeleteElement={handleDeleteElement}
               onGalleryCaptionChange={(imageUrl, caption) => patchRecord((prev) => {
                 const next = (prev.galleryImages ?? []).map((img) =>
                   img.url === imageUrl ? { ...img, caption } : img,
@@ -1466,7 +1485,7 @@ export default function WebsiteEditor() {
               { key: "_countdown", label: t("website_editor.hero_countdown", { defaultValue: "Countdown Timer" }) },
               { key: "_addToCalendarRow", label: t("website_editor.hero_add_to_calendar", { defaultValue: "Add to Calendar Button" }) },
             ].map((row) => {
-              const isHidden = record.customText[row.key] === " __aido_hidden__ " || record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
+              const isHidden = record.customText[row.key] === EDITABLE_HIDDEN_MARKER || record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
               return (
                 <div key={row.key} className="flex items-center justify-between gap-3 py-1.5">
                   <Label className="text-sm cursor-pointer">{row.label}</Label>
@@ -2209,23 +2228,7 @@ export default function WebsiteEditor() {
               );
               return { galleryImages: next };
             })}
-            onDeleteElement={(key) => patchRecord((prev) => {
-              const ct = { ...prev.customText };
-              const ts = { ...(prev.textStyles ?? {}) };
-              const tp = { ...(prev.textPositions ?? {}) };
-              if (key.startsWith("_custom_")) {
-                // User-added text box — fully remove the row.
-                delete ct[key]; delete ts[key]; delete tp[key];
-              } else {
-                // Default field (couple names, story, schedule, etc.) — flag
-                // it hidden via the sentinel marker. EditableText collapses
-                // the wrap on the page; underlying portal data (profile
-                // couple names, dates, etc.) is untouched. Undo restores by
-                // patching the marker back to its prior value.
-                ct[key] = EDITABLE_HIDDEN_MARKER;
-              }
-              return { customText: ct, textStyles: ts, textPositions: tp };
-            })}
+            onDeleteElement={handleDeleteElement}
           />
         </div>
       </main>
@@ -2244,9 +2247,9 @@ export default function WebsiteEditor() {
           <button
             className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent flex items-center gap-2"
             onClick={() => {
-              // Encode the section in the key so the textbox only renders on
-              // the page it was added to. CustomTextBoxes parses this back out.
-              const key = `_custom_${editorSection || "home"}__${Date.now()}`;
+              // New text boxes are global by default so they remain visible
+              // after page/tab switches in editor, preview, and published site.
+              const key = `_custom_global__${Date.now()}`;
               const insertAt = ctxMenu ? { x: ctxMenu.canvasX, y: ctxMenu.canvasY } : { x: 0, y: 0 };
               patchRecord((prev) => {
                 // CustomTextBoxes lays new boxes out at (left: 24, top: 120 + idx*56)
@@ -2260,7 +2263,7 @@ export default function WebsiteEditor() {
                   return m ? m[1] : "home";
                 };
                 const customCount = Object.keys(prev.customText).filter(
-                  (k) => k.startsWith("_custom_") && sectionOf(k) === (editorSection || "home"),
+                  (k) => k.startsWith("_custom_") && sectionOf(k) === "global",
                 ).length;
                 const baseLeft = 24;
                 const baseTop = 120 + customCount * 56;
