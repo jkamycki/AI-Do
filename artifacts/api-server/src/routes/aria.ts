@@ -29,6 +29,7 @@ const router = Router();
 // Anything else falls through to the normal tools-enabled path so we
 // never accidentally drop tools for a real planning request.
 const ACTION_KEYWORDS = /\b(add|create|delete|remove|update|edit|change|set|save|book|schedule|invite|cancel|pay|paid|owe|cost|spend|budget|guest|vendor|venue|timeline|checklist|todo|task|event|payment|contract|hotel|party|reception|ceremony|honeymoon|email|message|reminder|date|when|where|how much|how many)\b/i;
+const CANCEL_INTENT = /^\s*(?:cancel|never\s?mind|nevermind|stop|forget\s+it|don'?t\s+(?:do|save|add|create|update|delete)\s+(?:that|it)|abort)\b[\s.!?]*$/i;
 const CONVERSATIONAL_PATTERNS: RegExp[] = [
   /^(hi|hey|hello|yo|sup|hola|aloha|howdy)\b/i,
   /^how (are|r) (you|u|ya|things)/i,
@@ -1927,6 +1928,19 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     // because it isn't scanning across 35 lookalike function signatures.
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     const lastUserText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
+
+    // Explicit cancel / nevermind intent: do not run tools, do not persist.
+    // This guarantees users can always back out of a pending requested action.
+    if (CANCEL_INTENT.test(lastUserText)) {
+      send({
+        type: "content",
+        content: "Got it — canceled. I won’t make any changes. If you want, tell me what you’d like to do instead.",
+      });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
 
     // Detect "add a vendor / photographer / florist …" without a real business
     // name. Computed before skipTools so it can gate tools entirely.
