@@ -760,6 +760,15 @@ router.post("/admin/marketing/send", requireAuth, requireAdmin, async (req, res)
     if (!subject?.trim() || !body?.trim()) {
       return res.status(400).json({ error: "Subject and body are required." });
     }
+    const normalizedSubject = subject.trim();
+    const normalizedBody = body.trim();
+    if (/\b(free money|guaranteed|act now|urgent|winner|risk\s*free)\b/i.test(normalizedSubject)) {
+      return res.status(400).json({ error: "Subject appears overly promotional and is likely to be filtered as spam. Please rewrite it." });
+    }
+    const linkCount = (normalizedBody.match(/https?:\/\//gi) ?? []).length;
+    if (linkCount > 5) {
+      return res.status(400).json({ error: "Body has too many links for a cold outreach email. Please keep it to 5 or fewer." });
+    }
 
     const results: Array<{ email: string; ok: boolean; error?: string }> = [];
 
@@ -772,14 +781,18 @@ router.post("/admin/marketing/send", requireAuth, requireAdmin, async (req, res)
         fromName: "Joseph @ A.IDO",
         from: FROM_EMAIL,
         replyTo: FROM_EMAIL,
-        subject: subject.trim(),
-        text: body.trim(),
+        subject: normalizedSubject,
+        text: normalizedBody,
+        headers: {
+          "List-Unsubscribe": `<mailto:${FROM_EMAIL}?subject=unsubscribe>, <https://www.aidowedding.net/unsubscribe>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       });
 
       await db.insert(analyticsEvents).values({
         userId: req.userId ?? "admin",
         eventType: "marketing_email_sent",
-        metadata: { to: trimmed, subject: subject.trim(), ok: r.ok, error: r.error ?? null },
+        metadata: { to: trimmed, subject: normalizedSubject, ok: r.ok, error: r.error ?? null },
       }).catch(() => {});
 
       results.push({ email: trimmed, ok: r.ok, error: r.error });

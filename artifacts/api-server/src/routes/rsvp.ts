@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { clerkClient } from "@clerk/express";
 import { db, guests, weddingProfiles, invitationCustomizations } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -1462,6 +1463,55 @@ router.post("/rsvp/:token", async (req, res) => {
       .set(updateData)
       .where(eq(guests.id, guest.id))
       .returning();
+
+    // Best-effort backup email to the account owner so they always have a
+    // copy of each RSVP submission outside the app datastore.
+    try {
+      const [profileRow] = await db
+        .select({
+          ownerUserId: weddingProfiles.userId,
+          partner1Name: weddingProfiles.partner1Name,
+          partner2Name: weddingProfiles.partner2Name,
+          weddingDate: weddingProfiles.weddingDate,
+        })
+        .from(weddingProfiles)
+        .where(eq(weddingProfiles.id, guest.profileId))
+        .limit(1);
+
+      if (profileRow?.ownerUserId) {
+        const owner = await clerkClient.users.getUser(profileRow.ownerUserId);
+        const primaryEmail = owner.emailAddresses.find(e => e.id === owner.primaryEmailAddressId)?.emailAddress
+          ?? owner.emailAddresses[0]?.emailAddress
+          ?? null;
+        if (primaryEmail) {
+          const couple = [profileRow.partner1Name, profileRow.partner2Name].filter(Boolean).join(" & ") || "Your wedding";
+          const lines = [
+            `RSVP backup copy for ${couple}`,
+            "",
+            `Guest: ${updated.name}`,
+            `Guest Email: ${updated.email ?? "(none)"}`,
+            `Response: ${updated.rsvpStatus}`,
+            `Meal Choice: ${updated.mealChoice ?? "(none)"}`,
+            `Plus One: ${updated.plusOne ? "Yes" : "No"}`,
+            `Plus One Name: ${updated.plusOneName ?? "(none)"}`,
+            `Plus One Meal Choice: ${updated.plusOneMealChoice ?? "(none)"}`,
+            `Dietary Restrictions: ${updated.dietaryNotes ?? "(none)"}`,
+            `RSVP Message: ${updated.rsvpMessage ?? "(none)"}`,
+            `Notes: ${updated.notes ?? "(none)"}`,
+            `Submitted At: ${updated.rsvpRespondedAt ? new Date(updated.rsvpRespondedAt).toISOString() : new Date().toISOString()}`,
+            `Wedding Date: ${profileRow.weddingDate ?? "(not set)"}`,
+          ];
+          await sendEmail({
+            to: primaryEmail,
+            subject: `RSVP backup: ${updated.name} — ${updated.rsvpStatus}`,
+            text: lines.join("\n"),
+            html: `<div style="font-family:Arial,sans-serif;line-height:1.5;color:#1f2937"><h2 style="margin:0 0 12px">RSVP backup copy</h2>${lines.map(l => `<p style=\"margin:4px 0\">${escapeHtml(l)}</p>`).join("")}</div>`,
+          });
+        }
+      }
+    } catch (emailErr) {
+      req.log.warn({ err: emailErr, guestId: guest.id }, "Failed to send RSVP backup email");
+    }
 
     res.json({
       success: true,

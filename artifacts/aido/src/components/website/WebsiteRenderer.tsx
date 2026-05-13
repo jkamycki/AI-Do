@@ -382,16 +382,15 @@ function DraggableRow({
   const [hovered, setHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number; moved: boolean } | null>(null);
+  const transform = position ? `translate(${position.x}px, ${position.y}px)` : undefined;
 
   if (!editable || !onPositionChange) {
     return (
-      <div className={className} style={style}>
+      <div className={className} style={{ ...style, transform }}>
         {children}
       </div>
     );
   }
-
-  const transform = position ? `translate(${position.x}px, ${position.y}px)` : undefined;
 
   const handlePointerDown = (e: React.PointerEvent) => {
     // If the user pressed inside an inner EditableText (contenteditable),
