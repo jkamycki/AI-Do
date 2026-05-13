@@ -977,8 +977,11 @@ function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: 
               color: data.colorPalette.text,
               animation: `wsa-marquee-ltr ${marqueeDuration} linear infinite`,
             }}
-            aria-label={trimmed} main
-            }}
+            aria-label={trimmed}
+          >
+            <span>{trimmed}</span>
+            <span className="px-10">{trimmed}</span>
+          </div> main
             aria-label={trimmed}
           >
             <span>{trimmed}</span>

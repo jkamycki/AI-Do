@@ -1,7 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "pnpm --dir ../.. install --frozen-lockfile=false",
-  "buildCommand": "pnpm --dir ../.. run build",
+  "installCommand": "pnpm install --frozen-lockfile=false",
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "dist",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://ai-do.onrender.com/api/$1"
+    }
+  ]main
   "outputDirectory": "dist",
   "framework": null,
   "rewrites": [
