@@ -507,11 +507,13 @@ export default function MoodBoard() {
     });
     if (!needsAnalysis.length) {
       toast({ title: "All images already analyzed" });
+      await generateSummaryMutation.mutateAsync();
       return;
     }
     for (const img of needsAnalysis) {
       await analyzeImage(img.objectPath);
     }
+    await generateSummaryMutation.mutateAsync();
     toast({ title: "Analysis complete" });
   };
 
