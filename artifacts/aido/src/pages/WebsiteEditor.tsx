@@ -2154,7 +2154,11 @@ export default function WebsiteEditor() {
                 type="text"
                 placeholder={t("website_editor.password_placeholder", { defaultValue: "Optional password" })}
                 value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
+                onChange={(e) => {
+                  setPasswordInput(e.target.value);
+                  dirtyRef.current = true;
+                  setDirty(true);
+                }}
                 className="text-sm"
               />
             </div>
