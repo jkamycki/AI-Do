@@ -103,8 +103,11 @@ function applyApiBase(url: string): string {
   return url.startsWith("/") && _API ? `${_API}${url}` : url;
 }
 function objectUrl(objectPath: string): string {
+function objectUrl(objectPath: string): string {
   if (objectPath.startsWith("/api/storage/public-objects/")) return objectPath;
   if (objectPath.startsWith("/storage/public-objects/")) return `/api${objectPath}`;
+  return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
+} main
   return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
 }
 async function authFetch(url: string, options: RequestInit = {}, getToken: () => Promise<string | null>) {
