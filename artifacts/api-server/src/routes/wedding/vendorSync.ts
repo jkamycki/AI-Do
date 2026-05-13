@@ -195,7 +195,7 @@ router.post("/vendors", requireAuth, async (req, res) => {
     }
     const {
       name, category, email, phone, website, portalLink,
-      notes, totalCost, depositAmount, contractSigned, nextPaymentDue,
+      address, notes, totalCost, depositAmount, contractSigned, nextPaymentDue,
       primaryContact,
     } = req.body;
     if (!name || !String(name).trim()) {
@@ -215,6 +215,7 @@ router.post("/vendors", requireAuth, async (req, res) => {
       phone: phone ?? null,
       website: website ?? null,
       portalLink: portalLink ?? null,
+      address: address ?? null,
       notes: notes ?? null,
       totalCost: String(Number(totalCost ?? 0) || 0),
       depositAmount: String(Number(depositAmount ?? 0) || 0),
@@ -280,7 +281,7 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
     const vendorId = parseInt(String(req.params.id), 10);
     const {
       name, category, email, phone, website, portalLink,
-      notes, totalCost, depositAmount, contractSigned, files, nextPaymentDue,
+      address, notes, totalCost, depositAmount, contractSigned, files, nextPaymentDue,
     } = req.body;
     const updates: Partial<typeof vendors.$inferInsert> = {};
     if (name !== undefined) updates.name = name;
@@ -289,6 +290,7 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
     if (phone !== undefined) updates.phone = phone;
     if (website !== undefined) updates.website = website;
     if (portalLink !== undefined) updates.portalLink = portalLink;
+    if (address !== undefined) updates.address = address;
     if (notes !== undefined) updates.notes = notes;
     if (totalCost !== undefined) updates.totalCost = String(totalCost);
     if (depositAmount !== undefined) updates.depositAmount = String(depositAmount);
