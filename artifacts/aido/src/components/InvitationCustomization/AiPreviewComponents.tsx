@@ -211,7 +211,8 @@ export function AiSaveDatePreview({
     ? `'${customColors.font}', ${cormorant}`
     : cormorant;
   // Scale all font sizes proportionally when a custom base size is set.
-  const baseFs = customColors?.fontSize ? parseFloat(customColors.fontSize) : 16;
+  const parsedBaseFs = customColors?.fontSize ? parseFloat(customColors.fontSize) : 16;
+  const baseFs = Number.isFinite(parsedBaseFs) && parsedBaseFs > 0 ? parsedBaseFs : 16;
   const sc = customColors ? baseFs / 16 : 1;
   // In custom mode apply the user's font everywhere, including labels.
   const labelFont = customColors ? displayFont : jakarta;
@@ -301,6 +302,15 @@ export function AiDigitalInvitationPreview({
   const muted   = customColors?.muted   ?? MUTED;
   const cardBdr = customColors?.cardBdr ?? CARD_BDR;
   const btnText = (accent === GOLD && !customColors) ? bg : (isLightHex(accent) ? "#1a1a1a" : "#ffffff");
+  const displayFont = customColors?.font
+    ? `'${customColors.font}', ${cormorant}`
+    : cormorant;
+  // Scale all font sizes proportionally when a custom base size is set.
+  const parsedBaseFs = customColors?.fontSize ? parseFloat(customColors.fontSize) : 16;
+  const baseFs = Number.isFinite(parsedBaseFs) && parsedBaseFs > 0 ? parsedBaseFs : 16;
+  const sc = customColors ? baseFs / 16 : 1;
+  // In custom mode apply the user's font everywhere, including labels.
+  const labelFont = customColors ? displayFont : jakarta;
 
   const couple    = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -314,19 +324,19 @@ export function AiDigitalInvitationPreview({
     <CardShell photoUrl={photoUrl} photoPosition={photoPosition} onPhotoPositionChange={onPhotoPositionChange} customColors={customColors}>
       <Badge accent={accent}><Heart style={{ width: 22, height: 22, color: accent, fill: accent }} /></Badge>
 
-      <p style={{ fontFamily: jakarta, fontSize: 11, fontWeight: 700,
+      <p style={{ fontFamily: labelFont, fontSize: 11 * sc, fontWeight: 700,
                   letterSpacing: "0.42em", textTransform: "uppercase",
                   color: accent, marginTop: 12 }}>
         Wedding RSVP
       </p>
 
-      <h2 style={{ fontFamily: cormorant, fontSize: "2.1rem", fontWeight: 400,
+      <h2 style={{ fontFamily: displayFont, fontSize: `${2.1 * sc}rem`, fontWeight: 400,
                    fontStyle: "italic", color: accent, lineHeight: 1.2, margin: "8px 0 0" }}>
         {couple}
       </h2>
 
       {dateStr && (
-        <p style={{ fontFamily: jakarta, fontSize: 10, fontWeight: 600,
+        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, fontWeight: 600,
                     letterSpacing: "0.12em", textTransform: "uppercase", color: text, margin: "12px 0 0" }}>
           {dateStr}
         </p>
@@ -335,30 +345,30 @@ export function AiDigitalInvitationPreview({
       {profile.venue && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 10 }}>
           <MapPin style={{ width: 12, height: 12, color: accent, flexShrink: 0 }} />
-          <p style={{ fontFamily: cormorant, fontSize: "1rem", fontWeight: 500, color: accent, margin: 0 }}>
+          <p style={{ fontFamily: displayFont, fontSize: `${1 * sc}rem`, fontWeight: 500, color: accent, margin: 0 }}>
             {profile.venue}
           </p>
         </div>
       )}
 
       {profile.venueAddress && (
-        <p style={{ fontFamily: jakarta, fontSize: 10, color: text, margin: "4px 0 0" }}>
+        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: text, margin: "4px 0 0" }}>
           {profile.venueAddress}
         </p>
       )}
       {cityLine && (
-        <p style={{ fontFamily: jakarta, fontSize: 10, color: text, margin: "2px 0 0" }}>
+        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: text, margin: "2px 0 0" }}>
           {cityLine}
         </p>
       )}
       {timesLine && (
-        <p style={{ fontFamily: jakarta, fontSize: 10, color: accent, margin: "6px 0 0" }}>
+        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: accent, margin: "6px 0 0" }}>
           {timesLine}
         </p>
       )}
 
       {formatDate(profile.rsvpByDate, { year: "numeric", month: "long", day: "numeric" }) && (
-        <p style={{ fontFamily: jakarta, fontSize: 10, fontWeight: 600,
+        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, fontWeight: 600,
                     letterSpacing: "0.12em", textTransform: "uppercase",
                     color: accent, margin: "10px 0 0" }}>
           RSVP By: <span style={{ color: text, fontWeight: 600 }}>
@@ -368,20 +378,20 @@ export function AiDigitalInvitationPreview({
       )}
 
       {profile.invitationMessage && (
-        <p style={{ fontFamily: cormorant, fontSize: "0.95rem", fontStyle: "italic",
+        <p style={{ fontFamily: displayFont, fontSize: `${0.95 * sc}rem`, fontStyle: "italic",
                     color: text, lineHeight: 1.7, margin: "14px 0 0" }}>
           &ldquo;{profile.invitationMessage}&rdquo;
         </p>
       )}
 
-      <p style={{ fontFamily: jakarta, fontSize: 11, color: muted, margin: "14px 0 0" }}>
+      <p style={{ fontFamily: labelFont, fontSize: 11 * sc, color: muted, margin: "14px 0 0" }}>
         Dear <span style={{ color: text, fontWeight: 600 }}>Guest</span>, will you be joining us?
       </p>
 
       <div style={{ height: 1, background: cardBdr, margin: "14px 8px" }} />
 
       <div style={{ background: accent, borderRadius: 8, padding: "12px", textAlign: "center" }}>
-        <span style={{ fontFamily: jakarta, fontSize: 12, fontWeight: 700,
+        <span style={{ fontFamily: labelFont, fontSize: 12 * sc, fontWeight: 700,
                        letterSpacing: "0.12em", textTransform: "uppercase", color: btnText }}>
           RSVP Now
         </span>
