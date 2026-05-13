@@ -17,7 +17,7 @@ export interface SendEmailParams {
   to: string;
   from?: string;
   fromName?: string;
-  replyTo: string;
+  replyTo?: string;
   bcc?: string | string[];
   cc?: string | string[];
   subject: string;
@@ -72,12 +72,20 @@ export async function sendEmail(p: SendEmailParams): Promise<SendEmailResult> {
   if (!apiKey) return { ok: false, error: "RESEND_API_KEY not configured" };
 
   const fromName = p.fromName ?? FROM_NAME;
-  const fromEmail = p.from ?? FROM_EMAIL;
+  const requestedFrom = p.from ?? FROM_EMAIL;
+  const requestedDomain = requestedFrom.split("@")[1]?.toLowerCase() ?? "";
+  const allowedDomain = SENDING_DOMAIN.toLowerCase();
+  // Keep envelope/domain alignment on our verified sender domain to reduce
+  // spam classification from spoof-like mismatches.
+  const fromEmail = requestedDomain === allowedDomain ? requestedFrom : FROM_EMAIL;
+  if (requestedDomain && requestedDomain !== allowedDomain) {
+    logger.warn({ requestedFrom, fallbackFrom: FROM_EMAIL }, "sendEmail: non-verified from domain replaced");
+  }
 
   const body: Record<string, unknown> = {
     from: `${fromName} <${fromEmail}>`,
     to: [p.to],
-    reply_to: p.replyTo,
+    reply_to: p.replyTo ?? fromEmail,
     subject: p.subject,
     text: p.text,
   };
