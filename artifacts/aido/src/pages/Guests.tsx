@@ -16,21 +16,94 @@ import {
 import type { Guest } from "@workspace/api-client-react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Plus, Search, UserCheck, UserX, Clock, Heart, Trash2, Edit2, Download, ChevronDown, RotateCcw, Link2, Copy, RefreshCw, CheckCheck, Mail, Phone, MapPin, Send, Loader2, Sparkles, X as XIcon, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Users,
+  Plus,
+  Search,
+  UserCheck,
+  UserX,
+  Clock,
+  Heart,
+  Trash2,
+  Edit2,
+  Download,
+  ChevronDown,
+  RotateCcw,
+  Link2,
+  Copy,
+  RefreshCw,
+  CheckCheck,
+  Mail,
+  Phone,
+  MapPin,
+  Send,
+  Loader2,
+  Sparkles,
+  X as XIcon,
+  AlertTriangle,
+} from "lucide-react";
 import { InvitationSendModal } from "@/components/GuestList/InvitationSendModal";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
 import { useTranslation } from "react-i18next";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
@@ -38,15 +111,45 @@ import { COUNTRIES } from "@/lib/countries";
 import { getAddressFormat } from "@/lib/addressFormat";
 
 const RSVP_OPTIONS = [
-  { value: "attending", label: "Attending", color: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" },
-  { value: "declined", label: "Declined", color: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800/40" },
-  { value: "maybe", label: "Maybe", color: "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800/40" },
-  { value: "pending", label: "Pending", color: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/40" },
+  {
+    value: "attending",
+    label: "Attending",
+    color:
+      "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40",
+  },
+  {
+    value: "declined",
+    label: "Declined",
+    color:
+      "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800/40",
+  },
+  {
+    value: "maybe",
+    label: "Maybe",
+    color:
+      "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800/40",
+  },
+  {
+    value: "pending",
+    label: "Pending",
+    color:
+      "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/40",
+  },
 ];
 
 const INVITATION_OPTIONS = [
-  { value: "pending", label: "Not Sent", color: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700" },
-  { value: "sent", label: "Sent", color: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" },
+  {
+    value: "pending",
+    label: "Not Sent",
+    color:
+      "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700",
+  },
+  {
+    value: "sent",
+    label: "Sent",
+    color:
+      "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40",
+  },
 ];
 
 // Standard group / category presets so the seating-chart AI and other
@@ -69,15 +172,24 @@ const GROUP_OPTIONS = [
 // instantly recognizable. Custom groups fall through to a neutral slate.
 function groupColorClasses(group: string | null | undefined): string {
   switch (group) {
-    case "Bride's Family":  return "bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-900/40 dark:text-rose-200 dark:border-rose-700";
-    case "Bride's Friends": return "bg-pink-100 text-pink-900 border-pink-300 dark:bg-pink-900/40 dark:text-pink-200 dark:border-pink-700";
-    case "Groom's Family":  return "bg-sky-100 text-sky-900 border-sky-300 dark:bg-sky-900/40 dark:text-sky-200 dark:border-sky-700";
-    case "Groom's Friends": return "bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-700";
-    case "Wedding Party":     return "bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-900/40 dark:text-purple-200 dark:border-purple-700";
-    case "Bride's Coworkers": return "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-700";
-    case "Groom's Coworkers": return "bg-teal-100 text-teal-900 border-teal-300 dark:bg-teal-900/40 dark:text-teal-200 dark:border-teal-700";
-    case "Family Friends":    return "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700";
-    default:                return "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-600";
+    case "Bride's Family":
+      return "bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-900/40 dark:text-rose-200 dark:border-rose-700";
+    case "Bride's Friends":
+      return "bg-pink-100 text-pink-900 border-pink-300 dark:bg-pink-900/40 dark:text-pink-200 dark:border-pink-700";
+    case "Groom's Family":
+      return "bg-sky-100 text-sky-900 border-sky-300 dark:bg-sky-900/40 dark:text-sky-200 dark:border-sky-700";
+    case "Groom's Friends":
+      return "bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-700";
+    case "Wedding Party":
+      return "bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-900/40 dark:text-purple-200 dark:border-purple-700";
+    case "Bride's Coworkers":
+      return "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-700";
+    case "Groom's Coworkers":
+      return "bg-teal-100 text-teal-900 border-teal-300 dark:bg-teal-900/40 dark:text-teal-200 dark:border-teal-700";
+    case "Family Friends":
+      return "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700";
+    default:
+      return "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-600";
   }
 }
 
@@ -95,7 +207,9 @@ const guestSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email").or(z.literal("")).optional(),
   invitationStatus: z.enum(["pending", "sent"]).default("pending"),
-  rsvpStatus: z.enum(["pending", "attending", "maybe", "declined"]).default("pending"),
+  rsvpStatus: z
+    .enum(["pending", "attending", "maybe", "declined"])
+    .default("pending"),
   mealChoice: z.string().optional(),
   dietaryNotes: z.string().max(500).optional(),
   guestGroup: z.string().optional(),
@@ -116,9 +230,9 @@ const guestSchema = z.object({
 type GuestFormValues = z.infer<typeof guestSchema>;
 
 function getRsvpBadge(status: string) {
-  const opt = RSVP_OPTIONS.find(o => o.value === status);
+  const opt = RSVP_OPTIONS.find((o) => o.value === status);
   // Fall back to "Pending" badge for any legacy/unknown status (e.g. old "sent" rows).
-  return opt ?? RSVP_OPTIONS.find(o => o.value === "pending")!;
+  return opt ?? RSVP_OPTIONS.find((o) => o.value === "pending")!;
 }
 
 function GuestForm({
@@ -166,261 +280,460 @@ function GuestForm({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField control={form.control} name="name" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("guests.full_name")} *</FormLabel>
-              <FormControl><Input placeholder="Jane Smith" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="email" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("guests.email_optional")}</FormLabel>
-              <FormControl><Input type="email" placeholder="jane@example.com" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("guests.full_name")} *</FormLabel>
+                <FormControl>
+                  <Input placeholder="Jane Smith" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("guests.email_optional")}</FormLabel>
+                <FormControl>
+                  <Input
+                    type="email"
+                    placeholder="jane@example.com"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
-        <FormField control={form.control} name="invitationStatus" render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t("guests.invitation_status")}</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
-              <FormControl>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {INVITATION_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.invitation_${o.value}`)}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
+        <FormField
+          control={form.control}
+          name="invitationStatus"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("guests.invitation_status")}</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {INVITATION_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {t(`guests.invitation_${o.value}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <FormField control={form.control} name="rsvpStatus" render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t("guests.rsvp_status")}</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
-              <FormControl>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {RSVP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.rsvp_${o.value}`)}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
+        <FormField
+          control={form.control}
+          name="rsvpStatus"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("guests.rsvp_status")}</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {RSVP_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {t(`guests.rsvp_${o.value}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* Group / category — bride's friends, groom's family, etc. Used
             by the seating-chart AI and dashboard breakdowns. Users can
             type any custom value by picking "Other". */}
-        <FormField control={form.control} name="guestGroup" render={({ field }) => {
-          const presetValues = GROUP_OPTIONS.map((o) => o.value);
-          const current = field.value ?? "";
-          const isPreset = current === "" || presetValues.includes(current);
-          const selectValue = current === "" ? "none" : (isPreset ? current : "Other");
-          return (
-            <FormItem>
-              <FormLabel>{t("guests.group_label", { defaultValue: "Group / Category" })}</FormLabel>
-              <Select
-                onValueChange={(v) => {
-                  if (v === "none") field.onChange("");
-                  else if (v === "Other") field.onChange(current && !presetValues.includes(current) ? current : "");
-                  else field.onChange(v);
-                }}
-                value={selectValue}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("guests.group_placeholder", { defaultValue: "Pick a group" })} />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {GROUP_OPTIONS.map(o => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectValue === "Other" && (
-                <Input
-                  className="mt-2"
-                  placeholder={t("guests.group_custom_placeholder", { defaultValue: "Type a custom group name" })}
-                  value={isPreset ? "" : current}
-                  onChange={(e) => field.onChange(e.target.value)}
-                />
-              )}
-              <FormMessage />
-            </FormItem>
-          );
-        }} />
+        <FormField
+          control={form.control}
+          name="guestGroup"
+          render={({ field }) => {
+            const presetValues = GROUP_OPTIONS.map((o) => o.value);
+            const current = field.value ?? "";
+            const isPreset = current === "" || presetValues.includes(current);
+            const selectValue =
+              current === "" ? "none" : isPreset ? current : "Other";
+            return (
+              <FormItem>
+                <FormLabel>
+                  {t("guests.group_label", {
+                    defaultValue: "Group / Category",
+                  })}
+                </FormLabel>
+                <Select
+                  onValueChange={(v) => {
+                    if (v === "none") field.onChange("");
+                    else if (v === "Other")
+                      field.onChange(
+                        current && !presetValues.includes(current)
+                          ? current
+                          : "",
+                      );
+                    else field.onChange(v);
+                  }}
+                  value={selectValue}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={t("guests.group_placeholder", {
+                          defaultValue: "Pick a group",
+                        })}
+                      />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {GROUP_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectValue === "Other" && (
+                  <Input
+                    className="mt-2"
+                    placeholder={t("guests.group_custom_placeholder", {
+                      defaultValue: "Type a custom group name",
+                    })}
+                    value={isPreset ? "" : current}
+                    onChange={(e) => field.onChange(e.target.value)}
+                  />
+                )}
+                <FormMessage />
+              </FormItem>
+            );
+          }}
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField control={form.control} name="mealChoice" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("guests.meal_choice")}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+          <FormField
+            control={form.control}
+            name="mealChoice"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("guests.meal_choice")}</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("guests.select_meal")} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      {t("guests.none_selected")}
+                    </SelectItem>
+                    {MEAL_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {t(`guests.meal_${o.value}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="tableAssignment"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("guests.table_assignment")}</FormLabel>
                 <FormControl>
-                  <SelectTrigger><SelectValue placeholder={t("guests.select_meal")} /></SelectTrigger>
+                  <Input
+                    placeholder={t("guests.table_placeholder")}
+                    {...field}
+                  />
                 </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">{t("guests.none_selected")}</SelectItem>
-                  {MEAL_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.meal_${o.value}`)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="tableAssignment" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("guests.table_assignment")}</FormLabel>
-              <FormControl><Input placeholder={t("guests.table_placeholder")} {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
         {meal === "other" && (
-          <FormField control={form.control} name="dietaryNotes" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("guests.dietary_notes")}</FormLabel>
-              <FormControl>
-                <Textarea placeholder={t("guests.dietary_placeholder")} rows={2} maxLength={500} {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
+          <FormField
+            control={form.control}
+            name="dietaryNotes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("guests.dietary_notes")}</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder={t("guests.dietary_placeholder")}
+                    rows={2}
+                    maxLength={500}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField control={form.control} name="phone" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("guests.phone_label")}</FormLabel>
-              <FormControl><Input type="tel" placeholder="(555) 000-0000" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="guestCountry" render={({ field }) => (
-            <FormItem className="col-span-2">
-              <FormLabel>{t("guests.country")}</FormLabel>
-              <Select value={field.value || ""} onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}>
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("guests.phone_label")}</FormLabel>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("guests.country_placeholder")} />
-                  </SelectTrigger>
+                  <Input type="tel" placeholder="(555) 000-0000" {...field} />
                 </FormControl>
-                <SelectContent className="max-h-72">
-                  <SelectItem value="__none__">{t("guests.country_none")}</SelectItem>
-                  {COUNTRIES.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="address" render={({ field }) => (
-            <FormItem className="col-span-2">
-              <FormLabel>{t("guests.street_address")}</FormLabel>
-              <FormControl>
-                <AddressAutocomplete
-                  value={field.value ?? ""}
-                  onChange={field.onChange}
-                  onSelect={s => {
-                    field.onChange(s.street);
-                    form.setValue("guestCity", s.city, { shouldDirty: true });
-                    form.setValue("guestState", s.state, { shouldDirty: true });
-                    form.setValue("guestZip", s.zip, { shouldDirty: true });
-                  }}
-                  placeholder="123 Main St"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="aptUnit" render={({ field }) => (
-            <FormItem className="col-span-2">
-              <FormLabel>{t("guests.apt_unit")}</FormLabel>
-              <FormControl><Input placeholder="Apt 4B" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="guestCountry"
+            render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel>{t("guests.country")}</FormLabel>
+                <Select
+                  value={field.value || ""}
+                  onValueChange={(v) =>
+                    field.onChange(v === "__none__" ? "" : v)
+                  }
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={t("guests.country_placeholder")}
+                      />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent className="max-h-72">
+                    <SelectItem value="__none__">
+                      {t("guests.country_none")}
+                    </SelectItem>
+                    {COUNTRIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="address"
+            render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel>{t("guests.street_address")}</FormLabel>
+                <FormControl>
+                  <AddressAutocomplete
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onSelect={(s) => {
+                      field.onChange(s.street);
+                      form.setValue("guestCity", s.city, { shouldDirty: true });
+                      form.setValue("guestState", s.state, {
+                        shouldDirty: true,
+                      });
+                      form.setValue("guestZip", s.zip, { shouldDirty: true });
+                    }}
+                    placeholder="123 Main St"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="aptUnit"
+            render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel>{t("guests.apt_unit")}</FormLabel>
+                <FormControl>
+                  <Input placeholder="Apt 4B" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           {(() => {
             const fmt = getAddressFormat(form.watch("guestCountry"));
             return (
               <>
                 {fmt.showState && (
-                  <FormField control={form.control} name="guestState" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{fmt.stateLabel}</FormLabel>
-                      <FormControl><Input placeholder={fmt.statePlaceholder} {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  <FormField
+                    control={form.control}
+                    name="guestState"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{fmt.stateLabel}</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={fmt.statePlaceholder}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 )}
-                <FormField control={form.control} name="guestCity" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{fmt.cityLabel}</FormLabel>
-                    <FormControl><Input placeholder={fmt.cityPlaceholder} {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                {fmt.showZip && (
-                  <FormField control={form.control} name="guestZip" render={({ field }) => (
+                <FormField
+                  control={form.control}
+                  name="guestCity"
+                  render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{fmt.zipLabel}</FormLabel>
-                      <FormControl><Input placeholder={fmt.zipPlaceholder} {...field} /></FormControl>
+                      <FormLabel>{fmt.cityLabel}</FormLabel>
+                      <FormControl>
+                        <Input placeholder={fmt.cityPlaceholder} {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
-                  )} />
+                  )}
+                />
+                {fmt.showZip && (
+                  <FormField
+                    control={form.control}
+                    name="guestZip"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{fmt.zipLabel}</FormLabel>
+                        <FormControl>
+                          <Input placeholder={fmt.zipPlaceholder} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 )}
               </>
             );
           })()}
         </div>
 
-        <FormField control={form.control} name="plusOne" render={({ field }) => (
-          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-            <div className="space-y-0.5">
-              <FormLabel>{t("guests.plus_one")}</FormLabel>
-            </div>
-            <FormControl>
-              <Switch checked={field.value} onCheckedChange={field.onChange} />
-            </FormControl>
-          </FormItem>
-        )} />
+        <FormField
+          control={form.control}
+          name="plusOne"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+              <div className="space-y-0.5">
+                <FormLabel>{t("guests.plus_one")}</FormLabel>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
 
         {plusOne && (
           <div className="grid grid-cols-2 gap-3">
-            <FormField control={form.control} name="plusOneFirstName" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("guests.plus_one_first")}</FormLabel>
-                <FormControl><Input placeholder="Alex" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="plusOneLastName" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("guests.plus_one_last")}</FormLabel>
-                <FormControl><Input placeholder="Smith" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+            <FormField
+              control={form.control}
+              name="plusOneFirstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("guests.plus_one_first")}</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Alex" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="plusOneLastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("guests.plus_one_last")}</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Smith" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
         )}
 
-        <FormField control={form.control} name="notes" render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t("guests.notes_label")}</FormLabel>
-            <FormControl>
-              <Textarea placeholder={t("guests.notes_placeholder")} className="resize-none" rows={2} {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )} />
+        <FormField
+          control={form.control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("guests.notes_label")}</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder={t("guests.notes_placeholder")}
+                  className="resize-none"
+                  rows={2}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="flex gap-3 mt-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={() => form.reset({ name: "", email: "", invitationStatus: "pending", rsvpStatus: "pending", mealChoice: "", guestGroup: "", plusOne: false, plusOneFirstName: "", plusOneLastName: "", tableAssignment: "", phone: "", address: "", aptUnit: "", guestCity: "", guestState: "", guestZip: "", guestCountry: "", notes: "" })}>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={() =>
+              form.reset({
+                name: "",
+                email: "",
+                invitationStatus: "pending",
+                rsvpStatus: "pending",
+                mealChoice: "",
+                guestGroup: "",
+                plusOne: false,
+                plusOneFirstName: "",
+                plusOneLastName: "",
+                tableAssignment: "",
+                phone: "",
+                address: "",
+                aptUnit: "",
+                guestCity: "",
+                guestState: "",
+                guestZip: "",
+                guestCountry: "",
+                notes: "",
+              })
+            }
+          >
             <RotateCcw className="h-4 w-4 mr-2" /> {t("guests.reset")}
           </Button>
           <Button type="submit" className="flex-1" disabled={isPending}>
@@ -433,8 +746,24 @@ function GuestForm({
 }
 
 function exportCSV(guestList: Guest[]) {
-  const headers = ["Name", "Email", "Invitation Sent", "RSVP", "Meal", "Plus One", "Plus One Name", "Table", "Street Address", "Apt/Unit", "City", "State", "ZIP", "Country", "Notes"];
-  const rows = guestList.map(g => [
+  const headers = [
+    "Name",
+    "Email",
+    "Invitation Sent",
+    "RSVP",
+    "Meal",
+    "Plus One",
+    "Plus One Name",
+    "Table",
+    "Street Address",
+    "Apt/Unit",
+    "City",
+    "State",
+    "ZIP",
+    "Country",
+    "Notes",
+  ];
+  const rows = guestList.map((g) => [
     g.name,
     g.email ?? "",
     g.invitationStatus === "sent" ? "Sent" : "Not Sent",
@@ -451,7 +780,9 @@ function exportCSV(guestList: Guest[]) {
     (g as any).guestCountry ?? "",
     g.notes ?? "",
   ]);
-  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const csv = [headers, ...rows]
+    .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -482,25 +813,42 @@ function GuestCollectorCard() {
 
   const generate = useMutation({
     mutationFn: async () => {
-      const res = await authFetch("/api/guest-collect/generate", { method: "POST" });
+      const res = await authFetch("/api/guest-collect/generate", {
+        method: "POST",
+      });
       if (!res.ok) throw new Error("Failed to generate link");
       return res.json() as Promise<{ token: string }>;
     },
     onSuccess: (data) => setToken(data.token),
-    onError: () => toast({ title: t("guests.error"), description: t("guests.could_not_generate"), variant: "destructive" }),
+    onError: () =>
+      toast({
+        title: t("guests.error"),
+        description: t("guests.could_not_generate"),
+        variant: "destructive",
+      }),
   });
 
   const regenerate = useMutation({
     mutationFn: async () => {
-      const res = await authFetch("/api/guest-collect/regenerate", { method: "POST" });
+      const res = await authFetch("/api/guest-collect/regenerate", {
+        method: "POST",
+      });
       if (!res.ok) throw new Error("Failed to regenerate link");
       return res.json() as Promise<{ token: string }>;
     },
     onSuccess: (data) => {
       setToken(data.token);
-      toast({ title: t("guests.new_link_generated"), description: t("guests.old_link_inactive") });
+      toast({
+        title: t("guests.new_link_generated"),
+        description: t("guests.old_link_inactive"),
+      });
     },
-    onError: () => toast({ title: t("guests.error"), description: t("guests.could_not_regenerate"), variant: "destructive" }),
+    onError: () =>
+      toast({
+        title: t("guests.error"),
+        description: t("guests.could_not_regenerate"),
+        variant: "destructive",
+      }),
   });
 
   const copyLink = () => {
@@ -518,9 +866,7 @@ function GuestCollectorCard() {
           <Link2 className="h-4 w-4 text-primary" />
           {t("guests.collector_title")}
         </CardTitle>
-        <CardDescription>
-          {t("guests.collector_desc")}
-        </CardDescription>
+        <CardDescription>{t("guests.collector_desc")}</CardDescription>
       </CardHeader>
       <CardContent>
         {!token ? (
@@ -529,9 +875,14 @@ function GuestCollectorCard() {
             disabled={generate.isPending}
           >
             {generate.isPending ? (
-              <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> {t("guests.generating")}</>
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />{" "}
+                {t("guests.generating")}
+              </>
             ) : (
-              <><Link2 className="h-4 w-4 mr-2" /> {t("guests.generate_link")}</>
+              <>
+                <Link2 className="h-4 w-4 mr-2" /> {t("guests.generate_link")}
+              </>
             )}
           </Button>
         ) : (
@@ -550,27 +901,49 @@ function GuestCollectorCard() {
                 className="shrink-0 border-primary/20 hover:bg-primary/10"
                 title={t("guests.copy_link_title")}
               >
-                {copied ? <CheckCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                {copied ? (
+                  <CheckCheck className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
               </Button>
             </div>
 
             {/* Link preview — shows guests what they'll see before clicking */}
             <div>
-              <p className="text-[11px] text-muted-foreground mb-1.5 font-medium">{t("guests.link_preview_label")}</p>
-            <div className="rounded-xl border border-primary/20 bg-background/60 overflow-hidden shadow-sm">
-              <div className="h-1 w-full" style={{ background: "linear-gradient(90deg, #E91E8C, #7B2FBE)" }} />
-              <div className="flex items-start gap-3 p-3">
-                <div className="shrink-0 h-11 w-11 rounded-full flex items-center justify-center bg-primary/15 ring-1 ring-primary/30">
-                  <Heart className="h-5 w-5 fill-primary text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5 text-primary">{t("guests.contact_info_request")}</p>
-                  <p className="text-sm font-bold text-foreground leading-tight truncate" style={{ fontFamily: "Georgia, serif" }}>{coupleNames}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{t("guests.collecting_addresses")}</p>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1 truncate">{formUrl}</p>
+              <p className="text-[11px] text-muted-foreground mb-1.5 font-medium">
+                {t("guests.link_preview_label")}
+              </p>
+              <div className="rounded-xl border border-primary/20 bg-background/60 overflow-hidden shadow-sm">
+                <div
+                  className="h-1 w-full"
+                  style={{
+                    background: "linear-gradient(90deg, #E91E8C, #7B2FBE)",
+                  }}
+                />
+                <div className="flex items-start gap-3 p-3">
+                  <div className="shrink-0 h-11 w-11 rounded-full flex items-center justify-center bg-primary/15 ring-1 ring-primary/30">
+                    <Heart className="h-5 w-5 fill-primary text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5 text-primary">
+                      {t("guests.contact_info_request")}
+                    </p>
+                    <p
+                      className="text-sm font-bold text-foreground leading-tight truncate"
+                      style={{ fontFamily: "Georgia, serif" }}
+                    >
+                      {coupleNames}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {t("guests.collecting_addresses")}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-1 truncate">
+                      {formUrl}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
             </div>
 
             {/* Share buttons */}
@@ -580,9 +953,12 @@ function GuestCollectorCard() {
                 size="sm"
                 className="border-primary/20 hover:bg-primary/10 text-primary gap-2"
                 onClick={() => {
-                  const subject = encodeURIComponent(t("guests.email_subject_line") || "Please share your contact info with us!");
+                  const subject = encodeURIComponent(
+                    t("guests.email_subject_line") ||
+                      "Please share your contact info with us!",
+                  );
                   const body = encodeURIComponent(
-                    `Hi!\n\nWe'd love to have your contact details for our wedding guest list. Please take a moment to fill out this quick form below:\n\n${collectorUrl}\n\nThank you!`
+                    `Hi!\n\nWe'd love to have your contact details for our wedding guest list. Please take a moment to fill out this quick form below:\n\n${collectorUrl}\n\nThank you!`,
                   );
                   window.location.href = `mailto:?subject=${subject}&body=${body}`;
                 }}
@@ -592,13 +968,19 @@ function GuestCollectorCard() {
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-primary gap-1 ml-auto">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-muted-foreground hover:text-primary gap-1 ml-auto"
+                  >
                     <RefreshCw className="h-3 w-3" /> {t("guests.regenerate")}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>{t("guests.regenerate_title")}</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      {t("guests.regenerate_title")}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
                       {t("guests.regenerate_desc")}
                     </AlertDialogDescription>
@@ -635,12 +1017,22 @@ export default function Guests() {
   const [isAdding, setIsAdding] = useState(false);
   const [editGuest, setEditGuest] = useState<Guest | null>(null);
 
-  const [duplicateGuestIds, setDuplicateGuestIds] = useState<Set<number>>(new Set());
-  const [pendingGuestData, setPendingGuestData] = useState<GuestFormValues | null>(null);
+  const [duplicateGuestIds, setDuplicateGuestIds] = useState<Set<number>>(
+    new Set(),
+  );
+  const [pendingGuestData, setPendingGuestData] =
+    useState<GuestFormValues | null>(null);
 
   const [sendModalGuest, setSendModalGuest] = useState<Guest | null>(null);
-  const [linkDialog, setLinkDialog] = useState<{ url: string; previewUrl: string; type: "saveTheDate" | "rsvp"; guestName: string } | null>(null);
-  const [sendModalDefaultTab, setSendModalDefaultTab] = useState<"saveTheDate" | "digitalInvitation">("saveTheDate");
+  const [linkDialog, setLinkDialog] = useState<{
+    url: string;
+    previewUrl: string;
+    type: "saveTheDate" | "rsvp";
+    guestName: string;
+  } | null>(null);
+  const [sendModalDefaultTab, setSendModalDefaultTab] = useState<
+    "saveTheDate" | "digitalInvitation"
+  >("saveTheDate");
   const [sendModalReminderOnly, setSendModalReminderOnly] = useState(false);
 
   const { data: weddingProfile, isLoading: profileLoading } = useGetProfile();
@@ -659,106 +1051,215 @@ export default function Guests() {
 
   const sendSaveTheDate = useMutation({
     mutationFn: async (guestId: number) => {
-      const res = await authFetch(`/api/guests/${guestId}/send-save-the-date`, { method: "POST" });
+      const res = await authFetch(`/api/guests/${guestId}/send-save-the-date`, {
+        method: "POST",
+      });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string; details?: string };
-        throw new Error(err.details ?? err.error ?? "Failed to send save-the-date");
+        const err = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          details?: string;
+        };
+        throw new Error(
+          err.details ?? err.error ?? "Failed to send save-the-date",
+        );
       }
       return res.json();
     },
-    onSuccess: (data: { emailSent?: boolean; saveTheDateUrl?: string; previewUrl?: string }, guestId) => {
-      const guestName = sendModalGuest ? [sendModalGuest.firstName, sendModalGuest.lastName].filter(Boolean).join(" ") || "Guest" : "Guest";
+    onSuccess: (
+      data: {
+        emailSent?: boolean;
+        saveTheDateUrl?: string;
+        previewUrl?: string;
+      },
+      guestId,
+    ) => {
+      const guestName = sendModalGuest
+        ? [sendModalGuest.firstName, sendModalGuest.lastName]
+            .filter(Boolean)
+            .join(" ") || "Guest"
+        : "Guest";
       optimisticUpdate(guestId, { saveTheDateStatus: "sent" } as any);
       invalidate();
       setSendModalGuest(null);
       if (data?.saveTheDateUrl) {
-        setLinkDialog({ url: data.saveTheDateUrl, previewUrl: data.previewUrl ?? data.saveTheDateUrl, type: "saveTheDate", guestName });
+        setLinkDialog({
+          url: data.saveTheDateUrl,
+          previewUrl: data.previewUrl ?? data.saveTheDateUrl,
+          type: "saveTheDate",
+          guestName,
+        });
       }
       if (data?.emailSent) {
-        toast({ title: "Save the Date sent!", description: "Email delivered to guest." });
+        toast({
+          title: "Save the Date sent!",
+          description: "Email delivered to guest.",
+        });
       } else {
-        toast({ title: "Save the Date marked as sent.", description: "No email on file — status updated." });
+        toast({
+          title: "Save the Date marked as sent.",
+          description: "No email on file — status updated.",
+        });
       }
     },
-    onError: (err) => toast({ title: "Failed to send Save the Date", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
+    onError: (err) =>
+      toast({
+        title: "Failed to send Save the Date",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      }),
   });
 
   const sendRsvpReminder = useMutation({
     mutationFn: async (guestId: number) => {
-      const res = await authFetch(`/api/guests/${guestId}/send-rsvp-reminder`, { method: "POST" });
+      const res = await authFetch(`/api/guests/${guestId}/send-rsvp-reminder`, {
+        method: "POST",
+      });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string; details?: string };
-        throw new Error(err.details ?? err.error ?? "Failed to send RSVP reminder");
+        const err = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          details?: string;
+        };
+        throw new Error(
+          err.details ?? err.error ?? "Failed to send RSVP reminder",
+        );
       }
       return res.json() as Promise<{ rsvpUrl: string; emailSent: boolean }>;
     },
-    onSuccess: (data: { rsvpUrl: string; previewUrl?: string; emailSent: boolean }) => {
-      const guestName = sendModalGuest ? [sendModalGuest.firstName, sendModalGuest.lastName].filter(Boolean).join(" ") || "Guest" : "Guest";
+    onSuccess: (data: {
+      rsvpUrl: string;
+      previewUrl?: string;
+      emailSent: boolean;
+    }) => {
+      const guestName = sendModalGuest
+        ? [sendModalGuest.firstName, sendModalGuest.lastName]
+            .filter(Boolean)
+            .join(" ") || "Guest"
+        : "Guest";
       invalidate();
       setSendModalGuest(null);
       if (data?.rsvpUrl) {
-        setLinkDialog({ url: data.rsvpUrl, previewUrl: data.previewUrl ?? data.rsvpUrl, type: "rsvp", guestName });
+        setLinkDialog({
+          url: data.rsvpUrl,
+          previewUrl: data.previewUrl ?? data.rsvpUrl,
+          type: "rsvp",
+          guestName,
+        });
       }
       if (data?.emailSent) {
-        toast({ title: "Reminder sent", description: "RSVP reminder email delivered." });
+        toast({
+          title: "Reminder sent",
+          description: "RSVP reminder email delivered.",
+        });
       } else {
-        toast({ title: "No email on file", description: "Copy the link below to send manually." });
+        toast({
+          title: "No email on file",
+          description: "Copy the link below to send manually.",
+        });
       }
     },
-    onError: (err) => toast({ title: "Failed to send reminder", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
+    onError: (err) =>
+      toast({
+        title: "Failed to send reminder",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      }),
   });
 
   const sendRsvp = useMutation({
     mutationFn: async (guestId: number) => {
-      const res = await authFetch(`/api/guests/${guestId}/send-rsvp`, { method: "POST" });
+      const res = await authFetch(`/api/guests/${guestId}/send-rsvp`, {
+        method: "POST",
+      });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string; details?: string };
+        const err = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          details?: string;
+        };
         throw new Error(err.details ?? err.error ?? "Failed to send RSVP");
       }
       return res.json() as Promise<{ rsvpUrl: string; emailSent: boolean }>;
     },
     onSuccess: (data, guestId) => {
-      const guestName = sendModalGuest ? [sendModalGuest.firstName, sendModalGuest.lastName].filter(Boolean).join(" ") || "Guest" : "Guest";
+      const guestName = sendModalGuest
+        ? [sendModalGuest.firstName, sendModalGuest.lastName]
+            .filter(Boolean)
+            .join(" ") || "Guest"
+        : "Guest";
       // Track "sent" on invitationStatus, not rsvpStatus — rsvpStatus is reserved
       // for the guest's actual response (attending / maybe / declined / pending).
       optimisticUpdate(guestId, { invitationStatus: "sent" });
       invalidate();
       setSendModalGuest(null);
       if (data.rsvpUrl) {
-        setLinkDialog({ url: data.rsvpUrl, previewUrl: (data as any).previewUrl ?? data.rsvpUrl, type: "rsvp", guestName });
+        setLinkDialog({
+          url: data.rsvpUrl,
+          previewUrl: (data as any).previewUrl ?? data.rsvpUrl,
+          type: "rsvp",
+          guestName,
+        });
       }
       if (data.emailSent) {
-        toast({ title: "RSVP Invitation sent!", description: "Email delivered to guest." });
+        toast({
+          title: "RSVP Invitation sent!",
+          description: "Email delivered to guest.",
+        });
       } else {
-        toast({ title: "RSVP Invitation marked as sent.", description: "No email on file — status updated." });
+        toast({
+          title: "RSVP Invitation marked as sent.",
+          description: "No email on file — status updated.",
+        });
       }
     },
-    onError: (err) => toast({ title: "Failed to send RSVP Invitation", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
+    onError: (err) =>
+      toast({
+        title: "Failed to send RSVP Invitation",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      }),
   });
 
   const sendReminder = useMutation({
     mutationFn: async (guestId: number) => {
-      const res = await authFetch(`/api/guests/${guestId}/send-rsvp?reminder=true`, { method: "POST" });
+      const res = await authFetch(
+        `/api/guests/${guestId}/send-rsvp?reminder=true`,
+        { method: "POST" },
+      );
       if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string; details?: string };
+        const err = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          details?: string;
+        };
         throw new Error(err.details ?? err.error ?? "Failed to send reminder");
       }
       return res.json() as Promise<{ rsvpUrl: string; emailSent: boolean }>;
     },
     onSuccess: (data) => {
       if (data.emailSent) {
-        toast({ title: "Reminder sent!", description: "RSVP reminder email delivered." });
+        toast({
+          title: "Reminder sent!",
+          description: "RSVP reminder email delivered.",
+        });
       } else {
-        toast({ title: "No email on file", description: "Guest has no email address to send the reminder to." });
+        toast({
+          title: "No email on file",
+          description: "Guest has no email address to send the reminder to.",
+        });
       }
     },
-    onError: (err) => toast({ title: "Failed to send reminder", description: err instanceof Error ? err.message : undefined, variant: "destructive" }),
+    onError: (err) =>
+      toast({
+        title: "Failed to send reminder",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      }),
   });
 
   const [sendingReminders, setSendingReminders] = useState(false);
   const [sendingSaveTheDates, setSendingSaveTheDates] = useState(false);
   const [sendingInvitations, setSendingInvitations] = useState(false);
-  const [confirmBulkSend, setConfirmBulkSend] = useState<null | "saveTheDate" | "invitation" | "reminder">(null);
+  const [confirmBulkSend, setConfirmBulkSend] = useState<
+    null | "saveTheDate" | "invitation" | "reminder"
+  >(null);
 
   const handleSendAllReminders = async () => {
     if (!reminderEligible.length) return;
@@ -766,13 +1267,21 @@ export default function Guests() {
     let sent = 0;
     for (const g of reminderEligible) {
       try {
-        const res = await authFetch(`/api/guests/${g.id}/send-rsvp?reminder=true`, { method: "POST" });
+        const res = await authFetch(
+          `/api/guests/${g.id}/send-rsvp?reminder=true`,
+          { method: "POST" },
+        );
         if (res.ok) sent++;
-      } catch { /* continue */ }
+      } catch {
+        /* continue */
+      }
     }
     setSendingReminders(false);
     invalidate();
-    toast({ title: `Reminders sent`, description: `${sent} of ${reminderEligible.length} reminder email${reminderEligible.length !== 1 ? "s" : ""} delivered.` });
+    toast({
+      title: `Reminders sent`,
+      description: `${sent} of ${reminderEligible.length} reminder email${reminderEligible.length !== 1 ? "s" : ""} delivered.`,
+    });
   };
 
   const handleSendAllSaveTheDates = async () => {
@@ -781,13 +1290,20 @@ export default function Guests() {
     let sent = 0;
     for (const g of saveTheDateEligible) {
       try {
-        const res = await authFetch(`/api/guests/${g.id}/send-save-the-date`, { method: "POST" });
+        const res = await authFetch(`/api/guests/${g.id}/send-save-the-date`, {
+          method: "POST",
+        });
         if (res.ok) sent++;
-      } catch { /* continue */ }
+      } catch {
+        /* continue */
+      }
     }
     setSendingSaveTheDates(false);
     invalidate();
-    toast({ title: "Save-the-Dates sent", description: `${sent} of ${saveTheDateEligible.length} save-the-date${saveTheDateEligible.length !== 1 ? "s" : ""} sent.` });
+    toast({
+      title: "Save-the-Dates sent",
+      description: `${sent} of ${saveTheDateEligible.length} save-the-date${saveTheDateEligible.length !== 1 ? "s" : ""} sent.`,
+    });
   };
 
   const handleSendAllInvitations = async () => {
@@ -796,27 +1312,47 @@ export default function Guests() {
     let sent = 0;
     for (const g of invitationEligible) {
       try {
-        const res = await authFetch(`/api/guests/${g.id}/send-rsvp`, { method: "POST" });
+        const res = await authFetch(`/api/guests/${g.id}/send-rsvp`, {
+          method: "POST",
+        });
         if (res.ok) sent++;
-      } catch { /* continue */ }
+      } catch {
+        /* continue */
+      }
     }
     setSendingInvitations(false);
     invalidate();
-    toast({ title: "RSVP Invitations sent", description: `${sent} of ${invitationEligible.length} RSVP invitation${invitationEligible.length !== 1 ? "s" : ""} sent.` });
+    toast({
+      title: "RSVP Invitations sent",
+      description: `${sent} of ${invitationEligible.length} RSVP invitation${invitationEligible.length !== 1 ? "s" : ""} sent.`,
+    });
   };
 
   const allGuests = data?.guests ?? [];
-  const saveTheDateEligible = allGuests.filter((g) => ((g as any).saveTheDateStatus ?? "not_sent") === "not_sent");
-  const invitationEligible = allGuests.filter((g) => (g.invitationStatus ?? "pending") === "pending");
-  const reminderEligible = allGuests.filter(
-    (g) => g.invitationStatus === "sent"
-      && g.rsvpStatus === "pending"
-      && ((g as any).rsvpReminderStatus ?? "not_sent") !== "sent",
+  const saveTheDateEligible = allGuests.filter(
+    (g) => ((g as any).saveTheDateStatus ?? "not_sent") === "not_sent",
   );
-  const summary = data?.summary ?? { total: 0, attending: 0, declined: 0, pending: 0, plusOnes: 0 };
+  const invitationEligible = allGuests.filter(
+    (g) => (g.invitationStatus ?? "pending") === "pending",
+  );
+  const reminderEligible = allGuests.filter(
+    (g) =>
+      g.invitationStatus === "sent" &&
+      g.rsvpStatus === "pending" &&
+      ((g as any).rsvpReminderStatus ?? "not_sent") !== "sent",
+  );
+  const summary = data?.summary ?? {
+    total: 0,
+    attending: 0,
+    declined: 0,
+    pending: 0,
+    plusOnes: 0,
+  };
 
-  const newGuests = allGuests.filter(g => (g as any).source === "self_collect" && !(g as any).acknowledgedAt);
-  const newGuestIds = new Set(newGuests.map(g => g.id));
+  const newGuests = allGuests.filter(
+    (g) => (g as any).source === "self_collect" && !(g as any).acknowledgedAt,
+  );
+  const newGuestIds = new Set(newGuests.map((g) => g.id));
 
   const handleAcknowledge = (guestId: number) => {
     if (!newGuestIds.has(guestId)) return;
@@ -824,12 +1360,20 @@ export default function Guests() {
       if (!old) return old;
       return {
         ...old,
-        guests: old.guests.map((g: Guest) => g.id === guestId ? { ...g, acknowledgedAt: new Date().toISOString() } as Guest : g),
+        guests: old.guests.map((g: Guest) =>
+          g.id === guestId
+            ? ({ ...g, acknowledgedAt: new Date().toISOString() } as Guest)
+            : g,
+        ),
       };
     });
-    acknowledgeGuest.mutate({ id: guestId }, {
-      onError: () => queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() }),
-    });
+    acknowledgeGuest.mutate(
+      { id: guestId },
+      {
+        onError: () =>
+          queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() }),
+      },
+    );
   };
 
   const handleAcknowledgeAll = () => {
@@ -840,29 +1384,44 @@ export default function Guests() {
       const now = new Date().toISOString();
       return {
         ...old,
-        guests: old.guests.map((g: Guest) => newGuestIds.has(g.id) ? { ...g, acknowledgedAt: now } as Guest : g),
+        guests: old.guests.map((g: Guest) =>
+          newGuestIds.has(g.id) ? ({ ...g, acknowledgedAt: now } as Guest) : g,
+        ),
       };
     });
-    ids.forEach(id => {
-      acknowledgeGuest.mutate({ id }, {
-        onError: () => queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() }),
-      });
+    ids.forEach((id) => {
+      acknowledgeGuest.mutate(
+        { id },
+        {
+          onError: () =>
+            queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() }),
+        },
+      );
     });
   };
 
   const filtered = allGuests
-    .filter(g => {
-      const matchesSearch = !search || g.name.toLowerCase().includes(search.toLowerCase()) || (g.email ?? "").toLowerCase().includes(search.toLowerCase());
+    .filter((g) => {
+      const matchesSearch =
+        !search ||
+        g.name.toLowerCase().includes(search.toLowerCase()) ||
+        (g.email ?? "").toLowerCase().includes(search.toLowerCase());
       const matchesRsvp = rsvpFilter === "all" || g.rsvpStatus === rsvpFilter;
       return matchesSearch && matchesRsvp;
     })
     .slice()
-    .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" }));
+    .sort((a, b) =>
+      (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+        sensitivity: "base",
+      }),
+    );
 
   const queryKey = getGetGuestsQueryKey();
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey });
-    queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    queryClient.invalidateQueries({
+      queryKey: getGetDashboardSummaryQueryKey(),
+    });
   };
 
   function optimisticUpdate(guestId: number, patch: Partial<Guest>) {
@@ -870,7 +1429,9 @@ export default function Guests() {
       if (!old) return old;
       return {
         ...old,
-        guests: old.guests.map((g: Guest) => g.id === guestId ? { ...g, ...patch } : g),
+        guests: old.guests.map((g: Guest) =>
+          g.id === guestId ? { ...g, ...patch } : g,
+        ),
       };
     });
   }
@@ -879,77 +1440,103 @@ export default function Guests() {
     // "none" comes from the Select sentinel for "remove this guest's group".
     const next = raw === "none" || raw === "" ? null : raw;
     optimisticUpdate(guest.id, { guestGroup: next });
-    updateGuest.mutate({
-      id: guest.id,
-      data: {
-        name: guest.name,
-        email: guest.email ?? undefined,
-        invitationStatus: guest.invitationStatus ?? "pending",
-        rsvpStatus: (guest.rsvpStatus ?? "pending") as "pending" | "attending" | "maybe" | "declined",
-        mealChoice: guest.mealChoice ?? undefined,
-        guestGroup: next ?? undefined,
-        plusOne: guest.plusOne,
-        plusOneName: guest.plusOneName ?? undefined,
-        tableAssignment: guest.tableAssignment ?? undefined,
-        notes: guest.notes ?? undefined,
+    updateGuest.mutate(
+      {
+        id: guest.id,
+        data: {
+          name: guest.name,
+          email: guest.email ?? undefined,
+          invitationStatus: guest.invitationStatus ?? "pending",
+          rsvpStatus: (guest.rsvpStatus ?? "pending") as
+            | "pending"
+            | "attending"
+            | "maybe"
+            | "declined",
+          mealChoice: guest.mealChoice ?? undefined,
+          guestGroup: next ?? undefined,
+          plusOne: guest.plusOne,
+          plusOneName: guest.plusOneName ?? undefined,
+          tableAssignment: guest.tableAssignment ?? undefined,
+          notes: guest.notes ?? undefined,
+        },
       },
-    }, {
-      onSuccess: () => invalidate(),
-      onError: () => {
-        optimisticUpdate(guest.id, { guestGroup: guest.guestGroup });
-        toast({ title: "Failed to update group", variant: "destructive" });
+      {
+        onSuccess: () => invalidate(),
+        onError: () => {
+          optimisticUpdate(guest.id, { guestGroup: guest.guestGroup });
+          toast({ title: "Failed to update group", variant: "destructive" });
+        },
       },
-    });
+    );
   }
 
   function handleRsvpChange(guest: Guest, newStatus: string) {
     optimisticUpdate(guest.id, { rsvpStatus: newStatus });
-    updateGuest.mutate({
-      id: guest.id,
-      data: {
-        name: guest.name,
-        email: guest.email ?? undefined,
-        invitationStatus: guest.invitationStatus ?? "pending",
-        rsvpStatus: newStatus as "pending" | "attending" | "maybe" | "declined",
-        mealChoice: guest.mealChoice ?? undefined,
-        guestGroup: guest.guestGroup ?? undefined,
-        plusOne: guest.plusOne,
-        plusOneName: guest.plusOneName ?? undefined,
-        tableAssignment: guest.tableAssignment ?? undefined,
-        notes: guest.notes ?? undefined,
+    updateGuest.mutate(
+      {
+        id: guest.id,
+        data: {
+          name: guest.name,
+          email: guest.email ?? undefined,
+          invitationStatus: guest.invitationStatus ?? "pending",
+          rsvpStatus: newStatus as
+            | "pending"
+            | "attending"
+            | "maybe"
+            | "declined",
+          mealChoice: guest.mealChoice ?? undefined,
+          guestGroup: guest.guestGroup ?? undefined,
+          plusOne: guest.plusOne,
+          plusOneName: guest.plusOneName ?? undefined,
+          tableAssignment: guest.tableAssignment ?? undefined,
+          notes: guest.notes ?? undefined,
+        },
       },
-    }, {
-      onSuccess: () => invalidate(),
-      onError: () => {
-        optimisticUpdate(guest.id, { rsvpStatus: guest.rsvpStatus });
-        toast({ title: "Failed to update RSVP", variant: "destructive" });
+      {
+        onSuccess: () => invalidate(),
+        onError: () => {
+          optimisticUpdate(guest.id, { rsvpStatus: guest.rsvpStatus });
+          toast({ title: "Failed to update RSVP", variant: "destructive" });
+        },
       },
-    });
+    );
   }
 
   function handleInvitationChange(guest: Guest, newStatus: string) {
     optimisticUpdate(guest.id, { invitationStatus: newStatus });
-    updateGuest.mutate({
-      id: guest.id,
-      data: {
-        name: guest.name,
-        email: guest.email ?? undefined,
-        invitationStatus: newStatus,
-        rsvpStatus: guest.rsvpStatus as "pending" | "attending" | "maybe" | "declined",
-        mealChoice: guest.mealChoice ?? undefined,
-        guestGroup: guest.guestGroup ?? undefined,
-        plusOne: guest.plusOne,
-        plusOneName: guest.plusOneName ?? undefined,
-        tableAssignment: guest.tableAssignment ?? undefined,
-        notes: guest.notes ?? undefined,
+    updateGuest.mutate(
+      {
+        id: guest.id,
+        data: {
+          name: guest.name,
+          email: guest.email ?? undefined,
+          invitationStatus: newStatus,
+          rsvpStatus: guest.rsvpStatus as
+            | "pending"
+            | "attending"
+            | "maybe"
+            | "declined",
+          mealChoice: guest.mealChoice ?? undefined,
+          guestGroup: guest.guestGroup ?? undefined,
+          plusOne: guest.plusOne,
+          plusOneName: guest.plusOneName ?? undefined,
+          tableAssignment: guest.tableAssignment ?? undefined,
+          notes: guest.notes ?? undefined,
+        },
       },
-    }, {
-      onSuccess: () => invalidate(),
-      onError: () => {
-        optimisticUpdate(guest.id, { invitationStatus: guest.invitationStatus ?? "pending" });
-        toast({ title: "Failed to update invitation status", variant: "destructive" });
+      {
+        onSuccess: () => invalidate(),
+        onError: () => {
+          optimisticUpdate(guest.id, {
+            invitationStatus: guest.invitationStatus ?? "pending",
+          });
+          toast({
+            title: "Failed to update invitation status",
+            variant: "destructive",
+          });
+        },
       },
-    });
+    );
   }
 
   function handleSaveDateChange(guest: Guest, newStatus: string) {
@@ -959,13 +1546,18 @@ export default function Guests() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ saveTheDateStatus: newStatus }),
-    }).then(async res => {
-      if (!res.ok) throw new Error();
-      invalidate();
-    }).catch(() => {
-      optimisticUpdate(guest.id, { saveTheDateStatus: prev } as any);
-      toast({ title: "Failed to update save-the-date status", variant: "destructive" });
-    });
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error();
+        invalidate();
+      })
+      .catch(() => {
+        optimisticUpdate(guest.id, { saveTheDateStatus: prev } as any);
+        toast({
+          title: "Failed to update save-the-date status",
+          variant: "destructive",
+        });
+      });
   }
 
   function handleReminderChange(guest: Guest, newStatus: string) {
@@ -975,92 +1567,127 @@ export default function Guests() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rsvpReminderStatus: newStatus }),
-    }).then(async res => {
-      if (!res.ok) throw new Error();
-      invalidate();
-    }).catch(() => {
-      optimisticUpdate(guest.id, { rsvpReminderStatus: prev } as any);
-      toast({ title: "Failed to update reminder status", variant: "destructive" });
-    });
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error();
+        invalidate();
+      })
+      .catch(() => {
+        optimisticUpdate(guest.id, { rsvpReminderStatus: prev } as any);
+        toast({
+          title: "Failed to update reminder status",
+          variant: "destructive",
+        });
+      });
   }
 
   function handleMealChange(guest: Guest, newMeal: string) {
     const val = newMeal === "none" ? null : newMeal;
     optimisticUpdate(guest.id, { mealChoice: val });
-    updateGuest.mutate({
-      id: guest.id,
-      data: {
-        name: guest.name,
-        email: guest.email ?? undefined,
-        invitationStatus: guest.invitationStatus ?? "pending",
-        rsvpStatus: guest.rsvpStatus as "pending" | "attending" | "maybe" | "declined",
-        // Send empty string when clearing — the server converts "" -> NULL.
-        // Sending `undefined` would be dropped by JSON.stringify and the
-        // server's `if (mealChoice !== undefined)` guard would skip the update.
-        mealChoice: val ?? "",
-        guestGroup: guest.guestGroup ?? undefined,
-        plusOne: guest.plusOne,
-        plusOneName: guest.plusOneName ?? undefined,
-        tableAssignment: guest.tableAssignment ?? undefined,
-        notes: guest.notes ?? undefined,
+    updateGuest.mutate(
+      {
+        id: guest.id,
+        data: {
+          name: guest.name,
+          email: guest.email ?? undefined,
+          invitationStatus: guest.invitationStatus ?? "pending",
+          rsvpStatus: guest.rsvpStatus as
+            | "pending"
+            | "attending"
+            | "maybe"
+            | "declined",
+          // Send empty string when clearing — the server converts "" -> NULL.
+          // Sending `undefined` would be dropped by JSON.stringify and the
+          // server's `if (mealChoice !== undefined)` guard would skip the update.
+          mealChoice: val ?? "",
+          guestGroup: guest.guestGroup ?? undefined,
+          plusOne: guest.plusOne,
+          plusOneName: guest.plusOneName ?? undefined,
+          tableAssignment: guest.tableAssignment ?? undefined,
+          notes: guest.notes ?? undefined,
+        },
       },
-    }, {
-      onSuccess: () => invalidate(),
-      onError: () => {
-        optimisticUpdate(guest.id, { mealChoice: guest.mealChoice });
-        toast({ title: "Failed to update meal choice", variant: "destructive" });
+      {
+        onSuccess: () => invalidate(),
+        onError: () => {
+          optimisticUpdate(guest.id, { mealChoice: guest.mealChoice });
+          toast({
+            title: "Failed to update meal choice",
+            variant: "destructive",
+          });
+        },
       },
-    });
+    );
   }
 
   function handleAdd(data: GuestFormValues) {
     const plusOneName = data.plusOne
-      ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()].filter(Boolean).join(" ") || undefined
+      ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()]
+          .filter(Boolean)
+          .join(" ") || undefined
       : undefined;
-    addGuest.mutate({
-      data: {
-        ...data,
-        plusOneName,
-        email: data.email || undefined,
-        mealChoice: data.mealChoice === "none" ? undefined : data.mealChoice || undefined,
-        guestGroup: data.guestGroup === "none" ? undefined : data.guestGroup || undefined,
-      }
-    }, {
-      onSuccess: () => {
-        toast({ title: "Guest added" });
-        setIsAdding(false);
-        setDuplicateGuestIds(new Set());
-        invalidate();
+    addGuest.mutate(
+      {
+        data: {
+          ...data,
+          plusOneName,
+          email: data.email || undefined,
+          mealChoice:
+            data.mealChoice === "none"
+              ? undefined
+              : data.mealChoice || undefined,
+          guestGroup:
+            data.guestGroup === "none"
+              ? undefined
+              : data.guestGroup || undefined,
+        },
       },
-      onError: (err: unknown) => {
-        const status = (err as { status?: number })?.status;
-        if (status === 409) {
-          const ids = ((err as { data?: { duplicateIds?: number[] } })?.data?.duplicateIds) ?? [];
-          setDuplicateGuestIds(new Set(ids));
-          setPendingGuestData(data);
+      {
+        onSuccess: () => {
+          toast({ title: "Guest added" });
           setIsAdding(false);
-        } else {
-          toast({
-            title: status === 401 ? "Session refreshing — try again in a moment" : "Failed to add guest",
-            variant: "destructive",
-          });
-        }
+          setDuplicateGuestIds(new Set());
+          invalidate();
+        },
+        onError: (err: unknown) => {
+          const status = (err as { status?: number })?.status;
+          if (status === 409) {
+            const ids =
+              (err as { data?: { duplicateIds?: number[] } })?.data
+                ?.duplicateIds ?? [];
+            setDuplicateGuestIds(new Set(ids));
+            setPendingGuestData(data);
+            setIsAdding(false);
+          } else {
+            toast({
+              title:
+                status === 401
+                  ? "Session refreshing — try again in a moment"
+                  : "Failed to add guest",
+              variant: "destructive",
+            });
+          }
+        },
       },
-    });
+    );
   }
 
   async function handleForceAdd() {
     if (!pendingGuestData) return;
     const data = pendingGuestData;
     const plusOneName = data.plusOne
-      ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()].filter(Boolean).join(" ") || undefined
+      ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()]
+          .filter(Boolean)
+          .join(" ") || undefined
       : undefined;
     const payload = {
       ...data,
       plusOneName,
       email: data.email || undefined,
-      mealChoice: data.mealChoice === "none" ? undefined : data.mealChoice || undefined,
-      guestGroup: data.guestGroup === "none" ? undefined : data.guestGroup || undefined,
+      mealChoice:
+        data.mealChoice === "none" ? undefined : data.mealChoice || undefined,
+      guestGroup:
+        data.guestGroup === "none" ? undefined : data.guestGroup || undefined,
     };
     try {
       const res = await authFetch("/api/guests?force=true", {
@@ -1081,55 +1708,79 @@ export default function Guests() {
   function handleEdit(data: GuestFormValues) {
     if (!editGuest) return;
     const plusOneName = data.plusOne
-      ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()].filter(Boolean).join(" ")
+      ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()]
+          .filter(Boolean)
+          .join(" ")
       : "";
-    updateGuest.mutate({
-      id: editGuest.id,
-      data: {
-        name: data.name,
-        email: data.email || null,
-        invitationStatus: data.invitationStatus,
-        rsvpStatus: data.rsvpStatus,
-        plusOne: data.plusOne,
-        plusOneName: plusOneName,
-        mealChoice: (data.mealChoice === "none" || !data.mealChoice) ? null : data.mealChoice,
-        dietaryNotes: data.mealChoice === "other" ? (data.dietaryNotes?.trim() || null) : null,
-        guestGroup: (data.guestGroup === "none" || !data.guestGroup) ? null : data.guestGroup,
-        tableAssignment: data.tableAssignment || null,
-        notes: data.notes || null,
-        phone: data.phone || null,
-        address: data.address || null,
-        aptUnit: data.aptUnit || null,
-        guestCity: data.guestCity || null,
-        guestState: data.guestState || null,
-        guestZip: data.guestZip || null,
-        guestCountry: data.guestCountry || null,
-      } as Parameters<typeof updateGuest.mutate>[0]["data"]
-    }, {
-      onSuccess: () => {
-        toast({ title: "Guest updated" });
-        setEditGuest(null);
-        invalidate();
+    updateGuest.mutate(
+      {
+        id: editGuest.id,
+        data: {
+          name: data.name,
+          email: data.email || null,
+          invitationStatus: data.invitationStatus,
+          rsvpStatus: data.rsvpStatus,
+          plusOne: data.plusOne,
+          plusOneName: plusOneName,
+          mealChoice:
+            data.mealChoice === "none" || !data.mealChoice
+              ? null
+              : data.mealChoice,
+          dietaryNotes:
+            data.mealChoice === "other"
+              ? data.dietaryNotes?.trim() || null
+              : null,
+          guestGroup:
+            data.guestGroup === "none" || !data.guestGroup
+              ? null
+              : data.guestGroup,
+          tableAssignment: data.tableAssignment || null,
+          notes: data.notes || null,
+          phone: data.phone || null,
+          address: data.address || null,
+          aptUnit: data.aptUnit || null,
+          guestCity: data.guestCity || null,
+          guestState: data.guestState || null,
+          guestZip: data.guestZip || null,
+          guestCountry: data.guestCountry || null,
+        } as Parameters<typeof updateGuest.mutate>[0]["data"],
       },
-      onError: (err: unknown) => {
-        const status = (err as { status?: number })?.status;
-        toast({
-          title: status === 409 ? "Duplicate guest detected" : "Failed to update guest",
-          description: status === 409 ? "A guest with this name or email already exists." : undefined,
-          variant: "destructive",
-        });
+      {
+        onSuccess: () => {
+          toast({ title: "Guest updated" });
+          setEditGuest(null);
+          invalidate();
+        },
+        onError: (err: unknown) => {
+          const status = (err as { status?: number })?.status;
+          toast({
+            title:
+              status === 409
+                ? "Duplicate guest detected"
+                : "Failed to update guest",
+            description:
+              status === 409
+                ? "A guest with this name or email already exists."
+                : undefined,
+            variant: "destructive",
+          });
+        },
       },
-    });
+    );
   }
 
   function handleDelete(id: number) {
-    deleteGuest.mutate({ id }, {
-      onSuccess: () => {
-        toast({ title: "Guest removed" });
-        invalidate();
+    deleteGuest.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          toast({ title: "Guest removed" });
+          invalidate();
+        },
+        onError: () =>
+          toast({ title: "Failed to remove guest", variant: "destructive" }),
       },
-      onError: () => toast({ title: "Failed to remove guest", variant: "destructive" }),
-    });
+    );
   }
 
   if (!profileLoading && !weddingProfile) {
@@ -1139,9 +1790,12 @@ export default function Guests() {
           <Sparkles className="h-7 w-7 text-primary" />
         </div>
         <div>
-          <h2 className="text-2xl font-serif font-semibold">Complete Your Wedding Profile</h2>
+          <h2 className="text-2xl font-serif font-semibold">
+            Complete Your Wedding Profile
+          </h2>
           <p className="text-muted-foreground mt-2 text-sm">
-            You need to set up your wedding profile before you can manage guests and invitations.
+            You need to set up your wedding profile before you can manage guests
+            and invitations.
           </p>
         </div>
         <Link href="/profile">
@@ -1156,7 +1810,9 @@ export default function Guests() {
       <div className="space-y-6 max-w-5xl mx-auto">
         <Skeleton className="h-10 w-64" />
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
         </div>
         <Skeleton className="h-96 rounded-xl" />
       </div>
@@ -1166,7 +1822,9 @@ export default function Guests() {
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-4">
-        <p className="text-muted-foreground">Failed to load guest list. Please refresh.</p>
+        <p className="text-muted-foreground">
+          Failed to load guest list. Please refresh.
+        </p>
       </div>
     );
   }
@@ -1179,7 +1837,9 @@ export default function Guests() {
           <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
             <Users className="h-8 w-8" /> {t("guests.title")}
           </h1>
-          <p className="text-lg text-muted-foreground mt-2">{t("guests.subtitle")}</p>
+          <p className="text-lg text-muted-foreground mt-2">
+            {t("guests.subtitle")}
+          </p>
         </div>
         <div className="flex gap-2">
           {allGuests.length > 0 && (
@@ -1189,35 +1849,87 @@ export default function Guests() {
           )}
           {allGuests.length > 0 && (
             <>
-              <Button variant="secondary" disabled={sendingSaveTheDates || saveTheDateEligible.length === 0} onClick={() => setConfirmBulkSend("saveTheDate")}>
-                {sendingSaveTheDates ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+              <Button
+                variant="secondary"
+                disabled={
+                  sendingSaveTheDates || saveTheDateEligible.length === 0
+                }
+                onClick={() => setConfirmBulkSend("saveTheDate")}
+              >
+                {sendingSaveTheDates ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Mail className="h-4 w-4 mr-2" />
+                )}
                 Send All Save-the-Dates
-                <Badge variant="secondary" className="ml-2">{saveTheDateEligible.length}</Badge>
+                <Badge variant="secondary" className="ml-2">
+                  {saveTheDateEligible.length}
+                </Badge>
               </Button>
-              <Button variant="secondary" disabled={sendingInvitations || invitationEligible.length === 0} onClick={() => setConfirmBulkSend("invitation")}>
-                {sendingInvitations ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+              <Button
+                variant="secondary"
+                disabled={sendingInvitations || invitationEligible.length === 0}
+                onClick={() => setConfirmBulkSend("invitation")}
+              >
+                {sendingInvitations ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
                 Send All RSVP Invitations
-                <Badge variant="secondary" className="ml-2">{invitationEligible.length}</Badge>
+                <Badge variant="secondary" className="ml-2">
+                  {invitationEligible.length}
+                </Badge>
               </Button>
-              <Button variant="outline" disabled={sendingReminders || reminderEligible.length === 0} onClick={() => setConfirmBulkSend("reminder")}>
-                {sendingReminders ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              <Button
+                variant="outline"
+                disabled={sendingReminders || reminderEligible.length === 0}
+                onClick={() => setConfirmBulkSend("reminder")}
+              >
+                {sendingReminders ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
                 Send All RSVP Reminders
-                <Badge variant="secondary" className="ml-2">{reminderEligible.length}</Badge>
+                <Badge variant="secondary" className="ml-2">
+                  {reminderEligible.length}
+                </Badge>
               </Button>
-              <AlertDialog open={confirmBulkSend !== null} onOpenChange={(open) => { if (!open) setConfirmBulkSend(null); }}>
+              <AlertDialog
+                open={confirmBulkSend !== null}
+                onOpenChange={(open) => {
+                  if (!open) setConfirmBulkSend(null);
+                }}
+              >
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>
-                      {confirmBulkSend === "saveTheDate" && "Send All Save-the-Dates?"}
-                      {confirmBulkSend === "invitation" && "Send All RSVP Invitations?"}
-                      {confirmBulkSend === "reminder" && "Send All RSVP Reminders?"}
+                      {confirmBulkSend === "saveTheDate" &&
+                        "Send All Save-the-Dates?"}
+                      {confirmBulkSend === "invitation" &&
+                        "Send All RSVP Invitations?"}
+                      {confirmBulkSend === "reminder" &&
+                        "Send All RSVP Reminders?"}
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                       This will send emails to{" "}
                       <strong>
-                        {confirmBulkSend === "saveTheDate" ? saveTheDateEligible.length : confirmBulkSend === "invitation" ? invitationEligible.length : reminderEligible.length}
+                        {confirmBulkSend === "saveTheDate"
+                          ? saveTheDateEligible.length
+                          : confirmBulkSend === "invitation"
+                            ? invitationEligible.length
+                            : reminderEligible.length}
                       </strong>{" "}
-                      eligible guest{(confirmBulkSend === "saveTheDate" ? saveTheDateEligible.length : confirmBulkSend === "invitation" ? invitationEligible.length : reminderEligible.length) !== 1 ? "s" : ""}. This action cannot be undone.
+                      eligible guest
+                      {(confirmBulkSend === "saveTheDate"
+                        ? saveTheDateEligible.length
+                        : confirmBulkSend === "invitation"
+                          ? invitationEligible.length
+                          : reminderEligible.length) !== 1
+                        ? "s"
+                        : ""}
+                      . This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -1246,10 +1958,18 @@ export default function Guests() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="font-serif text-2xl text-primary">{t("guests.new_guest")}</DialogTitle>
-                <DialogDescription>{t("guests.new_guest_desc")}</DialogDescription>
+                <DialogTitle className="font-serif text-2xl text-primary">
+                  {t("guests.new_guest")}
+                </DialogTitle>
+                <DialogDescription>
+                  {t("guests.new_guest_desc")}
+                </DialogDescription>
               </DialogHeader>
-              <GuestForm onSubmit={handleAdd} isPending={addGuest.isPending} submitLabel={t("guests.add_guest")} />
+              <GuestForm
+                onSubmit={handleAdd}
+                isPending={addGuest.isPending}
+                submitLabel={t("guests.add_guest")}
+              />
             </DialogContent>
           </Dialog>
         </div>
@@ -1262,12 +1982,20 @@ export default function Guests() {
       {summary.total > 0 && (
         <div className="bg-card border border-border/60 rounded-xl p-4 space-y-2 shadow-sm">
           <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-foreground">{t("guests.rsvp_response_rate")}</span>
+            <span className="font-medium text-foreground">
+              {t("guests.rsvp_response_rate")}
+            </span>
             <span className="text-muted-foreground">
-              {summary.attending + summary.declined} {t("guests.responded")} {summary.total}
+              {summary.attending + summary.declined} {t("guests.responded")}{" "}
+              {summary.total}
               {summary.total > 0 && (
                 <span className="ml-1 text-primary font-semibold">
-                  ({Math.round(((summary.attending + summary.declined) / summary.total) * 100)}%)
+                  (
+                  {Math.round(
+                    ((summary.attending + summary.declined) / summary.total) *
+                      100,
+                  )}
+                  %)
                 </span>
               )}
             </span>
@@ -1276,20 +2004,33 @@ export default function Guests() {
             {summary.attending > 0 && (
               <div
                 className="h-full bg-emerald-500 transition-all duration-500"
-                style={{ width: `${(summary.attending / summary.total) * 100}%` }}
+                style={{
+                  width: `${(summary.attending / summary.total) * 100}%`,
+                }}
               />
             )}
             {summary.declined > 0 && (
               <div
                 className="h-full bg-red-400 transition-all duration-500"
-                style={{ width: `${(summary.declined / summary.total) * 100}%` }}
+                style={{
+                  width: `${(summary.declined / summary.total) * 100}%`,
+                }}
               />
             )}
           </div>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> {t("guests.stat_attending")} ({summary.attending})</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" /> {t("guests.stat_declined")} ({summary.declined})</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30 inline-block" /> {t("guests.stat_pending")} ({summary.pending})</span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />{" "}
+              {t("guests.stat_attending")} ({summary.attending})
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" />{" "}
+              {t("guests.stat_declined")} ({summary.declined})
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30 inline-block" />{" "}
+              {t("guests.stat_pending")} ({summary.pending})
+            </span>
           </div>
         </div>
       )}
@@ -1297,17 +2038,46 @@ export default function Guests() {
       {/* Summary chips */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { icon: Users, labelKey: "stat_total", value: summary.total, color: "text-primary" },
-          { icon: UserCheck, labelKey: "stat_attending", value: summary.attending, color: "text-emerald-600" },
-          { icon: UserX, labelKey: "stat_declined", value: summary.declined, color: "text-red-500" },
-          { icon: Clock, labelKey: "stat_pending", value: summary.pending, color: "text-amber-600" },
-          { icon: Heart, labelKey: "stat_plus_ones", value: summary.plusOnes, color: "text-rose-500" },
+          {
+            icon: Users,
+            labelKey: "stat_total",
+            value: summary.total,
+            color: "text-primary",
+          },
+          {
+            icon: UserCheck,
+            labelKey: "stat_attending",
+            value: summary.attending,
+            color: "text-emerald-600",
+          },
+          {
+            icon: UserX,
+            labelKey: "stat_declined",
+            value: summary.declined,
+            color: "text-red-500",
+          },
+          {
+            icon: Clock,
+            labelKey: "stat_pending",
+            value: summary.pending,
+            color: "text-amber-600",
+          },
+          {
+            icon: Heart,
+            labelKey: "stat_plus_ones",
+            value: summary.plusOnes,
+            color: "text-rose-500",
+          },
         ].map(({ icon: Icon, labelKey, value, color }) => (
           <Card key={labelKey} className="border-border/60 shadow-sm">
             <CardContent className="p-4 flex flex-col items-center text-center">
               <Icon className={`h-5 w-5 mb-1 ${color}`} />
-              <div className={`text-2xl font-serif font-bold ${color}`}>{value}</div>
-              <div className="text-xs text-muted-foreground">{t(`guests.${labelKey}`)}</div>
+              <div className={`text-2xl font-serif font-bold ${color}`}>
+                {value}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {t(`guests.${labelKey}`)}
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -1324,7 +2094,9 @@ export default function Guests() {
               <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
                 {newGuests.length === 1
                   ? t("guests.new_guest_alert_one", { name: newGuests[0].name })
-                  : t("guests.new_guest_alert_other", { count: newGuests.length })}
+                  : t("guests.new_guest_alert_other", {
+                      count: newGuests.length,
+                    })}
               </p>
               <p className="text-xs text-amber-800/80 dark:text-amber-300/70 mt-0.5">
                 {t("guests.new_guest_alert_desc")}
@@ -1345,7 +2117,15 @@ export default function Guests() {
       )}
 
       {/* Duplicate confirmation dialog */}
-      <AlertDialog open={!!pendingGuestData} onOpenChange={open => { if (!open) { setPendingGuestData(null); setDuplicateGuestIds(new Set()); } }}>
+      <AlertDialog
+        open={!!pendingGuestData}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingGuestData(null);
+            setDuplicateGuestIds(new Set());
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
@@ -1353,11 +2133,19 @@ export default function Guests() {
               Duplicate guest detected
             </AlertDialogTitle>
             <AlertDialogDescription>
-              A guest with this name or email already exists — the matching {duplicateGuestIds.size === 1 ? "entry is" : "entries are"} highlighted in the list below. Do you still want to add this guest?
+              A guest with this name or email already exists — the matching{" "}
+              {duplicateGuestIds.size === 1 ? "entry is" : "entries are"}{" "}
+              highlighted in the list below. Do you still want to add this
+              guest?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setPendingGuestData(null); setDuplicateGuestIds(new Set()); }}>
+            <AlertDialogCancel
+              onClick={() => {
+                setPendingGuestData(null);
+                setDuplicateGuestIds(new Set());
+              }}
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -1379,10 +2167,14 @@ export default function Guests() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-rose-900 dark:text-rose-200">
-                Existing {duplicateGuestIds.size === 1 ? "guest" : "guests"} highlighted below
+                Existing {duplicateGuestIds.size === 1 ? "guest" : "guests"}{" "}
+                highlighted below
               </p>
               <p className="text-xs text-rose-800/80 dark:text-rose-300/70 mt-0.5">
-                {duplicateGuestIds.size === 1 ? "This entry matches" : "These entries match"} the name or email you tried to add.
+                {duplicateGuestIds.size === 1
+                  ? "This entry matches"
+                  : "These entries match"}{" "}
+                the name or email you tried to add.
               </p>
             </div>
             <Button
@@ -1406,7 +2198,7 @@ export default function Guests() {
             placeholder={t("guests.search_placeholder")}
             className="pl-9"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <Select value={rsvpFilter} onValueChange={setRsvpFilter}>
@@ -1415,7 +2207,11 @@ export default function Guests() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("guests.all_rsvps")}</SelectItem>
-            {RSVP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(`guests.rsvp_${o.value}`)}</SelectItem>)}
+            {RSVP_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {t(`guests.rsvp_${o.value}`)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -1427,8 +2223,12 @@ export default function Guests() {
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <Users className="h-8 w-8 text-primary" />
             </div>
-            <h3 className="text-xl font-serif text-foreground mb-2">{t("guests.empty_title")}</h3>
-            <p className="text-muted-foreground mb-6 max-w-sm">{t("guests.empty_desc")}</p>
+            <h3 className="text-xl font-serif text-foreground mb-2">
+              {t("guests.empty_title")}
+            </h3>
+            <p className="text-muted-foreground mb-6 max-w-sm">
+              {t("guests.empty_desc")}
+            </p>
             <Button onClick={() => setIsAdding(true)}>
               <Plus className="h-4 w-4 mr-2" /> {t("guests.add_first_guest")}
             </Button>
@@ -1444,26 +2244,175 @@ export default function Guests() {
         <Card className="border-border/60 shadow-sm">
           <CardHeader className="pb-0">
             <CardTitle className="text-base font-medium text-muted-foreground">
-              {filtered.length === 1 ? t("guests.guest_count", { count: filtered.length }) : t("guests.guests_count", { count: filtered.length })} {rsvpFilter !== "all" || search ? t("guests.filtered") : ""}
+              {filtered.length === 1
+                ? t("guests.guest_count", { count: filtered.length })
+                : t("guests.guests_count", { count: filtered.length })}{" "}
+              {rsvpFilter !== "all" || search ? t("guests.filtered") : ""}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            <div className="sm:hidden space-y-3 p-3">
+              {filtered.map((g) => {
+                const badge = getRsvpBadge(g.rsvpStatus);
+                const isNew = newGuestIds.has(g.id);
+                const isDuplicate = duplicateGuestIds.has(g.id);
+                return (
+                  <div
+                    key={`mobile-${g.id}`}
+                    className={`rounded-lg border p-3 space-y-3 ${isDuplicate ? "bg-rose-50/60 dark:bg-rose-900/15 border-rose-300 dark:border-rose-700" : isNew ? "bg-amber-50/40 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700" : "bg-background"}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium leading-tight break-words">
+                          {g.name}
+                        </p>
+                        {g.email && (
+                          <p className="text-xs text-muted-foreground break-all mt-0.5">
+                            {g.email}
+                          </p>
+                        )}
+                        {(g as any).phone && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {(g as any).phone}
+                          </p>
+                        )}
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${badge.color}`}
+                          >
+                            {t(`guests.rsvp_${g.rsvpStatus}`)}
+                            <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-36">
+                          {RSVP_OPTIONS.map((opt) => (
+                            <DropdownMenuItem
+                              key={opt.value}
+                              className={`text-xs font-medium cursor-pointer ${g.rsvpStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
+                              onClick={() => handleRsvpChange(g, opt.value)}
+                            >
+                              {t(`guests.rsvp_${opt.value}`)}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Invite</p>
+                        <p className="font-medium">
+                          {g.invitationStatus === "sent" ? "Sent" : "Not sent"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Table</p>
+                        <p className="font-medium truncate">
+                          {g.tableAssignment || "—"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 pt-1 border-t">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          handleAcknowledge(g.id);
+                          setEditGuest(g);
+                        }}
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-8 w-8 ${g.rsvpStatus === "attending" ? "text-emerald-500" : g.rsvpStatus === "declined" ? "text-red-400" : "text-muted-foreground"}`}
+                        disabled={
+                          g.rsvpStatus === "attending" ||
+                          g.rsvpStatus === "declined"
+                        }
+                        onClick={() => {
+                          if (
+                            g.rsvpStatus === "attending" ||
+                            g.rsvpStatus === "declined"
+                          )
+                            return;
+                          setSendModalDefaultTab("saveTheDate");
+                          setSendModalReminderOnly(false);
+                          setSendModalGuest(g);
+                        }}
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              {t("guests.remove_title", { name: g.name })}
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {t("guests.remove_desc")}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>
+                              {t("guests.cancel")}
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(g.id)}
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              {t("guests.remove_btn")}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="hidden sm:block overflow-x-auto">
               <Table>
                 <TableHeader className="bg-muted/10">
                   <TableRow>
-                    <TableHead className="text-primary">{t("guests.col_name")}</TableHead>
-                    <TableHead className="hidden sm:table-cell text-primary">{t("guests.col_einvite_status")}</TableHead>
-                    <TableHead className="text-primary">{t("guests.col_rsvp")}</TableHead>
-                    <TableHead className="hidden md:table-cell text-primary">{t("guests.col_meal")}</TableHead>
-                    <TableHead className="hidden md:table-cell text-primary">{t("guests.col_table")}</TableHead>
-                    <TableHead className="hidden md:table-cell text-primary">{t("guests.col_group", { defaultValue: "Group" })}</TableHead>
-                    <TableHead className="hidden lg:table-cell text-primary">{t("guests.col_plus_one")}</TableHead>
+                    <TableHead className="text-primary">
+                      {t("guests.col_name")}
+                    </TableHead>
+                    <TableHead className="hidden sm:table-cell text-primary">
+                      {t("guests.col_einvite_status")}
+                    </TableHead>
+                    <TableHead className="text-primary">
+                      {t("guests.col_rsvp")}
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell text-primary">
+                      {t("guests.col_meal")}
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell text-primary">
+                      {t("guests.col_table")}
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell text-primary">
+                      {t("guests.col_group", { defaultValue: "Group" })}
+                    </TableHead>
+                    <TableHead className="hidden lg:table-cell text-primary">
+                      {t("guests.col_plus_one")}
+                    </TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map(g => {
+                  {filtered.map((g) => {
                     const badge = getRsvpBadge(g.rsvpStatus);
                     const isNew = newGuestIds.has(g.id);
                     const isDuplicate = duplicateGuestIds.has(g.id);
@@ -1492,7 +2441,9 @@ export default function Guests() {
                           {g.email && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                               <Mail className="h-3 w-3 shrink-0" />
-                              <span className="truncate max-w-[180px]">{g.email}</span>
+                              <span className="truncate max-w-[180px]">
+                                {g.email}
+                              </span>
                             </div>
                           )}
                           {(g as any).phone && (
@@ -1501,43 +2452,91 @@ export default function Guests() {
                               <span>{(g as any).phone}</span>
                             </div>
                           )}
-                          {((g as any).address || (g as any).guestCity || (g as any).guestState || (g as any).guestZip || (g as any).guestCountry) && (
+                          {((g as any).address ||
+                            (g as any).guestCity ||
+                            (g as any).guestState ||
+                            (g as any).guestZip ||
+                            (g as any).guestCountry) && (
                             <div className="flex items-start gap-1 text-xs text-muted-foreground">
                               <MapPin className="h-3 w-3 shrink-0 mt-0.5" />
                               <span className="leading-snug">
-                                {(g as any).address && <>{(g as any).address}{(g as any).aptUnit && <>, {(g as any).aptUnit}</>}</>}
-                                {((g as any).guestCity || (g as any).guestState || (g as any).guestZip) && (
-                                  <>{(g as any).address && <br />}{[(g as any).guestCity, (g as any).guestState, (g as any).guestZip].filter(Boolean).join(", ")}</>
+                                {(g as any).address && (
+                                  <>
+                                    {(g as any).address}
+                                    {(g as any).aptUnit && (
+                                      <>, {(g as any).aptUnit}</>
+                                    )}
+                                  </>
+                                )}
+                                {((g as any).guestCity ||
+                                  (g as any).guestState ||
+                                  (g as any).guestZip) && (
+                                  <>
+                                    {(g as any).address && <br />}
+                                    {[
+                                      (g as any).guestCity,
+                                      (g as any).guestState,
+                                      (g as any).guestZip,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(", ")}
+                                  </>
                                 )}
                                 {(g as any).guestCountry && (
-                                  <>{((g as any).address || (g as any).guestCity || (g as any).guestState || (g as any).guestZip) && <br />}{(g as any).guestCountry}</>
+                                  <>
+                                    {((g as any).address ||
+                                      (g as any).guestCity ||
+                                      (g as any).guestState ||
+                                      (g as any).guestZip) && <br />}
+                                    {(g as any).guestCountry}
+                                  </>
                                 )}
                               </span>
                             </div>
                           )}
-                          {g.notes && <div className="text-xs text-muted-foreground italic truncate max-w-[180px] mt-0.5" title={g.notes}>{g.notes}</div>}
+                          {g.notes && (
+                            <div
+                              className="text-xs text-muted-foreground italic truncate max-w-[180px] mt-0.5"
+                              title={g.notes}
+                            >
+                              {g.notes}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-sm">
                           <div className="flex flex-col gap-1.5">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">Save the Date</span>
+                              <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">
+                                Save the Date
+                              </span>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${(g as any).saveTheDateStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}>
-                                    {(g as any).saveTheDateStatus === "sent" ? "Sent" : "Not Sent"}
+                                  <button
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${(g as any).saveTheDateStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}
+                                  >
+                                    {(g as any).saveTheDateStatus === "sent"
+                                      ? "Sent"
+                                      : "Not Sent"}
                                     <ChevronDown className="h-2.5 w-2.5 opacity-60" />
                                   </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="w-28">
+                                <DropdownMenuContent
+                                  align="start"
+                                  className="w-28"
+                                >
                                   <DropdownMenuItem
                                     className={`text-xs cursor-pointer ${(g as any).saveTheDateStatus !== "sent" ? "opacity-50 pointer-events-none" : ""}`}
-                                    onClick={() => handleSaveDateChange(g, "not_sent")}
+                                    onClick={() =>
+                                      handleSaveDateChange(g, "not_sent")
+                                    }
                                   >
                                     Not Sent
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     className={`text-xs font-medium cursor-pointer ${(g as any).saveTheDateStatus === "sent" ? "opacity-50 pointer-events-none" : ""}`}
-                                    onClick={() => handleSaveDateChange(g, "sent")}
+                                    onClick={() =>
+                                      handleSaveDateChange(g, "sent")
+                                    }
                                   >
                                     Sent
                                   </DropdownMenuItem>
@@ -1545,22 +2544,35 @@ export default function Guests() {
                               </DropdownMenu>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">RSVP Invitation</span>
+                              <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">
+                                RSVP Invitation
+                              </span>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${g.invitationStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}>
-                                    {g.invitationStatus === "sent" ? "Sent" : "Not Sent"}
+                                  <button
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${g.invitationStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}
+                                  >
+                                    {g.invitationStatus === "sent"
+                                      ? "Sent"
+                                      : "Not Sent"}
                                     <ChevronDown className="h-2.5 w-2.5 opacity-60" />
                                   </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="w-28">
-                                  {INVITATION_OPTIONS.map(opt => (
+                                <DropdownMenuContent
+                                  align="start"
+                                  className="w-28"
+                                >
+                                  {INVITATION_OPTIONS.map((opt) => (
                                     <DropdownMenuItem
                                       key={opt.value}
                                       className={`text-xs font-medium cursor-pointer ${g.invitationStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
-                                      onClick={() => handleInvitationChange(g, opt.value)}
+                                      onClick={() =>
+                                        handleInvitationChange(g, opt.value)
+                                      }
                                     >
-                                      {opt.value === "sent" ? "Sent" : "Not Sent"}
+                                      {opt.value === "sent"
+                                        ? "Sent"
+                                        : "Not Sent"}
                                     </DropdownMenuItem>
                                   ))}
                                 </DropdownMenuContent>
@@ -1570,24 +2582,37 @@ export default function Guests() {
                                 the planner uses the Send RSVP Reminder button,
                                 and can also be toggled manually here. */}
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">RSVP Reminder</span>
+                              <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">
+                                RSVP Reminder
+                              </span>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${(g as any).rsvpReminderStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}>
-                                    {(g as any).rsvpReminderStatus === "sent" ? "Sent" : "Not Sent"}
+                                  <button
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${(g as any).rsvpReminderStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}
+                                  >
+                                    {(g as any).rsvpReminderStatus === "sent"
+                                      ? "Sent"
+                                      : "Not Sent"}
                                     <ChevronDown className="h-2.5 w-2.5 opacity-60" />
                                   </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="w-28">
+                                <DropdownMenuContent
+                                  align="start"
+                                  className="w-28"
+                                >
                                   <DropdownMenuItem
                                     className={`text-xs cursor-pointer ${(g as any).rsvpReminderStatus !== "sent" ? "opacity-50 pointer-events-none" : ""}`}
-                                    onClick={() => handleReminderChange(g, "not_sent")}
+                                    onClick={() =>
+                                      handleReminderChange(g, "not_sent")
+                                    }
                                   >
                                     Not Sent
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     className={`text-xs font-medium cursor-pointer ${(g as any).rsvpReminderStatus === "sent" ? "opacity-50 pointer-events-none" : ""}`}
-                                    onClick={() => handleReminderChange(g, "sent")}
+                                    onClick={() =>
+                                      handleReminderChange(g, "sent")
+                                    }
                                   >
                                     Sent
                                   </DropdownMenuItem>
@@ -1599,26 +2624,33 @@ export default function Guests() {
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${badge.color} hover:opacity-80 transition-opacity cursor-pointer`}>
+                              <button
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${badge.color} hover:opacity-80 transition-opacity cursor-pointer`}
+                              >
                                 {t(`guests.rsvp_${g.rsvpStatus}`)}
                                 <ChevronDown className="h-2.5 w-2.5 opacity-60" />
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-36">
-                              {RSVP_OPTIONS.map(opt => (
+                              {RSVP_OPTIONS.map((opt) => (
                                 <DropdownMenuItem
                                   key={opt.value}
                                   className={`text-xs font-medium cursor-pointer ${g.rsvpStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
                                   onClick={() => handleRsvpChange(g, opt.value)}
                                 >
-                                  <span className={`w-2 h-2 rounded-full mr-2 ${opt.value === "attending" ? "bg-emerald-500" : opt.value === "declined" ? "bg-red-400" : opt.value === "maybe" ? "bg-sky-400" : "bg-amber-400"}`} />
+                                  <span
+                                    className={`w-2 h-2 rounded-full mr-2 ${opt.value === "attending" ? "bg-emerald-500" : opt.value === "declined" ? "bg-red-400" : opt.value === "maybe" ? "bg-sky-400" : "bg-amber-400"}`}
+                                  />
                                   {t(`guests.rsvp_${opt.value}`)}
                                 </DropdownMenuItem>
                               ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
                           {g.rsvpMessage && (
-                            <p className="mt-1.5 text-xs italic text-muted-foreground whitespace-pre-wrap break-words max-w-[16rem]" title={g.rsvpMessage}>
+                            <p
+                              className="mt-1.5 text-xs italic text-muted-foreground whitespace-pre-wrap break-words max-w-[16rem]"
+                              title={g.rsvpMessage}
+                            >
                               “{g.rsvpMessage}”
                             </p>
                           )}
@@ -1627,7 +2659,9 @@ export default function Guests() {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border border-border/50 text-muted-foreground hover:opacity-80 transition-opacity cursor-pointer capitalize">
-                                {g.mealChoice ? g.mealChoice.replace(/_/g, " ") : "—"}
+                                {g.mealChoice
+                                  ? g.mealChoice.replace(/_/g, " ")
+                                  : "—"}
                                 <ChevronDown className="h-2.5 w-2.5 opacity-60" />
                               </button>
                             </DropdownMenuTrigger>
@@ -1636,9 +2670,11 @@ export default function Guests() {
                                 className={`text-xs cursor-pointer ${!g.mealChoice ? "opacity-50 pointer-events-none" : ""}`}
                                 onClick={() => handleMealChange(g, "none")}
                               >
-                                <span className="text-muted-foreground">— No meal</span>
+                                <span className="text-muted-foreground">
+                                  — No meal
+                                </span>
                               </DropdownMenuItem>
-                              {MEAL_OPTIONS.map(opt => (
+                              {MEAL_OPTIONS.map((opt) => (
                                 <DropdownMenuItem
                                   key={opt.value}
                                   className={`text-xs font-medium cursor-pointer ${g.mealChoice === opt.value ? "opacity-50 pointer-events-none" : ""}`}
@@ -1653,12 +2689,18 @@ export default function Guests() {
                               shown only when a plus-one exists and they picked
                               one. The Guest type from api-client-react doesn't
                               know about this column yet, so we cast narrowly. */}
-                          {g.plusOne && (g as Guest & { plusOneMealChoice?: string | null }).plusOneMealChoice && (
-                            <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-border/40 text-muted-foreground capitalize">
-                              <span className="opacity-60">+1:</span>
-                              {(g as Guest & { plusOneMealChoice?: string | null }).plusOneMealChoice!.replace(/_/g, " ")}
-                            </div>
-                          )}
+                          {g.plusOne &&
+                            (g as Guest & { plusOneMealChoice?: string | null })
+                              .plusOneMealChoice && (
+                              <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-border/40 text-muted-foreground capitalize">
+                                <span className="opacity-60">+1:</span>
+                                {(
+                                  g as Guest & {
+                                    plusOneMealChoice?: string | null;
+                                  }
+                                ).plusOneMealChoice!.replace(/_/g, " ")}
+                              </div>
+                            )}
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                           {g.tableAssignment || "—"}
@@ -1674,14 +2716,23 @@ export default function Guests() {
                               <SelectValue placeholder="—" />
                             </SelectTrigger>
                             <SelectContent>
-                              {GROUP_OPTIONS.filter((o) => o.value !== "Other").map((o) => (
-                                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                              {GROUP_OPTIONS.filter(
+                                (o) => o.value !== "Other",
+                              ).map((o) => (
+                                <SelectItem key={o.value} value={o.value}>
+                                  {o.label}
+                                </SelectItem>
                               ))}
                               {/* If the guest has a custom non-preset value, surface it as
                                   its own option so the Select stays in sync. */}
-                              {g.guestGroup
-                                && !GROUP_OPTIONS.some((o) => o.value === g.guestGroup)
-                                && <SelectItem value={g.guestGroup}>{g.guestGroup}</SelectItem>}
+                              {g.guestGroup &&
+                                !GROUP_OPTIONS.some(
+                                  (o) => o.value === g.guestGroup,
+                                ) && (
+                                  <SelectItem value={g.guestGroup}>
+                                    {g.guestGroup}
+                                  </SelectItem>
+                                )}
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -1691,7 +2742,9 @@ export default function Guests() {
                               ♥ {g.plusOneName || t("guests.plus_one_yes")}
                             </span>
                           ) : (
-                            <span className="text-muted-foreground">{t("guests.plus_one_no")}</span>
+                            <span className="text-muted-foreground">
+                              {t("guests.plus_one_no")}
+                            </span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -1709,15 +2762,22 @@ export default function Guests() {
                                       : "text-muted-foreground hover:text-primary"
                               }`}
                               title={
-                                g.rsvpStatus === "attending" ? "RSVP confirmed" :
-                                g.rsvpStatus === "declined" ? "Declined" :
-                                "Preview & Send invitation"
+                                g.rsvpStatus === "attending"
+                                  ? "RSVP confirmed"
+                                  : g.rsvpStatus === "declined"
+                                    ? "Declined"
+                                    : "Preview & Send invitation"
                               }
                               disabled={
-                                (g.rsvpStatus === "attending" || g.rsvpStatus === "declined")
+                                g.rsvpStatus === "attending" ||
+                                g.rsvpStatus === "declined"
                               }
                               onClick={() => {
-                                if (g.rsvpStatus === "attending" || g.rsvpStatus === "declined") return;
+                                if (
+                                  g.rsvpStatus === "attending" ||
+                                  g.rsvpStatus === "declined"
+                                )
+                                  return;
                                 setSendModalDefaultTab("saveTheDate");
                                 setSendModalReminderOnly(false);
                                 setSendModalGuest(g);
@@ -1725,41 +2785,66 @@ export default function Guests() {
                             >
                               <Send className="h-3.5 w-3.5" />
                             </Button>
-                            {g.rsvpStatus === "pending" && g.invitationStatus === "sent" && (g.email || (g as any).saveTheDateStatus === "sent") && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-amber-500 hover:text-amber-600"
-                                title={g.email ? "Send RSVP reminder" : "Mark RSVP reminder as sent"}
-                                onClick={() => {
-                                  setSendModalDefaultTab("digitalInvitation");
-                                  setSendModalReminderOnly(true);
-                                  setSendModalGuest(g);
-                                }}
-                              >
-                                <Mail className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
+                            {g.rsvpStatus === "pending" &&
+                              g.invitationStatus === "sent" &&
+                              (g.email ||
+                                (g as any).saveTheDateStatus === "sent") && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-amber-500 hover:text-amber-600"
+                                  title={
+                                    g.email
+                                      ? "Send RSVP reminder"
+                                      : "Mark RSVP reminder as sent"
+                                  }
+                                  onClick={() => {
+                                    setSendModalDefaultTab("digitalInvitation");
+                                    setSendModalReminderOnly(true);
+                                    setSendModalGuest(g);
+                                  }}
+                                >
+                                  <Mail className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
                             <Button
-                              variant="ghost" size="icon" className="h-8 w-8"
-                              onClick={() => { handleAcknowledge(g.id); setEditGuest(g); }}
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => {
+                                handleAcknowledge(g.id);
+                                setEditGuest(g);
+                              }}
                             >
                               <Edit2 className="h-3.5 w-3.5" />
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>{t("guests.remove_title", { name: g.name })}</AlertDialogTitle>
-                                  <AlertDialogDescription>{t("guests.remove_desc")}</AlertDialogDescription>
+                                  <AlertDialogTitle>
+                                    {t("guests.remove_title", { name: g.name })}
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    {t("guests.remove_desc")}
+                                  </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>{t("guests.cancel")}</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(g.id)} className="bg-destructive hover:bg-destructive/90">
+                                  <AlertDialogCancel>
+                                    {t("guests.cancel")}
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDelete(g.id)}
+                                    className="bg-destructive hover:bg-destructive/90"
+                                  >
                                     {t("guests.remove_btn")}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
@@ -1778,24 +2863,38 @@ export default function Guests() {
       )}
 
       {/* Edit Dialog */}
-      <Dialog open={!!editGuest} onOpenChange={open => !open && setEditGuest(null)}>
+      <Dialog
+        open={!!editGuest}
+        onOpenChange={(open) => !open && setEditGuest(null)}
+      >
         <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-serif text-2xl text-primary">Edit Guest</DialogTitle>
-            <DialogDescription>Update {editGuest?.name}'s details.</DialogDescription>
+            <DialogTitle className="font-serif text-2xl text-primary">
+              Edit Guest
+            </DialogTitle>
+            <DialogDescription>
+              Update {editGuest?.name}'s details.
+            </DialogDescription>
           </DialogHeader>
           {editGuest && (
             <GuestForm
               defaultValues={{
                 name: editGuest.name,
                 email: editGuest.email ?? "",
-                rsvpStatus: (editGuest.rsvpStatus as "pending" | "attending" | "maybe" | "declined") ?? "pending",
+                rsvpStatus:
+                  (editGuest.rsvpStatus as
+                    | "pending"
+                    | "attending"
+                    | "maybe"
+                    | "declined") ?? "pending",
                 mealChoice: editGuest.mealChoice ?? "",
                 dietaryNotes: (editGuest as any).dietaryNotes ?? "",
                 guestGroup: editGuest.guestGroup ?? "",
                 plusOne: editGuest.plusOne,
-                plusOneFirstName: editGuest.plusOneName?.split(" ").slice(0, 1).join("") ?? "",
-                plusOneLastName: editGuest.plusOneName?.split(" ").slice(1).join(" ") ?? "",
+                plusOneFirstName:
+                  editGuest.plusOneName?.split(" ").slice(0, 1).join("") ?? "",
+                plusOneLastName:
+                  editGuest.plusOneName?.split(" ").slice(1).join(" ") ?? "",
                 tableAssignment: editGuest.tableAssignment ?? "",
                 phone: (editGuest as any).phone ?? "",
                 address: (editGuest as any).address ?? "",
@@ -1815,14 +2914,23 @@ export default function Guests() {
       </Dialog>
 
       {/* Copy-link dialog — shown after sending a save-the-date or RSVP */}
-      <Dialog open={!!linkDialog} onOpenChange={(open) => { if (!open) setLinkDialog(null); }}>
+      <Dialog
+        open={!!linkDialog}
+        onOpenChange={(open) => {
+          if (!open) setLinkDialog(null);
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-base">
-              {linkDialog?.type === "saveTheDate" ? "Save the Date link" : "RSVP link"} for {linkDialog?.guestName}
+              {linkDialog?.type === "saveTheDate"
+                ? "Save the Date link"
+                : "RSVP link"}{" "}
+              for {linkDialog?.guestName}
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Copy this link and send it directly to your guest. They can open it to view and respond to the invitation.
+              Copy this link and send it directly to your guest. They can open
+              it to view and respond to the invitation.
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2">
@@ -1840,7 +2948,10 @@ export default function Guests() {
                 if (!linkDialog) return;
                 const shareUrl = linkDialog.url;
                 navigator.clipboard.writeText(shareUrl).then(() => {
-                  toast({ title: "Link copied!", description: "Send this link directly to your guest." });
+                  toast({
+                    title: "Link copied!",
+                    description: "Send this link directly to your guest.",
+                  });
                 });
               }}
             >
