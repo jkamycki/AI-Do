@@ -956,32 +956,34 @@ function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: 
       className="relative flex items-start gap-3 px-5 py-3 text-sm"
       style={{ background: `${data.colorPalette.primary}18`, borderBottom: `2px solid ${data.colorPalette.primary}55` }}
     >
-      {ctx.editable ? (
-        <EditableText
-          as="span"
-          editable={ctx.editable}
-          value={text}
-          defaultValue={ctx.editable ? "Click to add an announcement..." : ""}
-          onCommit={(v) => ctx.onTextChange("_announcement", v)}
-          className="flex-1 text-center"
-          style={{ color: data.colorPalette.text }}
-          {...tspNoDelete(ctx, "_announcement", true)}
-        />
-      ) : (
-        <div className="flex-1 overflow-hidden whitespace-nowrap">
-          <div
-            className="inline-flex min-w-max items-center"
-            style={{
-              color: data.colorPalette.text,
-              animation: `wsa-marquee-ltr ${marqueeDuration} linear infinite`,
-            }}
-            aria-label={trimmed}
-          >
-            <span>{trimmed}</span>
-            <span className="px-10">{trimmed}</span>
-          </div>
+      <div className="flex-1 overflow-hidden whitespace-nowrap">
+        <div
+          className="inline-flex min-w-max items-center"
+          style={{
+            color: data.colorPalette.text,
+            animation: `wsa-marquee-ltr ${marqueeDuration} linear infinite`,
+          }}
+          aria-label={trimmed}
+        >
+          {ctx.editable ? (
+            <EditableText
+              as="span"
+              editable={ctx.editable}
+              value={text}
+              defaultValue={ctx.editable ? "Click to add an announcement..." : ""}
+              onCommit={(v) => ctx.onTextChange("_announcement", v)}
+              className="inline-block"
+              style={{ color: data.colorPalette.text }}
+              {...tspNoDelete(ctx, "_announcement", true)}
+            />
+          ) : (
+            <>
+              <span>{trimmed}</span>
+              <span className="px-10">{trimmed}</span>
+            </>
+          )}
         </div>
-      )}
+      </div>
       {!ctx.editable && (
         <button
           onClick={() => setDismissed(true)}
