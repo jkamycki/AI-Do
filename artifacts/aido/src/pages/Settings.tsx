@@ -195,8 +195,6 @@ function LanguageSwitcherCard() {
   const { toast } = useToast();
   const { user } = useUser();
   const { data: profile } = useGetProfile();
-  const saveProfile = useSaveProfile();
-  const qc = useQueryClient();
   const [selected, setSelected] = useState<string | null>(null);
 
   const storedCode = user?.id ? localStorage.getItem(`aido_language_${user.id}`) : null;
@@ -212,42 +210,8 @@ function LanguageSwitcherCard() {
     localStorage.setItem(key, code);
     setSelected(null);
 
-    // Persist to the backend so AI responses (Aria, suggestions, emails)
-    // immediately use the correct language — profile.preferredLanguage is
-    // what every AI route reads from the request or DB.
-    if (profile) {
-      saveProfile.mutate(
-        {
-          data: {
-            partner1Name: profile.partner1Name,
-            partner2Name: profile.partner2Name,
-            weddingDate: profile.weddingDate,
-            ceremonyTime: profile.ceremonyTime,
-            receptionTime: profile.receptionTime,
-            venue: profile.venue,
-            location: profile.location,
-            venueCity: profile.venueCity ?? null,
-            venueState: profile.venueState ?? null,
-            venueZip: profile.venueZip ?? null,
-            venueCountry: profile.venueCountry ?? null,
-            ceremonyAtVenue: profile.ceremonyAtVenue,
-            ceremonyVenueName: profile.ceremonyVenueName ?? null,
-            ceremonyAddress: profile.ceremonyAddress ?? null,
-            ceremonyCity: profile.ceremonyCity ?? null,
-            ceremonyState: profile.ceremonyState ?? null,
-            ceremonyZip: profile.ceremonyZip ?? null,
-            guestCount: profile.guestCount,
-            totalBudget: profile.totalBudget,
-            weddingVibe: profile.weddingVibe,
-            vendorBccEmail: (profile as { vendorBccEmail?: string | null }).vendorBccEmail ?? null,
-            preferredLanguage: current,
-          },
-        },
-        {
-          onSuccess: () => qc.invalidateQueries({ queryKey: getGetProfileQueryKey() }),
-        }
-      );
-    }
+    // Language preference is per-user only (local key includes user.id).
+    // Do not persist this setting to the shared workspace profile.
 
     toast({ title: "Language updated", description: `Switched to ${current}.` });
   }

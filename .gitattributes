@@ -1,0 +1,7 @@
+# Ensure source files are always treated as text in diffs/PRs.
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.md text eol=lf
