@@ -1965,7 +1965,6 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       toolsCount: filteredTools.length,
       toolNames: filteredTools.map(t => t.function.name),
       estimatedInputTokens: filteredTools.length * 100 + 700,
-      lastUserPreview: lastUserText.slice(0, 80),
     }, "aria/chat tool selection");
 
     // Helper: call with one automatic retry on Groq rate-limit (429)
@@ -2138,13 +2137,13 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
           } else {
             // Strip ate everything (model wrote a tool-call envelope as
             // text and nothing else). Don't leave the user with silence.
-            req.log.warn({ userId, lastUserPreview: lastUserText.slice(0, 80) }, "Aria response sanitized to empty");
+            req.log.warn({ userId }, "Aria response sanitized to empty");
             send({ type: "content", content: "Sorry — I didn't quite catch that. Could you tell me a bit more about what you'd like me to do?" });
           }
         } else if (!skipTools && !masterContentAccum) {
           // Model returned no content AND no tool calls. Edge case (rate
           // limit / cut connection). Send a fallback so the loader clears.
-          req.log.warn({ userId, lastUserPreview: lastUserText.slice(0, 80) }, "Aria stream finished with no content and no tool calls");
+          req.log.warn({ userId }, "Aria stream finished with no content and no tool calls");
           send({ type: "content", content: "I didn't get a response — could you try that again?" });
         }
 
