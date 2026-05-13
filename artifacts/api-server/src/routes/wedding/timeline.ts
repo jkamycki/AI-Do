@@ -115,10 +115,10 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      // 4096 tokens accommodates weddings with 25+ events (elaborate schedules).
-      max_completion_tokens: 4096,
+      // Keep output bounded for lower latency while still covering a full day.
+      max_completion_tokens: 1800,
       messages: [{ role: "user", content: prompt }],
-    }, { signal: AbortSignal.timeout(90_000) });
+    }, { signal: AbortSignal.timeout(45_000) });
 
     const content = completion.choices[0]?.message?.content ?? "[]";
     let events: Array<{ time: string; title: string; description: string; category: string }> = [];

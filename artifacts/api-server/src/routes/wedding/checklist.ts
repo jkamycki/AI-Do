@@ -72,14 +72,14 @@ Group tasks by time period: "12+ Months Before", "9-12 Months Before", "6-9 Mont
 Return ONLY a JSON array (no markdown):
 [{"month":"12+ Months Before","task":"Book the venue","description":"Short reason why this matters"}]
 
-4-6 tasks per relevant period. Be specific and actionable. Match the ${weddingVibe} style. Keep each description ≤15 words.${langInstruction}`;
+3-5 tasks per relevant period. Be specific and actionable. Match the ${weddingVibe} style. Keep each description ≤12 words.${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      // 4096 tokens handles extensive 18-month checklists with all time periods.
-      max_completion_tokens: 4096,
+      // Smaller output target improves latency without losing usefulness.
+      max_completion_tokens: 1400,
       messages: [{ role: "user", content: prompt }],
-    }, { signal: AbortSignal.timeout(90_000) });
+    }, { signal: AbortSignal.timeout(45_000) });
 
     const content = completion.choices[0]?.message?.content ?? "[]";
     let tasks: Array<{ month: string; task: string; description: string }>;
