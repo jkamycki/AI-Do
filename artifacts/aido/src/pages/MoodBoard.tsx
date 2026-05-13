@@ -102,6 +102,9 @@ const _API = import.meta.env.VITE_API_URL ?? "";
 function applyApiBase(url: string): string {
   return url.startsWith("/") && _API ? `${_API}${url}` : url;
 }
+function objectUrl(objectPath: string): string {
+  return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
+}
 async function authFetch(url: string, options: RequestInit = {}, getToken: () => Promise<string | null>) {
   const token = await getToken();
   return fetch(applyApiBase(url), {
