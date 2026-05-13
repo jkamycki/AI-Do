@@ -55,6 +55,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import {
   Store,
   Plus,
@@ -139,6 +140,7 @@ type VendorFormData = {
   phone: string;
   website: string;
   portalLink: string;
+  address: string;
   notes: string;
   totalCost: string;
   depositAmount: string;
@@ -153,6 +155,7 @@ const defaultFormData: VendorFormData = {
   phone: "",
   website: "",
   portalLink: "",
+  address: "",
   notes: "",
   totalCost: "",
   depositAmount: "",
@@ -182,6 +185,7 @@ function AddEditVendorDialog({
             phone: vendor.phone ?? "",
             website: vendor.website ?? "",
             portalLink: vendor.portalLink ?? "",
+            address: (vendor as any).address ?? "",
             notes: vendor.notes ?? "",
             totalCost: vendor.totalCost > 0 ? String(vendor.totalCost) : "",
             depositAmount: vendor.depositAmount > 0 ? String(vendor.depositAmount) : "",
@@ -192,6 +196,7 @@ function AddEditVendorDialog({
     [vendor]
   );
   const [form, setForm] = useState<VendorFormData>(initialForm);
+  const [includeAddress, setIncludeAddress] = useState(Boolean(initialForm.address));
 
   const createMutation = useCreateVendor({
     mutation: {
@@ -261,6 +266,7 @@ function AddEditVendorDialog({
       phone: form.phone.trim() || null,
       website: form.website.trim() || null,
       portalLink: form.portalLink.trim() || null,
+      address: includeAddress ? (form.address.trim() || null) : null,
       notes: form.notes.trim() || null,
       totalCost: form.totalCost ? Number(form.totalCost) : 0,
       depositAmount: form.depositAmount ? Number(form.depositAmount) : 0,
@@ -285,6 +291,7 @@ function AddEditVendorDialog({
         phone: form.phone.trim() || undefined,
         website: form.website.trim() || undefined,
         portalLink: form.portalLink.trim() || undefined,
+        address: includeAddress ? (form.address.trim() || undefined) : undefined,
         notes: form.notes.trim() || undefined,
         totalCost: form.totalCost ? Number(form.totalCost) : 0,
         depositAmount: form.depositAmount ? Number(form.depositAmount) : 0,
@@ -387,6 +394,29 @@ function AddEditVendorDialog({
                 value={form.portalLink}
                 onChange={(e) => setForm({ ...form, portalLink: e.target.value })}
               />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="includeAddress"
+                  checked={includeAddress}
+                  onCheckedChange={(checked) => setIncludeAddress(!!checked)}
+                />
+                <Label htmlFor="includeAddress" className="cursor-pointer">
+                  {t("vendors.add_address", { defaultValue: "Add vendor address" })}
+                </Label>
+              </div>
+              {includeAddress && (
+                <div className="space-y-1.5">
+                  <Label>{t("vendors.address", { defaultValue: "Address" })}</Label>
+                  <AddressAutocomplete
+                    value={form.address}
+                    onChange={(value) => setForm({ ...form, address: value })}
+                    onSelect={(suggestion) => setForm({ ...form, address: suggestion.street })}
+                    placeholder={t("vendors.address_placeholder", { defaultValue: "123 Main St" })}
+                  />
+                </div>
+              )}
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>{t("vendors.notes")}</Label>
