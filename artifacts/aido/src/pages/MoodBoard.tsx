@@ -109,6 +109,12 @@ function objectUrl(objectPath: string): string {
   if (objectPath.startsWith("/api/storage/public-objects/")) return objectPath;
   if (objectPath.startsWith("/storage/public-objects/")) return `/api${objectPath}`;
   return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
+} main
+  if (objectPath.startsWith("http://") || objectPath.startsWith("https://")) return objectPath;
+  if (objectPath.startsWith("/api/storage/objects/")) return objectPath;
+  if (objectPath.startsWith("/api/storage/public-objects/")) return objectPath;
+  if (objectPath.startsWith("/storage/public-objects/")) return `/api${objectPath}`;
+  return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
 }main
 }
 async function authFetch(url: string, options: RequestInit = {}, getToken: () => Promise<string | null>) {
