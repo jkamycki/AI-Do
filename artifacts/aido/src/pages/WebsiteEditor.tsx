@@ -18,7 +18,7 @@ import {
   Move,
 } from "lucide-react";
 import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
-import { flushPendingEditableCommits, subscribeEditableDrag, EDITABLE_HIDDEN_MARKER } from "@/components/website/EditableText";
+import { flushPendingEditableCommits, subscribeEditableDrag, EDITABLE_HIDDEN_MARKER, isEditableHiddenMarker } from "@/components/website/EditableText";
 import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 
@@ -1485,7 +1485,7 @@ export default function WebsiteEditor() {
               { key: "_countdown", label: t("website_editor.hero_countdown", { defaultValue: "Countdown Timer" }) },
               { key: "_addToCalendarRow", label: t("website_editor.hero_add_to_calendar", { defaultValue: "Add to Calendar Button" }) },
             ].map((row) => {
-              const isHidden = record.customText[row.key] === EDITABLE_HIDDEN_MARKER || record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
+              const isHidden = isEditableHiddenMarker(record.customText[row.key]);
               return (
                 <div key={row.key} className="flex items-center justify-between gap-3 py-1.5">
                   <Label className="text-sm cursor-pointer">{row.label}</Label>
@@ -1525,7 +1525,7 @@ export default function WebsiteEditor() {
               { key: "_travelHotelHidden",  label: "Hotel" },
               { key: "_travelNotesHidden",  label: "Travel Notes" },
             ].map((row) => {
-              const isHidden = record.customText[row.key] === EDITABLE_HIDDEN_MARKER;
+              const isHidden = isEditableHiddenMarker(record.customText[row.key]);
               return (
                 <div key={row.key} className="flex items-center justify-between gap-3 py-1.5">
                   <Label className="text-sm cursor-pointer">{row.label}</Label>
@@ -1552,7 +1552,7 @@ export default function WebsiteEditor() {
               { hiddenKey: "_scheduleCocktailHidden",  timeKey: "_scheduleCocktailTime",  labelKey: "_scheduleCocktailLabel",  defaultLabel: "Cocktail Hour" },
               { hiddenKey: "_scheduleReceptionHidden", timeKey: "_scheduleReceptionTime", labelKey: "_scheduleReceptionLabel", defaultLabel: "Reception" },
             ].map((row) => {
-              const isHidden = record.customText[row.hiddenKey] === EDITABLE_HIDDEN_MARKER;
+              const isHidden = isEditableHiddenMarker(record.customText[row.hiddenKey]);
               return (
                 <div key={row.hiddenKey} className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
