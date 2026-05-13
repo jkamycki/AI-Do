@@ -973,7 +973,10 @@ function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: 
             className="inline-flex min-w-max items-center"
             style={{
               color: data.colorPalette.text,
+            style={{
+              color: data.colorPalette.text,
               animation: `wsa-marquee-ltr ${marqueeDuration} linear infinite`,
+            }} main
             }}
             aria-label={trimmed}
           >
