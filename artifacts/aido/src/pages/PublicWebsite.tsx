@@ -81,13 +81,7 @@ export default function PublicWebsite() {
   // available for future use.
   void matchedSlug;
 
-  const [password, setPassword] = useState<string | null>(() => {
-    try {
-      return sessionStorage.getItem(`aido_w_pw_${slug}`);
-    } catch {
-      return null;
-    }
-  });
+  const [password, setPassword] = useState<string | null>(null);
   const [data, setData] = useState<PublicSitePayload | null>(null);
   const [needsPassword, setNeedsPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -193,14 +187,7 @@ export default function PublicWebsite() {
         accent="#D4A017"
         font="Playfair Display"
         error={pwError}
-        onSubmit={(pw) => {
-          try {
-            sessionStorage.setItem(`aido_w_pw_${slug}`, pw);
-          } catch {
-            // ignore sessionStorage failures
-          }
-          setPassword(pw);
-        }}
+        onSubmit={(pw) => setPassword(pw)}
       />
     );
   }
