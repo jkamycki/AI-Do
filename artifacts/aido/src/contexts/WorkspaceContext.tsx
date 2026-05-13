@@ -66,7 +66,7 @@ function readStored(): StoredWorkspace | null {
 }
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const { isLoaded, isSignedIn, userId } = useAuth();
+  const { isLoaded, isSignedIn, userId, getToken } = useAuth();
 
   const [activeWorkspace, setActiveWorkspaceState] = useState<WorkspaceInfo | null>(() => {
     // We don't know who the user is yet on the first render. Start clean —
@@ -113,6 +113,56 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       stored.workspace.role !== "owner" ? stored.workspace.profileId : null,
     );
   }, [isLoaded, isSignedIn, userId]);
+
+  // First-login collaborator bootstrap: if this signed-in user has no
+  // workspace cached for this session, auto-open their single active shared
+  // workspace so they see synced data immediately after accepting an invite.
+  // We intentionally do NOT overwrite an existing session selection.
+  useLayoutEffect(() => {
+    if (!isLoaded || !isSignedIn || !userId) return;
+    if (activeWorkspace) return;
+    const stored = readStored();
+    if (stored?.userId === userId && stored.workspace) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getToken();
+        if (!token || cancelled) return;
+        const r = await fetch("/api/collaborators/my-workspaces", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!r.ok || cancelled) return;
+        const body = await r.json() as {
+          ownProfile: { profileId: number; partner1Name: string; partner2Name: string; weddingDate: string } | null;
+          sharedWorkspaces: Array<{ profileId: number; role: string; partner1Name: string; partner2Name: string; weddingDate: string; status: string }>;
+        };
+        if (cancelled) return;
+        // If the account has exactly one active shared workspace and no own
+        // profile, default into that shared workspace.
+        if (!body.ownProfile && body.sharedWorkspaces.length === 1) {
+          const w = body.sharedWorkspaces[0];
+          setActiveWorkspaceState({
+            profileId: w.profileId,
+            role: w.role,
+            partner1Name: w.partner1Name,
+            partner2Name: w.partner2Name,
+            weddingDate: w.weddingDate,
+          });
+          syncWorkspaceProfileId(w.profileId);
+          sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ userId, workspace: {
+            profileId: w.profileId,
+            role: w.role,
+            partner1Name: w.partner1Name,
+            partner2Name: w.partner2Name,
+            weddingDate: w.weddingDate,
+          } }));
+        }
+      } catch {
+        // best-effort bootstrap only
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [activeWorkspace, getToken, isLoaded, isSignedIn, userId]);
 
   const setActiveWorkspace = (w: WorkspaceInfo | null) => {
     setActiveWorkspaceState(w);
