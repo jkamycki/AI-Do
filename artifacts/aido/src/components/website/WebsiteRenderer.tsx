@@ -1513,10 +1513,13 @@ function SectionShell({
 
 function Welcome({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.welcome ?? "";
+  const heroTagline = (data.customText._heroTagline ?? "").trim().toLowerCase();
+  const welcomeText = text.trim().toLowerCase();
+  const duplicatesHeroTagline = !!welcomeText && welcomeText === heroTagline;
   // In edit mode, always render so the user has somewhere to type. In the
   // editor's Preview popup, also render so the user can verify the layout.
   // On the published site, hide an empty section from guests.
-  if (!text && !ctx.editable && !ctx.previewMode) return null;
+  if ((!text || duplicatesHeroTagline) && !ctx.editable && !ctx.previewMode) return null;
   const labelColor = sectionTextColor(data, "welcome");
   return (
     <SectionShell id="welcome" titleKey="welcome_title" defaultTitle="Welcome" icon={<Heart className="h-4 w-4" />} data={data} ctx={ctx}>
