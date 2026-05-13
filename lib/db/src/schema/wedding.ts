@@ -113,6 +113,7 @@ export const vendors = pgTable("vendors", {
   phone: text("phone"),
   website: text("website"),
   portalLink: text("portal_link"),
+  address: text("address"),
   notes: text("notes"),
   totalCost: numeric("total_cost", { precision: 12, scale: 2 }).default("0").notNull(),
   depositAmount: numeric("deposit_amount", { precision: 12, scale: 2 }).default("0").notNull(),
@@ -665,4 +666,3 @@ export const websiteRsvps = pgTable("website_rsvps", {
 });
 
 export type WebsiteRsvp = typeof websiteRsvps.$inferSelect;
-

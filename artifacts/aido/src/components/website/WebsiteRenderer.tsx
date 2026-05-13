@@ -1,7 +1,8 @@
 import { cloneElement, isValidElement, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed, Share2, Check } from "lucide-react";
-import { EditableText, emitEditableDrag, EDITABLE_HIDDEN_MARKER, type TextPosition } from "./EditableText";
+import { EditableText, emitEditableDrag, type TextPosition } from "./EditableText";
+import { isEditableHiddenMarker } from "./hiddenMarker";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch, authFetch } from "@/lib/authFetch";
 import { resolveMediaUrl, isMediaAuthRequired } from "@/lib/mediaUrl";
@@ -945,7 +946,7 @@ function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: 
   const trimmed = text.trim();
   const [dismissed, setDismissed] = useState(false);
   // Hide when the user has toggled the announcement off via Home Elements.
-  if (data.customText._announcementHidden === EDITABLE_HIDDEN_MARKER || dismissed) return null;
+  if (isEditableHiddenMarker(data.customText._announcementHidden) || dismissed) return null;
   // Public site: hide entirely when empty. Editor: keep the slot visible so
   // the user has somewhere to click and start typing.
   if (!trimmed && !ctx.editable) return null;
@@ -1216,7 +1217,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
     >
       <HeroBackground data={data} />
       <div className="relative max-w-3xl">
-        {data.customText._heroTaglineHidden !== EDITABLE_HIDDEN_MARKER && (
+        {!isEditableHiddenMarker(data.customText._heroTaglineHidden) && (
           <EditableText
             as="div"
             editable={ctx.editable}
@@ -1238,12 +1239,12 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           style={{ fontFamily: fontStack(headingFont(data)), color: (data.heroImage || (data.heroImages?.length ?? 0) > 0) ? "#fff" : data.colorPalette.text }}
           {...tspNoDelete(ctx, "_coupleName")}
         />
-        {data.customText._heroDateRow !== EDITABLE_HIDDEN_MARKER && (
+        {!isEditableHiddenMarker(data.customText._heroDateRow) && (
           <DraggableRow
             editable={ctx.editable}
             className="flex items-center justify-center gap-4 text-base sm:text-lg opacity-90"
           >
-            {data.customText._heroDateIcon !== EDITABLE_HIDDEN_MARKER && (
+            {!isEditableHiddenMarker(data.customText._heroDateIcon) && (
               <Calendar className="h-5 w-5 flex-shrink-0" style={{ pointerEvents: "none" }} />
             )}
             <EditableText
@@ -1258,12 +1259,12 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             />
           </DraggableRow>
         )}
-        {data.couple.venue && data.customText._heroVenueRow !== EDITABLE_HIDDEN_MARKER && (
+        {data.couple.venue && !isEditableHiddenMarker(data.customText._heroVenueRow) && (
           <DraggableRow
             editable={ctx.editable}
             className="flex items-center justify-center gap-2 mt-3 text-sm sm:text-base opacity-80"
           >
-            {data.customText._heroVenueIcon !== EDITABLE_HIDDEN_MARKER && (
+            {!isEditableHiddenMarker(data.customText._heroVenueIcon) && (
               <MapPin className="h-4 w-4 flex-shrink-0" style={{ pointerEvents: "none" }} />
             )}
             <EditableText
@@ -1278,7 +1279,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             />
           </DraggableRow>
         )}
-        {data.couple.weddingDate && data.customText._countdown !== EDITABLE_HIDDEN_MARKER && (
+        {data.couple.weddingDate && !isEditableHiddenMarker(data.customText._countdown) && (
           <DraggableRow editable={ctx.editable}>
             <CountdownTimer
               dateStr={data.couple.weddingDate}
@@ -1288,7 +1289,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             />
           </DraggableRow>
         )}
-        {data.customText._addToCalendarRow !== EDITABLE_HIDDEN_MARKER && (
+        {!isEditableHiddenMarker(data.customText._addToCalendarRow) && (
           <DraggableRow editable={ctx.editable}>
             <AddToCalendarButton data={data} />
           </DraggableRow>
@@ -1500,7 +1501,7 @@ function Schedule({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx })
     { key: "_scheduleCocktailTime",  labelKey: "_scheduleCocktailLabel",  defaultLabel: "Cocktail Hour", Icon: Wine,            time: cocktailTime, hiddenKey: "_scheduleCocktailHidden" },
     { key: "_scheduleReceptionTime", labelKey: "_scheduleReceptionLabel", defaultLabel: "Reception",     Icon: UtensilsCrossed, time: receptionTime, hiddenKey: "_scheduleReceptionHidden" },
   ];
-  const items = allItems.filter((i) => data.customText[i.hiddenKey] !== EDITABLE_HIDDEN_MARKER);
+  const items = allItems.filter((i) => !isEditableHiddenMarker(data.customText[i.hiddenKey]));
   const visibleItems = ctx.editable ? items : items.filter((i) => i.time);
   if (!ctx.editable && visibleItems.length === 0 && !customSchedule) return null;
   const labelColor = sectionTextColor(data, "schedule");
@@ -1620,7 +1621,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 
       <div className="grid sm:grid-cols-2 gap-4 max-w-3xl mx-auto mb-6">
         {/* Venue */}
-        {data.couple.venue && data.customText._travelVenueHidden !== EDITABLE_HIDDEN_MARKER && (
+        {data.couple.venue && !isEditableHiddenMarker(data.customText._travelVenueHidden) && (
           <div style={cardStyle}>
             <div className="flex items-start gap-3 mb-3">
               <div style={iconWrap}><MapPin className="h-4 w-4" /></div>
@@ -1657,7 +1658,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         )}
 
         {/* Hotel */}
-        {(hasHotel || ctx.editable) && data.customText._travelHotelHidden !== EDITABLE_HIDDEN_MARKER && (
+        {(hasHotel || ctx.editable) && !isEditableHiddenMarker(data.customText._travelHotelHidden) && (
           <div style={cardStyle}>
             <div className="flex items-start gap-3 mb-3">
               <div style={iconWrap}><Bed className="h-4 w-4" /></div>
@@ -1712,7 +1713,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         )}
       </div>
 
-      {data.customText._travelNotesHidden !== EDITABLE_HIDDEN_MARKER && (
+      {!isEditableHiddenMarker(data.customText._travelNotesHidden) && (
         <EditableText
           as="div"
           multiline
