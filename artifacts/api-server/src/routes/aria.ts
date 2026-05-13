@@ -257,6 +257,67 @@ function extractTextBasedToolCalls(
 
 // Tools that write data — after these succeed we skip the second AI round-trip
 // and send an instant confirmation instead, saving ~1,000–2,000 tokens per call.
+
+function safeParseToolArgs(raw: string): Record<string, unknown> {
+  const text = String(raw ?? "").trim();
+  if (!text) return {};
+  try { return JSON.parse(text) as Record<string, unknown>; } catch {}
+
+  // Light repair path for common streaming/truncation glitches.
+  const repaired = text
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/,\s*([}\]])/g, "$1")
+    .replace(/\n/g, " ")
+    .trim();
+  try { return JSON.parse(repaired) as Record<string, unknown>; } catch {}
+
+  // Last-resort envelope extraction when the model emits a JSON wrapper.
+  const objMatch = repaired.match(/\{[\s\S]*\}/);
+  if (objMatch) {
+    try { return JSON.parse(objMatch[0]) as Record<string, unknown>; } catch {}
+  }
+  return {};
+}
+
+
+function coercePrimitive(value: unknown, targetType: string): unknown {
+  if (targetType === "number") {
+    if (typeof value === "number") return Number.isFinite(value) ? value : value;
+    if (typeof value === "string") {
+      const n = Number(value.replace(/[$,]/g, "").trim());
+      return Number.isFinite(n) ? n : value;
+    }
+    return value;
+  }
+  if (targetType === "boolean") {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") {
+      const v = value.trim().toLowerCase();
+      if (["true","yes","y","1","paid","done"].includes(v)) return true;
+      if (["false","no","n","0","unpaid","not paid"].includes(v)) return false;
+    }
+    if (typeof value === "number") return value !== 0;
+    return value;
+  }
+  if (targetType === "string") {
+    return value === null || value === undefined ? value : String(value);
+  }
+  return value;
+}
+
+function normalizeToolArgs(toolName: string, args: Record<string, unknown>): Record<string, unknown> {
+  const tool = TOOLS.find((t) => t.function.name === toolName);
+  if (!tool) return args;
+  const props = (tool.function.parameters?.properties ?? {}) as Record<string, { type?: string }>;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(args ?? {})) {
+    const t = props[k]?.type;
+    out[k] = t ? coercePrimitive(v, t) : v;
+  }
+  return out;
+}
+
 const ACTION_TOOLS = new Set([
   "add_vendor", "update_vendor", "delete_vendor",
   "add_vendor_payment", "update_vendor_payment", "mark_vendor_payment_paid", "delete_vendor_payment",
@@ -2107,9 +2168,9 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
       // Parse args + emit action_start synchronously, in order, so the UI
       // shows every tool the model wanted to call right away.
-      const parsedArgsList = toolCalls.map(tc => {
-        let parsedArgs: Record<string, unknown> = {};
-        try { parsedArgs = JSON.parse(tc.args || "{}"); } catch {}
+      const parsedArgsList = toolCalls.map((tc, idx) => {
+        const parsedArgs = normalizeToolArgs(tc.name, safeParseToolArgs(tc.args || "{}"));
+        if (!tc.id) tc.id = `tool-${Date.now()}-${idx}`;
         send({ type: "action_start", name: tc.name, args: parsedArgs });
         return parsedArgs;
       });
