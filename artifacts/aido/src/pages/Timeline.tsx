@@ -25,7 +25,7 @@ import {
   CalendarClock, Wand2, Clock, FileDown, Sparkles,
   Pencil, Trash2, Plus, Save, GripVertical, MapPin,
   Camera, Music, Heart, Users, Car, AlertTriangle,
-  Eye, Crown, Wine, PartyPopper, Check, X, ChevronDown,
+  Wine, PartyPopper, Check, X, ChevronDown,
   ChevronUp, RotateCcw,
 } from "lucide-react";
 
@@ -52,8 +52,6 @@ export type TimelineEvent = {
   location: string;
   notes: string;
 };
-
-type ViewMode = "master" | "guest" | "vendor";
 
 type Conflict = {
   eventId: string;
@@ -244,16 +242,6 @@ function detectConflicts(events: TimelineEvent[]): Conflict[] {
   }
 
   return conflicts;
-}
-
-function getViewModeEvents(events: TimelineEvent[], mode: ViewMode): TimelineEvent[] {
-  if (mode === "guest") {
-    return events.filter(e => ["ceremony", "cocktail", "reception", "dancing", "other"].includes(e.category));
-  }
-  if (mode === "vendor") {
-    return events.filter(e => ["vendors", "ceremony", "reception", "other"].includes(e.category));
-  }
-  return events;
 }
 
 const BLANK_EVENT: Omit<TimelineEvent, "id"> = {
@@ -485,7 +473,6 @@ export default function Timeline() {
   );
   const [localEvents, setLocalEvents] = useState<TimelineEvent[]>([]);
   const [isDirty, setIsDirty] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("master");
 
   const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
   const [editDraft, setEditDraft] = useState<Omit<TimelineEvent, "id">>(BLANK_EVENT);
@@ -611,7 +598,7 @@ export default function Timeline() {
 
   const conflicts = useMemo(() => detectConflicts(localEvents), [localEvents]);
 
-  const visibleEvents = useMemo(() => getViewModeEvents(localEvents, viewMode), [localEvents, viewMode]);
+  const visibleEvents = localEvents;
 
   const handleGenerate = () => {
     if (!profile?.id) {
@@ -666,8 +653,7 @@ export default function Timeline() {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const suffix = viewMode !== "master" ? `-${viewMode}` : "";
-      a.href = url; a.download = `aido-timeline${suffix}.pdf`;
+      a.href = url; a.download = "aido-timeline.pdf";
       document.body.appendChild(a); a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
@@ -791,27 +777,7 @@ export default function Timeline() {
         </Card>
       ) : (
         <>
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-              {([
-                { mode: "master", icon: <Crown className="h-3.5 w-3.5" />, label: t("timeline.view_master", { defaultValue: "Master" }) },
-                { mode: "guest", icon: <Eye className="h-3.5 w-3.5" />, label: t("timeline.view_guest", { defaultValue: "Guest View" }) },
-                { mode: "vendor", icon: <Users className="h-3.5 w-3.5" />, label: t("timeline.view_vendor", { defaultValue: "Vendor View" }) },
-              ] as const).map(({ mode, icon, label }) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    viewMode === mode
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {icon}{label}
-                </button>
-              ))}
-            </div>
-
+          <div className="flex items-center justify-end gap-4 flex-wrap">
             <div className="flex items-center gap-3">
               {conflicts.length > 0 && (
                 <div className="flex items-center gap-1.5 text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20 rounded-lg px-3 py-1.5 border border-orange-200 dark:border-orange-700">
@@ -821,7 +787,6 @@ export default function Timeline() {
               )}
               <p className="text-xs text-muted-foreground">
                 {visibleEvents.length} {visibleEvents.length !== 1 ? t("timeline.blocks_label", { defaultValue: "blocks" }) : t("timeline.block_label", { defaultValue: "block" })}
-                {viewMode !== "master" && <span className="text-primary ml-1">({viewMode} view)</span>}
               </p>
             </div>
           </div>
@@ -841,13 +806,11 @@ export default function Timeline() {
               </SortableContext>
             </DndContext>
 
-            {viewMode === "master" && (
-              <div className="flex justify-center pt-2 pl-24 sm:pl-28">
-                <Button variant="outline" size="sm" onClick={openAdd} className="gap-1.5">
-                  <Plus className="h-3.5 w-3.5" /> {t("timeline.add_block_btn", { defaultValue: "Add Block" })}
-                </Button>
-              </div>
-            )}
+            <div className="flex justify-center pt-2 pl-24 sm:pl-28">
+              <Button variant="outline" size="sm" onClick={openAdd} className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> {t("timeline.add_block_btn", { defaultValue: "Add Block" })}
+              </Button>
+            </div>
           </div>
         </>
       )}
