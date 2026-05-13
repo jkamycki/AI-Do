@@ -756,16 +756,15 @@ export default function Guests() {
   });
 
   const [sendingReminders, setSendingReminders] = useState(false);
-  const [confirmRemindersOpen, setConfirmRemindersOpen] = useState(false);
+  const [sendingSaveTheDates, setSendingSaveTheDates] = useState(false);
+  const [sendingInvitations, setSendingInvitations] = useState(false);
+  const [confirmBulkSend, setConfirmBulkSend] = useState<null | "saveTheDate" | "invitation" | "reminder">(null);
 
   const handleSendAllReminders = async () => {
-    const eligible = (data?.guests ?? []).filter(
-      g => g.rsvpStatus === "pending" && g.invitationStatus === "sent" && g.email,
-    );
-    if (!eligible.length) return;
+    if (!reminderEligible.length) return;
     setSendingReminders(true);
     let sent = 0;
-    for (const g of eligible) {
+    for (const g of reminderEligible) {
       try {
         const res = await authFetch(`/api/guests/${g.id}/send-rsvp?reminder=true`, { method: "POST" });
         if (res.ok) sent++;
@@ -773,10 +772,47 @@ export default function Guests() {
     }
     setSendingReminders(false);
     invalidate();
-    toast({ title: `Reminders sent`, description: `${sent} of ${eligible.length} reminder email${eligible.length !== 1 ? "s" : ""} delivered.` });
+    toast({ title: `Reminders sent`, description: `${sent} of ${reminderEligible.length} reminder email${reminderEligible.length !== 1 ? "s" : ""} delivered.` });
+  };
+
+  const handleSendAllSaveTheDates = async () => {
+    if (!saveTheDateEligible.length) return;
+    setSendingSaveTheDates(true);
+    let sent = 0;
+    for (const g of saveTheDateEligible) {
+      try {
+        const res = await authFetch(`/api/guests/${g.id}/send-save-the-date`, { method: "POST" });
+        if (res.ok) sent++;
+      } catch { /* continue */ }
+    }
+    setSendingSaveTheDates(false);
+    invalidate();
+    toast({ title: "Save-the-Dates sent", description: `${sent} of ${saveTheDateEligible.length} save-the-date${saveTheDateEligible.length !== 1 ? "s" : ""} sent.` });
+  };
+
+  const handleSendAllInvitations = async () => {
+    if (!invitationEligible.length) return;
+    setSendingInvitations(true);
+    let sent = 0;
+    for (const g of invitationEligible) {
+      try {
+        const res = await authFetch(`/api/guests/${g.id}/send-rsvp`, { method: "POST" });
+        if (res.ok) sent++;
+      } catch { /* continue */ }
+    }
+    setSendingInvitations(false);
+    invalidate();
+    toast({ title: "RSVP Invitations sent", description: `${sent} of ${invitationEligible.length} RSVP invitation${invitationEligible.length !== 1 ? "s" : ""} sent.` });
   };
 
   const allGuests = data?.guests ?? [];
+  const saveTheDateEligible = allGuests.filter((g) => ((g as any).saveTheDateStatus ?? "not_sent") === "not_sent");
+  const invitationEligible = allGuests.filter((g) => (g.invitationStatus ?? "pending") === "pending");
+  const reminderEligible = allGuests.filter(
+    (g) => g.invitationStatus === "sent"
+      && g.rsvpStatus === "pending"
+      && ((g as any).rsvpReminderStatus ?? "not_sent") !== "sent",
+  );
   const summary = data?.summary ?? { total: 0, attending: 0, declined: 0, pending: 0, plusOnes: 0 };
 
   const newGuests = allGuests.filter(g => (g as any).source === "self_collect" && !(g as any).acknowledgedAt);
@@ -1151,35 +1187,57 @@ export default function Guests() {
               <Download className="h-4 w-4 mr-2" /> {t("guests.export_csv")}
             </Button>
           )}
-          {allGuests.length > 0 && (() => {
-            const eligibleCount = allGuests.filter(g => g.rsvpStatus === "pending" && g.email && g.invitationStatus === "sent").length;
-            return (
-              <AlertDialog open={confirmRemindersOpen} onOpenChange={setConfirmRemindersOpen}>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" disabled={sendingReminders || eligibleCount === 0} title={eligibleCount === 0 ? "No guests with a pending RSVP and a sent invitation" : undefined}>
-                    {sendingReminders ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
-                    Send RSVP Reminders
-                  </Button>
-                </AlertDialogTrigger>
+          {allGuests.length > 0 && (
+            <>
+              <Button variant="secondary" disabled={sendingSaveTheDates || saveTheDateEligible.length === 0} onClick={() => setConfirmBulkSend("saveTheDate")}>
+                {sendingSaveTheDates ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+                Send All Save-the-Dates
+                <Badge variant="secondary" className="ml-2">{saveTheDateEligible.length}</Badge>
+              </Button>
+              <Button variant="secondary" disabled={sendingInvitations || invitationEligible.length === 0} onClick={() => setConfirmBulkSend("invitation")}>
+                {sendingInvitations ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                Send All RSVP Invitations
+                <Badge variant="secondary" className="ml-2">{invitationEligible.length}</Badge>
+              </Button>
+              <Button variant="outline" disabled={sendingReminders || reminderEligible.length === 0} onClick={() => setConfirmBulkSend("reminder")}>
+                {sendingReminders ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                Send All RSVP Reminders
+                <Badge variant="secondary" className="ml-2">{reminderEligible.length}</Badge>
+              </Button>
+              <AlertDialog open={confirmBulkSend !== null} onOpenChange={(open) => { if (!open) setConfirmBulkSend(null); }}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Send RSVP Reminders?</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      {confirmBulkSend === "saveTheDate" && "Send All Save-the-Dates?"}
+                      {confirmBulkSend === "invitation" && "Send All RSVP Invitations?"}
+                      {confirmBulkSend === "reminder" && "Send All RSVP Reminders?"}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      You are about to send an RSVP reminder to{" "}
-                      <strong>{eligibleCount}</strong>{" "}
-                      guest{eligibleCount !== 1 ? "s" : ""} who {eligibleCount !== 1 ? "have" : "has"} not yet responded. Do you want to continue?
+                      This will send emails to{" "}
+                      <strong>
+                        {confirmBulkSend === "saveTheDate" ? saveTheDateEligible.length : confirmBulkSend === "invitation" ? invitationEligible.length : reminderEligible.length}
+                      </strong>{" "}
+                      eligible guest{(confirmBulkSend === "saveTheDate" ? saveTheDateEligible.length : confirmBulkSend === "invitation" ? invitationEligible.length : reminderEligible.length) !== 1 ? "s" : ""}. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => { setConfirmRemindersOpen(false); handleSendAllReminders(); }}>
-                      Send Reminders
+                    <AlertDialogAction
+                      onClick={() => {
+                        const mode = confirmBulkSend;
+                        setConfirmBulkSend(null);
+                        if (mode === "saveTheDate") handleSendAllSaveTheDates();
+                        if (mode === "invitation") handleSendAllInvitations();
+                        if (mode === "reminder") handleSendAllReminders();
+                      }}
+                    >
+                      Confirm & Send
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            );
-          })()}
+            </>
+          )}
           <Dialog open={isAdding} onOpenChange={setIsAdding}>
             <DialogTrigger asChild>
               <Button size="lg" className="shadow-md">
