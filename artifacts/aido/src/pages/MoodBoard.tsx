@@ -104,11 +104,12 @@ function applyApiBase(url: string): string {
 }
 function objectUrl(objectPath: string): string {
 function objectUrl(objectPath: string): string {
+  if (objectPath.startsWith("http://") || objectPath.startsWith("https://")) return objectPath;
+  if (objectPath.startsWith("/api/storage/objects/")) return objectPath;
   if (objectPath.startsWith("/api/storage/public-objects/")) return objectPath;
   if (objectPath.startsWith("/storage/public-objects/")) return `/api${objectPath}`;
   return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
-} main
-  return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
+}main
 }
 async function authFetch(url: string, options: RequestInit = {}, getToken: () => Promise<string | null>) {
   const token = await getToken();
@@ -500,12 +501,16 @@ export default function MoodBoard() {
 
   // ─── Analyze all unanalyzed ───────────────────────────────────────────────
   const analyzeAll = async () => {
-    const unanalyzed = board.images.filter(img => !img.analysis);
-    if (!unanalyzed.length) {
+    const needsAnalysis = board.images.filter((img) => {
+      const hasKeywords = (img.analysis?.styleKeywords?.length ?? 0) > 0;
+      const hasColors = (img.analysis?.dominantColors?.length ?? 0) > 0;
+      return !hasKeywords || !hasColors;
+    });
+    if (!needsAnalysis.length) {
       toast({ title: "All images already analyzed" });
       return;
     }
-    for (const img of unanalyzed) {
+    for (const img of needsAnalysis) {
       await analyzeImage(img.objectPath);
     }
     toast({ title: "Analysis complete" });
