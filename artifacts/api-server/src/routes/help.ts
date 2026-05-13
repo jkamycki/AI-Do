@@ -291,6 +291,19 @@ router.post("/help/support-ticket", async (req, res) => {
       })
       .returning();
 
+    // Mirror support-form submissions into Contact Messages so they appear in
+    // Operations Center → Messages and can be handled as a continuous reply
+    // thread from the same admin interface.
+    await db.insert(contactMessages).values({
+      userId,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      subject: `[${ticketNumber}] ${subject.trim()}`,
+      message: message.trim(),
+      isRead: false,
+      isResolved: false,
+    });
+
     // Notify the ops team
     sendEmail({
       to: OWNER_EMAILS[0],

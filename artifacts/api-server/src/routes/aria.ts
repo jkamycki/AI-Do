@@ -29,6 +29,7 @@ const router = Router();
 // Anything else falls through to the normal tools-enabled path so we
 // never accidentally drop tools for a real planning request.
 const ACTION_KEYWORDS = /\b(add|create|delete|remove|update|edit|change|set|save|book|schedule|invite|cancel|pay|paid|owe|cost|spend|budget|guest|vendor|venue|timeline|checklist|todo|task|event|payment|contract|hotel|party|reception|ceremony|honeymoon|email|message|reminder|date|when|where|how much|how many)\b/i;
+const CANCEL_INTENT = /^\s*(?:cancel|never\s?mind|nevermind|stop|forget\s+it|don'?t\s+(?:do|save|add|create|update|delete)\s+(?:that|it)|abort)\b[\s.!?]*$/i;
 const CONVERSATIONAL_PATTERNS: RegExp[] = [
   /^(hi|hey|hello|yo|sup|hola|aloha|howdy)\b/i,
   /^how (are|r) (you|u|ya|things)/i,
@@ -257,6 +258,67 @@ function extractTextBasedToolCalls(
 
 // Tools that write data — after these succeed we skip the second AI round-trip
 // and send an instant confirmation instead, saving ~1,000–2,000 tokens per call.
+
+function safeParseToolArgs(raw: string): Record<string, unknown> {
+  const text = String(raw ?? "").trim();
+  if (!text) return {};
+  try { return JSON.parse(text) as Record<string, unknown>; } catch {}
+
+  // Light repair path for common streaming/truncation glitches.
+  const repaired = text
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/,\s*([}\]])/g, "$1")
+    .replace(/\n/g, " ")
+    .trim();
+  try { return JSON.parse(repaired) as Record<string, unknown>; } catch {}
+
+  // Last-resort envelope extraction when the model emits a JSON wrapper.
+  const objMatch = repaired.match(/\{[\s\S]*\}/);
+  if (objMatch) {
+    try { return JSON.parse(objMatch[0]) as Record<string, unknown>; } catch {}
+  }
+  return {};
+}
+
+
+function coercePrimitive(value: unknown, targetType: string): unknown {
+  if (targetType === "number") {
+    if (typeof value === "number") return Number.isFinite(value) ? value : value;
+    if (typeof value === "string") {
+      const n = Number(value.replace(/[$,]/g, "").trim());
+      return Number.isFinite(n) ? n : value;
+    }
+    return value;
+  }
+  if (targetType === "boolean") {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") {
+      const v = value.trim().toLowerCase();
+      if (["true","yes","y","1","paid","done"].includes(v)) return true;
+      if (["false","no","n","0","unpaid","not paid"].includes(v)) return false;
+    }
+    if (typeof value === "number") return value !== 0;
+    return value;
+  }
+  if (targetType === "string") {
+    return value === null || value === undefined ? value : String(value);
+  }
+  return value;
+}
+
+function normalizeToolArgs(toolName: string, args: Record<string, unknown>): Record<string, unknown> {
+  const tool = TOOLS.find((t) => t.function.name === toolName);
+  if (!tool) return args;
+  const props = (tool.function.parameters?.properties ?? {}) as Record<string, { type?: string }>;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(args ?? {})) {
+    const t = props[k]?.type;
+    out[k] = t ? coercePrimitive(v, t) : v;
+  }
+  return out;
+}
+
 const ACTION_TOOLS = new Set([
   "add_vendor", "update_vendor", "delete_vendor",
   "add_vendor_payment", "update_vendor_payment", "mark_vendor_payment_paid", "delete_vendor_payment",
@@ -1867,6 +1929,19 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     const lastUserText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
 
+    // Explicit cancel / nevermind intent: do not run tools, do not persist.
+    // This guarantees users can always back out of a pending requested action.
+    if (CANCEL_INTENT.test(lastUserText)) {
+      send({
+        type: "content",
+        content: "Got it — canceled. I won’t make any changes. If you want, tell me what you’d like to do instead.",
+      });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
     // Detect "add a vendor / photographer / florist …" without a real business
     // name. Computed before skipTools so it can gate tools entirely.
     const VENDOR_CATEGORY_INTENT = /\b(add|create|new)\s+(a|an)\s+(vendor|photographer|videographer|florist|caterer|catering|dj|band|musician|officiant|hair|makeup|transport(?:ation)?|limo|cake|baker|stationery|invitation|rental|planner|venue|coordinator)s?\b/i;
@@ -1904,7 +1979,6 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       toolsCount: filteredTools.length,
       toolNames: filteredTools.map(t => t.function.name),
       estimatedInputTokens: filteredTools.length * 100 + 700,
-      lastUserPreview: lastUserText.slice(0, 80),
     }, "aria/chat tool selection");
 
     // Helper: call with one automatic retry on Groq rate-limit (429)
@@ -2077,13 +2151,13 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
           } else {
             // Strip ate everything (model wrote a tool-call envelope as
             // text and nothing else). Don't leave the user with silence.
-            req.log.warn({ userId, lastUserPreview: lastUserText.slice(0, 80) }, "Aria response sanitized to empty");
+            req.log.warn({ userId }, "Aria response sanitized to empty");
             send({ type: "content", content: "Sorry — I didn't quite catch that. Could you tell me a bit more about what you'd like me to do?" });
           }
         } else if (!skipTools && !masterContentAccum) {
           // Model returned no content AND no tool calls. Edge case (rate
           // limit / cut connection). Send a fallback so the loader clears.
-          req.log.warn({ userId, lastUserPreview: lastUserText.slice(0, 80) }, "Aria stream finished with no content and no tool calls");
+          req.log.warn({ userId }, "Aria stream finished with no content and no tool calls");
           send({ type: "content", content: "I didn't get a response — could you try that again?" });
         }
 
@@ -2107,9 +2181,9 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
       // Parse args + emit action_start synchronously, in order, so the UI
       // shows every tool the model wanted to call right away.
-      const parsedArgsList = toolCalls.map(tc => {
-        let parsedArgs: Record<string, unknown> = {};
-        try { parsedArgs = JSON.parse(tc.args || "{}"); } catch {}
+      const parsedArgsList = toolCalls.map((tc, idx) => {
+        const parsedArgs = normalizeToolArgs(tc.name, safeParseToolArgs(tc.args || "{}"));
+        if (!tc.id) tc.id = `tool-${Date.now()}-${idx}`;
         send({ type: "action_start", name: tc.name, args: parsedArgs });
         return parsedArgs;
       });

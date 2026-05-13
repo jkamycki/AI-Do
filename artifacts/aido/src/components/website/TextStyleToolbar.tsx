@@ -153,6 +153,12 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
     const left = Math.max(8, anchorRect.left + window.scrollX);
 
     const patch = (partial: Partial<WebsiteTextStyle>) => onChange({ ...style, ...partial });
+    const fontSizeNumber = (() => {
+      const raw = style.fontSize;
+      if (!raw) return "";
+      const n = Number.parseInt(String(raw).replace("px", "").trim(), 10);
+      return Number.isFinite(n) ? String(n) : "";
+    })();
 
     const btnClass = (active: boolean) =>
       `px-2 py-1 rounded text-xs font-medium transition-colors ${
@@ -193,6 +199,33 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
           minWidth={140}
           fontPreview
         />
+
+        {/* Font size */}
+        <label className="flex items-center gap-1" title={t("text_toolbar.font-size", { defaultValue: "Font size" })}>
+          <span className="text-[10px] text-muted-foreground">px</span>
+          <input
+            type="number"
+            min={8}
+            max={120}
+            step={1}
+            value={fontSizeNumber}
+            onFocus={() => onKeepOpen?.()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              if (!v) {
+                patch({ fontSize: undefined });
+                return;
+              }
+              const n = Number.parseInt(v, 10);
+              if (!Number.isFinite(n)) return;
+              const clamped = Math.max(8, Math.min(120, n));
+              patch({ fontSize: `${clamped}px` });
+            }}
+            className="h-7 w-[64px] rounded border border-border bg-background px-1.5 text-xs"
+            aria-label={t("text_toolbar.font-size", { defaultValue: "Font size" })}
+          />
+        </label>
 
         {/* Bold / Italic */}
         <button
