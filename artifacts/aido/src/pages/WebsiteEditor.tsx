@@ -2247,9 +2247,9 @@ export default function WebsiteEditor() {
           <button
             className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent flex items-center gap-2"
             onClick={() => {
-              // Encode the section in the key so the textbox only renders on
-              // the page it was added to. CustomTextBoxes parses this back out.
-              const key = `_custom_${editorSection || "home"}__${Date.now()}`;
+              // New text boxes are global by default so they remain visible
+              // after page/tab switches in editor, preview, and published site.
+              const key = `_custom_global__${Date.now()}`;
               const insertAt = ctxMenu ? { x: ctxMenu.canvasX, y: ctxMenu.canvasY } : { x: 0, y: 0 };
               patchRecord((prev) => {
                 // CustomTextBoxes lays new boxes out at (left: 24, top: 120 + idx*56)
@@ -2263,7 +2263,7 @@ export default function WebsiteEditor() {
                   return m ? m[1] : "home";
                 };
                 const customCount = Object.keys(prev.customText).filter(
-                  (k) => k.startsWith("_custom_") && sectionOf(k) === (editorSection || "home"),
+                  (k) => k.startsWith("_custom_") && sectionOf(k) === "global",
                 ).length;
                 const baseLeft = 24;
                 const baseTop = 120 + customCount * 56;
