@@ -111,7 +111,11 @@ const GROUP_KEYWORDS: Record<string, RegExp> = {
   party: /\b(bridesmaids?|groomsm[ae]n|maid of honor|best man|party members?|wedding party|attendants?)\b/i,
   hotel: /\b(hotels?|room block|accommodat|lodging)\b/i,
   budget: /\b(budget|expenses?|cost|price|payment|paid|spend|spent|money|dollars?|owe|left to spend|remaining|\$)/i,
-  profile: /\b(profile|partner|vibe|theme|wedding date|guest count|total budget)\b/i,
+  // Website/editor requests frequently map to profile-backed fields
+  // (names, date, venue, location, vibe). Including website keywords here
+  // lets Aria pick update_profile/get_profile immediately instead of falling
+  // into a read-only core set and getting stuck in clarification loops.
+  profile: /\b(profile|website|site|web\s?site|website editor|wedding website|home page|homepage|hero|partner|vibe|theme|wedding date|guest count|total budget|venue|location|ceremony time|reception time|rsvp)\b/i,
   contract: /\b(contracts?|agreements?)\b/i,
   seating: /\b(seating chart|seat(ing)?|table assign|arrange guests|generate seat|seating plan)\b/i,
   collaborator: /\b(collaborat|invite|partner access|planner access|vendor access|remove access|team member|workspace)\b/i,
@@ -167,6 +171,11 @@ SMALL TALK: For greetings, thanks, "how are you?", or chitchat → reply warmly 
 #2 RULE — OPTIONAL FIELDS NEVER BLOCK A SAVE. If the schema doesn't list a field in "required", it is optional. NEVER ask for it as a precondition. NEVER ask the user to "confirm" or "verify" an optional value they already gave (e.g. if they said "total cost 2500", USE 2500 — do not ask "could you confirm the total cost?"). The user can always edit the record later.
 
 #3 RULE — NEVER LOOP. Once you have all REQUIRED fields, go to summary+confirm. Once the user says yes, SAVE. Do NOT add a re-clarification step in either direction. If you catch yourself writing "Just to confirm…" or "Could you verify…" twice in a row — STOP, you're looping.
+
+#4 WEBSITE RESILIENCE RULE — If the user asks for website help:
+- If it's a supported data action (names/date/time/venue/location/vibe/budget/guest count), use tools and complete it.
+- If it's an editor-style visual/content action not exposed as a tool (e.g. section layout, fonts, animations, page toggles), do NOT stall or loop. Give direct click-by-click steps in the Website Editor and offer the next best workaround.
+- Never claim you changed something if no tool exists for that change. Be explicit: what you can update now vs what the user should click.
 
 WRITE/UPDATE/DELETE FLOW — exactly ONE summary turn and exactly ONE save turn:
 
