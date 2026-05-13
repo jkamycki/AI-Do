@@ -75,6 +75,11 @@
   to   { transform: translateX(0); }
 }
 
+@keyframes wsa-marquee-ltr-single {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
