@@ -2089,6 +2089,15 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
       let toolCalls = Object.values(toolCallsAccum).filter(tc => tc.name);
 
+      // Guardrail: when confirming a brand-new vendor, some model turns emit
+      // both add_vendor and update_vendor in the same response. update_vendor
+      // can fail/race because the newly added row may not be resolvable yet by
+      // name in that same tool batch, which causes a false "save failed" UX.
+      // Keep the add_vendor call and drop update_vendor in this mixed case.
+      if (toolCalls.some(tc => tc.name === "add_vendor") && toolCalls.some(tc => tc.name === "update_vendor")) {
+        toolCalls = toolCalls.filter(tc => tc.name !== "update_vendor");
+      }
+
       // Fallback: detect text-based function calls emitted by the model in
       // the content field instead of via the tool_calls API (a known quirk
       // of some small Llama models). We intercepted the content without
