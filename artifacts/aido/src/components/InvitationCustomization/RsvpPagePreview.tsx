@@ -109,7 +109,8 @@ export function RsvpPagePreview({
   const coupleFont = serifStack;
   const bodyFont = font ? serifStack : jakarta;
   // Scale font sizes when a custom base size is provided (default 16px).
-  const baseFs = fontSize ? parseFloat(fontSize) : 16;
+  const parsedBaseFs = fontSize ? parseFloat(fontSize) : 16;
+  const baseFs = Number.isFinite(parsedBaseFs) && parsedBaseFs > 0 ? parsedBaseFs : 16;
   const sc = fontSize ? baseFs / 16 : 1;
 
   const cityStateZip = [
