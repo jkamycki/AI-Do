@@ -961,7 +961,65 @@ function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: 
           className="inline-flex min-w-max items-center"
           style={{
             color: data.colorPalette.text,
+function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
+  const text = data.customText._announcement ?? "";
+  const trimmed = text.trim();
+  const [dismissed, setDismissed] = useState(false);
+  const marqueeDuration = "20s";
+
+  // Hide when the user has toggled the announcement off via Home Elements.
+  if (isEditableHiddenMarker(data.customText._announcementHidden) || dismissed) return null;
+  // Public site: hide entirely when empty. Editor: keep the slot visible so
+  // the user has somewhere to click and start typing.
+  if (!trimmed && !ctx.editable) return null;
+
+  return (
+    <div
+      className="relative flex items-start gap-3 px-5 py-3 text-sm"
+      style={{ background: `${data.colorPalette.primary}18`, borderBottom: `2px solid ${data.colorPalette.primary}55` }}
+    >
+      <div className="flex-1 overflow-hidden whitespace-nowrap">
+        <div
+          className="inline-flex min-w-max items-center"
+          style={{
+            color: data.colorPalette.text,
             animation: `wsa-marquee-ltr ${marqueeDuration} linear infinite`,
+          }}
+          aria-label={trimmed}
+        >
+          {ctx.editable ? (
+            <EditableText
+              as="span"
+              editable={ctx.editable}
+              value={text}
+              defaultValue={ctx.editable ? "Click to add an announcement..." : ""}
+              onCommit={(v) => ctx.onTextChange("_announcement", v)}
+              className="inline-block"
+              style={{ color: data.colorPalette.text }}
+              {...tspNoDelete(ctx, "_announcement", true)}
+            />
+          ) : (
+            <>
+              <span>{trimmed}</span>
+              <span className="px-10">{trimmed}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {!ctx.editable && (
+        <button
+          onClick={() => setDismissed(true)}
+          className="flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+          aria-label="Dismiss"
+          style={{ color: data.colorPalette.text }}
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  );
+}main
           }}
           aria-label={trimmed}
         >
