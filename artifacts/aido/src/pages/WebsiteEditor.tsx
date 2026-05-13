@@ -2494,11 +2494,11 @@ function SlugEditor({
         </div>
       </div>
       {published && (
-        <p className="text-[11px] text-amber-600 dark:text-amber-400">
-          Changing the URL will break any previously shared links.
+        <p className="text-[11px] text-green-700 dark:text-green-400">
+          URL is now locked to keep your shared link and QR code permanent.
         </p>
       )}
-      {editing ? (
+      {editing && !published ? (
         <div className="space-y-2">
           <div className="flex items-center text-xs font-mono rounded-md border border-border bg-background overflow-hidden focus-within:ring-2 focus-within:ring-primary/30">
             <span className="px-2.5 py-1.5 bg-muted text-muted-foreground border-r border-border whitespace-nowrap">{host}/w/</span>
@@ -2537,6 +2537,8 @@ function SlugEditor({
             variant="outline"
             className="h-7 text-xs"
             onClick={() => { setEditing(true); setInput(slug); }}
+            disabled={published}
+            title={published ? "URL is locked after publish" : "Edit URL"}
           >
             Edit URL
           </Button>

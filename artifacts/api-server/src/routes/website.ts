@@ -284,6 +284,7 @@ router.put("/website/slug", requireAuth, async (req, res) => {
       .where(eq(weddingWebsites.profileId, profile.id))
       .limit(1);
     if (!existing) return res.status(404).json({ error: "Website not created yet" });
+    if (existing.publishedAt) return res.status(400).json({ error: "Website URL is locked after first publish to keep your link and QR code permanent." });
 
     const raw = String(req.body?.slug ?? "")
       .trim()
