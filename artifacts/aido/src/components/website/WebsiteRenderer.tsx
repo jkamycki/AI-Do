@@ -1,7 +1,12 @@
 import { cloneElement, isValidElement, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Calendar, MapPin, Heart, Clock, Gift, HelpCircle, Image as ImageIcon, ChevronLeft, ChevronRight, X, ExternalLink, Navigation, CheckCircle2, Wine, UtensilsCrossed, Bed, Share2, Check } from "lucide-react";
-import { EditableText, emitEditableDrag, isEditableHiddenMarker, type TextPosition } from "./EditableText";
+import { EditableText, emitEditableDrag, type TextPosition } from "./EditableText";
+import { isEditableHiddenMarker } from "./hiddenMarker";
+import { RsvpFlow } from "./RsvpFlow";
+import { apiFetch, authFetch } from "@/lib/authFetch";
+import { resolveMediaUrl, isMediaAuthRequired } from "@/lib/mediaUrl";
+import { AuthMediaImage } from "@/components/AuthMediaImage"; main
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch, authFetch } from "@/lib/authFetch";
 import { resolveMediaUrl, isMediaAuthRequired } from "@/lib/mediaUrl";

@@ -18,7 +18,10 @@ import {
   Move,
 } from "lucide-react";
 import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
-import { flushPendingEditableCommits, subscribeEditableDrag, EDITABLE_HIDDEN_MARKER, isEditableHiddenMarker } from "@/components/website/EditableText";
+import { flushPendingEditableCommits, subscribeEditableDrag } from "@/components/website/EditableText";
+import { EDITABLE_HIDDEN_MARKER, isEditableHiddenMarker } from "@/components/website/hiddenMarker";
+import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
+import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";main
 import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 
