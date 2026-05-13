@@ -46,3 +46,5 @@ Thumbs.db
 attached_assets/
 .canvas/
 .agents/
+
+*.tsbuildinfo
