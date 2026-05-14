@@ -824,6 +824,12 @@ export default function Timeline() {
             placeholder={t("timeline.vision_placeholder")}
             value={dayVision}
             onChange={e => { setDayVision(e.target.value); localStorage.setItem(VISION_STORAGE_KEY, e.target.value); }}
+            onKeyDown={e => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (!generateTimeline.isPending) handleGenerate();
+              }
+            }}
             className="min-h-[80px] resize-none text-sm"
             data-testid="input-day-vision"
           />
