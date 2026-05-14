@@ -131,7 +131,7 @@ function NegotiationPanel({ contractId, redFlagCount, vendorId }: { contractId: 
   function moveToVendorMessages() {
     if (!email || !vendorId) return;
     localStorage.setItem(`aido_vendor_message_draft_v1_${vendorId}`, email);
-    toast({ title: t("contracts.draft_sent_to_vendor_messages", { defaultValue: "Draft added to vendor messages" }) });
+    toast({ title: t("contracts.draft_sent_to_vendor_messages", { defaultValue: "Opening vendor message draft" }) });
     setLocation(`/vendors?vendorId=${vendorId}&tab=messages`);
   }
 
@@ -175,7 +175,7 @@ function NegotiationPanel({ contractId, redFlagCount, vendorId }: { contractId: 
               {vendorId && (
                 <Button size="sm" variant="outline" className="flex-1 gap-2 border-border/60 text-foreground hover:bg-muted/50" onClick={moveToVendorMessages}>
                   <MessageSquareDiff className="h-3.5 w-3.5" />
-                  {t("contracts.add_to_vendor_message", { defaultValue: "Add to vendor message" })}
+                  {t("contracts.send_to_vendor", { defaultValue: "Send to vendor" })}
                 </Button>
               )}
               <Button size="sm" variant="outline" className="border-border/60 text-foreground hover:bg-muted/50" onClick={generate} disabled={loading}>
