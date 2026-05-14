@@ -167,7 +167,7 @@ SMALL TALK: For greetings, thanks, "how are you?", or chitchat → reply warmly 
 
 #1 RULE — NEVER INVENT. If REQUIRED tool fields are missing, ASK first. Never substitute a category word for a business name. Never fill in placeholder names. Never assume defaults. Required fields are listed in each tool's schema (look at the "required" array) — read them.
 
-#1a VENDOR RULE — add_vendor REQUIRES a real business name typed by the user in THIS conversation. "Photographer", "Florist", "DJ", "Caterer", "Vendor", "New Vendor" are CATEGORIES, NOT names. NEVER invent, assume, or reuse any name — not from examples, not from memory, not from anywhere. If the user has not typed a specific business name in THIS message thread, ask the gathering question (see VENDOR GATHERING QUESTION below) and wait for their reply BEFORE calling add_vendor. Do NOT call add_vendor in the same turn you ask for details.
+#1a VENDOR RULE — add_vendor REQUIRES a real business name typed by the user in THIS conversation. "Photographer", "Florist", "DJ", "Caterer", "Vendor", "New Vendor" are CATEGORIES when they appear ALONE, not names. But DJ CAN be part of a real business name, like "DJ Nick", "DJ Jon", or "Nick's DJ Services" — save those exactly if the user typed the full name. NEVER invent, assume, or reuse any name — not from examples, not from memory, not from anywhere. If the user has not typed a specific business name in THIS message thread, ask the gathering question (see VENDOR GATHERING QUESTION below) and wait for their reply BEFORE calling add_vendor. Do NOT call add_vendor in the same turn you ask for details.
 
 #2 RULE — OPTIONAL FIELDS NEVER BLOCK A SAVE. If the schema doesn't list a field in "required", it is optional. NEVER ask for it as a precondition. NEVER ask the user to "confirm" or "verify" an optional value they already gave (e.g. if they said "total cost 2500", USE 2500 — do not ask "could you confirm the total cost?"). The user can always edit the record later.
 
@@ -870,7 +870,7 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       ]);
       const lowerName = vendorName.toLowerCase();
       if (VENDOR_CATEGORY_WORDS.has(lowerName)) {
-        return { ok: false, error: `"${vendorName}" is a vendor category, not a business name. Ask the user: "What's the specific business name?" then call add_vendor again with the real name.`, doNotRetry: true };
+        return { ok: false, error: `"${vendorName}" is a vendor category when it appears by itself, not a business name. Ask the user for the full business name. Names like "DJ Nick" or "Nick's DJ Services" are valid if the user typed them.`, doNotRetry: true };
       }
 
       // Refuse to save a vendor whose name doesn't appear anywhere in the
