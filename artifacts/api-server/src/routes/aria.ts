@@ -529,8 +529,8 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"update_timeline_event", description:"Update timeline event. Pass matchTitle or matchTime.", parameters:{ type:"object", properties:{ matchTitle:{type:"string"}, matchTime:{type:"string"}, time:{type:"string"}, title:{type:"string"}, description:{type:"string"}, category:{type:"string",enum:["preparation","ceremony","cocktail","reception","dancing","other"]} } } } },
   { type:"function" as const, function:{ name:"delete_timeline_event", description:"Delete timeline event. Pass matchTitle or matchTime.", parameters:{ type:"object", properties:{ matchTitle:{type:"string"}, matchTime:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_timeline", description:"List timeline events.", parameters:{ type:"object", properties:{} } } },
-  { type:"function" as const, function:{ name:"add_guest", description:"Add a guest to the wedding guest list. ONLY call after the user has explicitly confirmed (replied 'yes' or similar to your confirmation message). 'name' MUST be a specific person's name provided by the user — never invent placeholder names like 'Guest 1'. If the user just says 'add a guest' without naming anyone, ASK for the name first. Do NOT ask for mealChoice while adding a guest; only include mealChoice if the user voluntarily provided it.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific guest full name provided by the user."}, email:{type:"string"}, phone:{type:"string"}, rsvpStatus:{type:"string",enum:["pending","attending","declined","maybe"]}, mealChoice:{type:"string"}, dietaryNotes:{type:"string"}, guestGroup:{type:"string"}, plusOne:{type:"boolean"}, plusOneName:{type:"string"}, tableAssignment:{type:"string"}, notes:{type:"string"}, address:{type:"string"}, guestCity:{type:"string"}, guestState:{type:"string"}, guestZip:{type:"string"} }, required:["name"] } } },
-  { type:"function" as const, function:{ name:"update_guest", description:"Update guest. Pass guestId or matchName.", parameters:{ type:"object", properties:{ guestId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, rsvpStatus:{type:"string",enum:["pending","attending","declined","maybe"]}, mealChoice:{type:"string"}, dietaryNotes:{type:"string"}, guestGroup:{type:"string"}, plusOne:{type:"boolean"}, plusOneName:{type:"string"}, tableAssignment:{type:"string"}, notes:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"add_guest", description:"Add a guest to the wedding guest list. ONLY call after the user has explicitly confirmed (replied 'yes' or similar to your confirmation message). 'name' MUST be a specific person's name provided by the user — never invent placeholder names like 'Guest 1'. If the user just says 'add a guest' without naming anyone, ASK for the name first. Do NOT ask for mealChoice while adding a guest; only include mealChoice if the user voluntarily provided it.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific guest full name provided by the user."}, email:{type:"string"}, phone:{type:"string"}, rsvpStatus:{type:"string",enum:["pending","attending","declined","maybe"]}, mealChoice:{type:"string"}, dietaryNotes:{type:"string"}, guestGroup:{type:"string"}, plusOne:{type:"boolean"}, plusOneName:{type:"string"}, tableAssignment:{type:"string"}, notes:{type:"string"}, address:{type:"string"}, guestCity:{type:"string"}, guestState:{type:"string"}, guestZip:{type:"string"}, guestCountry:{type:"string"} }, required:["name"] } } },
+  { type:"function" as const, function:{ name:"update_guest", description:"Update guest. Pass guestId or matchName.", parameters:{ type:"object", properties:{ guestId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, rsvpStatus:{type:"string",enum:["pending","attending","declined","maybe"]}, mealChoice:{type:"string"}, dietaryNotes:{type:"string"}, guestGroup:{type:"string"}, plusOne:{type:"boolean"}, plusOneName:{type:"string"}, tableAssignment:{type:"string"}, notes:{type:"string"}, address:{type:"string"}, guestCity:{type:"string"}, guestState:{type:"string"}, guestZip:{type:"string"}, guestCountry:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_guest", description:"Delete guest. Pass guestId or matchName.", parameters:{ type:"object", properties:{ guestId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_guests", description:"List all guests.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"add_party_member", description:"Add a wedding party member (bridesmaid, groomsman, etc.). ONLY call after the user has explicitly confirmed. All three required fields (name, role, side) MUST come from the user — never invent them. If any is missing, ASK first.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific person's name provided by the user."}, role:{type:"string", description:"Specific role like 'Maid of Honor', 'Best Man', 'Bridesmaid' — provided by the user."}, side:{type:"string",enum:["bride","groom","both"]}, phone:{type:"string"}, email:{type:"string"}, outfitDetails:{type:"string"}, shoeSize:{type:"string"}, outfitStore:{type:"string"}, fittingDate:{type:"string"}, notes:{type:"string"} }, required:["name","role","side"] } } },
@@ -708,6 +708,9 @@ function friendlyToolError(err: unknown, toolName: string): string {
     lower.includes("invalid input syntax");
 
   if (looksLikeDbError) {
+    if (toolName.includes("guest")) {
+      return "I couldn't save that guest because the database rejected one of the fields. Please check the name/details and try again.";
+    }
     if (toolName.includes("vendor")) {
       return "I couldn't save that vendor because the database rejected one of the fields. Please check the name/category and try again.";
     }
@@ -1514,6 +1517,7 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         guestCity: args.guestCity ? String(args.guestCity) : null,
         guestState: args.guestState ? String(args.guestState) : null,
         guestZip: args.guestZip ? String(args.guestZip) : null,
+        guestCountry: args.guestCountry ? String(args.guestCountry) : null,
       }).returning();
       return { ok: true, data: { id: created.id, name: created.name } };
     }
@@ -1528,7 +1532,7 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         return { ok: true, data: { deleted: guest.name } };
       }
       const updates: Partial<typeof guests.$inferInsert> = {};
-      const stringFields = ["name","email","phone","rsvpStatus","mealChoice","dietaryNotes","guestGroup","plusOneName","tableAssignment","notes","address","guestCity","guestState","guestZip"] as const;
+      const stringFields = ["name","email","phone","rsvpStatus","mealChoice","dietaryNotes","guestGroup","plusOneName","tableAssignment","notes","address","guestCity","guestState","guestZip","guestCountry"] as const;
       for (const f of stringFields) {
         if (args[f] !== undefined) (updates as Record<string, unknown>)[f] = args[f] === null || args[f] === "" ? null : String(args[f]);
       }
@@ -2825,14 +2829,15 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         filteredTools = filteredTools.filter((t) => !bannedTools.has(t.function.name));
       }
 
-      // Fast path: if every tool was a write action AND all succeeded, skip the
-      // second AI call and send an instant confirmation. When any action failed,
-      // fall through so the LLM can respond conversationally to the error message
-      // (e.g. ask for the real business name after a category-word rejection).
+      // Fast path: if every tool was a write action, skip the second AI call.
+      // On failure, surface the tool error directly so a provider hiccup cannot
+      // hide the actual save problem behind a generic "Aria encountered an error".
       const allActionTools = toolCalls.every(tc => ACTION_TOOLS.has(tc.name));
       const allSucceeded = results.every(r => r.ok);
-      if (allActionTools && allSucceeded) {
-        const confirmation = buildConfirmation(performedActions);
+      if (allActionTools) {
+        const confirmation = allSucceeded
+          ? buildConfirmation(performedActions)
+          : buildConfirmation(performedActions);
         send({ type: "content", content: confirmation });
         send({ type: "done", actions: performedActions.map(a => ({ name: a.name, ok: a.result.ok, error: a.result.ok ? undefined : a.result.error })) });
         res.write("data: [DONE]\n\n");
