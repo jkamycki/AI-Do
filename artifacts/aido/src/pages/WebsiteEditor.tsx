@@ -73,6 +73,7 @@ export default function WebsiteEditor() {
   const [dirty, setDirty] = useState(false);
   const [copied, setCopied] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
   const [lastAutosaved, setLastAutosaved] = useState<Date | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewSection, setPreviewSection] = useState<string>("home");
@@ -429,7 +430,6 @@ export default function WebsiteEditor() {
     galleryImages: rec.galleryImages,
     heroImages: rec.heroImages ?? [],
     heroImage: rec.heroImage,
-    ...(passwordInput.trim() ? { password: passwordInput.trim() } : {}),
   });
 
   const writePendingBackup = (body: ReturnType<typeof buildSaveBody>, websiteId: number) => {
@@ -536,7 +536,6 @@ export default function WebsiteEditor() {
             portalParty: result.record.portalParty ?? prev.portalParty,
           };
         });
-        setPasswordInput("");
         // Only mark clean if no edits happened during the POST. Otherwise the
         // local state is still ahead of the server and another save needs to run.
         if (editSeqRef.current === seqAtSend) setDirty(false);
@@ -714,9 +713,41 @@ export default function WebsiteEditor() {
     }
   };
 
+  const saveWebsitePassword = async (password: string, silent = false) => {
+    if (!record) return false;
+    const nextPassword = password.trim();
+    if (!nextPassword) {
+      if (!silent) toast({ title: "Enter a password first", variant: "destructive" });
+      return false;
+    }
+    setSavingPassword(true);
+    try {
+      const r = await authFetch("/api/website/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: nextPassword }),
+      });
+      if (!r.ok) throw new Error("Failed to save password");
+      const body = (await r.json()) as WebsiteRecord;
+      setRecord(body);
+      setPasswordInput("");
+      if (!silent) toast({ title: "Password saved. Your live site is protected." });
+      return true;
+    } catch {
+      if (!silent) toast({ title: "Failed to save password", variant: "destructive" });
+      return false;
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const handleSavePassword = async () => {
+    await saveWebsitePassword(passwordInput);
+  };
+
   const handleClearPassword = async () => {
     if (!record) return;
-    setSaving(true);
+    setSavingPassword(true);
     try {
       const r = await authFetch("/api/website/update", {
         method: "PUT",
@@ -726,11 +757,12 @@ export default function WebsiteEditor() {
       if (!r.ok) throw new Error("Failed to clear password");
       const body = (await r.json()) as WebsiteRecord;
       setRecord(body);
+      setPasswordInput("");
       toast({ title: "Password removed." });
     } catch {
       toast({ title: "Failed to clear password", variant: "destructive" });
     } finally {
-      setSaving(false);
+      setSavingPassword(false);
     }
   };
 
@@ -752,22 +784,14 @@ export default function WebsiteEditor() {
 
     setPublishing(true);
     try {
+      if (pendingPassword) {
+        const savedPassword = await saveWebsitePassword(pendingPassword, true);
+        if (!savedPassword) {
+          toast({ title: "Couldn't save password before publishing", variant: "destructive" });
+          return;
+        }
+      }
       if (dirtyRef.current) {
-        if (pendingPassword) {
-          // Never publish without first persisting a newly entered password.
-          // The password field lives in local component state (not record),
-          // so the guest-facing gate would be missing if we timed out and
-          // published before this save completes.
-          const saved = await saveNow(true);
-          if (!saved) {
-            const err = lastSaveErrorRef.current;
-            const detail = err
-              ? `${err.status ? `HTTP ${err.status} — ` : ""}${err.message} (your work is backed up locally and will keep retrying)`
-              : "Your work is backed up locally and will keep retrying in the background.";
-            toast({ title: "Couldn't save password before publishing", description: detail, variant: "destructive" });
-            return;
-          }
-        } else {
         // Race the pre-publish save against a 6s timeout. saveNow chains onto
         // the in-flight autosave promise, so a stuck retry loop (server 5xx,
         // dropped network) would otherwise pin Publish forever and the button
@@ -793,7 +817,6 @@ export default function WebsiteEditor() {
             title: "Publishing anyway…",
             description: "Save is still retrying in the background — your latest edits will sync once the connection recovers.",
           });
-        }
         }
       }
       const r = await authFetch("/api/website/publish", {
@@ -2188,30 +2211,39 @@ export default function WebsiteEditor() {
 
         {/* Password */}
         {inTab("settings") && <Section icon={<Lock className="h-4 w-4" />} title={t("website_editor.section_password", { defaultValue: "Password Protection" })}>
-          {record.passwordEnabled ? (
-            <div className="space-y-2">
+          <div className="space-y-2">
+            {record.passwordEnabled && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 dark:bg-amber-950/30 text-xs text-amber-800 dark:text-amber-200">
                 <Lock className="h-3.5 w-3.5" /> Password is set
               </div>
-              <Button size="sm" variant="outline" onClick={handleClearPassword}>
-                Remove password
+            )}
+            <Input
+              type="text"
+              placeholder={record.passwordEnabled
+                ? t("website_editor.password_change_placeholder", { defaultValue: "Enter a new password" })
+                : t("website_editor.password_placeholder", { defaultValue: "Choose a password" })}
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              className="text-sm"
+              autoComplete="off"
+            />
+            <div className="flex flex-col gap-2">
+              <Button
+                size="sm"
+                onClick={handleSavePassword}
+                disabled={savingPassword || !passwordInput.trim()}
+                className="w-full gap-2"
+              >
+                {savingPassword ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
+                Save password
               </Button>
+              {record.passwordEnabled && (
+                <Button size="sm" variant="outline" onClick={handleClearPassword} disabled={savingPassword}>
+                  Remove password
+                </Button>
+              )}
             </div>
-          ) : (
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                placeholder={t("website_editor.password_placeholder", { defaultValue: "Optional password" })}
-                value={passwordInput}
-                onChange={(e) => {
-                  setPasswordInput(e.target.value);
-                  dirtyRef.current = true;
-                  setDirty(true);
-                }}
-                className="text-sm"
-              />
-            </div>
-          )}
+          </div>
           <p className="text-[11px] text-muted-foreground mt-2">
             When set, guests must enter this password before viewing the site.
           </p>
