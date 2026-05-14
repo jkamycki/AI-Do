@@ -67,7 +67,7 @@ router.post("/guests", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "No wedding profile found. Create a profile first." });
     }
 
-    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, aptUnit, guestCity, guestState, guestZip, guestCountry } = req.body;
+    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, needsHotel, bookedHotelBlockId, notes, phone, address, aptUnit, guestCity, guestState, guestZip, guestCountry } = req.body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return res.status(400).json({ error: "Guest name is required" });
@@ -107,6 +107,8 @@ router.post("/guests", requireAuth, async (req, res) => {
         plusOne: !!plusOne,
         plusOneName: plusOneName || null,
         tableAssignment: tableAssignment || null,
+        needsHotel: !!needsHotel || bookedHotelBlockId != null,
+        bookedHotelBlockId: bookedHotelBlockId != null ? Number(bookedHotelBlockId) : null,
         notes: notes || null,
         phone: phone || null,
         address: address || null,
@@ -141,7 +143,7 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     const profileId = profile?.id ?? null;
     if (!profileId) return res.status(400).json({ error: "No wedding profile found." });
 
-    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, notes, phone, address, aptUnit, guestCity, guestState, guestZip, guestCountry, saveTheDateStatus, rsvpReminderStatus } = req.body;
+    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, needsHotel, bookedHotelBlockId, notes, phone, address, aptUnit, guestCity, guestState, guestZip, guestCountry, saveTheDateStatus, rsvpReminderStatus } = req.body;
 
     if (name !== undefined || email !== undefined) {
       const checkName = (name ?? "").trim();
@@ -174,6 +176,11 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     if (plusOne !== undefined) updateData.plusOne = !!plusOne;
     if (plusOneName !== undefined) updateData.plusOneName = plusOneName || null;
     if (tableAssignment !== undefined) updateData.tableAssignment = tableAssignment || null;
+    if (needsHotel !== undefined) updateData.needsHotel = !!needsHotel;
+    if (bookedHotelBlockId !== undefined) {
+      updateData.bookedHotelBlockId = bookedHotelBlockId ? Number(bookedHotelBlockId) : null;
+      if (bookedHotelBlockId) updateData.needsHotel = true;
+    }
     if (notes !== undefined) updateData.notes = notes || null;
     if (phone !== undefined) updateData.phone = phone || null;
     if (address !== undefined) updateData.address = address || null;

@@ -441,6 +441,8 @@ export interface Guest {
   plusOne: boolean;
   plusOneName?: string | null;
   tableAssignment?: string | null;
+  needsHotel?: boolean | null;
+  bookedHotelBlockId?: number | null;
   notes?: string | null;
   rsvpMessage?: string | null;
   source?: string | null;
@@ -472,6 +474,8 @@ export interface CreateGuest {
   plusOne?: boolean;
   plusOneName?: string;
   tableAssignment?: string;
+  needsHotel?: boolean;
+  bookedHotelBlockId?: number | null;
   notes?: string;
 }
 
@@ -486,6 +490,8 @@ export interface UpdateGuest {
   plusOne?: boolean;
   plusOneName?: string;
   tableAssignment?: string;
+  needsHotel?: boolean;
+  bookedHotelBlockId?: number | null;
   notes?: string;
 }
 

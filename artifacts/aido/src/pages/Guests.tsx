@@ -14,7 +14,7 @@ import {
   useGetProfile,
 } from "@workspace/api-client-react";
 import type { Guest } from "@workspace/api-client-react";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   Card,
@@ -193,6 +193,16 @@ function groupColorClasses(group: string | null | undefined): string {
   }
 }
 
+function bookedHotelClasses(guest: Guest): string {
+  if ((guest as any).bookedHotelBlockId) {
+    return "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800/50";
+  }
+  if ((guest as any).needsHotel) {
+    return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-800/50";
+  }
+  return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800/50";
+}
+
 const MEAL_OPTIONS = [
   { value: "chicken", label: "Chicken" },
   { value: "fish", label: "Fish" },
@@ -202,6 +212,11 @@ const MEAL_OPTIONS = [
   { value: "kids", label: "Kids Meal" },
   { value: "other", label: "Other" },
 ];
+
+interface HotelOption {
+  id: number;
+  hotelName: string;
+}
 
 const guestSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -217,6 +232,8 @@ const guestSchema = z.object({
   plusOneFirstName: z.string().optional(),
   plusOneLastName: z.string().optional(),
   tableAssignment: z.string().optional(),
+  needsHotel: z.boolean().default(false),
+  bookedHotelBlockId: z.number().nullable().optional(),
   phone: z.string().optional().default(""),
   address: z.string().optional().default(""),
   aptUnit: z.string().optional().default(""),
@@ -237,11 +254,13 @@ function getRsvpBadge(status: string) {
 
 function GuestForm({
   defaultValues,
+  hotels = [],
   onSubmit,
   isPending,
   submitLabel,
 }: {
   defaultValues?: Partial<GuestFormValues>;
+  hotels?: HotelOption[];
   onSubmit: (data: GuestFormValues) => void;
   isPending: boolean;
   submitLabel: string;
@@ -261,6 +280,8 @@ function GuestForm({
       plusOneFirstName: "",
       plusOneLastName: "",
       tableAssignment: "",
+      needsHotel: false,
+      bookedHotelBlockId: null,
       phone: "",
       address: "",
       aptUnit: "",
@@ -275,6 +296,7 @@ function GuestForm({
 
   const plusOne = form.watch("plusOne");
   const meal = form.watch("mealChoice");
+  const needsHotel = form.watch("needsHotel");
 
   return (
     <Form {...form}>
@@ -475,6 +497,49 @@ function GuestForm({
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="bookedHotelBlockId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Booked Hotel</FormLabel>
+              <Select
+                value={field.value ? String(field.value) : needsHotel ? "pending" : "na"}
+                onValueChange={(value) => {
+                  if (value === "na") {
+                    form.setValue("needsHotel", false, { shouldDirty: true });
+                    field.onChange(null);
+                    return;
+                  }
+                  if (value === "pending") {
+                    form.setValue("needsHotel", true, { shouldDirty: true });
+                    field.onChange(null);
+                    return;
+                  }
+                  form.setValue("needsHotel", true, { shouldDirty: true });
+                  field.onChange(Number(value));
+                }}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select hotel status" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="na">N/A</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  {hotels.map((hotel) => (
+                    <SelectItem key={hotel.id} value={String(hotel.id)}>
+                      {hotel.hotelName || "Unnamed Hotel"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {meal === "other" && (
           <FormField
@@ -723,6 +788,8 @@ function GuestForm({
                 plusOneFirstName: "",
                 plusOneLastName: "",
                 tableAssignment: "",
+                needsHotel: false,
+                bookedHotelBlockId: null,
                 phone: "",
                 address: "",
                 aptUnit: "",
@@ -755,6 +822,7 @@ function exportCSV(guestList: Guest[]) {
     "Plus One",
     "Plus One Name",
     "Table",
+    "Booked Hotel",
     "Street Address",
     "Apt/Unit",
     "City",
@@ -772,6 +840,7 @@ function exportCSV(guestList: Guest[]) {
     g.plusOne ? "Yes" : "No",
     g.plusOneName ?? "",
     g.tableAssignment ?? "",
+    (g as any).bookedHotelBlockId ? String((g as any).bookedHotelBlockId) : (g as any).needsHotel ? "Pending" : "N/A",
     (g as any).address ?? "",
     (g as any).aptUnit ?? "",
     (g as any).guestCity ?? "",
@@ -1037,6 +1106,14 @@ export default function Guests() {
 
   const { data: weddingProfile, isLoading: profileLoading } = useGetProfile();
   const { data, isLoading, isError } = useGetGuests();
+  const { data: hotels = [] } = useQuery<HotelOption[]>({
+    queryKey: ["hotels"],
+    queryFn: async () => {
+      const res = await authFetch("/api/hotels");
+      if (!res.ok) throw new Error("Failed to load hotels");
+      return res.json();
+    },
+  });
   const addGuest = useAddGuest();
   const updateGuest = useUpdateGuest();
   const deleteGuest = useDeleteGuest();
@@ -1470,6 +1547,38 @@ export default function Guests() {
     );
   }
 
+  function handleBookedHotelChange(guest: Guest, raw: string) {
+    const prevNeedsHotel = !!(guest as any).needsHotel;
+    const prevHotelId = (guest as any).bookedHotelBlockId ?? null;
+    const next =
+      raw === "na"
+        ? { needsHotel: false, bookedHotelBlockId: null }
+        : raw === "pending"
+          ? { needsHotel: true, bookedHotelBlockId: null }
+          : { needsHotel: true, bookedHotelBlockId: Number(raw) };
+
+    optimisticUpdate(guest.id, next as Partial<Guest>);
+    updateGuest.mutate(
+      {
+        id: guest.id,
+        data: next as Parameters<typeof updateGuest.mutate>[0]["data"],
+      },
+      {
+        onSuccess: () => {
+          invalidate();
+          queryClient.invalidateQueries({ queryKey: ["hotels"] });
+        },
+        onError: () => {
+          optimisticUpdate(guest.id, {
+            needsHotel: prevNeedsHotel,
+            bookedHotelBlockId: prevHotelId,
+          } as Partial<Guest>);
+          toast({ title: "Failed to update booked hotel", variant: "destructive" });
+        },
+      },
+    );
+  }
+
   function handleRsvpChange(guest: Guest, newStatus: string) {
     optimisticUpdate(guest.id, { rsvpStatus: newStatus });
     updateGuest.mutate(
@@ -1735,6 +1844,8 @@ export default function Guests() {
               ? null
               : data.guestGroup,
           tableAssignment: data.tableAssignment || null,
+          needsHotel: data.needsHotel || data.bookedHotelBlockId != null,
+          bookedHotelBlockId: data.bookedHotelBlockId ?? null,
           notes: data.notes || null,
           phone: data.phone || null,
           address: data.address || null,
@@ -1969,6 +2080,7 @@ export default function Guests() {
                 </DialogDescription>
               </DialogHeader>
               <GuestForm
+                hotels={hotels}
                 onSubmit={handleAdd}
                 isPending={addGuest.isPending}
                 submitLabel={t("guests.add_guest")}
@@ -2316,6 +2428,26 @@ export default function Guests() {
                         </p>
                       </div>
                     </div>
+                    <div className="pt-1">
+                      <p className="text-xs text-muted-foreground mb-1">Booked Hotel</p>
+                      <Select
+                        value={(g as any).bookedHotelBlockId ? String((g as any).bookedHotelBlockId) : (g as any).needsHotel ? "pending" : "na"}
+                        onValueChange={(value) => handleBookedHotelChange(g, value)}
+                      >
+                        <SelectTrigger className={`h-8 text-xs font-medium border ${bookedHotelClasses(g)}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="na">N/A</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          {hotels.map((hotel) => (
+                            <SelectItem key={hotel.id} value={String(hotel.id)}>
+                              {hotel.hotelName || "Unnamed Hotel"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="flex items-center gap-1 pt-1 border-t">
                       <Button
                         variant="ghost"
@@ -2404,6 +2536,9 @@ export default function Guests() {
                     </TableHead>
                     <TableHead className="hidden md:table-cell text-primary">
                       {t("guests.col_table")}
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell text-primary">
+                      Booked Hotel
                     </TableHead>
                     <TableHead className="hidden md:table-cell text-primary">
                       {t("guests.col_group", { defaultValue: "Group" })}
@@ -2710,6 +2845,27 @@ export default function Guests() {
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-sm">
                           <Select
+                            value={(g as any).bookedHotelBlockId ? String((g as any).bookedHotelBlockId) : (g as any).needsHotel ? "pending" : "na"}
+                            onValueChange={(value) => handleBookedHotelChange(g, value)}
+                          >
+                            <SelectTrigger
+                              className={`h-7 min-w-[120px] max-w-[180px] px-2 text-xs font-medium border whitespace-nowrap [&>svg]:opacity-60 ${bookedHotelClasses(g)}`}
+                            >
+                              <SelectValue placeholder="N/A" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="na">N/A</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              {hotels.map((hotel) => (
+                                <SelectItem key={hotel.id} value={String(hotel.id)}>
+                                  {hotel.hotelName || "Unnamed Hotel"}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-sm">
+                          <Select
                             value={g.guestGroup ?? "none"}
                             onValueChange={(v) => handleGroupChange(g, v)}
                           >
@@ -2899,6 +3055,8 @@ export default function Guests() {
                 plusOneLastName:
                   editGuest.plusOneName?.split(" ").slice(1).join(" ") ?? "",
                 tableAssignment: editGuest.tableAssignment ?? "",
+                needsHotel: !!(editGuest as any).needsHotel,
+                bookedHotelBlockId: (editGuest as any).bookedHotelBlockId ?? null,
                 phone: (editGuest as any).phone ?? "",
                 address: (editGuest as any).address ?? "",
                 aptUnit: (editGuest as any).aptUnit ?? "",
@@ -2908,6 +3066,7 @@ export default function Guests() {
                 guestCountry: (editGuest as any).guestCountry ?? "",
                 notes: editGuest.notes ?? "",
               }}
+              hotels={hotels}
               onSubmit={handleEdit}
               isPending={updateGuest.isPending}
               submitLabel="Save Changes"

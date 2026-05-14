@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, hotelBlocks, weddingProfiles } from "@workspace/db";
+import { db, guests, hotelBlocks, weddingProfiles } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
@@ -276,6 +276,19 @@ router.delete("/hotels/:id", requireAuth, async (req, res) => {
     }
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
+    const [profile] = await db
+      .select({ id: weddingProfiles.id })
+      .from(weddingProfiles)
+      .where(eq(weddingProfiles.userId, userId))
+      .limit(1);
+
+    if (profile) {
+      await db
+        .update(guests)
+        .set({ bookedHotelBlockId: null, needsHotel: true })
+        .where(and(eq(guests.profileId, profile.id), eq(guests.bookedHotelBlockId, id)));
+    }
+
     await db
       .delete(hotelBlocks)
       .where(and(eq(hotelBlocks.id, id), eq(hotelBlocks.userId, userId)));

@@ -1,0 +1,3 @@
+ALTER TABLE guests
+  ADD COLUMN IF NOT EXISTS needs_hotel BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS booked_hotel_block_id INTEGER;

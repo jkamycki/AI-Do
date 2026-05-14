@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "react-i18next";
 import {
   Hotel, Plus, ExternalLink, Phone, Mail, Copy, Check,
-  Trash2, Edit2, BedDouble, Calendar, DollarSign, MapPin, Tag, RotateCcw, Navigation, Loader2,
+  Trash2, Edit2, BedDouble, Calendar, DollarSign, MapPin, Tag, RotateCcw, Navigation, Loader2, Users,
 } from "lucide-react";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
@@ -40,6 +40,14 @@ interface HotelBlock {
   distanceFromVenue?: string | null;
   notes?: string | null;
   createdAt: string;
+}
+
+interface HotelGuest {
+  id: number;
+  name: string;
+  email?: string | null;
+  needsHotel?: boolean | null;
+  bookedHotelBlockId?: number | null;
 }
 
 const EMPTY: Partial<HotelBlock> = {
@@ -227,7 +235,17 @@ function HotelForm({
   );
 }
 
-function HotelCard({ hotel, onEdit, onDelete }: { hotel: HotelBlock; onEdit: () => void; onDelete: () => void }) {
+function HotelCard({
+  hotel,
+  bookedGuests,
+  onEdit,
+  onDelete,
+}: {
+  hotel: HotelBlock;
+  bookedGuests: HotelGuest[];
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   const { copied, copy } = useCopy();
   const cutoff = hotel.cutoffDate ? new Date(hotel.cutoffDate + "T12:00:00") : null;
   const daysLeft = cutoff ? Math.ceil((cutoff.getTime() - Date.now()) / 86400000) : null;
@@ -340,6 +358,33 @@ function HotelCard({ hotel, onEdit, onDelete }: { hotel: HotelBlock; onEdit: () 
         {hotel.notes && (
           <p className="text-xs text-muted-foreground italic border-t border-border/40 pt-2">{hotel.notes}</p>
         )}
+
+        <div className="border-t border-border/40 pt-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5 text-primary" />
+              Booked Guests
+            </p>
+            <Badge variant="secondary" className="text-[10px]">
+              {bookedGuests.length}
+            </Badge>
+          </div>
+          {bookedGuests.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {bookedGuests.map((guest) => (
+                <span
+                  key={guest.id}
+                  className="inline-flex max-w-full items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:border-emerald-800/50 dark:bg-emerald-900/30 dark:text-emerald-200"
+                  title={guest.email ?? guest.name}
+                >
+                  <span className="truncate">{guest.name}</span>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">No guests assigned to this hotel yet.</p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -361,8 +406,18 @@ export default function Hotels() {
     },
   });
 
+  const { data: hotelGuestData } = useQuery<{ guests: HotelGuest[] }>({
+    queryKey: ["guests"],
+    queryFn: async () => {
+      const r = await authFetch(`${API}/api/guests`);
+      if (!r.ok) throw new Error(r.statusText);
+      return r.json();
+    },
+  });
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["hotels"] });
+    queryClient.invalidateQueries({ queryKey: ["guests"] });
     queryClient.invalidateQueries({ queryKey: ["next-steps", "hotels"] });
   };
 
@@ -389,6 +444,9 @@ export default function Hotels() {
 
   const totalRooms = hotels.reduce((sum, h) => sum + (h.roomsReserved ?? 0), 0);
   const bookedRooms = hotels.reduce((sum, h) => sum + h.roomsBooked, 0);
+  const hotelGuests = hotelGuestData?.guests ?? [];
+  const pendingHotelGuests = hotelGuests.filter((guest) => guest.needsHotel && !guest.bookedHotelBlockId);
+  const bookedHotelGuestCount = hotelGuests.filter((guest) => guest.bookedHotelBlockId).length;
 
   if (isLoading) {
     return (
@@ -438,11 +496,12 @@ export default function Hotels() {
 
       {/* Summary bar */}
       {hotels.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "Hotels", value: hotels.length, color: "text-primary" },
             { label: "Rooms Reserved", value: totalRooms, color: "text-sky-600" },
             { label: "Rooms Booked", value: bookedRooms, color: "text-emerald-600" },
+            { label: "Guests Booked", value: bookedHotelGuestCount, color: "text-emerald-600" },
           ].map(({ label, value, color }) => (
             <Card key={label} className="border-border/60 shadow-sm">
               <CardContent className="p-4 text-center">
@@ -452,6 +511,35 @@ export default function Hotels() {
             </Card>
           ))}
         </div>
+      )}
+
+      {pendingHotelGuests.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50/60 dark:border-amber-800/50 dark:bg-amber-900/15">
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Pending Hotel Assignments</p>
+                <p className="text-xs text-amber-800/80 dark:text-amber-200/80">
+                  These guests were marked Pending in the Guest List.
+                </p>
+              </div>
+              <Badge className="bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-800/50">
+                {pendingHotelGuests.length}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {pendingHotelGuests.map((guest) => (
+                <span
+                  key={guest.id}
+                  className="inline-flex max-w-full items-center rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/30 dark:text-amber-200"
+                  title={guest.email ?? guest.name}
+                >
+                  <span className="truncate">{guest.name}</span>
+                </span>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Cards */}
@@ -476,6 +564,7 @@ export default function Hotels() {
             <HotelCard
               key={h.id}
               hotel={h}
+              bookedGuests={hotelGuests.filter((guest) => guest.bookedHotelBlockId === h.id)}
               onEdit={() => setEditHotel(h)}
               onDelete={() => deleteMutation.mutate(h.id)}
             />
