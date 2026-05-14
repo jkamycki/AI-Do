@@ -20,8 +20,8 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
-  RotateCcw,
   Save,
+  Undo2,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type {
@@ -40,6 +40,16 @@ interface InvitationCustomizationProps {
   profileId?: number;
 }
 
+type InvitationDesignKey = "saveTheDate" | "rsvpInvitation";
+type InvitationDesignFields = {
+  backgroundColor: string;
+  accentColor: string;
+  fontFamily: string;
+  fontSize: string;
+  fontColor: string;
+};
+type CustomDesignState = Record<InvitationDesignKey, InvitationDesignFields>;
+
 export default function InvitationCustomizationPage({
   profileId: propProfileId,
 }: InvitationCustomizationProps = {}) {
@@ -57,10 +67,7 @@ export default function InvitationCustomizationPage({
       : activeWorkspace?.profileId);
   const [previewTab, setPreviewTab] = useState<PreviewTab>("saveTheDate");
   const [designMode, setDesignMode] = useState<"ai" | "custom">("ai");
-  const [customDesign, setCustomDesign] = useState<{
-    saveTheDate: { backgroundColor: string; accentColor: string; fontFamily: string; fontSize: string; fontColor: string };
-    rsvpInvitation: { backgroundColor: string; accentColor: string; fontFamily: string; fontSize: string; fontColor: string };
-  }>({
+  const [customDesign, setCustomDesign] = useState<CustomDesignState>({
     saveTheDate: { backgroundColor: "#FFFFFF", accentColor: "#D4A017", fontFamily: "Playfair Display", fontSize: "16", fontColor: "#222222" },
     rsvpInvitation: { backgroundColor: "#FFFFFF", accentColor: "#D4A017", fontFamily: "Playfair Display", fontSize: "16", fontColor: "#222222" },
   });
@@ -105,6 +112,14 @@ export default function InvitationCustomizationPage({
   const skipNextAutoSave = useRef(true);
   const hasInitialized = useRef(false);
   const tokenRef = useRef<string | null>(null);
+  const customDesignUndoRef = useRef<Record<InvitationDesignKey, InvitationDesignFields[]>>({
+    saveTheDate: [],
+    rsvpInvitation: [],
+  });
+  const [customDesignUndoCounts, setCustomDesignUndoCounts] = useState<Record<InvitationDesignKey, number>>({
+    saveTheDate: 0,
+    rsvpInvitation: 0,
+  });
   const latestValuesRef = useRef({
     profileId,
     primaryColor,
@@ -124,6 +139,75 @@ export default function InvitationCustomizationPage({
   const digitalInvitationBlobUrlRef = useRef<string | null>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const [previewContainerWidth, setPreviewContainerWidth] = useState(0);
+
+  const resetCustomDesignUndo = useCallback(() => {
+    customDesignUndoRef.current = { saveTheDate: [], rsvpInvitation: [] };
+    setCustomDesignUndoCounts({ saveTheDate: 0, rsvpInvitation: 0 });
+  }, []);
+
+  const designsEqual = useCallback((a: InvitationDesignFields, b: InvitationDesignFields) => {
+    return (
+      a.backgroundColor === b.backgroundColor &&
+      a.accentColor === b.accentColor &&
+      a.fontFamily === b.fontFamily &&
+      a.fontSize === b.fontSize &&
+      a.fontColor === b.fontColor
+    );
+  }, []);
+
+  const pushCustomDesignUndo = useCallback(
+    (key: InvitationDesignKey, fields: InvitationDesignFields) => {
+      const stack = customDesignUndoRef.current[key];
+      const last = stack[stack.length - 1];
+      if (last && designsEqual(last, fields)) return;
+      customDesignUndoRef.current[key] = [...stack.slice(-24), { ...fields }];
+      setCustomDesignUndoCounts((prev) => ({
+        ...prev,
+        [key]: customDesignUndoRef.current[key].length,
+      }));
+    },
+    [designsEqual],
+  );
+
+  const setCustomDesignForKey = useCallback(
+    (key: InvitationDesignKey, nextFields: InvitationDesignFields) => {
+      setCustomDesign((prev) => {
+        if (designsEqual(prev[key], nextFields)) return prev;
+        pushCustomDesignUndo(key, prev[key]);
+        return { ...prev, [key]: nextFields };
+      });
+    },
+    [designsEqual, pushCustomDesignUndo],
+  );
+
+  const updateCustomDesignField = useCallback(
+    (key: InvitationDesignKey, field: keyof InvitationDesignFields, value: string) => {
+      setCustomDesign((prev) => {
+        if (prev[key][field] === value) return prev;
+        pushCustomDesignUndo(key, prev[key]);
+        return {
+          ...prev,
+          [key]: { ...prev[key], [field]: value },
+        };
+      });
+    },
+    [pushCustomDesignUndo],
+  );
+
+  const undoCustomDesign = useCallback(
+    (key: InvitationDesignKey) => {
+      const stack = customDesignUndoRef.current[key];
+      const previous = stack[stack.length - 1];
+      if (!previous) return;
+      customDesignUndoRef.current[key] = stack.slice(0, -1);
+      setCustomDesignUndoCounts((prev) => ({
+        ...prev,
+        [key]: customDesignUndoRef.current[key].length,
+      }));
+      setCustomDesign((prev) => ({ ...prev, [key]: previous }));
+    },
+    [],
+  );
 
   useEffect(() => {
     const el = previewContainerRef.current;
@@ -342,6 +426,7 @@ export default function InvitationCustomizationPage({
           fontColor: customization.digitalInvitationFontColor ?? "#222222",
         },
       });
+      resetCustomDesignUndo();
 
       if (customization.saveTheDatePhotoPosition) {
         setSaveTheDatePhotoPosition(customization.saveTheDatePhotoPosition);
@@ -370,7 +455,7 @@ export default function InvitationCustomizationPage({
         }
       }
     }
-  }, [customization]);
+  }, [customization, resetCustomDesignUndo]);
 
   // ── Load messages from wedding profile ────────────────────────────────────
   useEffect(() => {
@@ -622,10 +707,7 @@ export default function InvitationCustomizationPage({
   const buildPayload = (
     stdPhotoUrl = saveTheDatePhotoUrl,
     digPhotoUrl = digitalInvitationPhotoUrl,
-    customDesignOverride?: {
-      saveTheDate: { backgroundColor: string; accentColor: string; fontFamily: string; fontSize: string; fontColor: string };
-      rsvpInvitation: { backgroundColor: string; accentColor: string; fontFamily: string; fontSize: string; fontColor: string };
-    },
+    customDesignOverride?: CustomDesignState,
   ) => {
     const d = customDesignOverride ?? customDesign;
     const stdCustom = designMode === "custom";
@@ -1016,15 +1098,12 @@ export default function InvitationCustomizationPage({
           {/* Custom Design controls — only render when this invitation's mode is "custom".
               These values are NOT applied to the preview/email/PDF yet. */}
           {(() => {
-            const activeKey: "saveTheDate" | "rsvpInvitation" =
+            const activeKey: InvitationDesignKey =
               previewTab === "saveTheDate" ? "saveTheDate" : "rsvpInvitation";
             if (designMode !== "custom") return null;
             const fields = customDesign[activeKey];
             const updateField = (field: keyof typeof fields, value: string) => {
-              setCustomDesign((prev) => ({
-                ...prev,
-                [activeKey]: { ...prev[activeKey], [field]: value },
-              }));
+              updateCustomDesignField(activeKey, field, value);
             };
             const isThemeActive = (themeId: string) => {
               const t = WEBSITE_THEMES.find((x) => x.id === themeId);
@@ -1039,7 +1118,21 @@ export default function InvitationCustomizationPage({
             return (
               <Card>
                 <CardContent className="p-4 space-y-3">
-                  <p className="text-sm font-medium">Custom Design</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium">Custom Design</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1.5 px-2.5 text-xs"
+                      onClick={() => undoCustomDesign(activeKey)}
+                      disabled={customDesignUndoCounts[activeKey] === 0}
+                      title={`Undo last ${isSTD ? "Save the Date" : "RSVP Invitation"} custom design change`}
+                    >
+                      <Undo2 className="h-3.5 w-3.5" />
+                      Undo
+                    </Button>
+                  </div>
 
                   {/* Theme presets — same swatches as the website editor.
                       Clicking one populates the colour + font fields below
@@ -1067,7 +1160,7 @@ export default function InvitationCustomizationPage({
                                   fontFamily: theme.font,
                                 },
                               };
-                              setCustomDesign(newCustomDesign);
+                              setCustomDesignForKey(activeKey, newCustomDesign[activeKey]);
                               skipNextAutoSave.current = true;
                               const payload = buildPayload(undefined, undefined, newCustomDesign);
                               // Update the query cache optimistically so the theme
