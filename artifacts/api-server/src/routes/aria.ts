@@ -824,11 +824,14 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       // user: "add Bloom & Co Florists" → tokens "bloom" and "co" appear,
       // hallucinations like "Lowdown Blow DJ" never do.
       if (userBlob && userBlob.length > 0) {
+        const normalizedUserBlob = userBlob.replace(/[^a-z0-9]+/g, "");
+        const compactVendorName = lowerName.replace(/[^a-z0-9]+/g, "");
         const nameTokens = lowerName
           .split(/[^a-z0-9]+/)
           .filter((t) => t.length >= 3 && !VENDOR_CATEGORY_WORDS.has(t));
-        const anyMatch = nameTokens.some((t) => userBlob.includes(t));
-        if (nameTokens.length > 0 && !anyMatch) {
+        const anyTokenMatch = nameTokens.some((t) => userBlob.includes(t));
+        const compactMatch = compactVendorName.length >= 3 && normalizedUserBlob.includes(compactVendorName);
+        if (nameTokens.length > 0 && !anyTokenMatch && !compactMatch) {
           return {
             ok: false,
             error: `"${vendorName}" doesn't appear in the user's messages — do not invent vendor names. Ask the user: "What's the vendor's business name?" and wait for their reply before calling add_vendor again.`,
@@ -866,6 +869,20 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       const depositAmt = userMentionedMoney ? Number(args.depositAmount ?? 0) : 0;
       const totalCostAmt = userMentionedMoney ? Number(args.totalCost ?? 0) : 0;
       const contractSignedArg = userMentionedContract && args.contractSigned === true;
+
+      const normalizedVendorName = lowerName.replace(/[^a-z0-9]+/g, "");
+      const existingVendors = await db
+        .select({ id: vendors.id, name: vendors.name })
+        .from(vendors)
+        .where(eq(vendors.profileId, profile.id));
+      const duplicate = existingVendors.find((v) => v.name.toLowerCase().replace(/[^a-z0-9]+/g, "") === normalizedVendorName);
+      if (duplicate) {
+        return {
+          ok: false,
+          error: `Vendor "${duplicate.name}" already exists. Do not add a duplicate entry — update the existing vendor instead.`,
+          doNotRetry: true,
+        };
+      }
 
       const [created] = await db.insert(vendors).values({
         profileId: profile.id,
