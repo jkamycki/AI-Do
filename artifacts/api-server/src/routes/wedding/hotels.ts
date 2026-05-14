@@ -93,6 +93,10 @@ function fmt(h: typeof hotelBlocks.$inferSelect) {
   };
 }
 
+function withSyncedRoomsBooked(h: typeof hotelBlocks.$inferSelect, bookedCount: number) {
+  return fmt({ ...h, roomsBooked: bookedCount });
+}
+
 router.post("/hotels/calculate-distance", requireAuth, async (req, res) => {
   try {
     const callerRole = await resolveCallerRole(req);
@@ -183,12 +187,34 @@ router.get("/hotels", requireAuth, async (req, res) => {
       return;
     }
     const userId = await resolveScopeUserId(req);
+    const [profile] = await db
+      .select({ id: weddingProfiles.id })
+      .from(weddingProfiles)
+      .where(eq(weddingProfiles.userId, userId))
+      .limit(1);
+
     const rows = await db
       .select()
       .from(hotelBlocks)
       .where(eq(hotelBlocks.userId, userId))
       .orderBy(hotelBlocks.createdAt);
-    res.json(rows.map(fmt));
+
+    if (!profile) {
+      res.json(rows.map(fmt));
+      return;
+    }
+
+    const assignedGuests = await db
+      .select({ bookedHotelBlockId: guests.bookedHotelBlockId })
+      .from(guests)
+      .where(eq(guests.profileId, profile.id));
+    const bookedCounts = new Map<number, number>();
+    for (const guest of assignedGuests) {
+      if (!guest.bookedHotelBlockId) continue;
+      bookedCounts.set(guest.bookedHotelBlockId, (bookedCounts.get(guest.bookedHotelBlockId) ?? 0) + 1);
+    }
+
+    res.json(rows.map((row) => withSyncedRoomsBooked(row, bookedCounts.get(row.id) ?? 0)));
   } catch (err) {
     req.log.error(err, "Failed to list hotel blocks");
     res.status(500).json({ error: "Internal server error" });

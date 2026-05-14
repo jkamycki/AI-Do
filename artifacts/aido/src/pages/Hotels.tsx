@@ -191,10 +191,6 @@ function HotelForm({
           <Label>Rooms Reserved</Label>
           <Input type="number" min="0" placeholder="20" value={form.roomsReserved ?? ""} onChange={e => set("roomsReserved", e.target.value ? Number(e.target.value) : null)} />
         </div>
-        <div className="space-y-1.5">
-          <Label>Rooms Booked So Far</Label>
-          <Input type="number" min="0" placeholder="0" value={form.roomsBooked ?? 0} onChange={e => set("roomsBooked", Number(e.target.value))} />
-        </div>
         <div className="space-y-1.5 sm:col-span-2">
           <div className="flex items-center justify-between">
             <Label>Distance from Venue</Label>

@@ -522,7 +522,7 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"delete_party_member", description:"Delete party member. Pass memberId or matchName.", parameters:{ type:"object", properties:{ memberId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_party", description:"List wedding party members.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"add_hotel", description:"Add hotel block. Required: hotelName.", parameters:{ type:"object", properties:{ hotelName:{type:"string"}, address:{type:"string"}, city:{type:"string"}, state:{type:"string"}, zip:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, bookingLink:{type:"string"}, discountCode:{type:"string"}, groupName:{type:"string"}, cutoffDate:{type:"string"}, roomsReserved:{type:"number"}, pricePerNight:{type:"number"}, distanceFromVenue:{type:"string"}, notes:{type:"string"} }, required:["hotelName"] } } },
-  { type:"function" as const, function:{ name:"update_hotel", description:"Update hotel block. Pass hotelId or matchName.", parameters:{ type:"object", properties:{ hotelId:{type:"number"}, matchName:{type:"string"}, hotelName:{type:"string"}, address:{type:"string"}, city:{type:"string"}, state:{type:"string"}, zip:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, bookingLink:{type:"string"}, discountCode:{type:"string"}, groupName:{type:"string"}, cutoffDate:{type:"string"}, roomsReserved:{type:"number"}, roomsBooked:{type:"number"}, pricePerNight:{type:"number"}, distanceFromVenue:{type:"string"}, notes:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"update_hotel", description:"Update hotel block. Pass hotelId or matchName. Booked room counts are synced from guests assigned in the Guest List, not edited here.", parameters:{ type:"object", properties:{ hotelId:{type:"number"}, matchName:{type:"string"}, hotelName:{type:"string"}, address:{type:"string"}, city:{type:"string"}, state:{type:"string"}, zip:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, bookingLink:{type:"string"}, discountCode:{type:"string"}, groupName:{type:"string"}, cutoffDate:{type:"string"}, roomsReserved:{type:"number"}, pricePerNight:{type:"number"}, distanceFromVenue:{type:"string"}, notes:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_hotel", description:"Delete hotel block. Pass hotelId or matchName.", parameters:{ type:"object", properties:{ hotelId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_hotels", description:"List all hotel blocks.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"add_budget_item", description:"Add budget line item. Required: category, vendor, estimatedCost.", parameters:{ type:"object", properties:{ category:{type:"string"}, vendor:{type:"string"}, estimatedCost:{type:"number"}, actualCost:{type:"number"}, notes:{type:"string"} }, required:["category","vendor","estimatedCost"] } } },
@@ -1347,7 +1347,6 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         if (args[f] !== undefined) (updates as Record<string, unknown>)[f] = args[f] === null || args[f] === "" ? null : String(args[f]);
       }
       if (args.roomsReserved !== undefined) updates.roomsReserved = Number(args.roomsReserved);
-      if (args.roomsBooked !== undefined) updates.roomsBooked = Number(args.roomsBooked);
       if (args.pricePerNight !== undefined) updates.pricePerNight = String(Number(args.pricePerNight));
       if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
       const [updated] = await db.update(hotelBlocks).set(updates)
@@ -1357,9 +1356,20 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
 
     if (name === "list_hotels") {
       const userId = await resolveScopeUserId(req);
+      const profile = await resolveProfile(req);
       const rows = await db.select({ id: hotelBlocks.id, hotelName: hotelBlocks.hotelName, city: hotelBlocks.city, pricePerNight: hotelBlocks.pricePerNight, roomsReserved: hotelBlocks.roomsReserved, roomsBooked: hotelBlocks.roomsBooked })
         .from(hotelBlocks).where(eq(hotelBlocks.userId, userId));
-      return { ok: true, data: { hotels: rows } };
+      if (!profile) return { ok: true, data: { hotels: rows } };
+      const assignedGuests = await db
+        .select({ bookedHotelBlockId: guests.bookedHotelBlockId })
+        .from(guests)
+        .where(eq(guests.profileId, profile.id));
+      const bookedCounts = new Map<number, number>();
+      for (const guest of assignedGuests) {
+        if (!guest.bookedHotelBlockId) continue;
+        bookedCounts.set(guest.bookedHotelBlockId, (bookedCounts.get(guest.bookedHotelBlockId) ?? 0) + 1);
+      }
+      return { ok: true, data: { hotels: rows.map((hotel) => ({ ...hotel, roomsBooked: bookedCounts.get(hotel.id) ?? 0 })) } };
     }
 
     // ===== BUDGET ITEMS =====

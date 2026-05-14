@@ -812,7 +812,8 @@ function GuestForm({
   );
 }
 
-function exportCSV(guestList: Guest[]) {
+function exportCSV(guestList: Guest[], hotels: HotelOption[] = []) {
+  const hotelNames = new Map(hotels.map((hotel) => [hotel.id, hotel.hotelName || "Unnamed Hotel"]));
   const headers = [
     "Name",
     "Email",
@@ -840,7 +841,9 @@ function exportCSV(guestList: Guest[]) {
     g.plusOne ? "Yes" : "No",
     g.plusOneName ?? "",
     g.tableAssignment ?? "",
-    (g as any).bookedHotelBlockId ? String((g as any).bookedHotelBlockId) : (g as any).needsHotel ? "Pending" : "N/A",
+    (g as any).bookedHotelBlockId
+      ? hotelNames.get((g as any).bookedHotelBlockId) ?? "Booked"
+      : (g as any).needsHotel ? "Pending" : "N/A",
     (g as any).address ?? "",
     (g as any).aptUnit ?? "",
     (g as any).guestCity ?? "",
@@ -1954,7 +1957,7 @@ export default function Guests() {
         </div>
         <div className="flex flex-wrap gap-2">
           {allGuests.length > 0 && (
-            <Button variant="outline" className="whitespace-nowrap" onClick={() => exportCSV(allGuests)}>
+            <Button variant="outline" className="whitespace-nowrap" onClick={() => exportCSV(allGuests, hotels)}>
               <Download className="h-4 w-4 mr-2" /> {t("guests.export_csv")}
             </Button>
           )}

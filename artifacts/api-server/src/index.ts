@@ -74,7 +74,9 @@ runMigrations()
 
       logger.info({ port }, "Server listening");
 
-      void disableClerkBreachedPasswordCheck();
+      if (process.env["CLERK_DISABLE_BREACHED_PASSWORD_CHECK"] === "true") {
+        void disableClerkBreachedPasswordCheck();
+      }
       scheduleBackups();
 
       // SSE connections stay open for the duration of an AI response.

@@ -42,6 +42,15 @@ const guestSearchLimiter = rateLimit({
   message: { error: "Too many requests. Please slow down." },
 });
 
+const websiteUnlockLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { error: "Too many password attempts. Please wait a minute and try again." },
+});
+
 const router = Router();
 
 // ---------- helpers ----------
@@ -410,7 +419,7 @@ router.get("/website/public/:slug", async (req, res) => {
 // Browser-friendly unlock endpoint for password-protected sites. The public
 // page can submit the guest-entered password in the JSON body instead of using
 // a custom request header for the initial site load.
-router.post("/website/public/:slug/unlock", async (req, res) => {
+router.post("/website/public/:slug/unlock", websiteUnlockLimiter, async (req, res) => {
   try {
     const slug = String(req.params.slug ?? "").toLowerCase();
     if (!slug) return res.status(400).json({ error: "Slug required" });
