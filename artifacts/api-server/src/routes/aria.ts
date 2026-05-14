@@ -93,8 +93,8 @@ function isInfoQuestion(text: string): boolean {
 // inside Groq's 6,000 TPM free-tier budget.
 const TOOL_GROUPS: Record<string, string[]> = {
   vendor: ["add_vendor","update_vendor","delete_vendor","list_vendors","add_vendor_payment","update_vendor_payment","mark_vendor_payment_paid","delete_vendor_payment"],
-  checklist: ["add_checklist_item","update_checklist_item","toggle_checklist_item","delete_checklist_item","list_checklist"],
-  timeline: ["add_timeline_event","update_timeline_event","delete_timeline_event","list_timeline"],
+  checklist: ["generate_checklist","add_checklist_item","update_checklist_item","toggle_checklist_item","delete_checklist_item","list_checklist"],
+  timeline: ["generate_timeline","add_timeline_event","update_timeline_event","delete_timeline_event","list_timeline"],
   guest: ["add_guest","update_guest","delete_guest","list_guests"],
   party: ["add_party_member","update_party_member","delete_party_member","list_party"],
   hotel: ["add_hotel","update_hotel","delete_hotel","list_hotels"],
@@ -333,8 +333,8 @@ function vendorDedupeKey(args: Record<string, unknown>): string {
 const ACTION_TOOLS = new Set([
   "add_vendor", "update_vendor", "delete_vendor",
   "add_vendor_payment", "update_vendor_payment", "mark_vendor_payment_paid", "delete_vendor_payment",
-  "add_checklist_item", "update_checklist_item", "toggle_checklist_item", "delete_checklist_item",
-  "add_timeline_event", "update_timeline_event", "delete_timeline_event",
+  "generate_checklist", "add_checklist_item", "update_checklist_item", "toggle_checklist_item", "delete_checklist_item",
+  "generate_timeline", "add_timeline_event", "update_timeline_event", "delete_timeline_event",
   "add_guest", "update_guest", "delete_guest",
   "add_party_member", "update_party_member", "delete_party_member",
   "add_hotel", "update_hotel", "delete_hotel",
@@ -391,6 +391,10 @@ function buildConfirmation(actions: ActionRecord[]): string {
       case "delete_vendor_payment":
         lines.push(`✅ Payment milestone removed`);
         break;
+      case "generate_checklist":
+        lines.push(`Checklist created with **${d.count ?? 0} tasks**`);
+        followUp = `I used your wedding profile and date to build it. Want me to add, remove, or reprioritize anything?`;
+        break;
       case "add_checklist_item":
         lines.push(`✅ Checklist task added: **${d.task ?? ""}**`);
         followUp = `Want me to add more tasks for the same timeframe?`;
@@ -403,6 +407,10 @@ function buildConfirmation(actions: ActionRecord[]): string {
         break;
       case "delete_checklist_item":
         lines.push(`✅ Checklist task removed`);
+        break;
+      case "generate_timeline":
+        lines.push(`Timeline created with **${d.count ?? 0} events**`);
+        followUp = `Want me to adjust the ceremony, reception, photo, or vendor timing?`;
         break;
       case "add_timeline_event":
         lines.push(`✅ Timeline event added: **${d.title ?? ""}**`);
@@ -504,11 +512,13 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"update_vendor_payment", description:"Update payment milestone. Pass paymentId or vendorName+matchLabel.", parameters:{ type:"object", properties:{ paymentId:{type:"number"}, vendorName:{type:"string"}, matchLabel:{type:"string"}, label:{type:"string"}, amount:{type:"number"}, dueDate:{type:"string"}, isPaid:{type:"boolean"} } } } },
   { type:"function" as const, function:{ name:"mark_vendor_payment_paid", description:"Mark payment paid. Pass paymentId or vendorName+matchLabel.", parameters:{ type:"object", properties:{ paymentId:{type:"number"}, vendorName:{type:"string"}, matchLabel:{type:"string"}, isPaid:{type:"boolean"} } } } },
   { type:"function" as const, function:{ name:"delete_vendor_payment", description:"Delete payment milestone. Pass paymentId or vendorName+matchLabel.", parameters:{ type:"object", properties:{ paymentId:{type:"number"}, vendorName:{type:"string"}, matchLabel:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"generate_checklist", description:"Generate or rebuild the user's full wedding checklist from their wedding profile, wedding date, wedding vibe, and guest count. Use when the user asks to create, generate, build, reset, or make a checklist, to-do list, planning tasks, or wedding task plan.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"add_checklist_item", description:"Add checklist task. Required: task, month.", parameters:{ type:"object", properties:{ task:{type:"string"}, description:{type:"string"}, month:{type:"string"} }, required:["task","month"] } } },
   { type:"function" as const, function:{ name:"update_checklist_item", description:"Update checklist item. Pass itemId or matchTask.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchTask:{type:"string"}, task:{type:"string"}, description:{type:"string"}, month:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"toggle_checklist_item", description:"Toggle checklist item complete/incomplete. Pass itemId or matchTask.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchTask:{type:"string"}, isCompleted:{type:"boolean"} } } } },
   { type:"function" as const, function:{ name:"delete_checklist_item", description:"Delete checklist item. Pass itemId or matchTask.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchTask:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_checklist", description:"List all checklist items.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"generate_timeline", description:"Generate or rebuild the user's full wedding day timeline from their wedding profile ceremony time, reception time, venue, location, guest count, and optional dayVision. Use when the user asks to create, generate, build, make, or reset a timeline, day-of schedule, wedding schedule, or run sheet.", parameters:{ type:"object", properties:{ dayVision:{type:"string", description:"Optional details the user gave about how they want the day to flow."} } } } },
   { type:"function" as const, function:{ name:"add_timeline_event", description:"Add timeline event. Required: time, title, description, category.", parameters:{ type:"object", properties:{ time:{type:"string"}, title:{type:"string"}, description:{type:"string"}, category:{type:"string",enum:["preparation","ceremony","cocktail","reception","dancing","other"]} }, required:["time","title","description","category"] } } },
   { type:"function" as const, function:{ name:"update_timeline_event", description:"Update timeline event. Pass matchTitle or matchTime.", parameters:{ type:"object", properties:{ matchTitle:{type:"string"}, matchTime:{type:"string"}, time:{type:"string"}, title:{type:"string"}, description:{type:"string"}, category:{type:"string",enum:["preparation","ceremony","cocktail","reception","dancing","other"]} } } } },
   { type:"function" as const, function:{ name:"delete_timeline_event", description:"Delete timeline event. Pass matchTitle or matchTime.", parameters:{ type:"object", properties:{ matchTitle:{type:"string"}, matchTime:{type:"string"} } } } },
@@ -846,6 +856,126 @@ async function findExpense(profileId: number, idArg: unknown, nameArg: unknown):
   return { ok: false, error: "Either expenseId or matchName is required." };
 }
 
+type AriaTimelineBlock = {
+  id: string;
+  startTime: string;
+  endTime: string;
+  title: string;
+  description: string;
+  category: string;
+  location: string;
+  notes: string;
+};
+
+function ariaParseTimeToMinutes(value: string | null | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const match = String(value).match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return fallback;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return fallback;
+  return Math.max(0, Math.min(23 * 60 + 59, hours * 60 + minutes));
+}
+
+function ariaMinutesToTime(total: number): string {
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, Math.round(total)));
+  const hours = Math.floor(clamped / 60);
+  const minutes = clamped % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function ariaTimelineBlock(
+  id: number,
+  start: number,
+  end: number,
+  title: string,
+  description: string,
+  category: string,
+  location: string,
+  notes = "",
+): AriaTimelineBlock {
+  return {
+    id: `block-${id}`,
+    startTime: ariaMinutesToTime(start),
+    endTime: ariaMinutesToTime(Math.max(start + 15, end)),
+    title,
+    description,
+    category,
+    location,
+    notes,
+  };
+}
+
+function buildAriaTimeline(profile: typeof weddingProfiles.$inferSelect): AriaTimelineBlock[] {
+  const ceremony = ariaParseTimeToMinutes(profile.ceremonyTime, 16 * 60);
+  const reception = ariaParseTimeToMinutes(profile.receptionTime, ceremony + 2 * 60);
+  const venue = profile.venue || "Wedding venue";
+  const ceremonyLocation = profile.ceremonyAtVenue === false
+    ? profile.ceremonyVenueName || profile.ceremonyAddress || "Ceremony location"
+    : venue;
+
+  return [
+    ariaTimelineBlock(1, ceremony - 8 * 60, ceremony - 6 * 60, "Hair, makeup, and getting ready", "Wedding party begins hair, makeup, wardrobe prep, and detail photos.", "preparation", venue),
+    ariaTimelineBlock(2, ceremony - 6 * 60, ceremony - 5 * 60, "Vendor arrivals and setup", "Photo/video team, florist, music, catering, and venue team begin setup.", "vendors", venue),
+    ariaTimelineBlock(3, ceremony - 5 * 60, ceremony - 4 * 60, "Couple portraits and first look", "Optional first look, couple portraits, and immediate family photos.", "photos", venue),
+    ariaTimelineBlock(4, ceremony - 4 * 60, ceremony - 3 * 60, "Wedding party photos", "Capture wedding party portraits and any pre-ceremony group photos.", "photos", venue),
+    ariaTimelineBlock(5, ceremony - 90, ceremony - 45, "Final ceremony prep", "Hideaway time, ceremony detail checks, music checks, and guest arrival prep.", "preparation", ceremonyLocation),
+    ariaTimelineBlock(6, ceremony - 30, ceremony, "Guest arrival", "Guests arrive, find seats, and prelude music begins.", "ceremony", ceremonyLocation),
+    ariaTimelineBlock(7, ceremony, ceremony + 45, "Ceremony", "Processional, vows, rings, pronouncement, and recessional.", "ceremony", ceremonyLocation),
+    ariaTimelineBlock(8, ceremony + 45, reception, "Cocktail hour and family photos", "Guests enjoy cocktail hour while family and newlywed portraits are completed.", "cocktail", venue),
+    ariaTimelineBlock(9, reception, reception + 30, "Reception entrance and welcome", "Grand entrance, welcome remarks, and transition into dinner service.", "reception", venue),
+    ariaTimelineBlock(10, reception + 30, reception + 90, "Dinner service", "Dinner is served with space for table visits and guest greetings.", "reception", venue),
+    ariaTimelineBlock(11, reception + 90, reception + 135, "Toasts and special dances", "Toasts, first dance, parent dances, and formal reception moments.", "reception", venue),
+    ariaTimelineBlock(12, reception + 135, reception + 240, "Open dancing and celebration", "Dance floor opens, cake cutting happens as scheduled, and the party continues.", "dancing", venue),
+    ariaTimelineBlock(13, reception + 240, reception + 270, "Final song and send-off", "Final song, private last dance or send-off, and guest departure.", "dancing", venue),
+  ];
+}
+
+function monthsUntilWedding(weddingDate: string | null | undefined): number {
+  const wedding = weddingDate ? new Date(weddingDate) : null;
+  if (!wedding || Number.isNaN(wedding.getTime())) return 12;
+  const monthMs = 1000 * 60 * 60 * 24 * 30;
+  return Math.max(0, Math.ceil((wedding.getTime() - Date.now()) / monthMs));
+}
+
+function buildAriaChecklist(profile: typeof weddingProfiles.$inferSelect): Array<{ month: string; task: string; description: string }> {
+  const months = monthsUntilWedding(profile.weddingDate);
+  const vibe = profile.weddingVibe || "wedding";
+  const guestCount = Number(profile.guestCount ?? 0);
+  const items: Array<{ minMonth: number; month: string; task: string; description: string }> = [
+    { minMonth: 10, month: "12+ Months Before", task: "Set your wedding budget", description: "Confirm priorities, contributors, and comfort range." },
+    { minMonth: 10, month: "12+ Months Before", task: "Draft the guest list", description: `Start with the must-invite list${guestCount ? ` near ${guestCount} guests` : ""}.` },
+    { minMonth: 10, month: "12+ Months Before", task: "Book the venue", description: "Secure the date, location, and contract terms." },
+    { minMonth: 10, month: "12+ Months Before", task: "Hire priority vendors", description: "Book planner, photographer, catering, music, and floral leads." },
+    { minMonth: 7, month: "9-12 Months Before", task: "Choose the wedding style", description: `Translate the ${vibe} vision into colors and design notes.` },
+    { minMonth: 7, month: "9-12 Months Before", task: "Start wedding website details", description: "Add date, venue, travel, RSVP, and registry basics." },
+    { minMonth: 7, month: "9-12 Months Before", task: "Plan hotel blocks", description: "Reserve rooms and collect booking links for guests." },
+    { minMonth: 4, month: "6-9 Months Before", task: "Order attire", description: "Schedule fittings and confirm accessories." },
+    { minMonth: 4, month: "6-9 Months Before", task: "Finalize catering direction", description: "Pick menu style, tasting date, and dietary process." },
+    { minMonth: 4, month: "6-9 Months Before", task: "Send save the dates", description: "Send once venue, date, and guest list are stable." },
+    { minMonth: 2, month: "3-6 Months Before", task: "Choose ceremony details", description: "Confirm readings, music, processional, and officiant notes." },
+    { minMonth: 2, month: "3-6 Months Before", task: "Order invitations", description: "Proof names, addresses, RSVP date, and inserts." },
+    { minMonth: 2, month: "3-6 Months Before", task: "Plan rentals and decor", description: "Confirm linens, tabletop, signage, lighting, and layout." },
+    { minMonth: 1, month: "1-3 Months Before", task: "Send invitations", description: "Mail or email invites with RSVP deadline." },
+    { minMonth: 1, month: "1-3 Months Before", task: "Create seating plan", description: "Group guests by relationships, needs, and RSVPs." },
+    { minMonth: 1, month: "1-3 Months Before", task: "Confirm vendor balances", description: "Review due dates, contracts, and payment status." },
+    { minMonth: 0, month: "1 Month Before", task: "Finalize RSVP count", description: "Follow up with pending guests and update catering." },
+    { minMonth: 0, month: "1 Month Before", task: "Build final timeline", description: "Share ceremony, reception, photo, and vendor timing." },
+    { minMonth: 0, month: "1 Week Before", task: "Confirm vendor arrivals", description: "Send final timeline, addresses, and contact list." },
+    { minMonth: 0, month: "1 Week Before", task: "Pack wedding day essentials", description: "Prepare attire, rings, documents, tips, and emergency kit." },
+    { minMonth: 0, month: "Day Before", task: "Rehearse ceremony", description: "Walk through lineup, cues, music, and timing." },
+    { minMonth: 0, month: "Wedding Day", task: "Enjoy the celebration", description: "Let the timeline guide the day and be present." },
+  ];
+
+  return items
+    .filter((item) => item.minMonth === 0 || months >= item.minMonth)
+    .map(({ minMonth: _minMonth, ...item }) => item);
+}
+
+function timelineEventTime(event: Record<string, unknown>): string {
+  return String(event.time ?? event.startTime ?? "").toLowerCase();
+}
+
 async function executeTool(name: string, args: Record<string, unknown>, req: Request, ctx?: { recentUserText?: string }): Promise<ActionResult> {
   // Lower-cased blob of the user's most recent messages so individual tools
   // can verify the user actually mentioned the things the model is trying
@@ -1039,6 +1169,24 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       return { ok: true, data: { id: item.id, task: item.task, month: item.month } };
     }
 
+    if (name === "generate_checklist") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "Please complete your wedding profile before generating a checklist." };
+      const tasks = buildAriaChecklist(profile);
+      const rows = tasks.map((task) => ({
+        profileId: profile.id,
+        month: task.month,
+        task: task.task,
+        description: task.description,
+      }));
+      await db.transaction(async (tx) => {
+        await tx.delete(checklistItems).where(eq(checklistItems.profileId, profile.id));
+        if (rows.length > 0) await tx.insert(checklistItems).values(rows);
+      });
+      logActivity(profile.id, req.userId!, `Aria generated wedding checklist (${rows.length} tasks)`, "checklist", { taskCount: rows.length });
+      return { ok: true, data: { count: rows.length } };
+    }
+
     if (name === "add_timeline_event") {
       const profile = await resolveProfile(req);
       if (!profile) return { ok: false, error: "Please complete your wedding profile before adding timeline events." };
@@ -1058,6 +1206,18 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         await db.insert(timelines).values({ profileId: profile.id, events: [event] });
         return { ok: true, data: { added: event, totalEvents: 1 } };
       }
+    }
+
+    if (name === "generate_timeline") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "Please complete your wedding profile before generating a timeline." };
+      const events = buildAriaTimeline(profile);
+      const [created] = await db.transaction(async (tx) => {
+        await tx.delete(timelines).where(eq(timelines.profileId, profile.id));
+        return tx.insert(timelines).values({ profileId: profile.id, events }).returning();
+      });
+      logActivity(profile.id, req.userId!, `Aria generated day-of timeline (${events.length} events)`, "timeline", { eventCount: events.length, timelineId: created.id });
+      return { ok: true, data: { count: events.length, id: created.id } };
     }
 
     // ===== VENDORS update/delete =====
@@ -1177,11 +1337,11 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       const indices = events
         .map((e, i) => ({ e, i }))
         .filter(({ e }) =>
-          (matchTitle && e.title.toLowerCase().includes(matchTitle)) ||
-          (matchTime && e.time.toLowerCase() === matchTime),
+          (matchTitle && String(e.title ?? "").toLowerCase().includes(matchTitle)) ||
+          (matchTime && timelineEventTime(e as Record<string, unknown>) === matchTime),
         );
       if (indices.length === 0) return { ok: false, error: "No matching event found." };
-      if (indices.length > 1) return { ok: false, error: `Multiple events match: ${indices.map(x => `"${x.e.title}" @ ${x.e.time}`).join(", ")}. Be more specific.` };
+      if (indices.length > 1) return { ok: false, error: `Multiple events match: ${indices.map(x => `"${String(x.e.title ?? "Untitled")}" @ ${timelineEventTime(x.e as Record<string, unknown>) || "no time"}`).join(", ")}. Be more specific.` };
       const idx = indices[0].i;
       if (name === "delete_timeline_event") {
         const removed = events[idx];
@@ -1190,7 +1350,10 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         return { ok: true, data: { deleted: removed, totalEvents: events.length } };
       }
       const updated = { ...events[idx] };
-      if (args.time !== undefined) updated.time = String(args.time);
+      if (args.time !== undefined) {
+        if ("startTime" in updated) updated.startTime = String(args.time);
+        else updated.time = String(args.time);
+      }
       if (args.title !== undefined) updated.title = String(args.title);
       if (args.description !== undefined) updated.description = String(args.description);
       if (args.category !== undefined) updated.category = String(args.category);

@@ -119,7 +119,9 @@ function UserAvatar() {
 function actionLabel(name: string, args?: Record<string, unknown>): string {
   switch (name) {
     case "add_vendor": return `Adding vendor${args?.name ? ` "${args.name}"` : ""}`;
+    case "generate_checklist": return "Creating checklist";
     case "add_checklist_item": return `Adding checklist item${args?.task ? ` "${args.task}"` : ""}`;
+    case "generate_timeline": return "Creating timeline";
     case "add_timeline_event": return `Adding timeline event${args?.title ? ` "${args.title}"` : ""}`;
     case "update_profile": return "Updating wedding profile";
     case "list_vendors": return "Reading your vendor list";
@@ -335,12 +337,12 @@ export default function Aria() {
       queryClient.invalidateQueries({ queryKey: dashboardKey });
     }
 
-    if (names.has("add_checklist_item") || names.has("update_checklist_item")
+    if (names.has("generate_checklist") || names.has("add_checklist_item") || names.has("update_checklist_item")
         || names.has("toggle_checklist_item") || names.has("delete_checklist_item")) {
       queryClient.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
       queryClient.invalidateQueries({ queryKey: dashboardKey });
     }
-    if (names.has("add_timeline_event") || names.has("update_timeline_event") || names.has("delete_timeline_event")) {
+    if (names.has("generate_timeline") || names.has("add_timeline_event") || names.has("update_timeline_event") || names.has("delete_timeline_event")) {
       queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
       queryClient.invalidateQueries({ queryKey: dashboardKey });
     }
