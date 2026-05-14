@@ -417,8 +417,9 @@ router.delete("/contracts/:id", requireAuth, async (req, res) => {
         const normalizedContractName = normalizeContractFileName(contract.fileName);
         const existingFiles = Array.isArray(vendor.files) ? (vendor.files as VendorFile[]) : [];
         const remainingFiles = existingFiles.filter((file) => {
+          if (file.contractId != null) return file.contractId !== contract.id;
           const fileContractName = typeof file.contractFileName === "string" ? file.contractFileName : file.name;
-          return file.contractId !== contract.id && normalizeContractFileName(fileContractName) !== normalizedContractName;
+          return normalizeContractFileName(fileContractName) !== normalizedContractName;
         });
         if (remainingFiles.length !== existingFiles.length) {
           await db

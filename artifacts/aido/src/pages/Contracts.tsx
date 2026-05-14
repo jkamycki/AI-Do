@@ -478,6 +478,9 @@ export default function Contracts() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contracts"] });
       qc.invalidateQueries({ queryKey: ["next-steps", "contracts"] });
+      qc.invalidateQueries({
+        predicate: (query) => typeof query.queryKey[0] === "string" && query.queryKey[0].startsWith("/api/vendors"),
+      });
       toast({ title: t("contracts.contract_removed") });
     },
   });
