@@ -288,7 +288,7 @@
     "city": "City",
     "state": "State",
     "zip": "Zip",
-    "ceremony_at_venue": "Ceremony will take place at a separate location",
+    "ceremony_at_venue": "Ceremony will be held at an Off-Site Location.",
     "ceremony_venue": "Ceremony Venue",
     "ceremony_address": "Ceremony Address",
     "guest_count": "Estimated Guest Count",
