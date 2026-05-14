@@ -727,6 +727,7 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
         await db.insert(vendorContracts).values({
           userId: newUserId.trim(),
           profileId: newProfileId,
+          vendorId: vc.vendorId != null ? (vendorIdMap.get(Number(vc.vendorId)) ?? null) : null,
           fileName: String(vc.fileName ?? "contract"),
           fileSize: vc.fileSize == null ? null : Number(vc.fileSize),
           mimeType: vc.mimeType as string | null ?? null,

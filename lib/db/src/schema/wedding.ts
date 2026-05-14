@@ -292,6 +292,7 @@ export const vendorContracts = pgTable("vendor_contracts", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
   profileId: integer("profile_id"),
+  vendorId: integer("vendor_id"),
   fileName: text("file_name").notNull(),
   fileSize: integer("file_size"),
   mimeType: text("mime_type"),

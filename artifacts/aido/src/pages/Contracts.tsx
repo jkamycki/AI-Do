@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   FileText,
@@ -31,7 +32,7 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslation } from "react-i18next";
-import { useGetProfile } from "@workspace/api-client-react";
+import { useGetProfile, useListVendors } from "@workspace/api-client-react";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -63,6 +64,8 @@ interface ContractAnalysis {
 
 interface Contract {
   id: number;
+  vendorId?: number | null;
+  vendorName?: string | null;
   fileName: string;
   fileSize: number | null;
   analysis: ContractAnalysis | null;
@@ -366,6 +369,11 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
               </div>
             )}
             <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {contract.vendorName && (
+                <span className="text-xs font-medium text-primary bg-primary/10 border border-primary/15 px-2 py-0.5 rounded-full">
+                  {contract.vendorName}
+                </span>
+              )}
               {analysis?.vendorType && (
                 <span className="text-xs text-muted-foreground font-medium">{analysis.vendorType}</span>
               )}
@@ -438,6 +446,8 @@ export default function Contracts() {
   const [dragOver, setDragOver] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingName, setPendingName] = useState("");
+  const [pendingVendorId, setPendingVendorId] = useState<string>("none");
+  const { data: vendors = [] } = useListVendors();
 
   const { data: contracts = [], isLoading } = useQuery<Contract[]>({
     queryKey: ["contracts"],
@@ -482,6 +492,7 @@ export default function Contracts() {
     const baseName = file.name.replace(/\.[^.]+$/, "");
     setPendingFile(file);
     setPendingName(baseName);
+    setPendingVendorId("none");
   }
 
   async function confirmUpload() {
@@ -491,6 +502,7 @@ export default function Contracts() {
       const form = new FormData();
       form.append("file", pendingFile);
       if (pendingName.trim()) form.append("displayName", pendingName.trim());
+      if (pendingVendorId !== "none") form.append("vendorId", pendingVendorId);
       const res = await authFetch(`${API}/api/contracts/upload`, { method: "POST", body: form });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -500,6 +512,7 @@ export default function Contracts() {
       toast({ title: t("contracts.contract_analyzed"), description: t("contracts.contract_analyzed_desc") });
       setPendingFile(null);
       setPendingName("");
+      setPendingVendorId("none");
     } catch (err) {
       toast({ title: t("contracts.upload_failed"), description: err instanceof Error ? err.message : "", variant: "destructive" });
     } finally {
@@ -585,16 +598,37 @@ export default function Contracts() {
               autoFocus
               value={pendingName}
               onChange={e => setPendingName(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") confirmUpload(); if (e.key === "Escape") { setPendingFile(null); setPendingName(""); } }}
+              onKeyDown={e => { if (e.key === "Enter") confirmUpload(); if (e.key === "Escape") { setPendingFile(null); setPendingName(""); setPendingVendorId("none"); } }}
               placeholder={t("contracts.contract_name_placeholder")}
             />
             <p className="text-xs text-muted-foreground">{t("contracts.display_name_hint")}</p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t("contracts.assigned_vendor", { defaultValue: "Assigned vendor" })}</label>
+            <Select value={pendingVendorId} onValueChange={setPendingVendorId}>
+              <SelectTrigger data-testid="select-contract-vendor">
+                <SelectValue placeholder={t("contracts.select_vendor_placeholder", { defaultValue: "Select a vendor" })} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t("contracts.no_vendor_assigned", { defaultValue: "No vendor assigned" })}</SelectItem>
+                {vendors.map((vendor) => (
+                  <SelectItem key={vendor.id} value={String(vendor.id)}>
+                    {vendor.name} {vendor.category ? `(${vendor.category})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {vendors.length > 0
+                ? t("contracts.assigned_vendor_hint", { defaultValue: "Choose which vendor from your vendor list this contract belongs to." })
+                : t("contracts.no_vendors_hint", { defaultValue: "Add vendors in the Vendor List to assign contracts here." })}
+            </p>
           </div>
           <div className="flex gap-2">
             <Button className="flex-1" onClick={confirmUpload} disabled={!pendingName.trim()}>
               <Upload className="h-4 w-4 mr-2" /> {t("contracts.analyze_and_save")}
             </Button>
-            <Button variant="outline" onClick={() => { setPendingFile(null); setPendingName(""); if (fileRef.current) fileRef.current.value = ""; }}>
+            <Button variant="outline" onClick={() => { setPendingFile(null); setPendingName(""); setPendingVendorId("none"); if (fileRef.current) fileRef.current.value = ""; }}>
               {t("contracts.cancel")}
             </Button>
           </div>

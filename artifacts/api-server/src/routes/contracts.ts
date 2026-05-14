@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { createRequire } from "node:module";
-import { db, vendorContracts } from "@workspace/db";
+import { db, vendorContracts, vendors } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
@@ -159,15 +159,30 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
       analysis = { error: "Failed to parse AI response", raw: analysisRaw };
     }
 
-    const displayName = (req.body?.displayName as string | undefined)?.trim() || originalname;
-
     const scope = await resolveContractScope(req);
     if (!scope) return res.status(400).json({ error: "No wedding profile found." });
+
+    const displayName = (req.body?.displayName as string | undefined)?.trim() || originalname;
+    const rawVendorId = (req.body?.vendorId as string | undefined)?.trim();
+    const vendorId = rawVendorId ? Number(rawVendorId) : null;
+    if (rawVendorId && (!Number.isInteger(vendorId) || vendorId <= 0)) {
+      return res.status(400).json({ error: "Invalid vendor selection." });
+    }
+    if (vendorId) {
+      const [vendor] = await db
+        .select({ id: vendors.id })
+        .from(vendors)
+        .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, scope.profileId)))
+        .limit(1);
+      if (!vendor) return res.status(400).json({ error: "Selected vendor was not found." });
+    }
+
     const [saved] = await db
       .insert(vendorContracts)
       .values({
         userId: scope.userId,
         profileId: scope.profileId,
+        vendorId,
         fileName: displayName,
         fileSize: size,
         mimeType: mimetype,
@@ -262,12 +277,18 @@ router.get("/contracts", requireAuth, async (req, res) => {
     const rows = await db
       .select({
         id: vendorContracts.id,
+        vendorId: vendorContracts.vendorId,
+        vendorName: vendors.name,
         fileName: vendorContracts.fileName,
         fileSize: vendorContracts.fileSize,
         analysis: vendorContracts.analysis,
         createdAt: vendorContracts.createdAt,
       })
       .from(vendorContracts)
+      .leftJoin(vendors, and(
+        eq(vendorContracts.vendorId, vendors.id),
+        eq(vendors.profileId, scope.profileId),
+      ))
       .where(and(
         eq(vendorContracts.userId, scope.userId),
         eq(vendorContracts.profileId, scope.profileId),
