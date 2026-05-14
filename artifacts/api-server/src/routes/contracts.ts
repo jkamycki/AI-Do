@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { createRequire } from "node:module";
 import { db, vendorContracts, vendors } from "@workspace/db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
@@ -14,6 +14,14 @@ const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require("pdf-parse"
 
 const router = Router();
 const storage = new ObjectStorageService();
+let vendorContractVendorColumnReady = false;
+
+async function ensureVendorContractVendorColumn() {
+  if (vendorContractVendorColumnReady) return;
+  await db.execute(sql`ALTER TABLE vendor_contracts ADD COLUMN IF NOT EXISTS vendor_id integer`);
+  vendorContractVendorColumnReady = true;
+}
+
 const ALLOWED_CONTRACT_MIMES = new Set([
   "application/pdf",
   "text/plain",
@@ -112,6 +120,9 @@ router.post(
       return res.status(400).json({ error: "No file uploaded." });
     }
     const { buffer, originalname, mimetype, size } = req.file;
+    const scope = await resolveContractScope(req);
+    if (!scope) return res.status(400).json({ error: "No wedding profile found." });
+    await ensureVendorContractVendorColumn();
 
     const extractedText = await extractText(buffer, mimetype);
 
@@ -160,9 +171,6 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
     } catch {
       analysis = { error: "Failed to parse AI response", raw: analysisRaw };
     }
-
-    const scope = await resolveContractScope(req);
-    if (!scope) return res.status(400).json({ error: "No wedding profile found." });
 
     const displayName = (req.body?.displayName as string | undefined)?.trim() || originalname;
     const rawVendorId = (req.body?.vendorId as string | undefined)?.trim();
@@ -296,6 +304,7 @@ router.get("/contracts", requireAuth, async (req, res) => {
     }
     const scope = await resolveContractScope(req);
     if (!scope) return res.json([]);
+    await ensureVendorContractVendorColumn();
     const rows = await db
       .select({
         id: vendorContracts.id,
