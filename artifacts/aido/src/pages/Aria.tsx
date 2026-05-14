@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/react";
 import {
   useGetProfile,
   getListVendorsQueryKey,
+  getGetGuestsQueryKey,
   getGetChecklistQueryKey,
   getGetTimelineQueryKey,
   getGetProfileQueryKey,
@@ -124,6 +125,7 @@ function actionLabel(name: string, args?: Record<string, unknown>): string {
     case "generate_timeline": return "Creating timeline";
     case "add_timeline_event": return `Adding timeline event${args?.title ? ` "${args.title}"` : ""}`;
     case "generate_budget": return "Creating budget";
+    case "add_guest": return `Adding guest${args?.name ? ` "${args.name}"` : ""}`;
     case "update_profile": return "Updating wedding profile";
     case "list_vendors": return "Reading your vendor list";
     case "get_profile": return "Reading your wedding profile";
@@ -336,6 +338,11 @@ export default function Aria() {
     ]);
     if ([...names].some(n => BUDGET_TOOLS.has(n))) {
       queryClient.invalidateQueries({ queryKey: ["vendor-financials"] });
+      queryClient.invalidateQueries({ queryKey: dashboardKey });
+    }
+
+    if (names.has("add_guest") || names.has("update_guest") || names.has("delete_guest")) {
+      queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
       queryClient.invalidateQueries({ queryKey: dashboardKey });
     }
 

@@ -178,7 +178,7 @@ SMALL TALK: For greetings, thanks, "how are you?", or chitchat → reply warmly 
 - If it's an editor-style visual/content action not exposed as a tool (e.g. section layout, fonts, animations, page toggles), do NOT stall or loop. Give direct click-by-click steps in the Website Editor and offer the next best workaround.
 - Never claim you changed something if no tool exists for that change. Be explicit: what you can update now vs what the user should click.
 
-GUEST RULE — adding a guest only requires the guest's name. Do NOT ask for meal choice while adding a guest. Only save meal choice if the user voluntarily provides it or later asks to update it.
+GUEST RULE — adding a guest only requires the guest's name. If the user provides a person's name, that is enough to proceed to the one-line summary + Reply "yes" flow. Do NOT ask for the guest's name again. Do NOT ask whether the person is a guest or a plus-one unless the user explicitly says they are adding a plus-one for an existing guest. Default named people to regular guests. Do NOT ask for meal choice while adding a guest. Only save meal choice if the user voluntarily provides it or later asks to update it.
 
 WRITE/UPDATE/DELETE FLOW — exactly ONE summary turn and exactly ONE save turn:
 
@@ -610,6 +610,33 @@ function parsePendingVendorConfirmation(text: string): { name: string; category:
   const categoryRaw = m[2]?.trim();
   if (!name || !categoryRaw) return null;
   return { name, category: normalizeCategory(categoryRaw) };
+}
+
+function parsePendingGuestConfirmation(text: string): { name: string } | null {
+  const patterns = [
+    /Saving\s+(.+?)\s+(?:as\s+a\s+)?guest[\s\S]*Reply\s*['"]?yes['"]?\s+to\s+save/i,
+    /Ready\s+to\s+add\s+(.+?)\s+(?:as\s+a\s+)?guest[\s\S]*Reply\s*['"]?yes['"]?\s+to\s+(?:save|confirm)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const name = match?.[1]?.trim().replace(/[.!,;:]$/, "");
+    if (name) return { name };
+  }
+  return null;
+}
+
+function extractGuestNameFromAssistant(text: string): string | null {
+  const patterns = [
+    /\b(?:add|adding)\s+([A-Z][A-Za-z'’-]+(?:\s+[A-Z][A-Za-z'’-]+){0,3})\s+(?:to\s+)?(?:the\s+)?guest\s+list/i,
+    /\b([A-Z][A-Za-z'’-]+(?:\s+[A-Z][A-Za-z'’-]+){0,3})'s\s+details/i,
+    /\bWhat'?s\s+([A-Z][A-Za-z'’-]+(?:\s+[A-Z][A-Za-z'’-]+){0,3})'s\s+name/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const name = match?.[1]?.trim();
+    if (name) return name;
+  }
+  return null;
 }
 
 type ActionResult =
@@ -2251,12 +2278,20 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const prevWasGatheringQuestion = /What'?s the vendor'?s name|vendor'?s name and category/i.test(lastAssistantText);
     const lastUserMsgForContext = [...messages].reverse().find(m => m.role === "user");
     const lastUserTextForContext = typeof lastUserMsgForContext?.content === "string" ? lastUserMsgForContext.content.trim() : "";
+    const guestNameFromAssistant = extractGuestNameFromAssistant(lastAssistantText);
+    const prevWasGuestNameLoop =
+      !!guestNameFromAssistant &&
+      /\bguest\b/i.test(lastAssistantText) &&
+      /\b(name|plus\s*one|plus-one)\b/i.test(lastAssistantText);
     const gatheringFollowUpHint = prevWasGatheringQuestion && lastUserTextForContext.length > 0 && lastUserTextForContext.length <= 200
       ? `\n\nCURRENT CONTEXT — VENDOR NAME PROVIDED: The user just answered your gathering question. Their message "${lastUserTextForContext}" IS their vendor's name (and possibly category/cost). Accept it immediately. Proceed to Turn 3 of CASE B: write a one-line summary in present/future tense and end with 'Reply "yes" to save.' Do NOT ask the gathering question again.`
       : "";
+    const guestFollowUpHint = prevWasGuestNameLoop
+      ? `\n\nCURRENT CONTEXT - GUEST NAME IDENTIFIED: The guest's name is "${guestNameFromAssistant}". The user is correcting your prior question, so do NOT ask for the guest's name again and do NOT ask if this is a plus-one. Default "${guestNameFromAssistant}" to a regular guest. Write a one-line summary in present/future tense and end with 'Reply "yes" to save.'`
+      : "";
 
     const convo: Array<Record<string, unknown>> = [
-      { role: "system", content: SYSTEM_PROMPT + langInstruction + gatheringFollowUpHint },
+      { role: "system", content: SYSTEM_PROMPT + langInstruction + gatheringFollowUpHint + guestFollowUpHint },
       ...recent,
     ];
     const performedActions: ActionRecord[] = [];
@@ -2325,8 +2360,37 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       return;
     }
 
+    const pendingGuest = parsePendingGuestConfirmation(lastAssistantText);
+    if (pendingGuest && YES_CONFIRM_INTENT.test(lastUserText.trim())) {
+      const result = await executeTool("add_guest", {
+        name: pendingGuest.name,
+      }, req, { recentUserText: pendingGuest.name.toLowerCase() });
+      if (result.ok) {
+        send({ type: "action_start", name: "add_guest", args: { name: pendingGuest.name } });
+        send({ type: "action_result", name: "add_guest", ok: true, data: result.data });
+        send({ type: "content", content: buildPostActionMessage("add_guest", result.data) });
+      } else {
+        send({ type: "content", content: `I couldn't save that guest yet: ${result.error}` });
+      }
+      send({ type: "done", actions: [{ name: "add_guest", ok: result.ok, error: result.ok ? undefined : result.error }] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
     // Detect "add a vendor / photographer / florist …" without a real business
     // name. Computed before skipTools so it can gate tools entirely.
+    if (prevWasGuestNameLoop && guestNameFromAssistant && /\b(this|that|correct|yes|yep|name|guest)\b/i.test(lastUserText)) {
+      send({
+        type: "content",
+        content: `Saving ${guestNameFromAssistant} as a guest. Reply "yes" to save.`,
+      });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
     const VENDOR_CATEGORY_INTENT = /\b(add|create|new)\s+(a|an)\s+(vendor|photographer|videographer|florist|caterer|catering|dj|band|musician|officiant|hair|makeup|transport(?:ation)?|limo|cake|baker|stationery|invitation|rental|planner|venue|coordinator)s?\b/i;
     const HAS_PROPER_NOUN = /[A-Z][a-z]{2,}|"[^"]+"|'[^']+'/;
     const vendorGatherIntent = VENDOR_CATEGORY_INTENT.test(lastUserText) &&
