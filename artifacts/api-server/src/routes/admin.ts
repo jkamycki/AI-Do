@@ -5,7 +5,7 @@ import {
   db, analyticsEvents, adminUsers, weddingProfiles, deletedUserArchive,
   timelines, budgets, budgetItems, budgetPaymentLogs,
   checklistItems, vendors, guests, vendorContracts, seatingCharts,
-  hotelBlocks, weddingParty, manualExpenses,
+  hotelBlocks, weddingParty, manualExpenses, vendorPayments,
 } from "@workspace/db";
 import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -544,6 +544,261 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
 
     const data = row.archivedData as Record<string, unknown>;
     const restored: Record<string, number> = {};
+
+    if (data.archiveType === "workspace") {
+      const targetProfiles = await db.select().from(weddingProfiles).where(eq(weddingProfiles.userId, newUserId.trim())).limit(1);
+      if (!targetProfiles.length) return res.status(400).json({ error: "Target planner account must have a default workspace first." });
+      if (targetProfiles[0].accountType !== "wedding_planner") return res.status(400).json({ error: "Workstation archives can only be restored to a Wedding Planner account." });
+
+      const profileData = data.profile as Record<string, unknown> | null;
+      if (!profileData) return res.status(400).json({ error: "Archive has no workstation profile to restore." });
+
+      const [profile] = await db.insert(weddingProfiles).values({
+        userId: newUserId.trim(),
+        workstationName: String(profileData.workstationName ?? "Restored Workstation"),
+        partner1Name: String(profileData.partner1Name ?? ""),
+        partner2Name: String(profileData.partner2Name ?? ""),
+        weddingDate: String(profileData.weddingDate ?? ""),
+        ceremonyTime: String(profileData.ceremonyTime ?? "16:00"),
+        receptionTime: String(profileData.receptionTime ?? "18:00"),
+        venue: String(profileData.venue ?? "TBD"),
+        location: String(profileData.location ?? "TBD"),
+        venueCity: profileData.venueCity as string | null ?? null,
+        venueState: profileData.venueState as string | null ?? null,
+        venueZip: profileData.venueZip as string | null ?? null,
+        venueCountry: profileData.venueCountry as string | null ?? null,
+        ceremonyAtVenue: Boolean(profileData.ceremonyAtVenue ?? true),
+        ceremonyVenueName: profileData.ceremonyVenueName as string | null ?? null,
+        ceremonyAddress: profileData.ceremonyAddress as string | null ?? null,
+        ceremonyCity: profileData.ceremonyCity as string | null ?? null,
+        ceremonyState: profileData.ceremonyState as string | null ?? null,
+        ceremonyZip: profileData.ceremonyZip as string | null ?? null,
+        guestCount: Number(profileData.guestCount ?? 1),
+        totalBudget: String(profileData.totalBudget ?? "0"),
+        weddingVibe: String(profileData.weddingVibe ?? "Not set"),
+        accountType: "wedding_planner",
+        preferredLanguage: profileData.preferredLanguage as string | null ?? "English",
+        guestCollectionToken: profileData.guestCollectionToken as string | null ?? null,
+        vendorBccEmail: profileData.vendorBccEmail as string | null ?? null,
+        invitationPhotoUrl: profileData.invitationPhotoUrl as string | null ?? null,
+        invitationMessage: profileData.invitationMessage as string | null ?? null,
+        saveTheDatePhotoUrl: profileData.saveTheDatePhotoUrl as string | null ?? null,
+        saveTheDateMessage: profileData.saveTheDateMessage as string | null ?? null,
+        digitalInvitationPhotoUrl: profileData.digitalInvitationPhotoUrl as string | null ?? null,
+      }).returning({ id: weddingProfiles.id });
+      const newProfileId = profile.id;
+      restored.profile = 1;
+
+      for (const tl of ((data.timelines as Array<Record<string, unknown>>) ?? [])) {
+        await db.insert(timelines).values({ profileId: newProfileId, events: (tl.events ?? []) as never });
+      }
+      restored.timelines = ((data.timelines as unknown[]) ?? []).length;
+
+      for (const g of ((data.guests as Array<Record<string, unknown>>) ?? [])) {
+        await db.insert(guests).values({
+          profileId: newProfileId,
+          name: String(g.name ?? "Guest"),
+          email: g.email as string | null ?? null,
+          invitationStatus: String(g.invitationStatus ?? "pending"),
+          rsvpStatus: String(g.rsvpStatus ?? "pending"),
+          mealChoice: g.mealChoice as string | null ?? null,
+          dietaryNotes: g.dietaryNotes as string | null ?? null,
+          guestGroup: g.guestGroup as string | null ?? null,
+          plusOne: Boolean(g.plusOne ?? false),
+          plusOneName: g.plusOneName as string | null ?? null,
+          plusOneMealChoice: g.plusOneMealChoice as string | null ?? null,
+          tableAssignment: g.tableAssignment as string | null ?? null,
+          needsHotel: Boolean(g.needsHotel ?? false),
+          notes: g.notes as string | null ?? null,
+          phone: g.phone as string | null ?? null,
+          address: g.address as string | null ?? null,
+          aptUnit: g.aptUnit as string | null ?? null,
+          guestCity: g.guestCity as string | null ?? null,
+          guestState: g.guestState as string | null ?? null,
+          guestZip: g.guestZip as string | null ?? null,
+          guestCountry: g.guestCountry as string | null ?? null,
+          source: String(g.source ?? "manual"),
+        });
+      }
+      restored.guests = ((data.guests as unknown[]) ?? []).length;
+
+      for (const ci of ((data.checklistItems as Array<Record<string, unknown>>) ?? [])) {
+        await db.insert(checklistItems).values({
+          profileId: newProfileId,
+          month: String(ci.month ?? ""),
+          task: String(ci.task ?? ""),
+          description: String(ci.description ?? ""),
+          isCompleted: Boolean(ci.isCompleted ?? false),
+          completedAt: ci.completedAt ? new Date(String(ci.completedAt)) : null,
+          resolveNote: ci.resolveNote as string | null ?? null,
+        });
+      }
+      restored.checklistItems = ((data.checklistItems as unknown[]) ?? []).length;
+
+      const budgetIdMap = new Map<number, number>();
+      const budgetItemIdMap = new Map<number, number>();
+      for (const b of ((data.budgets as Array<Record<string, unknown>>) ?? [])) {
+        const [created] = await db.insert(budgets).values({ profileId: newProfileId, totalBudget: String(b.totalBudget ?? "0") }).returning({ id: budgets.id });
+        if (b.id != null) budgetIdMap.set(Number(b.id), created.id);
+      }
+      for (const bi of ((data.budgetItems as Array<Record<string, unknown>>) ?? [])) {
+        const newBudgetId = budgetIdMap.get(Number(bi.budgetId));
+        if (!newBudgetId) continue;
+        const [created] = await db.insert(budgetItems).values({
+          budgetId: newBudgetId,
+          category: String(bi.category ?? ""),
+          vendor: String(bi.vendor ?? ""),
+          estimatedCost: String(bi.estimatedCost ?? "0"),
+          actualCost: String(bi.actualCost ?? "0"),
+          amountPaid: String(bi.amountPaid ?? "0"),
+          isPaid: Boolean(bi.isPaid ?? false),
+          notes: bi.notes as string | null ?? null,
+          nextPaymentDue: bi.nextPaymentDue as string | null ?? null,
+        }).returning({ id: budgetItems.id });
+        if (bi.id != null) budgetItemIdMap.set(Number(bi.id), created.id);
+      }
+      for (const log of ((data.budgetPaymentLogs as Array<Record<string, unknown>>) ?? [])) {
+        const newBudgetItemId = budgetItemIdMap.get(Number(log.budgetItemId));
+        if (!newBudgetItemId) continue;
+        await db.insert(budgetPaymentLogs).values({
+          budgetItemId: newBudgetItemId,
+          amount: String(log.amount ?? "0"),
+          note: log.note as string | null ?? null,
+          paidAt: log.paidAt ? new Date(String(log.paidAt)) : new Date(),
+        });
+      }
+      restored.budgets = budgetIdMap.size;
+      restored.budgetItems = budgetItemIdMap.size;
+
+      const vendorIdMap = new Map<number, number>();
+      for (const v of ((data.vendors as Array<Record<string, unknown>>) ?? [])) {
+        const [created] = await db.insert(vendors).values({
+          profileId: newProfileId,
+          userId: newUserId.trim(),
+          name: String(v.name ?? ""),
+          category: String(v.category ?? "Other"),
+          email: v.email as string | null ?? null,
+          phone: v.phone as string | null ?? null,
+          website: v.website as string | null ?? null,
+          portalLink: v.portalLink as string | null ?? null,
+          address: v.address as string | null ?? null,
+          notes: v.notes as string | null ?? null,
+          totalCost: String(v.totalCost ?? "0"),
+          depositAmount: String(v.depositAmount ?? "0"),
+          contractSigned: Boolean(v.contractSigned ?? false),
+          nextPaymentDue: v.nextPaymentDue as string | null ?? null,
+          files: (v.files ?? []) as never,
+          primaryContact: v.primaryContact as string | null ?? null,
+        }).returning({ id: vendors.id });
+        if (v.id != null) vendorIdMap.set(Number(v.id), created.id);
+      }
+      for (const p of ((data.vendorPayments as Array<Record<string, unknown>>) ?? [])) {
+        const newVendorId = vendorIdMap.get(Number(p.vendorId));
+        if (!newVendorId) continue;
+        await db.insert(vendorPayments).values({
+          vendorId: newVendorId,
+          label: String(p.label ?? "Payment"),
+          amount: String(p.amount ?? "0"),
+          dueDate: String(p.dueDate ?? ""),
+          isPaid: Boolean(p.isPaid ?? false),
+          paidAt: p.paidAt ? new Date(String(p.paidAt)) : null,
+        });
+      }
+      restored.vendors = vendorIdMap.size;
+
+      for (const e of ((data.manualExpenses as Array<Record<string, unknown>>) ?? [])) {
+        await db.insert(manualExpenses).values({
+          profileId: newProfileId,
+          userId: newUserId.trim(),
+          name: String(e.name ?? ""),
+          category: String(e.category ?? "Other"),
+          cost: String(e.cost ?? "0"),
+          amountPaid: String(e.amountPaid ?? "0"),
+          nextPaymentDue: e.nextPaymentDue as string | null ?? null,
+          nextPaymentAmount: e.nextPaymentAmount != null ? String(e.nextPaymentAmount) : null,
+          notes: e.notes as string | null ?? null,
+          receiptUrl: e.receiptUrl as string | null ?? null,
+          receiptName: e.receiptName as string | null ?? null,
+        });
+      }
+      restored.manualExpenses = ((data.manualExpenses as unknown[]) ?? []).length;
+
+      for (const vc of ((data.vendorContracts as Array<Record<string, unknown>>) ?? [])) {
+        await db.insert(vendorContracts).values({
+          userId: newUserId.trim(),
+          profileId: newProfileId,
+          fileName: String(vc.fileName ?? "contract"),
+          fileSize: vc.fileSize == null ? null : Number(vc.fileSize),
+          mimeType: vc.mimeType as string | null ?? null,
+          extractedText: vc.extractedText as string | null ?? null,
+          analysis: vc.analysis as never,
+        });
+      }
+      restored.vendorContracts = ((data.vendorContracts as unknown[]) ?? []).length;
+
+      for (const h of ((data.hotelBlocks as Array<Record<string, unknown>>) ?? [])) {
+        await db.insert(hotelBlocks).values({
+          profileId: newProfileId,
+          userId: newUserId.trim(),
+          hotelName: String(h.hotelName ?? ""),
+          address: h.address as string | null ?? null,
+          city: h.city as string | null ?? null,
+          state: h.state as string | null ?? null,
+          zip: h.zip as string | null ?? null,
+          phone: h.phone as string | null ?? null,
+          email: h.email as string | null ?? null,
+          bookingLink: h.bookingLink as string | null ?? null,
+          discountCode: h.discountCode as string | null ?? null,
+          groupName: h.groupName as string | null ?? null,
+          cutoffDate: h.cutoffDate as string | null ?? null,
+          roomsReserved: h.roomsReserved == null ? null : Number(h.roomsReserved),
+          roomsBooked: Number(h.roomsBooked ?? 0),
+          pricePerNight: h.pricePerNight != null ? String(h.pricePerNight) : null,
+          distanceFromVenue: h.distanceFromVenue as string | null ?? null,
+          notes: h.notes as string | null ?? null,
+        });
+      }
+      restored.hotelBlocks = ((data.hotelBlocks as unknown[]) ?? []).length;
+
+      for (const m of ((data.weddingParty as Array<Record<string, unknown>>) ?? [])) {
+        await db.insert(weddingParty).values({
+          profileId: newProfileId,
+          userId: newUserId.trim(),
+          name: String(m.name ?? ""),
+          role: String(m.role ?? ""),
+          side: String(m.side ?? "bride"),
+          phone: m.phone as string | null ?? null,
+          email: m.email as string | null ?? null,
+          outfitDetails: m.outfitDetails as string | null ?? null,
+          shoeSize: m.shoeSize as string | null ?? null,
+          outfitStore: m.outfitStore as string | null ?? null,
+          fittingDate: m.fittingDate as string | null ?? null,
+          notes: m.notes as string | null ?? null,
+          photoUrl: m.photoUrl as string | null ?? null,
+          sortOrder: Number(m.sortOrder ?? 0),
+        });
+      }
+      restored.weddingParty = ((data.weddingParty as unknown[]) ?? []).length;
+
+      for (const s of ((data.seatingCharts as Array<Record<string, unknown>>) ?? [])) {
+        await db.insert(seatingCharts).values({
+          profileId: newProfileId,
+          userId: newUserId.trim(),
+          name: String(s.name ?? "Restored Seating Chart"),
+          guests: (s.guests ?? []) as never,
+          tables: s.tables as never,
+          tableCount: Number(s.tableCount ?? 8),
+          seatsPerTable: Number(s.seatsPerTable ?? 8),
+        });
+      }
+      restored.seatingCharts = ((data.seatingCharts as unknown[]) ?? []).length;
+
+      await db.update(deletedUserArchive)
+        .set({ restoredAt: new Date(), restoredBy: req.userId ?? "admin", restoredToUserId: newUserId.trim() })
+        .where(eq(deletedUserArchive.id, id));
+
+      return res.json({ ok: true, restored });
+    }
 
     type ProfileRow = {
       partner1Name?: string; partner2Name?: string; weddingDate?: string;

@@ -1,7 +1,12 @@
 import { Router } from "express";
-import { db, weddingProfiles, timelines, budgets, budgetItems, checklistItems, guests, vendors, hotelBlocks, weddingParty, seatingCharts } from "@workspace/db";
-import { workspaceActivity } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import {
+  db, weddingProfiles, timelines, budgets, budgetItems, budgetPaymentLogs,
+  checklistItems, guests, vendors, vendorPayments, hotelBlocks, weddingParty,
+  seatingCharts, manualExpenses, vendorContracts, vendorConversations,
+  vendorMessages, workspaceCollaborators, workspaceActivity, invitationCustomizations,
+  weddingWebsites, websiteRsvps, moodBoards, deletedUserArchive,
+} from "@workspace/db";
+import { eq, desc, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { getProfileByUserId, resolveWorkspaceRole, hasMinRole } from "../lib/workspaceAccess";
 
@@ -100,6 +105,138 @@ router.patch("/workspaces/:profileId", requireAuth, async (req, res) => {
       role: "owner",
       accountType: updated.accountType,
     });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/workspaces/:profileId", requireAuth, async (req, res) => {
+  try {
+    const profileId = parseInt(String(req.params["profileId"] ?? "0"), 10);
+    if (!profileId || Number.isNaN(profileId)) {
+      res.status(400).json({ error: "Invalid workstation." });
+      return;
+    }
+
+    const primaryProfile = await getProfileByUserId(req.userId!);
+    if (!primaryProfile) {
+      res.status(400).json({ error: "Create your default workspace first." });
+      return;
+    }
+    if (primaryProfile.id === profileId) {
+      res.status(400).json({ error: "Your default workspace can only be removed by deleting your account." });
+      return;
+    }
+
+    const role = await resolveWorkspaceRole(req.userId!, profileId);
+    if (role !== "owner") {
+      res.status(403).json({ error: "Only the workstation owner can delete it." });
+      return;
+    }
+
+    const [profile] = await db
+      .select({ id: weddingProfiles.id, workstationName: weddingProfiles.workstationName })
+      .from(weddingProfiles)
+      .where(eq(weddingProfiles.id, profileId))
+      .limit(1);
+    if (!profile) {
+      res.status(404).json({ error: "Workstation not found." });
+      return;
+    }
+
+    const fullProfile = await db.select().from(weddingProfiles).where(eq(weddingProfiles.id, profileId)).limit(1);
+    const vendorRows = await db.select({ id: vendors.id }).from(vendors).where(eq(vendors.profileId, profileId));
+    const budgetRows = await db.select({ id: budgets.id }).from(budgets).where(eq(budgets.profileId, profileId));
+    const websiteRows = await db.select({ id: weddingWebsites.id }).from(weddingWebsites).where(eq(weddingWebsites.profileId, profileId));
+    const vendorIds = vendorRows.map(v => v.id);
+    const budgetIds = budgetRows.map(b => b.id);
+    const websiteIds = websiteRows.map(w => w.id);
+    const budgetItemRows = budgetIds.length > 0
+      ? await db.select({ id: budgetItems.id }).from(budgetItems).where(inArray(budgetItems.budgetId, budgetIds))
+      : [];
+    const budgetItemIds = budgetItemRows.map(i => i.id);
+    const conversationRows = vendorIds.length > 0
+      ? await db.select({ id: vendorConversations.id }).from(vendorConversations).where(inArray(vendorConversations.vendorId, vendorIds))
+      : [];
+    const conversationIds = conversationRows.map(c => c.id);
+
+    const archiveName = profile.workstationName?.trim() || "Deleted Workstation";
+    const archivedData: Record<string, unknown> = {
+      archiveType: "workspace",
+      originalProfileId: profileId,
+      profile: fullProfile[0] ?? null,
+      timelines: await db.select().from(timelines).where(eq(timelines.profileId, profileId)),
+      checklistItems: await db.select().from(checklistItems).where(eq(checklistItems.profileId, profileId)),
+      guests: await db.select().from(guests).where(eq(guests.profileId, profileId)),
+      budgets: await db.select().from(budgets).where(eq(budgets.profileId, profileId)),
+      budgetItems: budgetIds.length > 0 ? await db.select().from(budgetItems).where(inArray(budgetItems.budgetId, budgetIds)) : [],
+      budgetPaymentLogs: budgetItemIds.length > 0 ? await db.select().from(budgetPaymentLogs).where(inArray(budgetPaymentLogs.budgetItemId, budgetItemIds)) : [],
+      vendors: await db.select().from(vendors).where(eq(vendors.profileId, profileId)),
+      vendorPayments: vendorIds.length > 0 ? await db.select().from(vendorPayments).where(inArray(vendorPayments.vendorId, vendorIds)) : [],
+      vendorConversations: vendorIds.length > 0 ? await db.select().from(vendorConversations).where(inArray(vendorConversations.vendorId, vendorIds)) : [],
+      vendorMessages: conversationIds.length > 0 ? await db.select().from(vendorMessages).where(inArray(vendorMessages.conversationId, conversationIds)) : [],
+      manualExpenses: await db.select().from(manualExpenses).where(eq(manualExpenses.profileId, profileId)),
+      vendorContracts: await db.select().from(vendorContracts).where(eq(vendorContracts.profileId, profileId)),
+      seatingCharts: await db.select().from(seatingCharts).where(eq(seatingCharts.profileId, profileId)),
+      hotelBlocks: await db.select().from(hotelBlocks).where(eq(hotelBlocks.profileId, profileId)),
+      weddingParty: await db.select().from(weddingParty).where(eq(weddingParty.profileId, profileId)),
+      invitationCustomizations: await db.select().from(invitationCustomizations).where(eq(invitationCustomizations.profileId, profileId)),
+      weddingWebsites: await db.select().from(weddingWebsites).where(eq(weddingWebsites.profileId, profileId)),
+      websiteRsvps: websiteIds.length > 0 ? await db.select().from(websiteRsvps).where(inArray(websiteRsvps.websiteId, websiteIds)) : [],
+      moodBoards: await db.select().from(moodBoards).where(eq(moodBoards.profileId, profileId)),
+      workspaceCollaborators: await db.select().from(workspaceCollaborators).where(eq(workspaceCollaborators.profileId, profileId)),
+      workspaceActivity: await db.select().from(workspaceActivity).where(eq(workspaceActivity.profileId, profileId)),
+    };
+
+    await db.insert(deletedUserArchive).values({
+      userId: req.userId!,
+      email: null,
+      firstName: "Workstation",
+      lastName: archiveName,
+      archivedData,
+    });
+
+    if (vendorRows.length > 0) {
+      const vendorIds = vendorRows.map(v => v.id);
+      const conversations = await db.select({ id: vendorConversations.id }).from(vendorConversations).where(inArray(vendorConversations.vendorId, vendorIds));
+      if (conversations.length > 0) {
+        await db.delete(vendorMessages).where(inArray(vendorMessages.conversationId, conversations.map(c => c.id)));
+      }
+      await db.delete(vendorConversations).where(inArray(vendorConversations.vendorId, vendorIds));
+      await db.delete(vendorPayments).where(inArray(vendorPayments.vendorId, vendorIds));
+    }
+
+    if (budgetRows.length > 0) {
+      const budgetIds = budgetRows.map(b => b.id);
+      const itemRows = await db.select({ id: budgetItems.id }).from(budgetItems).where(inArray(budgetItems.budgetId, budgetIds));
+      if (itemRows.length > 0) {
+        await db.delete(budgetPaymentLogs).where(inArray(budgetPaymentLogs.budgetItemId, itemRows.map(i => i.id)));
+      }
+      await db.delete(budgetItems).where(inArray(budgetItems.budgetId, budgetIds));
+    }
+
+    if (websiteRows.length > 0) {
+      await db.delete(websiteRsvps).where(inArray(websiteRsvps.websiteId, websiteRows.map(w => w.id)));
+    }
+
+    await db.delete(vendors).where(eq(vendors.profileId, profileId));
+    await db.delete(budgets).where(eq(budgets.profileId, profileId));
+    await db.delete(timelines).where(eq(timelines.profileId, profileId));
+    await db.delete(checklistItems).where(eq(checklistItems.profileId, profileId));
+    await db.delete(guests).where(eq(guests.profileId, profileId));
+    await db.delete(hotelBlocks).where(eq(hotelBlocks.profileId, profileId));
+    await db.delete(weddingParty).where(eq(weddingParty.profileId, profileId));
+    await db.delete(seatingCharts).where(eq(seatingCharts.profileId, profileId));
+    await db.delete(manualExpenses).where(eq(manualExpenses.profileId, profileId));
+    await db.delete(vendorContracts).where(eq(vendorContracts.profileId, profileId));
+    await db.delete(invitationCustomizations).where(eq(invitationCustomizations.profileId, profileId));
+    await db.delete(weddingWebsites).where(eq(weddingWebsites.profileId, profileId));
+    await db.delete(moodBoards).where(eq(moodBoards.profileId, profileId));
+    await db.delete(workspaceActivity).where(eq(workspaceActivity.profileId, profileId));
+    await db.delete(workspaceCollaborators).where(eq(workspaceCollaborators.profileId, profileId));
+    await db.delete(weddingProfiles).where(eq(weddingProfiles.id, profileId));
+
+    res.json({ ok: true, deletedProfileId: profile.id, archived: true });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }

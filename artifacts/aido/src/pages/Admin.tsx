@@ -1652,27 +1652,37 @@ interface ArchiveEntry {
 }
 
 interface ArchiveSummary {
+  archiveType: string;
   profile: boolean;
   guests: number;
   vendors: number;
   timelines: number;
   checklistItems: number;
   budgets: boolean;
+  budgetItems: number;
   vendorContracts: number;
   weddingParty: number;
+  seatingCharts: number;
+  hotelBlocks: number;
+  manualExpenses: number;
 }
 
 function archiveSummary(archivedData: Record<string, unknown>): ArchiveSummary {
   const arr = (k: string) => Array.isArray(archivedData[k]) ? (archivedData[k] as unknown[]).length : 0;
   return {
+    archiveType: String(archivedData.archiveType ?? "user"),
     profile: !!archivedData.profile,
     guests: arr("guests"),
     vendors: arr("vendors"),
     timelines: arr("timelines"),
     checklistItems: arr("checklistItems"),
     budgets: arr("budgets") > 0,
+    budgetItems: arr("budgetItems"),
     vendorContracts: arr("vendorContracts"),
     weddingParty: arr("weddingParty"),
+    seatingCharts: arr("seatingCharts"),
+    hotelBlocks: arr("hotelBlocks"),
+    manualExpenses: arr("manualExpenses"),
   };
 }
 
@@ -1771,10 +1781,10 @@ function DeletedArchiveSection() {
         <div>
           <h2 className="text-2xl font-serif text-primary flex items-center gap-2">
             <Shield className="h-6 w-6" />
-            Deleted User Archive
+            Deleted Archive
           </h2>
           <p className="text-muted-foreground mt-1">
-            Every user deletion is fully archived here — profile, guests, vendors, timeline, budget, and more. You can restore it all to a new account at any time.
+            Deleted users and planner workstations are archived here with their planning data so Operations can restore them later.
           </p>
         </div>
         {archives.length > 0 && (
@@ -1790,8 +1800,8 @@ function DeletedArchiveSection() {
       ) : archives.length === 0 ? (
         <div className="py-16 text-center text-muted-foreground">
           <Shield className="h-10 w-10 mx-auto mb-3 opacity-20" />
-          <p className="font-medium">No archived users yet</p>
-          <p className="text-sm mt-1">When a user deletes their account, their full data snapshot will appear here.</p>
+          <p className="font-medium">No archived deletions yet</p>
+          <p className="text-sm mt-1">When a user or workstation is deleted, its recovery snapshot will appear here.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -1800,6 +1810,7 @@ function DeletedArchiveSection() {
             const isRestored = !!entry.restoredAt;
             const full = fullData[entry.id];
             const summary = full ? archiveSummary(full) : null;
+            const isWorkspaceArchive = summary?.archiveType === "workspace" || entry.firstName === "Workstation";
             const name = [entry.firstName, entry.lastName].filter(Boolean).join(" ") || "Unknown User";
             const isRestoringThis = restoreId === entry.id;
 
@@ -1815,6 +1826,9 @@ function DeletedArchiveSection() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-sm">{name}</span>
+                      {isWorkspaceArchive && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold uppercase tracking-wide">Workstation</span>
+                      )}
                       {isRestored ? (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold uppercase tracking-wide">Restored</span>
                       ) : (
@@ -1855,9 +1869,12 @@ function DeletedArchiveSection() {
                               { label: "Vendors", value: summary.vendors, ok: summary.vendors > 0 },
                               { label: "Timeline", value: summary.timelines > 0 ? "Yes" : "None", ok: summary.timelines > 0 },
                               { label: "Checklist Items", value: summary.checklistItems, ok: summary.checklistItems > 0 },
-                              { label: "Budget", value: summary.budgets ? "Yes" : "None", ok: summary.budgets },
+                              { label: "Budget Items", value: summary.budgetItems || (summary.budgets ? "Yes" : "None"), ok: summary.budgets },
                               { label: "Contracts", value: summary.vendorContracts, ok: summary.vendorContracts > 0 },
                               { label: "Wedding Party", value: summary.weddingParty, ok: summary.weddingParty > 0 },
+                              { label: "Seating Charts", value: summary.seatingCharts, ok: summary.seatingCharts > 0 },
+                              { label: "Hotels", value: summary.hotelBlocks, ok: summary.hotelBlocks > 0 },
+                              { label: "Expenses", value: summary.manualExpenses, ok: summary.manualExpenses > 0 },
                             ].map(s => (
                               <div key={s.label} className={`rounded-lg p-2.5 text-center text-xs ${s.ok ? "bg-emerald-50 text-emerald-800" : "bg-muted/40 text-muted-foreground"}`}>
                                 <p className="font-bold text-base">{s.value}</p>
@@ -1888,15 +1905,19 @@ function DeletedArchiveSection() {
                               }}
                             >
                               <RefreshCw className="h-3.5 w-3.5" />
-                              Restore to Account
+                              {summary.archiveType === "workspace" ? "Restore Workstation" : "Restore to Account"}
                             </Button>
                           )}
                         </div>
 
                         {isRestoringThis && !isRestored && (
                           <div className="border border-primary/20 rounded-xl p-4 bg-primary/5 space-y-3">
-                            <p className="text-sm font-medium text-primary">Enter the new Clerk User ID to restore data to:</p>
-                            <p className="text-xs text-muted-foreground">This is the Clerk ID of the user's new account (starts with <code className="bg-muted px-1 py-0.5 rounded text-[10px]">user_</code>). All their data will be re-created under this account.</p>
+                            <p className="text-sm font-medium text-primary">Enter the Clerk User ID to restore data to:</p>
+                            <p className="text-xs text-muted-foreground">
+                              {summary.archiveType === "workspace"
+                                ? "Use the planner account's Clerk ID. The deleted workstation will be re-created under that planner account."
+                                : <>This is the Clerk ID of the user's new account (starts with <code className="bg-muted px-1 py-0.5 rounded text-[10px]">user_</code>). All their data will be re-created under this account.</>}
+                            </p>
                             <div className="flex gap-2">
                               <input
                                 type="text"

@@ -120,6 +120,8 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renamingWorkspace, setRenamingWorkspace] = useState<WorkspaceInfo | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingWorkspace, setDeletingWorkspace] = useState<WorkspaceInfo | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [newWorkspace, setNewWorkspace] = useState({
     workstationName: "",
@@ -193,6 +195,27 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
       setRenameOpen(false);
       setRenamingWorkspace(null);
       setRenameValue("");
+    },
+  });
+
+  const deleteWorkspace = useMutation({
+    mutationFn: async () => {
+      if (!deletingWorkspace) throw new Error("No workstation selected.");
+      const r = await authFetch(`/api/workspaces/${deletingWorkspace.profileId}`, {
+        method: "DELETE",
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body?.error || "Could not delete workstation.");
+      return deletingWorkspace.profileId;
+    },
+    onSuccess: (deletedProfileId) => {
+      queryClient.invalidateQueries({ queryKey: ["my-workspaces"] });
+      if (activeWorkspace?.profileId === deletedProfileId) {
+        setActiveWorkspace(null);
+        setLocation("/dashboard");
+      }
+      setDeleteOpen(false);
+      setDeletingWorkspace(null);
     },
   });
 
@@ -286,26 +309,48 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
                 </button>
                 {isActive && <span className="ml-auto text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{t("sidebar.active")}</span>}
                 {isPlannerAccount && !isDefault && (
-                  <button
-                    type="button"
-                    title="Rename workstation"
-                    className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    onClick={() => {
-                      setRenamingWorkspace({
-                        profileId: ws.profileId,
-                        workstationName: ws.workstationName,
-                        partner1Name: ws.partner1Name,
-                        partner2Name: ws.partner2Name,
-                        weddingDate: ws.weddingDate,
-                        role: "owner",
-                      });
-                      setRenameValue(workspaceLabel(ws));
-                      setRenameOpen(true);
-                      setOpen(false);
-                    }}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      title="Rename workstation"
+                      className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      onClick={() => {
+                        setRenamingWorkspace({
+                          profileId: ws.profileId,
+                          workstationName: ws.workstationName,
+                          partner1Name: ws.partner1Name,
+                          partner2Name: ws.partner2Name,
+                          weddingDate: ws.weddingDate,
+                          role: "owner",
+                        });
+                        setRenameValue(workspaceLabel(ws));
+                        setRenameOpen(true);
+                        setOpen(false);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Delete workstation"
+                      className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => {
+                        deleteWorkspace.reset();
+                        setDeletingWorkspace({
+                          profileId: ws.profileId,
+                          workstationName: ws.workstationName,
+                          partner1Name: ws.partner1Name,
+                          partner2Name: ws.partner2Name,
+                          weddingDate: ws.weddingDate,
+                          role: "owner",
+                        });
+                        setDeleteOpen(true);
+                        setOpen(false);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </>
                 )}
               </div>
             );
@@ -416,6 +461,36 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
               disabled={renameWorkspace.isPending || !renameValue.trim()}
             >
               {renameWorkspace.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={deleteOpen} onOpenChange={(nextOpen) => {
+        setDeleteOpen(nextOpen);
+        if (!nextOpen) {
+          deleteWorkspace.reset();
+          setDeletingWorkspace(null);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete workstation</DialogTitle>
+            <DialogDescription>
+              This permanently deletes {deletingWorkspace ? workspaceLabel(deletingWorkspace) : "this workstation"} and its profile, guests, vendors, budget, timeline, checklist, seating charts, website, collaborators, and activity.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteWorkspace.isError && (
+            <p className="text-sm text-destructive">{(deleteWorkspace.error as Error).message}</p>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => deleteWorkspace.mutate()}
+              disabled={deleteWorkspace.isPending}
+            >
+              {deleteWorkspace.isPending ? "Deleting..." : "Delete workstation"}
             </Button>
           </DialogFooter>
         </DialogContent>
