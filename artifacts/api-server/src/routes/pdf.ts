@@ -27,8 +27,8 @@ const TEXT_LIGHT = "#888888";
 const TIMELINE_STATUS_COLORS: Record<string, { fill: string; text: string }> = {
   completed: { fill: "#D1FAE5", text: "#047857" },
   pending: { fill: "#FEF3C7", text: "#B45309" },
-  "not started": { fill: "#E2E8F0", text: "#475569" },
-  not_started: { fill: "#E2E8F0", text: "#475569" },
+  "not started": { fill: "#FEE2E2", text: "#B91C1C" },
+  not_started: { fill: "#FEE2E2", text: "#B91C1C" },
 };
 
 function getTimelineStatusColors(status?: string) {

@@ -170,9 +170,9 @@ const STATUS_CONFIG: Record<TimelineStatus, { label: string; badgeClass: string;
   },
   not_started: {
     label: "Not started",
-    badgeClass: "bg-slate-100 text-slate-700 dark:bg-slate-900/70 dark:text-slate-200 border-slate-300 dark:border-slate-600 shadow-sm shadow-slate-900/5",
-    selectClass: "bg-slate-50 text-slate-700 border-slate-300 dark:bg-slate-900/60 dark:text-slate-200 dark:border-slate-600",
-    dotClass: "bg-slate-400",
+    badgeClass: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-200 border-red-300 dark:border-red-700 shadow-sm shadow-red-900/5",
+    selectClass: "bg-red-50 text-red-800 border-red-300 dark:bg-red-950/40 dark:text-red-200 dark:border-red-700",
+    dotClass: "bg-red-500",
   },
 };
 const ALL_STATUSES = Object.keys(STATUS_CONFIG) as TimelineStatus[];
