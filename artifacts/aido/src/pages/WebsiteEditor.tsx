@@ -527,7 +527,7 @@ export default function WebsiteEditor() {
               slug: result.record.slug,
               published: result.record.published,
               lastUpdated: result.record.lastUpdated,
-              password: result.record.password,
+              passwordEnabled: result.record.passwordEnabled,
               portalParty: result.record.portalParty ?? prev.portalParty,
             };
           }

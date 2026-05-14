@@ -539,6 +539,7 @@ router.get("/website/public/:slug/guests/:guestId", async (req, res) => {
       name: guest.name,
       rsvpStatus: guest.rsvpStatus,
       mealChoice: guest.mealChoice,
+      dietaryNotes: guest.dietaryNotes,
       plusOne: guest.plusOne,
       plusOneName: guest.plusOneName,
       plusOneMealChoice: guest.plusOneMealChoice,
@@ -788,12 +789,11 @@ router.post("/website/rsvp/:slug", async (req, res) => {
     const slug = String(req.params.slug ?? "").toLowerCase();
     if (!slug) return res.status(400).json({ error: "Slug required" });
 
-    const [row] = await db
-      .select({ id: weddingWebsites.id, published: weddingWebsites.published })
-      .from(weddingWebsites)
-      .where(eq(weddingWebsites.slug, slug))
-      .limit(1);
-    if (!row || !row.published) return res.status(404).json({ error: "Not found" });
+    const siteResult = await resolvePublishedSite(slug, req);
+    if (!siteResult.ok) {
+      return res.status(siteResult.status).json({ error: siteResult.status === 401 ? "Password required" : "Not found" });
+    }
+    const row = siteResult.site;
 
     const { name, email, attending, plusOneCount, dietaryRestrictions, message } = (req.body ?? {}) as {
       name?: string;

@@ -107,6 +107,10 @@ export default function PublicWebsite() {
     if (!slug) return;
     setLoading(true);
     setError(null);
+    setPwError(null);
+    setNeedsPassword(false);
+    setData(null);
+    setPassword(null);
     const url = `/api/website/public/${encodeURIComponent(slug)}`;
     apiFetch(url)
       .then(async (res) => {
