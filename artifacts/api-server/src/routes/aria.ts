@@ -603,6 +603,29 @@ type ActionResult =
   | { ok: false; error: string; doNotRetry?: boolean };
 type ActionRecord = { name: string; args: Record<string, unknown>; result: ActionResult };
 
+function friendlyToolError(err: unknown, toolName: string): string {
+  const detail = err instanceof Error ? err.message : String(err ?? "");
+  const lower = detail.toLowerCase();
+  const looksLikeDbError =
+    lower.includes("failed query") ||
+    lower.includes("insert into") ||
+    lower.includes("update ") ||
+    lower.includes("delete from") ||
+    lower.includes("returning ") ||
+    lower.includes("params:") ||
+    lower.includes("violates") ||
+    lower.includes("invalid input syntax");
+
+  if (looksLikeDbError) {
+    if (toolName.includes("vendor")) {
+      return "I couldn't save that vendor because the database rejected one of the fields. Please check the name/category and try again.";
+    }
+    return "I couldn't save that change because the database rejected one of the fields. Please check the details and try again.";
+  }
+
+  return detail || "Unexpected error";
+}
+
 type FoundVendor = { ok: true; id: number; name: string } | { ok: false; error: string };
 type FoundVendorPayment = { ok: true; id: number; vendorId: number; label: string } | { ok: false; error: string };
 type FoundChecklistItem = { ok: true; id: number; task: string } | { ok: false; error: string };
@@ -931,9 +954,6 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         totalCost: String(Number.isFinite(totalCostAmt) ? totalCostAmt : 0),
         depositAmount: String(Number.isFinite(depositAmt) ? depositAmt : 0),
         contractSigned: contractSignedArg,
-        nextPaymentDue: null,
-        files: [],
-        primaryContact: null,
       }).returning();
 
       // NOTE: Deposit milestones are intentionally NOT auto-created here.
@@ -1824,7 +1844,8 @@ Return ONLY valid JSON: { "tables": [{ "tableNumber": 1, "tableName": "Table 1",
 
     return { ok: false, error: `Unknown tool: ${name}` };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Unexpected error" };
+    req.log?.error({ err, toolName: name }, "Aria tool execution failed");
+    return { ok: false, error: friendlyToolError(err, name) };
   }
 }
 
@@ -2023,7 +2044,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       }, req, { recentUserText });
       if (result.ok) {
         send({ type: "action_start", name: "add_vendor", args: { name: pendingVendor.name, category: pendingVendor.category } });
-        send({ type: "action_end", name: "add_vendor", ok: true, data: result.data });
+        send({ type: "action_result", name: "add_vendor", ok: true, data: result.data });
         send({ type: "content", content: buildPostActionMessage("add_vendor", result.data) });
       } else {
         send({ type: "content", content: `I couldn't save that vendor yet: ${result.error}` });
@@ -2319,9 +2340,15 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         .map((m) => (typeof m.content === "string" ? m.content : ""))
         .join(" ")
         .toLowerCase();
-      const results = await Promise.all(
-        toolCalls.map((tc, i) => executeTool(tc.name, parsedArgsList[i], req, { recentUserText }))
-      );
+      const hasActionTools = toolCalls.some((tc) => ACTION_TOOLS.has(tc.name));
+      const results: ActionResult[] = hasActionTools
+        ? []
+        : await Promise.all(toolCalls.map((tc, i) => executeTool(tc.name, parsedArgsList[i], req, { recentUserText })));
+      if (hasActionTools) {
+        for (let i = 0; i < toolCalls.length; i++) {
+          results.push(await executeTool(toolCalls[i].name, parsedArgsList[i], req, { recentUserText }));
+        }
+      }
 
       // Stream results + record into conversation history in deterministic
       // order so the model sees tool replies aligned with its tool_calls.
