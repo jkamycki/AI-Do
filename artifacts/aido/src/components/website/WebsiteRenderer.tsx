@@ -180,8 +180,8 @@ const NOOP_CTX: EditCtx = { editable: false, onTextChange: () => {} };
 // Returns textStyle + onStyleChange + position + onPositionChange + onDelete props for an EditableText.
 // Every editable text now wires up the trash drop. For custom text boxes
 // (keys prefixed with "_custom_") the editor fully removes the row; for
-// default fields it clears the customText override so the value visibly
-// empties (and the EditableText wrap auto-hides via its empty-state path).
+// default fields it stores the hidden marker so the value visibly empties
+// (and the EditableText wrap auto-hides via its empty-state path).
 function tsp(ctx: EditCtx, key: string, _deletable = false) {
   if (!ctx.editable)
     return {

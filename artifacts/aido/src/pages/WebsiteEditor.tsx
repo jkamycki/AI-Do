@@ -1057,6 +1057,8 @@ export default function WebsiteEditor() {
         // it hidden via the sentinel marker so the deletion persists
         // across editor page changes, preview, and the published site.
         ct[key] = EDITABLE_HIDDEN_MARKER;
+        delete ts[key];
+        delete tp[key];
       }
       return { customText: ct, textStyles: ts, textPositions: tp };
     });
