@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { createRequire } from "node:module";
 import { db, vendorContracts, vendors } from "@workspace/db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, ne } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
@@ -408,18 +408,35 @@ router.delete("/contracts/:id", requireAuth, async (req, res) => {
       .limit(1);
 
     if (contract?.vendorId) {
+      const normalizedContractName = normalizeContractFileName(contract.fileName);
+      const duplicateRows = await db
+        .select({
+          id: vendorContracts.id,
+          fileName: vendorContracts.fileName,
+        })
+        .from(vendorContracts)
+        .where(and(
+          eq(vendorContracts.userId, scope.userId),
+          eq(vendorContracts.profileId, scope.profileId),
+          eq(vendorContracts.vendorId, contract.vendorId),
+          ne(vendorContracts.id, contract.id),
+        ))
+        .orderBy(desc(vendorContracts.createdAt));
+      const hasNewerSameDocument = duplicateRows.some((row) =>
+        normalizeContractFileName(row.fileName) === normalizedContractName
+      );
+
       const [vendor] = await db
         .select({ id: vendors.id, files: vendors.files })
         .from(vendors)
         .where(and(eq(vendors.id, contract.vendorId), eq(vendors.profileId, scope.profileId)))
         .limit(1);
       if (vendor) {
-        const normalizedContractName = normalizeContractFileName(contract.fileName);
         const existingFiles = Array.isArray(vendor.files) ? (vendor.files as VendorFile[]) : [];
         const remainingFiles = existingFiles.filter((file) => {
           if (file.contractId != null) return file.contractId !== contract.id;
           const fileContractName = typeof file.contractFileName === "string" ? file.contractFileName : file.name;
-          return normalizeContractFileName(fileContractName) !== normalizedContractName;
+          return hasNewerSameDocument || normalizeContractFileName(fileContractName) !== normalizedContractName;
         });
         if (remainingFiles.length !== existingFiles.length) {
           await db
