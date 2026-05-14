@@ -1298,13 +1298,13 @@ function AnnouncementBanner({
 
   return (
     <div
-      className="relative flex items-center justify-center gap-3 px-5 py-3 text-sm"
+      className="relative flex items-center justify-center px-5 py-3 text-sm"
       style={{
         background: `${data.colorPalette.primary}18`,
         borderBottom: `2px solid ${data.colorPalette.primary}55`,
       }}
     >
-      <div className="flex-1 overflow-hidden whitespace-nowrap">
+      <div className="w-full overflow-hidden whitespace-nowrap text-center">
         {ctx.editable ? (
           <div
             className="flex w-full items-center justify-center text-center"
@@ -1334,7 +1334,7 @@ function AnnouncementBanner({
       {!ctx.editable && (
         <button
           onClick={() => setDismissed(true)}
-          className="flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+          className="absolute right-5 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100 transition-opacity"
           aria-label="Dismiss"
           style={{ color: data.colorPalette.text }}
         >
