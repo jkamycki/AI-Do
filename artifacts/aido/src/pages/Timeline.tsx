@@ -26,7 +26,7 @@ import {
   Pencil, Trash2, Plus, Save, GripVertical, MapPin,
   Camera, Music, Heart, Users, Car, AlertTriangle,
   Wine, PartyPopper, Check, X, ChevronDown,
-  ChevronUp, RotateCcw,
+  ChevronUp, RotateCcw, ArrowUp,
 } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "";
@@ -820,19 +820,35 @@ export default function Timeline() {
             <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
             <p className="text-sm font-medium text-primary">{t("timeline.vision_card_title")}</p>
           </div>
-          <Textarea
-            placeholder={t("timeline.vision_placeholder")}
-            value={dayVision}
-            onChange={e => { setDayVision(e.target.value); localStorage.setItem(VISION_STORAGE_KEY, e.target.value); }}
-            onKeyDown={e => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (!generateTimeline.isPending) handleGenerate();
-              }
-            }}
-            className="min-h-[80px] resize-none text-sm"
-            data-testid="input-day-vision"
-          />
+          <div className="relative">
+            <Textarea
+              placeholder={t("timeline.vision_placeholder")}
+              value={dayVision}
+              onChange={e => { setDayVision(e.target.value); localStorage.setItem(VISION_STORAGE_KEY, e.target.value); }}
+              onKeyDown={e => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (!generateTimeline.isPending) handleGenerate();
+                }
+              }}
+              className="min-h-[80px] resize-none text-sm pr-12 pb-10"
+              data-testid="input-day-vision"
+            />
+            <Button
+              type="button"
+              size="icon"
+              onClick={handleGenerate}
+              disabled={generateTimeline.isPending}
+              className="absolute bottom-2 right-2 h-8 w-8 rounded-full shadow-sm"
+              title={t("timeline.generate_with_ai")}
+              aria-label={t("timeline.generate_with_ai")}
+              data-testid="btn-submit-day-vision"
+            >
+              {generateTimeline.isPending
+                ? <div className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                : <ArrowUp className="h-4 w-4" />}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
