@@ -12,7 +12,6 @@ import { ApiHealthBanner } from "@/components/ApiHealthBanner";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useGetProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
-import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
@@ -1137,7 +1136,6 @@ function HomeRedirect() {
 
 function ProtectedRoute({ component: Component, fullWidth = false }: { component: React.ComponentType; fullWidth?: boolean }) {
   const { isLoaded, isSignedIn } = useAuth();
-  useInactivityLogout();
 
   if (!isLoaded) {
     return (
