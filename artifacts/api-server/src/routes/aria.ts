@@ -533,7 +533,7 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"update_guest", description:"Update guest. Pass guestId or matchName.", parameters:{ type:"object", properties:{ guestId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, rsvpStatus:{type:"string",enum:["pending","attending","declined","maybe"]}, mealChoice:{type:"string"}, dietaryNotes:{type:"string"}, guestGroup:{type:"string"}, plusOne:{type:"boolean"}, plusOneName:{type:"string"}, tableAssignment:{type:"string"}, notes:{type:"string"}, address:{type:"string"}, guestCity:{type:"string"}, guestState:{type:"string"}, guestZip:{type:"string"}, guestCountry:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_guest", description:"Delete guest. Pass guestId or matchName.", parameters:{ type:"object", properties:{ guestId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_guests", description:"List all guests.", parameters:{ type:"object", properties:{} } } },
-  { type:"function" as const, function:{ name:"add_party_member", description:"Add a wedding party member (bridesmaid, groomsman, etc.). ONLY call after the user has explicitly confirmed. All three required fields (name, role, side) MUST come from the user — never invent them. If any is missing, ASK first.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific person's name provided by the user."}, role:{type:"string", description:"Specific role like 'Maid of Honor', 'Best Man', 'Bridesmaid' — provided by the user."}, side:{type:"string",enum:["bride","groom","both"]}, phone:{type:"string"}, email:{type:"string"}, outfitDetails:{type:"string"}, shoeSize:{type:"string"}, outfitStore:{type:"string"}, fittingDate:{type:"string"}, notes:{type:"string"} }, required:["name","role","side"] } } },
+  { type:"function" as const, function:{ name:"add_party_member", description:"Add a wedding party member (bridesmaid, groomsman, etc.). ONLY call after the user has explicitly confirmed. All three required fields (name, role, side) MUST come from the user — never invent them. If any is missing, ASK first. Side must be bride/bridal party, groom side, or both.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific person's name provided by the user."}, role:{type:"string", description:"Specific role like 'Maid of Honor', 'Best Man', 'Bridesmaid' — provided by the user."}, side:{type:"string",enum:["bride","groom","both"], description:"Use bride for bridal party/bride side, groom for groom side, or both only if user says both/shared."}, phone:{type:"string"}, email:{type:"string"}, outfitDetails:{type:"string"}, shoeSize:{type:"string"}, outfitStore:{type:"string"}, fittingDate:{type:"string"}, notes:{type:"string"} }, required:["name","role","side"] } } },
   { type:"function" as const, function:{ name:"update_party_member", description:"Update party member. Pass memberId or matchName.", parameters:{ type:"object", properties:{ memberId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, role:{type:"string"}, side:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, outfitDetails:{type:"string"}, shoeSize:{type:"string"}, outfitStore:{type:"string"}, fittingDate:{type:"string"}, notes:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_party_member", description:"Delete party member. Pass memberId or matchName.", parameters:{ type:"object", properties:{ memberId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_party", description:"List wedding party members.", parameters:{ type:"object", properties:{} } } },
@@ -640,6 +640,21 @@ function parsePendingHotelConfirmation(text: string): { hotelName: string } | nu
   return null;
 }
 
+function parsePendingPartyConfirmation(text: string): { name: string; role: string; side: string } | null {
+  const patterns = [
+    /Saving\s+(.+?)\s+as\s+(.+?)\s+on\s+(?:the\s+)?(bride|bridal|groom|both)(?:'s)?\s+(?:side|party)[\s\S]*Reply\s*['"]?yes['"]?\s+to\s+save/i,
+    /Ready\s+to\s+add\s+(.+?)\s+as\s+(.+?)\s+on\s+(?:the\s+)?(bride|bridal|groom|both)(?:'s)?\s+(?:side|party)[\s\S]*Reply\s*['"]?yes['"]?\s+to\s+(?:save|confirm)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const name = match?.[1]?.trim().replace(/[.!,;:]$/, "");
+    const role = match?.[2]?.trim().replace(/[.!,;:]$/, "");
+    const side = normalizePartySide(match?.[3] ?? "");
+    if (name && role && side) return { name, role, side };
+  }
+  return null;
+}
+
 function extractGuestNameFromAssistant(text: string): string | null {
   const patterns = [
     /\b(?:add|adding)\s+([A-Z][A-Za-z'’-]+(?:\s+[A-Z][A-Za-z'’-]+){0,3})\s+(?:to\s+)?(?:the\s+)?guest\s+list/i,
@@ -691,6 +706,31 @@ function inferGatheredHotel(text: string): { hotelName: string } | null {
   const hotelName = cleanGatheredName(text);
   if (!hotelName || hotelName.length > 100 || /\?/.test(hotelName)) return null;
   return { hotelName };
+}
+
+function normalizePartySide(value: string): string {
+  const lower = value.toLowerCase().trim();
+  if (/\b(bride|bridal)\b/.test(lower)) return "bride";
+  if (/\bgroom\b/.test(lower)) return "groom";
+  if (/\b(both|shared|either)\b/.test(lower)) return "both";
+  return "";
+}
+
+function inferGatheredPartyMember(text: string): { name?: string; role?: string; side?: string } {
+  const raw = cleanGatheredName(text);
+  const fullText = text.trim();
+  const rolePatterns = [
+    /\b(maid of honor|matron of honor|man of honor|best man|best woman|bridesmaid|bridesman|groomsman|groomswoman|flower girl|ring bearer|usher|junior bridesmaid|junior groomsman|officiant)\b/i,
+  ];
+  const role = rolePatterns.map(re => fullText.match(re)?.[1]).find(Boolean)?.trim();
+  const side = normalizePartySide(fullText);
+  let name = raw;
+  if (name && role) name = name.replace(new RegExp(`\\b${role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i"), "").trim();
+  name = name
+    .replace(/\b(?:on|for|side|bride|bridal|groom|both|party|as|a|an|the)\b/ig, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return { name: name || undefined, role: role || undefined, side: side || undefined };
 }
 
 function userActuallyMentionedName(candidate: string, userBlob: string, ignoredWords: Set<string>): boolean {
@@ -1575,8 +1615,35 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       const userId = await resolveScopeUserId(req);
       const memberName = String(args.name ?? "").trim();
       const role = String(args.role ?? "").trim();
-      const side = String(args.side ?? "").trim();
-      if (!memberName || !role || !side) return { ok: false, error: "name, role, and side are required" };
+      const side = normalizePartySide(String(args.side ?? "").trim());
+      if (!memberName || !role || !side) return { ok: false, error: "Name, role, and side are required. Ask the user for the person's name, role, and whether they are on the bridal party/bride side, groom side, or both.", doNotRetry: true };
+      const PARTY_PLACEHOLDER_WORDS = new Set([
+        "party", "member", "person", "someone", "somebody", "bridesmaid", "groomsman",
+        "groom", "bride", "bridal", "best", "maid", "honor", "new", "sample", "test",
+      ]);
+      if (/^(party member|wedding party member|new member|sample member|test member|someone|somebody|tbd|unknown|unnamed|n\/a|none)$/i.test(memberName)) {
+        return { ok: false, error: `"${memberName}" is not a person's name. Ask who they want to add to the wedding party.`, doNotRetry: true };
+      }
+      if (memberName.includes("?") || memberName.length > 80 || /^(what'?s|what is|please|could you|can you|tell me|i need|i want|add a |add an )/i.test(memberName)) {
+        return { ok: false, error: `"${memberName.slice(0, 40)}" doesn't look like a wedding party member's name. Ask the user for the person's name, role, and side.`, doNotRetry: true };
+      }
+      if (userBlob && userBlob.length > 0 && !userActuallyMentionedName(memberName, userBlob, PARTY_PLACEHOLDER_WORDS)) {
+        return {
+          ok: false,
+          error: `"${memberName}" doesn't appear in the user's messages - do not invent wedding party members. Ask the user who they want to add, their role, and whether they are on the bridal party/bride side, groom side, or both.`,
+          doNotRetry: true,
+        };
+      }
+      const roleTokens = role.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 3);
+      const userMentionedRole = roleTokens.length > 0 && roleTokens.some(t => userBlob.includes(t));
+      const userMentionedSide = side === "both"
+        ? /\b(both|shared|either)\b/i.test(userBlob)
+        : side === "bride"
+          ? /\b(bride|bridal)\b/i.test(userBlob)
+          : /\bgroom\b/i.test(userBlob);
+      if (userBlob && (!userMentionedRole || !userMentionedSide)) {
+        return { ok: false, error: "I need the role and side from the user before saving. Ask for their role and whether they are on the bridal party/bride side, groom side, or both.", doNotRetry: true };
+      }
       const profile = await resolveProfile(req);
       const [created] = await db.insert(weddingParty).values({
         userId, profileId: profile?.id ?? null, name: memberName, role, side,
@@ -2385,6 +2452,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const prevWasGatheringQuestion = /What'?s the vendor'?s name|vendor'?s name and category|vendor'?s business name and category/i.test(lastAssistantText);
     const prevWasGuestGatherQuestion = /Who would you like me to add to the guest list/i.test(lastAssistantText);
     const prevWasHotelGatherQuestion = /Which hotel should I add|What'?s the hotel name|hotel block should I add/i.test(lastAssistantText);
+    const prevWasPartyGatherQuestion = /Who should I add to the wedding party|person'?s name, role, and side|bridal party\/bride side, groom side, or both/i.test(lastAssistantText);
     const lastUserMsgForContext = [...messages].reverse().find(m => m.role === "user");
     const lastUserTextForContext = typeof lastUserMsgForContext?.content === "string" ? lastUserMsgForContext.content.trim() : "";
     const guestNameFromAssistant = extractGuestNameFromAssistant(lastAssistantText);
@@ -2556,6 +2624,39 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       return;
     }
 
+    const pendingParty = parsePendingPartyConfirmation(lastAssistantText);
+    if (pendingParty && YES_CONFIRM_INTENT.test(lastUserText.trim())) {
+      const recentUserText = messages
+        .filter((m) => m.role === "user")
+        .slice(-4)
+        .map((m) => (typeof m.content === "string" ? m.content : ""))
+        .join(" ")
+        .toLowerCase();
+      const result = await executeTool("add_party_member", {
+        name: pendingParty.name,
+        role: pendingParty.role,
+        side: pendingParty.side,
+      }, req, { recentUserText });
+      if (result.ok) {
+        send({ type: "action_start", name: "add_party_member", args: { name: pendingParty.name, role: pendingParty.role, side: pendingParty.side } });
+        send({ type: "action_result", name: "add_party_member", ok: true, data: result.data });
+        send({
+          type: "content",
+          content: buildConfirmation([{
+            name: "add_party_member",
+            args: { name: pendingParty.name, role: pendingParty.role, side: pendingParty.side },
+            result,
+          }]),
+        });
+      } else {
+        send({ type: "content", content: `I couldn't save that wedding party member yet: ${result.error}` });
+      }
+      send({ type: "done", actions: [{ name: "add_party_member", ok: result.ok, error: result.ok ? undefined : result.error }] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
     if (prevWasGuestNameLoop && guestNameFromAssistant && /\b(this|that|correct|yes|yep|name|guest)\b/i.test(lastUserText)) {
       send({
         type: "content",
@@ -2609,9 +2710,33 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       }
     }
 
+    if (prevWasPartyGatherQuestion && lastUserText.trim().length > 0 && lastUserText.trim().length <= 180 && !YES_CONFIRM_INTENT.test(lastUserText.trim())) {
+      const gatheredParty = inferGatheredPartyMember(lastUserText);
+      if (gatheredParty.name && gatheredParty.role && gatheredParty.side) {
+        const sideLabel = gatheredParty.side === "bride" ? "bridal party" : gatheredParty.side === "groom" ? "groom side" : "both sides";
+        send({
+          type: "content",
+          content: `Saving ${gatheredParty.name} as ${gatheredParty.role} on the ${sideLabel}. Reply "yes" to save.`,
+        });
+        send({ type: "done", actions: [] });
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
+      }
+      send({
+        type: "content",
+        content: "I need their name, role, and side before saving. Send it like: `Taylor Smith, bridesmaid, bridal party` or `Jordan Lee, best man, groom side`.",
+      });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
     const VENDOR_CATEGORY_INTENT = /\b(?:add|create|new)\s+(?:(?:a|an)\s+)?(?:new\s+)?(vendor|photographer|videographer|florist|caterer|catering|dj|band|musician|officiant|hair|makeup|transport(?:ation)?|limo|cake|baker|stationery|invitation|rental|planner|venue|coordinator)s?\b/i;
     const GUEST_GATHER_INTENT = /\b(?:add|create|new)\s+(?:(?:a|an)\s+)?(?:new\s+)?(?:guest|invitee|person)\b/i;
     const HOTEL_GATHER_INTENT = /\b(?:add|create|new)\s+(?:(?:a|an)\s+)?(?:new\s+)?(?:hotel|hotel block|room block|lodging|accommodation)s?\b/i;
+    const PARTY_GATHER_INTENT = /\b(?:add|create|new)\s+(?:(?:a|an)\s+)?(?:new\s+)?(?:wedding party member|party member|bridesmaid|groomsman|groomsmen|maid of honor|best man|attendant)\b/i;
     const HAS_PROPER_NOUN = /[A-Z][a-z]{2,}|"[^"]+"|'[^']+'/;
     const vendorGatherIntent = VENDOR_CATEGORY_INTENT.test(lastUserText) &&
       !HAS_PROPER_NOUN.test(lastUserText.replace(VENDOR_CATEGORY_INTENT, ""));
@@ -2619,6 +2744,9 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       !HAS_PROPER_NOUN.test(lastUserText.replace(GUEST_GATHER_INTENT, ""));
     const hotelGatherIntent = HOTEL_GATHER_INTENT.test(lastUserText) &&
       !HAS_PROPER_NOUN.test(lastUserText.replace(HOTEL_GATHER_INTENT, ""));
+    const partyDetails = inferGatheredPartyMember(lastUserText);
+    const partyGatherIntent = PARTY_GATHER_INTENT.test(lastUserText) &&
+      (!partyDetails.name || !partyDetails.role || !partyDetails.side);
 
     if (guestGatherIntent) {
       send({
@@ -2646,6 +2774,17 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       send({
         type: "content",
         content: "Which hotel should I add for this block? Send the hotel name, and any optional details like room count, rate, cutoff date, or booking link.",
+      });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
+    if (partyGatherIntent) {
+      send({
+        type: "content",
+        content: "Who should I add to the wedding party? Send the person's name, their role, and whether they're on the bridal party/bride side, groom side, or both.",
       });
       send({ type: "done", actions: [] });
       res.write("data: [DONE]\n\n");
