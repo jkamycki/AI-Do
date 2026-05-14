@@ -231,6 +231,10 @@ router.post("/vendors", requireAuth, async (req, res) => {
     res.status(201).json(formatVendor(created));
   } catch (err) {
     req.log.error(err, "Failed to create vendor");
+    if ((err as { code?: string })?.code === "42703") {
+      res.status(500).json({ error: "Vendor database columns are missing. Please run the latest database migrations and try again." });
+      return;
+    }
     res.status(500).json({ error: "Internal server error" });
   }
 });
