@@ -1,5 +1,6 @@
 import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@clerk/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { setWorkspaceProfileId } from "@workspace/api-client-react";
 import { setAuthFetchWorkspaceProfileId } from "@/lib/authFetch";
 
@@ -10,6 +11,7 @@ function syncWorkspaceProfileId(id: number | null) {
 
 export interface WorkspaceInfo {
   profileId: number;
+  workstationName?: string | null;
   partner1Name: string;
   partner2Name: string;
   weddingDate: string;
@@ -67,6 +69,7 @@ function readStored(): StoredWorkspace | null {
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, userId, getToken } = useAuth();
+  const queryClient = useQueryClient();
 
   const [activeWorkspace, setActiveWorkspaceState] = useState<WorkspaceInfo | null>(() => {
     // We don't know who the user is yet on the first render. Start clean —
@@ -131,8 +134,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         });
         if (!r.ok || cancelled) return;
         const body = await r.json() as {
-          ownProfile: { profileId: number; partner1Name: string; partner2Name: string; weddingDate: string } | null;
-          sharedWorkspaces: Array<{ profileId: number; role: string; partner1Name: string; partner2Name: string; weddingDate: string; status: string }>;
+          ownProfile: { profileId: number; workstationName?: string | null; partner1Name: string; partner2Name: string; weddingDate: string } | null;
+          sharedWorkspaces: Array<{ profileId: number; role: string; workstationName?: string | null; partner1Name: string; partner2Name: string; weddingDate: string; status: string }>;
         };
         if (cancelled) return;
         // If the account has exactly one active shared workspace and no own
@@ -142,6 +145,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           setActiveWorkspaceState({
             profileId: w.profileId,
             role: w.role,
+            workstationName: w.workstationName,
             partner1Name: w.partner1Name,
             partner2Name: w.partner2Name,
             weddingDate: w.weddingDate,
@@ -150,6 +154,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ userId, workspace: {
             profileId: w.profileId,
             role: w.role,
+            workstationName: w.workstationName,
             partner1Name: w.partner1Name,
             partner2Name: w.partner2Name,
             weddingDate: w.weddingDate,
@@ -165,6 +170,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const setActiveWorkspace = (w: WorkspaceInfo | null) => {
     setActiveWorkspaceState(w);
     syncWorkspaceProfileId(w?.profileId ?? null);
+    queryClient.removeQueries();
     if (w && userId) {
       const payload: StoredWorkspace = { userId, workspace: w };
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));

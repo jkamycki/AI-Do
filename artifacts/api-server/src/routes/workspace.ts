@@ -25,6 +25,7 @@ router.post("/workspaces", requireAuth, async (req, res) => {
       weddingDate?: string;
       venue?: string;
       location?: string;
+      workstationName?: string;
     };
     const partner1Name = body.partner1Name?.trim();
     const partner2Name = body.partner2Name?.trim();
@@ -39,6 +40,7 @@ router.post("/workspaces", requireAuth, async (req, res) => {
       .insert(weddingProfiles)
       .values({
         userId: req.userId!,
+        workstationName: body.workstationName?.trim() || `${partner1Name} & ${partner2Name}`,
         partner1Name,
         partner2Name,
         weddingDate,
@@ -48,19 +50,55 @@ router.post("/workspaces", requireAuth, async (req, res) => {
         location: body.location?.trim() || "TBD",
         guestCount: 1,
         totalBudget: "0",
-        weddingVibe: primaryProfile.weddingVibe || "Not set",
-        preferredLanguage: primaryProfile.preferredLanguage ?? "English",
+        weddingVibe: "Not set",
+        preferredLanguage: "English",
         accountType: "wedding_planner",
       })
       .returning();
 
     res.json({
       profileId: created.id,
+      workstationName: created.workstationName,
       partner1Name: created.partner1Name,
       partner2Name: created.partner2Name,
       weddingDate: created.weddingDate,
       role: "owner",
       accountType: created.accountType,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/workspaces/:profileId", requireAuth, async (req, res) => {
+  try {
+    const profileId = parseInt(String(req.params["profileId"] ?? "0"), 10);
+    const role = await resolveWorkspaceRole(req.userId!, profileId);
+    if (role !== "owner") {
+      res.status(403).json({ error: "Only the workstation owner can rename it." });
+      return;
+    }
+
+    const workstationName = String((req.body as { workstationName?: string }).workstationName ?? "").trim();
+    if (!workstationName) {
+      res.status(400).json({ error: "Workstation name is required." });
+      return;
+    }
+
+    const [updated] = await db
+      .update(weddingProfiles)
+      .set({ workstationName, updatedAt: new Date() })
+      .where(eq(weddingProfiles.id, profileId))
+      .returning();
+
+    res.json({
+      profileId: updated.id,
+      workstationName: updated.workstationName,
+      partner1Name: updated.partner1Name,
+      partner2Name: updated.partner2Name,
+      weddingDate: updated.weddingDate,
+      role: "owner",
+      accountType: updated.accountType,
     });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });

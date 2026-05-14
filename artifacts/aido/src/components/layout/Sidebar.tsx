@@ -84,6 +84,7 @@ const navSections = [
 interface WorkspacesData {
   ownProfile: {
     profileId: number;
+    workstationName?: string | null;
     partner1Name: string;
     partner2Name: string;
     weddingDate: string;
@@ -92,6 +93,7 @@ interface WorkspacesData {
   ownWorkspaces?: Array<{
     profileId: number;
     role: string;
+    workstationName?: string | null;
     partner1Name: string;
     partner2Name: string;
     weddingDate: string;
@@ -103,6 +105,7 @@ interface WorkspacesData {
     profileId: number;
     role: string;
     status: string;
+    workstationName?: string | null;
     partner1Name: string;
     partner2Name: string;
     weddingDate: string;
@@ -115,7 +118,11 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
   const [, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renamingWorkspace, setRenamingWorkspace] = useState<WorkspaceInfo | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   const [newWorkspace, setNewWorkspace] = useState({
+    workstationName: "",
     partner1Name: "",
     partner2Name: "",
     weddingDate: "",
@@ -141,6 +148,9 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
   const ownWorkspaces = data?.ownWorkspaces ?? (data?.ownProfile ? [{ ...data.ownProfile, role: "owner" }] : []);
   const isPlannerAccount = data?.accountType === "wedding_planner";
 
+  const workspaceLabel = (ws: { workstationName?: string | null; partner1Name: string; partner2Name: string }) =>
+    ws.workstationName?.trim() || `${ws.partner1Name} & ${ws.partner2Name}`;
+
   const createWorkspace = useMutation({
     mutationFn: async () => {
       const r = await authFetch("/api/workspaces", {
@@ -157,16 +167,39 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
       setActiveWorkspace({ ...ws, role: "owner" });
       setCreateOpen(false);
       setOpen(false);
-      setNewWorkspace({ partner1Name: "", partner2Name: "", weddingDate: "", venue: "", location: "" });
+      setNewWorkspace({ workstationName: "", partner1Name: "", partner2Name: "", weddingDate: "", venue: "", location: "" });
       setLocation("/dashboard");
       onClose();
+    },
+  });
+
+  const renameWorkspace = useMutation({
+    mutationFn: async () => {
+      if (!renamingWorkspace) throw new Error("No workstation selected.");
+      const r = await authFetch(`/api/workspaces/${renamingWorkspace.profileId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workstationName: renameValue }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body?.error || "Could not rename workstation.");
+      return body as WorkspaceInfo;
+    },
+    onSuccess: (ws) => {
+      queryClient.invalidateQueries({ queryKey: ["my-workspaces"] });
+      if (activeWorkspace?.profileId === ws.profileId) {
+        setActiveWorkspace({ ...activeWorkspace, ...ws, role: "owner" });
+      }
+      setRenameOpen(false);
+      setRenamingWorkspace(null);
+      setRenameValue("");
     },
   });
 
   if (!isPlannerAccount && sharedWorkspaces.length === 0) return null;
 
   const currentLabel = activeWorkspace
-    ? `${activeWorkspace.partner1Name} & ${activeWorkspace.partner2Name}`
+    ? workspaceLabel(activeWorkspace)
     : t("sidebar.my_workspace");
 
   const handleSelectOwn = () => {
@@ -183,6 +216,7 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
     }
     setActiveWorkspace({
       profileId: ws.profileId,
+      workstationName: ws.workstationName,
       partner1Name: ws.partner1Name,
       partner2Name: ws.partner2Name,
       weddingDate: ws.weddingDate,
@@ -196,6 +230,7 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
   const handleSelectShared = (ws: WorkspacesData["sharedWorkspaces"][0]) => {
     const info: WorkspaceInfo = {
       profileId: ws.profileId,
+      workstationName: ws.workstationName,
       partner1Name: ws.partner1Name,
       partner2Name: ws.partner2Name,
       weddingDate: ws.weddingDate,
@@ -233,19 +268,46 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
             const isDefault = data?.ownProfile?.profileId === ws.profileId;
             const isActive = isDefault ? !activeWorkspace : activeWorkspace?.profileId === ws.profileId;
             return (
-              <button
+              <div
                 key={ws.profileId}
-                onClick={() => handleSelectOwned(ws)}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/60 transition-colors text-left
                   ${isActive ? "text-primary font-medium" : "text-foreground"}`}
               >
-                <Heart className="h-4 w-4 text-primary flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="truncate">{isDefault ? t("sidebar.my_workspace") : `${ws.partner1Name} & ${ws.partner2Name}`}</div>
-                  {isPlannerAccount && <div className="text-[10px] text-muted-foreground">Owner</div>}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSelectOwned(ws)}
+                  className="flex flex-1 min-w-0 items-center gap-2.5 text-left"
+                >
+                  <Heart className="h-4 w-4 text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="truncate">{isDefault ? t("sidebar.my_workspace") : workspaceLabel(ws)}</div>
+                    {isPlannerAccount && <div className="text-[10px] text-muted-foreground">Owner</div>}
+                  </div>
+                </button>
                 {isActive && <span className="ml-auto text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{t("sidebar.active")}</span>}
-              </button>
+                {isPlannerAccount && !isDefault && (
+                  <button
+                    type="button"
+                    title="Rename workstation"
+                    className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onClick={() => {
+                      setRenamingWorkspace({
+                        profileId: ws.profileId,
+                        workstationName: ws.workstationName,
+                        partner1Name: ws.partner1Name,
+                        partner2Name: ws.partner2Name,
+                        weddingDate: ws.weddingDate,
+                        role: "owner",
+                      });
+                      setRenameValue(workspaceLabel(ws));
+                      setRenameOpen(true);
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
             );
           })}
           {isPlannerAccount && (
@@ -292,6 +354,10 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
           </DialogHeader>
           <div className="grid gap-3">
             <div className="grid gap-1.5">
+              <label className="text-sm font-medium">Workstation Name</label>
+              <Input value={newWorkspace.workstationName} onChange={(e) => setNewWorkspace((v) => ({ ...v, workstationName: e.target.value }))} placeholder="Optional, e.g. Smith Wedding" />
+            </div>
+            <div className="grid gap-1.5">
               <label className="text-sm font-medium">Client / Partner 1 Name</label>
               <Input value={newWorkspace.partner1Name} onChange={(e) => setNewWorkspace((v) => ({ ...v, partner1Name: e.target.value }))} />
             </div>
@@ -323,6 +389,33 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
               disabled={createWorkspace.isPending || !newWorkspace.partner1Name.trim() || !newWorkspace.partner2Name.trim() || !newWorkspace.weddingDate}
             >
               {createWorkspace.isPending ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename workstation</DialogTitle>
+            <DialogDescription>
+              This changes the workstation label only. It does not change the couple names or wedding profile details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-1.5">
+            <label className="text-sm font-medium">Workstation Name</label>
+            <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} />
+            {renameWorkspace.isError && (
+              <p className="text-sm text-destructive">{(renameWorkspace.error as Error).message}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRenameOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              onClick={() => renameWorkspace.mutate()}
+              disabled={renameWorkspace.isPending || !renameValue.trim()}
+            >
+              {renameWorkspace.isPending ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -536,7 +629,7 @@ export function Sidebar() {
           <div className="mx-4 mb-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
             <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">{t("sidebar.viewing_shared")}</p>
             <p className="text-xs text-amber-800 font-medium truncate mt-0.5">
-              {activeWorkspace.partner1Name} & {activeWorkspace.partner2Name}
+              {activeWorkspace.workstationName || `${activeWorkspace.partner1Name} & ${activeWorkspace.partner2Name}`}
             </p>
           </div>
         )}

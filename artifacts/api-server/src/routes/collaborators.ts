@@ -142,7 +142,8 @@ router.get("/collaborators", requireAuth, async (req, res) => {
           inviterUserId: c.inviterUserId,
         };
       }),
-      workspaceName: `${profile.partner1Name} & ${profile.partner2Name}`,
+      workspaceName: profile.workstationName || `${profile.partner1Name} & ${profile.partner2Name}`,
+      workstationName: profile.workstationName,
       profileId: profile.id,
       myRole,
     });
@@ -168,6 +169,7 @@ router.get("/collaborators/my-workspaces", requireAuth, async (req, res) => {
         role: workspaceCollaborators.role,
         status: workspaceCollaborators.status,
         partner1Name: weddingProfiles.partner1Name,
+        workstationName: weddingProfiles.workstationName,
         partner2Name: weddingProfiles.partner2Name,
         weddingDate: weddingProfiles.weddingDate,
       })
@@ -186,6 +188,7 @@ router.get("/collaborators/my-workspaces", requireAuth, async (req, res) => {
       ownProfile: ownProfile
         ? {
             profileId: ownProfile.id,
+            workstationName: ownProfile.workstationName,
             partner1Name: ownProfile.partner1Name,
             partner2Name: ownProfile.partner2Name,
             weddingDate: ownProfile.weddingDate,
@@ -194,6 +197,7 @@ router.get("/collaborators/my-workspaces", requireAuth, async (req, res) => {
         : null,
       ownWorkspaces: ownedProfiles.map((p) => ({
         profileId: p.id,
+        workstationName: p.workstationName,
         partner1Name: p.partner1Name,
         partner2Name: p.partner2Name,
         weddingDate: p.weddingDate,
@@ -303,6 +307,7 @@ router.get("/invite/:token", async (req, res) => {
         invitedAt: workspaceCollaborators.invitedAt,
         profileId: workspaceCollaborators.profileId,
         partner1Name: weddingProfiles.partner1Name,
+        workstationName: weddingProfiles.workstationName,
         partner2Name: weddingProfiles.partner2Name,
         weddingDate: weddingProfiles.weddingDate,
         venue: weddingProfiles.venue,
@@ -382,6 +387,7 @@ router.post("/invite/:token/accept", requireAuth, async (req, res) => {
     res.json({
       profileId: collab.profileId,
       role: collab.role,
+      workstationName: profile?.workstationName ?? null,
       partner1Name: profile?.partner1Name ?? "",
       partner2Name: profile?.partner2Name ?? "",
       weddingDate: profile?.weddingDate ?? "",
