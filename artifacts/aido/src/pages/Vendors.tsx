@@ -140,6 +140,11 @@ type VendorFormData = {
   phone: string;
   website: string;
   portalLink: string;
+  streetAddress: string;
+  aptUnit: string;
+  city: string;
+  state: string;
+  zip: string;
   address: string;
   notes: string;
   totalCost: string;
@@ -155,6 +160,11 @@ const defaultFormData: VendorFormData = {
   phone: "",
   website: "",
   portalLink: "",
+  streetAddress: "",
+  aptUnit: "",
+  city: "",
+  state: "",
+  zip: "",
   address: "",
   notes: "",
   totalCost: "",
@@ -162,6 +172,18 @@ const defaultFormData: VendorFormData = {
   contractSigned: false,
   primaryContact: "",
 };
+
+function buildVendorAddress({
+  streetAddress,
+  aptUnit,
+  city,
+  state,
+  zip,
+}: Pick<VendorFormData, "streetAddress" | "aptUnit" | "city" | "state" | "zip">) {
+  const stateZip = [state.trim(), zip.trim()].filter(Boolean).join(" ");
+  const cityStateZip = [city.trim(), stateZip].filter(Boolean).join(", ");
+  return [streetAddress.trim(), aptUnit.trim(), cityStateZip].filter(Boolean).join(", ");
+}
 
 function AddEditVendorDialog({
   open,
@@ -185,6 +207,11 @@ function AddEditVendorDialog({
             phone: vendor.phone ?? "",
             website: vendor.website ?? "",
             portalLink: vendor.portalLink ?? "",
+            streetAddress: (vendor as any).address ?? "",
+            aptUnit: "",
+            city: "",
+            state: "",
+            zip: "",
             address: (vendor as any).address ?? "",
             notes: vendor.notes ?? "",
             totalCost: vendor.totalCost > 0 ? String(vendor.totalCost) : "",
@@ -197,6 +224,13 @@ function AddEditVendorDialog({
   );
   const [form, setForm] = useState<VendorFormData>(initialForm);
   const [includeAddress, setIncludeAddress] = useState(Boolean(initialForm.address));
+
+  function updateAddressFields(patch: Partial<Pick<VendorFormData, "streetAddress" | "aptUnit" | "city" | "state" | "zip">>) {
+    setForm((current) => {
+      const next = { ...current, ...patch };
+      return { ...next, address: buildVendorAddress(next) };
+    });
+  }
 
   const createMutation = useCreateVendor({
     mutation: {
@@ -407,14 +441,65 @@ function AddEditVendorDialog({
                 </Label>
               </div>
               {includeAddress && (
-                <div className="space-y-1.5">
-                  <Label>{t("vendors.address", { defaultValue: "Address" })}</Label>
-                  <AddressAutocomplete
-                    value={form.address}
-                    onChange={(value) => setForm({ ...form, address: value })}
-                    onSelect={(suggestion) => setForm({ ...form, address: suggestion.street })}
-                    placeholder={t("vendors.address_placeholder", { defaultValue: "123 Main St" })}
-                  />
+                <div className="space-y-3 rounded-md border border-border/70 bg-muted/20 p-3">
+                  <div className="space-y-1.5">
+                    <Label>{t("vendors.street_address", { defaultValue: "Street address" })}</Label>
+                    <AddressAutocomplete
+                      value={form.streetAddress}
+                      onChange={(value) => updateAddressFields({ streetAddress: value })}
+                      onSelect={(suggestion) => updateAddressFields({
+                        streetAddress: suggestion.street,
+                        city: suggestion.city,
+                        state: suggestion.state,
+                        zip: suggestion.zip,
+                      })}
+                      placeholder={t("vendors.address_placeholder", { defaultValue: "123 Main St" })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>{t("vendors.apt_unit_optional", { defaultValue: "Apt / suite (optional)" })}</Label>
+                      <Input
+                        value={form.aptUnit}
+                        onChange={(e) => updateAddressFields({ aptUnit: e.target.value })}
+                        placeholder={t("vendors.apt_unit_placeholder", { defaultValue: "Apt 4B" })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{t("vendors.city", { defaultValue: "City" })}</Label>
+                      <Input
+                        value={form.city}
+                        onChange={(e) => updateAddressFields({ city: e.target.value })}
+                        placeholder={t("vendors.city_placeholder", { defaultValue: "City" })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{t("vendors.state", { defaultValue: "State" })}</Label>
+                      <Input
+                        value={form.state}
+                        onChange={(e) => updateAddressFields({ state: e.target.value })}
+                        placeholder={t("vendors.state_placeholder", { defaultValue: "State" })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{t("vendors.zip", { defaultValue: "ZIP" })}</Label>
+                      <Input
+                        value={form.zip}
+                        onChange={(e) => updateAddressFields({ zip: e.target.value })}
+                        placeholder={t("vendors.zip_placeholder", { defaultValue: "ZIP code" })}
+                        inputMode="numeric"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>{t("vendors.full_address_preview", { defaultValue: "Full address preview" })}</Label>
+                    <Input
+                      value={form.address}
+                      readOnly
+                      placeholder={t("vendors.full_address_preview_placeholder", { defaultValue: "Address fills as you type" })}
+                      className="bg-background/70 text-muted-foreground"
+                    />
+                  </div>
                 </div>
               )}
             </div>
