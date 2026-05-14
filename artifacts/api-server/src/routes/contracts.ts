@@ -86,7 +86,8 @@ router.post(
       if (code === "LIMIT_FILE_SIZE") {
         return res.status(413).json({ error: "File is too large. Maximum size is 5 MB." });
       }
-      return res.status(400).json({ error: msg });
+      req.log?.warn({ error: msg }, "Contract upload rejected");
+      return res.status(400).json({ error: "Invalid contract upload." });
     });
   },
   async (req, res) => {

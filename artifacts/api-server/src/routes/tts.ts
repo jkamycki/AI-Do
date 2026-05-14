@@ -47,7 +47,8 @@ router.get("/tts/narration/:scene", async (req, res) => {
     res.setHeader("Content-Length", String(buf.length));
     return res.send(buf);
   } catch (err) {
-    return res.status(500).json({ error: (err as Error).message });
+    req.log?.error(err, "Failed to generate narration audio");
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 

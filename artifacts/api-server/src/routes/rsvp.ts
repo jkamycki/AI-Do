@@ -946,7 +946,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     req.log.error({ error: errorMsg, stack: err instanceof Error ? err.stack : undefined }, "Failed to send RSVP");
-    res.status(500).json({ error: "Internal server error", details: errorMsg });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -1151,7 +1151,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     req.log.error({ error: errorMsg, stack: err instanceof Error ? err.stack : undefined }, "Failed to send RSVP reminder");
-    res.status(500).json({ error: "Internal server error", details: errorMsg });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -1796,7 +1796,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     req.log.error({ error: errorMsg, stack: err instanceof Error ? err.stack : undefined }, "Failed to send save-the-date");
-    res.status(500).json({ error: "Internal server error", details: errorMsg });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

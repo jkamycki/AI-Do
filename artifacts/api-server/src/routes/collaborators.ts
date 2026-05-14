@@ -139,7 +139,6 @@ router.get("/collaborators", requireAuth, async (req, res) => {
           inviteeEmail: c.inviteeEmail,
           inviteeUserId: c.inviteeUserId,
           inviterUserId: c.inviterUserId,
-          inviteToken: c.inviteToken,
         };
       }),
       workspaceName: `${profile.partner1Name} & ${profile.partner2Name}`,

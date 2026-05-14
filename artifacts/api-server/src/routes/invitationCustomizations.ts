@@ -346,11 +346,7 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
     res.json(result);
   } catch (err) {
     req.log.error(err, "invitation-customizations POST");
-    const cause = err instanceof Error
-      ? ((err as Error & { cause?: unknown }).cause ?? err)
-      : err;
-    const detail = cause instanceof Error ? cause.message : String(cause);
-    res.status(500).json({ error: `DB error: ${detail}` });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -492,10 +488,7 @@ router.post("/color-palette/generate", requireAuth, async (req, res) => {
     res.json(palette);
   } catch (err) {
     req.log.error(err, "color-palette generate");
-    res.status(400).json({
-      error:
-        err instanceof Error ? err.message : "Failed to generate color palette",
-    });
+    res.status(400).json({ error: "Failed to generate color palette" });
   }
 });
 

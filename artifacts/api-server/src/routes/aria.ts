@@ -1853,22 +1853,16 @@ const AI_CONFIGURED_FOR_PROD =
   !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY);
 
 /**
- * GET /aria/test — admin-only connectivity check for the OpenAI API.
- * Returns { ok, model, baseUrl, error? } without hitting the DB.
+ * GET /aria/test — authenticated connectivity check for the OpenAI API.
+ * Returns a sanitized status without exposing model, base URL, or provider errors.
  */
-router.get("/aria/test", async (req, res) => {
-  // Public endpoint — no auth required — so anyone can verify AI connectivity
-  // from the browser: GET /api/aria/test
+router.get("/aria/test", requireAuth, async (req, res) => {
   const configured = !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY);
-  const baseUrlEnv = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || process.env.OPENAI_BASE_URL || "(not set)";
-
   if (!configured) {
     return res.json({
       ok: false,
       configured: false,
-      model: "(none)",
-      baseUrl: baseUrlEnv,
-      error: "No AI API key set (AI_INTEGRATIONS_OPENAI_API_KEY or OPENAI_API_KEY).",
+      error: "AI is not configured.",
     });
   }
 
@@ -1879,17 +1873,13 @@ router.get("/aria/test", async (req, res) => {
       messages: [{ role: "user", content: "Reply with just OK" }],
     });
     const reply = result.choices[0]?.message?.content ?? "";
-    return res.json({ ok: true, configured: true, model: getModel(), baseUrl: baseUrlEnv, reply });
+    return res.json({ ok: true, configured: true, reply });
   } catch (err) {
-    const e = err as { status?: number; message?: string; error?: { message?: string } };
     req.log?.error(err, "aria/test failed");
     return res.json({
       ok: false,
       configured: true,
-      model: getModel(),
-      baseUrl: baseUrlEnv,
-      status: e?.status,
-      error: e?.error?.message || e?.message || String(err),
+      error: "AI connectivity check failed.",
     });
   }
 });
@@ -2441,7 +2431,8 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       } else if (status === 404 || detail.toLowerCase().includes("model")) {
         userMsg = `AI model not found. (${detail || "no detail"})`;
       } else if (detail) {
-        userMsg = `Aria encountered an error: ${detail}`;
+        req.log?.error({ detail }, "Aria provider error hidden from client");
+        userMsg = "Aria encountered an error. Please try again.";
       }
 
       res.write(`data: ${JSON.stringify({ type: "error", error: userMsg })}\n\n`);

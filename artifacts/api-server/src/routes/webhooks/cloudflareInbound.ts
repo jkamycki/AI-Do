@@ -6,6 +6,7 @@ import PostalMime from "postal-mime";
 import { cleanInboundText, findRoutingAddressInText, htmlToText, parseInboundAddress } from "../../lib/resend";
 import { isSupportInboxRecipient, saveSupportInboxMessage, parseSupportThreadAddress, appendInboundReply } from "../../lib/supportInbox";
 import { logger } from "../../lib/logger";
+import { requireAuth } from "../../middlewares/requireAuth";
 
 const router = Router();
 
@@ -27,7 +28,7 @@ function logCfHit(result: string, extra: { conversationId?: number; senderEmail?
 // what an inbound vendor reply actually looks like.
 let lastCfPayload: { ts: string; to?: string; from?: string; subject?: string; bodyPreview?: string } | null = null;
 
-router.get("/webhooks/cloudflare/status", (_req, res) => {
+router.get("/webhooks/cloudflare/status", requireAuth, (_req, res) => {
   res.json({
     secretConfigured: !!process.env.CLOUDFLARE_INBOUND_SECRET,
     recentHits: cfRecentHits,

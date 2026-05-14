@@ -6,6 +6,7 @@ import { cleanInboundText, findRoutingAddressInText, htmlToText, parseInboundAdd
 import { isSupportInboxRecipient, saveSupportInboxMessage, parseSupportThreadAddress, appendInboundReply } from "../../lib/supportInbox";
 import { logger } from "../../lib/logger";
 import { Webhook } from "svix";
+import { requireAuth } from "../../middlewares/requireAuth";
 
 const router = Router();
 
@@ -19,8 +20,8 @@ function logHit(result: string, extra: { conversationId?: number; senderEmail?: 
 // Last raw payload received (truncated) for debugging
 let lastPayload: { ts: string; recipients?: string[]; from?: string; subject?: string; bodyPreview?: string } | null = null;
 
-// GET /api/webhooks/resend/status — config check + recent hit log (no auth needed, safe info only)
-router.get("/webhooks/resend/status", (_req, res) => {
+// GET /api/webhooks/resend/status — authenticated config check + recent hit log.
+router.get("/webhooks/resend/status", requireAuth, (_req, res) => {
   res.json({
     secretConfigured: !!process.env.RESEND_WEBHOOK_SECRET,
     inboundDomain: process.env.INBOUND_EMAIL_DOMAIN ?? "mail.aidowedding.net (default)",

@@ -218,7 +218,7 @@ router.post("/help/messages/contact/:id/reply", requireAuth, async (req, res) =>
 
     if (!result.ok) {
       req.log.error({ error: result.error }, "Failed to send contact-message reply");
-      return res.status(502).json({ error: `Email delivery failed: ${result.error}` });
+      return res.status(502).json({ error: "Email delivery failed." });
     }
 
     await db.insert(contactMessageReplies).values({
@@ -412,7 +412,7 @@ router.patch("/help/support-tickets/:id/follow-up", requireAuth, async (req, res
 
     if (!emailResult.ok) {
       req.log.error({ error: emailResult.error }, "Failed to send follow-up email");
-      return res.status(502).json({ error: `Email delivery failed: ${emailResult.error}` });
+      return res.status(502).json({ error: "Email delivery failed." });
     }
 
     const [updated] = await db
