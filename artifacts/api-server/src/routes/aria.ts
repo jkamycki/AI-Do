@@ -319,6 +319,17 @@ function normalizeToolArgs(toolName: string, args: Record<string, unknown>): Rec
   return out;
 }
 
+function vendorDedupeKey(args: Record<string, unknown>): string {
+  const normalizedName = String(args.name ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+  const normalizedCategory = normalizeCategory(String(args.category ?? "Other"))
+    .trim()
+    .toLowerCase();
+  return `${normalizedName}:${normalizedCategory}`;
+}
+
 const ACTION_TOOLS = new Set([
   "add_vendor", "update_vendor", "delete_vendor",
   "add_vendor_payment", "update_vendor_payment", "mark_vendor_payment_paid", "delete_vendor_payment",
@@ -2000,10 +2011,16 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     // model misses where it asks another question instead of saving.
     const pendingVendor = parsePendingVendorConfirmation(lastAssistantText);
     if (pendingVendor && YES_CONFIRM_INTENT.test(lastUserText.trim())) {
+      const recentUserText = messages
+        .filter((m) => m.role === "user")
+        .slice(-4)
+        .map((m) => (typeof m.content === "string" ? m.content : ""))
+        .join(" ")
+        .toLowerCase();
       const result = await executeTool("add_vendor", {
         name: pendingVendor.name,
         category: pendingVendor.category,
-      }, req, { recentUserText: lastUserText });
+      }, req, { recentUserText });
       if (result.ok) {
         send({ type: "action_start", name: "add_vendor", args: { name: pendingVendor.name, category: pendingVendor.category } });
         send({ type: "action_end", name: "add_vendor", ok: true, data: result.data });
@@ -2265,12 +2282,28 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
       // Parse args + emit action_start synchronously, in order, so the UI
       // shows every tool the model wanted to call right away.
-      const parsedArgsList = toolCalls.map((tc, idx) => {
+      const parsedToolCalls = toolCalls.map((tc, idx) => {
         const parsedArgs = normalizeToolArgs(tc.name, safeParseToolArgs(tc.args || "{}"));
         if (!tc.id) tc.id = `tool-${Date.now()}-${idx}`;
-        send({ type: "action_start", name: tc.name, args: parsedArgs });
-        return parsedArgs;
+        return { toolCall: tc, parsedArgs };
       });
+
+      const seenVendorAdds = new Set<string>();
+      const dedupedToolCalls: typeof toolCalls = [];
+      const parsedArgsList: Record<string, unknown>[] = [];
+      for (const { toolCall, parsedArgs } of parsedToolCalls) {
+        if (toolCall.name === "add_vendor") {
+          const key = vendorDedupeKey(parsedArgs);
+          if (key !== ":other" && seenVendorAdds.has(key)) continue;
+          seenVendorAdds.add(key);
+        }
+        dedupedToolCalls.push(toolCall);
+        parsedArgsList.push(parsedArgs);
+      }
+      toolCalls = dedupedToolCalls;
+      for (let i = 0; i < toolCalls.length; i++) {
+        send({ type: "action_start", name: toolCalls[i].name, args: parsedArgsList[i] });
+      }
 
       // Execute all tools in PARALLEL. Most are independent read queries
       // (list_vendors, list_budget, list_guests, etc.) and serializing them
