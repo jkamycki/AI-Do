@@ -45,12 +45,12 @@ export function Scene7() {
           </div>
 
           <div className="rounded-2xl overflow-hidden border border-white/10 bg-black/25">
-            <div className="px-3 py-2 border-b border-white/10 text-xs text-white/60">aido-wedding.com/joseph-gabriela</div>
+            <div className="px-3 py-2 border-b border-white/10 text-xs text-white/60">aido-wedding.com/mia-noah</div>
             <div className="p-4">
               <div className="rounded-xl h-28 bg-[linear-gradient(120deg,#2b163f,#5a2e83,#9b4d6d)] mb-3 flex items-center justify-center text-white font-serif text-xl">
-                Joseph & Gabriela
+                Mia & Noah
               </div>
-              <p className="text-white/75 text-sm mb-2">April 24, 2027 · The Royal Manor</p>
+              <p className="text-white/75 text-sm mb-2">October 12, 2027 · Willow Creek Estate</p>
               <div className="grid grid-cols-3 gap-2">
                 {["Our Story", "Registry", "RSVP"].map((pill) => (
                   <span key={pill} className="text-center text-xs rounded-full py-1 bg-white/10 text-white/85">{pill}</span>
