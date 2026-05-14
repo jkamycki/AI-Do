@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useAuth } from "@clerk/react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
@@ -78,7 +78,7 @@ import {
   ChevronRight,
   Bell,
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 
 const VENDOR_CATEGORIES = [
@@ -907,10 +907,12 @@ function VendorDetailDialog({
   vendorId,
   onClose,
   onEdit,
+  initialTab = "overview",
 }: {
   vendorId: number;
   onClose: () => void;
   onEdit: () => void;
+  initialTab?: "overview" | "messages" | "payments" | "files";
 }) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -984,7 +986,7 @@ function VendorDetailDialog({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="overview">
+          <Tabs defaultValue={initialTab}>
             <TabsList className="w-full">
               <TabsTrigger value="overview" className="flex-1">{t("vendors.tab_overview")}</TabsTrigger>
               <TabsTrigger value="messages" className="flex-1">{t("vendors.tab_messages")}</TabsTrigger>
@@ -1420,10 +1422,16 @@ export default function Vendors() {
   const qc = useQueryClient();
   const { data: vendors = [], isLoading } = useListVendors();
   const { data: profile, isLoading: profileLoading } = useGetProfile();
+  const [location, setLocation] = useLocation();
+  const queryString = location.includes("?") ? location.slice(location.indexOf("?") + 1) : "";
+  const query = new URLSearchParams(queryString);
+  const requestedVendorId = Number(query.get("vendorId") ?? "");
+  const requestedTab = query.get("tab");
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [viewingVendorId, setViewingVendorId] = useState<number | null>(null);
+  const [detailInitialTab, setDetailInitialTab] = useState<"overview" | "messages" | "payments" | "files">("overview");
   const [deletingVendorId, setDeletingVendorId] = useState<number | null>(null);
   const [showSummarize, setShowSummarize] = useState(false);
 
@@ -1465,6 +1473,17 @@ export default function Vendors() {
   const totalDeposit = vendors.reduce((s, v) => s + v.depositAmount, 0);
   const paidOut = vendorFinancials?.totalPaid ?? totalDeposit;
   const signedCount = vendors.filter((v) => v.contractSigned).length;
+
+  useEffect(() => {
+    if (isLoading || !requestedVendorId) return;
+    setDetailInitialTab(
+      requestedTab === "messages" || requestedTab === "payments" || requestedTab === "files"
+        ? requestedTab
+        : "overview"
+    );
+    setViewingVendorId(requestedVendorId);
+    setLocation("/vendors", { replace: true });
+  }, [isLoading, requestedVendorId, requestedTab, setLocation]);
 
   if (isLoading) {
     return (
@@ -1554,7 +1573,10 @@ export default function Vendors() {
             <VendorCard
               key={vendor.id}
               vendor={vendor}
-              onClick={() => setViewingVendorId(vendor.id)}
+              onClick={() => {
+                setDetailInitialTab("overview");
+                setViewingVendorId(vendor.id);
+              }}
               onEdit={() => setEditingVendor(vendor)}
               onDelete={() => setDeletingVendorId(vendor.id)}
             />
@@ -1585,6 +1607,7 @@ export default function Vendors() {
       {viewingVendorId !== null && !editingVendor && (
         <VendorDetailDialog
           vendorId={viewingVendorId}
+          initialTab={detailInitialTab}
           onClose={() => setViewingVendorId(null)}
           onEdit={() => {
             const v = vendors.find((vv) => vv.id === viewingVendorId);

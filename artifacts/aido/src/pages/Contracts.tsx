@@ -33,6 +33,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslation } from "react-i18next";
 import { useGetProfile, useListVendors } from "@workspace/api-client-react";
+import { useLocation } from "wouter";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -91,9 +92,10 @@ function formatSize(bytes: number | null) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; redFlagCount: number }) {
+function NegotiationPanel({ contractId, redFlagCount, vendorId }: { contractId: number; redFlagCount: number; vendorId?: number | null }) {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -124,6 +126,13 @@ function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; re
       toast({ title: t("contracts.copied_toast") });
       setTimeout(() => setCopied(false), 2000);
     });
+  }
+
+  function moveToVendorMessages() {
+    if (!email || !vendorId) return;
+    localStorage.setItem(`aido_vendor_message_draft_v1_${vendorId}`, email);
+    toast({ title: t("contracts.draft_sent_to_vendor_messages", { defaultValue: "Draft added to vendor messages" }) });
+    setLocation(`/vendors?vendorId=${vendorId}&tab=messages`);
   }
 
   return (
@@ -163,6 +172,12 @@ function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; re
               <Button size="sm" className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={copy}>
                 {copied ? <><Check className="h-3.5 w-3.5" /> {t("contracts.copied")}</> : <><Copy className="h-3.5 w-3.5" /> {t("contracts.copy_to_clipboard")}</>}
               </Button>
+              {vendorId && (
+                <Button size="sm" variant="outline" className="flex-1 gap-2 border-border/60 text-foreground hover:bg-muted/50" onClick={moveToVendorMessages}>
+                  <MessageSquareDiff className="h-3.5 w-3.5" />
+                  {t("contracts.add_to_vendor_message", { defaultValue: "Add to vendor message" })}
+                </Button>
+              )}
               <Button size="sm" variant="outline" className="border-border/60 text-foreground hover:bg-muted/50" onClick={generate} disabled={loading}>
                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("contracts.regenerate")}
               </Button>
@@ -174,7 +189,7 @@ function NegotiationPanel({ contractId, redFlagCount }: { contractId: number; re
   );
 }
 
-function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; contractId: number }) {
+function AnalysisPanel({ analysis, contractId, vendorId }: { analysis: ContractAnalysis; contractId: number; vendorId?: number | null }) {
   const { t } = useTranslation();
   return (
     <div className="space-y-5 pt-2">
@@ -318,7 +333,7 @@ function AnalysisPanel({ analysis, contractId }: { analysis: ContractAnalysis; c
 
       {/* Negotiation Response — only when red flags exist */}
       {analysis.redFlags?.length > 0 && (
-        <NegotiationPanel contractId={contractId} redFlagCount={analysis.redFlags.length} />
+        <NegotiationPanel contractId={contractId} redFlagCount={analysis.redFlags.length} vendorId={vendorId} />
       )}
     </div>
   );
@@ -423,7 +438,7 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
 
         {expanded && analysis && (
           <div className="mt-4 border-t border-border/30 pt-4">
-            <AnalysisPanel analysis={analysis} contractId={contract.id} />
+            <AnalysisPanel analysis={analysis} contractId={contract.id} vendorId={contract.vendorId} />
           </div>
         )}
 

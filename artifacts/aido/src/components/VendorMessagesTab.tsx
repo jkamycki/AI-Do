@@ -261,6 +261,16 @@ export function VendorMessagesTab({ vendorId }: Props) {
   };
 
   useEffect(() => {
+    const key = `aido_vendor_message_draft_v1_${vendorId}`;
+    const storedDraft = localStorage.getItem(key);
+    if (storedDraft?.trim()) {
+      setDraft((current) => (current.trim() ? `${current}\n\n${storedDraft}` : storedDraft));
+      localStorage.removeItem(key);
+      toast({ title: t("vendors.msg_draft_loaded", { defaultValue: "Draft loaded. Review it before sending." }) });
+    }
+  }, [vendorId, t, toast]);
+
+  useEffect(() => {
     if (!conversationId) return;
     const key = `aido_subject_v1_${conversationId}`;
     const stored = localStorage.getItem(key);
