@@ -129,8 +129,12 @@ function formatDate(dateStr: string) {
 function daysUntil(dateStr: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const d = new Date(dateStr + "T12:00:00");
-  return Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const d = year && month && day
+    ? new Date(year, month - 1, day)
+    : new Date(dateStr);
+  d.setHours(0, 0, 0, 0);
+  return Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 type VendorFormData = {
