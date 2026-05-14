@@ -29,7 +29,7 @@ const router = Router();
 // Anything else falls through to the normal tools-enabled path so we
 // never accidentally drop tools for a real planning request.
 const ACTION_KEYWORDS = /\b(add|create|delete|remove|update|edit|change|set|save|book|schedule|invite|cancel|pay|paid|owe|cost|spend|budget|guest|vendor|venue|timeline|checklist|todo|task|event|payment|contract|hotel|party|reception|ceremony|honeymoon|email|message|reminder|date|when|where|how much|how many)\b/i;
-const CANCEL_INTENT = /^\s*(?:cancel|never\s?mind|nevermind|stop|forget\s+it|don'?t\s+(?:do|save|add|create|update|delete)\s+(?:that|it)|abort)\b[\s.!?]*$/i;
+const CANCEL_INTENT = /^\s*(?:cancel(?:\s+(?:that|it|this|the\s+(?:guest|vendor|add|save|request)|add(?:ing)?\b.*|save\b.*|guest\b.*|vendor\b.*))?|never\s?mind|nevermind|stop(?:\s+(?:that|it|this|adding|saving|the\s+(?:guest|vendor)))?|forget\s+it|don'?t\s+(?:do|save|add|create|update|delete)\s+(?:that|it|this|the\s+(?:guest|vendor))|abort)\b[\s.!?]*$/i;
 const CONVERSATIONAL_PATTERNS: RegExp[] = [
   /^(hi|hey|hello|yo|sup|hola|aloha|howdy)\b/i,
   /^how (are|r) (you|u|ya|things)/i,
@@ -642,6 +642,7 @@ function extractGuestNameFromAssistant(text: string): string | null {
 }
 
 function cleanGatheredName(text: string): string {
+  if (CANCEL_INTENT.test(text)) return "";
   return text
     .trim()
     .replace(/^["']|["']$/g, "")
