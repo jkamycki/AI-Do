@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { authFetch } from "@/lib/authFetch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/react";
@@ -410,6 +410,13 @@ export default function SettingsPage() {
 
   const myRole = data?.myRole ?? (sharedProfileId ? activeWorkspace?.role ?? "viewer" : "owner");
   const canManage = myRole === "owner" || myRole === "partner";
+  const activeWorkspaceName = data?.workspaceName
+    ?? (activeWorkspace ? `${activeWorkspace.partner1Name} & ${activeWorkspace.partner2Name}` : null)
+    ?? "My Workspace";
+
+  useEffect(() => {
+    setNewInviteLink(null);
+  }, [sharedProfileId]);
 
   const inviteMutation = useMutation({
     mutationFn: async () => {
@@ -530,6 +537,14 @@ export default function SettingsPage() {
 
       {activeTab === "collaborators" && (
         <div className="space-y-6">
+          <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+            <p className="text-sm font-medium text-foreground">
+              Collaborators for {activeWorkspaceName}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Invites, roles, and removals apply only to this selected workstation.
+            </p>
+          </div>
           {canManage && (
           <Card className="border-none shadow-sm">
             <CardHeader>
