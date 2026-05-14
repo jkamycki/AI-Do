@@ -528,7 +528,7 @@ export default function Rsvp() {
                   render={({ field }) => (
                     <FormItem>
                       <FormMessage className="text-center" />
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <button
                           type="button"
                           onClick={() => field.onChange("attending")}
@@ -597,7 +597,7 @@ export default function Rsvp() {
                               <FormLabel className="text-base" style={{ color: WHITE, fontFamily: jakarta }}>Are you bringing a plus one?</FormLabel>
                               <p className="text-xs mt-0.5" style={{ color: MUTED, fontFamily: jakarta }}>You're welcome to bring a guest with you.</p>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               <button
                                 type="button"
                                 onClick={() => field.onChange(true)}

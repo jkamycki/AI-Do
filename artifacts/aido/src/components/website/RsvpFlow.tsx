@@ -388,7 +388,7 @@ export function RsvpFlow({
             <p className="text-center text-sm mb-10 opacity-75" style={{ color: text }}>{t("rsvp.subtitle_default", { defaultValue: "Will you be joining us?" })}</p>
 
             <form onSubmit={handleSubmit} className="space-y-6 max-w-md mx-auto">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setAttendance("attending")}
@@ -568,7 +568,7 @@ export function RsvpFlow({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setAttendance("attending")}

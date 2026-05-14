@@ -1944,20 +1944,20 @@ export default function Guests() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto px-3 sm:px-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
-            <Users className="h-8 w-8" /> {t("guests.title")}
+        <div className="min-w-0">
+          <h1 className="text-3xl sm:text-4xl font-serif text-primary flex items-center gap-3 leading-tight break-words">
+            <Users className="h-7 w-7 sm:h-8 sm:w-8 shrink-0" /> {t("guests.title")}
           </h1>
-          <p className="text-lg text-muted-foreground mt-2">
+          <p className="text-base sm:text-lg text-muted-foreground mt-2">
             {t("guests.subtitle")}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-2">
           {allGuests.length > 0 && (
-            <Button variant="outline" className="whitespace-nowrap" onClick={() => exportCSV(allGuests, hotels)}>
+            <Button variant="outline" className="w-full sm:w-auto justify-center whitespace-normal sm:whitespace-nowrap" onClick={() => exportCSV(allGuests, hotels)}>
               <Download className="h-4 w-4 mr-2" /> {t("guests.export_csv")}
             </Button>
           )}
@@ -1965,7 +1965,7 @@ export default function Guests() {
             <>
               <Button
                 variant="secondary"
-                className="whitespace-nowrap"
+                className="w-full sm:w-auto justify-center whitespace-normal sm:whitespace-nowrap"
                 disabled={
                   sendingSaveTheDates || saveTheDateEligible.length === 0
                 }
@@ -1983,7 +1983,7 @@ export default function Guests() {
               </Button>
               <Button
                 variant="secondary"
-                className="whitespace-nowrap"
+                className="w-full sm:w-auto justify-center whitespace-normal sm:whitespace-nowrap"
                 disabled={sendingInvitations || invitationEligible.length === 0}
                 onClick={() => setConfirmBulkSend("invitation")}
               >
@@ -1999,7 +1999,7 @@ export default function Guests() {
               </Button>
               <Button
                 variant="outline"
-                className="whitespace-nowrap"
+                className="w-full sm:w-auto justify-center whitespace-normal sm:whitespace-nowrap"
                 disabled={sendingReminders || reminderEligible.length === 0}
                 onClick={() => setConfirmBulkSend("reminder")}
               >
@@ -2069,7 +2069,7 @@ export default function Guests() {
           )}
           <Dialog open={isAdding} onOpenChange={setIsAdding}>
             <DialogTrigger asChild>
-              <Button size="lg" className="shadow-md whitespace-nowrap">
+              <Button size="lg" className="w-full sm:w-auto justify-center shadow-md whitespace-normal sm:whitespace-nowrap">
                 <Plus className="mr-2 h-4 w-4" /> {t("guests.add_guest")}
               </Button>
             </DialogTrigger>

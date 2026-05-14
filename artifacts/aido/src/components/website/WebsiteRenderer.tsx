@@ -1643,7 +1643,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   return (
     <section
       id="home"
-      className="relative min-h-[80vh] flex items-center justify-center text-center px-6 py-24 overflow-hidden"
+      className="relative min-h-[80vh] flex items-center justify-center text-center px-4 sm:px-6 py-20 sm:py-24 overflow-hidden"
       style={{
         color:
           data.heroImage || (data.heroImages?.length ?? 0) > 0
@@ -1652,7 +1652,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
       }}
     >
       <HeroBackground data={data} />
-      <div className="relative max-w-3xl">
+      <div className="relative max-w-3xl min-w-0">
         {!isEditableHiddenMarker(data.customText._heroTaglineHidden) && (
           <EditableText
             as="div"
@@ -1679,7 +1679,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           value={data.customText._coupleName ?? ""}
           defaultValue={couple}
           onCommit={(v) => ctx.onTextChange("_coupleName", v)}
-          className="text-5xl sm:text-7xl md:text-8xl mb-6 leading-tight"
+          className="text-4xl sm:text-6xl md:text-8xl mb-6 leading-tight break-words [overflow-wrap:anywhere]"
           style={{
             fontFamily: fontStack(headingFont(data)),
             color:
@@ -1692,7 +1692,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         {!isEditableHiddenMarker(data.customText._heroDateRow) && (
           <DraggableRow
             editable={ctx.editable}
-            className="flex items-center justify-center gap-4 text-base sm:text-lg opacity-90"
+            className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-base sm:text-lg opacity-90"
           >
             {!isEditableHiddenMarker(data.customText._heroDateIcon) && (
               <Calendar
@@ -1716,7 +1716,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           !isEditableHiddenMarker(data.customText._heroVenueRow) && (
             <DraggableRow
               editable={ctx.editable}
-              className="flex items-center justify-center gap-2 mt-3 text-sm sm:text-base opacity-80"
+              className="flex flex-wrap items-center justify-center gap-2 mt-3 text-sm sm:text-base opacity-80"
             >
               {!isEditableHiddenMarker(data.customText._heroVenueIcon) && (
                 <MapPin

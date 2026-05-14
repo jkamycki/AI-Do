@@ -465,20 +465,20 @@ export default function Hotels() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto px-3 sm:px-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-serif text-primary flex items-center gap-3">
-            <Hotel className="h-8 w-8" /> {t("hotels.title")}
+        <div className="min-w-0">
+          <h1 className="text-3xl sm:text-4xl font-serif text-primary flex items-center gap-3 leading-tight break-words">
+            <Hotel className="h-7 w-7 sm:h-8 sm:w-8 shrink-0" /> {t("hotels.title")}
           </h1>
-          <p className="text-lg text-muted-foreground mt-2">
+          <p className="text-base sm:text-lg text-muted-foreground mt-2">
             {t("hotels.subtitle")}
           </p>
         </div>
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
           <DialogTrigger asChild>
-            <Button size="lg" className="shadow-md shrink-0">
+            <Button size="lg" className="w-full sm:w-auto justify-center shadow-md shrink-0">
               <Plus className="mr-2 h-4 w-4" /> {t("hotels.add_hotel")}
             </Button>
           </DialogTrigger>
