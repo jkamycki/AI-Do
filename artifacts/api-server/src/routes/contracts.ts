@@ -15,11 +15,22 @@ const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require("pdf-parse"
 const router = Router();
 const storage = new ObjectStorageService();
 let vendorContractVendorColumnReady = false;
+type VendorFile = {
+  name: string;
+  url: string;
+  type: string;
+  contractId?: number;
+  contractFileName?: string;
+};
 
 async function ensureVendorContractVendorColumn() {
   if (vendorContractVendorColumnReady) return;
   await db.execute(sql`ALTER TABLE vendor_contracts ADD COLUMN IF NOT EXISTS vendor_id integer`);
   vendorContractVendorColumnReady = true;
+}
+
+function normalizeContractFileName(name: string) {
+  return name.trim().toLowerCase().replace(/\.[^.]+$/, "").replace(/\s+/g, " ");
 }
 
 const ALLOWED_CONTRACT_MIMES = new Set([
@@ -178,7 +189,7 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
     if (rawVendorId && (!Number.isInteger(vendorId) || vendorId <= 0)) {
       return res.status(400).json({ error: "Invalid vendor selection." });
     }
-    let selectedVendor: { id: number; files: Array<{ name: string; url: string; type: string }> } | null = null;
+    let selectedVendor: { id: number; files: VendorFile[] } | null = null;
     if (vendorId) {
       const [vendor] = await db
         .select({ id: vendors.id, files: vendors.files })
@@ -210,11 +221,19 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
           name: displayName,
           url: storedUrl,
           type: mimetype,
+          contractId: saved.id,
+          contractFileName: displayName,
         };
         const existingFiles = Array.isArray(selectedVendor.files) ? selectedVendor.files : [];
+        const normalizedDisplayName = normalizeContractFileName(displayName);
+        const dedupedFiles = existingFiles.filter((file) => {
+          const fileContractName = typeof file.contractFileName === "string" ? file.contractFileName : file.name;
+          const sameContract = file.contractId === saved.id || normalizeContractFileName(fileContractName) === normalizedDisplayName;
+          return !sameContract;
+        });
         await db
           .update(vendors)
-          .set({ files: [...existingFiles, contractFile], updatedAt: new Date() })
+          .set({ files: [...dedupedFiles, contractFile], updatedAt: new Date() })
           .where(and(eq(vendors.id, selectedVendor.id), eq(vendors.profileId, scope.profileId)));
       } catch (err) {
         req.log.warn({ err, vendorId: selectedVendor.id, contractId: saved.id }, "Failed to attach contract to vendor files");
@@ -372,10 +391,48 @@ router.delete("/contracts/:id", requireAuth, async (req, res) => {
     }
     const scope = await resolveContractScope(req);
     if (!scope) return res.json({ success: true });
+    await ensureVendorContractVendorColumn();
+    const contractId = parseInt(String(req.params["id"] ?? "0"), 10);
+    const [contract] = await db
+      .select({
+        id: vendorContracts.id,
+        vendorId: vendorContracts.vendorId,
+        fileName: vendorContracts.fileName,
+      })
+      .from(vendorContracts)
+      .where(and(
+        eq(vendorContracts.id, contractId),
+        eq(vendorContracts.userId, scope.userId),
+        eq(vendorContracts.profileId, scope.profileId),
+      ))
+      .limit(1);
+
+    if (contract?.vendorId) {
+      const [vendor] = await db
+        .select({ id: vendors.id, files: vendors.files })
+        .from(vendors)
+        .where(and(eq(vendors.id, contract.vendorId), eq(vendors.profileId, scope.profileId)))
+        .limit(1);
+      if (vendor) {
+        const normalizedContractName = normalizeContractFileName(contract.fileName);
+        const existingFiles = Array.isArray(vendor.files) ? (vendor.files as VendorFile[]) : [];
+        const remainingFiles = existingFiles.filter((file) => {
+          const fileContractName = typeof file.contractFileName === "string" ? file.contractFileName : file.name;
+          return file.contractId !== contract.id && normalizeContractFileName(fileContractName) !== normalizedContractName;
+        });
+        if (remainingFiles.length !== existingFiles.length) {
+          await db
+            .update(vendors)
+            .set({ files: remainingFiles, updatedAt: new Date() })
+            .where(and(eq(vendors.id, vendor.id), eq(vendors.profileId, scope.profileId)));
+        }
+      }
+    }
+
     await db
       .delete(vendorContracts)
       .where(and(
-        eq(vendorContracts.id, parseInt(String(req.params["id"] ?? "0"), 10)),
+        eq(vendorContracts.id, contractId),
         eq(vendorContracts.userId, scope.userId),
         eq(vendorContracts.profileId, scope.profileId),
       ));
