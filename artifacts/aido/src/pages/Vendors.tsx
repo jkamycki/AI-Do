@@ -1395,7 +1395,9 @@ function VendorCard({
         <div>
           <p className="text-lg font-serif font-semibold text-foreground">{formatCurrency(vendor.totalCost)}</p>
           {vendor.depositAmount > 0 && (
-            <p className="text-xs text-muted-foreground">{t("vendors.deposit_label", { amount: formatCurrency(vendor.depositAmount) })}</p>
+            <p className="mt-1 inline-flex rounded-full border border-yellow-200 bg-yellow-50 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:border-yellow-800/60 dark:bg-yellow-950/30 dark:text-yellow-200">
+              {t("vendors.deposit_label", { amount: formatCurrency(vendor.depositAmount) })}
+            </p>
           )}
         </div>
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
