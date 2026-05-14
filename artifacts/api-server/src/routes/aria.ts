@@ -548,6 +548,19 @@ function normalizeCategory(c: string): string {
   return found ?? c;
 }
 
+const YES_CONFIRM_INTENT = /^(?:yes|yep|yeah|yup|ok|okay|confirm|confirmed|save(?: it)?|go ahead|do it|please do|sounds good|sure)[.! ]*$/i;
+
+function parsePendingVendorConfirmation(text: string): { name: string; category: string } | null {
+  // Matches assistant prompts like:
+  // "Saving DJ Magic (DJ). Reply 'yes' to save."
+  const m = text.match(/Saving\s+(.+?)\s+\(([^)]+)\)\.[\s\S]*Reply\s*['"]?yes['"]?\s+to\s+save/i);
+  if (!m) return null;
+  const name = m[1]?.trim();
+  const categoryRaw = m[2]?.trim();
+  if (!name || !categoryRaw) return null;
+  return { name, category: normalizeCategory(categoryRaw) };
+}
+
 type ActionResult =
   | { ok: true; data: unknown }
   // doNotRetry tells the orchestrator to remove this tool from the next round so
@@ -1937,6 +1950,28 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         content: "Got it — canceled. I won’t make any changes. If you want, tell me what you’d like to do instead.",
       });
       send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
+    // Fast-path: if the user just replied "yes" to an Aria vendor save
+    // confirmation, execute add_vendor immediately. This avoids occasional
+    // model misses where it asks another question instead of saving.
+    const pendingVendor = parsePendingVendorConfirmation(lastAssistantText);
+    if (pendingVendor && YES_CONFIRM_INTENT.test(lastUserText.trim())) {
+      const result = await executeTool("add_vendor", {
+        name: pendingVendor.name,
+        category: pendingVendor.category,
+      }, req, { recentUserText: lastUserText });
+      if (result.ok) {
+        send({ type: "action_start", name: "add_vendor", args: { name: pendingVendor.name, category: pendingVendor.category } });
+        send({ type: "action_end", name: "add_vendor", ok: true, data: result.data });
+        send({ type: "content", content: buildPostActionMessage("add_vendor", result.data) });
+      } else {
+        send({ type: "content", content: `I couldn't save that vendor yet: ${result.error}` });
+      }
+      send({ type: "done", actions: [{ name: "add_vendor", ok: result.ok, error: result.ok ? undefined : result.error }] });
       res.write("data: [DONE]\n\n");
       res.end();
       return;
