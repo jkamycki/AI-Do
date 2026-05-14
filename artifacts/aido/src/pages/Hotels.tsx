@@ -249,6 +249,7 @@ function HotelCard({
   const { copied, copy } = useCopy();
   const cutoff = hotel.cutoffDate ? new Date(hotel.cutoffDate + "T12:00:00") : null;
   const daysLeft = cutoff ? Math.ceil((cutoff.getTime() - Date.now()) / 86400000) : null;
+  const syncedRoomsBooked = bookedGuests.length;
 
   return (
     <Card className="border-border/60 shadow-sm hover:shadow-md transition-shadow">
@@ -290,7 +291,7 @@ function HotelCard({
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Rooms bar */}
-        <RoomsBar reserved={hotel.roomsReserved} booked={hotel.roomsBooked} />
+        <RoomsBar reserved={hotel.roomsReserved} booked={syncedRoomsBooked} />
 
         {/* Key info chips */}
         <div className="flex flex-wrap gap-2">
@@ -366,7 +367,7 @@ function HotelCard({
               Booked Guests
             </p>
             <Badge variant="secondary" className="text-[10px]">
-              {bookedGuests.length}
+              {syncedRoomsBooked}
             </Badge>
           </div>
           {bookedGuests.length > 0 ? (
@@ -443,10 +444,10 @@ export default function Hotels() {
   });
 
   const totalRooms = hotels.reduce((sum, h) => sum + (h.roomsReserved ?? 0), 0);
-  const bookedRooms = hotels.reduce((sum, h) => sum + h.roomsBooked, 0);
   const hotelGuests = hotelGuestData?.guests ?? [];
   const pendingHotelGuests = hotelGuests.filter((guest) => guest.needsHotel && !guest.bookedHotelBlockId);
   const bookedHotelGuestCount = hotelGuests.filter((guest) => guest.bookedHotelBlockId).length;
+  const bookedRooms = bookedHotelGuestCount;
 
   if (isLoading) {
     return (
