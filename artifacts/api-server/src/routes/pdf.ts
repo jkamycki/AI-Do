@@ -24,6 +24,19 @@ const BRAND_MUTED = "#8B6914";   // Muted warm gold/brown for footer text
 const TEXT_DARK = "#1A1A1A";
 const TEXT_MEDIUM = "#555555";
 const TEXT_LIGHT = "#888888";
+const TIMELINE_STATUS_COLORS: Record<string, { fill: string; text: string }> = {
+  completed: { fill: "#D1FAE5", text: "#047857" },
+  pending: { fill: "#FEF3C7", text: "#B45309" },
+  "not started": { fill: "#E2E8F0", text: "#475569" },
+  not_started: { fill: "#E2E8F0", text: "#475569" },
+};
+
+function getTimelineStatusColors(status?: string) {
+  return TIMELINE_STATUS_COLORS[(status ?? "").trim().toLowerCase()] ?? {
+    fill: "#E2E8F0",
+    text: TEXT_MEDIUM,
+  };
+}
 
 // Resolve logo path. The build emits to dist/, and assets live alongside the
 // artifact root at ../assets/logo.png. Falls back gracefully if not found.
@@ -230,8 +243,9 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
         .text(catLabel, pageW - margin - 56, rowY + 11, { width: 56, align: "center" });
 
       if (event.status) {
-        doc.roundedRect(pageW - margin - 76, rowY + 28, 76, 16, 8).fill("#FFFFFF");
-        doc.fillColor(TEXT_MEDIUM).font("Helvetica-Bold").fontSize(7.5)
+        const statusColors = getTimelineStatusColors(event.status);
+        doc.roundedRect(pageW - margin - 76, rowY + 28, 76, 16, 8).fill(statusColors.fill);
+        doc.fillColor(statusColors.text).font("Helvetica-Bold").fontSize(7.5)
           .text(event.status, pageW - margin - 76, rowY + 31, { width: 76, align: "center" });
       }
 

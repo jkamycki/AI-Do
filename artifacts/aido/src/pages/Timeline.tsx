@@ -155,18 +155,24 @@ const CATEGORY_CONFIG: Record<Category, {
 };
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_CONFIG) as Category[];
-const STATUS_CONFIG: Record<TimelineStatus, { label: string; badgeClass: string }> = {
+const STATUS_CONFIG: Record<TimelineStatus, { label: string; badgeClass: string; selectClass: string; dotClass: string }> = {
   completed: {
     label: "Completed",
-    badgeClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+    badgeClass: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 shadow-sm shadow-emerald-900/5",
+    selectClass: "bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-700",
+    dotClass: "bg-emerald-500",
   },
   pending: {
     label: "Pending",
-    badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+    badgeClass: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200 border-amber-300 dark:border-amber-700 shadow-sm shadow-amber-900/5",
+    selectClass: "bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-700",
+    dotClass: "bg-amber-500",
   },
   not_started: {
     label: "Not started",
-    badgeClass: "bg-slate-100 text-slate-600 dark:bg-slate-900/60 dark:text-slate-300 border-slate-200 dark:border-slate-700",
+    badgeClass: "bg-slate-100 text-slate-700 dark:bg-slate-900/70 dark:text-slate-200 border-slate-300 dark:border-slate-600 shadow-sm shadow-slate-900/5",
+    selectClass: "bg-slate-50 text-slate-700 border-slate-300 dark:bg-slate-900/60 dark:text-slate-200 dark:border-slate-600",
+    dotClass: "bg-slate-400",
   },
 };
 const ALL_STATUSES = Object.keys(STATUS_CONFIG) as TimelineStatus[];
@@ -438,7 +444,8 @@ function SortableEventCard({
                   {cfg.icon}
                   {t(`timeline.cat_${event.category}`, { defaultValue: cfg.label })}
                 </Badge>
-                <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 font-medium ${statusCfg.badgeClass}`}>
+                <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 font-medium flex items-center gap-1 ${statusCfg.badgeClass}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${statusCfg.dotClass}`} aria-hidden="true" />
                   {t(`timeline.status_${event.status}`, { defaultValue: statusCfg.label })}
                 </Badge>
                 {conflict && (
@@ -451,7 +458,7 @@ function SortableEventCard({
               <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
                 <Select value={event.status} onValueChange={value => onStatusChange(event.id, value as TimelineStatus)}>
                   <SelectTrigger
-                    className="h-7 w-[116px] px-2 text-[11px] bg-background/80"
+                    className={`h-7 w-[116px] px-2 text-[11px] font-medium ${statusCfg.selectClass}`}
                     title={t("timeline.change_status", { defaultValue: "Change status" })}
                   >
                     <SelectValue />
