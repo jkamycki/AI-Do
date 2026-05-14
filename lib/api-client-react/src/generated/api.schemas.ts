@@ -73,6 +73,7 @@ export interface WeddingProfile {
   guestCount: number;
   totalBudget: number;
   weddingVibe: string;
+  accountType?: 'couple_individual' | 'wedding_planner';
   preferredLanguage?: string | null;
   vendorBccEmail?: string | null;
   invitationPhotoUrl?: string | null;
@@ -102,6 +103,7 @@ export interface SaveProfileBody {
   guestCount: number;
   totalBudget: number;
   weddingVibe: string;
+  accountType?: 'couple_individual' | 'wedding_planner';
   preferredLanguage?: string | null;
   vendorBccEmail?: string | null;
 }
@@ -516,6 +518,7 @@ export type DashboardSummaryProfile = {
   guestCount: number;
   totalBudget: number;
   weddingVibe: string;
+  accountType?: 'couple_individual' | 'wedding_planner';
 } | null;
 
 export interface DashboardSummary {

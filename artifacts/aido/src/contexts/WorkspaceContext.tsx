@@ -109,9 +109,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     // Cache matches the current user — adopt it.
     setActiveWorkspaceState(stored.workspace);
-    syncWorkspaceProfileId(
-      stored.workspace.role !== "owner" ? stored.workspace.profileId : null,
-    );
+    syncWorkspaceProfileId(stored.workspace.profileId);
   }, [isLoaded, isSignedIn, userId]);
 
   // First-login collaborator bootstrap: if this signed-in user has no
@@ -166,7 +164,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const setActiveWorkspace = (w: WorkspaceInfo | null) => {
     setActiveWorkspaceState(w);
-    syncWorkspaceProfileId(w?.role !== "owner" ? (w?.profileId ?? null) : null);
+    syncWorkspaceProfileId(w?.profileId ?? null);
     if (w && userId) {
       const payload: StoredWorkspace = { userId, workspace: w };
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));

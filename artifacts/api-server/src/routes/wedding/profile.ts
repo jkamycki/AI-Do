@@ -41,7 +41,7 @@ router.post("/profile", requireAuth, async (req, res) => {
     const {
       partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
       venue, location, venueCity, venueState, venueZip, venueCountry,
-      guestCount, totalBudget, weddingVibe,
+      guestCount, totalBudget, weddingVibe, accountType,
       preferredLanguage, vendorBccEmail,
       ceremonyAtVenue, ceremonyVenueName, ceremonyAddress, ceremonyCity, ceremonyState, ceremonyZip,
     } = req.body;
@@ -66,6 +66,9 @@ router.post("/profile", requireAuth, async (req, res) => {
     const hasVendorBccEmail = Object.prototype.hasOwnProperty.call(req.body, "vendorBccEmail");
     const normalizedVendorBcc =
       typeof vendorBccEmail === "string" ? (vendorBccEmail.trim() || null) : null;
+    const normalizedAccountType =
+      accountType === "wedding_planner" ? "wedding_planner" : "couple_individual";
+    const hasAccountType = Object.prototype.hasOwnProperty.call(req.body, "accountType");
 
     // Workspace-aware: if a workspaceId/header is set, edit that shared workspace
     // (requires partner+ role). Otherwise, edit the user's own profile.
@@ -85,6 +88,7 @@ router.post("/profile", requireAuth, async (req, res) => {
           venueZip: venueZip ?? null, venueCountry: venueCountry ?? null,
           ...ceremonyFields,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
+          ...(hasAccountType ? { accountType: normalizedAccountType } : {}),
           preferredLanguage: preferredLanguage ?? "English",
           ...(hasVendorBccEmail ? { vendorBccEmail: normalizedVendorBcc } : {}),
           updatedAt: new Date(),
@@ -107,6 +111,7 @@ router.post("/profile", requireAuth, async (req, res) => {
           venueZip: venueZip ?? null, venueCountry: venueCountry ?? null,
           ...ceremonyFields,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
+          accountType: normalizedAccountType,
           preferredLanguage: preferredLanguage ?? "English",
         })
         .returning();

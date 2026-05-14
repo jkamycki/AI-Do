@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk, useUser, useAuth } from "@clerk/react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWorkspace, type WorkspaceInfo } from "@/contexts/WorkspaceContext";
 import { useTranslation } from "react-i18next";
 import {
@@ -34,9 +34,12 @@ import {
   Trash2,
   Pencil,
   Globe,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 import { authFetch } from "@/lib/authFetch";
@@ -84,7 +87,17 @@ interface WorkspacesData {
     partner1Name: string;
     partner2Name: string;
     weddingDate: string;
+    accountType?: string;
   } | null;
+  ownWorkspaces?: Array<{
+    profileId: number;
+    role: string;
+    partner1Name: string;
+    partner2Name: string;
+    weddingDate: string;
+    accountType?: string;
+  }>;
+  accountType?: string;
   sharedWorkspaces: Array<{
     id: number;
     profileId: number;
@@ -101,7 +114,16 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
   const { activeWorkspace, setActiveWorkspace } = useWorkspace();
   const [, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newWorkspace, setNewWorkspace] = useState({
+    partner1Name: "",
+    partner2Name: "",
+    weddingDate: "",
+    venue: "",
+    location: "",
+  });
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
   const { data } = useQuery<WorkspacesData>({
     queryKey: ["my-workspaces"],
@@ -116,7 +138,32 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
   });
 
   const sharedWorkspaces = data?.sharedWorkspaces ?? [];
-  if (sharedWorkspaces.length === 0) return null;
+  const ownWorkspaces = data?.ownWorkspaces ?? (data?.ownProfile ? [{ ...data.ownProfile, role: "owner" }] : []);
+  const isPlannerAccount = data?.accountType === "wedding_planner";
+
+  const createWorkspace = useMutation({
+    mutationFn: async () => {
+      const r = await authFetch("/api/workspaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newWorkspace),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body?.error || "Could not create workstation.");
+      return body as WorkspaceInfo;
+    },
+    onSuccess: (ws) => {
+      queryClient.invalidateQueries({ queryKey: ["my-workspaces"] });
+      setActiveWorkspace({ ...ws, role: "owner" });
+      setCreateOpen(false);
+      setOpen(false);
+      setNewWorkspace({ partner1Name: "", partner2Name: "", weddingDate: "", venue: "", location: "" });
+      setLocation("/dashboard");
+      onClose();
+    },
+  });
+
+  if (!isPlannerAccount && sharedWorkspaces.length === 0) return null;
 
   const currentLabel = activeWorkspace
     ? `${activeWorkspace.partner1Name} & ${activeWorkspace.partner2Name}`
@@ -124,6 +171,23 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
 
   const handleSelectOwn = () => {
     setActiveWorkspace(null);
+    setOpen(false);
+    setLocation("/dashboard");
+    onClose();
+  };
+
+  const handleSelectOwned = (ws: NonNullable<WorkspacesData["ownWorkspaces"]>[0]) => {
+    if (data?.ownProfile?.profileId === ws.profileId) {
+      handleSelectOwn();
+      return;
+    }
+    setActiveWorkspace({
+      profileId: ws.profileId,
+      partner1Name: ws.partner1Name,
+      partner2Name: ws.partner2Name,
+      weddingDate: ws.weddingDate,
+      role: "owner",
+    });
     setOpen(false);
     setLocation("/dashboard");
     onClose();
@@ -162,16 +226,43 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
 
       {open && (
         <div className="absolute left-4 right-4 top-full mt-1 z-50 bg-card border border-border rounded-xl shadow-lg py-1.5 overflow-hidden">
-          <p className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">{t("sidebar.workspaces_label")}</p>
-          <button
-            onClick={handleSelectOwn}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/60 transition-colors text-left
-              ${!activeWorkspace ? "text-primary font-medium" : "text-foreground"}`}
-          >
-            <Heart className="h-4 w-4 text-primary flex-shrink-0" />
-            <span className="truncate">{t("sidebar.my_workspace")}</span>
-            {!activeWorkspace && <span className="ml-auto text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{t("sidebar.active")}</span>}
-          </button>
+          <p className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">
+            {isPlannerAccount ? "Client workstations" : t("sidebar.workspaces_label")}
+          </p>
+          {ownWorkspaces.map((ws) => {
+            const isDefault = data?.ownProfile?.profileId === ws.profileId;
+            const isActive = isDefault ? !activeWorkspace : activeWorkspace?.profileId === ws.profileId;
+            return (
+              <button
+                key={ws.profileId}
+                onClick={() => handleSelectOwned(ws)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/60 transition-colors text-left
+                  ${isActive ? "text-primary font-medium" : "text-foreground"}`}
+              >
+                <Heart className="h-4 w-4 text-primary flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="truncate">{isDefault ? t("sidebar.my_workspace") : `${ws.partner1Name} & ${ws.partner2Name}`}</div>
+                  {isPlannerAccount && <div className="text-[10px] text-muted-foreground">Owner</div>}
+                </div>
+                {isActive && <span className="ml-auto text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{t("sidebar.active")}</span>}
+              </button>
+            );
+          })}
+          {isPlannerAccount && (
+            <button
+              onClick={() => {
+                setCreateOpen(true);
+                setOpen(false);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/60 transition-colors text-left text-primary"
+            >
+              <Plus className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate">Create workstation</span>
+            </button>
+          )}
+          {sharedWorkspaces.length > 0 && (
+            <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">Shared with me</p>
+          )}
           {sharedWorkspaces.map(ws => (
             <button
               key={ws.id}
@@ -191,6 +282,51 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       )}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create client workstation</DialogTitle>
+            <DialogDescription>
+              Each workstation has its own profile, guests, vendors, timeline, budget, website, and collaborators.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <label className="text-sm font-medium">Client / Partner 1 Name</label>
+              <Input value={newWorkspace.partner1Name} onChange={(e) => setNewWorkspace((v) => ({ ...v, partner1Name: e.target.value }))} />
+            </div>
+            <div className="grid gap-1.5">
+              <label className="text-sm font-medium">Partner 2 / Event Name</label>
+              <Input value={newWorkspace.partner2Name} onChange={(e) => setNewWorkspace((v) => ({ ...v, partner2Name: e.target.value }))} />
+            </div>
+            <div className="grid gap-1.5">
+              <label className="text-sm font-medium">Wedding Date</label>
+              <Input type="date" value={newWorkspace.weddingDate} onChange={(e) => setNewWorkspace((v) => ({ ...v, weddingDate: e.target.value }))} />
+            </div>
+            <div className="grid gap-1.5">
+              <label className="text-sm font-medium">Venue</label>
+              <Input value={newWorkspace.venue} onChange={(e) => setNewWorkspace((v) => ({ ...v, venue: e.target.value }))} placeholder="Optional" />
+            </div>
+            <div className="grid gap-1.5">
+              <label className="text-sm font-medium">Location</label>
+              <Input value={newWorkspace.location} onChange={(e) => setNewWorkspace((v) => ({ ...v, location: e.target.value }))} placeholder="Optional" />
+            </div>
+            {createWorkspace.isError && (
+              <p className="text-sm text-destructive">{(createWorkspace.error as Error).message}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              onClick={() => createWorkspace.mutate()}
+              disabled={createWorkspace.isPending || !newWorkspace.partner1Name.trim() || !newWorkspace.partner2Name.trim() || !newWorkspace.weddingDate}
+            >
+              {createWorkspace.isPending ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

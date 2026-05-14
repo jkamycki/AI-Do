@@ -6,6 +6,7 @@ import { clerkClient } from "@clerk/express";
 import { requireAuth } from "../middlewares/requireAuth";
 import {
   getProfileByUserId,
+  listProfilesByUserId,
   resolveWorkspaceRole,
   hasMinRole,
   logActivity,
@@ -153,7 +154,12 @@ router.get("/collaborators", requireAuth, async (req, res) => {
 
 router.get("/collaborators/my-workspaces", requireAuth, async (req, res) => {
   try {
-    const ownProfile = await getProfileByUserId(req.userId!);
+    const ownedProfiles = await listProfilesByUserId(req.userId!);
+    const ownProfile = ownedProfiles[0] ?? null;
+    const accountType =
+      ownedProfiles.find((p) => p.accountType === "wedding_planner")?.accountType
+      ?? ownProfile?.accountType
+      ?? "couple_individual";
 
     const sharedWorkspaces = await db
       .select({
@@ -183,8 +189,18 @@ router.get("/collaborators/my-workspaces", requireAuth, async (req, res) => {
             partner1Name: ownProfile.partner1Name,
             partner2Name: ownProfile.partner2Name,
             weddingDate: ownProfile.weddingDate,
+            accountType: ownProfile.accountType,
           }
         : null,
+      ownWorkspaces: ownedProfiles.map((p) => ({
+        profileId: p.id,
+        partner1Name: p.partner1Name,
+        partner2Name: p.partner2Name,
+        weddingDate: p.weddingDate,
+        accountType: p.accountType,
+        role: "owner",
+      })),
+      accountType,
       sharedWorkspaces,
     });
   } catch (err) {

@@ -740,19 +740,19 @@ async function findGuest(profileId: number, idArg: unknown, nameArg: unknown): P
   return { ok: false, error: "Either guestId or matchName is required." };
 }
 
-async function findPartyMember(userId: string, idArg: unknown, nameArg: unknown): Promise<FoundPartyMember> {
+async function findPartyMember(profileId: number, idArg: unknown, nameArg: unknown): Promise<FoundPartyMember> {
   if (idArg !== undefined && idArg !== null) {
     const idNum = Number(idArg);
     if (Number.isFinite(idNum)) {
       const [r] = await db.select({ id: weddingParty.id, name: weddingParty.name }).from(weddingParty)
-        .where(and(eq(weddingParty.id, idNum), eq(weddingParty.userId, userId))).limit(1);
+        .where(and(eq(weddingParty.id, idNum), eq(weddingParty.profileId, profileId))).limit(1);
       if (r) return { ok: true, id: r.id, name: r.name };
     }
   }
   if (nameArg) {
     const search = String(nameArg).trim();
     const matches = await db.select({ id: weddingParty.id, name: weddingParty.name }).from(weddingParty)
-      .where(and(eq(weddingParty.userId, userId), ilike(weddingParty.name, `%${search}%`)));
+      .where(and(eq(weddingParty.profileId, profileId), ilike(weddingParty.name, `%${search}%`)));
     if (matches.length === 0) return { ok: false, error: `No wedding party member matching "${search}".` };
     if (matches.length > 1) {
       const exact = matches.find(m => m.name.toLowerCase() === search.toLowerCase());
@@ -764,19 +764,19 @@ async function findPartyMember(userId: string, idArg: unknown, nameArg: unknown)
   return { ok: false, error: "Either memberId or matchName is required." };
 }
 
-async function findHotel(userId: string, idArg: unknown, nameArg: unknown): Promise<FoundHotel> {
+async function findHotel(profileId: number, idArg: unknown, nameArg: unknown): Promise<FoundHotel> {
   if (idArg !== undefined && idArg !== null) {
     const idNum = Number(idArg);
     if (Number.isFinite(idNum)) {
       const [r] = await db.select({ id: hotelBlocks.id, hotelName: hotelBlocks.hotelName }).from(hotelBlocks)
-        .where(and(eq(hotelBlocks.id, idNum), eq(hotelBlocks.userId, userId))).limit(1);
+        .where(and(eq(hotelBlocks.id, idNum), eq(hotelBlocks.profileId, profileId))).limit(1);
       if (r) return { ok: true, id: r.id, hotelName: r.hotelName };
     }
   }
   if (nameArg) {
     const search = String(nameArg).trim();
     const matches = await db.select({ id: hotelBlocks.id, hotelName: hotelBlocks.hotelName }).from(hotelBlocks)
-      .where(and(eq(hotelBlocks.userId, userId), ilike(hotelBlocks.hotelName, `%${search}%`)));
+      .where(and(eq(hotelBlocks.profileId, profileId), ilike(hotelBlocks.hotelName, `%${search}%`)));
     if (matches.length === 0) return { ok: false, error: `No hotel matching "${search}".` };
     if (matches.length > 1) {
       const exact = matches.find(m => m.hotelName.toLowerCase() === search.toLowerCase());
@@ -1269,8 +1269,9 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       const role = String(args.role ?? "").trim();
       const side = String(args.side ?? "").trim();
       if (!memberName || !role || !side) return { ok: false, error: "name, role, and side are required" };
+      const profile = await resolveProfile(req);
       const [created] = await db.insert(weddingParty).values({
-        userId, name: memberName, role, side,
+        userId, profileId: profile?.id ?? null, name: memberName, role, side,
         phone: args.phone ? String(args.phone) : null,
         email: args.email ? String(args.email) : null,
         outfitDetails: args.outfitDetails ? String(args.outfitDetails) : null,
@@ -1283,11 +1284,12 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
     }
 
     if (name === "update_party_member" || name === "delete_party_member") {
-      const userId = await resolveScopeUserId(req);
-      const member = await findPartyMember(userId, args.memberId, args.matchName);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "Create your wedding profile first." };
+      const member = await findPartyMember(profile.id, args.memberId, args.matchName);
       if (!member.ok) return member;
       if (name === "delete_party_member") {
-        await db.delete(weddingParty).where(and(eq(weddingParty.id, member.id), eq(weddingParty.userId, userId)));
+        await db.delete(weddingParty).where(and(eq(weddingParty.id, member.id), eq(weddingParty.profileId, profile.id)));
         return { ok: true, data: { deleted: member.name } };
       }
       const updates: Partial<typeof weddingParty.$inferInsert> = {};
@@ -1297,24 +1299,26 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       }
       if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
       const [updated] = await db.update(weddingParty).set(updates)
-        .where(and(eq(weddingParty.id, member.id), eq(weddingParty.userId, userId))).returning();
+        .where(and(eq(weddingParty.id, member.id), eq(weddingParty.profileId, profile.id))).returning();
       return { ok: true, data: { id: updated.id, name: updated.name } };
     }
 
     if (name === "list_party") {
-      const userId = await resolveScopeUserId(req);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: true, data: { members: [] } };
       const rows = await db.select({ id: weddingParty.id, name: weddingParty.name, role: weddingParty.role, side: weddingParty.side })
-        .from(weddingParty).where(eq(weddingParty.userId, userId));
+        .from(weddingParty).where(eq(weddingParty.profileId, profile.id));
       return { ok: true, data: { members: rows } };
     }
 
     // ===== HOTELS =====
     if (name === "add_hotel") {
       const userId = await resolveScopeUserId(req);
+      const profile = await resolveProfile(req);
       const hotelName = String(args.hotelName ?? "").trim();
       if (!hotelName) return { ok: false, error: "hotelName is required" };
       const [created] = await db.insert(hotelBlocks).values({
-        userId, hotelName,
+        userId, profileId: profile?.id ?? null, hotelName,
         address: args.address ? String(args.address) : null,
         city: args.city ? String(args.city) : null,
         state: args.state ? String(args.state) : null,
@@ -1334,11 +1338,12 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
     }
 
     if (name === "update_hotel" || name === "delete_hotel") {
-      const userId = await resolveScopeUserId(req);
-      const hotel = await findHotel(userId, args.hotelId, args.matchName);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "Create your wedding profile first." };
+      const hotel = await findHotel(profile.id, args.hotelId, args.matchName);
       if (!hotel.ok) return hotel;
       if (name === "delete_hotel") {
-        await db.delete(hotelBlocks).where(and(eq(hotelBlocks.id, hotel.id), eq(hotelBlocks.userId, userId)));
+        await db.delete(hotelBlocks).where(and(eq(hotelBlocks.id, hotel.id), eq(hotelBlocks.profileId, profile.id)));
         return { ok: true, data: { deleted: hotel.hotelName } };
       }
       const updates: Partial<typeof hotelBlocks.$inferInsert> = {};
@@ -1350,15 +1355,14 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       if (args.pricePerNight !== undefined) updates.pricePerNight = String(Number(args.pricePerNight));
       if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
       const [updated] = await db.update(hotelBlocks).set(updates)
-        .where(and(eq(hotelBlocks.id, hotel.id), eq(hotelBlocks.userId, userId))).returning();
+        .where(and(eq(hotelBlocks.id, hotel.id), eq(hotelBlocks.profileId, profile.id))).returning();
       return { ok: true, data: { id: updated.id, hotelName: updated.hotelName } };
     }
 
     if (name === "list_hotels") {
-      const userId = await resolveScopeUserId(req);
       const profile = await resolveProfile(req);
       const rows = await db.select({ id: hotelBlocks.id, hotelName: hotelBlocks.hotelName, city: hotelBlocks.city, pricePerNight: hotelBlocks.pricePerNight, roomsReserved: hotelBlocks.roomsReserved, roomsBooked: hotelBlocks.roomsBooked })
-        .from(hotelBlocks).where(eq(hotelBlocks.userId, userId));
+        .from(hotelBlocks).where(profile ? eq(hotelBlocks.profileId, profile.id) : eq(hotelBlocks.userId, await resolveScopeUserId(req)));
       if (!profile) return { ok: true, data: { hotels: rows } };
       const assignedGuests = await db
         .select({ bookedHotelBlockId: guests.bookedHotelBlockId })

@@ -1065,6 +1065,9 @@ components:
           type: number
         weddingVibe:
           type: string
+        accountType:
+          type: string
+          enum: [couple_individual, wedding_planner]
         preferredLanguage:
           type: string
           nullable: true
@@ -1148,6 +1151,9 @@ components:
           type: number
         weddingVibe:
           type: string
+        accountType:
+          type: string
+          enum: [couple_individual, wedding_planner]
         preferredLanguage:
           type: string
           nullable: true
@@ -2031,6 +2037,9 @@ components:
               type: number
             weddingVibe:
               type: string
+            accountType:
+              type: string
+              enum: [couple_individual, wedding_planner]
           required:
             - partner1Name
             - partner2Name

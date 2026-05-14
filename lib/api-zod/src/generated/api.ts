@@ -40,6 +40,7 @@ export const GetProfileResponse = zod.object({
   guestCount: zod.number(),
   totalBudget: zod.number(),
   weddingVibe: zod.string(),
+  accountType: zod.enum(["couple_individual", "wedding_planner"]).optional(),
   preferredLanguage: zod.string().nullish(),
   vendorBccEmail: zod.string().nullish(),
   invitationPhotoUrl: zod.string().nullish(),
@@ -72,6 +73,7 @@ export const SaveProfileBody = zod.object({
   guestCount: zod.number(),
   totalBudget: zod.number(),
   weddingVibe: zod.string(),
+  accountType: zod.enum(["couple_individual", "wedding_planner"]).optional(),
   preferredLanguage: zod.string().nullish(),
   vendorBccEmail: zod.string().nullish(),
 });
@@ -98,6 +100,7 @@ export const SaveProfileResponse = zod.object({
   guestCount: zod.number(),
   totalBudget: zod.number(),
   weddingVibe: zod.string(),
+  accountType: zod.enum(["couple_individual", "wedding_planner"]).optional(),
   preferredLanguage: zod.string().nullish(),
   vendorBccEmail: zod.string().nullish(),
   invitationPhotoUrl: zod.string().nullish(),
@@ -870,6 +873,7 @@ export const GetDashboardSummaryResponse = zod.object({
       guestCount: zod.number(),
       totalBudget: zod.number(),
       weddingVibe: zod.string(),
+      accountType: zod.enum(["couple_individual", "wedding_planner"]).optional(),
     })
     .nullish(),
 });

@@ -3,9 +3,69 @@ import { db, weddingProfiles, timelines, budgets, budgetItems, checklistItems, g
 import { workspaceActivity } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { resolveWorkspaceRole, hasMinRole } from "../lib/workspaceAccess";
+import { getProfileByUserId, resolveWorkspaceRole, hasMinRole } from "../lib/workspaceAccess";
 
 const router = Router();
+
+router.post("/workspaces", requireAuth, async (req, res) => {
+  try {
+    const primaryProfile = await getProfileByUserId(req.userId!);
+    if (!primaryProfile) {
+      res.status(400).json({ error: "Create your default workspace first." });
+      return;
+    }
+    if (primaryProfile.accountType !== "wedding_planner") {
+      res.status(403).json({ error: "Multiple workstations are available for Wedding Planner accounts." });
+      return;
+    }
+
+    const body = req.body as {
+      partner1Name?: string;
+      partner2Name?: string;
+      weddingDate?: string;
+      venue?: string;
+      location?: string;
+    };
+    const partner1Name = body.partner1Name?.trim();
+    const partner2Name = body.partner2Name?.trim();
+    const weddingDate = body.weddingDate?.trim();
+
+    if (!partner1Name || !partner2Name || !weddingDate) {
+      res.status(400).json({ error: "Client names and wedding date are required." });
+      return;
+    }
+
+    const [created] = await db
+      .insert(weddingProfiles)
+      .values({
+        userId: req.userId!,
+        partner1Name,
+        partner2Name,
+        weddingDate,
+        ceremonyTime: "16:00",
+        receptionTime: "18:00",
+        venue: body.venue?.trim() || "TBD",
+        location: body.location?.trim() || "TBD",
+        guestCount: 1,
+        totalBudget: "0",
+        weddingVibe: primaryProfile.weddingVibe || "Not set",
+        preferredLanguage: primaryProfile.preferredLanguage ?? "English",
+        accountType: "wedding_planner",
+      })
+      .returning();
+
+    res.json({
+      profileId: created.id,
+      partner1Name: created.partner1Name,
+      partner2Name: created.partner2Name,
+      weddingDate: created.weddingDate,
+      role: "owner",
+      accountType: created.accountType,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 async function getWorkspaceProfile(userId: string, profileId: number) {
   const role = await resolveWorkspaceRole(userId, profileId);
@@ -204,8 +264,7 @@ router.get("/workspace/:profileId/hotels", requireAuth, async (req, res) => {
     if (!result) { res.status(403).json({ error: "Access denied." }); return; }
     if (!hasMinRole(result.role, "planner")) { res.status(403).json({ error: "Insufficient permissions." }); return; }
 
-    const ownerUserId = result.profile.userId;
-    const rows = await db.select().from(hotelBlocks).where(eq(hotelBlocks.userId, ownerUserId));
+    const rows = await db.select().from(hotelBlocks).where(eq(hotelBlocks.profileId, profileId));
     res.json({ hotels: rows.map(h => ({ id: h.id, hotelName: h.hotelName, address: h.address, phone: h.phone, bookingLink: h.bookingLink, discountCode: h.discountCode, cutoffDate: h.cutoffDate, roomsReserved: h.roomsReserved, roomsBooked: h.roomsBooked, pricePerNight: h.pricePerNight != null ? Number(h.pricePerNight) : null, distanceFromVenue: h.distanceFromVenue })), role: result.role });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
@@ -219,8 +278,7 @@ router.get("/workspace/:profileId/wedding-party", requireAuth, async (req, res) 
     if (!result) { res.status(403).json({ error: "Access denied." }); return; }
     if (!hasMinRole(result.role, "planner")) { res.status(403).json({ error: "Insufficient permissions." }); return; }
 
-    const ownerUserId = result.profile.userId;
-    const rows = await db.select().from(weddingParty).where(eq(weddingParty.userId, ownerUserId));
+    const rows = await db.select().from(weddingParty).where(eq(weddingParty.profileId, profileId));
     res.json({ members: rows.map(m => ({ id: m.id, name: m.name, role: m.role, side: m.side, phone: m.phone, email: m.email })), role: result.role });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
@@ -234,8 +292,7 @@ router.get("/workspace/:profileId/seating", requireAuth, async (req, res) => {
     if (!result) { res.status(403).json({ error: "Access denied." }); return; }
     if (!hasMinRole(result.role, "planner")) { res.status(403).json({ error: "Insufficient permissions." }); return; }
 
-    const ownerUserId = result.profile.userId;
-    const rows = await db.select().from(seatingCharts).where(eq(seatingCharts.userId, ownerUserId)).orderBy(desc(seatingCharts.createdAt));
+    const rows = await db.select().from(seatingCharts).where(eq(seatingCharts.profileId, profileId)).orderBy(desc(seatingCharts.createdAt));
     res.json({ charts: rows.map(c => ({ id: c.id, name: c.name, tableCount: c.tableCount, seatsPerTable: c.seatsPerTable, tables: c.tables, createdAt: c.createdAt.toISOString() })), role: result.role });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });

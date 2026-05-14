@@ -30,6 +30,7 @@ const LANGUAGES = [
 ];
 
 const profileSchema = z.object({
+  accountType: z.enum(["couple_individual", "wedding_planner"]).default("couple_individual"),
   partner1Name: z.string().min(1, "Name is required"),
   partner2Name: z.string().min(1, "Name is required"),
   weddingDate: z.string().min(1, "Date is required"),
@@ -81,6 +82,7 @@ export default function Profile() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       partner1Name: "",
+      accountType: "couple_individual",
       partner2Name: "",
       weddingDate: "",
       ceremonyTime: "16:00",
@@ -107,6 +109,7 @@ export default function Profile() {
     if (profile) {
       form.reset({
         partner1Name: profile.partner1Name,
+        accountType: ((profile as { accountType?: "couple_individual" | "wedding_planner" }).accountType ?? "couple_individual"),
         partner2Name: profile.partner2Name,
         weddingDate: (profile.weddingDate ?? "").split('T')[0],
         ceremonyTime: profile.ceremonyTime,
@@ -198,6 +201,15 @@ export default function Profile() {
         <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground">
           <span className="font-medium text-primary">Welcome!</span>{" "}
           Fill in your wedding details below and tap <span className="font-medium">Save</span> at the bottom to get started.
+        </div>
+      )}
+
+      {profile && (
+        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+          <span className="font-medium text-primary">Account type:</span>{" "}
+          {(profile as { accountType?: string }).accountType === "wedding_planner"
+            ? "Wedding Planner — multiple client workstations enabled."
+            : "Couple / Individual — one wedding workspace."}
         </div>
       )}
 
@@ -623,4 +635,3 @@ export default function Profile() {
     </div>
   );
 }
-

@@ -25,6 +25,7 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   guestCount: integer("guest_count").notNull(),
   totalBudget: numeric("total_budget", { precision: 12, scale: 2 }).notNull().default("0"),
   weddingVibe: text("wedding_vibe").notNull(),
+  accountType: text("account_type").notNull().default("couple_individual"),
   preferredLanguage: text("preferred_language").default("English"),
   guestCollectionToken: text("guest_collection_token"),
   vendorBccEmail: text("vendor_bcc_email"),
@@ -360,6 +361,7 @@ export type Guest = typeof guests.$inferSelect;
 
 export const hotelBlocks = pgTable("hotel_blocks", {
   id: serial("id").primaryKey(),
+  profileId: integer("profile_id"),
   userId: text("user_id").notNull(),
   hotelName: text("hotel_name").notNull(),
   address: text("address"),
@@ -384,6 +386,7 @@ export type HotelBlock = typeof hotelBlocks.$inferSelect;
 
 export const weddingParty = pgTable("wedding_party", {
   id: serial("id").primaryKey(),
+  profileId: integer("profile_id"),
   userId: text("user_id").notNull(),
   name: text("name").notNull(),
   role: text("role").notNull(),

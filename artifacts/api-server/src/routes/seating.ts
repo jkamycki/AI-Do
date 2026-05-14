@@ -336,11 +336,12 @@ router.get("/seating/charts", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    const profileId = profile?.id ?? null;
     const rows = await db
       .select()
       .from(seatingCharts)
-      .where(eq(seatingCharts.userId, userId))
+      .where(profileId ? eq(seatingCharts.profileId, profileId) : eq(seatingCharts.userId, await resolveScopeUserId(req)))
       .orderBy(desc(seatingCharts.createdAt));
     res.json(rows.map(r => ({ ...r, createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString() })));
   } catch {
@@ -355,7 +356,8 @@ router.put("/seating/charts/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    const profileId = profile?.id ?? null;
     const { name, guests, tables, tableCount, seatsPerTable } = req.body;
     const [updated] = await db
       .update(seatingCharts)
@@ -367,7 +369,10 @@ router.put("/seating/charts/:id", requireAuth, async (req, res) => {
         seatsPerTable,
         updatedAt: new Date(),
       })
-      .where(and(eq(seatingCharts.id, parseInt(String(req.params["id"] ?? "0"), 10)), eq(seatingCharts.userId, userId)))
+      .where(and(
+        eq(seatingCharts.id, parseInt(String(req.params["id"] ?? "0"), 10)),
+        profileId ? eq(seatingCharts.profileId, profileId) : eq(seatingCharts.userId, await resolveScopeUserId(req)),
+      ))
       .returning();
     if (!updated) {
       res.status(404).json({ error: "Seating chart not found" });
@@ -390,21 +395,25 @@ router.post("/seating/charts/:id/apply", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    const profileId = profile?.id ?? null;
     const chartId = parseInt(String(req.params["id"] ?? "0"), 10);
     const [chart] = await db
       .select()
       .from(seatingCharts)
-      .where(and(eq(seatingCharts.id, chartId), eq(seatingCharts.userId, userId)))
+      .where(and(
+        eq(seatingCharts.id, chartId),
+        profileId ? eq(seatingCharts.profileId, profileId) : eq(seatingCharts.userId, await resolveScopeUserId(req)),
+      ))
       .limit(1);
     if (!chart) {
       res.status(404).json({ error: "Seating chart not found" });
       return;
     }
-    const profileId = chart.profileId ?? (await resolveProfile(req))?.id ?? null;
+    const chartProfileId = chart.profileId ?? profileId;
     const tables = (chart.tables ?? []) as { tableNumber: number; tableName: string; guests: string[] }[];
-    if (profileId && Array.isArray(tables) && tables.length > 0) {
-      await syncTableAssignments(profileId, tables);
+    if (chartProfileId && Array.isArray(tables) && tables.length > 0) {
+      await syncTableAssignments(chartProfileId, tables);
     }
     res.json({ success: true, applied: tables.length });
   } catch (err) {
@@ -420,21 +429,22 @@ router.delete("/seating/charts/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    const profileId = profile?.id ?? null;
     const chartId = parseInt(String(req.params["id"] ?? "0"), 10);
     const [deleted] = await db
       .delete(seatingCharts)
       .where(and(
         eq(seatingCharts.id, chartId),
-        eq(seatingCharts.userId, userId),
+        profileId ? eq(seatingCharts.profileId, profileId) : eq(seatingCharts.userId, await resolveScopeUserId(req)),
       ))
       .returning({ profileId: seatingCharts.profileId });
-    const profileId = deleted?.profileId ?? (await resolveProfile(req))?.id ?? null;
-    if (profileId) {
+    const deletedProfileId = deleted?.profileId ?? profileId;
+    if (deletedProfileId) {
       await db
         .update(guestRecords)
         .set({ tableAssignment: null })
-        .where(eq(guestRecords.profileId, profileId));
+        .where(eq(guestRecords.profileId, deletedProfileId));
     }
     res.json({ success: true });
   } catch {
@@ -453,9 +463,12 @@ router.delete("/seating/charts", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
     const profile = await resolveProfile(req);
-    await db.delete(seatingCharts).where(eq(seatingCharts.userId, userId));
+    if (profile) {
+      await db.delete(seatingCharts).where(eq(seatingCharts.profileId, profile.id));
+    } else {
+      await db.delete(seatingCharts).where(eq(seatingCharts.userId, await resolveScopeUserId(req)));
+    }
     if (profile) {
       await db
         .update(guestRecords)

@@ -136,7 +136,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
   const portalParty = await db
     .select({ id: weddingParty.id, name: weddingParty.name, role: weddingParty.role, side: weddingParty.side, photoUrl: weddingParty.photoUrl, sortOrder: weddingParty.sortOrder })
     .from(weddingParty)
-    .where(eq(weddingParty.userId, profile.userId))
+    .where(eq(weddingParty.profileId, profile.id))
     .orderBy(weddingParty.sortOrder, weddingParty.createdAt);
 
   return {
@@ -219,7 +219,7 @@ router.get("/website/me", requireAuth, async (req, res) => {
     const partyMembers = await db
       .select({ id: weddingParty.id, name: weddingParty.name, role: weddingParty.role, side: weddingParty.side, photoUrl: weddingParty.photoUrl, sortOrder: weddingParty.sortOrder })
       .from(weddingParty)
-      .where(eq(weddingParty.userId, profile.userId))
+      .where(eq(weddingParty.profileId, profile.id))
       .orderBy(weddingParty.sortOrder, weddingParty.createdAt);
 
     res.json({ ...serialize(row), portalParty: partyMembers });

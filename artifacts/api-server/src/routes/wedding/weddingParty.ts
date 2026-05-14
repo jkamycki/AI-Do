@@ -1,13 +1,25 @@
 import { Router } from "express";
 import { db, weddingParty } from "@workspace/db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, or, isNull } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
-import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
+import { getProfileByUserId, resolveProfile, resolveScopeUserId, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 
 const router = Router();
 
 function fmt(m: typeof weddingParty.$inferSelect) {
   return { ...m, createdAt: m.createdAt.toISOString() };
+}
+
+async function partyScope(req: Parameters<typeof resolveProfile>[0]) {
+  const profile = await resolveProfile(req);
+  const userId = profile?.userId ?? await resolveScopeUserId(req);
+  const defaultProfile = await getProfileByUserId(userId);
+  const condition = profile
+    ? profile.id === defaultProfile?.id
+      ? or(eq(weddingParty.profileId, profile.id), and(eq(weddingParty.userId, userId), isNull(weddingParty.profileId)))
+      : eq(weddingParty.profileId, profile.id)
+    : eq(weddingParty.userId, userId);
+  return { profile, userId, condition };
 }
 
 router.get("/wedding-party", requireAuth, async (req, res) => {
@@ -17,11 +29,11 @@ router.get("/wedding-party", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const { condition } = await partyScope(req);
     const rows = await db
       .select()
       .from(weddingParty)
-      .where(eq(weddingParty.userId, userId))
+      .where(condition)
       .orderBy(asc(weddingParty.sortOrder), asc(weddingParty.createdAt));
     res.json(rows.map(fmt));
   } catch (err) {
@@ -37,7 +49,7 @@ router.post("/wedding-party", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const { profile, userId } = await partyScope(req);
     const {
       name, role, side, phone, email,
       outfitDetails, shoeSize, outfitStore, fittingDate, notes, sortOrder,
@@ -45,6 +57,7 @@ router.post("/wedding-party", requireAuth, async (req, res) => {
     if (!name || !role) return res.status(400).json({ error: "name and role are required" });
     const [created] = await db.insert(weddingParty).values({
       userId,
+      profileId: profile?.id ?? null,
       name,
       role,
       side: side ?? "bride",
@@ -71,7 +84,7 @@ router.patch("/wedding-party/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const { condition } = await partyScope(req);
     const id = Number(req.params.id);
     const {
       name, role, side, phone, email,
@@ -80,7 +93,7 @@ router.patch("/wedding-party/:id", requireAuth, async (req, res) => {
     const [updated] = await db
       .update(weddingParty)
       .set({ name, role, side, phone, email, outfitDetails, shoeSize, outfitStore, fittingDate, notes, photoUrl, sortOrder })
-      .where(and(eq(weddingParty.id, id), eq(weddingParty.userId, userId)))
+      .where(and(eq(weddingParty.id, id), condition))
       .returning();
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.json(fmt(updated));
@@ -97,9 +110,9 @@ router.delete("/wedding-party/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const { condition } = await partyScope(req);
     const id = Number(req.params.id);
-    await db.delete(weddingParty).where(and(eq(weddingParty.id, id), eq(weddingParty.userId, userId)));
+    await db.delete(weddingParty).where(and(eq(weddingParty.id, id), condition));
     res.json({ success: true });
   } catch (err) {
     req.log.error(err, "Failed to delete wedding party member");

@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { db, guests, hotelBlocks, weddingProfiles } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, guests, hotelBlocks } from "@workspace/db";
+import { eq, and, or, isNull } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
-import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
+import { getProfileByUserId, resolveProfile, resolveScopeUserId, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 
 async function geocode(address: string): Promise<{ lat: number; lon: number } | null> {
   try {
@@ -97,6 +97,18 @@ function withSyncedRoomsBooked(h: typeof hotelBlocks.$inferSelect, bookedCount: 
   return fmt({ ...h, roomsBooked: bookedCount });
 }
 
+async function hotelScope(req: Parameters<typeof resolveProfile>[0]) {
+  const profile = await resolveProfile(req);
+  const userId = profile?.userId ?? await resolveScopeUserId(req);
+  const defaultProfile = await getProfileByUserId(userId);
+  const condition = profile
+    ? profile.id === defaultProfile?.id
+      ? or(eq(hotelBlocks.profileId, profile.id), and(eq(hotelBlocks.userId, userId), isNull(hotelBlocks.profileId)))
+      : eq(hotelBlocks.profileId, profile.id)
+    : eq(hotelBlocks.userId, userId);
+  return { profile, userId, condition };
+}
+
 router.post("/hotels/calculate-distance", requireAuth, async (req, res) => {
   try {
     const callerRole = await resolveCallerRole(req);
@@ -104,7 +116,6 @@ router.post("/hotels/calculate-distance", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
     const { address, city, state, zip } = req.body as {
       address?: string; city?: string; state?: string; zip?: string;
     };
@@ -117,17 +128,7 @@ router.post("/hotels/calculate-distance", requireAuth, async (req, res) => {
       return;
     }
 
-    const [profile] = await db
-      .select({
-        location: weddingProfiles.location,
-        venueCity: weddingProfiles.venueCity,
-        venueState: weddingProfiles.venueState,
-        venueZip: weddingProfiles.venueZip,
-        venue: weddingProfiles.venue,
-      })
-      .from(weddingProfiles)
-      .where(eq(weddingProfiles.userId, userId))
-      .limit(1);
+    const profile = await resolveProfile(req);
 
     if (!profile) {
       res.status(400).json({ error: "No wedding profile found" });
@@ -186,17 +187,12 @@ router.get("/hotels", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
-    const [profile] = await db
-      .select({ id: weddingProfiles.id })
-      .from(weddingProfiles)
-      .where(eq(weddingProfiles.userId, userId))
-      .limit(1);
+    const { profile, condition } = await hotelScope(req);
 
     const rows = await db
       .select()
       .from(hotelBlocks)
-      .where(eq(hotelBlocks.userId, userId))
+      .where(condition)
       .orderBy(hotelBlocks.createdAt);
 
     if (!profile) {
@@ -228,7 +224,7 @@ router.post("/hotels", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const { profile, userId } = await hotelScope(req);
     const {
       hotelName, address, city, state, zip, phone, email, bookingLink, discountCode,
       groupName, cutoffDate, roomsReserved, roomsBooked, pricePerNight,
@@ -236,6 +232,7 @@ router.post("/hotels", requireAuth, async (req, res) => {
     } = req.body;
     const [created] = await db.insert(hotelBlocks).values({
       userId,
+      profileId: profile?.id ?? null,
       hotelName: hotelName ?? "",
       address: address ?? null,
       city: city ?? null,
@@ -267,7 +264,7 @@ router.patch("/hotels/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const { condition } = await hotelScope(req);
     const id = Number(req.params.id);
     const {
       hotelName, address, city, state, zip, phone, email, bookingLink, discountCode,
@@ -283,7 +280,7 @@ router.patch("/hotels/:id", requireAuth, async (req, res) => {
         pricePerNight: pricePerNight != null ? String(pricePerNight) : null,
         distanceFromVenue, notes,
       })
-      .where(and(eq(hotelBlocks.id, id), eq(hotelBlocks.userId, userId)))
+      .where(and(eq(hotelBlocks.id, id), condition))
       .returning();
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.json(fmt(updated));
@@ -300,13 +297,8 @@ router.delete("/hotels/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const { profile, condition } = await hotelScope(req);
     const id = Number(req.params.id);
-    const [profile] = await db
-      .select({ id: weddingProfiles.id })
-      .from(weddingProfiles)
-      .where(eq(weddingProfiles.userId, userId))
-      .limit(1);
 
     if (profile) {
       await db
@@ -317,7 +309,7 @@ router.delete("/hotels/:id", requireAuth, async (req, res) => {
 
     await db
       .delete(hotelBlocks)
-      .where(and(eq(hotelBlocks.id, id), eq(hotelBlocks.userId, userId)));
+      .where(and(eq(hotelBlocks.id, id), condition));
     res.json({ success: true });
   } catch (err) {
     req.log.error(err, "Failed to delete hotel block");

@@ -1,5 +1,5 @@
 import { db, weddingProfiles, workspaceCollaborators, workspaceActivity } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import type { Request } from "express";
 
 export type CollaboratorRole = "owner" | "partner" | "planner" | "vendor";
@@ -9,8 +9,17 @@ export async function getProfileByUserId(userId: string) {
     .select()
     .from(weddingProfiles)
     .where(eq(weddingProfiles.userId, userId))
+    .orderBy(asc(weddingProfiles.id))
     .limit(1);
   return rows[0] ?? null;
+}
+
+export async function listProfilesByUserId(userId: string) {
+  return db
+    .select()
+    .from(weddingProfiles)
+    .where(eq(weddingProfiles.userId, userId))
+    .orderBy(asc(weddingProfiles.id));
 }
 
 export async function resolveWorkspaceRole(

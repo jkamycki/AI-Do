@@ -79,7 +79,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
     // Wedding party count is keyed by userId (not profileId) — same scope the
     // /api/wedding-party route uses, so the dashboard tile and the page agree.
     const weddingPartyCount = hasProfile
-      ? (await db.select({ id: weddingParty.id }).from(weddingParty).where(eq(weddingParty.userId, profiles[0].userId))).length
+      ? (await db.select({ id: weddingParty.id }).from(weddingParty).where(eq(weddingParty.profileId, profileId))).length
       : 0;
 
     // Seating summary — most recent chart for the workspace (if any) plus how
@@ -166,6 +166,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       guestCount: profiles[0].guestCount,
       totalBudget: parseFloat(profiles[0].totalBudget as string),
       weddingVibe: profiles[0].weddingVibe,
+      accountType: profiles[0].accountType,
     } : null;
 
     trackEvent(req.userId!, "user_login");
