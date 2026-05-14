@@ -957,15 +957,13 @@ function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: 
       className="relative flex items-center justify-center gap-3 px-5 py-3 text-sm"
       style={{ background: `${data.colorPalette.primary}18`, borderBottom: `2px solid ${data.colorPalette.primary}55` }}
     >
-      <div className="flex-1 overflow-hidden whitespace-nowrap text-center">
-        <div
-          className="inline-flex max-w-full items-center justify-center"
-          style={{
-            color: data.colorPalette.text,
-          }}
-          aria-label={trimmed}
-        >
-          {ctx.editable ? (
+      <div className="flex-1 overflow-hidden whitespace-nowrap">
+        {ctx.editable ? (
+          <div
+            className="inline-flex max-w-full items-center justify-center text-center"
+            style={{ color: data.colorPalette.text }}
+            aria-label={trimmed}
+          >
             <EditableText
               as="span"
               editable={ctx.editable}
@@ -976,10 +974,12 @@ function AnnouncementBanner({ data, ctx }: { data: WebsiteRendererPayload; ctx: 
               style={{ color: data.colorPalette.text }}
               {...tspNoDelete(ctx, "_announcement", true)}
             />
-          ) : (
-            <span>{trimmed}</span>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="wsa-announcement-marquee" aria-label={trimmed}>
+            <span style={{ color: data.colorPalette.text }}>{trimmed}</span>
+          </div>
+        )}
       </div>
 
       {!ctx.editable && (

@@ -75,6 +75,23 @@
   to   { transform: translateX(0); }
 }
 
+@keyframes wsa-announcement-ltr {
+  from { transform: translateX(-110%); }
+  to   { transform: translateX(100%); }
+}
+
+.wsa-announcement-marquee {
+  width: 100%;
+  overflow: hidden;
+}
+
+.wsa-announcement-marquee > span {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+  animation: wsa-announcement-ltr 14s linear infinite;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
