@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { clerkClient } from "@clerk/express";
 import { db } from "@workspace/db";
 import { vendors, vendorConversations, vendorMessages, weddingProfiles } from "@workspace/db/schema";
 import { and, asc, desc, eq } from "drizzle-orm";
@@ -15,6 +16,18 @@ import {
 import { resolveProfile, resolveScopeUserId } from "../../lib/workspaceAccess";
 
 const router = Router();
+
+async function getPrimaryAccountEmail(userId: string): Promise<string | null> {
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    const primary =
+      user.emailAddresses.find((email) => email.id === user.primaryEmailAddressId) ??
+      user.emailAddresses[0];
+    return primary?.emailAddress?.trim().toLowerCase() ?? null;
+  } catch {
+    return null;
+  }
+}
 
 async function getOrCreateConversation(userId: string, vendorId: number, profileId?: number) {
   const whereClause = profileId !== undefined
@@ -217,10 +230,11 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
 
       const fromName = coupleNames || undefined;
 
-      // CC the user's personal email(s). Two sources merged:
+      // CC the user's personal email(s), including the signed-in account email.
       // 1. The live CC list sent with this request (ccOverride) — used even if not yet saved to profile.
       // 2. The profile's saved vendorBccEmail (legacy field name) as fallback / supplement.
       const isValidEmail = (e: string) => { const at = e.indexOf("@"); return at > 0 && at < e.length - 1 && e.indexOf(".", at) > at + 1; };
+      const accountEmail = await getPrimaryAccountEmail(req.userId!);
       const ccRaw = profile?.vendorBccEmail?.trim() ?? "";
       const savedCcList = ccRaw
         .split(/[,;\s]+/)
@@ -230,7 +244,10 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
       const requestCcList = Array.isArray(ccOverride)
         ? ccOverride.map((e) => e.trim().toLowerCase()).filter((e) => isValidEmail(e))
         : [];
-      const ccList = Array.from(new Set([...requestCcList, ...savedCcList]));
+      const accountCcList = accountEmail && isValidEmail(accountEmail) ? [accountEmail] : [];
+      const vendorEmail = vendor.email.trim().toLowerCase();
+      const ccList = Array.from(new Set([...requestCcList, ...savedCcList, ...accountCcList]))
+        .filter((email) => email !== vendorEmail);
       const cc = ccList.length > 0 ? ccList : undefined;
 
       result = await sendEmail({
