@@ -1287,6 +1287,7 @@ function AnnouncementBanner({
 }) {
   const text = data.customText._announcement ?? "";
   const trimmed = text.trim();
+  const marqueeEnabled = data.customText._announcementMarquee !== "false";
   const [dismissed, setDismissed] = useState(false);
 
   // Hide when the user has toggled the announcement off via Home Elements.
@@ -1325,8 +1326,20 @@ function AnnouncementBanner({
             />
           </div>
         ) : (
-          <div className="wsa-announcement-marquee" aria-label={trimmed}>
-            <span style={{ color: data.colorPalette.text }}>{trimmed}</span>
+          <div
+            className={
+              marqueeEnabled
+                ? "wsa-announcement-marquee"
+                : "w-full whitespace-normal text-center"
+            }
+            aria-label={trimmed}
+          >
+            <span
+              className={marqueeEnabled ? undefined : "inline-block max-w-full"}
+              style={{ color: data.colorPalette.text }}
+            >
+              {trimmed}
+            </span>
           </div>
         )}
       </div>

@@ -1532,6 +1532,26 @@ export default function WebsiteEditor() {
                 </div>
               );
             })}
+            <div className="flex items-center justify-between gap-3 py-1.5">
+              <Label className="text-sm cursor-pointer">
+                {t("website_editor.hero_announcement_marquee", {
+                  defaultValue: "Announcement Marquee Scroll",
+                })}
+              </Label>
+              <Switch
+                checked={record.customText._announcementMarquee !== "false"}
+                onCheckedChange={(checked) => {
+                  update({
+                    customText: {
+                      ...record.customText,
+                      _announcementMarquee: checked ? "" : "false",
+                    },
+                  });
+                  setEditorSection("home");
+                  previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
+                }}
+              />
+            </div>
           </div>
         </Section>}
 

@@ -154,12 +154,12 @@
   }
 }
 
-@keyframes wsa-announcement-ltr {
+@keyframes wsa-announcement-rtl {
   from {
-    transform: translateX(-110%);
+    transform: translateX(100%);
   }
   to {
-    transform: translateX(100%);
+    transform: translateX(-110%);
   }
 }
 
@@ -175,7 +175,7 @@
   display: inline-block;
   white-space: nowrap;
   will-change: transform;
-  animation: wsa-announcement-ltr 14s linear infinite;
+  animation: wsa-announcement-rtl 14s linear infinite;
 }
 
 @custom-variant dark (&:is(.dark *));
