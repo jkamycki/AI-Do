@@ -917,10 +917,15 @@ function VendorDetailDialog({
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: vendor, isLoading } = useGetVendor(vendorId);
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = useState<number | null>(null);
 
   const { t } = useTranslation();
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab, vendorId]);
+
   const deletePaymentMutation = useDeleteVendorPayment({
     mutation: {
       onSuccess: () => {
@@ -986,7 +991,7 @@ function VendorDetailDialog({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue={initialTab}>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "overview" | "messages" | "payments" | "files")}>
             <TabsList className="w-full">
               <TabsTrigger value="overview" className="flex-1">{t("vendors.tab_overview")}</TabsTrigger>
               <TabsTrigger value="messages" className="flex-1">{t("vendors.tab_messages")}</TabsTrigger>
@@ -1425,7 +1430,8 @@ export default function Vendors() {
   const { data: vendors = [], isLoading } = useListVendors();
   const { data: profile, isLoading: profileLoading } = useGetProfile();
   const [location, setLocation] = useLocation();
-  const queryString = location.includes("?") ? location.slice(location.indexOf("?") + 1) : "";
+  const browserSearch = typeof window !== "undefined" ? window.location.search.replace(/^\?/, "") : "";
+  const queryString = browserSearch || (location.includes("?") ? location.slice(location.indexOf("?") + 1) : "");
   const query = new URLSearchParams(queryString);
   const requestedVendorId = Number(query.get("vendorId") ?? "");
   const requestedTab = query.get("tab");
