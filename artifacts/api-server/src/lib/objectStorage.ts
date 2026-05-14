@@ -205,6 +205,28 @@ export class ObjectStorageService {
     );
   }
 
+  async uploadObjectEntityFile(
+    buffer: Buffer,
+    fileName: string,
+    contentType: string,
+  ): Promise<string> {
+    const prefix = getPrivatePrefix();
+    const objectId = randomUUID();
+    const safeName = fileName.replace(/[^\w.\- ]+/g, "_").replace(/\s+/g, "-").slice(0, 120) || "file";
+    const key = `${prefix}/uploads/${objectId}-${safeName}`;
+
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+      }),
+    );
+
+    return `/objects/uploads/${objectId}-${safeName}`;
+  }
+
   normalizeObjectEntityPath(rawPath: string): string {
     try {
       const url = new URL(rawPath);

@@ -6,12 +6,14 @@ import { eq, desc, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
+import { ObjectStorageService } from "../lib/objectStorage";
 
 const require = createRequire(import.meta.url);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require("pdf-parse");
 
 const router = Router();
+const storage = new ObjectStorageService();
 const ALLOWED_CONTRACT_MIMES = new Set([
   "application/pdf",
   "text/plain",
@@ -168,13 +170,15 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
     if (rawVendorId && (!Number.isInteger(vendorId) || vendorId <= 0)) {
       return res.status(400).json({ error: "Invalid vendor selection." });
     }
+    let selectedVendor: { id: number; files: Array<{ name: string; url: string; type: string }> } | null = null;
     if (vendorId) {
       const [vendor] = await db
-        .select({ id: vendors.id })
+        .select({ id: vendors.id, files: vendors.files })
         .from(vendors)
         .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, scope.profileId)))
         .limit(1);
       if (!vendor) return res.status(400).json({ error: "Selected vendor was not found." });
+      selectedVendor = vendor;
     }
 
     const [saved] = await db
@@ -190,6 +194,24 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
         analysis,
       })
       .returning();
+
+    if (selectedVendor) {
+      try {
+        const storedUrl = await storage.uploadObjectEntityFile(buffer, displayName, mimetype);
+        const contractFile = {
+          name: displayName,
+          url: storedUrl,
+          type: mimetype,
+        };
+        const existingFiles = Array.isArray(selectedVendor.files) ? selectedVendor.files : [];
+        await db
+          .update(vendors)
+          .set({ files: [...existingFiles, contractFile], updatedAt: new Date() })
+          .where(and(eq(vendors.id, selectedVendor.id), eq(vendors.profileId, scope.profileId)));
+      } catch (err) {
+        req.log.warn({ err, vendorId: selectedVendor.id, contractId: saved.id }, "Failed to attach contract to vendor files");
+      }
+    }
 
     res.json({ id: saved.id, analysis, fileName: originalname });
   } catch (err) {

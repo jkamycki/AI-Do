@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslation } from "react-i18next";
-import { useGetProfile, useListVendors } from "@workspace/api-client-react";
+import { getListVendorsQueryKey, useGetProfile, useListVendors } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 
 const API = import.meta.env.VITE_API_URL ?? "";
@@ -524,6 +524,7 @@ export default function Contracts() {
         throw new Error((err as { error?: string }).error ?? "Upload failed");
       }
       await qc.invalidateQueries({ queryKey: ["contracts"] });
+      await qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
       toast({ title: t("contracts.contract_analyzed"), description: t("contracts.contract_analyzed_desc") });
       setPendingFile(null);
       setPendingName("");
