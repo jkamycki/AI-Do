@@ -1532,26 +1532,6 @@ export default function WebsiteEditor() {
                 </div>
               );
             })}
-            <div className="flex items-center justify-between gap-3 py-1.5">
-              <Label className="text-sm cursor-pointer">
-                {t("website_editor.hero_announcement_marquee", {
-                  defaultValue: "Announcement Marquee Scroll",
-                })}
-              </Label>
-              <Switch
-                checked={record.customText._announcementMarquee !== "false"}
-                onCheckedChange={(checked) => {
-                  update({
-                    customText: {
-                      ...record.customText,
-                      _announcementMarquee: checked ? "" : "false",
-                    },
-                  });
-                  setEditorSection("home");
-                  previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
-                }}
-              />
-            </div>
           </div>
         </Section>}
 
@@ -1802,6 +1782,40 @@ export default function WebsiteEditor() {
           <p className="text-xs text-muted-foreground leading-relaxed">
             {t("website_editor.edit_text_hint_1", { defaultValue: "Click any heading or paragraph in the preview to edit it directly. Press" })} <strong>{t("website_editor.edit_text_hint_enter", { defaultValue: "Enter" })}</strong> {t("website_editor.edit_text_hint_2", { defaultValue: "on a heading or click outside to commit. Use this sidebar for theme, layout, photos, and section toggles." })}
           </p>
+        </Section>}
+
+
+        {/* Announcement animation */}
+        {inTab("animation") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_announcement_animation", { defaultValue: "Announcement Banner Animation" })}>
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between gap-3 py-1.5">
+              <div>
+                <Label className="text-sm cursor-pointer">
+                  {t("website_editor.hero_announcement_marquee", {
+                    defaultValue: "Announcement Marquee Scroll",
+                  })}
+                </Label>
+                <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                  {t("website_editor.hero_announcement_marquee_hint", {
+                    defaultValue: "When enabled, the announcement moves right to left across the banner. Turn it off for centered static text.",
+                  })}
+                </p>
+              </div>
+              <Switch
+                checked={record.customText._announcementMarquee !== "false"}
+                onCheckedChange={(checked) => {
+                  update({
+                    customText: {
+                      ...record.customText,
+                      _announcementMarquee: checked ? "" : "false",
+                    },
+                  });
+                  setEditorSection("home");
+                  previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
+                }}
+              />
+            </div>
+          </div>
         </Section>}
 
 
