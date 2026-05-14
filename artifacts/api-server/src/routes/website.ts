@@ -116,6 +116,49 @@ function serialize(w: typeof weddingWebsites.$inferSelect) {
   };
 }
 
+async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelect) {
+  const [profile] = await db
+    .select()
+    .from(weddingProfiles)
+    .where(eq(weddingProfiles.id, row.profileId))
+    .limit(1);
+  if (!profile) return null;
+
+  const portalParty = await db
+    .select({ id: weddingParty.id, name: weddingParty.name, role: weddingParty.role, side: weddingParty.side, photoUrl: weddingParty.photoUrl, sortOrder: weddingParty.sortOrder })
+    .from(weddingParty)
+    .where(eq(weddingParty.userId, profile.userId))
+    .orderBy(weddingParty.sortOrder, weddingParty.createdAt);
+
+  return {
+    slug: row.slug,
+    theme: row.theme,
+    layoutStyle: row.layoutStyle,
+    font: row.font,
+    accentColor: row.accentColor,
+    colorPalette: row.colorPalette,
+    sectionsEnabled: row.sectionsEnabled,
+    customText: row.customText,
+    textStyles: row.textStyles ?? {},
+    textPositions: row.textPositions ?? {},
+    galleryImages: row.galleryImages,
+    heroImages: row.heroImages ?? [],
+    heroImage: row.heroImage,
+    portalParty,
+    couple: {
+      partner1Name: profile.partner1Name,
+      partner2Name: profile.partner2Name,
+      weddingDate: profile.weddingDate,
+      ceremonyTime: profile.ceremonyTime,
+      receptionTime: profile.receptionTime,
+      venue: profile.venue,
+      location: profile.location,
+      venueCity: profile.venueCity,
+      venueState: profile.venueState,
+    },
+  };
+}
+
 // ---------- POST /api/website/create ----------
 
 router.post("/website/create", requireAuth, async (req, res) => {
@@ -353,48 +396,53 @@ router.get("/website/public/:slug", async (req, res) => {
       }
     }
 
-    const [profile] = await db
-      .select()
-      .from(weddingProfiles)
-      .where(eq(weddingProfiles.id, row.profileId))
-      .limit(1);
-    if (!profile) return res.status(404).json({ error: "Not found" });
-
-    const portalParty = await db
-      .select({ id: weddingParty.id, name: weddingParty.name, role: weddingParty.role, side: weddingParty.side, photoUrl: weddingParty.photoUrl, sortOrder: weddingParty.sortOrder })
-      .from(weddingParty)
-      .where(eq(weddingParty.userId, profile.userId))
-      .orderBy(weddingParty.sortOrder, weddingParty.createdAt);
-
-    res.json({
-      slug: row.slug,
-      theme: row.theme,
-      layoutStyle: row.layoutStyle,
-      font: row.font,
-      accentColor: row.accentColor,
-      colorPalette: row.colorPalette,
-      sectionsEnabled: row.sectionsEnabled,
-      customText: row.customText,
-      textStyles: row.textStyles ?? {},
-      textPositions: row.textPositions ?? {},
-      galleryImages: row.galleryImages,
-      heroImages: row.heroImages ?? [],
-      heroImage: row.heroImage,
-      portalParty,
-      couple: {
-        partner1Name: profile.partner1Name,
-        partner2Name: profile.partner2Name,
-        weddingDate: profile.weddingDate,
-        ceremonyTime: profile.ceremonyTime,
-        receptionTime: profile.receptionTime,
-        venue: profile.venue,
-        location: profile.location,
-        venueCity: profile.venueCity,
-        venueState: profile.venueState,
-      },
-    });
+    const payload = await buildPublicWebsitePayload(row);
+    if (!payload) return res.status(404).json({ error: "Not found" });
+    res.json(payload);
   } catch (err) {
     req.log.error(err, "publicWebsite failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------- POST /api/website/public/:slug/unlock ----------
+//
+// Browser-friendly unlock endpoint for password-protected sites. The public
+// page can submit the guest-entered password in the JSON body instead of using
+// a custom request header for the initial site load.
+router.post("/website/public/:slug/unlock", async (req, res) => {
+  try {
+    const slug = String(req.params.slug ?? "").toLowerCase();
+    if (!slug) return res.status(400).json({ error: "Slug required" });
+
+    const [row] = await db
+      .select()
+      .from(weddingWebsites)
+      .where(eq(weddingWebsites.slug, slug))
+      .limit(1);
+    if (!row || !row.published) return res.status(404).json({ error: "Not found" });
+    if (!row.password) {
+      const payload = await buildPublicWebsitePayload(row);
+      if (!payload) return res.status(404).json({ error: "Not found" });
+      return res.json(payload);
+    }
+
+    const supplied = String(req.body?.password ?? "").trim();
+    const passwordValid = await verifyPassword(supplied, row.password);
+    if (!passwordValid) {
+      return res.status(401).json({ passwordRequired: true });
+    }
+
+    if (!row.password.startsWith("scrypt:")) {
+      const hashed = await hashPassword(supplied);
+      await db.update(weddingWebsites).set({ password: hashed }).where(eq(weddingWebsites.id, row.id));
+    }
+
+    const payload = await buildPublicWebsitePayload(row);
+    if (!payload) return res.status(404).json({ error: "Not found" });
+    res.json(payload);
+  } catch (err) {
+    req.log.error(err, "publicWebsiteUnlock failed");
     res.status(500).json({ error: "Internal server error" });
   }
 });

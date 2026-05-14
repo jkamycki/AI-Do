@@ -23,7 +23,19 @@ function setMeta(name: string, content: string, isProperty = false) {
   el.setAttribute("content", content);
 }
 
-function PasswordGate({ accent, font, onSubmit, error }: { accent: string; font: string; onSubmit: (pw: string) => void; error: string | null }) {
+function PasswordGate({
+  accent,
+  font,
+  onSubmit,
+  error,
+  loading,
+}: {
+  accent: string;
+  font: string;
+  onSubmit: (pw: string) => void;
+  error: string | null;
+  loading: boolean;
+}) {
   const [pw, setPw] = useState("");
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#FAF8F4" }}>
@@ -50,16 +62,18 @@ function PasswordGate({ accent, font, onSubmit, error }: { accent: string; font:
             value={pw}
             onChange={(e) => setPw(e.target.value)}
             placeholder="Password"
+            disabled={loading}
             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 text-base"
             style={{ outlineColor: accent }}
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"
+            disabled={loading || !pw.trim()}
             className="w-full px-4 py-3 rounded-lg text-white font-medium transition-opacity hover:opacity-90"
             style={{ background: accent }}
           >
-            View Site
+            {loading ? "Unlocking..." : "View Site"}
           </button>
         </form>
       </div>
@@ -87,20 +101,20 @@ export default function PublicWebsite() {
   const [error, setError] = useState<string | null>(null);
   const [pwError, setPwError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unlocking, setUnlocking] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
     setError(null);
     const url = `/api/website/public/${encodeURIComponent(slug)}`;
-    apiFetch(url, password ? { headers: { "X-Site-Password": password } } : undefined)
+    apiFetch(url)
       .then(async (res) => {
         if (res.status === 401) {
           const body = await res.json().catch(() => ({}));
           if (body?.passwordRequired) {
             setNeedsPassword(true);
             setData(null);
-            if (password) setPwError("Incorrect password. Please try again.");
             return;
           }
         }
@@ -119,7 +133,43 @@ export default function PublicWebsite() {
       })
       .catch(() => setError("Failed to load this site. Please try again later."))
       .finally(() => setLoading(false));
-  }, [slug, password]);
+  }, [slug]);
+
+  const unlockSite = async (pw: string) => {
+    if (!slug) return;
+    setUnlocking(true);
+    setPwError(null);
+    setError(null);
+    try {
+      const res = await apiFetch(`/api/website/public/${encodeURIComponent(slug)}/unlock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw }),
+      });
+      if (res.status === 401) {
+        setPwError("Incorrect password. Please try again.");
+        return;
+      }
+      if (res.status === 404) {
+        setError("This wedding website doesn't exist or hasn't been published yet.");
+        setNeedsPassword(false);
+        return;
+      }
+      if (!res.ok) {
+        setPwError("We couldn't unlock the site. Please try again.");
+        return;
+      }
+      const body = (await res.json()) as PublicSitePayload;
+      setPassword(pw);
+      setData(body);
+      setNeedsPassword(false);
+      setPwError(null);
+    } catch {
+      setPwError("We couldn't unlock the site. Please try again.");
+    } finally {
+      setUnlocking(false);
+    }
+  };
 
   useEffect(() => {
     if (!data?.font) return;
@@ -187,7 +237,8 @@ export default function PublicWebsite() {
         accent="#D4A017"
         font="Playfair Display"
         error={pwError}
-        onSubmit={(pw) => setPassword(pw)}
+        loading={unlocking}
+        onSubmit={unlockSite}
       />
     );
   }
