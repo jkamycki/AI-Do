@@ -641,6 +641,18 @@ function extractGuestNameFromAssistant(text: string): string | null {
   return null;
 }
 
+function userActuallyMentionedName(candidate: string, userBlob: string, ignoredWords: Set<string>): boolean {
+  const lowerCandidate = candidate.toLowerCase().trim();
+  const normalizedUserBlob = userBlob.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const compactCandidate = lowerCandidate.replace(/[^a-z0-9]+/g, "");
+  const nameTokens = lowerCandidate
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 3 && !ignoredWords.has(t));
+  const anyTokenMatch = nameTokens.some((t) => userBlob.includes(t));
+  const compactMatch = compactCandidate.length >= 3 && normalizedUserBlob.includes(compactCandidate);
+  return nameTokens.length > 0 && (anyTokenMatch || compactMatch);
+}
+
 type ActionResult =
   | { ok: true; data: unknown }
   // doNotRetry tells the orchestrator to remove this tool from the next round so
@@ -1078,14 +1090,7 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       // user: "add Bloom & Co Florists" → tokens "bloom" and "co" appear,
       // hallucinations like "Lowdown Blow DJ" never do.
       if (userBlob && userBlob.length > 0) {
-        const normalizedUserBlob = userBlob.replace(/[^a-z0-9]+/g, "");
-        const compactVendorName = lowerName.replace(/[^a-z0-9]+/g, "");
-        const nameTokens = lowerName
-          .split(/[^a-z0-9]+/)
-          .filter((t) => t.length >= 3 && !VENDOR_CATEGORY_WORDS.has(t));
-        const anyTokenMatch = nameTokens.some((t) => userBlob.includes(t));
-        const compactMatch = compactVendorName.length >= 3 && normalizedUserBlob.includes(compactVendorName);
-        if (nameTokens.length > 0 && !anyTokenMatch && !compactMatch) {
+        if (!userActuallyMentionedName(vendorName, userBlob, VENDOR_CATEGORY_WORDS)) {
           return {
             ok: false,
             error: `"${vendorName}" doesn't appear in the user's messages — do not invent vendor names. Ask the user: "What's the vendor's business name?" and wait for their reply before calling add_vendor again.`,
@@ -1441,7 +1446,24 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       const profile = await resolveProfile(req);
       if (!profile) return { ok: false, error: "No wedding profile yet." };
       const guestName = String(args.name ?? "").trim();
-      if (!guestName) return { ok: false, error: "Guest name is required" };
+      if (!guestName) return { ok: false, error: "Guest name is required. Ask the user who they want to add.", doNotRetry: true };
+      const GUEST_PLACEHOLDER_WORDS = new Set([
+        "guest", "new", "person", "someone", "somebody", "friend", "family",
+        "invitee", "unknown", "unnamed", "placeholder", "test", "sample",
+      ]);
+      if (/^(guest\s*\d*|new guest|sample guest|test guest|unnamed|unknown|n\/a|none|tbd|placeholder|someone|somebody)$/i.test(guestName)) {
+        return { ok: false, error: `"${guestName}" is not a guest's name. Ask the user who they want to add.`, doNotRetry: true };
+      }
+      if (guestName.includes("?") || guestName.length > 80 || /^(what'?s|what is|please|could you|can you|tell me|i need|i want|add a |add an )/i.test(guestName)) {
+        return { ok: false, error: `"${guestName.slice(0, 40)}" doesn't look like a guest name. Ask the user who they want to add.`, doNotRetry: true };
+      }
+      if (userBlob && userBlob.length > 0 && !userActuallyMentionedName(guestName, userBlob, GUEST_PLACEHOLDER_WORDS)) {
+        return {
+          ok: false,
+          error: `"${guestName}" doesn't appear in the user's messages — do not invent guest names. Ask the user: "Who would you like me to add to the guest list?" and wait for their reply before calling add_guest again.`,
+          doNotRetry: true,
+        };
+      }
       const [created] = await db.insert(guests).values({
         profileId: profile.id,
         name: guestName,
@@ -2364,9 +2386,15 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
     const pendingGuest = parsePendingGuestConfirmation(lastAssistantText);
     if (pendingGuest && YES_CONFIRM_INTENT.test(lastUserText.trim())) {
+      const recentUserText = messages
+        .filter((m) => m.role === "user")
+        .slice(-4)
+        .map((m) => (typeof m.content === "string" ? m.content : ""))
+        .join(" ")
+        .toLowerCase();
       const result = await executeTool("add_guest", {
         name: pendingGuest.name,
-      }, req, { recentUserText: pendingGuest.name.toLowerCase() });
+      }, req, { recentUserText });
       if (result.ok) {
         send({ type: "action_start", name: "add_guest", args: { name: pendingGuest.name } });
         send({ type: "action_result", name: "add_guest", ok: true, data: result.data });
@@ -2393,10 +2421,35 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       return;
     }
 
-    const VENDOR_CATEGORY_INTENT = /\b(add|create|new)\s+(a|an)\s+(vendor|photographer|videographer|florist|caterer|catering|dj|band|musician|officiant|hair|makeup|transport(?:ation)?|limo|cake|baker|stationery|invitation|rental|planner|venue|coordinator)s?\b/i;
+    const VENDOR_CATEGORY_INTENT = /\b(?:add|create|new)\s+(?:(?:a|an)\s+)?(?:new\s+)?(vendor|photographer|videographer|florist|caterer|catering|dj|band|musician|officiant|hair|makeup|transport(?:ation)?|limo|cake|baker|stationery|invitation|rental|planner|venue|coordinator)s?\b/i;
+    const GUEST_GATHER_INTENT = /\b(?:add|create|new)\s+(?:(?:a|an)\s+)?(?:new\s+)?(?:guest|invitee|person)\b/i;
     const HAS_PROPER_NOUN = /[A-Z][a-z]{2,}|"[^"]+"|'[^']+'/;
     const vendorGatherIntent = VENDOR_CATEGORY_INTENT.test(lastUserText) &&
       !HAS_PROPER_NOUN.test(lastUserText.replace(VENDOR_CATEGORY_INTENT, ""));
+    const guestGatherIntent = GUEST_GATHER_INTENT.test(lastUserText) &&
+      !HAS_PROPER_NOUN.test(lastUserText.replace(GUEST_GATHER_INTENT, ""));
+
+    if (guestGatherIntent) {
+      send({
+        type: "content",
+        content: "Who would you like me to add to the guest list? Send their name, and any optional details like email, RSVP status, or notes.",
+      });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
+    if (vendorGatherIntent) {
+      send({
+        type: "content",
+        content: "What's the vendor's business name and category (florist, photographer, caterer, DJ, etc.)? Only the business name is needed to get started.",
+      });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
 
     // Skip tools for: chitchat, general advice, OR "add a vendor/photographer"
     // without a business name. Skipping tools streams content directly (no
@@ -2404,7 +2457,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     // question reaches the client cleanly instead of being stripped to empty
     // and replaced with the generic "Sorry — I didn't catch that" fallback.
     const skipTools = !!lastUserText
-      && (isConversationalMessage(lastUserText) || isInfoQuestion(lastUserText) || vendorGatherIntent);
+      && (isConversationalMessage(lastUserText) || isInfoQuestion(lastUserText));
     let filteredTools = skipTools ? [] : pickToolsForMessages(recent as Array<{ role: string; content: string }>);
     // Tools that returned a doNotRetry error this turn — pruned from the next
     // loop iteration so the model can't keep guessing args after a rejection.
