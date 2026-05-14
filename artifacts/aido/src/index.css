@@ -156,23 +156,25 @@
 
 @keyframes wsa-announcement-rtl {
   from {
-    transform: translateX(100%);
+    transform: translateX(0);
   }
   to {
-    transform: translateX(-110%);
+    transform: translateX(-100%);
   }
 }
 
 .wsa-announcement-marquee {
   width: 100%;
   overflow: hidden;
-  display: flex;
-  justify-content: center;
+  display: block;
   text-align: center;
+  line-height: 1.4;
 }
 
 .wsa-announcement-marquee > span {
   display: inline-block;
+  min-width: 100%;
+  padding-left: 100%;
   white-space: nowrap;
   will-change: transform;
   animation: wsa-announcement-rtl 14s linear infinite;
