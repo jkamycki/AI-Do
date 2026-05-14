@@ -543,9 +543,32 @@ const ALLOWED_VENDOR_CATEGORIES = [
   "Wedding Planner", "Other",
 ];
 
+const VENDOR_CATEGORY_SYNONYMS: Record<string, string> = {
+  dj: "DJ / Band",
+  band: "DJ / Band",
+  "dj/band": "DJ / Band",
+  "dj & band": "DJ / Band",
+  makeup: "Hair & Makeup",
+  hair: "Hair & Makeup",
+  "hair and makeup": "Hair & Makeup",
+  "cake": "Cake & Desserts",
+  "dessert": "Cake & Desserts",
+  desserts: "Cake & Desserts",
+  planner: "Wedding Planner",
+  "wedding coordinator": "Wedding Planner",
+  "lighting": "Lighting & AV",
+  av: "Lighting & AV",
+  "photo booth": "Photo Booth",
+};
+
 function normalizeCategory(c: string): string {
-  const found = ALLOWED_VENDOR_CATEGORIES.find(a => a.toLowerCase() === c.toLowerCase());
-  return found ?? c;
+  const canonical = c.trim();
+  const found = ALLOWED_VENDOR_CATEGORIES.find(a => a.toLowerCase() === canonical.toLowerCase());
+  if (found) return found;
+
+  const simplified = canonical.toLowerCase().replace(/\s+/g, " ").replace(/[.]/g, "");
+  const synonym = VENDOR_CATEGORY_SYNONYMS[simplified];
+  return synonym ?? canonical;
 }
 
 const YES_CONFIRM_INTENT = /^(?:yes|yep|yeah|yup|ok|okay|confirm|confirmed|save(?: it)?|go ahead|do it|please do|sounds good|sure)[.! ]*$/i;
