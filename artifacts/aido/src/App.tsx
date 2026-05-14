@@ -173,6 +173,7 @@ function SignInPage() {
 
 function CustomSignInForm() {
   const clerk = useClerk();
+  const { isLoaded, isSignedIn } = useAuth();
   const [, setLocation] = useLocation();
   const [mode, setMode] = useState<"code_request" | "code_verify">(
     "code_request",
@@ -183,6 +184,12 @@ function CustomSignInForm() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [oauthLoading, setOauthLoading] = useState<"oauth_google" | null>(null);
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      setLocation("/dashboard", { replace: true });
+    }
+  }, [isLoaded, isSignedIn, setLocation]);
 
   useEffect(() => {
     try {
@@ -207,6 +214,10 @@ function CustomSignInForm() {
     e.preventDefault();
     setError(null);
     setInfo(null);
+    if (isSignedIn) {
+      setLocation("/dashboard", { replace: true });
+      return;
+    }
     if (!email.trim()) {
       setError("Please enter your email address.");
       return;
@@ -254,6 +265,10 @@ function CustomSignInForm() {
   async function handleVerifyLoginCode(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (isSignedIn) {
+      setLocation("/dashboard", { replace: true });
+      return;
+    }
     if (!loginCode.trim()) {
       setError("Enter the 6-digit code from your email.");
       return;
@@ -294,6 +309,10 @@ function CustomSignInForm() {
 
   async function handleGoogle() {
     setError(null);
+    if (isSignedIn) {
+      setLocation("/dashboard", { replace: true });
+      return;
+    }
     setOauthLoading("oauth_google");
     try {
       const signInClient = await waitForSignInClient();
@@ -340,6 +359,10 @@ function CustomSignInForm() {
   async function handleTestAccount() {
     setError(null);
     setInfo(null);
+    if (isSignedIn) {
+      setLocation("/dashboard", { replace: true });
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch(`${basePath}/api/auth/test-signin`, {
@@ -648,6 +671,7 @@ function SsoCallbackPage() {
 
 function CustomSignUpForm() {
   const clerk = useClerk();
+  const { isLoaded, isSignedIn } = useAuth();
   const { signUp } = useSignUp();
   const signUpLoaded = !!signUp;
   const [, setLocation] = useLocation();
@@ -659,6 +683,12 @@ function CustomSignUpForm() {
   const [code, setCode] = useState("");
   const [resendInfo, setResendInfo] = useState<string | null>(null);
   const [oauthLoading, setOauthLoading] = useState<"oauth_google" | "oauth_apple" | null>(null);
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      setLocation("/dashboard", { replace: true });
+    }
+  }, [isLoaded, isSignedIn, setLocation]);
 
   // Generate a strong, random password under the hood. The user never sees or
   // uses it — sign-in is via email code or Google. Clerk requires a password
@@ -697,6 +727,10 @@ function CustomSignUpForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (isSignedIn) {
+      setLocation("/dashboard", { replace: true });
+      return;
+    }
     // Clear any stale OAuth-intent flags from a previously abandoned Google
     // flow so they can't trigger the "no-account" detector on this signup.
     try {
@@ -752,6 +786,10 @@ function CustomSignUpForm() {
     e.preventDefault();
     setError(null);
     setResendInfo(null);
+    if (isSignedIn) {
+      setLocation("/dashboard", { replace: true });
+      return;
+    }
     if (!code.trim()) {
       setError("Enter the code from your email.");
       return;
@@ -807,6 +845,10 @@ function CustomSignUpForm() {
 
   async function handleOAuth(strategy: "oauth_google" | "oauth_apple") {
     setError(null);
+    if (isSignedIn) {
+      setLocation("/dashboard", { replace: true });
+      return;
+    }
     // Mark this OAuth flow as a sign-UP attempt. After the OAuth callback
     // the ExistingAccountFromSignUpDetector uses this flag to detect the
     // case where Clerk silently "transferred" the sign-up into a sign-in
