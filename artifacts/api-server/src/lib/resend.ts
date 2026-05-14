@@ -90,10 +90,15 @@ export async function sendEmail(p: SendEmailParams): Promise<SendEmailResult> {
     subject: p.subject,
     text: p.text,
   };
+  const headers: Record<string, string> = {
+    "X-Auto-Response-Suppress": "All",
+    "X-Entity-Ref-ID": crypto.randomUUID(),
+    ...(p.headers ?? {}),
+  };
   if (p.bcc) body.bcc = Array.isArray(p.bcc) ? p.bcc : [p.bcc];
   if (p.cc) body.cc = Array.isArray(p.cc) ? p.cc : [p.cc];
   if (p.html) body.html = p.html;
-  if (p.headers && Object.keys(p.headers).length > 0) body.headers = p.headers;
+  body.headers = headers;
   if (p.attachments && p.attachments.length > 0) {
     body.attachments = p.attachments.map((a) => ({
       filename: a.filename,

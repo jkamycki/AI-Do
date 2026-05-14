@@ -4,7 +4,7 @@ import { db, guests, weddingProfiles, invitationCustomizations } from "@workspac
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
-import { sendEmail } from "../lib/resend";
+import { FROM_EMAIL, sendEmail } from "../lib/resend";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { evaluateCustomDesignCompleteness } from "../lib/customDesignValidation";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
@@ -926,7 +926,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
 
       const result = await sendEmail({
         to: guest.email,
-        replyTo: `noreply@aidowedding.net`,
+        replyTo: FROM_EMAIL,
         fromName: `${couple} via A.IDO`,
         subject: isReminder
           ? `Reminder: Please RSVP — ${couple}'s Wedding`
@@ -1133,7 +1133,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
 
     const result = await sendEmail({
       to: guest.email,
-      replyTo: "noreply@aidowedding.net",
+      replyTo: FROM_EMAIL,
       fromName: `${couple} via A.IDO`,
       subject: `Friendly Reminder: Please RSVP — ${couple}'s Wedding`,
       text: `Hi ${guest.name},\n\nWe noticed you haven't RSVP'd yet for ${couple}'s wedding${weddingDateStr ? ` on ${weddingDateStr}` : ""}.\n\nPlease RSVP using the link below:\n${rsvpUrl}\n\nWith love,\n${couple}`,
@@ -1783,7 +1783,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       const timesLine = [ceremonyTimeStr ? `Ceremony ${ceremonyTimeStr}` : null, receptionTimeStr ? `Reception ${receptionTimeStr}` : null].filter(Boolean).join(" · ");
       const result = await sendEmail({
         to: guest.email,
-        replyTo: `noreply@aidowedding.net`,
+        replyTo: FROM_EMAIL,
         fromName: `${couple} via A.IDO`,
         subject: `Save the Date — ${couple}'s Wedding`,
         text: `Save the Date!\n\n${couple}\n\n${weddingDateStr ?? ""}${locationLine ? `\n${locationLine}` : ""}${timesLine ? `\n${timesLine}` : ""}\n\nFormal invitation to follow.\n\nView & Download your Save the Date:\n${frontendOrigin}/save-the-date/${token}\n\nWith love,\n${couple}`,
