@@ -1360,33 +1360,24 @@ function VendorCard({
       {vendor.nextPaymentDue && (() => {
         const days = daysUntil(vendor.nextPaymentDue);
         const isOverdue = days < 0;
-        const isDueSoon = days >= 0 && days <= 14;
         if (isOverdue) {
           return (
             <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-lg">
               <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
               <span className="text-xs font-medium text-red-700 dark:text-red-300">
-                {t("vendors.payment_overdue_banner", { n: Math.abs(days) })}
-              </span>
-            </div>
-          );
-        }
-        if (isDueSoon) {
-          return (
-            <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-lg">
-              <Bell className="h-3.5 w-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
-              <span className="text-xs font-medium text-red-700 dark:text-red-300">
-                {days === 0
-                  ? `${t("vendors.payment_due_today_banner")} - ${formatDate(vendor.nextPaymentDue)}`
-                  : `${t("vendors.payment_due_in_banner", { n: days })} - ${formatDate(vendor.nextPaymentDue)}`}
+                {t("vendors.payment_overdue_banner", { n: Math.abs(days) })} - {formatDate(vendor.nextPaymentDue)}
               </span>
             </div>
           );
         }
         return (
-          <div className="flex items-center gap-1.5 mb-3 text-xs text-muted-foreground">
-            <Bell className="h-3 w-3 flex-shrink-0" />
-            <span>{t("vendors.next_payment_label", { date: formatDate(vendor.nextPaymentDue) })}</span>
+          <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-lg">
+            <Bell className="h-3.5 w-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
+            <span className="text-xs font-medium text-red-700 dark:text-red-300">
+              {days === 0
+                ? `${t("vendors.payment_due_today_banner")} - ${formatDate(vendor.nextPaymentDue)}`
+                : `${t("vendors.payment_due_in_banner", { n: days })} - ${formatDate(vendor.nextPaymentDue)}`}
+            </span>
           </div>
         );
       })()}
