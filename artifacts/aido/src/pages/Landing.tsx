@@ -218,7 +218,7 @@ export default function Landing() {
             <h2 className="font-serif text-2xl sm:text-3xl text-primary mb-3">{t("landing.video_title")}</h2>
             <p className="text-white/65">{t("landing.video_desc")}</p>
           </div>
-          <div className="relative w-full overflow-hidden rounded-2xl shadow-2xl border border-primary/10" style={{ aspectRatio: "16/9" }}>
+          <div className="relative w-full aspect-[9/16] overflow-hidden rounded-2xl shadow-2xl border border-primary/10 sm:aspect-video">
             <iframe
               src="/promo"
               title="A.IDO Feature Preview"
