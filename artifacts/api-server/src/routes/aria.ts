@@ -2412,7 +2412,14 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       if (result.ok) {
         send({ type: "action_start", name: "add_vendor", args: { name: pendingVendor.name, category: pendingVendor.category } });
         send({ type: "action_result", name: "add_vendor", ok: true, data: result.data });
-        send({ type: "content", content: buildPostActionMessage("add_vendor", result.data) });
+        send({
+          type: "content",
+          content: buildConfirmation([{
+            name: "add_vendor",
+            args: { name: pendingVendor.name, category: pendingVendor.category },
+            result,
+          }]),
+        });
       } else {
         send({ type: "content", content: `I couldn't save that vendor yet: ${result.error}` });
       }
@@ -2436,7 +2443,14 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       if (result.ok) {
         send({ type: "action_start", name: "add_guest", args: { name: pendingGuest.name } });
         send({ type: "action_result", name: "add_guest", ok: true, data: result.data });
-        send({ type: "content", content: buildPostActionMessage("add_guest", result.data) });
+        send({
+          type: "content",
+          content: buildConfirmation([{
+            name: "add_guest",
+            args: { name: pendingGuest.name },
+            result,
+          }]),
+        });
       } else {
         send({ type: "content", content: `I couldn't save that guest yet: ${result.error}` });
       }
