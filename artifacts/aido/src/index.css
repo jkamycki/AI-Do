@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap");
 
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -6,50 +6,109 @@
 
 /* Wedding website text animations */
 @keyframes wsa-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes wsa-slide-up {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @keyframes wsa-slide-right {
-  from { opacity: 0; transform: translateX(-24px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 @keyframes wsa-zoom-in {
-  from { opacity: 0; transform: scale(0.88); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 @keyframes wsa-bounce-in {
-  0%   { opacity: 0; transform: scale(0.85); }
-  60%  { opacity: 1; transform: scale(1.04); }
-  100% { transform: scale(1); }
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
-.wsa-fade-in   { animation: wsa-fade-in   0.9s ease-in-out both; }
-.wsa-slide-up  { animation: wsa-slide-up  0.8s ease-out both; }
-.wsa-slide-right { animation: wsa-slide-right 0.8s ease-out both; }
-.wsa-zoom-in   { animation: wsa-zoom-in   0.8s ease-out both; }
-.wsa-bounce-in { animation: wsa-bounce-in 0.7s ease-out both; }
+.wsa-fade-in {
+  animation: wsa-fade-in 0.9s ease-in-out both;
+}
+.wsa-slide-up {
+  animation: wsa-slide-up 0.8s ease-out both;
+}
+.wsa-slide-right {
+  animation: wsa-slide-right 0.8s ease-out both;
+}
+.wsa-zoom-in {
+  animation: wsa-zoom-in 0.8s ease-out both;
+}
+.wsa-bounce-in {
+  animation: wsa-bounce-in 0.7s ease-out both;
+}
 
 /* Gallery photo scroll-in animations */
 [data-gallery-anim="fade-in"] .wsg-item,
 [data-gallery-anim="slide-up"] .wsg-item,
 [data-gallery-anim="zoom-in"] .wsg-item {
-  transition: opacity 0.6s ease, transform 0.6s ease;
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s ease;
   transition-delay: var(--stagger, 0ms);
 }
-[data-gallery-anim="fade-in"] .wsg-item   { opacity: 0; }
-[data-gallery-anim="slide-up"] .wsg-item  { opacity: 0; transform: translateY(32px); }
-[data-gallery-anim="zoom-in"] .wsg-item   { opacity: 0; transform: scale(0.86); }
-[data-gallery-anim] .wsg-item.wsg-visible { opacity: 1; transform: none; }
+[data-gallery-anim="fade-in"] .wsg-item {
+  opacity: 0;
+}
+[data-gallery-anim="slide-up"] .wsg-item {
+  opacity: 0;
+  transform: translateY(32px);
+}
+[data-gallery-anim="zoom-in"] .wsg-item {
+  opacity: 0;
+  transform: scale(0.86);
+}
+[data-gallery-anim] .wsg-item.wsg-visible {
+  opacity: 1;
+  transform: none;
+}
 
 /* Puzzle build animation — photos fade in one-by-one and stay */
 @keyframes wsg-puzzle-snap {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
-[data-gallery-anim="puzzle"] .wsg-item { opacity: 0; }
+[data-gallery-anim="puzzle"] .wsg-item {
+  opacity: 0;
+}
 [data-gallery-anim="puzzle"].wsg-grid-ready .wsg-item {
   animation: wsg-puzzle-snap 1.5s ease-in-out forwards;
   animation-delay: var(--stagger, 0ms);
@@ -57,32 +116,59 @@
 
 /* Hero background animations */
 @keyframes wsa-kenburns {
-  0%   { transform: scale(1.05) translate(0, 0); }
-  50%  { transform: scale(1.15) translate(-2%, -1%); }
-  100% { transform: scale(1.05) translate(0, 0); }
+  0% {
+    transform: scale(1.05) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.15) translate(-2%, -1%);
+  }
+  100% {
+    transform: scale(1.05) translate(0, 0);
+  }
 }
 @keyframes wsa-pan-lr {
-  0%   { transform: scale(1.18) translateX(-3%); }
-  50%  { transform: scale(1.18) translateX(3%); }
-  100% { transform: scale(1.18) translateX(-3%); }
+  0% {
+    transform: scale(1.18) translateX(-3%);
+  }
+  50% {
+    transform: scale(1.18) translateX(3%);
+  }
+  100% {
+    transform: scale(1.18) translateX(-3%);
+  }
 }
 @keyframes wsa-marquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 @keyframes wsa-marquee-ltr {
-  from { transform: translateX(-50%); }
-  to   { transform: translateX(0); }
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 @keyframes wsa-announcement-ltr {
-  from { transform: translateX(-110%); }
-  to   { transform: translateX(100%); }
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(100%);
+  }
 }
 
 .wsa-announcement-marquee {
   width: 100%;
   overflow: hidden;
+  display: flex;
+  justify-content: center;
+  text-align: center;
 }
 
 .wsa-announcement-marquee > span {
@@ -152,16 +238,16 @@
 
 /* LIGHT MODE */
 :root {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
+  --button-outline: rgba(0, 0, 0, 0.1);
+  --badge-outline: rgba(0, 0, 0, 0.05);
   --opaque-button-border-intensity: -8;
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --elevate-1: rgba(0, 0, 0, 0.03);
+  --elevate-2: rgba(0, 0, 0, 0.08);
 
   /* Soft pink-white */
   --background: 340 50% 97%;
   --foreground: 270 15% 18%;
-  
+
   --card: 0 0% 100%;
   --card-foreground: 270 15% 18%;
   --card-border: 330 25% 90%;
@@ -173,7 +259,7 @@
   /* Warm gold — matches "Do" in logo, used as primary in logged-in app */
   --primary: 40 82% 42%;
   --primary-foreground: 0 0% 100%;
-  
+
   /* Hot pink — matches heart/robot in logo */
   --secondary: 327 76% 52%;
   --secondary-foreground: 0 0% 100%;
@@ -192,27 +278,47 @@
   --input: 40 20% 86%;
   --ring: 40 82% 42%;
 
-  --app-font-sans: 'Plus Jakarta Sans', sans-serif;
-  --app-font-serif: 'Playfair Display', serif;
+  --app-font-sans: "Plus Jakarta Sans", sans-serif;
+  --app-font-serif: "Playfair Display", serif;
   --app-font-mono: Menlo, monospace;
-  --radius: 0.75rem; 
+  --radius: 0.75rem;
 
   --shadow-sm: 0 1px 2px 0 rgb(180 130 10 / 0.08);
-  --shadow: 0 4px 6px -1px rgb(180 130 10 / 0.09), 0 2px 4px -2px rgb(180 130 10 / 0.06);
-  --shadow-md: 0 10px 15px -3px rgb(180 130 10 / 0.09), 0 4px 6px -4px rgb(180 130 10 / 0.06);
-  --shadow-lg: 0 20px 25px -5px rgb(180 130 10 / 0.09), 0 8px 10px -6px rgb(180 130 10 / 0.06);
+  --shadow:
+    0 4px 6px -1px rgb(180 130 10 / 0.09), 0 2px 4px -2px rgb(180 130 10 / 0.06);
+  --shadow-md:
+    0 10px 15px -3px rgb(180 130 10 / 0.09),
+    0 4px 6px -4px rgb(180 130 10 / 0.06);
+  --shadow-lg:
+    0 20px 25px -5px rgb(180 130 10 / 0.09),
+    0 8px 10px -6px rgb(180 130 10 / 0.06);
 
-  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border: hsl(
+    from hsl(var(--primary)) h s
+      calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
+  --secondary-border: hsl(
+    from hsl(var(--secondary)) h s
+      calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
+  --muted-border: hsl(
+    from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) /
+      alpha
+  );
+  --accent-border: hsl(
+    from hsl(var(--accent)) h s
+      calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
+  --destructive-border: hsl(
+    from hsl(var(--destructive)) h s
+      calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 }
 
 .dark {
   --background: 270 20% 10%;
   --foreground: 330 30% 95%;
-  
+
   --card: 270 20% 13%;
   --card-foreground: 330 30% 95%;
   --card-border: 270 15% 20%;
@@ -223,7 +329,7 @@
 
   --primary: 40 82% 52%;
   --primary-foreground: 270 15% 10%;
-  
+
   --secondary: 327 76% 62%;
   --secondary-foreground: 0 0% 100%;
 
@@ -248,12 +354,20 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    background-image: radial-gradient(hsl(40 82% 42% / 0.07) 1px, transparent 1px);
+    background-image: radial-gradient(
+      hsl(40 82% 42% / 0.07) 1px,
+      transparent 1px
+    );
     background-size: 22px 22px;
     background-attachment: fixed;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-serif font-medium tracking-tight;
   }
 }
@@ -266,28 +380,30 @@
 
 /* Brand gradient utilities */
 .brand-gradient-text {
-  background: linear-gradient(135deg, #E91E8C 0%, #7B2FBE 55%, #4F8EF7 100%);
+  background: linear-gradient(135deg, #e91e8c 0%, #7b2fbe 55%, #4f8ef7 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .brand-gradient-bg {
-  background: linear-gradient(135deg, #E91E8C 0%, #7B2FBE 55%, #4F8EF7 100%);
+  background: linear-gradient(135deg, #e91e8c 0%, #7b2fbe 55%, #4f8ef7 100%);
 }
 
 .gold-gradient-text {
-  background: linear-gradient(135deg, #D4A017 0%, #F5C842 50%, #D4A017 100%);
+  background: linear-gradient(135deg, #d4a017 0%, #f5c842 50%, #d4a017 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .btn-gradient {
-  background: linear-gradient(135deg, #B8860B 0%, #D4A017 50%, #F5C842 100%);
+  background: linear-gradient(135deg, #b8860b 0%, #d4a017 50%, #f5c842 100%);
   color: white;
   border: none;
-  transition: opacity 0.2s, transform 0.1s;
+  transition:
+    opacity 0.2s,
+    transform 0.1s;
 }
 
 .btn-gradient:hover {
@@ -298,7 +414,7 @@
 /* Brand scrollbar — purple thumb with gold hover */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #7B2FBE transparent;
+  scrollbar-color: #7b2fbe transparent;
 }
 
 *::-webkit-scrollbar {
@@ -311,14 +427,14 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #7B2FBE 0%, #5A1F90 100%);
+  background: linear-gradient(180deg, #7b2fbe 0%, #5a1f90 100%);
   border-radius: 8px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #D4A017 0%, #B8860B 100%);
+  background: linear-gradient(180deg, #d4a017 0%, #b8860b 100%);
   background-clip: padding-box;
   border: 2px solid transparent;
 }
@@ -327,11 +443,12 @@
   background: transparent;
 }
 
-
 /* Wedding website inline editor (contenteditable spans/divs) */
 .editable-text {
   border-radius: 4px;
-  transition: outline-color 120ms ease, background-color 120ms ease;
+  transition:
+    outline-color 120ms ease,
+    background-color 120ms ease;
   outline: 2px dashed transparent;
   outline-offset: 4px;
 }
