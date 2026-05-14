@@ -2380,6 +2380,22 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     // because it isn't scanning across 35 lookalike function signatures.
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     const lastUserText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
+    const userIsChoosingGuestPriority =
+      /\b(venue|guest list|date|something else|most important|priorit)/i.test(lastAssistantText) &&
+      /^(?:guest|guests|guest list|the guest list|my guest list)$/i.test(lastUserText.trim());
+    const userClarifiesGuestList =
+      /\b(?:talking about|mean|meant|focus on)\s+(?:my\s+)?guest list\b/i.test(lastUserText);
+
+    if (userIsChoosingGuestPriority || userClarifiesGuestList) {
+      send({
+        type: "content",
+        content: "Got it - guest list. Start by splitting everyone into three groups: must-invite, should-invite, and maybe. Then set your target count from the venue/budget, add the must-invites first, and use the maybe list only if there is room. Want me to add the next guest now?",
+      });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
 
     // Explicit cancel / nevermind intent: do not run tools, do not persist.
     // This guarantees users can always back out of a pending requested action.
