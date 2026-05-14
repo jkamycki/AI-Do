@@ -121,7 +121,7 @@ function finishPdf(doc: InstanceType<typeof PDFDocument>, res: Response, filenam
 router.post("/pdf/timeline", requireAuth, async (req, res) => {
   try {
     const { events, coupleName, weddingDate, venue } = req.body as {
-      events: Array<{ time: string; title: string; description: string; category: string }>;
+      events: Array<{ time: string; title: string; description: string; category: string; status?: string }>;
       coupleName?: string;
       weddingDate?: string;
       venue?: string;
@@ -228,6 +228,12 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
       doc.roundedRect(pageW - margin - 56, rowY + 8, 56, 16, 8).fill(dotColor + "22");
       doc.fillColor(dotColor).font("Helvetica-Bold").fontSize(7.5)
         .text(catLabel, pageW - margin - 56, rowY + 11, { width: 56, align: "center" });
+
+      if (event.status) {
+        doc.roundedRect(pageW - margin - 76, rowY + 28, 76, 16, 8).fill("#FFFFFF");
+        doc.fillColor(TEXT_MEDIUM).font("Helvetica-Bold").fontSize(7.5)
+          .text(event.status, pageW - margin - 76, rowY + 31, { width: 76, align: "center" });
+      }
 
       doc.y = rowY + Math.max(titleHeight + descHeight + 22, 44);
       doc.moveDown(0.3);

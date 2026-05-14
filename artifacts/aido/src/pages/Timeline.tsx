@@ -42,6 +42,8 @@ export type Category =
   | "dancing"
   | "other";
 
+export type TimelineStatus = "completed" | "pending" | "not_started";
+
 export type TimelineEvent = {
   id: string;
   startTime: string;
@@ -51,6 +53,7 @@ export type TimelineEvent = {
   category: Category;
   location: string;
   notes: string;
+  status: TimelineStatus;
 };
 
 type Conflict = {
@@ -152,6 +155,21 @@ const CATEGORY_CONFIG: Record<Category, {
 };
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_CONFIG) as Category[];
+const STATUS_CONFIG: Record<TimelineStatus, { label: string; badgeClass: string }> = {
+  completed: {
+    label: "Completed",
+    badgeClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+  },
+  pending: {
+    label: "Pending",
+    badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+  },
+  not_started: {
+    label: "Not started",
+    badgeClass: "bg-slate-100 text-slate-600 dark:bg-slate-900/60 dark:text-slate-300 border-slate-200 dark:border-slate-700",
+  },
+};
+const ALL_STATUSES = Object.keys(STATUS_CONFIG) as TimelineStatus[];
 const VISION_STORAGE_KEY = "aido_timeline_day_vision";
 
 function parseMinutes(time: string): number {
@@ -185,6 +203,7 @@ function convertTimeToHHMM(time: string): string {
 }
 
 function normalizeEvent(e: any): TimelineEvent {
+  const status: TimelineStatus = ALL_STATUSES.includes(e.status) ? e.status : "not_started";
   if (e.startTime !== undefined) {
     return {
       id: e.id ?? crypto.randomUUID(),
@@ -195,6 +214,7 @@ function normalizeEvent(e: any): TimelineEvent {
       category: (e.category as Category) ?? "other",
       location: e.location ?? "",
       notes: e.notes ?? "",
+      status,
     };
   }
   return {
@@ -206,6 +226,7 @@ function normalizeEvent(e: any): TimelineEvent {
     category: (e.category as Category) ?? "other",
     location: "",
     notes: "",
+    status,
   };
 }
 
@@ -252,6 +273,7 @@ const BLANK_EVENT: Omit<TimelineEvent, "id"> = {
   category: "other",
   location: "",
   notes: "",
+  status: "not_started",
 };
 
 function EventFormFields({
@@ -303,6 +325,21 @@ function EventFormFields({
         </Select>
       </div>
       <div>
+        <label className="text-xs text-muted-foreground mb-1 block">{t("timeline.status", { defaultValue: "Status" })}</label>
+        <Select value={value.status} onValueChange={v => onChange({ ...value, status: v as TimelineStatus })}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ALL_STATUSES.map(status => (
+              <SelectItem key={status} value={status}>
+                {t(`timeline.status_${status}`, { defaultValue: STATUS_CONFIG[status].label })}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
         <label className="text-xs text-muted-foreground mb-1 block">{t("timeline.title_required", { defaultValue: "Title *" })}</label>
         <Input
           value={value.title}
@@ -345,15 +382,18 @@ function SortableEventCard({
   conflict,
   onEdit,
   onDelete,
+  onStatusChange,
 }: {
   event: TimelineEvent;
   conflict: Conflict | undefined;
   onEdit: (e: TimelineEvent) => void;
   onDelete: (id: string) => void;
+  onStatusChange: (id: string, status: TimelineStatus) => void;
 }) {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: event.id });
   const cfg = CATEGORY_CONFIG[event.category] ?? CATEGORY_CONFIG.other;
+  const statusCfg = STATUS_CONFIG[event.status] ?? STATUS_CONFIG.not_started;
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -398,6 +438,9 @@ function SortableEventCard({
                   {cfg.icon}
                   {t(`timeline.cat_${event.category}`, { defaultValue: cfg.label })}
                 </Badge>
+                <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 font-medium ${statusCfg.badgeClass}`}>
+                  {t(`timeline.status_${event.status}`, { defaultValue: statusCfg.label })}
+                </Badge>
                 {conflict && (
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-700 flex items-center gap-1">
                     <AlertTriangle className="h-2.5 w-2.5" />
@@ -406,6 +449,21 @@ function SortableEventCard({
                 )}
               </div>
               <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
+                <Select value={event.status} onValueChange={value => onStatusChange(event.id, value as TimelineStatus)}>
+                  <SelectTrigger
+                    className="h-7 w-[116px] px-2 text-[11px] bg-background/80"
+                    title={t("timeline.change_status", { defaultValue: "Change status" })}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    {ALL_STATUSES.map(status => (
+                      <SelectItem key={status} value={status}>
+                        {t(`timeline.status_${status}`, { defaultValue: STATUS_CONFIG[status].label })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <button
                   onClick={() => onEdit(event)}
                   className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -572,7 +630,7 @@ export default function Timeline() {
 
   function openEdit(event: TimelineEvent) {
     setEditingEvent(event);
-    setEditDraft({ startTime: event.startTime, endTime: event.endTime, title: event.title, description: event.description, category: event.category, location: event.location, notes: event.notes });
+    setEditDraft({ startTime: event.startTime, endTime: event.endTime, title: event.title, description: event.description, category: event.category, location: event.location, notes: event.notes, status: event.status });
   }
 
   function submitEdit() {
@@ -583,6 +641,10 @@ export default function Timeline() {
 
   function deleteEvent(id: string) {
     updateLocal(localEvents.filter(e => e.id !== id));
+  }
+
+  function updateStatus(id: string, status: TimelineStatus) {
+    updateLocal(localEvents.map(event => event.id === id ? { ...event, status } : event));
   }
 
   function openAdd() {
@@ -641,6 +703,7 @@ export default function Timeline() {
         title: e.title,
         description: e.description,
         category: e.category,
+        status: STATUS_CONFIG[e.status]?.label ?? STATUS_CONFIG.not_started.label,
         location: e.location,
         endTime: e.endTime ? formatTime(e.endTime) : "",
       }));
@@ -801,6 +864,7 @@ export default function Timeline() {
                     conflict={conflicts.find(c => c.eventId === event.id)}
                     onEdit={openEdit}
                     onDelete={deleteEvent}
+                    onStatusChange={updateStatus}
                   />
                 ))}
               </SortableContext>
