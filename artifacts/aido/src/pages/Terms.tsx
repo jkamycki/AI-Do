@@ -150,8 +150,9 @@ export default function Terms() {
               opportunity to cancel or downgrade before any charge is incurred.
               By using the beta you accept that the Service may have bugs,
               partial features, downtime, or data loss; you should retain
-              independent backups of important wedding details. See also the
-              Beta Disclaimer page.
+              independent backups of important wedding details, guest lists,
+              vendor records, invitations, uploaded files, and any other content
+              you add to the Service. See also the Beta Disclaimer page.
             </p>
           </section>
 
@@ -322,6 +323,16 @@ export default function Terms() {
               shall not exceed the amount you paid us in the twelve months
               preceding the claim — which during the beta period is $0.
             </p>
+            <p className="uppercase text-zinc-200 text-xs tracking-wide">
+              You are responsible for maintaining your own copies and backups of
+              any information you enter, upload, import, generate, or store in
+              the Service. To the maximum extent permitted by law, A.IDO is not
+              responsible or liable for deletion, corruption, unauthorized
+              access, failure to store, failure to retrieve, or loss of user
+              content or wedding data, whether caused by user action,
+              collaborator action, account deletion, third-party services,
+              technical issues, bugs, outages, or other causes.
+            </p>
           </section>
 
           <section className="space-y-3">
@@ -346,7 +357,11 @@ export default function Terms() {
               timeline, vendors, contracts, guest list, seating, wedding party,
               and wedding website (subject to backup-retention windows described
               in Data Handling). We may suspend or terminate access for
-              violations of these Terms.
+              violations of these Terms. Once data is deleted, it may not be
+              recoverable; you are solely responsible for exporting or saving
+              any information you want to keep before deleting an account,
+              workspace, guest, vendor, file, invitation, website, or other
+              content.
             </p>
           </section>
 
