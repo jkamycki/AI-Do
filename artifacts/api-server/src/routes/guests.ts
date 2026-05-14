@@ -1,21 +1,10 @@
 import { Router } from "express";
-import { db, guests, weddingProfiles } from "@workspace/db";
+import { db, guests } from "@workspace/db";
 import { eq, and, or, ilike, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 
 const router = Router();
-
-// Kept for backwards-compat; new code paths use resolveProfile(req)
-async function getProfileId(userId: string): Promise<number | null> {
-  const profiles = await db
-    .select()
-    .from(weddingProfiles)
-    .where(eq(weddingProfiles.userId, userId))
-    .limit(1);
-  return profiles.length > 0 ? profiles[0].id : null;
-}
-void getProfileId;
 
 router.get("/guests", requireAuth, async (req, res) => {
   try {
@@ -249,7 +238,7 @@ router.delete("/guests/:id", requireAuth, async (req, res) => {
     if (isNaN(id)) return res.status(400).json({ error: "Invalid guest ID" });
 
     // Use resolveProfile (workspace-aware) — matching the GET/POST/PUT
-    // handlers above. Reading profile via getProfileId(req.userId) ignored
+    // handlers above. Reading the first profile by req.userId ignored
     // the x-workspace-profile-id header and let collaborators delete their
     // own guests when intending to act on a shared workspace.
     const profile = await resolveProfile(req);

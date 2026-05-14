@@ -41,6 +41,8 @@ async function getOrCreateConversation(userId: string, vendorId: number, profile
 router.get("/messaging/conversations", requireAuth, async (req, res) => {
   try {
     const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) return res.json([]);
     const rows = await db
       .select({
         id: vendorConversations.id,
@@ -54,7 +56,7 @@ router.get("/messaging/conversations", requireAuth, async (req, res) => {
       })
       .from(vendorConversations)
       .innerJoin(vendors, eq(vendorConversations.vendorId, vendors.id))
-      .where(eq(vendorConversations.userId, userId))
+      .where(and(eq(vendorConversations.userId, userId), eq(vendors.profileId, profile.id)))
       .orderBy(desc(vendorConversations.lastMessageAt));
     res.json(rows.map((r) => ({ ...r, lastMessagePreview: r.lastMessagePreview ?? "", lastMessageAt: r.lastMessageAt.toISOString() })));
   } catch (err) {
@@ -86,18 +88,25 @@ router.get("/messaging/conversations/by-vendor/:vendorId", requireAuth, async (r
   }
 });
 
-async function ownConversation(userId: string, conversationId: number) {
-  const [row] = await db.select().from(vendorConversations)
-    .where(and(eq(vendorConversations.id, conversationId), eq(vendorConversations.userId, userId)))
+async function ownConversation(userId: string, conversationId: number, profileId: number) {
+  const [row] = await db.select({ conversation: vendorConversations }).from(vendorConversations)
+    .innerJoin(vendors, eq(vendorConversations.vendorId, vendors.id))
+    .where(and(
+      eq(vendorConversations.id, conversationId),
+      eq(vendorConversations.userId, userId),
+      eq(vendors.profileId, profileId),
+    ))
     .limit(1);
-  return row ?? null;
+  return row?.conversation ?? null;
 }
 
 router.get("/messaging/conversations/:id/messages", requireAuth, async (req, res) => {
   try {
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
-    const conv = await ownConversation(userId, id);
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Conversation not found" });
+    const conv = await ownConversation(userId, id, profile.id);
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
 
     const rows = await db.select().from(vendorMessages)
@@ -126,7 +135,9 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
   try {
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
-    const conv = await ownConversation(userId, id);
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Conversation not found" });
+    const conv = await ownConversation(userId, id, profile.id);
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
 
     const { body, subject, attachments, cc: ccOverride } = (req.body ?? {}) as {
@@ -140,7 +151,6 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
     const [vendor] = await db.select().from(vendors).where(eq(vendors.id, conv.vendorId)).limit(1);
     if (!vendor) return res.status(404).json({ error: "Vendor not found" });
 
-    const profile = await resolveProfile(req);
     const coupleNames = profile ? `${profile.partner1Name} & ${profile.partner2Name}` : "";
     const finalSubject = subject?.trim() || conv.subject || `Wedding planning — ${vendor.name}`;
     const replyTo = buildInboundAddress(conv.id, conv.inboundToken);
@@ -276,12 +286,12 @@ router.post("/messaging/conversations/:id/suggest-reply", requireAuth, async (re
   try {
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
-    const conv = await ownConversation(userId, id);
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Conversation not found" });
+    const conv = await ownConversation(userId, id, profile.id);
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
 
     const [vendor] = await db.select().from(vendors).where(eq(vendors.id, conv.vendorId)).limit(1);
-    const profile = await resolveProfile(req);
-
     const recent = await db.select().from(vendorMessages)
       .where(eq(vendorMessages.conversationId, id))
       .orderBy(desc(vendorMessages.createdAt))
@@ -326,7 +336,9 @@ router.delete("/messaging/conversations/:id/messages", requireAuth, async (req, 
   try {
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
-    const conv = await ownConversation(userId, id);
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Conversation not found" });
+    const conv = await ownConversation(userId, id, profile.id);
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
     await db.delete(vendorMessages).where(eq(vendorMessages.conversationId, id));
     await db.update(vendorConversations).set({
@@ -345,7 +357,9 @@ router.post("/messaging/conversations/:id/read", requireAuth, async (req, res) =
   try {
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
-    const conv = await ownConversation(userId, id);
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Conversation not found" });
+    const conv = await ownConversation(userId, id, profile.id);
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
     await db.update(vendorConversations).set({ unreadCount: 0 }).where(eq(vendorConversations.id, id));
     res.json({ success: true });

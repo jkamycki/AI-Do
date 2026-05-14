@@ -1595,6 +1595,8 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
 
     if (name === "list_contracts") {
       const userId = await resolveScopeUserId(req);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: true, data: [] };
       const rows = await db
         .select({
           id: vendorContracts.id,
@@ -1604,7 +1606,10 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
           createdAt: vendorContracts.createdAt,
         })
         .from(vendorContracts)
-        .where(eq(vendorContracts.userId, userId))
+        .where(and(
+          eq(vendorContracts.userId, userId),
+          eq(vendorContracts.profileId, profile.id),
+        ))
         .orderBy(desc(vendorContracts.createdAt))
         .limit(50);
       const summary = rows.map(r => {
@@ -1623,6 +1628,8 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
 
     if (name === "get_contract") {
       const userId = await resolveScopeUserId(req);
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "Contract not found." };
       const contractId = Number(args["contractId"]);
       if (!Number.isFinite(contractId)) return { ok: false, error: "contractId must be a number." };
       const [row] = await db
@@ -1632,12 +1639,15 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
           extractedText: vendorContracts.extractedText,
           analysis: vendorContracts.analysis,
           createdAt: vendorContracts.createdAt,
-          userId: vendorContracts.userId,
         })
         .from(vendorContracts)
-        .where(eq(vendorContracts.id, contractId))
+        .where(and(
+          eq(vendorContracts.id, contractId),
+          eq(vendorContracts.userId, userId),
+          eq(vendorContracts.profileId, profile.id),
+        ))
         .limit(1);
-      if (!row || row.userId !== userId) return { ok: false, error: "Contract not found." };
+      if (!row) return { ok: false, error: "Contract not found." };
       return { ok: true, data: {
         id: row.id,
         fileName: row.fileName,

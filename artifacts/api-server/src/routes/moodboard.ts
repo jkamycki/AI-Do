@@ -1,11 +1,10 @@
 import { Router } from "express";
-import { getAuth } from "@clerk/express";
 import { db, moodBoards } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { openai, getModel, getVisionModel } from "@workspace/integrations-openai-ai-server";
 import { ObjectStorageService } from "../lib/objectStorage";
-import { resolveProfile } from "../lib/workspaceAccess";
+import { resolveProfile, resolveScopeUserId } from "../lib/workspaceAccess";
 
 const router = Router();
 const storage = new ObjectStorageService();
@@ -25,13 +24,25 @@ type MoodBoardImage = {
 
 type ColorSwatch = { hex: string; name: string };
 
+async function resolveMoodBoardScope(req: Parameters<typeof resolveProfile>[0]) {
+  const profile = await resolveProfile(req);
+  if (!profile) return null;
+  return {
+    userId: await resolveScopeUserId(req),
+    profileId: profile.id,
+  };
+}
+
 // ─── GET /mood-board ─────────────────────────────────────────────────────────
 router.get("/mood-board", requireAuth, async (req, res) => {
   try {
-    const { userId } = getAuth(req);
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    const scope = await resolveMoodBoardScope(req);
+    if (!scope) return res.status(404).json({ error: "No wedding profile found" });
 
-    const [board] = await db.select().from(moodBoards).where(eq(moodBoards.userId, userId));
+    const [board] = await db
+      .select()
+      .from(moodBoards)
+      .where(and(eq(moodBoards.userId, scope.userId), eq(moodBoards.profileId, scope.profileId)));
     if (!board) {
       return res.json({
         images: [],
@@ -51,8 +62,8 @@ router.get("/mood-board", requireAuth, async (req, res) => {
 // ─── PUT /mood-board ──────────────────────────────────────────────────────────
 router.put("/mood-board", requireAuth, async (req, res) => {
   try {
-    const { userId } = getAuth(req);
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    const scope = await resolveMoodBoardScope(req);
+    if (!scope) return res.status(404).json({ error: "No wedding profile found" });
 
     const { images, colorPalette, styleTags, aiSummary, notes } = req.body as {
       images?: MoodBoardImage[];
@@ -62,7 +73,10 @@ router.put("/mood-board", requireAuth, async (req, res) => {
       notes?: string;
     };
 
-    const [existing] = await db.select({ id: moodBoards.id }).from(moodBoards).where(eq(moodBoards.userId, userId));
+    const [existing] = await db
+      .select({ id: moodBoards.id })
+      .from(moodBoards)
+      .where(and(eq(moodBoards.userId, scope.userId), eq(moodBoards.profileId, scope.profileId)));
 
     if (existing) {
       const [updated] = await db.update(moodBoards)
@@ -74,13 +88,14 @@ router.put("/mood-board", requireAuth, async (req, res) => {
           ...(notes !== undefined && { notes }),
           updatedAt: new Date(),
         })
-        .where(eq(moodBoards.userId, userId))
+        .where(and(eq(moodBoards.userId, scope.userId), eq(moodBoards.profileId, scope.profileId)))
         .returning();
       return res.json(updated);
     }
 
     const [created] = await db.insert(moodBoards).values({
-      userId,
+      userId: scope.userId,
+      profileId: scope.profileId,
       images: images ?? [],
       colorPalette: colorPalette ?? [],
       styleTags: styleTags ?? [],
@@ -98,8 +113,7 @@ router.put("/mood-board", requireAuth, async (req, res) => {
 // Analyzes a single image with GPT-4.1-mini vision and returns structured data
 router.post("/mood-board/analyze-image", requireAuth, async (req, res) => {
   try {
-    const { userId } = getAuth(req);
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    if (!req.userId) return res.status(401).json({ error: "Unauthorized" });
 
     const { objectPath } = req.body as { objectPath: string };
     if (!objectPath) return res.status(400).json({ error: "objectPath is required" });
@@ -158,8 +172,7 @@ Return ONLY valid JSON, no markdown or explanation.`,
 // ─── POST /mood-board/generate-summary ───────────────────────────────────────
 router.post("/mood-board/generate-summary", requireAuth, async (req, res) => {
   try {
-    const { userId } = getAuth(req);
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    if (!req.userId) return res.status(401).json({ error: "Unauthorized" });
 
     const { styleTags, images, colorPalette } = req.body as {
       styleTags: string[];

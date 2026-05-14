@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, numeric, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, numeric, boolean, timestamp, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -431,7 +431,8 @@ export type DeletedUserArchive = typeof deletedUserArchive.$inferSelect;
 
 export const moodBoards = pgTable("mood_boards", {
   id: serial("id").primaryKey(),
-  userId: text("user_id").notNull().unique(),
+  userId: text("user_id").notNull(),
+  profileId: integer("profile_id"),
   images: jsonb("images").notNull().$type<Array<{
     objectPath: string;
     order: number;
@@ -453,7 +454,9 @@ export const moodBoards = pgTable("mood_boards", {
   notes: text("notes"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  uniqueIndex("mood_boards_profile_id_unique").on(table.profileId),
+]);
 
 export type MoodBoard = typeof moodBoards.$inferSelect;
 

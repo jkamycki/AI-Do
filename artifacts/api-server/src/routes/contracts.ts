@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { db, vendorContracts } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
+import { resolveProfile, resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 
 const require = createRequire(import.meta.url);
@@ -39,6 +39,15 @@ function sanitizeText(text: string): string {
   // Remove null bytes and other control characters PostgreSQL can't handle
   // eslint-disable-next-line no-control-regex
   return text.replace(/\u0000/g, "").replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ").trim();
+}
+
+async function resolveContractScope(req: Parameters<typeof resolveProfile>[0]) {
+  const profile = await resolveProfile(req);
+  if (!profile) return null;
+  return {
+    userId: await resolveScopeUserId(req),
+    profileId: profile.id,
+  };
 }
 
 async function extractText(buffer: Buffer, mimetype: string): Promise<string> {
@@ -152,11 +161,13 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
 
     const displayName = (req.body?.displayName as string | undefined)?.trim() || originalname;
 
-    const scopeUserId = await resolveScopeUserId(req);
+    const scope = await resolveContractScope(req);
+    if (!scope) return res.status(400).json({ error: "No wedding profile found." });
     const [saved] = await db
       .insert(vendorContracts)
       .values({
-        userId: scopeUserId,
+        userId: scope.userId,
+        profileId: scope.profileId,
         fileName: displayName,
         fileSize: size,
         mimeType: mimetype,
@@ -181,19 +192,23 @@ router.post("/contracts/:id/negotiate", requireAuth, async (req, res) => {
       return;
     }
     const id = parseInt(String(req.params["id"] ?? "0"), 10);
+    const scope = await resolveContractScope(req);
+    if (!scope) return res.status(404).json({ error: "Contract not found." });
     const [contract] = await db
       .select({
         extractedText: vendorContracts.extractedText,
         analysis: vendorContracts.analysis,
         fileName: vendorContracts.fileName,
-        userId: vendorContracts.userId,
       })
       .from(vendorContracts)
-      .where(eq(vendorContracts.id, id))
+      .where(and(
+        eq(vendorContracts.id, id),
+        eq(vendorContracts.userId, scope.userId),
+        eq(vendorContracts.profileId, scope.profileId),
+      ))
       .limit(1);
 
-    const scopeUserId = await resolveScopeUserId(req);
-    if (!contract || contract.userId !== scopeUserId) {
+    if (!contract) {
       return res.status(404).json({ error: "Contract not found." });
     }
 
@@ -242,7 +257,8 @@ router.get("/contracts", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const scope = await resolveContractScope(req);
+    if (!scope) return res.json([]);
     const rows = await db
       .select({
         id: vendorContracts.id,
@@ -252,7 +268,10 @@ router.get("/contracts", requireAuth, async (req, res) => {
         createdAt: vendorContracts.createdAt,
       })
       .from(vendorContracts)
-      .where(eq(vendorContracts.userId, userId))
+      .where(and(
+        eq(vendorContracts.userId, scope.userId),
+        eq(vendorContracts.profileId, scope.profileId),
+      ))
       .orderBy(desc(vendorContracts.createdAt))
       .limit(50);
 
@@ -274,11 +293,16 @@ router.patch("/contracts/:id", requireAuth, async (req, res) => {
     if (!fileName || typeof fileName !== "string" || !fileName.trim()) {
       return res.status(400).json({ error: "fileName is required" });
     }
-    const userId = await resolveScopeUserId(req);
+    const scope = await resolveContractScope(req);
+    if (!scope) return res.status(404).json({ error: "Contract not found" });
     const [updated] = await db
       .update(vendorContracts)
       .set({ fileName: fileName.trim() })
-      .where(and(eq(vendorContracts.id, id), eq(vendorContracts.userId, userId)))
+      .where(and(
+        eq(vendorContracts.id, id),
+        eq(vendorContracts.userId, scope.userId),
+        eq(vendorContracts.profileId, scope.profileId),
+      ))
       .returning({ id: vendorContracts.id, fileName: vendorContracts.fileName });
     if (!updated) return res.status(404).json({ error: "Contract not found" });
     res.json(updated);
@@ -294,12 +318,14 @@ router.delete("/contracts/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const userId = await resolveScopeUserId(req);
+    const scope = await resolveContractScope(req);
+    if (!scope) return res.json({ success: true });
     await db
       .delete(vendorContracts)
       .where(and(
         eq(vendorContracts.id, parseInt(String(req.params["id"] ?? "0"), 10)),
-        eq(vendorContracts.userId, userId),
+        eq(vendorContracts.userId, scope.userId),
+        eq(vendorContracts.profileId, scope.profileId),
       ));
     res.json({ success: true });
   } catch {

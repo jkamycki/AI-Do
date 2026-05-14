@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, guests, weddingProfiles } from "@workspace/db";
 import { eq, and, or, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { resolveProfile } from "../lib/workspaceAccess";
 import crypto from "crypto";
 
 const router = Router();
@@ -17,17 +18,12 @@ function escapeHtml(value: string): string {
 
 router.post("/guest-collect/generate", requireAuth, async (req, res) => {
   try {
-    const profiles = await db
-      .select()
-      .from(weddingProfiles)
-      .where(eq(weddingProfiles.userId, req.userId!))
-      .limit(1);
-
-    if (!profiles.length) {
+    const profile = await resolveProfile(req);
+    if (!profile) {
       return res.status(400).json({ error: "No wedding profile found." });
     }
 
-    const existing = profiles[0].guestCollectionToken;
+    const existing = profile.guestCollectionToken;
     if (existing) {
       return res.json({ token: existing });
     }
@@ -36,7 +32,7 @@ router.post("/guest-collect/generate", requireAuth, async (req, res) => {
     await db
       .update(weddingProfiles)
       .set({ guestCollectionToken: token })
-      .where(eq(weddingProfiles.userId, req.userId!));
+      .where(eq(weddingProfiles.id, profile.id));
 
     res.json({ token });
   } catch (err) {
@@ -47,13 +43,8 @@ router.post("/guest-collect/generate", requireAuth, async (req, res) => {
 
 router.post("/guest-collect/regenerate", requireAuth, async (req, res) => {
   try {
-    const profiles = await db
-      .select()
-      .from(weddingProfiles)
-      .where(eq(weddingProfiles.userId, req.userId!))
-      .limit(1);
-
-    if (!profiles.length) {
+    const profile = await resolveProfile(req);
+    if (!profile) {
       return res.status(400).json({ error: "No wedding profile found." });
     }
 
@@ -61,7 +52,7 @@ router.post("/guest-collect/regenerate", requireAuth, async (req, res) => {
     await db
       .update(weddingProfiles)
       .set({ guestCollectionToken: token })
-      .where(eq(weddingProfiles.userId, req.userId!));
+      .where(eq(weddingProfiles.id, profile.id));
 
     res.json({ token });
   } catch (err) {
