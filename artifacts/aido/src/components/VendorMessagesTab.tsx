@@ -316,6 +316,10 @@ export function VendorMessagesTab({ vendorId }: Props) {
 
   const handleSend = () => {
     if (!conversationId || !draft.trim()) return;
+    if (!hasVendorEmail) {
+      toast({ title: t("vendors.msg_no_email_warning"), variant: "destructive" });
+      return;
+    }
     sendMutation.mutate({
       id: conversationId,
       data: { body: draft.trim(), subject: subject.trim() || undefined, attachments, cc: ccList.length > 0 ? ccList : undefined } as never,
@@ -337,7 +341,8 @@ export function VendorMessagesTab({ vendorId }: Props) {
     );
   }
 
-  const hasVendorEmail = !!conv.vendorEmail;
+  const vendorEmail = (conv.vendorEmail || vendor?.email || "").trim();
+  const hasVendorEmail = vendorEmail.length > 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -376,7 +381,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
       <div className="flex flex-wrap gap-2 items-center justify-between text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
           <Mail className="h-3.5 w-3.5" />
-          <span>{t("vendors.msg_replies_from", { email: conv.vendorEmail ?? conv.vendorEmail })}</span>
+          <span>{t("vendors.msg_replies_from", { email: vendorEmail })}</span>
         </div>
         <Button
           size="sm"
@@ -574,7 +579,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
         <Button
           size="sm"
           onClick={handleSend}
-          disabled={!draft.trim() || !hasVendorEmail || sendMutation.isPending}
+          disabled={!draft.trim() || sendMutation.isPending}
         >
           <Send className="h-3.5 w-3.5 mr-1.5" />
           {sendMutation.isPending ? t("vendors.msg_sending") : t("vendors.msg_send")}
