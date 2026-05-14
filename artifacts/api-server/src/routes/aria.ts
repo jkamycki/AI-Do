@@ -641,6 +641,38 @@ function extractGuestNameFromAssistant(text: string): string | null {
   return null;
 }
 
+function cleanGatheredName(text: string): string {
+  return text
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .replace(/\b(email|phone|rsvp|notes?|note|category|cost|total|deposit)\b[\s:=-].*$/i, "")
+    .split(/[,\n;]/)[0]
+    .trim()
+    .replace(/[.!,;:]$/, "");
+}
+
+function inferGatheredVendor(text: string): { name: string; category: string } | null {
+  const raw = cleanGatheredName(text);
+  if (!raw || raw.length > 80 || /\?/.test(raw)) return null;
+  const lower = raw.toLowerCase();
+  let category = "Other";
+  for (const [word, mapped] of Object.entries(VENDOR_CATEGORY_SYNONYMS)) {
+    if (new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(lower)) {
+      category = mapped;
+      break;
+    }
+  }
+  const categoryWords = [
+    "photographer", "videographer", "florist", "caterer", "catering", "officiant",
+    "transportation", "transport", "limo", "cake", "baker", "bakery", "stationery",
+    "invitations", "rental", "rentals", "planner", "venue", "lighting", "photo booth",
+    "coordinator",
+  ];
+  const categoryPattern = new RegExp(`\\b(${categoryWords.join("|")})s?\\b`, "ig");
+  const name = raw.replace(categoryPattern, "").replace(/\s{2,}/g, " ").trim() || raw;
+  return { name, category };
+}
+
 function userActuallyMentionedName(candidate: string, userBlob: string, ignoredWords: Set<string>): boolean {
   const lowerCandidate = candidate.toLowerCase().trim();
   const normalizedUserBlob = userBlob.toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -2299,7 +2331,8 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     // the system prompt character budget for every other request.
     const lastAssistantInRecent = [...recent].reverse().find(m => m.role === "assistant");
     const lastAssistantText = typeof lastAssistantInRecent?.content === "string" ? lastAssistantInRecent.content : "";
-    const prevWasGatheringQuestion = /What'?s the vendor'?s name|vendor'?s name and category/i.test(lastAssistantText);
+    const prevWasGatheringQuestion = /What'?s the vendor'?s name|vendor'?s name and category|vendor'?s business name and category/i.test(lastAssistantText);
+    const prevWasGuestGatherQuestion = /Who would you like me to add to the guest list/i.test(lastAssistantText);
     const lastUserMsgForContext = [...messages].reverse().find(m => m.role === "user");
     const lastUserTextForContext = typeof lastUserMsgForContext?.content === "string" ? lastUserMsgForContext.content.trim() : "";
     const guestNameFromAssistant = extractGuestNameFromAssistant(lastAssistantText);
@@ -2419,6 +2452,34 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       res.write("data: [DONE]\n\n");
       res.end();
       return;
+    }
+
+    if (prevWasGuestGatherQuestion && lastUserText.trim().length > 0 && lastUserText.trim().length <= 120 && !YES_CONFIRM_INTENT.test(lastUserText.trim())) {
+      const gatheredGuestName = cleanGatheredName(lastUserText);
+      if (gatheredGuestName) {
+        send({
+          type: "content",
+          content: `Saving ${gatheredGuestName} as a guest. Reply "yes" to save.`,
+        });
+        send({ type: "done", actions: [] });
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
+      }
+    }
+
+    if (prevWasGatheringQuestion && lastUserText.trim().length > 0 && lastUserText.trim().length <= 160 && !YES_CONFIRM_INTENT.test(lastUserText.trim())) {
+      const gatheredVendor = inferGatheredVendor(lastUserText);
+      if (gatheredVendor) {
+        send({
+          type: "content",
+          content: `Saving ${gatheredVendor.name} (${gatheredVendor.category}). Reply "yes" to save.`,
+        });
+        send({ type: "done", actions: [] });
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
+      }
     }
 
     const VENDOR_CATEGORY_INTENT = /\b(?:add|create|new)\s+(?:(?:a|an)\s+)?(?:new\s+)?(vendor|photographer|videographer|florist|caterer|catering|dj|band|musician|officiant|hair|makeup|transport(?:ation)?|limo|cake|baker|stationery|invitation|rental|planner|venue|coordinator)s?\b/i;
