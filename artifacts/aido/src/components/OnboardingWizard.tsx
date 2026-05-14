@@ -16,17 +16,6 @@ import { Heart, Calendar, MapPin, Users, DollarSign, Sparkles, ArrowRight, Check
 
 const ONBOARDING_KEY = "aido_onboarding_done";
 
-const VIBES = [
-  "Romantic & Classic",
-  "Rustic & Bohemian",
-  "Modern & Minimalist",
-  "Glamorous & Luxurious",
-  "Outdoor & Garden",
-  "Destination Wedding",
-  "Intimate & Cozy",
-  "Cultural & Traditional",
-];
-
 const LANGUAGES = [
   "English", "Spanish", "French", "German", "Italian", "Portuguese",
   "Chinese (Simplified)", "Japanese", "Korean", "Arabic", "Hindi",
@@ -44,7 +33,7 @@ const schema = z.object({
   location: z.string().min(1, "Required"),
   guestCount: z.coerce.number().min(1, "Must be at least 1"),
   totalBudget: z.coerce.number().min(0, "Must be 0 or more"),
-  weddingVibe: z.string().min(1, "Required"),
+  weddingVibe: z.string().default("Not set"),
   preferredLanguage: z.string().default("English"),
 });
 
@@ -76,7 +65,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
       location: "",
       guestCount: 100,
       totalBudget: 20000,
-      weddingVibe: "",
+      weddingVibe: "Not set",
       preferredLanguage: "English",
     },
     mode: "onChange",
@@ -307,20 +296,6 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                     </FormItem>
                   )} />
                 </div>
-                <FormField control={form.control} name="weddingVibe" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel><Sparkles className="h-3.5 w-3.5 inline mr-1" />{t("onboarding.wedding_vibe", { defaultValue: "Wedding Vibe" })}</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger><SelectValue placeholder={t("onboarding.pick_your_style", { defaultValue: "Pick your style" })} /></SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {VIBES.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
                 <FormField control={form.control} name="preferredLanguage" render={({ field }) => (
                   <FormItem>
                     <FormLabel><Globe className="h-3.5 w-3.5 inline mr-1" />{t("onboarding.preferred_language", { defaultValue: "Preferred Language" })}</FormLabel>
