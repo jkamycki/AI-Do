@@ -537,7 +537,7 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"update_party_member", description:"Update party member. Pass memberId or matchName.", parameters:{ type:"object", properties:{ memberId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, role:{type:"string"}, side:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, outfitDetails:{type:"string"}, shoeSize:{type:"string"}, outfitStore:{type:"string"}, fittingDate:{type:"string"}, notes:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_party_member", description:"Delete party member. Pass memberId or matchName.", parameters:{ type:"object", properties:{ memberId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_party", description:"List wedding party members.", parameters:{ type:"object", properties:{} } } },
-  { type:"function" as const, function:{ name:"add_hotel", description:"Add hotel block. ONLY call after the user has explicitly confirmed. Required: hotelName. hotelName MUST be the real hotel name typed by the user in this conversation. If the user just says 'add hotel block' or 'add a hotel' without naming the hotel, ask which hotel first and wait.", parameters:{ type:"object", properties:{ hotelName:{type:"string", description:"Exact hotel name provided by the user. Never invent placeholder hotel names."}, address:{type:"string"}, city:{type:"string"}, state:{type:"string"}, zip:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, bookingLink:{type:"string"}, discountCode:{type:"string"}, groupName:{type:"string"}, cutoffDate:{type:"string"}, roomsReserved:{type:"number"}, pricePerNight:{type:"number"}, distanceFromVenue:{type:"string"}, notes:{type:"string"} }, required:["hotelName"] } } },
+  { type:"function" as const, function:{ name:"add_hotel", description:"Add hotel block. ONLY call after the user has explicitly confirmed. Required: hotelName. hotelName MUST be the real hotel name typed by the user in this conversation. If the user just says 'add hotel block' or 'add a hotel' without naming the hotel, ask which hotel first and wait. Optional fields like room count, rate, cutoff date, address, booking link, discount code, or notes must be included ONLY if the user explicitly typed those details.", parameters:{ type:"object", properties:{ hotelName:{type:"string", description:"Exact hotel name provided by the user. Never invent placeholder hotel names."}, address:{type:"string"}, city:{type:"string"}, state:{type:"string"}, zip:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, bookingLink:{type:"string"}, discountCode:{type:"string"}, groupName:{type:"string"}, cutoffDate:{type:"string"}, roomsReserved:{type:"number"}, pricePerNight:{type:"number"}, distanceFromVenue:{type:"string"}, notes:{type:"string"} }, required:["hotelName"] } } },
   { type:"function" as const, function:{ name:"update_hotel", description:"Update hotel block. Pass hotelId or matchName. Booked room counts are synced from guests assigned in the Guest List, not edited here.", parameters:{ type:"object", properties:{ hotelId:{type:"number"}, matchName:{type:"string"}, hotelName:{type:"string"}, address:{type:"string"}, city:{type:"string"}, state:{type:"string"}, zip:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, bookingLink:{type:"string"}, discountCode:{type:"string"}, groupName:{type:"string"}, cutoffDate:{type:"string"}, roomsReserved:{type:"number"}, pricePerNight:{type:"number"}, distanceFromVenue:{type:"string"}, notes:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_hotel", description:"Delete hotel block. Pass hotelId or matchName.", parameters:{ type:"object", properties:{ hotelId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_hotels", description:"List all hotel blocks.", parameters:{ type:"object", properties:{} } } },
@@ -1642,22 +1642,32 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
           doNotRetry: true,
         };
       }
+      const userMentionedAddress = /\b(address|located|location|street|road|rd\b|avenue|ave\b|boulevard|blvd\b|drive|dr\b|suite|city|state|zip|postal)\b/i.test(userBlob);
+      const userMentionedContact = /\b(phone|call|number|email|contact)\b|@/i.test(userBlob);
+      const userMentionedBooking = /\b(link|url|website|booking|book(ing)? link|reserve|reservation)\b|https?:\/\//i.test(userBlob);
+      const userMentionedDiscount = /\b(discount|promo|code|group code|block code)\b/i.test(userBlob);
+      const userMentionedGroup = /\b(group name|room block name|block name|under the name)\b/i.test(userBlob);
+      const userMentionedCutoff = /\b(cutoff|cut off|deadline|due date|expires?|book by|reserve by)\b/i.test(userBlob);
+      const userMentionedRooms = /\b(room|rooms|reserved|block(ed)?|hold|holds?)\b/i.test(userBlob) && /\d/.test(userBlob);
+      const userMentionedRate = /(\$|\brate\b|price|nightly|per night|\/night|cost|amount)/i.test(userBlob);
+      const userMentionedDistance = /\b(distance|miles?|mi\b|minutes?|mins?|from venue|near venue|away)\b/i.test(userBlob);
+      const userMentionedNotes = /\b(note|notes|memo|details?|special|shuttle|parking|breakfast|amenit)/i.test(userBlob);
       const [created] = await db.insert(hotelBlocks).values({
         userId, profileId: profile?.id ?? null, hotelName,
-        address: args.address ? String(args.address) : null,
-        city: args.city ? String(args.city) : null,
-        state: args.state ? String(args.state) : null,
-        zip: args.zip ? String(args.zip) : null,
-        phone: args.phone ? String(args.phone) : null,
-        email: args.email ? String(args.email) : null,
-        bookingLink: args.bookingLink ? String(args.bookingLink) : null,
-        discountCode: args.discountCode ? String(args.discountCode) : null,
-        groupName: args.groupName ? String(args.groupName) : null,
-        cutoffDate: args.cutoffDate ? String(args.cutoffDate) : null,
-        roomsReserved: args.roomsReserved !== undefined ? Number(args.roomsReserved) : null,
-        pricePerNight: args.pricePerNight !== undefined ? String(Number(args.pricePerNight)) : null,
-        distanceFromVenue: args.distanceFromVenue ? String(args.distanceFromVenue) : null,
-        notes: args.notes ? String(args.notes) : null,
+        address: userMentionedAddress && args.address ? String(args.address) : null,
+        city: userMentionedAddress && args.city ? String(args.city) : null,
+        state: userMentionedAddress && args.state ? String(args.state) : null,
+        zip: userMentionedAddress && args.zip ? String(args.zip) : null,
+        phone: userMentionedContact && args.phone ? String(args.phone) : null,
+        email: userMentionedContact && args.email ? String(args.email) : null,
+        bookingLink: userMentionedBooking && args.bookingLink ? String(args.bookingLink) : null,
+        discountCode: userMentionedDiscount && args.discountCode ? String(args.discountCode) : null,
+        groupName: userMentionedGroup && args.groupName ? String(args.groupName) : null,
+        cutoffDate: userMentionedCutoff && args.cutoffDate ? String(args.cutoffDate) : null,
+        roomsReserved: userMentionedRooms && args.roomsReserved !== undefined ? Number(args.roomsReserved) : null,
+        pricePerNight: userMentionedRate && args.pricePerNight !== undefined ? String(Number(args.pricePerNight)) : null,
+        distanceFromVenue: userMentionedDistance && args.distanceFromVenue ? String(args.distanceFromVenue) : null,
+        notes: userMentionedNotes && args.notes ? String(args.notes) : null,
       }).returning();
       return { ok: true, data: { id: created.id, hotelName: created.hotelName } };
     }
