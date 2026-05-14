@@ -98,7 +98,7 @@ const TOOL_GROUPS: Record<string, string[]> = {
   guest: ["add_guest","update_guest","delete_guest","list_guests"],
   party: ["add_party_member","update_party_member","delete_party_member","list_party"],
   hotel: ["add_hotel","update_hotel","delete_hotel","list_hotels"],
-  budget: ["add_budget_item","update_budget_item","delete_budget_item","log_budget_payment","list_budget","add_expense","update_expense","delete_expense","list_expenses"],
+  budget: ["generate_budget","add_budget_item","update_budget_item","delete_budget_item","log_budget_payment","list_budget","add_expense","update_expense","delete_expense","list_expenses"],
   profile: ["update_profile","get_profile"],
   contract: ["list_contracts","get_contract"],
   seating: ["generate_seating","list_seating_charts","delete_seating_chart"],
@@ -339,7 +339,7 @@ const ACTION_TOOLS = new Set([
   "add_party_member", "update_party_member", "delete_party_member",
   "add_hotel", "update_hotel", "delete_hotel",
   "add_expense", "update_expense", "delete_expense",
-  "add_budget_item", "update_budget_item", "delete_budget_item", "log_budget_payment",
+  "generate_budget", "add_budget_item", "update_budget_item", "delete_budget_item", "log_budget_payment",
   "update_profile",
   "generate_seating", "delete_seating_chart",
   "invite_collaborator", "remove_collaborator",
@@ -466,6 +466,10 @@ function buildConfirmation(actions: ActionRecord[]): string {
         lines.push(`✅ Budget item added`);
         followUp = `Want to log a payment you've already made on this?`;
         break;
+      case "generate_budget":
+        lines.push(`✅ Budget created with **${d.count ?? 0} categories**`);
+        followUp = `Want me to adjust any category, track an overage, or log a payment?`;
+        break;
       case "update_budget_item":
         lines.push(`✅ Budget item updated`);
         break;
@@ -535,6 +539,7 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"update_hotel", description:"Update hotel block. Pass hotelId or matchName. Booked room counts are synced from guests assigned in the Guest List, not edited here.", parameters:{ type:"object", properties:{ hotelId:{type:"number"}, matchName:{type:"string"}, hotelName:{type:"string"}, address:{type:"string"}, city:{type:"string"}, state:{type:"string"}, zip:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, bookingLink:{type:"string"}, discountCode:{type:"string"}, groupName:{type:"string"}, cutoffDate:{type:"string"}, roomsReserved:{type:"number"}, pricePerNight:{type:"number"}, distanceFromVenue:{type:"string"}, notes:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_hotel", description:"Delete hotel block. Pass hotelId or matchName.", parameters:{ type:"object", properties:{ hotelId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_hotels", description:"List all hotel blocks.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"generate_budget", description:"Generate or rebuild a full wedding budget from the user's profile total budget, or from totalBudget if the user provides one. Use when the user asks to create, build, make, reset, or generate a full budget or budget breakdown.", parameters:{ type:"object", properties:{ totalBudget:{type:"number", description:"Optional total wedding budget amount provided by the user."} } } } },
   { type:"function" as const, function:{ name:"add_budget_item", description:"Add budget line item. Required: category, vendor, estimatedCost.", parameters:{ type:"object", properties:{ category:{type:"string"}, vendor:{type:"string"}, estimatedCost:{type:"number"}, actualCost:{type:"number"}, notes:{type:"string"} }, required:["category","vendor","estimatedCost"] } } },
   { type:"function" as const, function:{ name:"update_budget_item", description:"Update budget item. Pass itemId or matchVendor.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchVendor:{type:"string"}, category:{type:"string"}, vendor:{type:"string"}, estimatedCost:{type:"number"}, actualCost:{type:"number"}, notes:{type:"string"}, isPaid:{type:"boolean"} } } } },
   { type:"function" as const, function:{ name:"delete_budget_item", description:"Delete budget item. Pass itemId or matchVendor.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchVendor:{type:"string"} } } } },
@@ -970,6 +975,37 @@ function buildAriaChecklist(profile: typeof weddingProfiles.$inferSelect): Array
   return items
     .filter((item) => item.minMonth === 0 || months >= item.minMonth)
     .map(({ minMonth: _minMonth, ...item }) => item);
+}
+
+function buildAriaBudgetBreakdown(totalBudget: number): Array<{ category: string; vendor: string; estimatedCost: number; notes: string }> {
+  const categories = [
+    { category: "Venue", vendor: "Venue", pct: 0.22, notes: "Ceremony/reception space, rentals, and venue fees." },
+    { category: "Catering & Bar", vendor: "Catering & Bar", pct: 0.28, notes: "Food, beverage, service staff, and gratuity buffer." },
+    { category: "Photography", vendor: "Photography", pct: 0.10, notes: "Main photographer package and engagement/session coverage." },
+    { category: "Videography", vendor: "Videography", pct: 0.06, notes: "Highlight film or ceremony/reception video coverage." },
+    { category: "Florals & Decor", vendor: "Florals & Decor", pct: 0.08, notes: "Personal flowers, centerpieces, ceremony decor, and styling." },
+    { category: "Music/DJ/Band", vendor: "Music/DJ/Band", pct: 0.06, notes: "Ceremony audio, cocktail music, and reception entertainment." },
+    { category: "Attire & Beauty", vendor: "Attire & Beauty", pct: 0.07, notes: "Wedding attire, alterations, hair, makeup, and accessories." },
+    { category: "Invitations & Stationery", vendor: "Invitations & Stationery", pct: 0.03, notes: "Save the dates, invitations, signage, and day-of paper." },
+    { category: "Cake & Desserts", vendor: "Cake & Desserts", pct: 0.02, notes: "Cake, dessert display, tasting, and delivery." },
+    { category: "Transportation", vendor: "Transportation", pct: 0.03, notes: "Couple, wedding party, or guest shuttle transportation." },
+    { category: "Officiant", vendor: "Officiant", pct: 0.01, notes: "Ceremony officiant fee and related documentation." },
+    { category: "Emergency Fund", vendor: "Emergency Fund", pct: 0.04, notes: "Buffer for taxes, tips, rush fees, or last-minute needs." },
+  ];
+
+  let allocated = 0;
+  return categories.map((item, index) => {
+    const estimatedCost = index === categories.length - 1
+      ? Math.max(0, Math.round(totalBudget - allocated))
+      : Math.max(0, Math.round(totalBudget * item.pct));
+    allocated += estimatedCost;
+    return {
+      category: item.category,
+      vendor: item.vendor,
+      estimatedCost,
+      notes: item.notes,
+    };
+  });
 }
 
 function timelineEventTime(event: Record<string, unknown>): string {
@@ -1540,6 +1576,44 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
     }
 
     // ===== BUDGET ITEMS =====
+    if (name === "generate_budget") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const requestedTotal = args.totalBudget !== undefined ? Number(args.totalBudget) : Number(profile.totalBudget ?? 0);
+      const totalBudget = Number.isFinite(requestedTotal) && requestedTotal > 0 ? requestedTotal : 0;
+      if (totalBudget <= 0) {
+        return { ok: false, error: "I need the total wedding budget first. Ask the user for the total amount they want to plan around." };
+      }
+      const breakdown = buildAriaBudgetBreakdown(totalBudget);
+      const budget = await ensureBudget(profile.id, totalBudget);
+      const existingItems = await db
+        .select({ id: budgetItems.id })
+        .from(budgetItems)
+        .where(eq(budgetItems.budgetId, budget.id));
+      await db.transaction(async (tx) => {
+        await tx.update(budgets).set({ totalBudget: String(totalBudget), updatedAt: new Date() }).where(eq(budgets.id, budget.id));
+        await tx.update(weddingProfiles).set({ totalBudget: String(totalBudget), updatedAt: new Date() }).where(eq(weddingProfiles.id, profile.id));
+        if (existingItems.length > 0) {
+          const itemIds = existingItems.map((item) => item.id);
+          await tx.delete(budgetPaymentLogs).where(inArray(budgetPaymentLogs.budgetItemId, itemIds));
+          await tx.delete(budgetItems).where(eq(budgetItems.budgetId, budget.id));
+        }
+        await tx.insert(budgetItems).values(breakdown.map((item) => ({
+          budgetId: budget.id,
+          category: item.category,
+          vendor: item.vendor,
+          estimatedCost: String(item.estimatedCost),
+          actualCost: String(item.estimatedCost),
+          amountPaid: "0",
+          isPaid: false,
+          notes: item.notes,
+          nextPaymentDue: null,
+        })));
+      });
+      logActivity(profile.id, req.userId!, `Aria generated wedding budget (${breakdown.length} categories)`, "budget", { totalBudget, categoryCount: breakdown.length });
+      return { ok: true, data: { totalBudget, count: breakdown.length } };
+    }
+
     if (name === "add_budget_item") {
       const profile = await resolveProfile(req);
       if (!profile) return { ok: false, error: "No wedding profile yet." };
@@ -1606,10 +1680,27 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       if (!profile) return { ok: false, error: "No wedding profile yet." };
       const [budget] = await db.select().from(budgets).where(eq(budgets.profileId, profile.id)).limit(1);
       if (!budget) return { ok: true, data: { items: [] } };
-      const rows = await db.select({ id: budgetItems.id, category: budgetItems.category, vendor: budgetItems.vendor, estimatedCost: budgetItems.estimatedCost, actualCost: budgetItems.actualCost, amountPaid: budgetItems.amountPaid, isPaid: budgetItems.isPaid })
+      const rows = await db.select({ id: budgetItems.id, category: budgetItems.category, vendor: budgetItems.vendor, estimatedCost: budgetItems.estimatedCost, actualCost: budgetItems.actualCost, amountPaid: budgetItems.amountPaid, isPaid: budgetItems.isPaid, notes: budgetItems.notes })
         .from(budgetItems).where(eq(budgetItems.budgetId, budget.id));
-      const items = rows.map(r => ({ ...r, estimatedCost: Number(r.estimatedCost), actualCost: Number(r.actualCost), amountPaid: Number(r.amountPaid) }));
-      return { ok: true, data: { items } };
+      const items = rows.map(r => {
+        const estimatedCost = Number(r.estimatedCost);
+        const actualCost = Number(r.actualCost);
+        const amountPaid = Number(r.amountPaid);
+        const committedCost = actualCost > 0 ? actualCost : estimatedCost;
+        return {
+          ...r,
+          estimatedCost,
+          actualCost,
+          amountPaid,
+          overage: Math.max(0, actualCost - estimatedCost),
+          remainingDue: Math.max(0, committedCost - amountPaid),
+        };
+      });
+      const totalBudget = Number(budget.totalBudget);
+      const committed = items.reduce((sum, item) => sum + (item.actualCost > 0 ? item.actualCost : item.estimatedCost), 0);
+      const totalPaid = items.reduce((sum, item) => sum + item.amountPaid, 0);
+      const overages = items.filter((item) => item.overage > 0);
+      return { ok: true, data: { totalBudget, committed, totalPaid, remaining: totalBudget - committed, overBudget: committed > totalBudget, overages, items } };
     }
 
     // ===== EXPENSES =====
@@ -1670,7 +1761,7 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         return { ok: false, error: "Only owners and partners can edit core wedding details." };
       }
       const updates: Record<string, unknown> = {};
-      const allowed = ["partner1Name", "partner2Name", "weddingDate", "ceremonyTime", "receptionTime", "venue", "location", "guestCount", "weddingVibe"];
+      const allowed = ["partner1Name", "partner2Name", "weddingDate", "ceremonyTime", "receptionTime", "venue", "location", "guestCount", "totalBudget", "weddingVibe"];
       for (const key of allowed) {
         if (args[key] !== undefined && args[key] !== null) updates[key] = args[key];
       }

@@ -123,6 +123,7 @@ function actionLabel(name: string, args?: Record<string, unknown>): string {
     case "add_checklist_item": return `Adding checklist item${args?.task ? ` "${args.task}"` : ""}`;
     case "generate_timeline": return "Creating timeline";
     case "add_timeline_event": return `Adding timeline event${args?.title ? ` "${args.title}"` : ""}`;
+    case "generate_budget": return "Creating budget";
     case "update_profile": return "Updating wedding profile";
     case "list_vendors": return "Reading your vendor list";
     case "get_profile": return "Reading your wedding profile";
@@ -330,6 +331,7 @@ export default function Aria() {
     // /budget page totals.
     const BUDGET_TOOLS = new Set([
       "add_budget_item", "update_budget_item", "delete_budget_item", "log_budget_payment",
+      "generate_budget",
       "add_expense", "update_expense", "delete_expense",
     ]);
     if ([...names].some(n => BUDGET_TOOLS.has(n))) {
@@ -346,7 +348,7 @@ export default function Aria() {
       queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
       queryClient.invalidateQueries({ queryKey: dashboardKey });
     }
-    if (names.has("update_profile")) {
+    if (names.has("update_profile") || names.has("generate_budget")) {
       queryClient.invalidateQueries({ queryKey: getGetProfileQueryKey() });
       queryClient.invalidateQueries({ queryKey: dashboardKey });
     }
