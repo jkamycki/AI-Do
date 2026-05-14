@@ -8,6 +8,82 @@ import { trackEvent } from "../../lib/trackEvent";
 import { logActivity, resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 
 const router = Router();
+
+type TimelineBlock = {
+  id: string;
+  startTime: string;
+  endTime: string;
+  title: string;
+  description: string;
+  category: string;
+  location: string;
+  notes: string;
+};
+
+function parseTimeToMinutes(value: string | null | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const match = String(value).match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return fallback;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return fallback;
+  return Math.max(0, Math.min(23 * 60 + 59, hours * 60 + minutes));
+}
+
+function minutesToTime(total: number): string {
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, Math.round(total)));
+  const hours = Math.floor(clamped / 60);
+  const minutes = clamped % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function makeTimelineBlock(
+  id: number,
+  start: number,
+  end: number,
+  title: string,
+  description: string,
+  category: string,
+  location: string,
+  notes = "",
+): TimelineBlock {
+  return {
+    id: `block-${id}`,
+    startTime: minutesToTime(start),
+    endTime: minutesToTime(Math.max(start + 15, end)),
+    title,
+    description,
+    category,
+    location,
+    notes,
+  };
+}
+
+function buildFallbackTimeline(profile: typeof weddingProfiles.$inferSelect): TimelineBlock[] {
+  const ceremony = parseTimeToMinutes(profile.ceremonyTime, 16 * 60);
+  const reception = parseTimeToMinutes(profile.receptionTime, ceremony + 2 * 60);
+  const venue = profile.venue || "Wedding venue";
+  const ceremonyLocation = profile.ceremonyAtVenue === false
+    ? profile.ceremonyVenueName || profile.ceremonyAddress || "Ceremony location"
+    : venue;
+
+  return [
+    makeTimelineBlock(1, ceremony - 8 * 60, ceremony - 6 * 60, "Hair, makeup, and getting ready", "Wedding party begins hair, makeup, wardrobe prep, and detail photos.", "preparation", venue),
+    makeTimelineBlock(2, ceremony - 6 * 60, ceremony - 5 * 60, "Vendor arrivals and setup", "Photo/video team, florist, music, and venue team begin setup and day-of coordination.", "vendors", venue),
+    makeTimelineBlock(3, ceremony - 5 * 60, ceremony - 4 * 60, "Couple portraits and first look", "Optional first look, couple portraits, and immediate family photos.", "photos", venue),
+    makeTimelineBlock(4, ceremony - 4 * 60, ceremony - 3 * 60, "Wedding party photos", "Capture wedding party portraits and any pre-ceremony group photos.", "photos", venue),
+    makeTimelineBlock(5, ceremony - 90, ceremony - 45, "Final ceremony prep", "Hideaway time, ceremony details, music checks, and guest arrival preparation.", "preparation", ceremonyLocation),
+    makeTimelineBlock(6, ceremony - 30, ceremony, "Guest arrival", "Guests arrive, find seats, and prelude music begins.", "ceremony", ceremonyLocation),
+    makeTimelineBlock(7, ceremony, ceremony + 45, "Ceremony", "Processional, vows, rings, pronouncement, and recessional.", "ceremony", ceremonyLocation),
+    makeTimelineBlock(8, ceremony + 45, reception, "Cocktail hour and family photos", "Guests enjoy cocktail hour while family and newlywed portraits are completed.", "cocktail", venue),
+    makeTimelineBlock(9, reception, reception + 30, "Reception entrance and welcome", "Grand entrance, welcome remarks, and transition into dinner service.", "reception", venue),
+    makeTimelineBlock(10, reception + 30, reception + 90, "Dinner service", "Dinner is served with space for table visits and guest greetings.", "reception", venue),
+    makeTimelineBlock(11, reception + 90, reception + 135, "Toasts and special dances", "Toasts, first dance, parent dances, and formal reception moments.", "reception", venue),
+    makeTimelineBlock(12, reception + 135, reception + 240, "Open dancing and celebration", "Dance floor opens, cake cutting happens as scheduled, and the party continues.", "dancing", venue),
+    makeTimelineBlock(13, reception + 240, reception + 270, "Final song and send-off", "Final song, private last dance or send-off, and guest departure.", "dancing", venue),
+  ].filter((event) => parseTimeToMinutes(event.startTime, 0) >= 0);
+}
+
 router.get("/timeline", requireAuth, async (req, res) => {
   try {
     const callerRole = await resolveCallerRole(req);
@@ -116,12 +192,12 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
     const completion = await openai.chat.completions.create({
       model: getModel(),
       // Keep output bounded for lower latency while still covering a full day.
-      max_completion_tokens: 1800,
+      max_tokens: 1800,
       messages: [{ role: "user", content: prompt }],
     }, { signal: AbortSignal.timeout(45_000) });
 
     const content = completion.choices[0]?.message?.content ?? "[]";
-    let events: Array<{ time: string; title: string; description: string; category: string }> = [];
+    let events: TimelineBlock[] = [];
 
     try {
       // Strip common preamble/postamble text the model adds in non-English
@@ -136,13 +212,8 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
     }
 
     if (events.length === 0) {
-      // The AI returned nothing usable. Surface a clear error rather than
-      // silently saving an empty timeline (which the user described seeing
-      // when generating in Spanish).
-      res.status(502).json({
-        error: "Aria couldn't generate a timeline this time. Please try again — if it keeps failing, try a shorter day vision.",
-      });
-      return;
+      events = buildFallbackTimeline(profile);
+      req.log.warn("Timeline AI returned no usable events; using fallback timeline");
     }
 
     // Replace any existing timelines for this profile so regenerate doesn't pile up duplicate rows.
@@ -166,6 +237,30 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
     });
   } catch (err) {
     req.log.error(err, "Failed to generate timeline");
+    try {
+      const profile = await resolveProfile(req);
+      if (profile) {
+        const events = buildFallbackTimeline(profile);
+        const created = await db.transaction(async (tx) => {
+          await tx.delete(timelines).where(eq(timelines.profileId, profile.id));
+          const [row] = await tx
+            .insert(timelines)
+            .values({ profileId: profile.id, events })
+            .returning();
+          return row;
+        });
+        trackEvent(req.userId!, "timeline_generated", { eventCount: events.length, fallback: true });
+        logActivity(profile.id, req.userId!, `Generated fallback day-of timeline (${events.length} events)`, "timeline", { eventCount: events.length, fallback: true });
+        res.json({
+          id: created.id,
+          events: created.events,
+          generatedAt: created.generatedAt.toISOString(),
+        });
+        return;
+      }
+    } catch (fallbackErr) {
+      req.log.error(fallbackErr, "Fallback timeline generation failed");
+    }
     // Surface AI provider rate limits / capacity errors so the client can show
     // a meaningful message instead of a generic "generation failed" toast.
     const e = err as { status?: number; code?: string; message?: string };
