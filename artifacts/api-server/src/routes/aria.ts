@@ -614,6 +614,8 @@ function parsePendingVendorConfirmation(text: string): { name: string; category:
 
 function parsePendingGuestConfirmation(text: string): { name: string } | null {
   const patterns = [
+    /Ready\s+to\s+add\s+(.+?)\s+to\s+(?:the\s+)?guest\s+list[\s\S]*Reply\s*['"]?yes['"]?\s+to\s+(?:save|confirm)/i,
+    /Saving\s+(.+?)\s+to\s+(?:the\s+)?guest\s+list[\s\S]*Reply\s*['"]?yes['"]?\s+to\s+(?:save|confirm)/i,
     /Saving\s+(.+?)\s+(?:as\s+a\s+)?guest[\s\S]*Reply\s*['"]?yes['"]?\s+to\s+save/i,
     /Ready\s+to\s+add\s+(.+?)\s+(?:as\s+a\s+)?guest[\s\S]*Reply\s*['"]?yes['"]?\s+to\s+(?:save|confirm)/i,
   ];
