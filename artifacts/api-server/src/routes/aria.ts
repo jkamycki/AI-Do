@@ -537,7 +537,7 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"update_party_member", description:"Update party member. Pass memberId or matchName.", parameters:{ type:"object", properties:{ memberId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, role:{type:"string"}, side:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, outfitDetails:{type:"string"}, shoeSize:{type:"string"}, outfitStore:{type:"string"}, fittingDate:{type:"string"}, notes:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_party_member", description:"Delete party member. Pass memberId or matchName.", parameters:{ type:"object", properties:{ memberId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_party", description:"List wedding party members.", parameters:{ type:"object", properties:{} } } },
-  { type:"function" as const, function:{ name:"add_hotel", description:"Add hotel block. Required: hotelName.", parameters:{ type:"object", properties:{ hotelName:{type:"string"}, address:{type:"string"}, city:{type:"string"}, state:{type:"string"}, zip:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, bookingLink:{type:"string"}, discountCode:{type:"string"}, groupName:{type:"string"}, cutoffDate:{type:"string"}, roomsReserved:{type:"number"}, pricePerNight:{type:"number"}, distanceFromVenue:{type:"string"}, notes:{type:"string"} }, required:["hotelName"] } } },
+  { type:"function" as const, function:{ name:"add_hotel", description:"Add hotel block. ONLY call after the user has explicitly confirmed. Required: hotelName. hotelName MUST be the real hotel name typed by the user in this conversation. If the user just says 'add hotel block' or 'add a hotel' without naming the hotel, ask which hotel first and wait.", parameters:{ type:"object", properties:{ hotelName:{type:"string", description:"Exact hotel name provided by the user. Never invent placeholder hotel names."}, address:{type:"string"}, city:{type:"string"}, state:{type:"string"}, zip:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, bookingLink:{type:"string"}, discountCode:{type:"string"}, groupName:{type:"string"}, cutoffDate:{type:"string"}, roomsReserved:{type:"number"}, pricePerNight:{type:"number"}, distanceFromVenue:{type:"string"}, notes:{type:"string"} }, required:["hotelName"] } } },
   { type:"function" as const, function:{ name:"update_hotel", description:"Update hotel block. Pass hotelId or matchName. Booked room counts are synced from guests assigned in the Guest List, not edited here.", parameters:{ type:"object", properties:{ hotelId:{type:"number"}, matchName:{type:"string"}, hotelName:{type:"string"}, address:{type:"string"}, city:{type:"string"}, state:{type:"string"}, zip:{type:"string"}, phone:{type:"string"}, email:{type:"string"}, bookingLink:{type:"string"}, discountCode:{type:"string"}, groupName:{type:"string"}, cutoffDate:{type:"string"}, roomsReserved:{type:"number"}, pricePerNight:{type:"number"}, distanceFromVenue:{type:"string"}, notes:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_hotel", description:"Delete hotel block. Pass hotelId or matchName.", parameters:{ type:"object", properties:{ hotelId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_hotels", description:"List all hotel blocks.", parameters:{ type:"object", properties:{} } } },
@@ -627,6 +627,19 @@ function parsePendingGuestConfirmation(text: string): { name: string } | null {
   return null;
 }
 
+function parsePendingHotelConfirmation(text: string): { hotelName: string } | null {
+  const patterns = [
+    /Saving\s+(.+?)\s+(?:as\s+a\s+)?hotel\s+block[\s\S]*Reply\s*['"]?yes['"]?\s+to\s+save/i,
+    /Ready\s+to\s+add\s+(.+?)\s+(?:as\s+a\s+)?hotel\s+block[\s\S]*Reply\s*['"]?yes['"]?\s+to\s+(?:save|confirm)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const hotelName = match?.[1]?.trim().replace(/[.!,;:]$/, "");
+    if (hotelName) return { hotelName };
+  }
+  return null;
+}
+
 function extractGuestNameFromAssistant(text: string): string | null {
   const patterns = [
     /\b(?:add|adding)\s+([A-Z][A-Za-z'’-]+(?:\s+[A-Z][A-Za-z'’-]+){0,3})\s+(?:to\s+)?(?:the\s+)?guest\s+list/i,
@@ -672,6 +685,12 @@ function inferGatheredVendor(text: string): { name: string; category: string } |
   const categoryPattern = new RegExp(`\\b(${categoryWords.join("|")})s?\\b`, "ig");
   const name = raw.replace(categoryPattern, "").replace(/\s{2,}/g, " ").trim() || raw;
   return { name, category };
+}
+
+function inferGatheredHotel(text: string): { hotelName: string } | null {
+  const hotelName = cleanGatheredName(text);
+  if (!hotelName || hotelName.length > 100 || /\?/.test(hotelName)) return null;
+  return { hotelName };
 }
 
 function userActuallyMentionedName(candidate: string, userBlob: string, ignoredWords: Set<string>): boolean {
@@ -1605,7 +1624,24 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       const userId = await resolveScopeUserId(req);
       const profile = await resolveProfile(req);
       const hotelName = String(args.hotelName ?? "").trim();
-      if (!hotelName) return { ok: false, error: "hotelName is required" };
+      if (!hotelName) return { ok: false, error: "Hotel name is required. Ask the user which hotel block they want to add.", doNotRetry: true };
+      const HOTEL_PLACEHOLDER_WORDS = new Set([
+        "hotel", "block", "room", "rooms", "lodging", "accommodation", "accommodations",
+        "new", "sample", "test", "placeholder", "unknown", "unnamed", "grand",
+      ]);
+      if (/^(hotel\s*\d*|new hotel|hotel block|room block|sample hotel|test hotel|unnamed|unknown|n\/a|none|tbd|placeholder|the grand hotel|grand hotel)$/i.test(hotelName)) {
+        return { ok: false, error: `"${hotelName}" is not a hotel name the user provided. Ask the user which hotel to add.`, doNotRetry: true };
+      }
+      if (hotelName.includes("?") || hotelName.length > 100 || /^(what'?s|what is|please|could you|can you|tell me|i need|i want|add a |add an )/i.test(hotelName)) {
+        return { ok: false, error: `"${hotelName.slice(0, 40)}" doesn't look like a hotel name. Ask the user which hotel to add.`, doNotRetry: true };
+      }
+      if (userBlob && userBlob.length > 0 && !userActuallyMentionedName(hotelName, userBlob, HOTEL_PLACEHOLDER_WORDS)) {
+        return {
+          ok: false,
+          error: `"${hotelName}" doesn't appear in the user's messages - do not invent hotel names. Ask the user: "Which hotel should I add for this block?" and wait for their reply before calling add_hotel again.`,
+          doNotRetry: true,
+        };
+      }
       const [created] = await db.insert(hotelBlocks).values({
         userId, profileId: profile?.id ?? null, hotelName,
         address: args.address ? String(args.address) : null,
@@ -2338,6 +2374,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const lastAssistantText = typeof lastAssistantInRecent?.content === "string" ? lastAssistantInRecent.content : "";
     const prevWasGatheringQuestion = /What'?s the vendor'?s name|vendor'?s name and category|vendor'?s business name and category/i.test(lastAssistantText);
     const prevWasGuestGatherQuestion = /Who would you like me to add to the guest list/i.test(lastAssistantText);
+    const prevWasHotelGatherQuestion = /Which hotel should I add|What'?s the hotel name|hotel block should I add/i.test(lastAssistantText);
     const lastUserMsgForContext = [...messages].reverse().find(m => m.role === "user");
     const lastUserTextForContext = typeof lastUserMsgForContext?.content === "string" ? lastUserMsgForContext.content.trim() : "";
     const guestNameFromAssistant = extractGuestNameFromAssistant(lastAssistantText);
@@ -2478,6 +2515,37 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
     // Detect "add a vendor / photographer / florist …" without a real business
     // name. Computed before skipTools so it can gate tools entirely.
+    const pendingHotel = parsePendingHotelConfirmation(lastAssistantText);
+    if (pendingHotel && YES_CONFIRM_INTENT.test(lastUserText.trim())) {
+      const recentUserText = messages
+        .filter((m) => m.role === "user")
+        .slice(-4)
+        .map((m) => (typeof m.content === "string" ? m.content : ""))
+        .join(" ")
+        .toLowerCase();
+      const result = await executeTool("add_hotel", {
+        hotelName: pendingHotel.hotelName,
+      }, req, { recentUserText });
+      if (result.ok) {
+        send({ type: "action_start", name: "add_hotel", args: { hotelName: pendingHotel.hotelName } });
+        send({ type: "action_result", name: "add_hotel", ok: true, data: result.data });
+        send({
+          type: "content",
+          content: buildConfirmation([{
+            name: "add_hotel",
+            args: { hotelName: pendingHotel.hotelName },
+            result,
+          }]),
+        });
+      } else {
+        send({ type: "content", content: `I couldn't save that hotel block yet: ${result.error}` });
+      }
+      send({ type: "done", actions: [{ name: "add_hotel", ok: result.ok, error: result.ok ? undefined : result.error }] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
     if (prevWasGuestNameLoop && guestNameFromAssistant && /\b(this|that|correct|yes|yep|name|guest)\b/i.test(lastUserText)) {
       send({
         type: "content",
@@ -2517,13 +2585,30 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       }
     }
 
+    if (prevWasHotelGatherQuestion && lastUserText.trim().length > 0 && lastUserText.trim().length <= 160 && !YES_CONFIRM_INTENT.test(lastUserText.trim())) {
+      const gatheredHotel = inferGatheredHotel(lastUserText);
+      if (gatheredHotel) {
+        send({
+          type: "content",
+          content: `Saving ${gatheredHotel.hotelName} as a hotel block. Reply "yes" to save.`,
+        });
+        send({ type: "done", actions: [] });
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
+      }
+    }
+
     const VENDOR_CATEGORY_INTENT = /\b(?:add|create|new)\s+(?:(?:a|an)\s+)?(?:new\s+)?(vendor|photographer|videographer|florist|caterer|catering|dj|band|musician|officiant|hair|makeup|transport(?:ation)?|limo|cake|baker|stationery|invitation|rental|planner|venue|coordinator)s?\b/i;
     const GUEST_GATHER_INTENT = /\b(?:add|create|new)\s+(?:(?:a|an)\s+)?(?:new\s+)?(?:guest|invitee|person)\b/i;
+    const HOTEL_GATHER_INTENT = /\b(?:add|create|new)\s+(?:(?:a|an)\s+)?(?:new\s+)?(?:hotel|hotel block|room block|lodging|accommodation)s?\b/i;
     const HAS_PROPER_NOUN = /[A-Z][a-z]{2,}|"[^"]+"|'[^']+'/;
     const vendorGatherIntent = VENDOR_CATEGORY_INTENT.test(lastUserText) &&
       !HAS_PROPER_NOUN.test(lastUserText.replace(VENDOR_CATEGORY_INTENT, ""));
     const guestGatherIntent = GUEST_GATHER_INTENT.test(lastUserText) &&
       !HAS_PROPER_NOUN.test(lastUserText.replace(GUEST_GATHER_INTENT, ""));
+    const hotelGatherIntent = HOTEL_GATHER_INTENT.test(lastUserText) &&
+      !HAS_PROPER_NOUN.test(lastUserText.replace(HOTEL_GATHER_INTENT, ""));
 
     if (guestGatherIntent) {
       send({
@@ -2540,6 +2625,17 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       send({
         type: "content",
         content: "What's the vendor's business name and category (florist, photographer, caterer, DJ, etc.)? Only the business name is needed to get started.",
+      });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
+    if (hotelGatherIntent) {
+      send({
+        type: "content",
+        content: "Which hotel should I add for this block? Send the hotel name, and any optional details like room count, rate, cutoff date, or booking link.",
       });
       send({ type: "done", actions: [] });
       res.write("data: [DONE]\n\n");
