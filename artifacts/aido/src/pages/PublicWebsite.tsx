@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useRoute } from "wouter";
 import { apiFetch } from "@/lib/authFetch";
 import { Loader2, Lock } from "lucide-react";
@@ -63,8 +63,8 @@ function PasswordGate({
             onChange={(e) => setPw(e.target.value)}
             placeholder="Password"
             disabled={loading}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 text-base"
-            style={{ outlineColor: accent }}
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-base text-gray-950 placeholder:text-gray-500 caret-gray-950 shadow-sm focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
+            style={{ outlineColor: accent, "--tw-ring-color": accent } as CSSProperties}
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
