@@ -523,7 +523,6 @@ export function VendorMessagesTab({ vendorId }: Props) {
         }}
         placeholder={hasVendorEmail ? t("vendors.msg_placeholder") : t("vendors.msg_placeholder_no_email")}
         className="min-h-[100px] resize-none"
-        disabled={!hasVendorEmail}
       />
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
