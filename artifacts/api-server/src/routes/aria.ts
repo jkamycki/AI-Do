@@ -178,6 +178,8 @@ SMALL TALK: For greetings, thanks, "how are you?", or chitchat → reply warmly 
 - If it's an editor-style visual/content action not exposed as a tool (e.g. section layout, fonts, animations, page toggles), do NOT stall or loop. Give direct click-by-click steps in the Website Editor and offer the next best workaround.
 - Never claim you changed something if no tool exists for that change. Be explicit: what you can update now vs what the user should click.
 
+GUEST RULE — adding a guest only requires the guest's name. Do NOT ask for meal choice while adding a guest. Only save meal choice if the user voluntarily provides it or later asks to update it.
+
 WRITE/UPDATE/DELETE FLOW — exactly ONE summary turn and exactly ONE save turn:
 
 SUMMARY PHRASING RULE — CRITICAL: The summary turn MUST use future/present tense to make clear nothing has been saved yet. NEVER use past tense ("has been added", "was saved", "added successfully") in the summary turn — that implies the action already happened and breaks the confirmation loop.
@@ -424,7 +426,7 @@ function buildConfirmation(actions: ActionRecord[]): string {
         break;
       case "add_guest":
         lines.push(`✅ Guest added: **${d.name ?? ""}**`);
-        followUp = `Want me to mark their RSVP, note a meal choice, add a plus-one, or assign them to a table?`;
+        followUp = `Want me to mark their RSVP, add a plus-one, or assign them to a table?`;
         break;
       case "update_guest":
         lines.push(`✅ Guest updated`);
@@ -527,7 +529,7 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"update_timeline_event", description:"Update timeline event. Pass matchTitle or matchTime.", parameters:{ type:"object", properties:{ matchTitle:{type:"string"}, matchTime:{type:"string"}, time:{type:"string"}, title:{type:"string"}, description:{type:"string"}, category:{type:"string",enum:["preparation","ceremony","cocktail","reception","dancing","other"]} } } } },
   { type:"function" as const, function:{ name:"delete_timeline_event", description:"Delete timeline event. Pass matchTitle or matchTime.", parameters:{ type:"object", properties:{ matchTitle:{type:"string"}, matchTime:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_timeline", description:"List timeline events.", parameters:{ type:"object", properties:{} } } },
-  { type:"function" as const, function:{ name:"add_guest", description:"Add a guest to the wedding guest list. ONLY call after the user has explicitly confirmed (replied 'yes' or similar to your confirmation message). 'name' MUST be a specific person's name provided by the user — never invent placeholder names like 'Guest 1'. If the user just says 'add a guest' without naming anyone, ASK for the name first.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific guest full name provided by the user."}, email:{type:"string"}, phone:{type:"string"}, rsvpStatus:{type:"string",enum:["pending","attending","declined","maybe"]}, mealChoice:{type:"string"}, dietaryNotes:{type:"string"}, guestGroup:{type:"string"}, plusOne:{type:"boolean"}, plusOneName:{type:"string"}, tableAssignment:{type:"string"}, notes:{type:"string"}, address:{type:"string"}, guestCity:{type:"string"}, guestState:{type:"string"}, guestZip:{type:"string"} }, required:["name"] } } },
+  { type:"function" as const, function:{ name:"add_guest", description:"Add a guest to the wedding guest list. ONLY call after the user has explicitly confirmed (replied 'yes' or similar to your confirmation message). 'name' MUST be a specific person's name provided by the user — never invent placeholder names like 'Guest 1'. If the user just says 'add a guest' without naming anyone, ASK for the name first. Do NOT ask for mealChoice while adding a guest; only include mealChoice if the user voluntarily provided it.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific guest full name provided by the user."}, email:{type:"string"}, phone:{type:"string"}, rsvpStatus:{type:"string",enum:["pending","attending","declined","maybe"]}, mealChoice:{type:"string"}, dietaryNotes:{type:"string"}, guestGroup:{type:"string"}, plusOne:{type:"boolean"}, plusOneName:{type:"string"}, tableAssignment:{type:"string"}, notes:{type:"string"}, address:{type:"string"}, guestCity:{type:"string"}, guestState:{type:"string"}, guestZip:{type:"string"} }, required:["name"] } } },
   { type:"function" as const, function:{ name:"update_guest", description:"Update guest. Pass guestId or matchName.", parameters:{ type:"object", properties:{ guestId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, rsvpStatus:{type:"string",enum:["pending","attending","declined","maybe"]}, mealChoice:{type:"string"}, dietaryNotes:{type:"string"}, guestGroup:{type:"string"}, plusOne:{type:"boolean"}, plusOneName:{type:"string"}, tableAssignment:{type:"string"}, notes:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_guest", description:"Delete guest. Pass guestId or matchName.", parameters:{ type:"object", properties:{ guestId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_guests", description:"List all guests.", parameters:{ type:"object", properties:{} } } },
