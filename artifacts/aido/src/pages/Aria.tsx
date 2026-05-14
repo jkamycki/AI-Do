@@ -62,10 +62,15 @@ interface Conversation {
 
 
 const STORAGE_PREFIX = "aido:aria:conversations:";
+const DRAFT_STORAGE_PREFIX = "aido:aria:draft:";
 const MAX_STORED = 30;
 
 function storageKey(userId: string | null | undefined) {
   return `${STORAGE_PREFIX}${userId ?? "anon"}`;
+}
+
+function draftStorageKey(userId: string | null | undefined, conversationId: string | null | undefined) {
+  return `${DRAFT_STORAGE_PREFIX}${userId ?? "anon"}:${conversationId ?? "new"}`;
 }
 
 function loadConversations(userId: string | null | undefined): Conversation[] {
@@ -87,6 +92,20 @@ function saveConversations(userId: string | null | undefined, convos: Conversati
       messages: c.messages.map(m => ({ ...m, streaming: false })),
     }));
     localStorage.setItem(storageKey(userId), JSON.stringify(trimmed));
+  } catch {}
+}
+
+function loadDraft(userId: string | null | undefined, conversationId: string | null | undefined): string {
+  try {
+    return localStorage.getItem(draftStorageKey(userId, conversationId)) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function saveDraft(userId: string | null | undefined, conversationId: string | null | undefined, value: string) {
+  try {
+    localStorage.setItem(draftStorageKey(userId, conversationId), value);
   } catch {}
 }
 
@@ -217,6 +236,7 @@ export default function Aria() {
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const sendingRef = useRef(false);
+  const skipNextDraftSaveRef = useRef(false);
 
   // Load conversations on mount / when user changes
   useEffect(() => {
@@ -239,6 +259,21 @@ export default function Aria() {
     [conversations, activeId]
   );
   const messages = activeConvo?.messages ?? [];
+
+  useEffect(() => {
+    if (hydratedUserId !== userId) return;
+    skipNextDraftSaveRef.current = true;
+    setInput(loadDraft(userId, activeId));
+  }, [activeId, userId, hydratedUserId]);
+
+  useEffect(() => {
+    if (hydratedUserId !== userId) return;
+    if (skipNextDraftSaveRef.current) {
+      skipNextDraftSaveRef.current = false;
+      return;
+    }
+    saveDraft(userId, activeId, input);
+  }, [input, activeId, userId, hydratedUserId]);
 
   function scrollToBottom(smooth = true) {
     bottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "instant" });
@@ -526,6 +561,14 @@ export default function Aria() {
     }
   }
 
+  function handleInputChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const value = e.target.value;
+    setInput(value);
+    if (hydratedUserId === userId) {
+      saveDraft(userId, activeId, value);
+    }
+  }
+
   const isEmpty = messages.length === 0;
   const sortedConversations = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
 
@@ -744,7 +787,7 @@ export default function Aria() {
               ref={textareaRef}
               placeholder={t("aria.input_placeholder")}
               value={input}
-              onChange={e => setInput(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               rows={1}
               disabled={streaming}
