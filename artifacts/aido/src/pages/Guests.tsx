@@ -1859,8 +1859,21 @@ export default function Guests({
     });
   }
 
-  async function syncGuestToWeddingParty(data: GuestFormValues) {
-    if (!data.isWeddingPartyMember) return;
+  async function syncGuestToWeddingParty(
+    data: GuestFormValues,
+    previousMember?: WeddingPartyMemberLite,
+  ) {
+    if (!data.isWeddingPartyMember) {
+      if (!previousMember) return;
+      const deleteRes = await authFetch(`/api/wedding-party/${previousMember.id}`, {
+        method: "DELETE",
+      });
+      if (!deleteRes.ok) {
+        throw new Error("Failed to remove wedding party member");
+      }
+      queryClient.invalidateQueries({ queryKey: ["wedding-party"] });
+      return;
+    }
 
     const name = data.name.trim();
     if (!name) return;
@@ -1869,10 +1882,9 @@ export default function Guests({
     if (!res.ok) throw new Error("Failed to load wedding party");
 
     const members = (await res.json()) as WeddingPartyMemberLite[];
-    const existing = findWeddingPartyMemberForGuest(
-      { name, email: data.email ?? "" },
-      members,
-    );
+    const existing =
+      previousMember ??
+      findWeddingPartyMemberForGuest({ name, email: data.email ?? "" }, members);
     const payload = {
       name,
       role: data.weddingPartyRole || "Bridesmaid",
@@ -2417,6 +2429,7 @@ export default function Guests({
 
   function handleEdit(data: GuestFormValues) {
     if (!editGuest) return;
+    const previousWeddingPartyMember = editWeddingPartyMember;
     const plusOneName = data.plusOne
       ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()]
           .filter(Boolean)
@@ -2462,7 +2475,7 @@ export default function Guests({
           toast({ title: "Guest updated" });
           setEditGuest(null);
           invalidate();
-          void syncGuestToWeddingParty(data).catch(() => {
+          void syncGuestToWeddingParty(data, previousWeddingPartyMember).catch(() => {
             toast({
               title: "Guest updated, but wedding party sync failed",
               variant: "destructive",
