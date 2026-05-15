@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Download, AlertCircle, Mail } from "lucide-react";
+import { Loader2, Download, AlertCircle } from "lucide-react";
 
 interface SaveTheDateInfo {
   guestName: string;
@@ -83,9 +83,9 @@ export default function SaveTheDate() {
       })()
     : null;
 
-  const venueCityStateZip = [
+  const venueCityState = [
     info?.venueCity,
-    [info?.venueState, info?.venueZip].filter(Boolean).join(" "),
+    info?.venueState,
   ].filter(Boolean).join(", ");
 
   // Derive theme from custom design or fall back to AI dark theme
@@ -198,34 +198,8 @@ export default function SaveTheDate() {
 
         {/* Photo — rendered as background-image so html2canvas captures it correctly
             (html2canvas does not support object-fit/object-position on <img>) */}
-        {info.hasPhoto && (
-          <div style={{ padding: "0 20px 12px", backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
-            <div
-              style={{
-                width: "100%", height: 200,
-                backgroundImage: `url('/api/save-the-date/${token}/photo?v=${info.photoVersion}')`,
-                backgroundSize: "cover",
-                backgroundPosition: photoPos,
-                borderRadius: 8,
-                boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
-              }}
-            />
-          </div>
-        )}
-
         {/* Content */}
-        <div style={{ backgroundImage: DOT_PAT, backgroundSize: "22px 22px", backgroundColor: BG, padding: "16px 24px 28px", textAlign: "center" }}>
-
-          {/* Badge */}
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-            <div style={{
-              width: 52, height: 52, borderRadius: "50%",
-              background: `${GOLD}22`, boxShadow: `0 0 0 1px ${GOLD}44`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <Mail style={{ width: 22, height: 22, color: GOLD }} />
-            </div>
-          </div>
+        <div style={{ backgroundImage: DOT_PAT, backgroundSize: "22px 22px", backgroundColor: BG, padding: "10px 24px 28px", textAlign: "center" }}>
 
           {/* "Save the Date" label */}
           <p style={{ fontFamily: LABEL_FONT, fontSize: 11 * sc, fontWeight: 700, letterSpacing: "0.42em", textTransform: "uppercase", color: GOLD, margin: "0 0 10px" }}>
@@ -237,6 +211,22 @@ export default function SaveTheDate() {
             {coupleText}
           </h1>
 
+          {/* Photo rendered as background-image so html2canvas captures it correctly. */}
+          {info.hasPhoto && (
+            <div style={{ margin: "0 0 18px" }}>
+              <div
+                style={{
+                  width: "100%", height: 200,
+                  backgroundImage: `url('/api/save-the-date/${token}/photo?v=${info.photoVersion}')`,
+                  backgroundSize: "cover",
+                  backgroundPosition: photoPos,
+                  borderRadius: 8,
+                  boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
+                }}
+              />
+            </div>
+          )}
+
           {/* Divider */}
           <div style={{ height: 1, background: CARD_BDR, margin: "0 20px 16px" }} />
 
@@ -247,8 +237,8 @@ export default function SaveTheDate() {
             </p>
           )}
 
-          {venueCityStateZip && (
-            <p style={{ fontFamily: LABEL_FONT, fontSize: 11 * sc, color: WHITE, margin: "3px 0 0" }}>{venueCityStateZip}</p>
+          {venueCityState && (
+            <p style={{ fontFamily: LABEL_FONT, fontSize: 11 * sc, color: WHITE, margin: "3px 0 0" }}>{venueCityState}</p>
           )}
 
           {/* Message */}

@@ -48,10 +48,10 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
       backgroundColor,
       partner1Name,
       partner2Name,
-      location,
+      location: _location,
       venueCity,
       venueState,
-      venueZip,
+      venueZip: _venueZip,
       message,
       textOverrides,
       onTextOverridesChange,
@@ -73,8 +73,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
       partner1Name && partner2Name
         ? `${partner1Name} & ${partner2Name}`
         : partner1Name || partner2Name || "Couple Names";
-    const cityStateZip = [venueCity, [venueState, venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-    const dateLine = location ? `${formattedDate}  –  ${location}` : formattedDate;
+    const cityState = [venueCity, venueState].filter(Boolean).join(", ");
 
     const updateOverride = (id: string, patch: ElementOverride) => {
       const cur = textOverrides[id] || {};
@@ -96,7 +95,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
         id: PREFIX + "heading",
         text: "Save the Date",
         defaultX: CANVAS_W / 2,
-        defaultY: 40,
+        defaultY: 48,
         defaultColor: colors.primary,
         defaultFontSize: 38,
         defaultFont: font || "Playfair Display",
@@ -108,7 +107,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
         id: PREFIX + "couple",
         text: couple,
         defaultX: CANVAS_W / 2,
-        defaultY: 375,
+        defaultY: 108,
         defaultColor: colors.primary,
         defaultFontSize: 36,
         defaultFont: "Dancing Script",
@@ -116,19 +115,19 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
       },
       {
         id: PREFIX + "date",
-        text: dateLine,
+        text: formattedDate,
         defaultX: CANVAS_W / 2,
-        defaultY: 460,
+        defaultY: 418,
         defaultColor: colors.accent,
         defaultFontSize: 20,
         defaultFont: font || "Cormorant Garamond",
         fontWeight: 500 as const,
       },
-      ...(cityStateZip ? [{
+      ...(cityState ? [{
         id: PREFIX + "city-state-zip",
-        text: cityStateZip,
+        text: cityState,
         defaultX: CANVAS_W / 2,
-        defaultY: 490,
+        defaultY: 448,
         defaultColor: colors.accent,
         defaultFontSize: 16,
         defaultFont: font || "Cormorant Garamond",
@@ -138,7 +137,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
         id: PREFIX + "message",
         text: message,
         defaultX: CANVAS_W / 2,
-        defaultY: 555,
+        defaultY: 520,
         defaultColor: colors.primary,
         defaultFontSize: 15,
         defaultFont: font || "Cormorant Garamond",
@@ -238,7 +237,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
             width={PHOTO_W}
             height={PHOTO_H}
             defaultX={CANVAS_W / 2}
-            defaultY={120}
+            defaultY={260}
             override={photoOverride}
             selected={selectedId === photoId}
             onSelect={setSelectedId}

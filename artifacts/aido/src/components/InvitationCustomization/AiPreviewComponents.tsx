@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from "react";
-import { Heart, Mail, MapPin, Download } from "lucide-react";
+import { Heart, MapPin, Download } from "lucide-react";
 import type { ColorPalette } from "@/types/invitations";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
@@ -89,12 +89,14 @@ function Badge({ children, accent = GOLD }: { children: ReactNode; accent?: stri
 
 // ── Shared card shell: dark bg + dots + logo + optional photo ─────────────────
 function CardShell({
+  topContent,
   children,
   photoUrl,
   photoPosition = { x: 50, y: 50 },
   onPhotoPositionChange,
   customColors,
 }: {
+  topContent?: ReactNode;
   children: ReactNode;
   photoUrl?: string | null;
   photoPosition?: PhotoPosition;
@@ -146,6 +148,15 @@ function CardShell({
       }}>
         <img src="/logo.png" alt="A.IDO" style={{ height: 48, width: "auto", objectFit: "contain", opacity: 0.85 }} />
       </div>
+
+      {topContent && (
+        <div style={{
+          backgroundImage: dotPat, backgroundSize: "22px 22px",
+          backgroundColor: bg, padding: "10px 24px 16px", textAlign: "center",
+        }}>
+          {topContent}
+        </div>
+      )}
 
       {/* Optional photo */}
       {hasPhoto && (
@@ -220,15 +231,19 @@ export function AiSaveDatePreview({
 
   const couple    = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  const cityLine  = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  const cityLine  = [profile.venueCity, profile.venueState].filter(Boolean).join(", ");
 
   return (
-    <CardShell photoUrl={photoUrl} photoPosition={photoPosition} onPhotoPositionChange={onPhotoPositionChange} customColors={customColors}>
-      <Badge accent={accent}><Mail style={{ width: 22, height: 22, color: accent }} /></Badge>
-
+    <CardShell
+      photoUrl={photoUrl}
+      photoPosition={photoPosition}
+      onPhotoPositionChange={onPhotoPositionChange}
+      customColors={customColors}
+      topContent={
+        <>
       <p style={{ fontFamily: labelFont, fontSize: 11 * sc, fontWeight: 700,
                   letterSpacing: "0.42em", textTransform: "uppercase",
-                  color: accent, marginTop: 12 }}>
+                  color: accent, margin: 0 }}>
         Save the Date
       </p>
 
@@ -236,8 +251,10 @@ export function AiSaveDatePreview({
                    fontStyle: "italic", color: accent, lineHeight: 1.2, margin: "8px 0 0" }}>
         {couple}
       </h2>
-
-      <div style={{ height: 1, background: cardBdr, margin: "14px 16px" }} />
+        </>
+      }
+    >
+      <div style={{ height: 1, background: cardBdr, margin: "0 16px 14px" }} />
 
       {dateStr && (
         <p style={{ fontFamily: labelFont, fontSize: 10 * sc, fontWeight: 600,

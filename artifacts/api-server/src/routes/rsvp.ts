@@ -466,18 +466,9 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
           </td>
         </tr>
 
-        ${aiPhotoBlock(opts.photoImgSrc, `Save the Date — ${opts.couple}`, opts.photoObjectPos, BG)}
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:16px 0 0;text-align:center;">
-            <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
-              <td width="52" height="52" align="center" valign="middle" style="background:${ACCENT}22;border:1px solid ${ACCENT}44;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:22px;color:${ACCENT};">&#9993;</td>
-            </tr></table>
-          </td>
-        </tr>
-
-        <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:12px 24px 0;text-align:center;">
+          <td bgcolor="${BG}" style="background:${BG};padding:10px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;font-weight:700;letter-spacing:4.5px;text-transform:uppercase;color:${ACCENT};">Save the Date</p>
           </td>
         </tr>
@@ -487,6 +478,8 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
             <h1 style="margin:0;font-family:${SERIF};font-size:${Math.round(34*sc)}px;font-weight:400;font-style:italic;color:${ACCENT};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
           </td>
         </tr>
+
+        ${aiPhotoBlock(opts.photoImgSrc, `Save the Date - ${opts.couple}`, opts.photoObjectPos, BG)}
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 40px 0;">
@@ -1298,7 +1291,7 @@ router.get("/preview/save-the-date/:token", async (req, res) => {
     const dateStr = profile.weddingDate
       ? (() => { const [y, m, d] = profile.weddingDate!.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }); })()
       : null;
-    const location = [profile.venue, profile.venueCity, profile.venueState].filter(Boolean).join(", ");
+    const location = [profile.venueCity, profile.venueState].filter(Boolean).join(", ");
     const title = escapeHtml(`Save the Date — ${couple}`);
     const description = escapeHtml([`${guestName}, save the date for the wedding of ${couple}`, dateStr, location].filter(Boolean).join(" · "));
     const imageUrl = escapeHtml(`${apiOrigin}/api/save-the-date/${token}/photo`);
@@ -1714,10 +1707,9 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         : "";
 
       const locationLine = [
-        profile.venue,
-        profile.location,
-        [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", "),
-      ].filter(Boolean).join(" · ");
+        profile.venueCity,
+        profile.venueState,
+      ].filter(Boolean).join(", ");
 
       const STD_EMAIL_BG = !useGenerated && customization?.saveTheDateBackground
         ? customization.saveTheDateBackground : "#ffffff";
@@ -1759,7 +1751,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       const logoBase64 = `${origin}/logo.png`;
       const stdCityStateZip = [
         profile.venueCity,
-        [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
+        profile.venueState,
       ].filter(Boolean).join(", ");
       let html: string;
       if (useGenerated) {
@@ -1810,13 +1802,12 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         });
       }
 
-      const timesLine = [ceremonyTimeStr ? `Ceremony ${ceremonyTimeStr}` : null, receptionTimeStr ? `Reception ${receptionTimeStr}` : null].filter(Boolean).join(" · ");
       const result = await sendEmail({
         to: guest.email,
         replyTo: FROM_EMAIL,
         fromName: `${couple} via A.IDO`,
         subject: `Save the Date — ${couple}'s Wedding`,
-        text: `Save the Date!\n\n${couple}\n\n${weddingDateStr ?? ""}${locationLine ? `\n${locationLine}` : ""}${timesLine ? `\n${timesLine}` : ""}\n\nFormal invitation to follow.\n\nView & Download your Save the Date:\n${frontendOrigin}/save-the-date/${token}\n\nWith love,\n${couple}`,
+        text: `Save the Date!\n\n${couple}\n\n${weddingDateStr ?? ""}${locationLine ? `\n${locationLine}` : ""}\n\nFormal invitation to follow.\n\nView & Download your Save the Date:\n${frontendOrigin}/save-the-date/${token}\n\nWith love,\n${couple}`,
         html,
       });
       emailSent = result.ok;
