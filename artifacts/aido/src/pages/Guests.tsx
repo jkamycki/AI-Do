@@ -960,7 +960,7 @@ async function downloadGuestImportTemplate() {
   sheet.addRow(GUEST_IMPORT_TEMPLATE_HEADERS);
   sheet.addRow(GUEST_IMPORT_SAMPLE_ROW);
   sheet.addRow([
-    "Required: Full Name and Street Address. Everything else is optional. Plus One and Needs Hotel can be yes or no.",
+    "Required fields: Full Name and Street Address. All other columns are optional. Plus One and Needs Hotel can be yes or no.",
   ]);
   sheet.getRow(1).font = { bold: true };
   sheet.getRow(1).fill = {
@@ -971,7 +971,7 @@ async function downloadGuestImportTemplate() {
   sheet.columns.forEach((column) => {
     column.width = 18;
   });
-  sheet.getCell("A3").font = { italic: true, color: { argb: "FF666666" } };
+  sheet.getCell("A3").font = { italic: true, bold: true, color: { argb: "FF666666" } };
   sheet.mergeCells(3, 1, 3, GUEST_IMPORT_TEMPLATE_HEADERS.length);
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -2334,10 +2334,10 @@ export default function Guests({
                 <div className="rounded-lg border border-border/70 bg-muted/20 p-4 text-sm space-y-2">
                   <p className="font-medium">Template columns</p>
                   <p className="text-muted-foreground">
-                    Required: <span className="font-medium text-foreground">Full Name</span> and{" "}
-                    <span className="font-medium text-foreground">Street Address</span>. Optional:
-                    Email, Phone, Guest Group, Plus One, Plus One Name, Needs Hotel,
-                    Apt/Unit, City, State, ZIP, and Country.
+                    Required fields: <span className="font-medium text-foreground">Full Name</span> and{" "}
+                    <span className="font-medium text-foreground">Street Address</span>. All other
+                    columns are optional: Email, Phone, Guest Group, Plus One, Plus One Name,
+                    Needs Hotel, Apt/Unit, City, State, ZIP, and Country.
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Plus One and Needs Hotel can be yes or no.
