@@ -3319,8 +3319,19 @@ export default function Guests({
                 );
               })}
             </div>
-            <div className="hidden sm:block overflow-x-auto">
-              <Table>
+            <div className="hidden sm:block">
+              <Table wrapperClassName="overflow-visible" className="w-full table-fixed text-xs lg:text-sm">
+                <colgroup>
+                  <col className="w-[20%]" />
+                  <col className="w-[17%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[8%]" />
+                  <col className="w-[11%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[7%]" />
+                  <col className="w-[9%]" />
+                </colgroup>
                 <TableHeader className="bg-muted/10">
                   <TableRow>
                     <TableHead className="text-primary">
@@ -3361,7 +3372,7 @@ export default function Guests({
                         key={g.id}
                         className={`group ${isDuplicate ? "bg-orange-50/60 dark:bg-orange-900/15 border-l-4 border-l-orange-500 dark:border-l-orange-400" : isNew ? "bg-amber-50/40 dark:bg-amber-900/10 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
                       >
-                        <TableCell className="min-w-[200px]">
+                        <TableCell className="align-top">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium">{g.name}</span>
                             {isNew && (
@@ -3387,7 +3398,7 @@ export default function Guests({
                           {g.email && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                               <Mail className="h-3 w-3 shrink-0" />
-                              <span className="truncate max-w-[180px]">
+                              <span className="truncate max-w-full">
                                 {g.email}
                               </span>
                             </div>
@@ -3442,17 +3453,17 @@ export default function Guests({
                           )}
                           {g.notes && (
                             <div
-                              className="text-xs text-muted-foreground italic truncate max-w-[180px] mt-0.5"
+                              className="text-xs text-muted-foreground italic truncate max-w-full mt-0.5"
                               title={g.notes}
                             >
                               {g.notes}
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell text-sm">
+                        <TableCell className="hidden sm:table-cell align-top text-xs lg:text-sm">
                           <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">
+                            <div className="flex flex-col xl:flex-row xl:items-center gap-1">
+                              <span className="text-[10px] lg:text-[11px] text-muted-foreground xl:w-[82px] shrink-0 leading-tight">
                                 Save the Date
                               </span>
                               <DropdownMenu>
@@ -3486,8 +3497,8 @@ export default function Guests({
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">
+                            <div className="flex flex-col xl:flex-row xl:items-center gap-1">
+                              <span className="text-[10px] lg:text-[11px] text-muted-foreground xl:w-[82px] shrink-0 leading-tight">
                                 RSVP Invitation
                               </span>
                               <DropdownMenu>
@@ -3517,7 +3528,7 @@ export default function Guests({
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="align-top">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button
@@ -3544,14 +3555,14 @@ export default function Guests({
                           </DropdownMenu>
                           {g.rsvpMessage && (
                             <p
-                              className="mt-1.5 text-xs italic text-muted-foreground whitespace-pre-wrap break-words max-w-[16rem]"
+                              className="mt-1.5 text-xs italic text-muted-foreground whitespace-pre-wrap break-words max-w-full"
                               title={g.rsvpMessage}
                             >
                               “{g.rsvpMessage}”
                             </p>
                           )}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">
+                        <TableCell className="hidden md:table-cell align-top">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border border-border/50 text-muted-foreground hover:opacity-80 transition-opacity cursor-pointer capitalize">
@@ -3598,16 +3609,16 @@ export default function Guests({
                               </div>
                             )}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        <TableCell className="hidden md:table-cell align-top text-xs lg:text-sm text-muted-foreground break-words">
                           {g.tableAssignment || "—"}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-sm">
+                        <TableCell className="hidden md:table-cell align-top text-xs lg:text-sm">
                           <Select
                             value={(g as any).bookedHotelBlockId ? String((g as any).bookedHotelBlockId) : (g as any).needsHotel ? "pending" : "na"}
                             onValueChange={(value) => handleBookedHotelChange(g, value)}
                           >
                             <SelectTrigger
-                              className={`h-7 min-w-[120px] max-w-[180px] px-2 text-xs font-medium border whitespace-nowrap [&>svg]:opacity-60 ${bookedHotelClasses(g)}`}
+                              className={`h-7 w-full px-2 text-xs font-medium border whitespace-nowrap [&>svg]:opacity-60 ${bookedHotelClasses(g)}`}
                             >
                               <SelectValue placeholder="N/A" />
                             </SelectTrigger>
@@ -3622,13 +3633,13 @@ export default function Guests({
                             </SelectContent>
                           </Select>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-sm">
+                        <TableCell className="hidden md:table-cell align-top text-xs lg:text-sm">
                           <Select
                             value={g.guestGroup ?? "none"}
                             onValueChange={(v) => handleGroupChange(g, v)}
                           >
                             <SelectTrigger
-                              className={`h-7 px-2 text-xs font-medium border whitespace-nowrap [&>svg]:opacity-60 ${groupColorClasses(g.guestGroup)}`}
+                              className={`h-7 w-full px-2 text-xs font-medium border whitespace-nowrap [&>svg]:opacity-60 ${groupColorClasses(g.guestGroup)}`}
                             >
                               <SelectValue placeholder="—" />
                             </SelectTrigger>
@@ -3653,7 +3664,7 @@ export default function Guests({
                             </SelectContent>
                           </Select>
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell text-sm">
+                        <TableCell className="hidden lg:table-cell align-top text-xs lg:text-sm break-words">
                           {g.plusOne ? (
                             <span className="font-bold text-primary">
                               ♥ {g.plusOneName || t("guests.plus_one_yes")}
@@ -3664,8 +3675,8 @@ export default function Guests({
                             </span>
                           )}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
+                        <TableCell className="align-top">
+                          <div className="flex flex-wrap items-center justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
