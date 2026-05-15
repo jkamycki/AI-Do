@@ -184,7 +184,7 @@ function groupColorClasses(group: string | null | undefined): string {
     case "Groom's Friends":
       return "bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-700";
     case "Wedding Party":
-      return "bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-900/40 dark:text-purple-200 dark:border-purple-700";
+      return "bg-lime-100 text-lime-900 border-lime-300 dark:bg-lime-900/40 dark:text-lime-200 dark:border-lime-700";
     case "Bride's Coworkers":
       return "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-700";
     case "Groom's Coworkers":
@@ -2406,7 +2406,7 @@ export default function Guests({
             <>
               <Button
                 variant="secondary"
-                className="w-full sm:w-auto justify-center whitespace-normal sm:whitespace-nowrap"
+                className="w-full sm:w-auto justify-center whitespace-normal sm:whitespace-nowrap border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:bg-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 dark:disabled:bg-slate-900/50 dark:disabled:text-slate-500"
                 disabled={
                   sendingSaveTheDates || saveTheDateEligible.length === 0
                 }
@@ -2418,13 +2418,13 @@ export default function Guests({
                   <Mail className="h-4 w-4 mr-2" />
                 )}
                 Send All Save-the-Dates
-                <Badge variant="secondary" className="ml-2">
+                <Badge variant="secondary" className="ml-2 bg-white/70 text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600">
                   {saveTheDateEligible.length}
                 </Badge>
               </Button>
               <Button
                 variant="secondary"
-                className="w-full sm:w-auto justify-center whitespace-normal sm:whitespace-nowrap"
+                className="w-full sm:w-auto justify-center whitespace-normal sm:whitespace-nowrap border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:bg-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 dark:disabled:bg-slate-900/50 dark:disabled:text-slate-500"
                 disabled={sendingInvitations || invitationEligible.length === 0}
                 onClick={() => setConfirmBulkSend("invitation")}
               >
@@ -2434,7 +2434,7 @@ export default function Guests({
                   <Send className="h-4 w-4 mr-2" />
                 )}
                 Send All RSVP Invitations
-                <Badge variant="secondary" className="ml-2">
+                <Badge variant="secondary" className="ml-2 bg-white/70 text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600">
                   {invitationEligible.length}
                 </Badge>
               </Button>
