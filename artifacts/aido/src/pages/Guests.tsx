@@ -1287,6 +1287,7 @@ export default function Guests({
   const [importSummary, setImportSummary] = useState<{
     added: number;
     skipped: string[];
+    error?: string;
   } | null>(null);
   const [editGuest, setEditGuest] = useState<Guest | null>(null);
 
@@ -2099,6 +2100,11 @@ export default function Guests({
   async function handleGuestImport(file: File | null) {
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      setImportSummary({
+        added: 0,
+        skipped: ["Save your guest list as an Excel workbook (.xlsx), then upload it again."],
+        error: "Use an Excel .xlsx file",
+      });
       toast({
         title: "Use an Excel .xlsx file",
         description: "Download the template if you want the easiest format.",
@@ -2112,7 +2118,11 @@ export default function Guests({
     try {
       const { guestsToImport, skipped } = await parseGuestImportWorkbook(file);
       if (guestsToImport.length === 0) {
-        setImportSummary({ added: 0, skipped: skipped.length ? skipped : ["No guests found to import."] });
+        setImportSummary({
+          added: 0,
+          skipped: skipped.length ? skipped : ["No guests found to import."],
+          error: "No guests were imported",
+        });
         return;
       }
 
@@ -2155,15 +2165,25 @@ export default function Guests({
       }
 
       invalidate();
-      setImportSummary({ added, skipped: importSkipped });
+      setImportSummary({
+        added,
+        skipped: importSkipped,
+        error: importSkipped.length ? "Some rows could not be imported" : undefined,
+      });
       toast({
         title: "Guest import complete",
         description: `${added} guest${added === 1 ? "" : "s"} added${importSkipped.length ? `, ${importSkipped.length} skipped` : ""}.`,
       });
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Please check the file and try again.";
+      setImportSummary({
+        added: 0,
+        skipped: [message],
+        error: "Could not import guest list",
+      });
       toast({
         title: "Could not import guest list",
-        description: err instanceof Error ? err.message : undefined,
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -2384,8 +2404,23 @@ export default function Guests({
                   </label>
                 </div>
                 {importSummary && (
-                  <div className="rounded-lg border border-border/70 p-4 text-sm">
-                    <p className="font-medium">
+                  <div
+                    className={`rounded-lg border p-4 text-sm ${
+                      importSummary.error
+                        ? "border-red-300 bg-red-50/80 dark:border-red-800/60 dark:bg-red-950/20"
+                        : "border-emerald-300 bg-emerald-50/80 dark:border-emerald-800/60 dark:bg-emerald-950/20"
+                    }`}
+                  >
+                    <p
+                      className={`font-semibold ${
+                        importSummary.error
+                          ? "text-red-700 dark:text-red-300"
+                          : "text-emerald-700 dark:text-emerald-300"
+                      }`}
+                    >
+                      {importSummary.error ?? "Guest list imported successfully"}
+                    </p>
+                    <p className="mt-1 font-medium text-foreground">
                       {importSummary.added} guest{importSummary.added === 1 ? "" : "s"} added
                     </p>
                     {importSummary.skipped.length > 0 && (
