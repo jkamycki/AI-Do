@@ -1849,20 +1849,11 @@ export default function InvitationCustomizationPage({
                 </div>
 
                 <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
-                  {hotelBlocks.length === 0 ? (
-                    <div>
-                      <p className="text-sm font-medium">Hotel RSVP question</p>
-                      <p className="text-xs text-muted-foreground">
-                        Add a hotel block in the Hotels tab before asking guests if they need a hotel.
-                      </p>
-                    </div>
-                  ) : (
-                    <>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium">Ask about hotel needs</p>
                       <p className="text-xs text-muted-foreground">
-                        Adds a hotel question to the RSVP form. If guests choose yes, their guest-list hotel status updates automatically.
+                        Adds a hotel question to the RSVP form when at least one hotel block exists. If guests choose yes, their guest-list hotel status updates automatically.
                       </p>
                     </div>
                     <Switch
@@ -1871,7 +1862,7 @@ export default function InvitationCustomizationPage({
                       aria-label="Ask guests if they need a hotel while RSVPing"
                     />
                   </div>
-                  {rsvpAskHotel && (
+                  {rsvpAskHotel && hotelBlocks.length > 0 && (
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-muted-foreground">
                         Hotel booking link shown to guests
@@ -1894,7 +1885,10 @@ export default function InvitationCustomizationPage({
                       </p>
                     </div>
                   )}
-                    </>
+                  {rsvpAskHotel && hotelBlocks.length === 0 && (
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      This is turned on, but guests will not see the hotel question until you add a hotel block in the Hotels tab.
+                    </p>
                   )}
                 </div>
               </CardContent>

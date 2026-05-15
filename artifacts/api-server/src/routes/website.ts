@@ -2,7 +2,7 @@ import { Router } from "express";
 import { scrypt, randomBytes, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import rateLimit from "express-rate-limit";
-import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty, hotelBlocks } from "@workspace/db";
+import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty, hotelBlocks, invitationCustomizations } from "@workspace/db";
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteHeroImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
 import { and, eq, ilike, desc, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -153,6 +153,20 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
     .where(eq(hotelBlocks.profileId, profile.id))
     .orderBy(hotelBlocks.createdAt);
 
+  const [invitationCustomization] = await db
+    .select({ customColors: invitationCustomizations.customColors })
+    .from(invitationCustomizations)
+    .where(eq(invitationCustomizations.profileId, profile.id))
+    .limit(1);
+  const invitationColors = (invitationCustomization?.customColors ?? {}) as Record<string, unknown>;
+  const customText = { ...(row.customText as Record<string, string>) };
+  if (customText._rsvpAskHotel === undefined && invitationColors.rsvpAskHotel === true) {
+    customText._rsvpAskHotel = "true";
+  }
+  if (customText._rsvpHotelBlockId === undefined && invitationColors.rsvpHotelBlockId !== undefined && invitationColors.rsvpHotelBlockId !== null) {
+    customText._rsvpHotelBlockId = String(invitationColors.rsvpHotelBlockId);
+  }
+
   return {
     slug: row.slug,
     theme: row.theme,
@@ -161,7 +175,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
     accentColor: row.accentColor,
     colorPalette: row.colorPalette,
     sectionsEnabled: row.sectionsEnabled,
-    customText: row.customText,
+    customText,
     textStyles: row.textStyles ?? {},
     textPositions: row.textPositions ?? {},
     galleryImages: row.galleryImages,

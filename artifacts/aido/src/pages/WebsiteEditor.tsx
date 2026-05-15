@@ -2249,20 +2249,11 @@ export default function WebsiteEditor() {
                 />
               </div>
               <div className="rounded-md border bg-muted/30 p-3 space-y-3">
-                {hotelBlocks.length === 0 ? (
-                  <div>
-                    <p className="text-sm font-medium">Hotel RSVP question</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Add a hotel block in the Hotels tab before showing a hotel question on the website RSVP.
-                    </p>
-                  </div>
-                ) : (
-                  <>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium">Ask if guests need a hotel</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Shows on the website RSVP form and updates the guest-list hotel dropdown.
+                          Shows on the website RSVP form when at least one hotel block exists and updates the guest-list hotel dropdown.
                         </p>
                       </div>
                       <Switch
@@ -2278,7 +2269,7 @@ export default function WebsiteEditor() {
                         aria-label="Ask website RSVP guests if they need a hotel"
                       />
                     </div>
-                    {record.customText._rsvpAskHotel === "true" && (
+                    {record.customText._rsvpAskHotel === "true" && hotelBlocks.length > 0 && (
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground block">
                           Hotel booking link shown to guests
@@ -2308,8 +2299,11 @@ export default function WebsiteEditor() {
                         </Select>
                       </div>
                     )}
-                  </>
-                )}
+                    {record.customText._rsvpAskHotel === "true" && hotelBlocks.length === 0 && (
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        This is turned on, but guests will not see the hotel question until you add a hotel block in the Hotels tab.
+                      </p>
+                    )}
               </div>
             </div>
           </Section>

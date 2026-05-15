@@ -1382,7 +1382,7 @@ router.get("/rsvp/:token", async (req, res) => {
     const customizationPhoto = c?.digitalInvitationPhotoUrl ?? null;
     const rsvpAskHotelSetting = !!c?.customColors?.rsvpAskHotel;
     const preferredHotelBlockId = c?.customColors?.rsvpHotelBlockId ?? null;
-    const hotelRows = rsvpAskHotelSetting && profile
+    const hotelRows = profile
       ? await db
           .select({
             id: hotelBlocks.id,
