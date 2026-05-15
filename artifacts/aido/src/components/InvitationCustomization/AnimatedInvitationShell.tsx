@@ -115,7 +115,7 @@ export function AnimatedInvitationShell({
           z-index: 3;
           width: 100%;
           transform-origin: 50% 58%;
-          animation: aidoInviteCardIn 1260ms cubic-bezier(.2,.84,.18,1) 980ms both;
+          animation: aidoInviteCardIn 1260ms cubic-bezier(.2,.84,.18,1) 1080ms both;
         }
         .aido-envelope-layer {
           position: absolute;
@@ -205,7 +205,7 @@ export function AnimatedInvitationShell({
           bottom: 0;
           height: 58%;
           filter: drop-shadow(0 -10px 18px rgba(0,0,0,.12));
-          animation: aidoPocketRelease 980ms cubic-bezier(.28,.76,.18,1) 1180ms forwards;
+          animation: aidoPocketRelease 980ms cubic-bezier(.28,.76,.18,1) 1320ms forwards;
         }
         .aido-envelope-pocket-face::before {
           content: "";
@@ -309,17 +309,23 @@ export function AnimatedInvitationShell({
           animation-name: aidoPhotoPeel;
           animation-delay: 420ms;
         }
+        .aido-invite-anim-animated-photo-peel .aido-invite-anim-card {
+          animation-delay: 1320ms;
+        }
         .aido-invite-anim-animated-photo-peel .aido-envelope-bottom {
           animation-delay: 1120ms;
         }
         .aido-invite-anim-animated-photo-peel .aido-envelope-pocket-face {
-          animation-delay: 1260ms;
+          animation-delay: 1520ms;
         }
         .aido-invite-anim-animated-photo-peel .aido-envelope-side.right {
           animation-delay: 980ms;
         }
         .aido-invite-anim-animated-seal-reveal .aido-wax-seal {
           animation-delay: 240ms;
+        }
+        .aido-invite-anim-animated-seal-reveal .aido-invite-anim-card {
+          animation-delay: 1580ms;
         }
         .aido-invite-anim-animated-seal-reveal .aido-envelope-side.left,
         .aido-invite-anim-animated-seal-reveal .aido-envelope-side.right,
@@ -328,7 +334,7 @@ export function AnimatedInvitationShell({
           animation-delay: 1020ms;
         }
         .aido-invite-anim-animated-seal-reveal .aido-envelope-pocket-face {
-          animation-delay: 1480ms;
+          animation-delay: 1760ms;
         }
         .aido-invite-anim-animated-owl-delivery {
           background:

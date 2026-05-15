@@ -771,7 +771,6 @@ export function InvitationSendModal({
                       <AnimatedInvitationShell
                         layout={customization.saveTheDateLayout}
                         accent={stdAccent}
-                        compact
                       >
                       <AiSaveDatePreview
                         profile={profile}
@@ -802,12 +801,11 @@ export function InvitationSendModal({
                   <p className="text-xs text-muted-foreground text-center">
                     The guest link opens with this custom animation
                   </p>
-                  <div className="flex justify-center overflow-hidden">
+                  <div className="flex justify-center">
                     {profile && (
                       <AnimatedInvitationShell
                         layout={customization.digitalInvitationLayout}
                         accent={digAccent}
-                        compact
                       >
                       <AiDigitalInvitationPreview
                         profile={{
