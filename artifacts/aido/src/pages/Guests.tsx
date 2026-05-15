@@ -1300,12 +1300,6 @@ export default function Guests() {
     useState<GuestFormValues | null>(null);
 
   const [sendModalGuest, setSendModalGuest] = useState<Guest | null>(null);
-  const [linkDialog, setLinkDialog] = useState<{
-    url: string;
-    previewUrl: string;
-    type: "saveTheDate" | "rsvp";
-    guestName: string;
-  } | null>(null);
   const [textDialog, setTextDialog] = useState<{
     type: "saveTheDate" | "rsvp";
     guestName: string;
@@ -1372,14 +1366,6 @@ export default function Guests() {
       optimisticUpdate(guestId, { saveTheDateStatus: "sent" } as any);
       invalidate();
       setSendModalGuest(null);
-      if (data?.saveTheDateUrl) {
-        setLinkDialog({
-          url: data.saveTheDateUrl,
-          previewUrl: data.previewUrl ?? data.saveTheDateUrl,
-          type: "saveTheDate",
-          guestName,
-        });
-      }
       if (data?.emailSent) {
         toast({
           title: "Save the Date sent!",
@@ -1421,21 +1407,8 @@ export default function Guests() {
       previewUrl?: string;
       emailSent: boolean;
     }) => {
-      const guestName = sendModalGuest
-        ? [sendModalGuest.firstName, sendModalGuest.lastName]
-            .filter(Boolean)
-            .join(" ") || "Guest"
-        : "Guest";
       invalidate();
       setSendModalGuest(null);
-      if (data?.rsvpUrl) {
-        setLinkDialog({
-          url: data.rsvpUrl,
-          previewUrl: data.previewUrl ?? data.rsvpUrl,
-          type: "rsvp",
-          guestName,
-        });
-      }
       if (data?.emailSent) {
         toast({
           title: "Reminder sent",
@@ -1444,7 +1417,7 @@ export default function Guests() {
       } else {
         toast({
           title: "No email on file",
-          description: "Copy the link below to send manually.",
+          description: "Use the guest row's text-message button to share the RSVP link.",
         });
       }
     },
@@ -1481,14 +1454,6 @@ export default function Guests() {
       optimisticUpdate(guestId, { invitationStatus: "sent" });
       invalidate();
       setSendModalGuest(null);
-      if (data.rsvpUrl) {
-        setLinkDialog({
-          url: data.rsvpUrl,
-          previewUrl: (data as any).previewUrl ?? data.rsvpUrl,
-          type: "rsvp",
-          guestName,
-        });
-      }
       if (data.emailSent) {
         toast({
           title: "RSVP Invitation sent!",
@@ -3547,54 +3512,6 @@ export default function Guests() {
               submitLabel="Save Changes"
             />
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Copy-link dialog — shown after sending a save-the-date or RSVP */}
-      <Dialog
-        open={!!linkDialog}
-        onOpenChange={(open) => {
-          if (!open) setLinkDialog(null);
-        }}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-base">
-              {linkDialog?.type === "saveTheDate"
-                ? "Save the Date link"
-                : "RSVP link"}{" "}
-              for {linkDialog?.guestName}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Copy this link and send it directly to your guest. They can open
-              it to view and respond to the invitation.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex gap-2">
-            <Input
-              readOnly
-              value={linkDialog?.url ?? ""}
-              className="text-xs font-mono"
-              onFocus={(e) => e.currentTarget.select()}
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              className="shrink-0 gap-1.5"
-              onClick={() => {
-                if (!linkDialog) return;
-                const shareUrl = linkDialog.url;
-                navigator.clipboard.writeText(shareUrl).then(() => {
-                  toast({
-                    title: "Link copied!",
-                    description: "Send this link directly to your guest.",
-                  });
-                });
-              }}
-            >
-              <Copy className="h-4 w-4" /> Copy
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
 
