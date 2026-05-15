@@ -3216,25 +3216,65 @@ export default function Guests({
                               <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">
                                 Save the Date
                               </span>
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${(g as any).saveTheDateStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}
-                              >
-                                {(g as any).saveTheDateStatus === "sent"
-                                  ? "Sent"
-                                  : "Not Sent"}
-                              </span>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border hover:opacity-80 transition-opacity cursor-pointer ${(g as any).saveTheDateStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}
+                                  >
+                                    {(g as any).saveTheDateStatus === "sent"
+                                      ? "Sent"
+                                      : "Not Sent"}
+                                    <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-32">
+                                  {[
+                                    { value: "not_sent", label: "Not Sent" },
+                                    { value: "sent", label: "Sent" },
+                                  ].map((opt) => {
+                                    const current = (g as any).saveTheDateStatus ?? "not_sent";
+                                    return (
+                                      <DropdownMenuItem
+                                        key={opt.value}
+                                        className={`text-xs font-medium cursor-pointer ${current === opt.value ? "opacity-50 pointer-events-none" : ""}`}
+                                        onClick={() => handleSaveDateChange(g, opt.value)}
+                                      >
+                                        <span className={`w-2 h-2 rounded-full mr-2 ${opt.value === "sent" ? "bg-emerald-500" : "bg-gray-400"}`} />
+                                        {opt.label}
+                                      </DropdownMenuItem>
+                                    );
+                                  })}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">
                                 RSVP Invitation
                               </span>
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${g.invitationStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}
-                              >
-                                {g.invitationStatus === "sent"
-                                  ? "Sent"
-                                  : "Not Sent"}
-                              </span>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border hover:opacity-80 transition-opacity cursor-pointer ${g.invitationStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}
+                                  >
+                                    {g.invitationStatus === "sent"
+                                      ? "Sent"
+                                      : "Not Sent"}
+                                    <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-32">
+                                  {INVITATION_OPTIONS.map((opt) => (
+                                    <DropdownMenuItem
+                                      key={opt.value}
+                                      className={`text-xs font-medium cursor-pointer ${g.invitationStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
+                                      onClick={() => handleInvitationChange(g, opt.value)}
+                                    >
+                                      <span className={`w-2 h-2 rounded-full mr-2 ${opt.value === "sent" ? "bg-emerald-500" : "bg-gray-400"}`} />
+                                      {opt.label}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </div>
                         </TableCell>
