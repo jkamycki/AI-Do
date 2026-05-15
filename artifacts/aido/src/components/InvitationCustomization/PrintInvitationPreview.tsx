@@ -33,47 +33,28 @@ function locationLines(design: InvitationDesignDocument): string[] {
   ].filter(Boolean);
 }
 
-function fallbackQrPattern(seed: string): boolean[] {
-  const cells: boolean[] = [];
-  let hash = 2166136261;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash ^= seed.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  for (let i = 0; i < 49; i += 1) {
-    hash ^= hash << 13;
-    hash ^= hash >>> 17;
-    hash ^= hash << 5;
-    cells.push((hash & 1) === 1);
-  }
-  return cells;
+function qrImageUrl(url: string, size = 420) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=12&data=${encodeURIComponent(url)}`;
 }
 
-function QrFallback({ url, accent }: { url: string; accent: string }) {
-  const cells = fallbackQrPattern(url || "aido-rsvp");
+function RealQrCode({ url, accent }: { url: string; accent: string }) {
   return (
     <div
-      aria-label="RSVP code placeholder"
+      aria-label="RSVP QR code"
       style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(7, 1fr)",
-        gap: 3,
-        width: 112,
-        height: 112,
-        padding: 10,
+        width: 126,
+        height: 126,
+        padding: 8,
         background: "#fff",
         border: `1px solid ${accent}55`,
       }}
     >
-      {cells.map((filled, index) => (
-        <span
-          key={index}
-          style={{
-            background: filled || index < 3 || index > 45 ? "#111827" : "transparent",
-            borderRadius: 1,
-          }}
-        />
-      ))}
+      <img
+        src={qrImageUrl(url)}
+        alt="Scan to RSVP"
+        crossOrigin="anonymous"
+        style={{ display: "block", width: "100%", height: "100%" }}
+      />
     </div>
   );
 }
@@ -98,7 +79,7 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
     const text = design.style.textColor || "#1f2933";
     const font = `'${design.style.fontFamily || "Playfair Display"}', Georgia, serif`;
     const sans = "'Plus Jakarta Sans', Arial, sans-serif";
-    const qrUrl = websiteUrl || "Publish your wedding website to create the RSVP link.";
+    const qrUrl = websiteUrl || "";
 
     return (
       <div
@@ -182,9 +163,25 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
             <h2 style={{ margin: "14px 0 0", fontFamily: font, fontSize: 38, lineHeight: 1.12, fontStyle: "italic", fontWeight: 400 }}>
               We hope to celebrate with you
             </h2>
-            {includeQr && (
+            {includeQr && websiteUrl && (
               <div style={{ marginTop: 28 }}>
-                <QrFallback url={qrUrl} accent={accent} />
+                <RealQrCode url={websiteUrl} accent={accent} />
+              </div>
+            )}
+            {includeQr && !websiteUrl && (
+              <div
+                style={{
+                  marginTop: 28,
+                  padding: "16px 18px",
+                  maxWidth: 250,
+                  border: `1px dashed ${accent}66`,
+                  fontFamily: sans,
+                  fontSize: 11,
+                  lineHeight: 1.5,
+                  color: text,
+                }}
+              >
+                Publish your wedding website to automatically add a scannable RSVP QR code.
               </div>
             )}
             <p style={{ margin: "24px auto 0", maxWidth: 330, fontFamily: sans, fontSize: 12, lineHeight: 1.6 }}>
