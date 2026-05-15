@@ -1392,6 +1392,110 @@ function timelineEventTime(event: Record<string, unknown>): string {
   return String(event.time ?? event.startTime ?? "").toLowerCase();
 }
 
+async function getAriaBudgetSnapshot(profile: typeof weddingProfiles.$inferSelect) {
+  const totalBudget = Number(profile.totalBudget ?? 0);
+  const vendorRows = await db
+    .select({
+      id: vendors.id,
+      name: vendors.name,
+      category: vendors.category,
+      totalCost: vendors.totalCost,
+      depositAmount: vendors.depositAmount,
+      nextPaymentDue: vendors.nextPaymentDue,
+    })
+    .from(vendors)
+    .where(eq(vendors.profileId, profile.id));
+
+  const vendorIds = vendorRows.map(v => v.id);
+  const paidByVendor: Record<number, number> = {};
+  const vendorsWithDepositMilestone = new Set<number>();
+  let unpaidPaymentCount = 0;
+  let nextPaymentDue: string | null = null;
+
+  if (vendorIds.length > 0) {
+    const payments = await db
+      .select({
+        vendorId: vendorPayments.vendorId,
+        label: vendorPayments.label,
+        amount: vendorPayments.amount,
+        dueDate: vendorPayments.dueDate,
+        isPaid: vendorPayments.isPaid,
+      })
+      .from(vendorPayments)
+      .where(inArray(vendorPayments.vendorId, vendorIds))
+      .orderBy(asc(vendorPayments.dueDate));
+
+    for (const p of payments) {
+      if (p.label.toLowerCase() === "deposit") vendorsWithDepositMilestone.add(p.vendorId);
+      if (p.isPaid) {
+        paidByVendor[p.vendorId] = (paidByVendor[p.vendorId] ?? 0) + Number(p.amount);
+      } else {
+        unpaidPaymentCount++;
+        if (p.dueDate && (!nextPaymentDue || p.dueDate < nextPaymentDue)) nextPaymentDue = p.dueDate;
+      }
+    }
+  }
+
+  const vendorItems = vendorRows.map(v => {
+    const cost = Number(v.totalCost ?? 0);
+    const deposit = Number(v.depositAmount ?? 0);
+    const amountPaid = (vendorsWithDepositMilestone.has(v.id) ? 0 : deposit) + (paidByVendor[v.id] ?? 0);
+    return {
+      type: "vendor" as const,
+      id: v.id,
+      name: v.name,
+      category: v.category ?? "Vendor",
+      cost,
+      amountPaid,
+      remainingDue: Math.max(0, cost - amountPaid),
+      nextPaymentDue: v.nextPaymentDue ? String(v.nextPaymentDue).slice(0, 10) : null,
+    };
+  });
+
+  const manualRows = await db
+    .select({
+      id: manualExpenses.id,
+      name: manualExpenses.name,
+      category: manualExpenses.category,
+      cost: manualExpenses.cost,
+      amountPaid: manualExpenses.amountPaid,
+      nextPaymentDue: manualExpenses.nextPaymentDue,
+    })
+    .from(manualExpenses)
+    .where(eq(manualExpenses.profileId, profile.id));
+
+  const manualItems = manualRows.map(m => {
+    const cost = Number(m.cost ?? 0);
+    const amountPaid = Number(m.amountPaid ?? 0);
+    return {
+      type: "manual" as const,
+      id: m.id,
+      name: m.name,
+      category: m.category ?? "Other",
+      cost,
+      amountPaid,
+      remainingDue: Math.max(0, cost - amountPaid),
+      nextPaymentDue: m.nextPaymentDue ?? null,
+    };
+  });
+
+  const committed = vendorItems.reduce((sum, item) => sum + item.cost, 0) + manualItems.reduce((sum, item) => sum + item.cost, 0);
+  const paid = vendorItems.reduce((sum, item) => sum + item.amountPaid, 0) + manualItems.reduce((sum, item) => sum + item.amountPaid, 0);
+
+  return {
+    totalBudget,
+    committed,
+    paid,
+    remaining: totalBudget - committed,
+    stillOwed: Math.max(0, committed - paid),
+    overBudget: totalBudget > 0 && committed > totalBudget,
+    vendorItems,
+    manualItems,
+    unpaidPaymentCount,
+    nextPaymentDue,
+  };
+}
+
 async function executeTool(name: string, args: Record<string, unknown>, req: Request, ctx?: { recentUserText?: string }): Promise<ActionResult> {
   // Lower-cased blob of the user's most recent messages so individual tools
   // can verify the user actually mentioned the things the model is trying
@@ -2123,8 +2227,24 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
     if (name === "list_budget") {
       const profile = await resolveProfile(req);
       if (!profile) return { ok: false, error: "No wedding profile yet." };
+      const snapshot = await getAriaBudgetSnapshot(profile);
       const [budget] = await db.select().from(budgets).where(eq(budgets.profileId, profile.id)).limit(1);
-      if (!budget) return { ok: true, data: { items: [] } };
+      if (!budget) {
+        return {
+          ok: true,
+          data: {
+            totalBudget: snapshot.totalBudget,
+            committed: snapshot.committed,
+            totalPaid: snapshot.paid,
+            remaining: snapshot.remaining,
+            stillOwed: snapshot.stillOwed,
+            overBudget: snapshot.overBudget,
+            vendorExpenses: snapshot.vendorItems,
+            manualExpenses: snapshot.manualItems,
+            items: [],
+          },
+        };
+      }
       const rows = await db.select({ id: budgetItems.id, category: budgetItems.category, vendor: budgetItems.vendor, estimatedCost: budgetItems.estimatedCost, actualCost: budgetItems.actualCost, amountPaid: budgetItems.amountPaid, isPaid: budgetItems.isPaid, notes: budgetItems.notes })
         .from(budgetItems).where(eq(budgetItems.budgetId, budget.id));
       const items = rows.map(r => {
@@ -2141,11 +2261,24 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
           remainingDue: Math.max(0, committedCost - amountPaid),
         };
       });
-      const totalBudget = Number(budget.totalBudget);
-      const committed = items.reduce((sum, item) => sum + (item.actualCost > 0 ? item.actualCost : item.estimatedCost), 0);
-      const totalPaid = items.reduce((sum, item) => sum + item.amountPaid, 0);
+      const committed = snapshot.committed;
+      const totalPaid = snapshot.paid;
       const overages = items.filter((item) => item.overage > 0);
-      return { ok: true, data: { totalBudget, committed, totalPaid, remaining: totalBudget - committed, overBudget: committed > totalBudget, overages, items } };
+      return {
+        ok: true,
+        data: {
+          totalBudget: snapshot.totalBudget,
+          committed,
+          totalPaid,
+          remaining: snapshot.remaining,
+          stillOwed: snapshot.stillOwed,
+          overBudget: snapshot.overBudget,
+          overages,
+          vendorExpenses: snapshot.vendorItems,
+          manualExpenses: snapshot.manualItems,
+          items,
+        },
+      };
     }
 
     // ===== EXPENSES =====
@@ -2236,6 +2369,15 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
       updates.updatedAt = new Date();
       const [updated] = await db.update(weddingProfiles).set(updates).where(eq(weddingProfiles.id, existing.id)).returning();
+      if (args.totalBudget !== undefined && args.totalBudget !== null) {
+        await db
+          .insert(budgets)
+          .values({ profileId: existing.id, totalBudget: String(args.totalBudget) })
+          .onConflictDoUpdate({
+            target: budgets.profileId,
+            set: { totalBudget: String(args.totalBudget), updatedAt: new Date() },
+          });
+      }
       logActivity(existing.id, req.userId!, `Aria updated wedding profile (${Object.keys(updates).filter(k=>k!=="updatedAt").join(", ")})`, "profile", { fields: Object.keys(updates) });
       return { ok: true, data: { updated: Object.keys(updates).filter(k => k !== "updatedAt") } };
     }
@@ -2409,15 +2551,7 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       }
 
       // Budget
-      let budgetEstimated = 0;
-      let budgetPaid = 0;
-      if (profile) {
-        const [budget] = await db.select({ id: budgets.id }).from(budgets).where(eq(budgets.profileId, profile.id)).limit(1);
-        if (budget) {
-          const items = await db.select({ estimatedCost: budgetItems.estimatedCost, amountPaid: budgetItems.amountPaid }).from(budgetItems).where(eq(budgetItems.budgetId, budget.id));
-          for (const it of items) { budgetEstimated += Number(it.estimatedCost); budgetPaid += Number(it.amountPaid); }
-        }
-      }
+      const budgetSnapshot = profile ? await getAriaBudgetSnapshot(profile) : null;
 
       // Checklist
       const allChecklist = profile
@@ -2434,7 +2568,18 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         } : null,
         guests: guestCounts,
         vendors: { count: allVendors.length, upcomingUnpaidPayments: upcomingPayments, nextPaymentDue: nextDue },
-        budget: { estimated: budgetEstimated, paid: budgetPaid, remaining: budgetEstimated - budgetPaid },
+        budget: budgetSnapshot ? {
+          totalBudget: budgetSnapshot.totalBudget,
+          committed: budgetSnapshot.committed,
+          paid: budgetSnapshot.paid,
+          remaining: budgetSnapshot.remaining,
+          stillOwed: budgetSnapshot.stillOwed,
+          overBudget: budgetSnapshot.overBudget,
+          vendorCommitted: budgetSnapshot.vendorItems.reduce((sum, item) => sum + item.cost, 0),
+          manualCommitted: budgetSnapshot.manualItems.reduce((sum, item) => sum + item.cost, 0),
+          vendorCount: budgetSnapshot.vendorItems.length,
+          manualExpenseCount: budgetSnapshot.manualItems.length,
+        } : { totalBudget: 0, committed: 0, paid: 0, remaining: 0, stillOwed: 0, overBudget: false, vendorCommitted: 0, manualCommitted: 0, vendorCount: 0, manualExpenseCount: 0 },
         checklist: { total: checklistTotal, completed: checklistDone, remaining: checklistTotal - checklistDone },
       } };
     }

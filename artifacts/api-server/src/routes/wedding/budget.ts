@@ -87,8 +87,11 @@ router.get("/budget", requireAuth, async (req, res) => {
       res.json(result);
       return;
     }
-    // If existing budget has no total set, sync from profile
-    if (parseFloat(rows[0].totalBudget as string) === 0 && profile.totalBudget && parseFloat(String(profile.totalBudget)) > 0) {
+    // Keep the Budget page total in sync with Wedding Profile. The profile is
+    // the source shown during setup/settings, so edits there should flow here.
+    const profileTotalBudget = Number(profile.totalBudget ?? 0);
+    const savedTotalBudget = Number(rows[0].totalBudget ?? 0);
+    if (Number.isFinite(profileTotalBudget) && profileTotalBudget >= 0 && savedTotalBudget !== profileTotalBudget) {
       await db
         .update(budgets)
         .set({ totalBudget: String(profile.totalBudget), updatedAt: new Date() })
@@ -112,7 +115,11 @@ router.post("/budget", requireAuth, async (req, res) => {
     const { totalBudget } = req.body;
 
     const profile = await resolveProfile(req);
-    const profileId = profile?.id ?? 0;
+    if (!profile) {
+      res.status(404).json({ error: "No wedding profile found" });
+      return;
+    }
+    const profileId = profile.id;
 
     const existing = await db
       .select()
@@ -125,6 +132,12 @@ router.post("/budget", requireAuth, async (req, res) => {
         .update(budgets)
         .set({ totalBudget: String(totalBudget), updatedAt: new Date() })
         .where(eq(budgets.id, existing[0].id));
+      if (profile?.id) {
+        await db
+          .update(weddingProfiles)
+          .set({ totalBudget: String(totalBudget), updatedAt: new Date() })
+          .where(eq(weddingProfiles.id, profile.id));
+      }
       const result = await getBudgetWithItems(existing[0].id, profile?.userId);
       trackEvent(req.userId!, "budget_updated", { action: "update_total" });
       res.json(result);
@@ -133,6 +146,12 @@ router.post("/budget", requireAuth, async (req, res) => {
         .insert(budgets)
         .values({ profileId, totalBudget: String(totalBudget) })
         .returning();
+      if (profile?.id) {
+        await db
+          .update(weddingProfiles)
+          .set({ totalBudget: String(totalBudget), updatedAt: new Date() })
+          .where(eq(weddingProfiles.id, profile.id));
+      }
       const result = await getBudgetWithItems(created.id, profile?.userId);
       trackEvent(req.userId!, "budget_updated", { action: "create" });
       res.json(result);

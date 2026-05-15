@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { weddingProfiles } from "@workspace/db";
+import { weddingProfiles, budgets } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
@@ -95,6 +95,13 @@ router.post("/profile", requireAuth, async (req, res) => {
         })
         .where(eq(weddingProfiles.id, existingProfile.id))
         .returning();
+      await db
+        .insert(budgets)
+        .values({ profileId: existingProfile.id, totalBudget: String(totalBudget) })
+        .onConflictDoUpdate({
+          target: budgets.profileId,
+          set: { totalBudget: String(totalBudget), updatedAt: new Date() },
+        });
       trackEvent(req.userId!, "onboarding_completed", { updated: true });
       return res.json({
         ...updated,
@@ -115,6 +122,13 @@ router.post("/profile", requireAuth, async (req, res) => {
           preferredLanguage: preferredLanguage ?? "English",
         })
         .returning();
+      await db
+        .insert(budgets)
+        .values({ profileId: created.id, totalBudget: String(totalBudget) })
+        .onConflictDoUpdate({
+          target: budgets.profileId,
+          set: { totalBudget: String(totalBudget), updatedAt: new Date() },
+        });
       trackEvent(req.userId!, "user_signup");
       trackEvent(req.userId!, "onboarding_completed", { firstTime: true });
       res.json({

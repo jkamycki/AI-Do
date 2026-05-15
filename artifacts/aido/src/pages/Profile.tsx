@@ -3,7 +3,7 @@ import { authFetch } from "@/lib/authFetch";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useGetProfile, useSaveProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
+import { useGetProfile, useSaveProfile, getGetProfileQueryKey, getGetBudgetQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@clerk/react";
@@ -141,6 +141,8 @@ export default function Profile() {
           description: t("profile.saved_toast_desc"),
         });
         queryClient.invalidateQueries({ queryKey: getGetProfileQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       },
       onError: () => {
         toast({
