@@ -3,7 +3,8 @@ import type { CSSProperties, ReactNode } from "react";
 export type InvitationAnimationLayout =
   | "classic"
   | "animated-envelope"
-  | "animated-owl-delivery";
+  | "animated-owl-delivery"
+  | "animated-full-photo-save-date";
 
 export const INVITATION_ANIMATION_TEMPLATES: Array<{
   id: InvitationAnimationLayout;
@@ -25,10 +26,15 @@ export const INVITATION_ANIMATION_TEMPLATES: Array<{
     name: "Owl Delivery",
     description: "A night-flight delivery drops the envelope before it opens.",
   },
+  {
+    id: "animated-full-photo-save-date",
+    name: "Full Photo Save Date",
+    description: "Envelope opens into a full-screen photo Save the Date.",
+  },
 ];
 
 function isAnimatedLayout(layout?: string | null): layout is InvitationAnimationLayout {
-  return layout === "animated-envelope" || layout === "animated-owl-delivery";
+  return layout === "animated-envelope" || layout === "animated-owl-delivery" || layout === "animated-full-photo-save-date";
 }
 
 function normalizeAnimationLayout(layout?: string | null): InvitationAnimationLayout | null {

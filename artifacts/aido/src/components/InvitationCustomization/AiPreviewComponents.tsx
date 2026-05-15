@@ -76,6 +76,10 @@ function dragDeltaToPercent(e: React.PointerEvent<HTMLElement>, dx: number, dy: 
   };
 }
 
+function firstName(value?: string | null) {
+  return String(value || "").trim().split(/\s+/)[0] || "";
+}
+
 export interface CustomColors {
   bg: string;
   accent: string;
@@ -228,6 +232,7 @@ export function AiSaveDatePreview({
   photoPosition,
   onPhotoPositionChange,
   customColors,
+  fullPhoto = false,
 }: {
   profile: WeddingInfo;
   palette: ColorPalette;
@@ -235,7 +240,20 @@ export function AiSaveDatePreview({
   photoPosition?: PhotoPosition;
   onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
+  fullPhoto?: boolean;
 }) {
+  if (fullPhoto) {
+    return (
+      <FullPhotoSaveDatePreview
+        profile={profile}
+        photoUrl={photoUrl}
+        photoPosition={photoPosition}
+        onPhotoPositionChange={onPhotoPositionChange}
+        customColors={customColors}
+      />
+    );
+  }
+
   const accent      = customColors?.accent  ?? GOLD;
   const text        = customColors?.text    ?? WHITE;
   const muted       = customColors?.muted   ?? MUTED;
@@ -314,6 +332,155 @@ export function AiSaveDatePreview({
         </div>
       </div>
     </CardShell>
+  );
+}
+
+function FullPhotoSaveDatePreview({
+  profile,
+  photoUrl,
+  photoPosition = { x: 50, y: 50 },
+  onPhotoPositionChange,
+  customColors,
+}: {
+  profile: WeddingInfo;
+  photoUrl?: string | null;
+  photoPosition?: PhotoPosition;
+  onPhotoPositionChange?: (pos: PhotoPosition) => void;
+  customColors?: CustomColors;
+}) {
+  const displayFont = customColors?.font
+    ? `'${customColors.font}', ${cormorant}`
+    : cormorant;
+  const labelFont = customColors ? displayFont : jakarta;
+  const parsedBaseFs = customColors?.fontSize ? parseFloat(customColors.fontSize) : 16;
+  const baseFs = Number.isFinite(parsedBaseFs) && parsedBaseFs > 0 ? parsedBaseFs : 16;
+  const sc = customColors ? baseFs / 16 : 1;
+
+  const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
+  const handleDown = (e: React.PointerEvent<HTMLElement>) => {
+    if (!onPhotoPositionChange) return;
+    e.preventDefault();
+    e.stopPropagation();
+    panRef.current = { sx: e.clientX, sy: e.clientY, ox: photoPosition.x, oy: photoPosition.y };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const handleMove = (e: React.PointerEvent<HTMLElement>) => {
+    if (!panRef.current || !onPhotoPositionChange) return;
+    const dx = e.clientX - panRef.current.sx;
+    const dy = e.clientY - panRef.current.sy;
+    const delta = dragDeltaToPercent(e, dx, dy);
+    onPhotoPositionChange({
+      x: clampPercent(panRef.current.ox - delta.x),
+      y: clampPercent(panRef.current.oy - delta.y),
+    });
+  };
+  const handleUp = (e: React.PointerEvent<HTMLElement>) => {
+    panRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture?.(e.pointerId);
+    } catch { /* noop */ }
+  };
+
+  const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
+  const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
+  const partner1 = firstName(profile.partner1Name) || "Partner";
+  const partner2 = firstName(profile.partner2Name) || "Partner";
+  const dateStr = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const cityLine = [profile.venueCity, profile.venueState].filter(Boolean).join(", ");
+
+  return (
+    <div style={{ backgroundColor: "#f3f4f6", borderRadius: 28, padding: "12px" }}>
+      <div
+        className="mx-auto shadow-2xl"
+        style={{
+          width: "min(100%, 420px)",
+          aspectRatio: "9 / 16",
+          minHeight: 620,
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: 30,
+          border: "1px solid rgba(255,255,255,.35)",
+          background: "#111",
+          cursor: onPhotoPositionChange ? "grab" : undefined,
+          touchAction: onPhotoPositionChange ? "none" : undefined,
+          userSelect: "none",
+        }}
+        onPointerDown={handleDown}
+        onPointerMove={handleMove}
+        onPointerUp={handleUp}
+        onPointerCancel={handleUp}
+      >
+        {hasPhoto ? (
+          <AuthMediaImage
+            src={photoUrl!}
+            alt="Save the Date photo"
+            draggable={false}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
+              filter: "grayscale(1)",
+              pointerEvents: "none",
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(145deg, rgba(255,255,255,.15), transparent 42%), linear-gradient(180deg, #333, #111)",
+            }}
+          />
+        )}
+
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(180deg, rgba(0,0,0,.2) 0%, rgba(0,0,0,.08) 35%, rgba(0,0,0,.65) 100%)",
+            pointerEvents: "none",
+          }}
+        />
+
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", padding: "34px 28px 38px", color: "#fff", textAlign: "center" }}>
+          <div style={{ margin: "0 auto", width: 46, height: 28, position: "relative" }}>
+            <Heart style={{ width: 24, height: 24, color: "#fff", opacity: 0.9, transform: "rotate(-14deg)" }} />
+            <div style={{ position: "absolute", left: 20, right: 0, top: 18, height: 1, background: "rgba(255,255,255,.72)" }} />
+          </div>
+
+          <div style={{ marginTop: "auto", marginBottom: 20 }}>
+            <p style={{ fontFamily: labelFont, fontSize: 11 * sc, letterSpacing: "0.34em", textTransform: "uppercase", margin: "0 0 14px", color: "rgba(255,255,255,.82)" }}>
+              Save the Date
+            </p>
+            <div style={{ fontFamily: displayFont, textTransform: "uppercase", letterSpacing: "0.18em", lineHeight: 1.15 }}>
+              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner1}</div>
+              <div style={{ fontSize: `${1.8 * sc}rem`, fontStyle: "italic", textTransform: "none", letterSpacing: "0.08em", margin: "4px 0" }}>and</div>
+              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner2}</div>
+            </div>
+            {dateStr && (
+              <p style={{ fontFamily: labelFont, fontSize: 11 * sc, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", margin: "20px 0 0" }}>
+                {dateStr}
+              </p>
+            )}
+            {cityLine && (
+              <p style={{ fontFamily: labelFont, fontSize: 12 * sc, margin: "8px 0 0", color: "rgba(255,255,255,.88)" }}>
+                {cityLine}
+              </p>
+            )}
+            {profile.saveTheDateMessage && (
+              <p style={{ fontFamily: displayFont, fontSize: `${1 * sc}rem`, fontStyle: "italic", lineHeight: 1.55, margin: "18px 0 0", color: "rgba(255,255,255,.9)" }}>
+                &ldquo;{profile.saveTheDateMessage}&rdquo;
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

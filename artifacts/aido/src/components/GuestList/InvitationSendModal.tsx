@@ -779,6 +779,7 @@ export function InvitationSendModal({
                         photoUrl={customization.saveTheDatePhotoUrl || null}
                         photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                         customColors={stdPreviewColors}
+                        fullPhoto={customization.saveTheDateLayout === "animated-full-photo-save-date"}
                       />
                       </AnimatedInvitationShell>
                     )}

@@ -1792,6 +1792,9 @@ export default function InvitationCustomizationPage({
               }));
               setAnimationPreviewNonce((current) => current + 1);
             };
+            const animationTemplates = activeKey === "saveTheDate"
+              ? INVITATION_ANIMATION_TEMPLATES
+              : INVITATION_ANIMATION_TEMPLATES.filter((template) => template.id !== "animated-full-photo-save-date");
             const isThemeActive = (themeId: string) => {
               const t = WEBSITE_THEMES.find((x) => x.id === themeId);
               if (!t) return false;
@@ -1836,7 +1839,7 @@ export default function InvitationCustomizationPage({
                         </p>
                       </div>
                       <div className="grid grid-cols-1 gap-2">
-                        {INVITATION_ANIMATION_TEMPLATES.map((template) => {
+                        {animationTemplates.map((template) => {
                           const selected = animationLayouts[activeKey] === template.id;
                           return (
                             <button
@@ -2129,6 +2132,7 @@ export default function InvitationCustomizationPage({
                         photoPosition={saveTheDatePhotoPosition}
                         onPhotoPositionChange={setSaveTheDatePhotoPosition}
                         customColors={previewCustomColors}
+                        fullPhoto={activeAnimationLayout === "animated-full-photo-save-date"}
                       />
                     ) : (
                       <AiDigitalInvitationPreview

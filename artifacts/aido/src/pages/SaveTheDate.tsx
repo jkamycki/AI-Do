@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Download, AlertCircle } from "lucide-react";
+import { Loader2, Download, AlertCircle, Heart } from "lucide-react";
 import { AnimatedInvitationShell } from "@/components/InvitationCustomization/AnimatedInvitationShell";
 
 interface SaveTheDateInfo {
@@ -125,6 +125,9 @@ export default function SaveTheDate() {
   const defaultMsg = couple ? `Mark your calendar! ${couple} are getting married and we'd love to celebrate with you.` : null;
   const msgText    = (overrides["std:message"]?.text as string | undefined) || info?.saveTheDateMessage || defaultMsg;
   const photoPos   = info?.photoObjectPosition ?? "50% 50%";
+  const isFullPhotoLayout = !!(useCustom && info?.customLayout === "animated-full-photo-save-date");
+  const partner1First = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";
+  const partner2First = String(info?.partner2Name || "").trim().split(/\s+/)[0] || "Partner";
 
   const downloadPdf = async () => {
     if (!info || !cardRef.current) return;
@@ -190,6 +193,99 @@ export default function SaveTheDate() {
         darkPanel="#313a2f"
         monogram={`${info.partner1Name || ""} ${info.partner2Name || ""}`}
       >
+      {isFullPhotoLayout ? (
+      <div
+        ref={cardRef}
+        className="w-full overflow-hidden shadow-2xl"
+        style={{
+          maxWidth: 420,
+          aspectRatio: "9 / 16",
+          minHeight: 620,
+          position: "relative",
+          borderRadius: 30,
+          border: "1px solid rgba(255,255,255,.35)",
+          background: "#111",
+        }}
+      >
+        {info.hasPhoto ? (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: `url('/api/save-the-date/${token}/photo?v=${info.photoVersion}')`,
+              backgroundSize: "cover",
+              backgroundPosition: photoPos,
+              filter: "grayscale(1)",
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(145deg, rgba(255,255,255,.16), transparent 42%), linear-gradient(180deg, #333, #111)",
+            }}
+          />
+        )}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(180deg, rgba(0,0,0,.2) 0%, rgba(0,0,0,.08) 35%, rgba(0,0,0,.65) 100%)",
+          }}
+        />
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", padding: "34px 28px 38px", color: "#fff", textAlign: "center" }}>
+          <div style={{ margin: "0 auto", width: 46, height: 28, position: "relative" }}>
+            <Heart style={{ width: 24, height: 24, color: "#fff", opacity: 0.9, transform: "rotate(-14deg)" }} />
+            <span style={{ position: "absolute", left: 20, right: 0, top: 18, height: 1, background: "rgba(255,255,255,.72)" }} />
+          </div>
+
+          <div style={{ marginTop: "auto", marginBottom: 20 }}>
+            <p style={{ fontFamily: LABEL_FONT, fontSize: 11 * sc, letterSpacing: "0.34em", textTransform: "uppercase", margin: "0 0 14px", color: "rgba(255,255,255,.82)" }}>
+              Save the Date
+            </p>
+            <div style={{ fontFamily: SERIF, textTransform: "uppercase", letterSpacing: "0.18em", lineHeight: 1.15 }}>
+              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner1First}</div>
+              <div style={{ fontSize: `${1.8 * sc}rem`, fontStyle: "italic", textTransform: "none", letterSpacing: "0.08em", margin: "4px 0" }}>and</div>
+              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner2First}</div>
+            </div>
+            {dateText && (
+              <p style={{ fontFamily: LABEL_FONT, fontSize: 11 * sc, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", margin: "20px 0 0" }}>
+                {dateText}
+              </p>
+            )}
+            {venueCityState && (
+              <p style={{ fontFamily: LABEL_FONT, fontSize: 12 * sc, margin: "8px 0 0", color: "rgba(255,255,255,.88)" }}>{venueCityState}</p>
+            )}
+            {msgText && (
+              <p style={{ fontFamily: SERIF, fontSize: `${1 * sc}rem`, fontStyle: "italic", color: "rgba(255,255,255,.9)", lineHeight: 1.55, margin: "18px 0 0" }}>
+                &ldquo;{msgText}&rdquo;
+              </p>
+            )}
+            <div style={{ marginTop: 18 }}>
+              <button
+                onClick={downloadPdf}
+                disabled={downloadingPdf}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.28)",
+                  color: "rgba(255,255,255,.86)", fontFamily: LABEL_FONT, fontSize: 10 * sc, fontWeight: 700,
+                  letterSpacing: "0.16em", textTransform: "uppercase",
+                  padding: "8px 18px", borderRadius: 6, cursor: "pointer",
+                  opacity: downloadingPdf ? 0.5 : 1,
+                }}
+              >
+                {downloadingPdf ? (
+                  <><Loader2 style={{ width: Math.round(11 * sc), height: Math.round(11 * sc) }} className="animate-spin" /> Generating PDF...</>
+                ) : (
+                  <><Download style={{ width: Math.round(11 * sc), height: Math.round(11 * sc) }} /> Download as PDF</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      ) : (
       <div
         ref={cardRef}
         className="w-full rounded-2xl overflow-hidden shadow-2xl"
@@ -294,6 +390,7 @@ export default function SaveTheDate() {
         </div>
 
       </div>
+      )}
       </AnimatedInvitationShell>
 
     </div>
