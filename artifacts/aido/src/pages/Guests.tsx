@@ -1599,6 +1599,14 @@ export default function Guests({
       g.rsvpStatus === "pending" &&
       ((g as any).rsvpReminderStatus ?? "not_sent") !== "sent",
   );
+  const bulkSendGuests =
+    confirmBulkSend === "saveTheDate"
+      ? saveTheDateEligible
+      : confirmBulkSend === "invitation"
+        ? invitationEligible
+        : confirmBulkSend === "reminder"
+          ? reminderEligible
+          : [];
   const summary = data?.summary ?? {
     total: 0,
     attending: 0,
@@ -2508,23 +2516,25 @@ export default function Guests({
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                       This will send emails to{" "}
-                      <strong>
-                        {confirmBulkSend === "saveTheDate"
-                          ? saveTheDateEligible.length
-                          : confirmBulkSend === "invitation"
-                            ? invitationEligible.length
-                            : reminderEligible.length}
-                      </strong>{" "}
-                      eligible guest
-                      {(confirmBulkSend === "saveTheDate"
-                        ? saveTheDateEligible.length
-                        : confirmBulkSend === "invitation"
-                          ? invitationEligible.length
-                          : reminderEligible.length) !== 1
-                        ? "s"
-                        : ""}
+                      <strong>{bulkSendGuests.length}</strong> eligible guest
+                      {bulkSendGuests.length !== 1 ? "s" : ""}
                       . This action cannot be undone.
                     </AlertDialogDescription>
+                    {bulkSendGuests.length > 0 && (
+                      <div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-sm">
+                        <p className="font-medium text-foreground">
+                          Guests receiving this:
+                        </p>
+                        <ul className="mt-2 max-h-48 overflow-y-auto space-y-1 text-muted-foreground">
+                          {bulkSendGuests.map((guest) => (
+                            <li key={guest.id} className="flex items-start gap-2">
+                              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                              <span className="break-words">{guest.name}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
