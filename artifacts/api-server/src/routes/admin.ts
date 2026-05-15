@@ -70,15 +70,15 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
 
       db.select({ count: sql<number>`count(distinct user_id)::int` })
         .from(analyticsEvents)
-        .where(gte(analyticsEvents.timestamp, dayAgo)),
+        .where(and(eq(analyticsEvents.eventType, "user_login"), gte(analyticsEvents.timestamp, dayAgo))),
 
       db.select({ count: sql<number>`count(distinct user_id)::int` })
         .from(analyticsEvents)
-        .where(gte(analyticsEvents.timestamp, weekAgo)),
+        .where(and(eq(analyticsEvents.eventType, "user_login"), gte(analyticsEvents.timestamp, weekAgo))),
 
       db.select({ count: sql<number>`count(distinct user_id)::int` })
         .from(analyticsEvents)
-        .where(gte(analyticsEvents.timestamp, monthAgo)),
+        .where(and(eq(analyticsEvents.eventType, "user_login"), gte(analyticsEvents.timestamp, monthAgo))),
 
       // Growth chart: use wedding_profiles created_at (accurate first-time signups)
       db.execute(sql`
