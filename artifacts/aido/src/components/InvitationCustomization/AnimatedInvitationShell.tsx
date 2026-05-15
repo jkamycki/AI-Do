@@ -148,7 +148,10 @@ export function AnimatedInvitationShell({
         .aido-envelope-bottom,
         .aido-wax-seal,
         .aido-owl-delivery,
-        .aido-owl-delivery * {
+        .aido-owl-delivery *,
+        .aido-owl-delivery::before,
+        .aido-owl-delivery::after,
+        .aido-owl-head::after {
           position: absolute;
           pointer-events: none;
         }
@@ -276,9 +279,10 @@ export function AnimatedInvitationShell({
         }
         .aido-invite-anim-animated-owl-delivery {
           background:
-            radial-gradient(circle at 72% 14%, rgba(255,255,255,.52) 0 3%, transparent 4%),
+            radial-gradient(circle at 72% 14%, rgba(255,255,255,.56) 0 3%, transparent 4%),
+            radial-gradient(circle at 46% 34%, rgba(114,129,255,.42), transparent 32%),
             radial-gradient(circle at 18% 12%, rgba(255,255,255,.2), transparent 26%),
-            linear-gradient(150deg, #0f1324 0%, #251b32 48%, #6e5832 100%);
+            linear-gradient(150deg, #10162b 0%, #1f2f72 48%, #6b5b8f 100%);
         }
         .aido-invite-anim-animated-owl-delivery .aido-invite-anim-card {
           animation-delay: 2500ms;
@@ -307,54 +311,82 @@ export function AnimatedInvitationShell({
         }
         .aido-owl-delivery {
           left: 50%;
-          top: 5%;
+          top: 6%;
           z-index: 7;
-          width: ${compact ? "142px" : "172px"};
-          height: ${compact ? "92px" : "112px"};
+          width: ${compact ? "268px" : "340px"};
+          height: ${compact ? "154px" : "196px"};
           transform-origin: 50% 42%;
           filter: drop-shadow(0 22px 28px rgba(0,0,0,.34));
-          animation: aidoOwlFlyToward 1900ms cubic-bezier(.18,.72,.16,1) 120ms both;
+          animation: aidoOwlFlyToward 2060ms cubic-bezier(.18,.72,.16,1) 120ms both;
+        }
+        .aido-owl-delivery::before {
+          content: "";
+          left: -12%;
+          top: 6%;
+          width: 42%;
+          height: 34%;
+          border-radius: 999px;
+          background:
+            radial-gradient(circle, rgba(255,255,255,.9) 0 2px, transparent 3px),
+            linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+          filter: blur(.5px);
+          opacity: .7;
+          animation: aidoOwlTrail 960ms ease-out 120ms both;
+        }
+        .aido-owl-delivery::after {
+          content: "";
+          left: 35%;
+          top: 18%;
+          width: 30%;
+          height: 42%;
+          border-radius: 999px;
+          background: rgba(255,255,255,.24);
+          filter: blur(16px);
         }
         .aido-owl-wing {
-          top: 18%;
-          width: 70%;
+          top: 22%;
+          z-index: 1;
+          width: 48%;
           height: 44%;
-          border-radius: 999px 999px 28px 28px;
+          border-radius: 100% 100% 28% 70%;
           background:
-            linear-gradient(180deg, rgba(255,255,255,.74), rgba(172,151,116,.92) 58%, rgba(97,73,52,.96));
-          transform-origin: 88% 50%;
-          animation: aidoOwlWingToward 300ms ease-in-out infinite alternate;
+            repeating-linear-gradient(105deg, rgba(115,108,96,.16) 0 2px, transparent 2px 9px),
+            linear-gradient(180deg, rgba(255,255,255,.98), rgba(239,236,226,.96) 58%, rgba(190,181,160,.92));
+          box-shadow: inset 0 -16px 20px rgba(111,98,76,.18);
+          transform-origin: 92% 50%;
+          animation: aidoOwlWingToward 340ms ease-in-out infinite alternate;
         }
         .aido-owl-wing.left {
-          left: -18%;
-          transform: rotate(-28deg) translateY(0);
+          left: 4%;
+          transform: rotate(13deg) translateY(0) skewX(-8deg);
         }
         .aido-owl-wing.right {
-          right: -18%;
-          transform: scaleX(-1) rotate(-28deg) translateY(0);
+          right: 4%;
+          transform: scaleX(-1) rotate(13deg) translateY(0) skewX(-8deg);
           animation-name: aidoOwlWingTowardRight;
         }
         .aido-owl-body {
-          left: 36%;
-          top: 20%;
-          width: 30%;
-          height: 52%;
-          border-radius: 50% 50% 46% 46%;
+          left: 41%;
+          top: 32%;
+          z-index: 3;
+          width: 18%;
+          height: 42%;
+          border-radius: 50% 50% 44% 44%;
           background:
-            radial-gradient(circle at 36% 32%, rgba(255,255,255,.96) 0 7%, transparent 8%),
-            radial-gradient(circle at 64% 32%, rgba(255,255,255,.96) 0 7%, transparent 8%),
-            linear-gradient(180deg, #f3ead8 0%, #c1a77c 48%, #6f5437 100%);
-          box-shadow: inset 0 -10px 18px rgba(62,43,27,.28);
+            repeating-linear-gradient(95deg, transparent 0 7px, rgba(143,132,112,.16) 7px 9px),
+            linear-gradient(180deg, #ffffff 0%, #eee9dc 52%, #c8bca3 100%);
+          box-shadow: inset 0 -12px 18px rgba(92,82,64,.24);
         }
         .aido-owl-body::before,
         .aido-owl-body::after {
           content: "";
           position: absolute;
           top: 34%;
-          width: 10%;
-          height: 10%;
+          width: 9%;
+          height: 9%;
           border-radius: 999px;
           background: #17131b;
+          box-shadow: 0 0 0 2px rgba(198,162,48,.78);
         }
         .aido-owl-body::before {
           left: 33%;
@@ -363,26 +395,40 @@ export function AnimatedInvitationShell({
           right: 33%;
         }
         .aido-owl-head {
-          left: 38%;
-          top: 0;
-          width: 26%;
-          height: 32%;
+          left: 42%;
+          top: 14%;
+          z-index: 4;
+          width: 16%;
+          height: 22%;
           border-radius: 50% 50% 44% 44%;
           background:
-            linear-gradient(135deg, transparent 0 20%, #efe2c8 21% 72%, transparent 73%),
-            linear-gradient(225deg, transparent 0 20%, #efe2c8 21% 72%, transparent 73%);
+            radial-gradient(circle at 34% 54%, #f7d66a 0 9%, transparent 10%),
+            radial-gradient(circle at 66% 54%, #f7d66a 0 9%, transparent 10%),
+            linear-gradient(135deg, transparent 0 20%, #fffdf4 21% 72%, transparent 73%),
+            linear-gradient(225deg, transparent 0 20%, #fffdf4 21% 72%, transparent 73%);
+          box-shadow: 0 8px 14px rgba(62,52,38,.16);
+        }
+        .aido-owl-head::after {
+          content: "";
+          left: 45%;
+          top: 62%;
+          width: 10%;
+          height: 14%;
+          clip-path: polygon(50% 100%, 0 0, 100% 0);
+          background: #4b3724;
         }
         .aido-owl-envelope {
-          left: 41%;
-          top: 70%;
-          width: 20%;
-          height: 17%;
+          left: 36%;
+          top: 77%;
+          z-index: 2;
+          width: 28%;
+          height: 13%;
           border-radius: 2px;
           background:
             linear-gradient(135deg, transparent 49%, rgba(0,0,0,.18) 50%, transparent 51%),
             var(--invite-paper);
-          box-shadow: 0 6px 10px rgba(0,0,0,.22);
-          animation: aidoOwlTinyEnvelopeDrop 720ms cubic-bezier(.28,.68,.28,1) 1010ms forwards;
+          box-shadow: 0 8px 12px rgba(0,0,0,.26);
+          animation: aidoOwlTinyEnvelopeDrop 760ms cubic-bezier(.28,.68,.28,1) 1120ms forwards;
         }
         @keyframes aidoInviteCardIn {
           0% { opacity: 0; transform: translateY(24px) scale(.945); filter: blur(3px); }
@@ -420,7 +466,7 @@ export function AnimatedInvitationShell({
         @keyframes aidoOwlFlyToward {
           0% {
             opacity: 0;
-            transform: translate(-50%, -34px) scale(.24) rotate(-3deg);
+            transform: translate(-50%, -42px) scale(.18) rotate(-2deg);
             filter: blur(1.6px) drop-shadow(0 8px 10px rgba(0,0,0,.18));
           }
           16% {
@@ -428,32 +474,37 @@ export function AnimatedInvitationShell({
           }
           48% {
             opacity: 1;
-            transform: translate(-50%, 46px) scale(.72) rotate(1deg);
+            transform: translate(-50%, 42px) scale(.56) rotate(.5deg);
             filter: blur(.4px) drop-shadow(0 18px 22px rgba(0,0,0,.28));
           }
           72% {
             opacity: 1;
-            transform: translate(-50%, 86px) scale(1.28) rotate(0deg);
+            transform: translate(-50%, 88px) scale(1.08) rotate(0deg);
             filter: blur(0) drop-shadow(0 28px 34px rgba(0,0,0,.38));
           }
           100% {
             opacity: 0;
-            transform: translate(-50%, 16px) scale(1.72) rotate(2deg);
+            transform: translate(-50%, 18px) scale(1.42) rotate(1.5deg);
             filter: blur(1px) drop-shadow(0 38px 42px rgba(0,0,0,.28));
           }
         }
         @keyframes aidoOwlWingToward {
-          from { transform: rotate(-28deg) translateY(0) scaleY(.9); }
-          to { transform: rotate(24deg) translateY(-16px) scaleY(1.06); }
+          from { transform: rotate(13deg) translateY(0) skewX(-8deg) scaleY(.94); }
+          to { transform: rotate(-7deg) translateY(-13px) skewX(-8deg) scaleY(1.06); }
         }
         @keyframes aidoOwlWingTowardRight {
-          from { transform: scaleX(-1) rotate(-28deg) translateY(0) scaleY(.9); }
-          to { transform: scaleX(-1) rotate(24deg) translateY(-16px) scaleY(1.06); }
+          from { transform: scaleX(-1) rotate(13deg) translateY(0) skewX(-8deg) scaleY(.94); }
+          to { transform: scaleX(-1) rotate(-7deg) translateY(-13px) skewX(-8deg) scaleY(1.06); }
+        }
+        @keyframes aidoOwlTrail {
+          0% { opacity: 0; transform: translate(42px, 26px) scale(.5); }
+          38% { opacity: .82; }
+          100% { opacity: 0; transform: translate(-34px, -8px) scale(1.15); }
         }
         @keyframes aidoOwlTinyEnvelopeDrop {
           0% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
-          58% { opacity: 1; transform: translateY(118px) scale(1.45) rotate(8deg); }
-          100% { opacity: 0; transform: translateY(158px) scale(1.7) rotate(12deg); }
+          58% { opacity: 1; transform: translateY(96px) scale(1.28) rotate(5deg); }
+          100% { opacity: 0; transform: translateY(136px) scale(1.5) rotate(8deg); }
         }
         @keyframes aidoOwlEnvelopeDrop {
           0% { opacity: 0; transform: translate(-50%, -86%) scale(.46) rotate(-3deg); }
