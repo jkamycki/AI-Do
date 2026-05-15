@@ -1336,6 +1336,7 @@ export default function InvitationCustomizationPage({
                         palette={customPalette}
                         photoUrl={saveTheDatePhotoUrl}
                         photoPosition={saveTheDatePhotoPosition}
+                        onPhotoPositionChange={setSaveTheDatePhotoPosition}
                         customColors={previewCustomColors}
                       />
                     ) : (
