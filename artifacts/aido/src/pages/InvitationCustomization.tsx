@@ -913,7 +913,7 @@ export default function InvitationCustomizationPage({
   });
   const websiteUrl =
     typeof window !== "undefined" && websiteRecord?.slug && websiteRecord?.published
-      ? `${window.location.origin}/w/${websiteRecord.slug}`
+      ? `${window.location.origin}/w/${websiteRecord.slug}#rsvp`
       : null;
 
   const downloadPrintPdf = async () => {
