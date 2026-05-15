@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { clerkClient } from "@clerk/express";
-import { db, guests, weddingProfiles, invitationCustomizations, hotelBlocks } from "@workspace/db";
+import { db, guests, weddingProfiles, invitationCustomizations, hotelBlocks, weddingWebsites } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
@@ -90,6 +90,21 @@ function buildFrontendOrigin(req: import("express").Request): string {
   const fromEnv = process.env.FRONTEND_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, "");
   return buildOrigin(req);
+}
+
+async function buildGuestRsvpUrl(req: import("express").Request, profileId: number, token: string): Promise<string> {
+  const origin = buildFrontendOrigin(req);
+  const [site] = await db
+    .select({ slug: weddingWebsites.slug })
+    .from(weddingWebsites)
+    .where(and(eq(weddingWebsites.profileId, profileId), eq(weddingWebsites.published, true)))
+    .limit(1);
+
+  if (site?.slug) {
+    return `${origin}/w/${encodeURIComponent(site.slug)}/rsvp`;
+  }
+
+  return `${origin}/rsvp/${token}`;
 }
 
 /**
@@ -622,8 +637,7 @@ router.get("/guests/:id/rsvp-link", requireAuth, async (req, res) => {
       await db.update(guests).set({ rsvpToken: token }).where(eq(guests.id, id));
     }
 
-    const origin = buildFrontendOrigin(req);
-    const rsvpUrl = `${origin}/rsvp/${token}`;
+    const rsvpUrl = await buildGuestRsvpUrl(req, profile.id, token);
     res.json({ rsvpUrl, previewUrl: rsvpUrl });
   } catch (err) {
     req.log.error(err, "Failed to generate RSVP link");
@@ -761,9 +775,8 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       .set({ rsvpToken: token, invitationStatus: "sent", rsvpSentAt: now })
       .where(eq(guests.id, id));
 
-    const origin = buildFrontendOrigin(req);
     const apiOrigin = buildOrigin(req);
-    const rsvpUrl = `${origin}/rsvp/${token}`;
+    const rsvpUrl = await buildGuestRsvpUrl(req, profile.id, token);
     const previewUrl = rsvpUrl;
 
     let emailSent = false;
@@ -1021,8 +1034,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
       const updates: Partial<typeof guests.$inferInsert> = { rsvpReminderStatus: "sent" };
       if (!guest.rsvpToken) updates.rsvpToken = token;
       await db.update(guests).set(updates).where(eq(guests.id, id));
-      const origin = buildFrontendOrigin(req);
-      const rsvpUrl = `${origin}/rsvp/${token}`;
+      const rsvpUrl = await buildGuestRsvpUrl(req, profile.id, token);
       return res.json({ rsvpUrl, previewUrl: rsvpUrl, emailSent: false });
     }
 
@@ -1039,9 +1051,8 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
       await db.update(guests).set({ rsvpToken: token }).where(eq(guests.id, id));
     }
 
-    const origin = buildFrontendOrigin(req);
     const apiOrigin = buildOrigin(req);
-    const rsvpUrl = `${origin}/rsvp/${token}`;
+    const rsvpUrl = await buildGuestRsvpUrl(req, profile.id, token);
     const previewUrl = rsvpUrl;
     const logoBase64 = `${apiOrigin}/logo.png`;
 
