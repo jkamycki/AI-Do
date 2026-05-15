@@ -23,14 +23,14 @@ function formatDate(date: string | null): string {
   });
 }
 
-function locationLine(design: InvitationDesignDocument): string {
+function locationLines(design: InvitationDesignDocument): string[] {
   return [
     design.fields.venue,
     design.fields.venueAddress,
     [design.fields.venueCity, [design.fields.venueState, design.fields.venueZip].filter(Boolean).join(" ")]
       .filter(Boolean)
       .join(", "),
-  ].filter(Boolean).join(" / ");
+  ].filter(Boolean);
 }
 
 function fallbackQrPattern(seed: string): boolean[] {
@@ -91,7 +91,7 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
     const spec = PRINT_SIZES[size];
     const photoUrl = resolveMediaUrl(design.image.url);
     const hasPhoto = !!photoUrl;
-    const loc = locationLine(design);
+    const locLines = locationLines(design);
     const isSaveTheDate = design.kind === "saveTheDate";
     const bg = design.style.backgroundColor || "#f8f4ef";
     const accent = design.style.accentColor || "#D4A017";
@@ -157,10 +157,14 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
               <p style={{ margin: 0, fontFamily: sans, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700 }}>
                 {formatDate(design.fields.weddingDate)}
               </p>
-              {loc && (
-                <p style={{ margin: "16px auto 0", maxWidth: 360, fontFamily: font, fontSize: 20, lineHeight: 1.35 }}>
-                  {loc}
-                </p>
+              {locLines.length > 0 && (
+                <div style={{ margin: "16px auto 0", maxWidth: 360, fontFamily: font, fontSize: 20, lineHeight: 1.4 }}>
+                  {locLines.map((line) => (
+                    <p key={line} style={{ margin: 0 }}>
+                      {line}
+                    </p>
+                  ))}
+                </div>
               )}
               {design.message && (
                 <p style={{ margin: "22px auto 0", maxWidth: 360, fontFamily: font, fontSize: 17, lineHeight: 1.55, fontStyle: "italic" }}>
@@ -193,10 +197,16 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
               <Calendar style={{ width: 13, height: 13, color: accent }} />
               <span>{formatDate(design.fields.weddingDate)}</span>
             </div>
-            {loc && (
-              <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, fontFamily: sans, fontSize: 11, color: text }}>
+            {locLines.length > 0 && (
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-start", justifyContent: "center", marginTop: 10, fontFamily: sans, fontSize: 11, lineHeight: 1.45, color: text }}>
                 <MapPin style={{ width: 13, height: 13, color: accent }} />
-                <span>{loc}</span>
+                <span>
+                  {locLines.map((line) => (
+                    <span key={line} style={{ display: "block" }}>
+                      {line}
+                    </span>
+                  ))}
+                </span>
               </div>
             )}
           </div>
