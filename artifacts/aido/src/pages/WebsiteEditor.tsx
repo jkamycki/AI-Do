@@ -59,6 +59,15 @@ const SECTION_LIST: Array<{ id: keyof WebsiteRecord["sectionsEnabled"]; label: s
   { id: "rsvp",         label: "RSVP",          icon: Heart },
 ];
 
+const sanitizeWebsiteSlug = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-")
+    .slice(0, 60);
+
 // ---------- main ----------
 
 export default function WebsiteEditor() {
@@ -79,6 +88,9 @@ export default function WebsiteEditor() {
   const [previewSection, setPreviewSection] = useState<string>("home");
   const [editorSection, setEditorSection] = useState<string>("home");
   const [qrOpen, setQrOpen] = useState(false);
+  const [publishSlugDialogOpen, setPublishSlugDialogOpen] = useState(false);
+  const [publishSlugInput, setPublishSlugInput] = useState("");
+  const [publishSlugError, setPublishSlugError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings" | "content">("design");
   const inTab = (t: typeof activeTab) => activeTab === t;
   const [emojiFieldOpen, setEmojiFieldOpen] = useState<string | null>(null);
@@ -766,8 +778,25 @@ export default function WebsiteEditor() {
     }
   };
 
-  const handlePublish = async () => {
+  const requestPublish = () => {
     if (!record) return;
+    if (record.published || record.publishedAt) {
+      void handlePublish();
+      return;
+    }
+    setPublishSlugInput(record.slug ?? "");
+    setPublishSlugError(null);
+    setPublishSlugDialogOpen(true);
+  };
+
+  const handlePublish = async (slugOverride?: string) => {
+    if (!record) return;
+    const publishingNext = !record.published;
+    const requestedSlug = slugOverride !== undefined ? sanitizeWebsiteSlug(slugOverride) : record.slug;
+    if (publishingNext && slugOverride !== undefined && requestedSlug.length < 3) {
+      setPublishSlugError("Enter at least 3 characters for your website link.");
+      return;
+    }
     const pendingPassword = passwordInput.trim();
     // Flush + save BEFORE flipping the publish flag. /api/website/publish
     // returns the full website row and we replace local state with it — if
@@ -819,6 +848,25 @@ export default function WebsiteEditor() {
           });
         }
       }
+      if (publishingNext && slugOverride !== undefined && requestedSlug !== record.slug) {
+        const slugResponse = await authFetch("/api/website/slug", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug: requestedSlug }),
+        });
+        const slugBody = await slugResponse.json().catch(() => ({})) as { slug?: string; lastUpdated?: string; error?: string };
+        if (!slugResponse.ok || !slugBody.slug) {
+          const message = slugBody.error ?? "That website link could not be saved. Please try another one.";
+          setPublishSlugError(message);
+          toast({ title: "Could not save website link", description: message, variant: "destructive" });
+          return;
+        }
+        setRecord((prev) =>
+          prev
+            ? { ...prev, slug: slugBody.slug!, lastUpdated: slugBody.lastUpdated ?? prev.lastUpdated }
+            : prev,
+        );
+      }
       const r = await authFetch("/api/website/publish", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -831,6 +879,7 @@ export default function WebsiteEditor() {
         portalParty: body.portalParty ?? prev?.portalParty,
       }));
       if (body.published) {
+        setPublishSlugDialogOpen(false);
         setPreviewSection("home");
         setEditorSection("home");
       }
@@ -1171,7 +1220,7 @@ export default function WebsiteEditor() {
             </Button>
             <Button
               size="sm"
-              onClick={handlePublish}
+              onClick={requestPublish}
               disabled={publishing}
               className={
                 record.published
@@ -2192,7 +2241,7 @@ export default function WebsiteEditor() {
                     : t("website_editor.visibility_draft", { defaultValue: "Your site is in draft. Guests can't view it yet." })}
                 </p>
               </div>
-              <Button size="sm" variant={record.published ? "outline" : "default"} onClick={handlePublish} disabled={publishing}>
+              <Button size="sm" variant={record.published ? "outline" : "default"} onClick={requestPublish} disabled={publishing}>
                 {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
                 {record.published ? t("website_editor.unpublish", { defaultValue: "Unpublish" }) : t("website_editor.publish", { defaultValue: "Publish" })}
               </Button>
@@ -2400,6 +2449,87 @@ export default function WebsiteEditor() {
       {/* Custom URL modal — surfaces the existing SlugEditor in a focused
           popup so users can find the URL setting from the Pages tab, not
           just buried in Settings. */}
+      {publishSlugDialogOpen && (
+        <div
+          className="fixed inset-0 z-[10002] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.55)" }}
+          onClick={() => !publishing && setPublishSlugDialogOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-xl border border-border bg-background p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-primary" />
+                  Choose your website link
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  This is the part guests see after <span className="font-mono">/w/</span>. Pick something easy to share before publishing.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPublishSlugDialogOpen(false)}
+                disabled={publishing}
+                className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              <Label htmlFor="publish-slug">Guest website URL</Label>
+              <div className="flex items-center text-sm font-mono rounded-md border border-border bg-background overflow-hidden focus-within:ring-2 focus-within:ring-primary/30">
+                <span className="px-3 py-2 bg-muted text-muted-foreground border-r border-border whitespace-nowrap">
+                  {typeof window !== "undefined" ? window.location.origin.replace(/^https?:\/\//, "") : "aidowedding.net"}/w/
+                </span>
+                <input
+                  id="publish-slug"
+                  value={publishSlugInput}
+                  onChange={(event) => {
+                    setPublishSlugInput(sanitizeWebsiteSlug(event.target.value));
+                    setPublishSlugError(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") void handlePublish(publishSlugInput);
+                    if (event.key === "Escape" && !publishing) setPublishSlugDialogOpen(false);
+                  }}
+                  placeholder="james-sophia"
+                  autoFocus
+                  className="min-w-0 flex-1 h-10 px-3 bg-background text-sm font-mono focus:outline-none"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Use letters, numbers, and dashes only. Example: <span className="font-mono">james-sophia</span>
+              </p>
+              {publishSlugError && <p className="text-xs text-destructive">{publishSlugError}</p>}
+            </div>
+
+            <div className="mt-5 flex flex-col sm:flex-row gap-2 sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPublishSlugDialogOpen(false)}
+                disabled={publishing}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handlePublish(publishSlugInput)}
+                disabled={publishing || sanitizeWebsiteSlug(publishSlugInput).length < 3}
+              >
+                {publishing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Globe className="h-4 w-4 mr-2" />}
+                Publish Website
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {urlModalOpen && (
         <div
           className="fixed inset-0 z-[10001] flex items-center justify-center p-4"
@@ -2460,7 +2590,7 @@ export default function WebsiteEditor() {
                 size="sm"
                 variant={record.published ? "outline" : "default"}
                 className="h-6 px-2 text-xs"
-                onClick={handlePublish}
+                onClick={requestPublish}
                 disabled={publishing}
               >
                 {publishing
@@ -2524,8 +2654,7 @@ function SlugEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sanitize = (v: string) =>
-    v.toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/^-+|-+$/, "").replace(/-{2,}/g, "-").slice(0, 60);
+  const sanitize = sanitizeWebsiteSlug;
 
   const save = async () => {
     const clean = sanitize(input);
