@@ -2187,6 +2187,7 @@ export default function InvitationCustomizationPage({
                         onPhotoPositionChange={setDigitalInvitationPhotoPosition}
                         customColors={isCustom ? previewCustomColors : undefined}
                         photoEffect={digitalInvitationPhotoEffect}
+                        fullPhoto={activeAnimationLayout === "animated-full-photo-save-date"}
                       />
                     )}
                   </AnimatedInvitationShell>

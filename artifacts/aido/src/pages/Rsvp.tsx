@@ -223,6 +223,10 @@ export default function Rsvp() {
     : (_bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)");
   const CARD_BDR = _bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)";
   const DOT_PAT = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
+  const SERIF = isCustomMode && info?.font
+    ? `'${info.font}', ${cormorant}`
+    : cormorant;
+  const LABEL_FONT = isCustomMode && info?.font ? SERIF : jakarta;
   // Page sits *behind* the card. Always light grey so the card colour
   // stops at the rounded edge — no bleed into the surrounding viewport.
   const PAGE_BG = "#f3f4f6";
@@ -273,6 +277,7 @@ export default function Rsvp() {
     info && !info.ceremonyAtVenue &&
     (info.ceremonyVenueName || info.ceremonyAddress || info.ceremonyCity)
   );
+  const isFullPhotoLayout = !!(isCustomMode && info?.layout === "animated-full-photo-save-date");
 
   const downloadInvitationPdf = async () => {
     if (!info || !cardRef.current) return;
@@ -382,6 +387,105 @@ export default function Rsvp() {
           darkPanel={isCustomMode ? GOLD : undefined}
           monogram={`${info.partner1Name || ""} ${info.partner2Name || ""}`}
         >
+        {isFullPhotoLayout ? (
+        <div
+          ref={cardRef}
+          className="w-full overflow-hidden shadow-2xl"
+          style={{
+            aspectRatio: "9 / 16",
+            minHeight: 620,
+            position: "relative",
+            borderRadius: 30,
+            border: "1px solid rgba(255,255,255,.35)",
+            background: "#111",
+          }}
+        >
+          {info.photoUrl ? (
+            <img
+              src={info.photoUrl}
+              alt={couple}
+              crossOrigin="anonymous"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: info.photoObjectPosition ?? "50% 50%",
+                filter: photoEffectToFilter(info.photoEffect),
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "linear-gradient(145deg, rgba(255,255,255,.16), transparent 42%), linear-gradient(180deg, #333, #111)",
+              }}
+            />
+          )}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(180deg, rgba(0,0,0,.26) 0%, rgba(0,0,0,.08) 34%, rgba(0,0,0,.76) 100%)",
+            }}
+          />
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", padding: "34px 28px 38px", color: WHITE, textAlign: "center" }}>
+            <div>
+              <p style={{ fontFamily: LABEL_FONT, fontSize: 12, fontWeight: 700, letterSpacing: "0.34em", textTransform: "uppercase", margin: "0 0 10px", color: GOLD }}>
+                Wedding RSVP
+              </p>
+              {rsvpByDateStr && (
+                <p style={{ fontFamily: LABEL_FONT, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", margin: 0, color: WHITE }}>
+                  RSVP By {rsvpByDateStr}
+                </p>
+              )}
+            </div>
+
+            <div style={{ marginTop: "auto" }}>
+              <h1 style={{ fontFamily: SERIF, fontSize: "2.25rem", fontWeight: 500, fontStyle: "italic", color: GOLD, lineHeight: 1.15, margin: 0 }}>
+                {couple}
+              </h1>
+              {weddingDateStr && (
+                <p style={{ fontFamily: LABEL_FONT, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: WHITE, margin: "16px 0 0" }}>
+                  {weddingDateStr}
+                </p>
+              )}
+              {(info.venue || venueCityStateZip || timesLine) && (
+                <div style={{ marginTop: 12, padding: "10px 12px", borderTop: `1px solid ${GOLD}66`, borderBottom: `1px solid ${GOLD}66`, background: "rgba(0,0,0,.22)" }}>
+                  {info.venue && (
+                    <p style={{ fontFamily: SERIF, fontSize: "1.05rem", fontWeight: 600, color: GOLD, margin: 0, lineHeight: 1.25 }}>
+                      {info.venue}
+                    </p>
+                  )}
+                  {venueCityStateZip && (
+                    <p style={{ fontFamily: LABEL_FONT, fontSize: 10, color: WHITE, margin: "4px 0 0" }}>{venueCityStateZip}</p>
+                  )}
+                  {timesLine && (
+                    <p style={{ fontFamily: LABEL_FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: WHITE, margin: "7px 0 0" }}>
+                      {timesLine}
+                    </p>
+                  )}
+                </div>
+              )}
+              {info.invitationMessage && (
+                <p style={{ fontFamily: SERIF, fontSize: "0.95rem", fontStyle: "italic", color: WHITE, lineHeight: 1.55, margin: "14px 0 0" }}>
+                  &ldquo;{info.invitationMessage}&rdquo;
+                </p>
+              )}
+              <p style={{ fontFamily: LABEL_FONT, fontSize: 10.5, color: WHITE, margin: "14px 0 0" }}>
+                Dear <span style={{ fontWeight: 700 }}>{info.guestName}</span>, will you be joining us?
+              </p>
+              <div style={{ marginTop: 14, background: GOLD, borderRadius: 8, padding: "11px 14px", textAlign: "center" }}>
+                <span style={{ fontFamily: LABEL_FONT, fontSize: 11.5, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: isLightHex(GOLD) ? "#1a1a1a" : "#ffffff" }}>
+                  RSVP Now
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        ) : (
         <div
           ref={cardRef}
           className="w-full rounded-2xl overflow-hidden shadow-2xl"
@@ -506,6 +610,7 @@ export default function Rsvp() {
 
           </div>
         </div>{/* end cardRef */}
+        )}
         </AnimatedInvitationShell>
 
         {/* Download button — dark pill so the white label reads on a white page. */}

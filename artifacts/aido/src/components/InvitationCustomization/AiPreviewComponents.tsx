@@ -536,6 +536,7 @@ export function AiDigitalInvitationPreview({
   onPhotoPositionChange,
   customColors,
   photoEffect = "none",
+  fullPhoto = false,
 }: {
   profile: WeddingInfo;
   palette: ColorPalette;
@@ -544,6 +545,7 @@ export function AiDigitalInvitationPreview({
   onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
   photoEffect?: string | null;
+  fullPhoto?: boolean;
 }) {
   const bg      = customColors?.bg      ?? BG;
   const accent  = customColors?.accent  ?? GOLD;
@@ -570,6 +572,19 @@ export function AiDigitalInvitationPreview({
     formatTime(profile.receptionTime) && `Reception ${formatTime(profile.receptionTime)}`,
   ].filter((line): line is string => Boolean(line));
   const rsvpDate = formatDate(profile.rsvpByDate, { year: "numeric", month: "long", day: "numeric" });
+
+  if (fullPhoto) {
+    return (
+      <FullPhotoRsvpPreview
+        profile={profile}
+        photoUrl={photoUrl}
+        photoPosition={photoPosition}
+        onPhotoPositionChange={onPhotoPositionChange}
+        customColors={customColors}
+        photoEffect={photoEffect}
+      />
+    );
+  }
 
   return (
     <CardShell photoUrl={photoUrl} photoPosition={photoPosition} onPhotoPositionChange={onPhotoPositionChange} customColors={customColors} photoEffect={photoEffect}>
@@ -697,5 +712,182 @@ export function AiDigitalInvitationPreview({
         </span>
       </div>
     </CardShell>
+  );
+}
+
+function FullPhotoRsvpPreview({
+  profile,
+  photoUrl,
+  photoPosition = { x: 50, y: 50 },
+  onPhotoPositionChange,
+  customColors,
+  photoEffect,
+}: {
+  profile: WeddingInfo;
+  photoUrl?: string | null;
+  photoPosition?: PhotoPosition;
+  onPhotoPositionChange?: (pos: PhotoPosition) => void;
+  customColors?: CustomColors;
+  photoEffect?: string | null;
+}) {
+  const accent = customColors?.accent ?? GOLD;
+  const textColor = customColors?.text ?? "#ffffff";
+  const displayFont = customColors?.font
+    ? `'${customColors.font}', ${cormorant}`
+    : cormorant;
+  const labelFont = customColors ? displayFont : jakarta;
+  const parsedBaseFs = customColors?.fontSize ? parseFloat(customColors.fontSize) : 16;
+  const baseFs = Number.isFinite(parsedBaseFs) && parsedBaseFs > 0 ? parsedBaseFs : 16;
+  const sc = customColors ? baseFs / 16 : 1;
+
+  const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
+  const handleDown = (e: React.PointerEvent<HTMLElement>) => {
+    if (!onPhotoPositionChange) return;
+    e.preventDefault();
+    e.stopPropagation();
+    panRef.current = { sx: e.clientX, sy: e.clientY, ox: photoPosition.x, oy: photoPosition.y };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const handleMove = (e: React.PointerEvent<HTMLElement>) => {
+    if (!panRef.current || !onPhotoPositionChange) return;
+    const dx = e.clientX - panRef.current.sx;
+    const dy = e.clientY - panRef.current.sy;
+    const delta = dragDeltaToPercent(e, dx, dy);
+    onPhotoPositionChange({
+      x: clampPercent(panRef.current.ox - delta.x),
+      y: clampPercent(panRef.current.oy - delta.y),
+    });
+  };
+  const handleUp = (e: React.PointerEvent<HTMLElement>) => {
+    panRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture?.(e.pointerId);
+    } catch { /* noop */ }
+  };
+
+  const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
+  const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
+  const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const guestName = profile.guestName || "Guest";
+  const dateStr = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const cityLine = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  const timeLines = [
+    formatTime(profile.ceremonyTime) && `Ceremony ${formatTime(profile.ceremonyTime)}`,
+    formatTime(profile.receptionTime) && `Reception ${formatTime(profile.receptionTime)}`,
+  ].filter((line): line is string => Boolean(line));
+  const rsvpDate = formatDate(profile.rsvpByDate, { year: "numeric", month: "long", day: "numeric" });
+
+  return (
+    <div style={{ backgroundColor: "#f3f4f6", borderRadius: 28, padding: "12px" }}>
+      <div
+        className="mx-auto shadow-2xl"
+        style={{
+          width: "min(100%, 420px)",
+          aspectRatio: "9 / 16",
+          minHeight: 620,
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: 30,
+          border: "1px solid rgba(255,255,255,.35)",
+          background: "#111",
+          cursor: onPhotoPositionChange ? "grab" : undefined,
+          touchAction: onPhotoPositionChange ? "none" : undefined,
+          userSelect: "none",
+        }}
+        onPointerDown={handleDown}
+        onPointerMove={handleMove}
+        onPointerUp={handleUp}
+        onPointerCancel={handleUp}
+      >
+        {hasPhoto ? (
+          <AuthMediaImage
+            src={photoUrl!}
+            alt="RSVP invitation photo"
+            draggable={false}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
+              filter: photoEffectToFilter(photoEffect),
+              pointerEvents: "none",
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(145deg, rgba(255,255,255,.15), transparent 42%), linear-gradient(180deg, #333, #111)",
+            }}
+          />
+        )}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(180deg, rgba(0,0,0,.26) 0%, rgba(0,0,0,.08) 34%, rgba(0,0,0,.76) 100%)",
+            pointerEvents: "none",
+          }}
+        />
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", padding: "34px 28px 38px", color: textColor, textAlign: "center" }}>
+          <div>
+            <p style={{ fontFamily: labelFont, fontSize: 12 * sc, fontWeight: 700, letterSpacing: "0.34em", textTransform: "uppercase", margin: "0 0 10px", color: accent }}>
+              Wedding RSVP
+            </p>
+            {rsvpDate && (
+              <p style={{ fontFamily: labelFont, fontSize: 9.5 * sc, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", margin: 0, color: textColor }}>
+                RSVP By {rsvpDate}
+              </p>
+            )}
+          </div>
+
+          <div style={{ marginTop: "auto" }}>
+            <h2 style={{ fontFamily: displayFont, fontSize: `${2.15 * sc}rem`, fontWeight: 500, fontStyle: "italic", color: accent, lineHeight: 1.15, margin: 0 }}>
+              {couple}
+            </h2>
+            {dateStr && (
+              <p style={{ fontFamily: labelFont, fontSize: 10.5 * sc, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", margin: "16px 0 0", color: textColor }}>
+                {dateStr}
+              </p>
+            )}
+            {(profile.venue || cityLine || timeLines.length > 0) && (
+              <div style={{ marginTop: 12, padding: "10px 12px", borderTop: `1px solid ${accent}66`, borderBottom: `1px solid ${accent}66`, background: "rgba(0,0,0,.22)" }}>
+                {profile.venue && (
+                  <p style={{ fontFamily: displayFont, fontSize: `${1.05 * sc}rem`, fontWeight: 600, color: accent, margin: 0, lineHeight: 1.25 }}>
+                    {profile.venue}
+                  </p>
+                )}
+                {cityLine && (
+                  <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: textColor, margin: "4px 0 0" }}>
+                    {cityLine}
+                  </p>
+                )}
+                {timeLines.length > 0 && (
+                  <p style={{ fontFamily: labelFont, fontSize: 9 * sc, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: textColor, margin: "7px 0 0" }}>
+                    {timeLines.join("  /  ")}
+                  </p>
+                )}
+              </div>
+            )}
+            {profile.invitationMessage && (
+              <p style={{ fontFamily: displayFont, fontSize: `${0.95 * sc}rem`, fontStyle: "italic", color: textColor, lineHeight: 1.55, margin: "14px 0 0" }}>
+                &ldquo;{profile.invitationMessage}&rdquo;
+              </p>
+            )}
+            <p style={{ fontFamily: labelFont, fontSize: 10.5 * sc, color: textColor, margin: "14px 0 0" }}>
+              Dear <span style={{ fontWeight: 700 }}>{guestName}</span>, will you be joining us?
+            </p>
+            <div style={{ marginTop: 14, background: accent, borderRadius: 8, padding: "11px 14px", textAlign: "center" }}>
+              <span style={{ fontFamily: labelFont, fontSize: 11.5 * sc, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: isLightHex(accent) ? "#1a1a1a" : "#ffffff" }}>
+                RSVP Now
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

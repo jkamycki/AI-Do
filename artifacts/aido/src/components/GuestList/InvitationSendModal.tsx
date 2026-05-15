@@ -837,6 +837,7 @@ export function InvitationSendModal({
                         onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
                         customColors={digPreviewColors}
                         photoEffect={customization.customColors?.digitalInvitationPhotoEffect ?? "none"}
+                        fullPhoto={customization.digitalInvitationLayout === "animated-full-photo-save-date"}
                       />
                       </AnimatedInvitationShell>
                     )}
