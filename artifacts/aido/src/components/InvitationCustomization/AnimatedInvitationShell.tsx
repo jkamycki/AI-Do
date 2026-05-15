@@ -447,36 +447,38 @@ export function AnimatedInvitationShell({
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-layer {
           opacity: 0;
-          transform: translate(-50%, -86%) scale(.46) rotate(-3deg);
+          width: min(calc(100% - ${compact ? "88px" : "120px"}), ${compact ? "360px" : "410px"});
+          transform: translate(-50%, -86%) scale(.46) rotate(-18deg);
           animation:
-            aidoOwlEnvelopeDrop 820ms cubic-bezier(.17,.78,.18,1) 1160ms forwards,
+            aidoOwlEnvelopeDrop 1020ms cubic-bezier(.17,.78,.18,1) 1160ms forwards,
             aidoLayerGone 1ms linear 4300ms forwards;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-flap {
-          animation-delay: 2100ms;
+          animation-delay: 2260ms;
         }
         .aido-invite-anim-animated-owl-delivery .aido-wax-seal {
-          animation-delay: 2180ms;
+          animation-delay: 2340ms;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-side.left {
-          animation-delay: 2580ms;
+          animation-delay: 2720ms;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-side.right {
-          animation-delay: 2630ms;
+          animation-delay: 2770ms;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-bottom {
-          animation-delay: 2750ms;
+          animation-delay: 2890ms;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-pocket {
           opacity: 0;
-          transform: translate(-50%, -82%) scale(.48) rotate(-3deg);
-          animation: aidoOwlEnvelopeDrop 820ms cubic-bezier(.17,.78,.18,1) 1160ms forwards;
+          width: min(calc(100% - ${compact ? "88px" : "120px"}), ${compact ? "360px" : "410px"});
+          transform: translate(-50%, -82%) scale(.48) rotate(-18deg);
+          animation: aidoOwlEnvelopeDrop 1020ms cubic-bezier(.17,.78,.18,1) 1160ms forwards;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-pocket-face {
-          animation-delay: 2750ms;
+          animation-delay: 2890ms;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-pocket-face::after {
-          animation-delay: 2180ms;
+          animation-delay: 2340ms;
         }
         .aido-owl-delivery {
           left: 50%;
@@ -616,10 +618,11 @@ export function AnimatedInvitationShell({
           100% { opacity: 0; transform: translateY(116px) scale(1.42) rotate(7deg); }
         }
         @keyframes aidoOwlEnvelopeDrop {
-          0% { opacity: 0; transform: translate(-50%, -82%) scale(.48) rotate(-3deg); }
+          0% { opacity: 0; transform: translate(-50%, -82%) scale(.48) rotate(-18deg); }
           15% { opacity: 1; }
-          70% { opacity: 1; transform: translate(-50%, -45%) scale(.78) rotate(1deg); }
-          100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
+          54% { opacity: 1; transform: translate(-50%, -42%) scale(.78) rotate(18deg); }
+          82% { opacity: 1; transform: translate(-50%, -50%) scale(.95) rotate(92deg); }
+          100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(90deg); }
         }
         @media (max-width: 640px) {
           .aido-invite-anim {
