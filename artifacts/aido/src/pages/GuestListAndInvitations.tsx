@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 
 const Guests = lazy(() => import("./Guests"));
 const InvitationCustomization = lazy(() => import("./InvitationCustomization"));
+type InvitationDefaultTab = "saveTheDate" | "digitalInvitation";
 
 function TabSkeleton() {
   return (
@@ -118,6 +119,8 @@ export default function GuestListAndInvitations() {
     : activeWorkspace?.profileId || profile?.id;
 
   const [activeTab, setActiveTab] = useState("guest-list");
+  const [guestListDefaultInvitation, setGuestListDefaultInvitation] =
+    useState<InvitationDefaultTab>("saveTheDate");
 
   if (!profileId) {
     if (profileLoading) {
@@ -171,7 +174,7 @@ export default function GuestListAndInvitations() {
         <TabsContent value="guest-list" className="mt-6">
           <TabErrorBoundary tabName="Guest List">
             <Suspense fallback={<TabSkeleton />}>
-              <Guests />
+              <Guests sendDefaultInvitation={guestListDefaultInvitation} />
             </Suspense>
           </TabErrorBoundary>
         </TabsContent>
@@ -179,7 +182,13 @@ export default function GuestListAndInvitations() {
         <TabsContent value="invitation-customization" forceMount className="mt-6 data-[state=inactive]:hidden">
           <TabErrorBoundary tabName="Invitation Customization">
             <Suspense fallback={<TabSkeleton />}>
-              <InvitationCustomization profileId={profileId} onOpenGuestList={() => setActiveTab("guest-list")} />
+              <InvitationCustomization
+                profileId={profileId}
+                onOpenGuestList={(defaultInvitation) => {
+                  setGuestListDefaultInvitation(defaultInvitation ?? "saveTheDate");
+                  setActiveTab("guest-list");
+                }}
+              />
             </Suspense>
           </TabErrorBoundary>
         </TabsContent>

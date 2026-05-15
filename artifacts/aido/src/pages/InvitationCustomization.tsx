@@ -54,7 +54,7 @@ interface RouteParams {
 
 interface InvitationCustomizationProps {
   profileId?: number;
-  onOpenGuestList?: () => void;
+  onOpenGuestList?: (defaultInvitation?: "saveTheDate" | "digitalInvitation") => void;
 }
 
 type InvitationDesignKey = "saveTheDate" | "rsvpInvitation";
@@ -1021,7 +1021,11 @@ export default function InvitationCustomizationPage({
               type="button"
               size="sm"
               className="mt-2 w-full gap-2"
-              onClick={deliveryMode === "digital" ? onOpenGuestList : downloadPrintPdf}
+              onClick={
+                deliveryMode === "digital"
+                  ? () => onOpenGuestList?.(previewTab)
+                  : downloadPrintPdf
+              }
               disabled={deliveryMode === "digital" ? !onOpenGuestList : exportingPrintPdf}
             >
               {deliveryMode === "digital" ? (

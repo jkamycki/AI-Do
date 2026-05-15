@@ -1278,7 +1278,11 @@ function GuestCollectorCard() {
   );
 }
 
-export default function Guests() {
+export default function Guests({
+  sendDefaultInvitation = "saveTheDate",
+}: {
+  sendDefaultInvitation?: "saveTheDate" | "digitalInvitation";
+}) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -1309,7 +1313,7 @@ export default function Guests() {
   const [textingGuestId, setTextingGuestId] = useState<number | null>(null);
   const [sendModalDefaultTab, setSendModalDefaultTab] = useState<
     "saveTheDate" | "digitalInvitation"
-  >("saveTheDate");
+  >(sendDefaultInvitation);
   const [sendModalReminderOnly, setSendModalReminderOnly] = useState(false);
 
   const { data: weddingProfile, isLoading: profileLoading } = useGetProfile();
@@ -1326,6 +1330,10 @@ export default function Guests() {
   const updateGuest = useUpdateGuest();
   const deleteGuest = useDeleteGuest();
   const acknowledgeGuest = useAcknowledgeGuest();
+
+  useEffect(() => {
+    setSendModalDefaultTab(sendDefaultInvitation);
+  }, [sendDefaultInvitation]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -2957,11 +2965,7 @@ export default function Guests() {
                             g.rsvpStatus === "declined"
                           )
                             return;
-                          setSendModalDefaultTab(
-                            (g as any).saveTheDateStatus === "sent"
-                              ? "digitalInvitation"
-                              : "saveTheDate",
-                          );
+                          setSendModalDefaultTab(sendDefaultInvitation);
                           setSendModalReminderOnly(false);
                           setSendModalGuest(g);
                         }}
@@ -3357,11 +3361,7 @@ export default function Guests() {
                                   g.rsvpStatus === "declined"
                                 )
                                   return;
-                                setSendModalDefaultTab(
-                                  (g as any).saveTheDateStatus === "sent"
-                                    ? "digitalInvitation"
-                                    : "saveTheDate",
-                                );
+                                setSendModalDefaultTab(sendDefaultInvitation);
                                 setSendModalReminderOnly(false);
                                 setSendModalGuest(g);
                               }}
