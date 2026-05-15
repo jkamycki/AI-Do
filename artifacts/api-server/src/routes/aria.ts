@@ -86,6 +86,77 @@ function isInfoQuestion(text: string): boolean {
   return INFO_QUESTION_PATTERNS.some((re) => re.test(trimmed));
 }
 
+function siteTaskGuide(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const hasAction = /\b(add|change|customize|delete|download|edit|email|export|fix|generate|import|make|message|publish|remove|send|set|text|upload|use)\b/i.test(trimmed);
+  if (!hasAction) return null;
+
+  if (/\b(invitation studio|invitations?|invite|save[-\s]?the[-\s]?date|rsvp invitation|print|pdf|qr|sms|text message|email guests?|canva)\b/i.test(trimmed)) {
+    return [
+      "I can help with the wording and tell you the exact flow, but I can't send, upload, print, or edit Invitation Studio files directly from chat yet.",
+      "",
+      "Use this path:",
+      "1. Open Invitation Studio.",
+      "2. Choose Save the Date or RSVP Invitation.",
+      "3. Pick AI Generated or Custom Design.",
+      "4. Adjust the photo, zoom, colors, and wording.",
+      "5. Use Send from Guest List for digital sends, or Download Print PDF for physical invitations.",
+      "",
+      "If you tell me the wording or style you want, I can draft it here so you can paste it into the studio.",
+    ].join("\n");
+  }
+
+  if (/\b(website editor|wedding website|website|site|publish|domain|slug|home page|homepage|rsvp page|registry|travel section|story section)\b/i.test(trimmed)) {
+    return [
+      "I can update core wedding details from chat, like names, date, time, venue, location, budget, guest count, and vibe.",
+      "",
+      "For visual website edits, publishing, domain slug changes, sections, photos, and layout, use Website Editor directly:",
+      "1. Open Website Editor.",
+      "2. Edit the section or design setting.",
+      "3. Preview desktop and mobile.",
+      "4. Publish when it looks right.",
+      "",
+      "Tell me the exact copy or wedding detail you want changed, and I can save supported profile fields for you.",
+    ].join("\n");
+  }
+
+  if (/\b(contract analyzer|contract|upload contract|negotiation|negotiate)\b/i.test(trimmed)) {
+    return [
+      "I can list uploaded contracts and summarize contract analysis, but uploads and vendor assignment happen in Contract Analyzer.",
+      "",
+      "Use this path:",
+      "1. Open Contract Analyzer.",
+      "2. Upload the contract.",
+      "3. Pick the vendor from your vendor list.",
+      "4. Review the analysis and draft negotiation response.",
+      "5. Use Send to Vendor to populate the vendor message without sending it.",
+    ].join("\n");
+  }
+
+  if (/\b(mood board|moodboard|vision board|inspiration|photo board|image board)\b/i.test(trimmed)) {
+    return "Mood Board uploads, layout changes, and image positioning need to happen in the Mood Board page. I can still help write a design direction or color palette if you describe the look.";
+  }
+
+  if (/\b(file|files tab|upload file|document|attachment)\b/i.test(trimmed)) {
+    return "File uploads and file deletion need to happen from the matching Files area or vendor tile. I can help you decide where a file belongs, but I won't claim I uploaded or removed a file from chat.";
+  }
+
+  if (/\b(settings|account|billing|password|email address|profile photo|security|login|sign in|sign out)\b/i.test(trimmed)) {
+    return "Account, security, billing, password, and login settings need to be changed in Settings or your auth account screen. I can guide you there, but I can't change account credentials from Aria.";
+  }
+
+  if (/\b(operations center|admin|trash|restore|recover|deleted workspace|deleted data|workspace recovery)\b/i.test(trimmed)) {
+    return "Operations Center and recovery actions are admin-level tasks. Open Operations Center to review alerts, deleted workspace records, and recovery options. I can explain what to look for, but I won't make admin recovery changes from chat.";
+  }
+
+  if (/\b(excel|spreadsheet|csv|import guests?|bulk import|template)\b/i.test(trimmed)) {
+    return "Guest imports happen in Guest List with Import Excel. The template only requires full name and address; the other fields are optional. After upload, the page shows a green success message or a red error message above the import count.";
+  }
+
+  return null;
+}
+
 // Group every tool by its data domain so we can send only the relevant
 // subset on each request. Picking the right subset cuts the per-request
 // tools schema from ~3,700 tokens (all 35 tools) to ~300-700 tokens
@@ -177,6 +248,8 @@ SMALL TALK: For greetings, thanks, "how are you?", or chitchat → reply warmly 
 - If it's a supported data action (names/date/time/venue/location/vibe/budget/guest count), use tools and complete it.
 - If it's an editor-style visual/content action not exposed as a tool (e.g. section layout, fonts, animations, page toggles), do NOT stall or loop. Give direct click-by-click steps in the Website Editor and offer the next best workaround.
 - Never claim you changed something if no tool exists for that change. Be explicit: what you can update now vs what the user should click.
+
+#5 FULL-SITE TASK RULE - You can directly save planner data for vendors, guests, wedding party, hotels, budget, expenses, checklist, timeline, profile fields, seating charts, contracts readback, and collaborators. For page-only tasks (Invitation Studio sends/design/PDFs, Website Editor publishing/layout/photos, file uploads, Mood Board uploads, account settings, Operations Center recovery), guide the user to the exact page and never pretend you clicked, uploaded, sent, published, or recovered anything.
 
 GUEST RULE — adding a guest only requires the guest's name. If the user provides a person's name, that is enough to proceed to the one-line summary + Reply "yes" flow. Do NOT ask for the guest's name again. Do NOT ask whether the person is a guest or a plus-one unless the user explicitly says they are adding a plus-one for an existing guest. Default named people to regular guests. Do NOT ask for meal choice while adding a guest. Only save meal choice if the user voluntarily provides it or later asks to update it.
 
@@ -2269,7 +2342,7 @@ Return ONLY valid JSON: { "tables": [{ "tableNumber": 1, "tableName": "Table 1",
         model: getModel(),
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
-        max_tokens: 1500,
+        max_completion_tokens: 1500,
       });
       const raw = completion.choices[0]?.message?.content ?? "{}";
       let result: { tables: unknown[]; insights: string[]; warnings: string[]; totalSeated: number };
@@ -2409,7 +2482,7 @@ router.get("/aria/test", requireAuth, async (req, res) => {
   try {
     const result = await openai.chat.completions.create({
       model: getModel(),
-      max_tokens: 10,
+      max_completion_tokens: 10,
       messages: [{ role: "user", content: "Reply with just OK" }],
     });
     const reply = result.choices[0]?.message?.content ?? "";
@@ -2906,6 +2979,15 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       return;
     }
 
+    const guidedSiteTask = siteTaskGuide(lastUserText);
+    if (guidedSiteTask) {
+      send({ type: "content", content: guidedSiteTask });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
     // Skip tools for: chitchat, general advice, OR "add a vendor/photographer"
     // without a business name. Skipping tools streams content directly (no
     // buffering, no JSON sanitization) so the model's plain-text gathering
@@ -2946,7 +3028,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         // Groq llama-3.1-8b-instant has 20K TPM — easily covers
         // system prompt + tools schema (~3,700 tok) + 6 history msgs + 600 output.
         // If the model hits this limit, the continuation loop below requests more.
-        max_tokens: 600,
+        max_completion_tokens: 600,
         temperature: 0.1,   // low temp = reliable, consistent tool calls
         messages: convo as unknown as Parameters<typeof openai.chat.completions.create>[0]["messages"],
         stream: true as const,
