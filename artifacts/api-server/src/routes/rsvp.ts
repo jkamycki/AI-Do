@@ -1369,9 +1369,9 @@ router.get("/rsvp/:token", async (req, res) => {
       : [];
     const c = customizationRows[0] ?? null;
     const customizationPhoto = c?.digitalInvitationPhotoUrl ?? null;
-    const rsvpAskHotel = !!c?.customColors?.rsvpAskHotel;
+    const rsvpAskHotelSetting = !!c?.customColors?.rsvpAskHotel;
     const preferredHotelBlockId = c?.customColors?.rsvpHotelBlockId ?? null;
-    const hotelRows = rsvpAskHotel && profile
+    const hotelRows = rsvpAskHotelSetting && profile
       ? await db
           .select({
             id: hotelBlocks.id,
@@ -1388,6 +1388,7 @@ router.get("/rsvp/:token", async (req, res) => {
     const sortedHotelRows = preferredHotelBlockId
       ? [...hotelRows].sort((a, b) => (a.id === preferredHotelBlockId ? -1 : b.id === preferredHotelBlockId ? 1 : 0))
       : hotelRows;
+    const rsvpAskHotel = rsvpAskHotelSetting && sortedHotelRows.length > 0;
 
     // Merge customColors on top of the palette (same logic as the frontend)
     const basePalette = c?.colorPalette ?? DEFAULT_COLORS;

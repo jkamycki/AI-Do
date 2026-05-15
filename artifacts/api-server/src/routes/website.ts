@@ -2,7 +2,7 @@ import { Router } from "express";
 import { scrypt, randomBytes, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import rateLimit from "express-rate-limit";
-import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty } from "@workspace/db";
+import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty, hotelBlocks } from "@workspace/db";
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteHeroImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
 import { and, eq, ilike, desc, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -139,6 +139,20 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
     .where(eq(weddingParty.profileId, profile.id))
     .orderBy(weddingParty.sortOrder, weddingParty.createdAt);
 
+  const hotelOptions = await db
+    .select({
+      id: hotelBlocks.id,
+      hotelName: hotelBlocks.hotelName,
+      bookingLink: hotelBlocks.bookingLink,
+      address: hotelBlocks.address,
+      city: hotelBlocks.city,
+      state: hotelBlocks.state,
+      zip: hotelBlocks.zip,
+    })
+    .from(hotelBlocks)
+    .where(eq(hotelBlocks.profileId, profile.id))
+    .orderBy(hotelBlocks.createdAt);
+
   return {
     slug: row.slug,
     theme: row.theme,
@@ -154,6 +168,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
     heroImages: row.heroImages ?? [],
     heroImage: row.heroImage,
     portalParty,
+    hotelOptions,
     couple: {
       partner1Name: profile.partner1Name,
       partner2Name: profile.partner2Name,
@@ -496,6 +511,38 @@ async function resolvePublishedSite(slug: string, req: ExpressRequest) {
   return { ok: true as const, site: row };
 }
 
+async function normalizeHotelRsvp(
+  profileId: number,
+  attendance: string | undefined,
+  hotelNeeded: unknown,
+  bookedHotelBlockId: unknown,
+): Promise<Pick<typeof guests.$inferInsert, "needsHotel" | "bookedHotelBlockId">> {
+  if (attendance !== "attending") {
+    return { needsHotel: false, bookedHotelBlockId: null };
+  }
+  const wantsHotel = hotelNeeded === true || hotelNeeded === "true";
+  if (!wantsHotel) return { needsHotel: false, bookedHotelBlockId: null };
+
+  const update: Pick<typeof guests.$inferInsert, "needsHotel" | "bookedHotelBlockId"> = {
+    needsHotel: true,
+    bookedHotelBlockId: null,
+  };
+  if (bookedHotelBlockId !== undefined && bookedHotelBlockId !== null && bookedHotelBlockId !== "") {
+    const hotelId = Number(bookedHotelBlockId);
+    if (!Number.isInteger(hotelId) || hotelId <= 0) {
+      throw new Error("Invalid hotel block selection.");
+    }
+    const [hotel] = await db
+      .select({ id: hotelBlocks.id })
+      .from(hotelBlocks)
+      .where(and(eq(hotelBlocks.id, hotelId), eq(hotelBlocks.profileId, profileId)))
+      .limit(1);
+    if (!hotel) throw new Error("That hotel block is not available for this RSVP.");
+    update.bookedHotelBlockId = hotel.id;
+  }
+  return update;
+}
+
 // GET /api/website/public/:slug/guests/search?q=name
 // Returns guests on this wedding's list whose name fuzzy-matches the query.
 // Limit 10 to keep the page responsive and reduce enumeration risk.
@@ -552,6 +599,8 @@ router.get("/website/public/:slug/guests/:guestId", async (req, res) => {
       plusOne: guest.plusOne,
       plusOneName: guest.plusOneName,
       plusOneMealChoice: guest.plusOneMealChoice,
+      needsHotel: guest.needsHotel,
+      bookedHotelBlockId: guest.bookedHotelBlockId,
     });
   } catch (err) {
     req.log.error(err, "websiteRsvpGetGuest failed");
@@ -612,6 +661,8 @@ router.get("/website/preview/guests/:guestId", requireAuth, async (req, res) => 
       plusOne: guest.plusOne,
       plusOneName: guest.plusOneName,
       plusOneMealChoice: guest.plusOneMealChoice,
+      needsHotel: guest.needsHotel,
+      bookedHotelBlockId: guest.bookedHotelBlockId,
     });
   } catch (err) {
     req.log.error(err, "websiteRsvpPreviewGetGuest failed");
@@ -638,6 +689,8 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
       plusOneName,
       plusOneMealChoice,
       dietaryRestrictions,
+      hotelNeeded,
+      bookedHotelBlockId,
       message,
     } = (req.body ?? {}) as {
       name?: string;
@@ -648,6 +701,8 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
       plusOneName?: string;
       plusOneMealChoice?: string;
       dietaryRestrictions?: string;
+      hotelNeeded?: boolean;
+      bookedHotelBlockId?: number | null;
       message?: string;
     };
 
@@ -681,6 +736,12 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
     const isAttending = attendance === "attending";
     const wantsPlusOne = isAttending && plusOne === true;
     const cleanPlusOneName = typeof plusOneName === "string" ? plusOneName.trim() : "";
+    let hotelUpdate: Pick<typeof guests.$inferInsert, "needsHotel" | "bookedHotelBlockId">;
+    try {
+      hotelUpdate = await normalizeHotelRsvp(r.site.profileId, attendance, hotelNeeded, bookedHotelBlockId);
+    } catch (err) {
+      return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid hotel block selection." });
+    }
 
     const [created] = await db.insert(guests).values({
       profileId: r.site.profileId,
@@ -697,6 +758,8 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
       // column on the guest list page.
       notes: "Guest used RSVP anyway because they could not find themselves on the guest list. Review before sending future invites.",
       rsvpMessage: messageClean || null,
+      needsHotel: hotelUpdate.needsHotel,
+      bookedHotelBlockId: hotelUpdate.bookedHotelBlockId,
       source: "rsvp_self_add",
     }).returning();
 
@@ -724,6 +787,8 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
       plusOneName,
       plusOneMealChoice,
       dietaryRestrictions,
+      hotelNeeded,
+      bookedHotelBlockId,
       message,
     } = (req.body ?? {}) as {
       guestId?: number;
@@ -733,6 +798,8 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
       plusOneName?: string;
       plusOneMealChoice?: string;
       dietaryRestrictions?: string;
+      hotelNeeded?: boolean;
+      bookedHotelBlockId?: number | null;
       message?: string;
     };
 
@@ -768,6 +835,13 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
 
     if (attendance === "attending") {
       updateData.mealChoice = normalizeMeal(mealChoice);
+      if (hotelNeeded !== undefined || bookedHotelBlockId !== undefined) {
+        try {
+          Object.assign(updateData, await normalizeHotelRsvp(r.site.profileId, attendance, hotelNeeded, bookedHotelBlockId));
+        } catch (err) {
+          return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid hotel block selection." });
+        }
+      }
       if (plusOne !== undefined) {
         updateData.plusOne = !!plusOne;
         const finalName = typeof plusOneName === "string" ? plusOneName.trim() : "";
@@ -779,6 +853,8 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
       updateData.plusOneName = null;
       updateData.plusOneMealChoice = null;
       updateData.mealChoice = null;
+      updateData.needsHotel = false;
+      updateData.bookedHotelBlockId = null;
     }
 
     await db.update(guests).set(updateData).where(eq(guests.id, guest.id));

@@ -1849,6 +1849,15 @@ export default function InvitationCustomizationPage({
                 </div>
 
                 <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+                  {hotelBlocks.length === 0 ? (
+                    <div>
+                      <p className="text-sm font-medium">Hotel RSVP question</p>
+                      <p className="text-xs text-muted-foreground">
+                        Add a hotel block in the Hotels tab before asking guests if they need a hotel.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium">Ask about hotel needs</p>
@@ -1884,6 +1893,8 @@ export default function InvitationCustomizationPage({
                         Add or edit hotel booking links in the Hotels tab. Guests can still RSVP if no booking link is available yet.
                       </p>
                     </div>
+                  )}
+                    </>
                   )}
                 </div>
               </CardContent>

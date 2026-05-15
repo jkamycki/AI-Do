@@ -109,6 +109,15 @@ export interface WebsiteRendererPayload {
     photoUrl: string | null;
     sortOrder: number;
   }>;
+  hotelOptions?: Array<{
+    id: number;
+    hotelName: string;
+    bookingLink?: string | null;
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip?: string | null;
+  }>;
   galleryImages: Array<{ url: string; caption?: string; order: number }>;
   heroImages?: Array<{ url: string; order: number }>;
   heroImage: string | null;

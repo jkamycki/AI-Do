@@ -184,11 +184,12 @@ export default function Rsvp() {
   const hotelNeeded = form.watch("hotelNeeded");
   const selectedHotelBlockId = form.watch("bookedHotelBlockId");
   const selectedHotel = info?.hotelOptions?.find((hotel) => String(hotel.id) === selectedHotelBlockId) ?? null;
+  const showHotelQuestion = !!info?.askHotelOnRsvp && (info.hotelOptions?.length ?? 0) > 0;
 
   useEffect(() => {
-    if (!info?.askHotelOnRsvp || !info.preferredHotelBlockId) return;
+    if (!showHotelQuestion || !info?.preferredHotelBlockId) return;
     form.setValue("bookedHotelBlockId", String(info.preferredHotelBlockId));
-  }, [form, info?.askHotelOnRsvp, info?.preferredHotelBlockId]);
+  }, [form, info?.preferredHotelBlockId, showHotelQuestion]);
 
   const submit = useMutation({
     mutationFn: async (data: FormData) => {
@@ -873,7 +874,7 @@ export default function Rsvp() {
                       )}
                     </div>
 
-                    {info.askHotelOnRsvp && (
+                    {showHotelQuestion && (
                       <div className="rounded-xl p-4 space-y-4" style={{ border: `1px solid ${GOLD}33`, background: `${GOLD}0d` }}>
                         <FormField
                           control={form.control}
@@ -921,42 +922,36 @@ export default function Rsvp() {
 
                         {hotelNeeded && (
                           <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
-                            {info.hotelOptions && info.hotelOptions.length > 0 ? (
-                              <FormField
-                                control={form.control}
-                                name="bookedHotelBlockId"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel style={{ color: MUTED, fontFamily: jakarta }}>
-                                      Which hotel block will you book?
-                                    </FormLabel>
-                                    <Select
-                                      value={field.value || "pending"}
-                                      onValueChange={(value) => field.onChange(value === "pending" ? "" : value)}
-                                    >
-                                      <FormControl>
-                                        <SelectTrigger style={{ background: "rgba(255,255,255,0.05)", borderColor: CARD_BDR, color: WHITE, fontFamily: jakarta }}>
-                                          <SelectValue placeholder="Select a hotel block" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        <SelectItem value="pending">I will decide later</SelectItem>
-                                        {info.hotelOptions?.map((hotel) => (
-                                          <SelectItem key={hotel.id} value={String(hotel.id)}>
-                                            {hotel.hotelName || "Hotel block"}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            ) : (
-                              <p className="text-xs" style={{ color: MUTED, fontFamily: jakarta }}>
-                                Hotel details are coming soon. We will mark you as needing hotel information.
-                              </p>
-                            )}
+                            <FormField
+                              control={form.control}
+                              name="bookedHotelBlockId"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel style={{ color: MUTED, fontFamily: jakarta }}>
+                                    Which hotel block will you book?
+                                  </FormLabel>
+                                  <Select
+                                    value={field.value || "pending"}
+                                    onValueChange={(value) => field.onChange(value === "pending" ? "" : value)}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger style={{ background: "rgba(255,255,255,0.05)", borderColor: CARD_BDR, color: WHITE, fontFamily: jakarta }}>
+                                        <SelectValue placeholder="Select a hotel block" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="pending">I will decide later</SelectItem>
+                                      {info.hotelOptions?.map((hotel) => (
+                                        <SelectItem key={hotel.id} value={String(hotel.id)}>
+                                          {hotel.hotelName || "Hotel block"}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
                             {selectedHotel?.bookingLink && (
                               <a

@@ -18,6 +18,8 @@ interface GuestDetails {
   plusOne: boolean;
   plusOneName: string | null;
   plusOneMealChoice: string | null;
+  needsHotel?: boolean;
+  bookedHotelBlockId?: number | null;
 }
 
 function fontStack(font: string): string {
@@ -54,6 +56,8 @@ export function RsvpFlow({
   const [plusOne, setPlusOne] = useState(false);
   const [plusOneName, setPlusOneName] = useState("");
   const [plusOneMeal, setPlusOneMeal] = useState("");
+  const [hotelNeeded, setHotelNeeded] = useState(false);
+  const [hotelBlockId, setHotelBlockId] = useState("");
   // Self-add (guest not on the list) form
   const [selfName, setSelfName] = useState("");
   const [selfEmail, setSelfEmail] = useState("");
@@ -62,6 +66,16 @@ export function RsvpFlow({
   const accent = data.colorPalette.primary;
   const text = data.colorPalette.text;
   const bg = data.colorPalette.background;
+  const preferredHotelId = data.customText._rsvpHotelBlockId && data.customText._rsvpHotelBlockId !== "all"
+    ? data.customText._rsvpHotelBlockId
+    : "";
+  const allHotelOptions = data.hotelOptions ?? [];
+  const preferredHotelExists = preferredHotelId && allHotelOptions.some((hotel) => String(hotel.id) === preferredHotelId);
+  const hotelOptions = preferredHotelId && preferredHotelExists
+    ? allHotelOptions.filter((hotel) => String(hotel.id) === preferredHotelId)
+    : allHotelOptions;
+  const showHotelQuestion = data.customText._rsvpAskHotel === "true" && hotelOptions.length > 0;
+  const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === hotelBlockId) ?? null;
 
   const passwordHeader: Record<string, string> = password ? { "X-Site-Password": password } : {};
 
@@ -73,7 +87,14 @@ export function RsvpFlow({
     setPlusOne(guest.plusOne);
     setPlusOneName(guest.plusOneName ?? "");
     setPlusOneMeal(guest.plusOneMealChoice ?? "");
-  }, [guest]);
+    setHotelNeeded(!!guest.needsHotel);
+    setHotelBlockId(guest.bookedHotelBlockId ? String(guest.bookedHotelBlockId) : preferredHotelId);
+  }, [guest, preferredHotelId]);
+
+  useEffect(() => {
+    if (!showHotelQuestion || !preferredHotelId || hotelBlockId) return;
+    setHotelBlockId(preferredHotelId);
+  }, [hotelBlockId, preferredHotelId, showHotelQuestion]);
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -155,6 +176,10 @@ export function RsvpFlow({
           plusOneName: plusOne ? plusOneName : undefined,
           plusOneMealChoice: plusOne ? plusOneMeal : undefined,
           dietaryRestrictions: dietary || undefined,
+          ...(showHotelQuestion ? {
+            hotelNeeded: attendance === "attending" ? hotelNeeded : false,
+            bookedHotelBlockId: hotelNeeded && hotelBlockId ? Number(hotelBlockId) : null,
+          } : {}),
           message: selfMessage.trim() || undefined,
           ...(password ? { password } : {}),
         }),
@@ -198,6 +223,10 @@ export function RsvpFlow({
           plusOneName: plusOne ? plusOneName : undefined,
           plusOneMealChoice: plusOne ? plusOneMeal : undefined,
           dietaryRestrictions: dietary || undefined,
+          ...(showHotelQuestion ? {
+            hotelNeeded: attendance === "attending" ? hotelNeeded : false,
+            bookedHotelBlockId: hotelNeeded && hotelBlockId ? Number(hotelBlockId) : null,
+          } : {}),
           message: selfMessage.trim() || undefined,
           ...(password ? { password } : {}),
         }),
@@ -476,6 +505,58 @@ export function RsvpFlow({
                     </>
                   )}
 
+                  {showHotelQuestion && (
+                    <div className="space-y-3 rounded-lg border p-4" style={{ borderColor: `${accent}33`, background: `${accent}08` }}>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={hotelNeeded}
+                          onChange={(e) => {
+                            setHotelNeeded(e.target.checked);
+                            if (!e.target.checked) setHotelBlockId("");
+                            else if (preferredHotelId) setHotelBlockId(preferredHotelId);
+                          }}
+                          className="h-4 w-4"
+                          style={{ accentColor: accent }}
+                        />
+                        <span className="text-sm" style={{ color: text }}>
+                          {t("rsvp.need_hotel", { defaultValue: "I will need a hotel room" })}
+                        </span>
+                      </label>
+                      {hotelNeeded && (
+                        <div className="space-y-2">
+                          <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>
+                            {t("rsvp.hotel_block", { defaultValue: "Hotel block" })}
+                          </label>
+                          <select
+                            value={hotelBlockId || ""}
+                            onChange={(e) => setHotelBlockId(e.target.value)}
+                            className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                            style={inputBase}
+                          >
+                            <option value="">{t("rsvp.hotel_decide_later", { defaultValue: "I will decide later" })}</option>
+                            {hotelOptions.map((hotel) => (
+                              <option key={hotel.id} value={hotel.id}>
+                                {hotel.hotelName || "Hotel block"}
+                              </option>
+                            ))}
+                          </select>
+                          {selectedHotel?.bookingLink && (
+                            <a
+                              href={selectedHotel.bookingLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex text-sm underline font-medium"
+                              style={{ color: accent }}
+                            >
+                              {t("rsvp.open_booking_link", { defaultValue: "Open booking link" })}
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div>
                     <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.dietary", { defaultValue: "Dietary restrictions or notes" })}</label>
                     <textarea
@@ -656,6 +737,58 @@ export function RsvpFlow({
                     </>
                   )}
 
+                  {showHotelQuestion && (
+                    <div className="space-y-3 rounded-lg border p-4" style={{ borderColor: `${accent}33`, background: `${accent}08` }}>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={hotelNeeded}
+                          onChange={(e) => {
+                            setHotelNeeded(e.target.checked);
+                            if (!e.target.checked) setHotelBlockId("");
+                            else if (preferredHotelId) setHotelBlockId(preferredHotelId);
+                          }}
+                          className="h-4 w-4"
+                          style={{ accentColor: accent }}
+                        />
+                        <span className="text-sm" style={{ color: text }}>
+                          {t("rsvp.need_hotel", { defaultValue: "I will need a hotel room" })}
+                        </span>
+                      </label>
+                      {hotelNeeded && (
+                        <div className="space-y-2">
+                          <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>
+                            {t("rsvp.hotel_block", { defaultValue: "Hotel block" })}
+                          </label>
+                          <select
+                            value={hotelBlockId || ""}
+                            onChange={(e) => setHotelBlockId(e.target.value)}
+                            className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                            style={inputBase}
+                          >
+                            <option value="">{t("rsvp.hotel_decide_later", { defaultValue: "I will decide later" })}</option>
+                            {hotelOptions.map((hotel) => (
+                              <option key={hotel.id} value={hotel.id}>
+                                {hotel.hotelName || "Hotel block"}
+                              </option>
+                            ))}
+                          </select>
+                          {selectedHotel?.bookingLink && (
+                            <a
+                              href={selectedHotel.bookingLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex text-sm underline font-medium"
+                              style={{ color: accent }}
+                            >
+                              {t("rsvp.open_booking_link", { defaultValue: "Open booking link" })}
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div>
                     <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>{t("rsvp.dietary", { defaultValue: "Dietary restrictions or notes" })}</label>
                     <textarea
@@ -745,6 +878,8 @@ export function RsvpFlow({
                   setSelfName("");
                   setSelfEmail("");
                   setSelfMessage("");
+                  setHotelNeeded(false);
+                  setHotelBlockId(preferredHotelId);
                 }}
                 className="text-xs underline opacity-60 hover:opacity-100"
                 style={{ color: text }}
