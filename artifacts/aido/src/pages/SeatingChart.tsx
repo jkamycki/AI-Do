@@ -70,6 +70,44 @@ const TABLE_ACCENTS = [
   { bar: "bg-cyan-500", chip: "bg-cyan-100 text-cyan-900 dark:bg-cyan-900/50 dark:text-cyan-100" },
 ];
 
+function safeText(value: unknown, fallback = ""): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return fallback;
+}
+
+function normalizeSeatingTables(tables: unknown): SeatingTable[] {
+  if (!Array.isArray(tables)) return [];
+  return tables.map((raw, index) => {
+    const row = raw && typeof raw === "object" ? raw as Partial<SeatingTable> : {};
+    const tableNumber = Number.isFinite(Number(row.tableNumber)) && Number(row.tableNumber) > 0
+      ? Number(row.tableNumber)
+      : index + 1;
+    const guests = Array.isArray(row.guests)
+      ? row.guests.map((guest) => safeText(guest)).filter(Boolean)
+      : [];
+    const tableName = safeText(row.tableName, `Table ${tableNumber}`);
+    const theme = safeText(row.theme);
+    return {
+      tableNumber,
+      tableName: tableName || `Table ${tableNumber}`,
+      guests,
+      ...(theme ? { theme } : {}),
+    };
+  });
+}
+
+function normalizeSeatingResult(value: SeatingResult): SeatingResult {
+  const tables = normalizeSeatingTables(value.tables);
+  const totalSeated = tables.reduce((sum, table) => sum + table.guests.length, 0);
+  return {
+    tables,
+    insights: Array.isArray(value.insights) ? value.insights.map((item) => safeText(item)).filter(Boolean) : [],
+    warnings: Array.isArray(value.warnings) ? value.warnings.map((item) => safeText(item)).filter(Boolean) : [],
+    totalSeated: Number.isFinite(Number(value.totalSeated)) ? Number(value.totalSeated) : totalSeated,
+  };
+}
+
 function GuestCard({
   guest,
   guests,
@@ -202,6 +240,7 @@ function TableCard({
 }) {
   const { t } = useTranslation();
   const accent = TABLE_ACCENTS[index % TABLE_ACCENTS.length];
+  const guestNames = Array.isArray(table.guests) ? table.guests : [];
   const [dragOver, setDragOver] = useState(false);
   const [editingTheme, setEditingTheme] = useState(false);
   const [themeDraft, setThemeDraft] = useState(table.theme ?? "");
@@ -244,7 +283,7 @@ function TableCard({
           </h3>
           <Badge className={`text-xs font-medium border-0 ${accent.chip} flex-shrink-0`}>
             <Armchair className="h-3 w-3 mr-1" />
-            {table.guests.length}
+            {guestNames.length}
           </Badge>
         </div>
         {editingTheme ? (
@@ -278,7 +317,7 @@ function TableCard({
       </CardHeader>
       <CardContent className="px-3 pb-3 pt-0">
         <ul className="space-y-0.5">
-          {table.guests.map((g, i) => (
+          {guestNames.map((g, i) => (
             <li
               key={`${g}-${i}`}
               draggable
@@ -320,7 +359,7 @@ function TableCard({
               </select>
             </li>
           ))}
-          {table.guests.length === 0 && (
+          {guestNames.length === 0 && (
             <li className="text-xs text-muted-foreground italic px-2 py-3 text-center border border-dashed border-border rounded-md">
               {t("seating.drop_guest_here")}
             </li>
@@ -662,11 +701,12 @@ export default function SeatingChartPage() {
       return r.json() as Promise<SeatingResult>;
     },
     onSuccess: (data) => {
-      setResult(data);
+      const normalized = normalizeSeatingResult(data);
+      setResult(normalized);
       setChartDirty(false);
       setShowGuests(false);
-      toast({ title: t("seating.toast_chart_ready"), description: t("seating.toast_chart_ready_desc", { guests: data.totalSeated, tables: data.tables.length }) });
-      saveChartMutation.mutate(data);
+      toast({ title: t("seating.toast_chart_ready"), description: t("seating.toast_chart_ready_desc", { guests: normalized.totalSeated, tables: normalized.tables.length }) });
+      saveChartMutation.mutate(normalized);
     },
     onError: (err: Error) => {
       toast({ title: t("seating.toast_generation_failed"), description: err.message, variant: "destructive" });
@@ -687,11 +727,12 @@ export default function SeatingChartPage() {
 
   const loadChart = (chart: SavedChart) => {
     if (chart.tables) {
+      const tables = normalizeSeatingTables(chart.tables);
       setResult({
-        tables: chart.tables,
+        tables,
         insights: [],
         warnings: [],
-        totalSeated: chart.tables.reduce((sum, t) => sum + t.guests.length, 0),
+        totalSeated: tables.reduce((sum, t) => sum + t.guests.length, 0),
       });
       setChartDirty(false);
       setActiveChartId(chart.id);
@@ -761,6 +802,10 @@ export default function SeatingChartPage() {
     if (!result) return;
     setExportingPdf(true);
     try {
+      const pdfResult = normalizeSeatingResult(result);
+      if (pdfResult.tables.length === 0) {
+        throw new Error("There are no seating tables to export yet.");
+      }
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ orientation: "p", unit: "pt", format: "letter" });
 
@@ -866,7 +911,7 @@ export default function SeatingChartPage() {
       let rightY = headerBottomY;
 
       // ── Tables (2-column flow) ───────────────────────────────────────
-      for (const table of result.tables) {
+      for (const table of pdfResult.tables) {
         const lineHeight = 14;
         const headerH = 18 + 8;
         const rowsH = (table.guests.length || 1) * lineHeight;
@@ -917,17 +962,19 @@ export default function SeatingChartPage() {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(13);
         doc.setTextColor(...GOLD);
-        const tableTitle = table.tableName && table.tableName.trim()
-          ? `Table ${table.tableNumber} · ${table.tableName}`
+        const tableName = safeText(table.tableName);
+        const tableTitle = tableName
+          ? `Table ${table.tableNumber} - ${tableName}`
           : `Table ${table.tableNumber}`;
         doc.text(tableTitle, cardCenterX, y, { align: "center" });
         y += 16;
 
-        if (table.theme) {
+        const theme = safeText(table.theme);
+        if (theme) {
           doc.setFont("helvetica", "italic");
           doc.setFontSize(10);
           doc.setTextColor(...GOLD_SOFT);
-          const themeLines = doc.splitTextToSize(table.theme, colW);
+          const themeLines = doc.splitTextToSize(theme, colW);
           doc.text(themeLines, cardCenterX, y, { align: "center" });
           y += themeLines.length * 12 + 2;
         }
@@ -941,7 +988,7 @@ export default function SeatingChartPage() {
           y += lineHeight;
         } else {
           for (const guest of table.guests) {
-            const lines = doc.splitTextToSize(`• ${guest}`, colW);
+            const lines = doc.splitTextToSize(`- ${safeText(guest, "Guest")}`, colW);
             doc.text(lines, x, y);
             y += lines.length * lineHeight;
           }
@@ -1010,8 +1057,9 @@ export default function SeatingChartPage() {
               {chartsLoading ? (
                 <p className="text-sm text-muted-foreground px-5 py-4">{t("seating.loading")}</p>
               ) : savedCharts.map(chart => {
-                const seated = chart.tables?.reduce((s, t) => s + t.guests.length, 0) ?? 0;
-                const tables = chart.tables?.length ?? 0;
+                const chartTables = normalizeSeatingTables(chart.tables);
+                const seated = chartTables.reduce((sum, table) => sum + table.guests.length, 0);
+                const tables = chartTables.length;
                 return (
                   <div key={chart.id} className="flex items-center gap-3 px-5 py-3">
                     <div className="flex-1 min-w-0">
