@@ -83,6 +83,7 @@ export function buildInvitationDesignDocument({
   const fontSize = isSaveTheDate
     ? customization?.saveTheDateFontSize
     : customization?.digitalInvitationFontSize;
+  const printDefaults = deliveryMode === "print" && designMode === "ai";
 
   return {
     version: "studio-v1",
@@ -97,10 +98,10 @@ export function buildInvitationDesignDocument({
       position: photoPosition,
     },
     style: {
-      backgroundColor: designMode === "custom" ? customStyle.backgroundColor : backgroundColor || "#1E1A2E",
+      backgroundColor: designMode === "custom" ? customStyle.backgroundColor : printDefaults ? "#fffaf4" : backgroundColor || "#1E1A2E",
       accentColor: designMode === "custom" ? customStyle.accentColor : accentColor || "#D4A017",
-      textColor: designMode === "custom" ? customStyle.fontColor : textColor || "#ffffff",
-      fontFamily: designMode === "custom" ? customStyle.fontFamily : fontFamily || "Cormorant Garamond",
+      textColor: designMode === "custom" ? customStyle.fontColor : printDefaults ? "#1f2933" : textColor || "#ffffff",
+      fontFamily: designMode === "custom" ? customStyle.fontFamily : fontFamily || "Playfair Display",
       fontSize: designMode === "custom" ? customStyle.fontSize : fontSize || "16",
     },
     fields: {

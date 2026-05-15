@@ -9,6 +9,12 @@ import {
   AiSaveDatePreview,
   AiDigitalInvitationPreview,
 } from "@/components/InvitationCustomization/AiPreviewComponents";
+import {
+  PrintInvitationPreview,
+  PRINT_SIZES,
+  type PrintInvitationSide,
+  type PrintInvitationSize,
+} from "@/components/InvitationCustomization/PrintInvitationPreview";
 import { Card, CardContent } from "@/components/ui/card";
 import { WEBSITE_THEMES } from "@/lib/websiteThemes";
 import {
@@ -81,6 +87,10 @@ export default function InvitationCustomizationPage({
   const [previewTab, setPreviewTab] = useState<PreviewTab>("saveTheDate");
   const [designMode, setDesignMode] = useState<"ai" | "custom">("ai");
   const [deliveryMode, setDeliveryMode] = useState<InvitationDeliveryMode>("digital");
+  const [printSize, setPrintSize] = useState<PrintInvitationSize>("5x7");
+  const [printSide, setPrintSide] = useState<PrintInvitationSide>("front");
+  const [includePrintQr, setIncludePrintQr] = useState(true);
+  const [exportingPrintPdf, setExportingPrintPdf] = useState(false);
   const [customDesign, setCustomDesign] = useState<CustomDesignState>({
     saveTheDate: { backgroundColor: "#FFFFFF", accentColor: "#D4A017", fontFamily: "Playfair Display", fontSize: "16", fontColor: "#222222" },
     rsvpInvitation: { backgroundColor: "#FFFFFF", accentColor: "#D4A017", fontFamily: "Playfair Display", fontSize: "16", fontColor: "#222222" },
@@ -152,6 +162,7 @@ export default function InvitationCustomizationPage({
   const saveTheDateBlobUrlRef = useRef<string | null>(null);
   const digitalInvitationBlobUrlRef = useRef<string | null>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const printPreviewRef = useRef<HTMLDivElement>(null);
   const [previewContainerWidth, setPreviewContainerWidth] = useState(0);
 
   const resetCustomDesignUndo = useCallback(() => {
@@ -384,6 +395,18 @@ export default function InvitationCustomizationPage({
     staleTime: 0,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
+  });
+
+  const { data: websiteRecord } = useQuery({
+    queryKey: ["wedding-website", profileId],
+    queryFn: async () => {
+      if (!profileId) return null;
+      const r = await authedFetch("/api/website/me");
+      if (!r.ok) return null;
+      return r.json() as Promise<{ slug?: string; published?: boolean }>;
+    },
+    enabled: !!profileId,
+    retry: 1,
   });
 
   // ── Load DB data into state ───────────────────────────────────────────────
@@ -892,6 +915,44 @@ export default function InvitationCustomizationPage({
   const hasPhoto = !!activeDesignDocument.image.url;
   const hasMessage = !!activeDesignDocument.message?.trim();
   const deliveryLabel = deliveryMode === "digital" ? "Digital Send" : "Print / Canva";
+  const websiteUrl =
+    typeof window !== "undefined" && websiteRecord?.slug && websiteRecord?.published
+      ? `${window.location.origin}/w/${websiteRecord.slug}`
+      : null;
+
+  const downloadPrintPdf = async () => {
+    if (!printPreviewRef.current) return;
+    setExportingPrintPdf(true);
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const canvas = await html2canvas(printPreviewRef.current, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: activeDesignDocument.style.backgroundColor,
+        logging: false,
+      });
+      const imgData = canvas.toDataURL("image/jpeg", 0.96);
+      const spec = PRINT_SIZES[printSize];
+      const pageWidth = printSize === "5x7" ? 5 * 72 : 4 * 72;
+      const pageHeight = printSize === "5x7" ? 7 * 72 : 6 * 72;
+      const doc = new jsPDF({ orientation: "p", unit: "pt", format: [pageWidth, pageHeight] });
+      doc.addImage(imgData, "JPEG", 0, 0, pageWidth, pageHeight);
+      const safeCouple = activeDesignDocument.couple.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") || "wedding";
+      doc.save(`${safeCouple}_${activeDesignDocument.kind}_${spec.label.replace(/\s+/g, "")}_${printSide}.pdf`);
+    } catch (error) {
+      console.error("Print PDF export failed", error);
+      toast({
+        title: "Could not export PDF",
+        description: "Please try again after the print preview finishes loading.",
+        variant: "destructive",
+      });
+    } finally {
+      setExportingPrintPdf(false);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-3 sm:p-4 space-y-4 sm:space-y-6">
@@ -1006,7 +1067,7 @@ export default function InvitationCustomizationPage({
               <div className="flex items-start gap-2">
                 <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                 <p>
-                  Print export and Canva handoff will use this same design snapshot, so the physical version stays matched to the digital invitation.
+                  Print export and Canva handoff use the same wedding data, but render a separate print layout with safe margins and no email-style RSVP button.
                 </p>
               </div>
             </div>
@@ -1051,10 +1112,59 @@ export default function InvitationCustomizationPage({
                     </p>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Print size</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["5x7", "4x6"] as PrintInvitationSize[]).map((size) => (
+                      <Button
+                        key={size}
+                        type="button"
+                        size="sm"
+                        variant={printSize === size ? "default" : "outline"}
+                        onClick={() => setPrintSize(size)}
+                      >
+                        {PRINT_SIZES[size].label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Side</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["front", "back"] as PrintInvitationSide[]).map((side) => (
+                      <Button
+                        key={side}
+                        type="button"
+                        size="sm"
+                        variant={printSide === side ? "default" : "outline"}
+                        onClick={() => setPrintSide(side)}
+                        className="capitalize"
+                      >
+                        {side}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <label className="flex items-center justify-between rounded-md border bg-muted/20 px-3 py-2 text-sm">
+                  <span>Show RSVP code area on back</span>
+                  <input
+                    type="checkbox"
+                    checked={includePrintQr}
+                    onChange={(event) => setIncludePrintQr(event.target.checked)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                </label>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button type="button" size="sm" variant="outline" className="gap-2" disabled>
-                    <FileDown className="h-3.5 w-3.5" />
-                    PDF soon
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                    onClick={downloadPrintPdf}
+                    disabled={exportingPrintPdf}
+                  >
+                    {exportingPrintPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+                    PDF
                   </Button>
                   <Button type="button" size="sm" variant="outline" className="gap-2" disabled>
                     <ExternalLink className="h-3.5 w-3.5" />
@@ -1262,8 +1372,7 @@ export default function InvitationCustomizationPage({
             </Card>
           )}
 
-          {/* Custom Design controls — only render when this invitation's mode is "custom".
-              These values are NOT applied to the preview/email/PDF yet. */}
+          {/* Custom Design controls — only render when this invitation's mode is "custom". */}
           {(() => {
             const activeKey: InvitationDesignKey =
               previewTab === "saveTheDate" ? "saveTheDate" : "rsvpInvitation";
@@ -1460,7 +1569,24 @@ export default function InvitationCustomizationPage({
             </div>
 
             <div ref={previewContainerRef} className="flex-1 overflow-auto p-3 sm:p-4">
-              {(() => {
+              {deliveryMode === "print" ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+                    <span className="rounded-full border px-2.5 py-1">{PRINT_SIZES[printSize].label}</span>
+                    <span className="rounded-full border px-2.5 py-1 capitalize">{printSide}</span>
+                    <span className="rounded-full border px-2.5 py-1">Safe margin visible</span>
+                  </div>
+                  <PrintInvitationPreview
+                    ref={printPreviewRef}
+                    design={activeDesignDocument}
+                    size={printSize}
+                    side={printSide}
+                    includeQr={includePrintQr}
+                    websiteUrl={websiteUrl}
+                  />
+                </div>
+              ) : (
+              (() => {
                 // Same AI layout in both modes. In "custom" mode we only swap
                 // colors/font/size by feeding the existing palette/font/backgroundColor
                 // props and wrapping in a styled div for inheritable typography.
@@ -1531,7 +1657,8 @@ export default function InvitationCustomizationPage({
                     )}
                   </div>
                 );
-              })()}
+              })()
+              )}
             </div>
           </Card>
         </div>
