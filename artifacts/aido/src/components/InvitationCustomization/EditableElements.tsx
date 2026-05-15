@@ -79,6 +79,18 @@ export function ensureFontsLoaded() {
   document.head.appendChild(link);
 }
 
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, value));
+}
+
+function dragDeltaToPercent(e: React.PointerEvent<HTMLElement>, dx: number, dy: number) {
+  const rect = e.currentTarget.getBoundingClientRect();
+  return {
+    x: rect.width > 0 ? (dx / rect.width) * 100 : 0,
+    y: rect.height > 0 ? (dy / rect.height) * 100 : 0,
+  };
+}
+
 function useDrag(
   id: string,
   enabled: boolean,
@@ -304,6 +316,7 @@ export function EditableImage({
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!editable) return;
+    e.preventDefault();
     e.stopPropagation();
     onSelect(id);
     panMovedRef.current = false;
@@ -319,15 +332,19 @@ export function EditableImage({
     const dy = e.clientY - panRef.current.sy;
     if (Math.abs(dx) + Math.abs(dy) > 2) panMovedRef.current = true;
     if (panMovedRef.current) {
+      const delta = dragDeltaToPercent(e, dx, dy);
       onChange(id, {
-        objectX: Math.max(0, Math.min(100, panRef.current.ox - dx * 0.15)),
-        objectY: Math.max(0, Math.min(100, panRef.current.oy - dy * 0.15)),
+        objectX: clampPercent(panRef.current.ox - delta.x),
+        objectY: clampPercent(panRef.current.oy - delta.y),
       });
     }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent) => {
     panRef.current = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+    } catch { /* noop */ }
   };
 
   return (
@@ -355,6 +372,7 @@ export function EditableImage({
         transform: editable ? "translateX(-50%)" : "none",
         backgroundColor: fallbackBg,
         border: src ? "1px solid #e5e7eb" : "2px dashed #cbd5e1",
+        touchAction: editable ? "none" : undefined,
       }}
       data-editable-id={id}
     >

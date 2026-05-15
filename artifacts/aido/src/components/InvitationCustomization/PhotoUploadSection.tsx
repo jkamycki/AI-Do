@@ -186,7 +186,11 @@ export function PhotoUploadSection({
 
   // ── Drag-to-reposition handlers ────────────────────────────────────────────
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch { /* noop */ }
     dragging.current = true;
     setIsDragging(true);
     lastXY.current = { x: e.clientX, y: e.clientY };
@@ -197,17 +201,21 @@ export function PhotoUploadSection({
     const dx = e.clientX - lastXY.current.x;
     const dy = e.clientY - lastXY.current.y;
     lastXY.current = { x: e.clientX, y: e.clientY };
-    const sensitivity = 0.35;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const deltaX = rect.width > 0 ? (dx / rect.width) * 100 : 0;
+    const deltaY = rect.height > 0 ? (dy / rect.height) * 100 : 0;
     const next: PhotoPosition = {
-      x: Math.max(0, Math.min(100, posRef.current.x - dx * sensitivity)),
-      y: Math.max(0, Math.min(100, posRef.current.y - dy * sensitivity)),
+      x: Math.max(0, Math.min(100, posRef.current.x - deltaX)),
+      y: Math.max(0, Math.min(100, posRef.current.y - deltaY)),
     };
     posRef.current = next;
     onChangeRef.current(next);
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.currentTarget.releasePointerCapture(e.pointerId);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch { /* noop */ }
     dragging.current = false;
     setIsDragging(false);
     lastXY.current = null;
@@ -283,7 +291,10 @@ export function PhotoUploadSection({
                 )}
 
                 {/* Action buttons */}
-                <div className="absolute top-2 right-2 flex gap-1">
+                <div
+                  className="absolute top-2 right-2 flex gap-1"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
                   {hasReposition && (
                     <button
                       onClick={handleCenter}

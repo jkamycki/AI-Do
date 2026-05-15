@@ -38,6 +38,18 @@ function isLightColor(hex: string): boolean {
   return r * 0.299 + g * 0.587 + b * 0.114 > 160;
 }
 
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, value));
+}
+
+function dragDeltaToPercent(e: React.PointerEvent<HTMLElement>, dx: number, dy: number) {
+  const rect = e.currentTarget.getBoundingClientRect();
+  return {
+    x: rect.width > 0 ? (dx / rect.width) * 100 : 0,
+    y: rect.height > 0 ? (dy / rect.height) * 100 : 0,
+  };
+}
+
 function formatDate(dateStr: string): string {
   try {
     const [y, m, d] = dateStr.split("-").map(Number);
@@ -130,6 +142,7 @@ export function RsvpPagePreview({
   const handlePhotoPanDown = (e: React.PointerEvent) => {
     if (!onPhotoPositionChange) return;
     e.preventDefault();
+    e.stopPropagation();
     panRef.current = { sx: e.clientX, sy: e.clientY, ox: photoPosition.x, oy: photoPosition.y };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -138,13 +151,19 @@ export function RsvpPagePreview({
     if (!panRef.current || !onPhotoPositionChange) return;
     const dx = e.clientX - panRef.current.sx;
     const dy = e.clientY - panRef.current.sy;
+    const delta = dragDeltaToPercent(e, dx, dy);
     onPhotoPositionChange({
-      x: Math.max(0, Math.min(100, panRef.current.ox - dx * 0.35)),
-      y: Math.max(0, Math.min(100, panRef.current.oy - dy * 0.35)),
+      x: clampPercent(panRef.current.ox - delta.x),
+      y: clampPercent(panRef.current.oy - delta.y),
     });
   };
 
-  const handlePhotoPanUp = () => { panRef.current = null; };
+  const handlePhotoPanUp = (e: React.PointerEvent) => {
+    panRef.current = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+    } catch { /* noop */ }
+  };
 
   return (
     <div
@@ -180,7 +199,12 @@ export function RsvpPagePreview({
         {/* Photo */}
         {photoUrl && (
           <div
-            style={{ padding: "0 20px 12px", cursor: onPhotoPositionChange ? "grab" : undefined }}
+            style={{
+              padding: "0 20px 12px",
+              cursor: onPhotoPositionChange ? "grab" : undefined,
+              touchAction: onPhotoPositionChange ? "none" : undefined,
+              userSelect: "none",
+            }}
             onPointerDown={handlePhotoPanDown}
             onPointerMove={handlePhotoPanMove}
             onPointerUp={handlePhotoPanUp}

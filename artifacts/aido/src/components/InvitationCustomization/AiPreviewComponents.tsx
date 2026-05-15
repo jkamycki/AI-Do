@@ -64,6 +64,18 @@ function isLightHex(hex: string): boolean {
   return r * 0.299 + g * 0.587 + b * 0.114 > 160;
 }
 
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, value));
+}
+
+function dragDeltaToPercent(e: React.PointerEvent<HTMLElement>, dx: number, dy: number) {
+  const rect = e.currentTarget.getBoundingClientRect();
+  return {
+    x: rect.width > 0 ? (dx / rect.width) * 100 : 0,
+    y: rect.height > 0 ? (dy / rect.height) * 100 : 0,
+  };
+}
+
 export interface CustomColors {
   bg: string;
   accent: string;
@@ -112,6 +124,7 @@ function CardShell({
   const handleDown = (e: React.PointerEvent) => {
     if (!onPhotoPositionChange) return;
     e.preventDefault();
+    e.stopPropagation();
     panRef.current = { sx: e.clientX, sy: e.clientY, ox: photoPosition.x, oy: photoPosition.y };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -119,12 +132,18 @@ function CardShell({
     if (!panRef.current || !onPhotoPositionChange) return;
     const dx = e.clientX - panRef.current.sx;
     const dy = e.clientY - panRef.current.sy;
+    const delta = dragDeltaToPercent(e, dx, dy);
     onPhotoPositionChange({
-      x: Math.max(0, Math.min(100, panRef.current.ox - dx * 0.35)),
-      y: Math.max(0, Math.min(100, panRef.current.oy - dy * 0.35)),
+      x: clampPercent(panRef.current.ox - delta.x),
+      y: clampPercent(panRef.current.oy - delta.y),
     });
   };
-  const handleUp = () => { panRef.current = null; };
+  const handleUp = (e: React.PointerEvent) => {
+    panRef.current = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+    } catch { /* noop */ }
+  };
 
   const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
@@ -165,6 +184,8 @@ function CardShell({
             padding: "0 20px 10px",
             backgroundColor: bg, backgroundImage: dotPat, backgroundSize: "22px 22px",
             cursor: onPhotoPositionChange ? "grab" : undefined,
+            touchAction: onPhotoPositionChange ? "none" : undefined,
+            userSelect: "none",
           }}
           onPointerDown={handleDown}
           onPointerMove={handleMove}
