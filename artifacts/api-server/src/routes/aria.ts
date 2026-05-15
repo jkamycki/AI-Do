@@ -547,7 +547,7 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"delete_budget_item", description:"Delete budget item. Pass itemId or matchVendor.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchVendor:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"log_budget_payment", description:"Log payment against budget item. Required: amount.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchVendor:{type:"string"}, amount:{type:"number"}, note:{type:"string"} }, required:["amount"] } } },
   { type:"function" as const, function:{ name:"list_budget", description:"List all budget items.", parameters:{ type:"object", properties:{} } } },
-  { type:"function" as const, function:{ name:"add_expense", description:"Add one-off expense. Required: name, category, cost.", parameters:{ type:"object", properties:{ name:{type:"string"}, category:{type:"string"}, cost:{type:"number"}, amountPaid:{type:"number"}, notes:{type:"string"} }, required:["name","category","cost"] } } },
+  { type:"function" as const, function:{ name:"add_expense", description:"Add one-off expense. ONLY call after the user provided a real expense name and amount. If the user just says 'add an expense' or 'add a new expense', ask for the expense name, category, and amount first. NEVER invent placeholder names like 'New Expense'. Required: name, category, cost.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Specific expense name provided by the user. Never use placeholders like New Expense."}, category:{type:"string"}, cost:{type:"number"}, amountPaid:{type:"number"}, notes:{type:"string"} }, required:["name","category","cost"] } } },
   { type:"function" as const, function:{ name:"update_expense", description:"Update expense. Pass expenseId or matchName.", parameters:{ type:"object", properties:{ expenseId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, category:{type:"string"}, cost:{type:"number"}, amountPaid:{type:"number"}, notes:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_expense", description:"Delete expense. Pass expenseId or matchName.", parameters:{ type:"object", properties:{ expenseId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_expenses", description:"List all expenses.", parameters:{ type:"object", properties:{} } } },
@@ -651,6 +651,21 @@ function parsePendingPartyConfirmation(text: string): { name: string; role: stri
     const role = match?.[2]?.trim().replace(/[.!,;:]$/, "");
     const side = normalizePartySide(match?.[3] ?? "");
     if (name && role && side) return { name, role, side };
+  }
+  return null;
+}
+
+function parsePendingExpenseConfirmation(text: string): { name: string; category: string; cost: number } | null {
+  const patterns = [
+    /Saving\s+(.+?)\s+\(([^)]+)\)\s*,?\s*\$?([\d,]+(?:\.\d{1,2})?)[\s\S]*Reply\s*['"]?yes['"]?\s+to\s+(?:save|confirm)/i,
+    /Ready\s+to\s+add\s+(.+?)\s+\(([^)]+)\)\s*,?\s*\$?([\d,]+(?:\.\d{1,2})?)[\s\S]*Reply\s*['"]?yes['"]?\s+to\s+(?:save|confirm)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const name = match?.[1]?.trim().replace(/[.!,;:]$/, "");
+    const category = match?.[2]?.trim().replace(/[.!,;:]$/, "");
+    const cost = Number(String(match?.[3] ?? "").replace(/,/g, ""));
+    if (name && category && Number.isFinite(cost)) return { name, category, cost };
   }
   return null;
 }
@@ -1913,8 +1928,28 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       const expName = String(args.name ?? "").trim();
       const category = String(args.category ?? "").trim() || "Other";
       const cost = Number(args.cost);
-      if (!expName) return { ok: false, error: "name is required" };
-      if (!Number.isFinite(cost)) return { ok: false, error: "cost must be a number" };
+      if (!expName) return { ok: false, error: "Expense name is required. Ask the user what expense they want to add.", doNotRetry: true };
+      const EXPENSE_PLACEHOLDER_WORDS = new Set([
+        "expense", "cost", "charge", "new", "manual", "one", "off", "other",
+        "misc", "miscellaneous", "placeholder", "sample", "test", "unknown",
+      ]);
+      if (/^(expense\s*\d*|new expense|manual expense|one-off expense|misc expense|miscellaneous expense|sample expense|test expense|unnamed|unknown|n\/a|none|tbd|placeholder)$/i.test(expName)) {
+        return { ok: false, error: `"${expName}" is a placeholder, not an expense name. Ask the user for the expense name, category, and amount.`, doNotRetry: true };
+      }
+      if (expName.includes("?") || expName.length > 100 || /^(what'?s|what is|please|could you|can you|tell me|i need|i want|add a |add an )/i.test(expName)) {
+        return { ok: false, error: `"${expName.slice(0, 40)}" doesn't look like an expense name. Ask the user for the expense name, category, and amount.`, doNotRetry: true };
+      }
+      if (userBlob && userBlob.length > 0 && !userActuallyMentionedName(expName, userBlob, EXPENSE_PLACEHOLDER_WORDS)) {
+        return {
+          ok: false,
+          error: `"${expName}" doesn't appear in the user's messages - do not invent expense names. Ask the user for the expense name, category, and amount.`,
+          doNotRetry: true,
+        };
+      }
+      if (!Number.isFinite(cost)) return { ok: false, error: "Expense amount is required. Ask the user for the cost.", doNotRetry: true };
+      if (userBlob && !/[$\d]|\bdollar|\bcost|\bamount|\btotal|\bpaid|\bpayment/i.test(userBlob)) {
+        return { ok: false, error: "The expense amount was not provided by the user. Ask for the expense name, category, and amount before saving.", doNotRetry: true };
+      }
       const [created] = await db.insert(manualExpenses).values({
         profileId: profile.id,
         userId: profile.userId,
@@ -2453,6 +2488,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const prevWasGuestGatherQuestion = /Who would you like me to add to the guest list/i.test(lastAssistantText);
     const prevWasHotelGatherQuestion = /Which hotel should I add|What'?s the hotel name|hotel block should I add/i.test(lastAssistantText);
     const prevWasPartyGatherQuestion = /Who should I add to the wedding party|person'?s name, role, and side|bridal party\/bride side, groom side, or both/i.test(lastAssistantText);
+    const prevWasExpenseGatherQuestion = /What expense should I add|expense name, category, and amount/i.test(lastAssistantText);
     const lastUserMsgForContext = [...messages].reverse().find(m => m.role === "user");
     const lastUserTextForContext = typeof lastUserMsgForContext?.content === "string" ? lastUserMsgForContext.content.trim() : "";
     const guestNameFromAssistant = extractGuestNameFromAssistant(lastAssistantText);
@@ -2466,9 +2502,12 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const guestFollowUpHint = prevWasGuestNameLoop
       ? `\n\nCURRENT CONTEXT - GUEST NAME IDENTIFIED: The guest's name is "${guestNameFromAssistant}". The user is correcting your prior question, so do NOT ask for the guest's name again and do NOT ask if this is a plus-one. Default "${guestNameFromAssistant}" to a regular guest. Write a one-line summary in present/future tense and end with 'Reply "yes" to save.'`
       : "";
+    const expenseFollowUpHint = prevWasExpenseGatherQuestion && lastUserTextForContext.length > 0 && lastUserTextForContext.length <= 200
+      ? `\n\nCURRENT CONTEXT - EXPENSE DETAILS PROVIDED: The user just answered your expense gathering question. Their message "${lastUserTextForContext}" should contain the expense name, category, and amount. If all three are present, write a one-line summary in present/future tense and end with 'Reply "yes" to save.' If any required detail is missing, ask only for the missing detail. Do NOT save a placeholder expense.`
+      : "";
 
     const convo: Array<Record<string, unknown>> = [
-      { role: "system", content: SYSTEM_PROMPT + langInstruction + gatheringFollowUpHint + guestFollowUpHint },
+      { role: "system", content: SYSTEM_PROMPT + langInstruction + gatheringFollowUpHint + guestFollowUpHint + expenseFollowUpHint },
       ...recent,
     ];
     const performedActions: ActionRecord[] = [];
@@ -2657,6 +2696,39 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       return;
     }
 
+    const pendingExpense = parsePendingExpenseConfirmation(lastAssistantText);
+    if (pendingExpense && YES_CONFIRM_INTENT.test(lastUserText.trim())) {
+      const recentUserText = messages
+        .filter((m) => m.role === "user")
+        .slice(-4)
+        .map((m) => (typeof m.content === "string" ? m.content : ""))
+        .join(" ")
+        .toLowerCase();
+      const result = await executeTool("add_expense", {
+        name: pendingExpense.name,
+        category: pendingExpense.category,
+        cost: pendingExpense.cost,
+      }, req, { recentUserText });
+      if (result.ok) {
+        send({ type: "action_start", name: "add_expense", args: pendingExpense });
+        send({ type: "action_result", name: "add_expense", ok: true, data: result.data });
+        send({
+          type: "content",
+          content: buildConfirmation([{
+            name: "add_expense",
+            args: pendingExpense,
+            result,
+          }]),
+        });
+      } else {
+        send({ type: "content", content: `I couldn't save that expense yet: ${result.error}` });
+      }
+      send({ type: "done", actions: [{ name: "add_expense", ok: result.ok, error: result.ok ? undefined : result.error }] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
     if (prevWasGuestNameLoop && guestNameFromAssistant && /\b(this|that|correct|yes|yep|name|guest)\b/i.test(lastUserText)) {
       send({
         type: "content",
@@ -2737,6 +2809,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const GUEST_GATHER_INTENT = /\b(?:add|create|new)\s+(?:(?:a|an)\s+)?(?:new\s+)?(?:guest|invitee|person)\b/i;
     const HOTEL_GATHER_INTENT = /\b(?:add|create|new)\s+(?:(?:a|an)\s+)?(?:new\s+)?(?:hotel|hotel block|room block|lodging|accommodation)s?\b/i;
     const PARTY_GATHER_INTENT = /\b(?:add|create|new)\s+(?:(?:a|an)\s+)?(?:new\s+)?(?:wedding party member|party member|bridesmaid|groomsman|groomsmen|maid of honor|best man|attendant)\b/i;
+    const EXPENSE_GATHER_INTENT = /\b(?:add|create|new|log)\s+(?:(?:a|an)\s+)?(?:new\s+)?(?:expense|cost|charge)\b/i;
     const HAS_PROPER_NOUN = /[A-Z][a-z]{2,}|"[^"]+"|'[^']+'/;
     const vendorGatherIntent = VENDOR_CATEGORY_INTENT.test(lastUserText) &&
       !HAS_PROPER_NOUN.test(lastUserText.replace(VENDOR_CATEGORY_INTENT, ""));
@@ -2747,6 +2820,12 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const partyDetails = inferGatheredPartyMember(lastUserText);
     const partyGatherIntent = PARTY_GATHER_INTENT.test(lastUserText) &&
       (!partyDetails.name || !partyDetails.role || !partyDetails.side);
+    const expenseRemainder = lastUserText
+      .replace(EXPENSE_GATHER_INTENT, "")
+      .replace(/\b(for me|please|thanks?|new|expense|cost|charge)\b/gi, "")
+      .trim();
+    const expenseGatherIntent = EXPENSE_GATHER_INTENT.test(lastUserText) &&
+      (!/[$\d]/.test(lastUserText) || expenseRemainder.length < 3);
 
     if (guestGatherIntent) {
       send({
@@ -2785,6 +2864,17 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       send({
         type: "content",
         content: "Who should I add to the wedding party? Send the person's name, their role, and whether they're on the bridal party/bride side, groom side, or both.",
+      });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
+    if (expenseGatherIntent) {
+      send({
+        type: "content",
+        content: "What expense should I add? Send the expense name, category, and amount, like `Florals, decor, $250`.",
       });
       send({ type: "done", actions: [] });
       res.write("data: [DONE]\n\n");
