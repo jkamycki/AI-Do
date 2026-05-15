@@ -933,6 +933,7 @@ type FoundPartyMember = { ok: true; id: number; name: string } | { ok: false; er
 type FoundHotel = { ok: true; id: number; hotelName: string } | { ok: false; error: string };
 type FoundBudgetItem = { ok: true; id: number; vendor: string; amountPaid: number; estimatedCost: number; actualCost: number } | { ok: false; error: string };
 type FoundExpense = { ok: true; id: number; name: string } | { ok: false; error: string };
+type ContractFollowUpKind = "summary" | "negotiation" | "action";
 
 async function findVendor(profileId: number, idArg: unknown, nameArg: unknown): Promise<FoundVendor> {
   if (idArg !== undefined && idArg !== null) {
@@ -1143,6 +1144,101 @@ async function findExpense(profileId: number, idArg: unknown, nameArg: unknown):
     return { ok: true, id: matches[0].id, name: matches[0].name };
   }
   return { ok: false, error: "Either expenseId or matchName is required." };
+}
+
+function contractFollowUpKind(userText: string, assistantText: string): ContractFollowUpKind | null {
+  if (!/\bcontract\b/i.test(assistantText)) return null;
+  const trimmed = userText.trim();
+  if (!trimmed || trimmed.length > 80) return null;
+  if (/^(summary|summarize|clause summary|clause-by-clause summary|risk summary)$/i.test(trimmed)) return "summary";
+  if (/^(negotiation|negotiation points|negotiate|points|talking points)$/i.test(trimmed)) return "negotiation";
+  if (/^(action plan|plan|what should i do|next steps|risks|address risks)$/i.test(trimmed)) return "action";
+  return null;
+}
+
+function textList(value: unknown, limit = 5): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item ?? "").trim()).filter(Boolean).slice(0, limit);
+}
+
+function contractAnalysisSummary(fileName: string, analysis: Record<string, unknown>, kind: ContractFollowUpKind): string {
+  const risk = String(analysis["overallRiskLevel"] ?? "unknown");
+  const vendorType = String(analysis["vendorType"] ?? "Vendor");
+  const summary = String(analysis["summary"] ?? "No summary was included in the analysis.");
+  const paymentTerms = String(analysis["paymentTerms"] ?? "Not specified");
+  const cancellationPolicy = String(analysis["cancellationPolicy"] ?? "Not specified");
+  const liabilityNotes = String(analysis["liabilityNotes"] ?? "Not specified");
+  const redFlags = Array.isArray(analysis["redFlags"]) ? analysis["redFlags"] as Array<Record<string, unknown>> : [];
+  const negotiationTips = textList(analysis["negotiationTips"], 6);
+  const missingClauses = textList(analysis["missingClauses"], 5);
+  const keyTerms = Array.isArray(analysis["keyTerms"]) ? analysis["keyTerms"] as Array<Record<string, unknown>> : [];
+
+  if (kind === "negotiation") {
+    const tips = negotiationTips.length
+      ? negotiationTips.map((tip, index) => `${index + 1}. ${tip}`).join("\n")
+      : "1. Ask the vendor to clarify or revise the highest-risk terms before signing.";
+    return [
+      `Negotiation points for **${fileName}** (${vendorType}, ${risk} risk):`,
+      "",
+      tips,
+      redFlags.length ? "\nTop risks to mention:\n" + redFlags.slice(0, 4).map((flag) => `- **${String(flag.title ?? "Risk")}**: ${String(flag.recommendation ?? flag.detail ?? "")}`).join("\n") : "",
+    ].filter(Boolean).join("\n");
+  }
+
+  if (kind === "action") {
+    const actions = [
+      "Ask for written clarification on every medium/high red flag.",
+      paymentTerms !== "Not specified" ? "Confirm the payment schedule, due dates, late fees, and refund rules." : "Request clear payment terms and refund language.",
+      cancellationPolicy !== "Not specified" ? "Review cancellation and postponement deadlines before paying more." : "Ask them to add cancellation/postponement language.",
+      liabilityNotes !== "Not specified" ? "Confirm liability, damage, insurance, and force majeure responsibilities." : "Ask them to add liability and force majeure protections.",
+      missingClauses.length ? `Request missing clauses: ${missingClauses.join(", ")}.` : "Make sure all verbal promises are written into the contract.",
+    ];
+    return [
+      `Action plan for **${fileName}** (${vendorType}, ${risk} risk):`,
+      "",
+      actions.map((action, index) => `${index + 1}. ${action}`).join("\n"),
+    ].join("\n");
+  }
+
+  return [
+    `Summary for **${fileName}** (${vendorType}, ${risk} risk):`,
+    "",
+    summary,
+    "",
+    keyTerms.length ? "**Key terms:**\n" + keyTerms.slice(0, 5).map((term) => `- ${String(term.label ?? "Term")}: ${String(term.value ?? "Not specified")}`).join("\n") : "",
+    redFlags.length ? "\n**Top red flags:**\n" + redFlags.slice(0, 4).map((flag) => `- **${String(flag.severity ?? "risk")} - ${String(flag.title ?? "Issue")}**: ${String(flag.detail ?? "")}`).join("\n") : "",
+    `\n**Payment terms:** ${paymentTerms}`,
+    `**Cancellation:** ${cancellationPolicy}`,
+  ].filter(Boolean).join("\n");
+}
+
+async function buildContractFollowUp(req: Request, assistantText: string, kind: ContractFollowUpKind): Promise<string> {
+  const userId = await resolveScopeUserId(req);
+  const profile = await resolveProfile(req);
+  if (!profile) return "I couldn't find a wedding profile for this contract.";
+  const rows = await db
+    .select({
+      id: vendorContracts.id,
+      fileName: vendorContracts.fileName,
+      analysis: vendorContracts.analysis,
+      createdAt: vendorContracts.createdAt,
+    })
+    .from(vendorContracts)
+    .where(and(
+      eq(vendorContracts.userId, userId),
+      eq(vendorContracts.profileId, profile.id),
+    ))
+    .orderBy(desc(vendorContracts.createdAt))
+    .limit(50);
+  if (rows.length === 0) return "I don't see any uploaded contracts yet. Upload one in Contract Analyzer first, then I can summarize it.";
+
+  const quoted = assistantText.match(/"([^"]+)"/)?.[1]?.toLowerCase();
+  const contract = quoted
+    ? rows.find((row) => row.fileName.toLowerCase().includes(quoted) || quoted.includes(row.fileName.toLowerCase().replace(/\.[^.]+$/, ""))) ?? rows[0]
+    : rows.length === 1 ? rows[0] : rows[0];
+  if (!contract) return "I couldn't find that contract anymore. Please open Contract Analyzer and try again.";
+  const analysis = (contract.analysis ?? {}) as Record<string, unknown>;
+  return contractAnalysisSummary(contract.fileName, analysis, kind);
 }
 
 type AriaTimelineBlock = {
@@ -3016,6 +3112,15 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         type: "content",
         content: "What expense should I add? Send the expense name, category, and amount, like `Florals, decor, $250`.",
       });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
+    const contractFollowUp = contractFollowUpKind(lastUserText, lastAssistantText);
+    if (contractFollowUp) {
+      send({ type: "content", content: await buildContractFollowUp(req, lastAssistantText, contractFollowUp) });
       send({ type: "done", actions: [] });
       res.write("data: [DONE]\n\n");
       res.end();
