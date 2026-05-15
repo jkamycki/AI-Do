@@ -1123,6 +1123,11 @@ export default function InvitationCustomizationPage({
                     className="h-4 w-4 accent-primary"
                   />
                 </label>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  When your wedding website is published, this back side will
+                  automatically include a scannable QR code for guests to RSVP.
+                  Until then, the preview shows a publish-first note.
+                </p>
               </CardContent>
             </Card>
           )}
