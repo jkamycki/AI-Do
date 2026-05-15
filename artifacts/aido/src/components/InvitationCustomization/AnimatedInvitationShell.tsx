@@ -131,7 +131,7 @@ export function AnimatedInvitationShell({
           backface-visibility: hidden;
           transform-style: preserve-3d;
           will-change: transform, opacity, filter;
-          animation: aidoInviteCardIn 1260ms cubic-bezier(.2,.84,.18,1) 1080ms both;
+          animation: aidoInviteCardIn 1720ms cubic-bezier(.16,.84,.18,1) 820ms both;
         }
         .aido-invite-anim-card > * {
           flex: 0 1 auto;
@@ -151,7 +151,8 @@ export function AnimatedInvitationShell({
             0 34px 80px rgba(11, 9, 18, .38),
             inset 0 1px 0 rgba(255,255,255,.18),
             inset 0 -22px 46px rgba(0,0,0,.16);
-          animation: aidoLayerGone 1ms linear 2500ms forwards;
+          will-change: transform, opacity, visibility;
+          animation: aidoLayerGone 1ms linear 2860ms forwards;
         }
         .aido-envelope-layer::after {
           content: "";
@@ -222,6 +223,7 @@ export function AnimatedInvitationShell({
           transform: translate(-50%, -50%);
           z-index: 4;
           pointer-events: none;
+          will-change: transform, opacity;
         }
         .aido-envelope-pocket-face {
           left: 0;
@@ -229,7 +231,9 @@ export function AnimatedInvitationShell({
           bottom: 0;
           height: 58%;
           filter: drop-shadow(0 -12px 22px rgba(0,0,0,.22));
-          animation: aidoPocketRelease 980ms cubic-bezier(.28,.76,.18,1) 1320ms forwards;
+          transform-origin: 50% 100%;
+          will-change: transform, opacity;
+          animation: aidoPocketRelease 1120ms cubic-bezier(.2,.82,.18,1) 1460ms forwards;
         }
         .aido-envelope-pocket-face::before {
           content: "";
@@ -276,7 +280,7 @@ export function AnimatedInvitationShell({
           letter-spacing: .08em;
           text-shadow: 0 1px 2px rgba(0,0,0,.28);
           pointer-events: none;
-          animation: aidoSealLift 980ms cubic-bezier(.2,.82,.18,1) 520ms forwards;
+          animation: aidoSealLift 1080ms cubic-bezier(.2,.82,.18,1) 520ms forwards;
         }
         .aido-envelope-monogram::before {
           content: "";
@@ -298,7 +302,8 @@ export function AnimatedInvitationShell({
             var(--invite-paper);
           clip-path: polygon(0 0, 100% 0, 50% 60%);
           transform-origin: top center;
-          animation: aidoFlapOpen 1500ms cubic-bezier(.18,.82,.16,1) 360ms forwards;
+          will-change: transform, opacity;
+          animation: aidoFlapOpen 1720ms cubic-bezier(.16,.84,.18,1) 320ms forwards;
         }
         .aido-envelope-side.left {
           left: 0;
@@ -311,7 +316,8 @@ export function AnimatedInvitationShell({
             repeating-linear-gradient(100deg, rgba(255,255,255,.045) 0 1px, transparent 1px 10px),
             var(--invite-paper);
           clip-path: polygon(0 0, 100% 50%, 0 100%);
-          animation: aidoPanelLeft 1320ms cubic-bezier(.28,.76,.18,1) 820ms forwards;
+          will-change: transform, opacity;
+          animation: aidoPanelLeft 1360ms cubic-bezier(.22,.78,.18,1) 1060ms forwards;
         }
         .aido-envelope-side.right {
           right: 0;
@@ -325,7 +331,8 @@ export function AnimatedInvitationShell({
             repeating-linear-gradient(100deg, rgba(255,255,255,.035) 0 1px, transparent 1px 10px),
             var(--invite-dark);
           clip-path: polygon(100% 0, 0 50%, 100% 100%);
-          animation: aidoPanelRight 1320ms cubic-bezier(.28,.76,.18,1) 880ms forwards;
+          will-change: transform, opacity;
+          animation: aidoPanelRight 1360ms cubic-bezier(.22,.78,.18,1) 1120ms forwards;
         }
         .aido-wax-seal {
           display: none;
@@ -568,39 +575,64 @@ export function AnimatedInvitationShell({
           animation: aidoOwlTinyEnvelopeDrop 1020ms cubic-bezier(.22,.76,.2,1) 1030ms forwards;
         }
         @keyframes aidoInviteCardIn {
-          0% { opacity: 0; transform: translateY(34%) scale(.84); filter: blur(3px); }
-          18% { opacity: .72; }
-          56% { opacity: .92; transform: translateY(8%) scale(.97); filter: blur(.7px); }
-          100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+          0% {
+            opacity: 0;
+            transform: translateY(30%) scale(.72) rotateX(7deg);
+            filter: blur(2px);
+          }
+          16% {
+            opacity: .92;
+            transform: translateY(22%) scale(.78) rotateX(5deg);
+            filter: blur(.9px);
+          }
+          44% {
+            opacity: 1;
+            transform: translateY(2%) scale(.9) rotateX(1deg);
+            filter: blur(0);
+          }
+          72% {
+            opacity: 1;
+            transform: translateY(-2.8%) scale(.98) rotateX(0deg);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1) rotateX(0deg);
+            filter: blur(0);
+          }
         }
         @keyframes aidoLayerGone { to { visibility: hidden; } }
         @keyframes aidoFlapOpen {
-          0% { transform: perspective(900px) rotateX(0deg); opacity: 1; }
-          58% { transform: perspective(900px) rotateX(126deg); opacity: .98; }
-          100% { transform: perspective(900px) rotateX(158deg) translateY(-18px); opacity: 0; }
+          0% { transform: perspective(960px) rotateX(0deg); opacity: 1; }
+          48% { transform: perspective(960px) rotateX(104deg) translateY(-4px); opacity: .98; }
+          74% { transform: perspective(960px) rotateX(146deg) translateY(-14px); opacity: .54; }
+          100% { transform: perspective(960px) rotateX(166deg) translateY(-24px); opacity: .08; }
         }
         @keyframes aidoBottomDrop {
-          0% { transform: translateY(0); opacity: 1; }
-          100% { transform: translateY(70%); opacity: 0; }
+          0% { transform: translateY(0) scale(1); opacity: 1; }
+          70% { opacity: .92; }
+          100% { transform: translateY(72%) scale(.985); opacity: 0; }
         }
         @keyframes aidoPocketRelease {
-          0% { transform: translateY(0); opacity: 1; }
-          78% { opacity: 1; }
-          100% { transform: translateY(82%) scale(.98); opacity: 0; }
+          0% { transform: translateY(0) scale(1); opacity: 1; }
+          46% { transform: translateY(4%) scale(1); opacity: 1; }
+          82% { opacity: .88; }
+          100% { transform: translateY(86%) scale(.985); opacity: 0; }
         }
         @keyframes aidoPanelLeft {
           0% { transform: translateX(0) rotate(0); opacity: 1; }
-          100% { transform: translateX(-88%) rotate(-6deg); opacity: 0; }
+          58% { opacity: .92; }
+          100% { transform: translateX(-92%) rotate(-4deg); opacity: 0; }
         }
         @keyframes aidoPanelRight {
           0% { transform: translateX(0) rotate(0); opacity: 1; }
-          100% { transform: translateX(90%) rotate(6deg); opacity: 0; }
+          58% { opacity: .92; }
+          100% { transform: translateX(94%) rotate(4deg); opacity: 0; }
         }
         @keyframes aidoSealLift {
           0% { transform: scale(.96); opacity: 0; }
           18% { transform: scale(1); opacity: 1; }
-          45% { transform: scale(1.08); opacity: 1; }
-          100% { transform: translateY(-58px) scale(.68); opacity: 0; }
+          42% { transform: translateY(-2px) scale(1.08); opacity: 1; }
+          100% { transform: translateY(-64px) scale(.66); opacity: 0; }
         }
         @keyframes aidoOwlFlyToward {
           0% {
