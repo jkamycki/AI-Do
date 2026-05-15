@@ -771,6 +771,7 @@ export function InvitationSendModal({
                       <AnimatedInvitationShell
                         layout={customization.saveTheDateLayout}
                         accent={stdAccent}
+                        monogram={`${profile.partner1Name || ""} ${profile.partner2Name || ""}`}
                       >
                       <AiSaveDatePreview
                         profile={profile}
@@ -806,6 +807,7 @@ export function InvitationSendModal({
                       <AnimatedInvitationShell
                         layout={customization.digitalInvitationLayout}
                         accent={digAccent}
+                        monogram={`${profile.partner1Name || ""} ${profile.partner2Name || ""}`}
                       >
                       <AiDigitalInvitationPreview
                         profile={{

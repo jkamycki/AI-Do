@@ -188,6 +188,7 @@ export default function SaveTheDate() {
         accent={GOLD}
         paper="#d9c8ad"
         darkPanel="#15131f"
+        monogram={`${info.partner1Name || ""} ${info.partner2Name || ""}`}
       >
       <div
         ref={cardRef}

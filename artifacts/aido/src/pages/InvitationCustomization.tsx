@@ -2108,6 +2108,7 @@ export default function InvitationCustomizationPage({
                     paper="#d9c8ad"
                     darkPanel="#15131f"
                     replayKey={animationReplayKey}
+                    monogram={`${displayWeddingProfile.partner1Name || ""} ${displayWeddingProfile.partner2Name || ""}`}
                   >
                     {isSTD ? (
                       <AiSaveDatePreview

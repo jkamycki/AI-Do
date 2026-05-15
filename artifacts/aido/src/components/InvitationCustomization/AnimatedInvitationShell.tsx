@@ -3,8 +3,6 @@ import type { CSSProperties, ReactNode } from "react";
 export type InvitationAnimationLayout =
   | "classic"
   | "animated-envelope"
-  | "animated-photo-peel"
-  | "animated-seal-reveal"
   | "animated-owl-delivery";
 
 export const INVITATION_ANIMATION_TEMPLATES: Array<{
@@ -23,16 +21,6 @@ export const INVITATION_ANIMATION_TEMPLATES: Array<{
     description: "A sealed envelope opens to reveal the invitation.",
   },
   {
-    id: "animated-photo-peel",
-    name: "Photo Reveal",
-    description: "Paper panels peel back over the couple photo.",
-  },
-  {
-    id: "animated-seal-reveal",
-    name: "Wax Seal Reveal",
-    description: "A wax seal lifts away before the card settles in.",
-  },
-  {
     id: "animated-owl-delivery",
     name: "Owl Delivery",
     description: "A night-flight delivery drops the envelope before it opens.",
@@ -40,12 +28,24 @@ export const INVITATION_ANIMATION_TEMPLATES: Array<{
 ];
 
 function isAnimatedLayout(layout?: string | null): layout is InvitationAnimationLayout {
-  return (
-    layout === "animated-envelope" ||
-    layout === "animated-photo-peel" ||
-    layout === "animated-seal-reveal" ||
-    layout === "animated-owl-delivery"
-  );
+  return layout === "animated-envelope" || layout === "animated-owl-delivery";
+}
+
+function normalizeAnimationLayout(layout?: string | null): InvitationAnimationLayout | null {
+  if (isAnimatedLayout(layout)) return layout;
+  if (layout === "animated-photo-peel" || layout === "animated-seal-reveal") return "animated-envelope";
+  return null;
+}
+
+function monogramFromNames(value?: string | null) {
+  const letters = String(value || "")
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .filter(Boolean)
+    .join("");
+  return letters || "A";
 }
 
 export function AnimatedInvitationShell({
@@ -56,6 +56,7 @@ export function AnimatedInvitationShell({
   children,
   compact = false,
   replayKey,
+  monogram,
 }: {
   layout?: string | null;
   accent?: string;
@@ -64,13 +65,16 @@ export function AnimatedInvitationShell({
   children: ReactNode;
   compact?: boolean;
   replayKey?: string | number;
+  monogram?: string | null;
 }) {
-  if (!isAnimatedLayout(layout)) return <>{children}</>;
+  const normalizedLayout = normalizeAnimationLayout(layout);
+  if (!normalizedLayout) return <>{children}</>;
 
-  const seed = layout.replace(/[^a-z0-9-]/gi, "");
+  const seed = normalizedLayout.replace(/[^a-z0-9-]/gi, "");
   const replay = replayKey ?? `${seed}-${accent}-${paper}-${darkPanel}-${compact ? "compact" : "full"}`;
   const svgIdSeed = String(replay).replace(/[^a-z0-9-]/gi, "-");
-  const showOwlDelivery = layout === "animated-owl-delivery";
+  const showOwlDelivery = normalizedLayout === "animated-owl-delivery";
+  const sealMonogram = monogramFromNames(monogram);
 
   return (
     <div
@@ -157,6 +161,7 @@ export function AnimatedInvitationShell({
         .aido-envelope-pocket-face,
         .aido-envelope-pocket-face::before,
         .aido-envelope-pocket-face::after,
+        .aido-envelope-monogram,
         .aido-wax-seal,
         .aido-castle-backdrop,
         .aido-castle-backdrop *,
@@ -170,9 +175,10 @@ export function AnimatedInvitationShell({
           inset: 0;
           z-index: 0;
           background:
-            linear-gradient(135deg, rgba(255,255,255,.42), transparent 32%),
-            linear-gradient(45deg, rgba(0,0,0,.1), transparent 48%),
-            radial-gradient(circle at 30% 24%, rgba(255,255,255,.2), transparent 28%),
+            linear-gradient(135deg, rgba(255,255,255,.5), transparent 32%),
+            linear-gradient(45deg, rgba(0,0,0,.12), transparent 48%),
+            radial-gradient(circle at 30% 24%, rgba(255,255,255,.24), transparent 28%),
+            repeating-linear-gradient(100deg, rgba(255,255,255,.12) 0 1px, transparent 1px 12px),
             var(--invite-paper);
         }
         .aido-envelope-panel::after {
@@ -219,7 +225,8 @@ export function AnimatedInvitationShell({
           inset: 0;
           clip-path: polygon(0 100%, 50% 0, 100% 100%);
           background:
-            linear-gradient(180deg, rgba(255,255,255,.32), rgba(0,0,0,.12)),
+            linear-gradient(180deg, rgba(255,255,255,.38), rgba(0,0,0,.14)),
+            repeating-linear-gradient(108deg, rgba(255,255,255,.1) 0 1px, transparent 1px 13px),
             var(--invite-paper);
         }
         .aido-envelope-pocket-face::after {
@@ -239,12 +246,30 @@ export function AnimatedInvitationShell({
           opacity: .92;
           animation: aidoSealLift 980ms cubic-bezier(.2,.82,.18,1) 520ms forwards;
         }
+        .aido-envelope-monogram {
+          width: ${compact ? "58px" : "72px"};
+          height: ${compact ? "58px" : "72px"};
+          left: calc(50% - ${compact ? "29px" : "36px"});
+          top: 4%;
+          z-index: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: rgba(255,255,255,.82);
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: ${compact ? "18px" : "22px"};
+          font-weight: 700;
+          letter-spacing: .08em;
+          text-shadow: 0 1px 2px rgba(0,0,0,.28);
+          animation: aidoSealLift 980ms cubic-bezier(.2,.82,.18,1) 520ms forwards;
+        }
         .aido-envelope-flap {
           inset: 0;
           z-index: 4;
           background:
-            linear-gradient(160deg, rgba(255,255,255,.26), transparent 42%),
+            linear-gradient(160deg, rgba(255,255,255,.3), transparent 42%),
             linear-gradient(140deg, transparent 50%, rgba(0,0,0,.16) 50.4%),
+            repeating-linear-gradient(105deg, rgba(255,255,255,.1) 0 1px, transparent 1px 14px),
             var(--invite-paper);
           clip-path: polygon(0 0, 100% 0, 50% 60%);
           transform-origin: top center;
@@ -257,7 +282,8 @@ export function AnimatedInvitationShell({
           z-index: 2;
           width: 58%;
           background:
-            linear-gradient(40deg, rgba(255,255,255,.18) 0 49%, rgba(0,0,0,.14) 50%, transparent 51%),
+            linear-gradient(40deg, rgba(255,255,255,.24) 0 49%, rgba(0,0,0,.16) 50%, transparent 51%),
+            repeating-linear-gradient(100deg, rgba(255,255,255,.08) 0 1px, transparent 1px 13px),
             var(--invite-paper);
           clip-path: polygon(0 0, 100% 50%, 0 100%);
           animation: aidoPanelLeft 1320ms cubic-bezier(.28,.76,.18,1) 820ms forwards;
@@ -270,6 +296,7 @@ export function AnimatedInvitationShell({
           width: 58%;
           background:
             linear-gradient(145deg, rgba(255,255,255,.1), transparent 42%),
+            repeating-linear-gradient(100deg, rgba(255,255,255,.04) 0 1px, transparent 1px 13px),
             var(--invite-dark);
           clip-path: polygon(100% 0, 0 50%, 100% 100%);
           animation: aidoPanelRight 1320ms cubic-bezier(.28,.76,.18,1) 880ms forwards;
@@ -309,39 +336,6 @@ export function AnimatedInvitationShell({
           height: 27%;
           right: 26%;
           top: 39%;
-        }
-        .aido-invite-anim-animated-photo-peel .aido-envelope-flap {
-          clip-path: polygon(0 0, 70% 0, 28% 100%, 0 100%);
-          transform-origin: left center;
-          animation-name: aidoPhotoPeel;
-          animation-delay: 420ms;
-        }
-        .aido-invite-anim-animated-photo-peel .aido-invite-anim-card {
-          animation-delay: 1320ms;
-        }
-        .aido-invite-anim-animated-photo-peel .aido-envelope-bottom {
-          animation-delay: 1120ms;
-        }
-        .aido-invite-anim-animated-photo-peel .aido-envelope-pocket-face {
-          animation-delay: 1520ms;
-        }
-        .aido-invite-anim-animated-photo-peel .aido-envelope-side.right {
-          animation-delay: 980ms;
-        }
-        .aido-invite-anim-animated-seal-reveal .aido-wax-seal {
-          animation-delay: 240ms;
-        }
-        .aido-invite-anim-animated-seal-reveal .aido-invite-anim-card {
-          animation-delay: 1580ms;
-        }
-        .aido-invite-anim-animated-seal-reveal .aido-envelope-side.left,
-        .aido-invite-anim-animated-seal-reveal .aido-envelope-side.right,
-        .aido-invite-anim-animated-seal-reveal .aido-envelope-bottom,
-        .aido-invite-anim-animated-seal-reveal .aido-envelope-flap {
-          animation-delay: 1020ms;
-        }
-        .aido-invite-anim-animated-seal-reveal .aido-envelope-pocket-face {
-          animation-delay: 1760ms;
         }
         .aido-invite-anim-animated-owl-delivery {
           background:
@@ -570,10 +564,6 @@ export function AnimatedInvitationShell({
           45% { transform: scale(1.08); opacity: 1; }
           100% { transform: translateY(-58px) scale(.68); opacity: 0; }
         }
-        @keyframes aidoPhotoPeel {
-          0% { transform: translateX(0) rotate(0); opacity: 1; }
-          100% { transform: translateX(-88%) rotate(-9deg); opacity: 0; }
-        }
         @keyframes aidoOwlFlyToward {
           0% {
             opacity: 0;
@@ -637,7 +627,7 @@ export function AnimatedInvitationShell({
         @media (prefers-reduced-motion: reduce) {
           .aido-invite-anim-card, .aido-envelope-layer, .aido-envelope-flap,
           .aido-envelope-side, .aido-envelope-bottom, .aido-envelope-pocket,
-          .aido-envelope-pocket-face, .aido-envelope-pocket-face::after, .aido-wax-seal,
+          .aido-envelope-pocket-face, .aido-envelope-pocket-face::after, .aido-envelope-monogram, .aido-wax-seal,
           .aido-owl-delivery, .aido-owl-wing-svg, .aido-owl-envelope-svg {
             animation-duration: 1ms !important;
             animation-delay: 0ms !important;
@@ -648,7 +638,9 @@ export function AnimatedInvitationShell({
         {children}
       </div>
       <div key={`pocket-${replay}`} className="aido-envelope-pocket" aria-hidden="true">
-        <div className="aido-envelope-pocket-face" />
+        <div className="aido-envelope-pocket-face">
+          <span className="aido-envelope-monogram">{sealMonogram}</span>
+        </div>
       </div>
       {showOwlDelivery && (
         <div key={`castle-${replay}`} className="aido-castle-backdrop" aria-hidden="true">
@@ -729,6 +721,17 @@ export function AnimatedInvitationShell({
               <path d="M126 154 L170 172 L214 154" fill="none" stroke="#9e8a66" strokeWidth="2" />
               <path d="M126 180 L159 164 M214 180 L181 164" fill="none" stroke="#9e8a66" strokeWidth="1.6" />
               <circle cx="170" cy="166" r="6" fill={accent} opacity="0.92" />
+              <text
+                x="170"
+                y="169"
+                textAnchor="middle"
+                fontFamily="Georgia, serif"
+                fontSize="6"
+                fontWeight="700"
+                fill="#ffffff"
+              >
+                {sealMonogram}
+              </text>
             </g>
           </svg>
         </div>
