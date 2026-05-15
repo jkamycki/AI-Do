@@ -960,7 +960,7 @@ async function downloadGuestImportTemplate() {
   sheet.addRow(GUEST_IMPORT_TEMPLATE_HEADERS);
   sheet.addRow(GUEST_IMPORT_SAMPLE_ROW);
   sheet.addRow([
-    "Required fields: Full Name and Street Address. All other columns are optional. Plus One and Needs Hotel can be yes or no.",
+    "Save this file as an Excel workbook (.xlsx) before uploading. Required fields: Full Name and Street Address. All other columns are optional. Plus One and Needs Hotel can be yes or no.",
   ]);
   sheet.getRow(1).font = { bold: true };
   sheet.getRow(1).fill = {
@@ -2334,6 +2334,7 @@ export default function Guests({
                 <div className="rounded-lg border border-border/70 bg-muted/20 p-4 text-sm space-y-2">
                   <p className="font-medium">Template columns</p>
                   <p className="text-muted-foreground">
+                    Save the completed template as an Excel workbook (.xlsx) before uploading.
                     Required fields: <span className="font-medium text-foreground">Full Name</span> and{" "}
                     <span className="font-medium text-foreground">Street Address</span>. All other
                     columns are optional: Email, Phone, Guest Group, Plus One, Plus One Name,
