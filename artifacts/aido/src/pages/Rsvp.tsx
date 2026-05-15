@@ -617,7 +617,7 @@ export default function Rsvp() {
             )}
 
           </div>
-        </div>{/* end cardRef */}
+        </div>
         )}
         </AnimatedInvitationShell>
 
