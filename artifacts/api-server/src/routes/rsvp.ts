@@ -66,6 +66,17 @@ function isLightColor(hex: string): boolean {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5;
 }
 
+function photoZoomFromCustomColors(
+  customColors: unknown,
+  key: "saveTheDatePhotoZoom" | "digitalInvitationPhotoZoom",
+): number {
+  const value = (customColors as Record<string, unknown> | null)?.[key];
+  const numericValue = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numericValue)
+    ? Math.max(1, Math.min(2.5, numericValue))
+    : 1;
+}
+
 function buildOrigin(req: import("express").Request): string {
   const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() || req.protocol;
   const host = (req.headers["x-forwarded-host"] as string)?.split(",")[0]?.trim() || req.get("host") || "";
@@ -182,13 +193,15 @@ function aiPhotoBlock(
   alt: string,
   objectPos: string,
   bg = AI_BG,
+  zoom = 1,
 ): string {
   if (!photoSrc) return "";
+  const safeZoom = Math.max(1, Math.min(2.5, zoom));
   return `
         <tr>
           <td bgcolor="${bg}" style="background:${bg};padding:0 20px 10px;line-height:0;font-size:0;">
             <div class="invite-photo" style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;border-radius:8px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,0.5);">
-              <img src="${photoSrc}" alt="${escapeHtml(alt)}" width="${INVITATION_EMAIL_PHOTO_WIDTH}" height="${INVITATION_EMAIL_PHOTO_HEIGHT}" style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;display:block;object-fit:cover;object-position:${objectPos};border:0;outline:none;text-decoration:none;" />
+              <img src="${photoSrc}" alt="${escapeHtml(alt)}" width="${INVITATION_EMAIL_PHOTO_WIDTH}" height="${INVITATION_EMAIL_PHOTO_HEIGHT}" style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;display:block;object-fit:cover;object-position:${objectPos};transform:scale(${safeZoom});transform-origin:${objectPos};border:0;outline:none;text-decoration:none;" />
             </div>
           </td>
         </tr>`;
@@ -209,6 +222,7 @@ interface AiDigitalInviteOpts {
   rsvpUrl: string;
   photoImgSrc: string | null;
   photoObjectPos: string;
+  photoZoom?: number;
   logoBase64: string | null;
   // Optional color overrides for custom design mode; omit to use default navy/gold brand palette
   overrideBg?: string;
@@ -277,7 +291,7 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
           </td>
         </tr>
 
-        ${aiPhotoBlock(opts.photoImgSrc, opts.couple, opts.photoObjectPos, BG)}
+        ${aiPhotoBlock(opts.photoImgSrc, opts.couple, opts.photoObjectPos, BG, opts.photoZoom)}
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:16px 0 0;text-align:center;">
@@ -394,6 +408,7 @@ interface AiSaveTheDateOpts {
   viewUrl: string;
   photoImgSrc: string | null;
   photoObjectPos: string;
+  photoZoom?: number;
   logoBase64: string | null;
   // Optional color overrides for custom design mode; omit to use default navy/gold brand palette
   overrideBg?: string;
@@ -479,7 +494,7 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
           </td>
         </tr>
 
-        ${aiPhotoBlock(opts.photoImgSrc, `Save the Date - ${opts.couple}`, opts.photoObjectPos, BG)}
+        ${aiPhotoBlock(opts.photoImgSrc, `Save the Date - ${opts.couple}`, opts.photoObjectPos, BG, opts.photoZoom)}
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 40px 0;">
@@ -734,6 +749,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
     // canvas writes the position to the `dig:photo` text override.
     const aiDigPhotoPos = (customization?.digitalInvitationPhotoPosition as { x?: number; y?: number } | null) ?? null;
     const digPhotoObjectPos = `${aiDigPhotoPos?.x ?? digPhotoOverride.objectX ?? 50}% ${aiDigPhotoPos?.y ?? digPhotoOverride.objectY ?? 50}%`;
+    const digPhotoZoom = photoZoomFromCustomColors(customization?.customColors, "digitalInvitationPhotoZoom");
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     const now = new Date();
@@ -782,7 +798,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
             <div style="width:100%;max-width:560px;aspect-ratio:560/360;overflow:hidden;">
-              <img src="${photoImgSrc}" alt="${couple}'s Wedding" width="560" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${digPhotoObjectPos};"/>
+              <img src="${photoImgSrc}" alt="${couple}'s Wedding" width="560" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${digPhotoObjectPos};transform:scale(${digPhotoZoom});transform-origin:${digPhotoObjectPos};"/>
             </div>
           </td>
         </tr>`
@@ -914,6 +930,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           rsvpUrl,
           photoImgSrc,
           photoObjectPos: digPhotoObjectPos,
+          photoZoom: digPhotoZoom,
           logoBase64,
         });
       } else {
@@ -931,6 +948,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           rsvpUrl,
           photoImgSrc,
           photoObjectPos: digPhotoObjectPos,
+          photoZoom: digPhotoZoom,
           logoBase64,
           overrideBg: BG,
           overridePageBg: PAGE_BG,
@@ -1061,6 +1079,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
     const digPhotoOverride = digOverrides["dig:photo"] ?? {};
     const aiDigPhotoPos = (customization?.digitalInvitationPhotoPosition as { x?: number; y?: number } | null) ?? null;
     const digPhotoObjectPos = `${aiDigPhotoPos?.x ?? digPhotoOverride.objectX ?? 50}% ${aiDigPhotoPos?.y ?? digPhotoOverride.objectY ?? 50}%`;
+    const digPhotoZoom = photoZoomFromCustomColors(customization?.customColors, "digitalInvitationPhotoZoom");
 
     const formatTime12h = (t: string | null | undefined): string | null => {
       if (!t) return null;
@@ -1116,6 +1135,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         rsvpUrl,
         photoImgSrc,
         photoObjectPos: digPhotoObjectPos,
+        photoZoom: digPhotoZoom,
         logoBase64,
       });
     } else {
@@ -1133,6 +1153,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         rsvpUrl,
         photoImgSrc,
         photoObjectPos: digPhotoObjectPos,
+        photoZoom: digPhotoZoom,
         logoBase64,
         overrideBg: rawBg,
         // Page sits behind the card. Keep it neutral so the user's chosen
@@ -1393,6 +1414,7 @@ router.get("/rsvp/:token", async (req, res) => {
       photoEffect: (c?.useGeneratedInvitation === false)
         ? ((c?.customColors as Record<string, string> | null)?.digitalInvitationPhotoEffect ?? null)
         : null,
+      photoZoom: photoZoomFromCustomColors(c?.customColors, "digitalInvitationPhotoZoom"),
       photoObjectPosition: (() => {
         const pos = c?.digitalInvitationPhotoPosition as { x?: number; y?: number } | null;
         return pos ? `${pos.x ?? 50}% ${pos.y ?? 50}%` : "50% 50%";
@@ -1644,6 +1666,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
     // writes the position to the `std:photo` text override.
     const aiStdPhotoPos = (customization?.saveTheDatePhotoPosition as { x?: number; y?: number } | null) ?? null;
     const stdPhotoObjectPos = `${aiStdPhotoPos?.x ?? stdPhotoOverride.objectX ?? 50}% ${aiStdPhotoPos?.y ?? stdPhotoOverride.objectY ?? 50}%`;
+    const stdPhotoZoom = photoZoomFromCustomColors(customization?.customColors, "saveTheDatePhotoZoom");
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     if (!guest.rsvpToken) {
@@ -1703,7 +1726,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
             <div style="width:100%;max-width:560px;aspect-ratio:560/360;overflow:hidden;">
-              <img src="${photoImgSrc}" alt="Save the Date — ${couple}" width="560" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${stdPhotoObjectPos};"/>
+              <img src="${photoImgSrc}" alt="Save the Date — ${couple}" width="560" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${stdPhotoObjectPos};transform:scale(${stdPhotoZoom});transform-origin:${stdPhotoObjectPos};"/>
             </div>
           </td>
         </tr>`
@@ -1770,6 +1793,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           viewUrl: `${frontendOrigin}/save-the-date/${token}`,
           photoImgSrc,
           photoObjectPos: stdPhotoObjectPos,
+          photoZoom: stdPhotoZoom,
           logoBase64,
         });
       } else {
@@ -1785,6 +1809,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           viewUrl: `${frontendOrigin}/save-the-date/${token}`,
           photoImgSrc,
           photoObjectPos: stdPhotoObjectPos,
+          photoZoom: stdPhotoZoom,
           logoBase64,
           overrideBg: STD_EMAIL_BG,
           // Page sits behind the card. Keep it neutral so changing the card
@@ -1844,6 +1869,7 @@ router.get("/save-the-date/:token", async (req, res) => {
       fontSize: string | null;
       textOverrides: Record<string, unknown>;
       photoObjectPosition: string;
+      photoZoom: number;
       photoEffect: string | null;
       saveTheDatePhotoUrl: string | null;
       // Surface the full palette + layout so the public page can render the
@@ -1859,6 +1885,7 @@ router.get("/save-the-date/:token", async (req, res) => {
       fontSize: null,
       textOverrides: {},
       photoObjectPosition: "50% 50%",
+      photoZoom: 1,
       photoEffect: null,
       saveTheDatePhotoUrl: null,
       colorPalette: null,
@@ -1914,6 +1941,7 @@ router.get("/save-the-date/:token", async (req, res) => {
           fontSize: useGenerated ? null : (cust.saveTheDateFontSize ?? null),
           textOverrides: useGenerated ? {} : allOverrides,
           photoObjectPosition: `${ox}% ${oy}%`,
+          photoZoom: photoZoomFromCustomColors(cust.customColors, "saveTheDatePhotoZoom"),
           photoEffect: useGenerated ? null : (customColors.saveTheDatePhotoEffect ?? null),
           saveTheDatePhotoUrl: cust.saveTheDatePhotoUrl ?? null,
           colorPalette: useGenerated ? null : mergedPalette,
@@ -1956,6 +1984,7 @@ router.get("/save-the-date/:token", async (req, res) => {
       customFontSize: customizationData.fontSize,
       customTextOverrides: customizationData.textOverrides,
       photoObjectPosition: customizationData.photoObjectPosition,
+      photoZoom: customizationData.photoZoom,
       photoEffect: customizationData.photoEffect,
       customColorPalette: customizationData.colorPalette,
       customLayout: customizationData.layout,

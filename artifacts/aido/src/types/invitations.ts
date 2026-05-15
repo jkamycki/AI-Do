@@ -9,6 +9,8 @@ export interface ColorPalette {
   digitalInvitationAccent?: string;
   saveTheDatePhotoEffect?: string;
   digitalInvitationPhotoEffect?: string;
+  saveTheDatePhotoZoom?: number;
+  digitalInvitationPhotoZoom?: number;
 }
 
 export interface ElementOverride {

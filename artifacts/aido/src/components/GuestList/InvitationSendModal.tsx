@@ -780,6 +780,7 @@ export function InvitationSendModal({
                         palette={stdPalette}
                         photoUrl={customization.saveTheDatePhotoUrl || null}
                         photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
+                        photoZoom={customization.customColors?.saveTheDatePhotoZoom ?? 1}
                         customColors={stdPreviewColors}
                         fullPhoto={false}
                         photoEffect={customization.customColors?.saveTheDatePhotoEffect ?? "none"}
@@ -834,6 +835,7 @@ export function InvitationSendModal({
                         palette={digPalette}
                         photoUrl={customization.digitalInvitationPhotoUrl || null}
                         photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
+                        photoZoom={customization.customColors?.digitalInvitationPhotoZoom ?? 1}
                         onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
                         customColors={digPreviewColors}
                         photoEffect={customization.customColors?.digitalInvitationPhotoEffect ?? "none"}
@@ -903,6 +905,7 @@ export function InvitationSendModal({
                       palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
                       photoUrl={customization.saveTheDatePhotoUrl || null}
                       photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
+                      photoZoom={customization.customColors?.saveTheDatePhotoZoom ?? 1}
                       photoEffect={customization.customColors?.saveTheDatePhotoEffect ?? "none"}
                     />
                   )}
@@ -943,6 +946,7 @@ export function InvitationSendModal({
                       palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
                       photoUrl={customization.digitalInvitationPhotoUrl || null}
                       photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
+                      photoZoom={customization.customColors?.digitalInvitationPhotoZoom ?? 1}
                       photoEffect={customization.customColors?.digitalInvitationPhotoEffect ?? "none"}
                     />
                   )}

@@ -10,10 +10,20 @@ import {
   Crosshair,
   Loader2,
   Save,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 import { InvitationCropDialog } from "@/components/InvitationCropDialog";
-import { PHOTO_EFFECT_OPTIONS, photoEffectToFilter, type PhotoPosition } from "@/components/InvitationCustomization/AiPreviewComponents";
+import {
+  DEFAULT_PHOTO_ZOOM,
+  MAX_PHOTO_ZOOM,
+  MIN_PHOTO_ZOOM,
+  PHOTO_EFFECT_OPTIONS,
+  clampPhotoZoom,
+  photoEffectToFilter,
+  type PhotoPosition,
+} from "@/components/InvitationCustomization/AiPreviewComponents";
 
 interface PhotoUploadSectionProps {
   mode: "saveTheDate" | "digitalInvitation";
@@ -28,8 +38,12 @@ interface PhotoUploadSectionProps {
   /** Position props — only passed in AI generated mode */
   saveTheDatePhotoPosition?: PhotoPosition;
   onSaveTheDatePositionChange?: (pos: PhotoPosition) => void;
+  saveTheDatePhotoZoom?: number;
+  onSaveTheDateZoomChange?: (zoom: number) => void;
   digitalInvitationPhotoPosition?: PhotoPosition;
   onDigitalInvitationPositionChange?: (pos: PhotoPosition) => void;
+  digitalInvitationPhotoZoom?: number;
+  onDigitalInvitationZoomChange?: (zoom: number) => void;
   saveTheDatePhotoEffect?: string;
   onSaveTheDatePhotoEffectChange?: (effect: string) => void;
   digitalInvitationPhotoEffect?: string;
@@ -48,8 +62,12 @@ export function PhotoUploadSection({
   onSavePhoto,
   saveTheDatePhotoPosition,
   onSaveTheDatePositionChange,
+  saveTheDatePhotoZoom = DEFAULT_PHOTO_ZOOM,
+  onSaveTheDateZoomChange,
   digitalInvitationPhotoPosition,
   onDigitalInvitationPositionChange,
+  digitalInvitationPhotoZoom = DEFAULT_PHOTO_ZOOM,
+  onDigitalInvitationZoomChange,
   saveTheDatePhotoEffect = "none",
   onSaveTheDatePhotoEffectChange,
   digitalInvitationPhotoEffect = "none",
@@ -84,6 +102,8 @@ export function PhotoUploadSection({
   const onPositionChange = isSaveTheDate
     ? onSaveTheDatePositionChange
     : onDigitalInvitationPositionChange;
+  const photoZoom = clampPhotoZoom(isSaveTheDate ? saveTheDatePhotoZoom : digitalInvitationPhotoZoom);
+  const onZoomChange = isSaveTheDate ? onSaveTheDateZoomChange : onDigitalInvitationZoomChange;
   const hasReposition = !!(position && onPositionChange);
   const photoEffect = isSaveTheDate ? saveTheDatePhotoEffect : digitalInvitationPhotoEffect;
   const onPhotoEffectChange = isSaveTheDate ? onSaveTheDatePhotoEffectChange : onDigitalInvitationPhotoEffectChange;
@@ -238,6 +258,17 @@ export function PhotoUploadSection({
     onChangeRef.current?.(centered);
   };
 
+  const updateZoom = (nextZoom: number) => {
+    onZoomChange?.(clampPhotoZoom(nextZoom));
+  };
+
+  const resetPhotoFraming = () => {
+    const centered: PhotoPosition = { x: 50, y: 50 };
+    posRef.current = centered;
+    onChangeRef.current?.(centered);
+    updateZoom(DEFAULT_PHOTO_ZOOM);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -282,6 +313,8 @@ export function PhotoUploadSection({
                     hasReposition && position
                       ? {
                           objectPosition: `${position.x}% ${position.y}%`,
+                          transform: `scale(${photoZoom})`,
+                          transformOrigin: `${position.x}% ${position.y}%`,
                           filter: photoEffectToFilter(photoEffect),
                           userSelect: "none",
                           pointerEvents: "none",
@@ -355,6 +388,60 @@ export function PhotoUploadSection({
                   </button>
                 </div>
               </div>
+
+              {hasReposition && (
+                <div className="space-y-2 rounded-md border bg-muted/20 p-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-medium text-muted-foreground">Photo zoom</span>
+                    <span className="text-[11px] tabular-nums text-muted-foreground">{Math.round(photoZoom * 100)}%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() => updateZoom(photoZoom - 0.1)}
+                      disabled={!onZoomChange || photoZoom <= MIN_PHOTO_ZOOM}
+                      title="Zoom out"
+                    >
+                      <ZoomOut className="h-3.5 w-3.5" />
+                    </Button>
+                    <input
+                      type="range"
+                      min={MIN_PHOTO_ZOOM}
+                      max={MAX_PHOTO_ZOOM}
+                      step={0.05}
+                      value={photoZoom}
+                      disabled={!onZoomChange}
+                      onChange={(event) => updateZoom(Number(event.target.value))}
+                      className="w-full accent-primary"
+                      aria-label={`${label} photo zoom`}
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() => updateZoom(photoZoom + 0.1)}
+                      disabled={!onZoomChange || photoZoom >= MAX_PHOTO_ZOOM}
+                      title="Zoom in"
+                    >
+                      <ZoomIn className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground text-center">
+                    Drag to reposition, or{" "}
+                    <button
+                      type="button"
+                      className="underline hover:text-foreground transition-colors"
+                      onClick={resetPhotoFraming}
+                    >
+                      reset framing
+                    </button>
+                  </p>
+                </div>
+              )}
 
               {/* Reposition hint text */}
               {hasReposition && (

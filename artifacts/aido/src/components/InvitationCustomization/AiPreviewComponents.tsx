@@ -25,6 +25,10 @@ export interface WeddingInfo {
 
 export interface PhotoPosition { x: number; y: number }
 
+export const MIN_PHOTO_ZOOM = 1;
+export const MAX_PHOTO_ZOOM = 2.5;
+export const DEFAULT_PHOTO_ZOOM = 1;
+
 export type PhotoEffect = "none" | "bw" | "sepia" | "vintage" | "soft" | "warm" | "dramatic" | "noir";
 
 export const PHOTO_EFFECT_OPTIONS: Array<{ id: PhotoEffect; label: string }> = [
@@ -96,6 +100,12 @@ function clampPercent(value: number) {
   return Math.max(0, Math.min(100, value));
 }
 
+export function clampPhotoZoom(value: number | null | undefined) {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed)) return DEFAULT_PHOTO_ZOOM;
+  return Math.max(MIN_PHOTO_ZOOM, Math.min(MAX_PHOTO_ZOOM, parsed));
+}
+
 function dragDeltaToPercent(e: React.PointerEvent<HTMLElement>, dx: number, dy: number) {
   const rect = e.currentTarget.getBoundingClientRect();
   return {
@@ -137,6 +147,7 @@ function CardShell({
   children,
   photoUrl,
   photoPosition = { x: 50, y: 50 },
+  photoZoom = DEFAULT_PHOTO_ZOOM,
   onPhotoPositionChange,
   customColors,
   photoEffect = "none",
@@ -145,6 +156,7 @@ function CardShell({
   children: ReactNode;
   photoUrl?: string | null;
   photoPosition?: PhotoPosition;
+  photoZoom?: number;
   onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
   photoEffect?: string | null;
@@ -181,6 +193,7 @@ function CardShell({
 
   const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
+  const zoom = clampPhotoZoom(photoZoom);
   return (
     <div style={{
       // Outer wrapper sits *outside* the rounded card. Light grey so the
@@ -234,6 +247,8 @@ function CardShell({
               width: "100%", height: 200, objectFit: "cover", borderRadius: 8,
               display: "block", boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
               objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
+              transform: `scale(${zoom})`,
+              transformOrigin: `${photoPosition.x}% ${photoPosition.y}%`,
               filter: photoEffectToFilter(photoEffect),
               pointerEvents: "none", userSelect: "none",
             }}
@@ -261,6 +276,7 @@ export function AiSaveDatePreview({
   palette: _palette,
   photoUrl,
   photoPosition,
+  photoZoom,
   onPhotoPositionChange,
   customColors,
   fullPhoto = false,
@@ -270,6 +286,7 @@ export function AiSaveDatePreview({
   palette: ColorPalette;
   photoUrl?: string | null;
   photoPosition?: PhotoPosition;
+  photoZoom?: number;
   onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
   fullPhoto?: boolean;
@@ -281,6 +298,7 @@ export function AiSaveDatePreview({
         profile={profile}
         photoUrl={photoUrl}
         photoPosition={photoPosition}
+        photoZoom={photoZoom}
         onPhotoPositionChange={onPhotoPositionChange}
         customColors={customColors}
         photoEffect={photoEffect}
@@ -310,6 +328,7 @@ export function AiSaveDatePreview({
     <CardShell
       photoUrl={photoUrl}
       photoPosition={photoPosition}
+      photoZoom={photoZoom}
       onPhotoPositionChange={onPhotoPositionChange}
       customColors={customColors}
       photoEffect={photoEffect}
@@ -374,6 +393,7 @@ function FullPhotoSaveDatePreview({
   profile,
   photoUrl,
   photoPosition = { x: 50, y: 50 },
+  photoZoom = DEFAULT_PHOTO_ZOOM,
   onPhotoPositionChange,
   customColors,
   photoEffect,
@@ -381,6 +401,7 @@ function FullPhotoSaveDatePreview({
   profile: WeddingInfo;
   photoUrl?: string | null;
   photoPosition?: PhotoPosition;
+  photoZoom?: number;
   onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
   photoEffect?: string | null;
@@ -422,6 +443,7 @@ function FullPhotoSaveDatePreview({
 
   const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
+  const zoom = clampPhotoZoom(photoZoom);
   const partner1 = firstName(profile.partner1Name) || "Partner";
   const partner2 = firstName(profile.partner2Name) || "Partner";
   const dateStr = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -461,6 +483,8 @@ function FullPhotoSaveDatePreview({
               height: "100%",
               objectFit: "cover",
               objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
+              transform: `scale(${zoom})`,
+              transformOrigin: `${photoPosition.x}% ${photoPosition.y}%`,
               filter: photoEffectToFilter(photoEffect),
               pointerEvents: "none",
             }}
@@ -533,6 +557,7 @@ export function AiDigitalInvitationPreview({
   palette: _palette,
   photoUrl,
   photoPosition,
+  photoZoom,
   onPhotoPositionChange,
   customColors,
   photoEffect = "none",
@@ -542,6 +567,7 @@ export function AiDigitalInvitationPreview({
   palette: ColorPalette;
   photoUrl?: string | null;
   photoPosition?: PhotoPosition;
+  photoZoom?: number;
   onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
   photoEffect?: string | null;
@@ -579,6 +605,7 @@ export function AiDigitalInvitationPreview({
         profile={profile}
         photoUrl={photoUrl}
         photoPosition={photoPosition}
+        photoZoom={photoZoom}
         onPhotoPositionChange={onPhotoPositionChange}
         customColors={customColors}
         photoEffect={photoEffect}
@@ -587,7 +614,7 @@ export function AiDigitalInvitationPreview({
   }
 
   return (
-    <CardShell photoUrl={photoUrl} photoPosition={photoPosition} onPhotoPositionChange={onPhotoPositionChange} customColors={customColors} photoEffect={photoEffect}>
+    <CardShell photoUrl={photoUrl} photoPosition={photoPosition} photoZoom={photoZoom} onPhotoPositionChange={onPhotoPositionChange} customColors={customColors} photoEffect={photoEffect}>
       <Badge accent={accent}><Heart style={{ width: 22, height: 22, color: accent, fill: accent }} /></Badge>
 
       <p style={{ fontFamily: labelFont, fontSize: 11 * sc, fontWeight: 700,
@@ -719,6 +746,7 @@ function FullPhotoRsvpPreview({
   profile,
   photoUrl,
   photoPosition = { x: 50, y: 50 },
+  photoZoom = DEFAULT_PHOTO_ZOOM,
   onPhotoPositionChange,
   customColors,
   photoEffect,
@@ -726,6 +754,7 @@ function FullPhotoRsvpPreview({
   profile: WeddingInfo;
   photoUrl?: string | null;
   photoPosition?: PhotoPosition;
+  photoZoom?: number;
   onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
   photoEffect?: string | null;
@@ -767,6 +796,7 @@ function FullPhotoRsvpPreview({
 
   const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
+  const zoom = clampPhotoZoom(photoZoom);
   const partner1 = firstName(profile.partner1Name) || "Partner";
   const partner2 = firstName(profile.partner2Name) || "Partner";
   const guestName = profile.guestName || "Guest";
@@ -812,6 +842,8 @@ function FullPhotoRsvpPreview({
               height: "100%",
               objectFit: "cover",
               objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
+              transform: `scale(${zoom})`,
+              transformOrigin: `${photoPosition.x}% ${photoPosition.y}%`,
               filter: photoEffectToFilter(photoEffect),
               pointerEvents: "none",
             }}

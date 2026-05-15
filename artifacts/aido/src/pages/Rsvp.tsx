@@ -74,6 +74,7 @@ interface RsvpInfo {
   hasPhoto: boolean;
   photoUrl: string | null;
   photoObjectPosition?: string | null;
+  photoZoom?: number | null;
   photoEffect?: string | null;
   invitationMessage: string | null;
   // Couple-set RSVP deadline (YYYY-MM-DD); rendered as "RSVP By: (Date)" on
@@ -231,6 +232,8 @@ export default function Rsvp() {
   // stops at the rounded edge — no bleed into the surrounding viewport.
   const PAGE_BG = "#f3f4f6";
   const PAGE_BG_PATTERN: string | undefined = undefined;
+  const photoZoom = Math.max(1, Math.min(2.5, Number(info?.photoZoom ?? 1) || 1));
+  const photoObjectPosition = info?.photoObjectPosition ?? "50% 50%";
 
   const couple = [info?.partner1Name, info?.partner2Name].filter(Boolean).join(" & ") || "The Couple";
   const partner1First = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";
@@ -413,7 +416,9 @@ export default function Rsvp() {
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
-                objectPosition: info.photoObjectPosition ?? "50% 50%",
+                objectPosition: photoObjectPosition,
+                transform: `scale(${photoZoom})`,
+                transformOrigin: photoObjectPosition,
                 filter: photoEffectToFilter(info.photoEffect),
               }}
             />
@@ -507,18 +512,21 @@ export default function Rsvp() {
           {/* Photo */}
           {info.photoUrl && (
             <div style={{ padding: "0 20px 12px", backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
+              <div style={{ height: 200, borderRadius: 8, overflow: "hidden", boxShadow: "0 6px 30px rgba(0,0,0,0.5)" }}>
               <img
                 src={info.photoUrl}
                 alt={couple}
                 crossOrigin="anonymous"
                 style={{
-                  width: "100%", height: 200, objectFit: "cover",
-                  objectPosition: info.photoObjectPosition ?? "50% 50%",
+                  width: "100%", height: "100%", objectFit: "cover",
+                  objectPosition: photoObjectPosition,
+                  transform: `scale(${photoZoom})`,
+                  transformOrigin: photoObjectPosition,
                   filter: photoEffectToFilter(info.photoEffect),
-                  borderRadius: 8, display: "block",
-                  boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
+                  display: "block",
                 }}
               />
+              </div>
             </div>
           )}
 

@@ -14,6 +14,7 @@ export interface InvitationDesignDocument {
   image: {
     url: string | null;
     position: { x: number; y: number };
+    zoom: number;
   };
   style: {
     backgroundColor: string;
@@ -44,6 +45,7 @@ interface BuildInvitationDesignDocumentInput {
   message: string | null;
   photoUrl: string | null;
   photoPosition: { x: number; y: number };
+  photoZoom?: number;
   customStyle: {
     backgroundColor: string;
     accentColor: string;
@@ -63,6 +65,7 @@ export function buildInvitationDesignDocument({
   message,
   photoUrl,
   photoPosition,
+  photoZoom = 1,
   customStyle,
   rsvpByDate,
 }: BuildInvitationDesignDocumentInput): InvitationDesignDocument {
@@ -94,6 +97,7 @@ export function buildInvitationDesignDocument({
     image: {
       url: photoUrl,
       position: photoPosition,
+      zoom: photoZoom,
     },
     style: {
       backgroundColor: designMode === "custom" ? customStyle.backgroundColor : backgroundColor || "#1E1A2E",

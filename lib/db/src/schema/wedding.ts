@@ -505,6 +505,10 @@ export const invitationCustomizations = pgTable("invitation_customizations", {
     secondary?: string;
     accent?: string;
     neutral?: string;
+    saveTheDatePhotoEffect?: string;
+    digitalInvitationPhotoEffect?: string;
+    saveTheDatePhotoZoom?: number;
+    digitalInvitationPhotoZoom?: number;
   } | null>(),
   selectedPalette: text("selected_palette"), // 'romantic', 'modern', 'luxury', 'minimalist', 'seasonal'
   backgroundColor: text("background_color"),
