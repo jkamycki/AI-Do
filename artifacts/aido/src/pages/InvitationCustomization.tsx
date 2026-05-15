@@ -2105,8 +2105,8 @@ export default function InvitationCustomizationPage({
                     key={animationReplayKey}
                     layout={activeAnimationLayout}
                     accent={cd.accentColor}
-                    paper="#d9c8ad"
-                    darkPanel="#15131f"
+                    paper="#59634f"
+                    darkPanel="#313a2f"
                     replayKey={animationReplayKey}
                     monogram={`${displayWeddingProfile.partner1Name || ""} ${displayWeddingProfile.partner2Name || ""}`}
                   >

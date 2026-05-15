@@ -43,16 +43,15 @@ function monogramFromNames(value?: string | null) {
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
-    .filter(Boolean)
-    .join("");
-  return letters || "A";
+    .filter(Boolean);
+  return letters.length > 1 ? `${letters[0]} ${letters[1]}` : letters[0] || "A";
 }
 
 export function AnimatedInvitationShell({
   layout,
   accent = "#D4A017",
-  paper = "#d9c8ad",
-  darkPanel = "#15131f",
+  paper = "#59634f",
+  darkPanel = "#313a2f",
   children,
   compact = false,
   replayKey,
@@ -140,8 +139,9 @@ export function AnimatedInvitationShell({
           border-radius: ${compact ? "18px" : "24px"};
           overflow: hidden;
           box-shadow:
-            0 34px 80px rgba(11, 9, 18, .34),
-            0 2px 0 rgba(255,255,255,.22) inset;
+            0 34px 80px rgba(11, 9, 18, .38),
+            inset 0 1px 0 rgba(255,255,255,.18),
+            inset 0 -22px 46px rgba(0,0,0,.16);
           animation: aidoLayerGone 1ms linear 2500ms forwards;
         }
         .aido-envelope-layer::after {
@@ -175,10 +175,11 @@ export function AnimatedInvitationShell({
           inset: 0;
           z-index: 0;
           background:
-            linear-gradient(135deg, rgba(255,255,255,.5), transparent 32%),
-            linear-gradient(45deg, rgba(0,0,0,.12), transparent 48%),
-            radial-gradient(circle at 30% 24%, rgba(255,255,255,.24), transparent 28%),
-            repeating-linear-gradient(100deg, rgba(255,255,255,.12) 0 1px, transparent 1px 12px),
+            linear-gradient(135deg, rgba(255,255,255,.22), transparent 30%),
+            linear-gradient(45deg, rgba(0,0,0,.24), transparent 49%),
+            radial-gradient(circle at 30% 24%, rgba(255,255,255,.16), transparent 28%),
+            repeating-linear-gradient(100deg, rgba(255,255,255,.06) 0 1px, transparent 1px 9px),
+            repeating-linear-gradient(12deg, rgba(0,0,0,.035) 0 1px, transparent 1px 7px),
             var(--invite-paper);
         }
         .aido-envelope-panel::after {
@@ -187,9 +188,9 @@ export function AnimatedInvitationShell({
           inset: 0;
           opacity: .26;
           background-image:
-            linear-gradient(120deg, rgba(255,255,255,.28) 0 1px, transparent 1px 18px),
-            radial-gradient(circle at 20% 30%, rgba(0,0,0,.12) 0 1px, transparent 1.4px);
-          background-size: 28px 28px, 38px 38px;
+            linear-gradient(120deg, rgba(255,255,255,.14) 0 1px, transparent 1px 18px),
+            radial-gradient(circle at 20% 30%, rgba(0,0,0,.18) 0 1px, transparent 1.4px);
+          background-size: 24px 24px, 34px 34px;
         }
         .aido-envelope-bottom {
           left: 0;
@@ -199,7 +200,8 @@ export function AnimatedInvitationShell({
           z-index: 1;
           clip-path: polygon(0 100%, 50% 0, 100% 100%);
           background:
-            linear-gradient(180deg, rgba(255,255,255,.2), rgba(0,0,0,.1)),
+            linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.18)),
+            linear-gradient(36deg, transparent 49.4%, rgba(255,255,255,.14) 49.8%, rgba(0,0,0,.18) 50.8%, transparent 51.2%),
             var(--invite-paper);
           animation: aidoBottomDrop 1150ms cubic-bezier(.28,.76,.18,1) 1040ms forwards;
         }
@@ -217,7 +219,7 @@ export function AnimatedInvitationShell({
           right: 0;
           bottom: 0;
           height: 58%;
-          filter: drop-shadow(0 -10px 18px rgba(0,0,0,.12));
+          filter: drop-shadow(0 -12px 22px rgba(0,0,0,.22));
           animation: aidoPocketRelease 980ms cubic-bezier(.28,.76,.18,1) 1320ms forwards;
         }
         .aido-envelope-pocket-face::before {
@@ -225,31 +227,33 @@ export function AnimatedInvitationShell({
           inset: 0;
           clip-path: polygon(0 100%, 50% 0, 100% 100%);
           background:
-            linear-gradient(180deg, rgba(255,255,255,.38), rgba(0,0,0,.14)),
-            repeating-linear-gradient(108deg, rgba(255,255,255,.1) 0 1px, transparent 1px 13px),
+            linear-gradient(180deg, rgba(255,255,255,.2), rgba(0,0,0,.2)),
+            linear-gradient(36deg, transparent 49.3%, rgba(255,255,255,.18) 49.7%, rgba(0,0,0,.2) 50.7%, transparent 51.2%),
+            repeating-linear-gradient(108deg, rgba(255,255,255,.055) 0 1px, transparent 1px 10px),
             var(--invite-paper);
         }
         .aido-envelope-pocket-face::after {
           content: "";
-          width: ${compact ? "58px" : "72px"};
-          height: ${compact ? "58px" : "72px"};
-          left: calc(50% - ${compact ? "29px" : "36px"});
+          width: ${compact ? "64px" : "80px"};
+          height: ${compact ? "64px" : "80px"};
+          left: calc(50% - ${compact ? "32px" : "40px"});
           top: 4%;
           border-radius: 999px;
           background:
-            radial-gradient(circle at 34% 28%, rgba(255,255,255,.4), transparent 18%),
-            radial-gradient(circle at 50% 52%, var(--invite-accent), #8a6320 74%);
+            radial-gradient(circle at 34% 26%, rgba(255,255,255,.5), transparent 17%),
+            radial-gradient(circle at 50% 52%, #e4bd54, #a67825 68%, #785016 100%);
           box-shadow:
-            0 12px 24px rgba(0,0,0,.28),
-            inset 0 0 0 5px rgba(255,255,255,.14),
-            inset 0 0 0 10px rgba(0,0,0,.1);
+            0 14px 28px rgba(0,0,0,.34),
+            inset 0 0 0 4px rgba(255,255,255,.16),
+            inset 0 0 0 8px rgba(83,54,13,.22),
+            inset 0 -10px 16px rgba(79,50,10,.2);
           opacity: .92;
           animation: aidoSealLift 980ms cubic-bezier(.2,.82,.18,1) 520ms forwards;
         }
         .aido-envelope-monogram {
-          width: ${compact ? "58px" : "72px"};
-          height: ${compact ? "58px" : "72px"};
-          left: calc(50% - ${compact ? "29px" : "36px"});
+          width: ${compact ? "64px" : "80px"};
+          height: ${compact ? "64px" : "80px"};
+          left: calc(50% - ${compact ? "32px" : "40px"});
           top: 4%;
           z-index: 1;
           display: flex;
@@ -263,13 +267,23 @@ export function AnimatedInvitationShell({
           text-shadow: 0 1px 2px rgba(0,0,0,.28);
           animation: aidoSealLift 980ms cubic-bezier(.2,.82,.18,1) 520ms forwards;
         }
+        .aido-envelope-monogram::before {
+          content: "";
+          position: absolute;
+          width: 1px;
+          height: 46%;
+          left: 50%;
+          top: 27%;
+          background: rgba(85,55,14,.55);
+          box-shadow: 1px 0 0 rgba(255,255,255,.16);
+        }
         .aido-envelope-flap {
           inset: 0;
           z-index: 4;
           background:
-            linear-gradient(160deg, rgba(255,255,255,.3), transparent 42%),
-            linear-gradient(140deg, transparent 50%, rgba(0,0,0,.16) 50.4%),
-            repeating-linear-gradient(105deg, rgba(255,255,255,.1) 0 1px, transparent 1px 14px),
+            linear-gradient(160deg, rgba(255,255,255,.18), transparent 42%),
+            linear-gradient(140deg, transparent 49.6%, rgba(255,255,255,.16) 49.9%, rgba(0,0,0,.24) 50.8%, transparent 51.2%),
+            repeating-linear-gradient(105deg, rgba(255,255,255,.055) 0 1px, transparent 1px 10px),
             var(--invite-paper);
           clip-path: polygon(0 0, 100% 0, 50% 60%);
           transform-origin: top center;
@@ -282,8 +296,8 @@ export function AnimatedInvitationShell({
           z-index: 2;
           width: 58%;
           background:
-            linear-gradient(40deg, rgba(255,255,255,.24) 0 49%, rgba(0,0,0,.16) 50%, transparent 51%),
-            repeating-linear-gradient(100deg, rgba(255,255,255,.08) 0 1px, transparent 1px 13px),
+            linear-gradient(40deg, rgba(255,255,255,.18) 0 49%, rgba(0,0,0,.22) 50%, transparent 51%),
+            repeating-linear-gradient(100deg, rgba(255,255,255,.045) 0 1px, transparent 1px 10px),
             var(--invite-paper);
           clip-path: polygon(0 0, 100% 50%, 0 100%);
           animation: aidoPanelLeft 1320ms cubic-bezier(.28,.76,.18,1) 820ms forwards;
@@ -295,8 +309,9 @@ export function AnimatedInvitationShell({
           z-index: 2;
           width: 58%;
           background:
-            linear-gradient(145deg, rgba(255,255,255,.1), transparent 42%),
-            repeating-linear-gradient(100deg, rgba(255,255,255,.04) 0 1px, transparent 1px 13px),
+            linear-gradient(145deg, rgba(255,255,255,.12), transparent 42%),
+            linear-gradient(38deg, transparent 49.5%, rgba(255,255,255,.08) 50%, rgba(0,0,0,.24) 51%, transparent 51.4%),
+            repeating-linear-gradient(100deg, rgba(255,255,255,.035) 0 1px, transparent 1px 10px),
             var(--invite-dark);
           clip-path: polygon(100% 0, 0 50%, 100% 100%);
           animation: aidoPanelRight 1320ms cubic-bezier(.28,.76,.18,1) 880ms forwards;

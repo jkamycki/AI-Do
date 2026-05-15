@@ -186,8 +186,8 @@ export default function SaveTheDate() {
       <AnimatedInvitationShell
         layout={useCustom ? info.customLayout : "classic"}
         accent={GOLD}
-        paper="#d9c8ad"
-        darkPanel="#15131f"
+        paper="#59634f"
+        darkPanel="#313a2f"
         monogram={`${info.partner1Name || ""} ${info.partner2Name || ""}`}
       >
       <div
