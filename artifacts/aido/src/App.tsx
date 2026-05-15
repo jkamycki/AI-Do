@@ -170,6 +170,149 @@ function SignInPage() {
   );
 }
 
+function TestAccountCallout() {
+  const clerk = useClerk();
+  const { isLoaded, isSignedIn } = useAuth();
+  const [, setLocation] = useLocation();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function extractError(err: unknown, fallback: string): string {
+    const e = err as { errors?: Array<{ longMessage?: string; message?: string }> };
+    const first = e?.errors?.[0];
+    return first?.longMessage || first?.message || (err as Error)?.message || fallback;
+  }
+
+  async function waitForSignInClient() {
+    const start = Date.now();
+    while (Date.now() - start < 8000) {
+      if (clerk.loaded && clerk.client?.signIn) return clerk.client.signIn;
+      await new Promise((res) => setTimeout(res, 80));
+    }
+    return clerk.client?.signIn ?? null;
+  }
+
+  async function handleTestAccount() {
+    setError(null);
+    if (isLoaded && isSignedIn) {
+      setLocation("/dashboard", { replace: true });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${basePath}/api/auth/test-signin`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data?.error || "Could not start the test session.");
+      }
+      const { token } = (await res.json()) as { token?: string };
+      if (!token) throw new Error("No test session token was returned.");
+      const signInClient = await waitForSignInClient();
+      if (!signInClient || !clerk.setActive) {
+        throw new Error("Auth is still loading. Please try again in a moment.");
+      }
+      try {
+        sessionStorage.removeItem("aido_oauth_intent");
+        sessionStorage.removeItem("aido_oauth_intent_at");
+      } catch {}
+      const attempt = await (
+        signInClient as unknown as {
+          create: (p: { strategy: string; ticket: string }) => Promise<{
+            status?: string;
+            createdSessionId?: string;
+          }>;
+        }
+      ).create({ strategy: "ticket", ticket: token });
+      if (attempt.status === "complete" && attempt.createdSessionId) {
+        await clerk.setActive({ session: attempt.createdSessionId });
+        setLocation("/dashboard");
+      } else {
+        throw new Error("Test sign-in did not complete. Please try again.");
+      }
+    } catch (err) {
+      setError(extractError(err, "Could not sign in to the test account."));
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        border: "1px solid rgba(245, 200, 66, 0.5)",
+        borderRadius: "0.75rem",
+        background:
+          "linear-gradient(135deg, rgba(245,200,66,0.22), rgba(20,184,166,0.16) 52%, rgba(255,255,255,0.08))",
+        boxShadow: "0 18px 40px rgba(245, 200, 66, 0.16)",
+        padding: "0.85rem",
+        marginBottom: "1rem",
+      }}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
+        <div>
+          <p
+            style={{
+              color: "#fff7d6",
+              fontSize: "0.92rem",
+              fontWeight: 700,
+              margin: 0,
+            }}
+          >
+            Want to try A.IDO first?
+          </p>
+          <p
+            style={{
+              color: "#d9f7ef",
+              fontSize: "0.78rem",
+              lineHeight: 1.45,
+              margin: "0.2rem 0 0",
+            }}
+          >
+            Use the test account to explore before creating your own planner account.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleTestAccount}
+          disabled={submitting}
+          style={{
+            width: "100%",
+            border: "1px solid rgba(255,255,255,0.38)",
+            borderRadius: "0.6rem",
+            background: "linear-gradient(135deg,#F5C842,#14B8A6)",
+            color: "#160f21",
+            cursor: submitting ? "wait" : "pointer",
+            fontSize: "0.9rem",
+            fontWeight: 800,
+            padding: "0.75rem 0.85rem",
+            boxShadow: "0 10px 22px rgba(20,184,166,0.2)",
+            opacity: submitting ? 0.75 : 1,
+          }}
+        >
+          {submitting ? "Signing in..." : "Sign in to test account"}
+        </button>
+      </div>
+      {error && (
+        <div
+          role="alert"
+          style={{
+            color: "#fecaca",
+            background: "rgba(127, 29, 29, 0.28)",
+            border: "1px solid rgba(248, 113, 113, 0.35)",
+            borderRadius: "0.5rem",
+            padding: "0.5rem 0.65rem",
+            fontSize: "0.78rem",
+            marginTop: "0.7rem",
+          }}
+        >
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CustomSignInForm() {
   const clerk = useClerk();
   const { isLoaded, isSignedIn } = useAuth();
@@ -350,59 +493,6 @@ function CustomSignInForm() {
     }
   }
 
-  // One-click sign-in to a fixed test account so the owner can repeatedly
-  // sign in without going through email-code verification on every visit.
-  // The backend mints a Clerk sign-in token; we consume it via the "ticket"
-  // strategy. The endpoint returns 404 unless ENABLE_TEST_ACCOUNT=true is
-  // set on the server.
-  async function handleTestAccount() {
-    setError(null);
-    setInfo(null);
-    if (isSignedIn) {
-      setLocation("/dashboard", { replace: true });
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await fetch(`${basePath}/api/auth/test-signin`, {
-        method: "POST",
-      });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data?.error || "Could not start the test session.");
-      }
-      const { token } = (await res.json()) as { token?: string };
-      if (!token) throw new Error("No test session token was returned.");
-      const signInClient = await waitForSignInClient();
-      if (!signInClient || !clerk.setActive) {
-        throw new Error("Auth is still loading. Please try again in a moment.");
-      }
-      // Clear any stale OAuth-intent flags from a previously abandoned Google
-      // flow so the no-account detector can't misfire on the test account.
-      try {
-        sessionStorage.removeItem("aido_oauth_intent");
-        sessionStorage.removeItem("aido_oauth_intent_at");
-      } catch {}
-      const attempt = await (
-        signInClient as unknown as {
-          create: (p: { strategy: string; ticket: string }) => Promise<{
-            status?: string;
-            createdSessionId?: string;
-          }>;
-        }
-      ).create({ strategy: "ticket", ticket: token });
-      if (attempt.status === "complete" && attempt.createdSessionId) {
-        await clerk.setActive({ session: attempt.createdSessionId });
-        setLocation("/dashboard");
-      } else {
-        throw new Error("Test sign-in did not complete. Please try again.");
-      }
-    } catch (err) {
-      setError(extractError(err, "Could not sign in to the test account."));
-      setSubmitting(false);
-    }
-  }
-
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "0.65rem 0.85rem",
@@ -451,6 +541,8 @@ function CustomSignInForm() {
       <p style={{ color: "#b8a9cc", fontSize: "0.85rem", marginBottom: "1.25rem" }}>
         Welcome back to A.IDO.
       </p>
+
+      <TestAccountCallout />
 
       {info && (
         <div
@@ -605,33 +697,6 @@ function CustomSignInForm() {
         </form>
       )}
 
-      <div
-        style={{
-          marginTop: "1.25rem",
-          paddingTop: "0.85rem",
-          borderTop: "1px dashed rgba(255,255,255,0.08)",
-          textAlign: "center",
-        }}
-      >
-        <button
-          type="button"
-          onClick={handleTestAccount}
-          disabled={submitting}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#8a7ba8",
-            fontSize: "0.78rem",
-            cursor: submitting ? "not-allowed" : "pointer",
-            textDecoration: "underline",
-            textUnderlineOffset: "2px",
-            padding: 0,
-            opacity: submitting ? 0.6 : 1,
-          }}
-        >
-          {submitting ? "Signing in…" : "Sign in to test account"}
-        </button>
-      </div>
     </div>
   );
 }
@@ -1038,6 +1103,8 @@ function CustomSignUpForm() {
       <p style={{ color: "#b8a9cc", fontSize: "0.85rem", marginBottom: "1.25rem" }}>
         Welcome! Let's get your wedding planning started.
       </p>
+
+      <TestAccountCallout />
 
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
         <button
