@@ -355,10 +355,11 @@ export function AiDigitalInvitationPreview({
   const guestName = profile.guestName || "Guest";
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine  = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-  const timesLine = [
+  const timeLines = [
     formatTime(profile.ceremonyTime)  && `Ceremony ${formatTime(profile.ceremonyTime)}`,
     formatTime(profile.receptionTime) && `Reception ${formatTime(profile.receptionTime)}`,
-  ].filter(Boolean).join(" · ");
+  ].filter((line): line is string => Boolean(line));
+  const rsvpDate = formatDate(profile.rsvpByDate, { year: "numeric", month: "long", day: "numeric" });
 
   return (
     <CardShell photoUrl={photoUrl} photoPosition={photoPosition} onPhotoPositionChange={onPhotoPositionChange} customColors={customColors}>
@@ -382,39 +383,88 @@ export function AiDigitalInvitationPreview({
         </p>
       )}
 
-      {profile.venue && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 10 }}>
-          <MapPin style={{ width: 12, height: 12, color: accent, flexShrink: 0 }} />
-          <p style={{ fontFamily: displayFont, fontSize: `${1 * sc}rem`, fontWeight: 500, color: accent, margin: 0 }}>
-            {profile.venue}
-          </p>
+      {(profile.venue || profile.venueAddress || cityLine || timeLines.length > 0 || rsvpDate) && (
+        <div
+          style={{
+            margin: "14px auto 0",
+            padding: "12px 14px",
+            maxWidth: 330,
+            borderTop: `1px solid ${cardBdr}`,
+            borderBottom: `1px solid ${cardBdr}`,
+            background: customColors ? `${accent}0f` : "rgba(255,255,255,0.035)",
+          }}
+        >
+          {profile.venue && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <MapPin style={{ width: 13, height: 13, color: accent, flexShrink: 0 }} />
+              <p style={{ fontFamily: displayFont, fontSize: `${1.08 * sc}rem`, fontWeight: 600, color: accent, margin: 0, lineHeight: 1.25 }}>
+                {profile.venue}
+              </p>
+            </div>
+          )}
+
+          {(profile.venueAddress || cityLine) && (
+            <div style={{ marginTop: profile.venue ? 6 : 0 }}>
+              {profile.venueAddress && (
+                <p style={{ fontFamily: labelFont, fontSize: 9.5 * sc, color: text, margin: 0, lineHeight: 1.35 }}>
+                  {profile.venueAddress}
+                </p>
+              )}
+              {cityLine && (
+                <p style={{ fontFamily: labelFont, fontSize: 9.5 * sc, color: muted, margin: "2px 0 0", lineHeight: 1.35 }}>
+                  {cityLine}
+                </p>
+              )}
+            </div>
+          )}
+
+          {timeLines.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 6, marginTop: 9 }}>
+              {timeLines.map((line) => (
+                <span
+                  key={line}
+                  style={{
+                    border: `1px solid ${accent}55`,
+                    borderRadius: 999,
+                    padding: "4px 8px",
+                    fontFamily: labelFont,
+                    fontSize: 8.5 * sc,
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: accent,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {line}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {rsvpDate && (
+            <div
+              style={{
+                margin: "10px auto 0",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                borderRadius: 6,
+                background: accent,
+                color: btnText,
+                padding: "6px 10px",
+                fontFamily: labelFont,
+                fontSize: 9 * sc,
+                fontWeight: 800,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+              }}
+            >
+              RSVP By <span>{rsvpDate}</span>
+            </div>
+          )}
         </div>
-      )}
-
-      {profile.venueAddress && (
-        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: text, margin: "4px 0 0" }}>
-          {profile.venueAddress}
-        </p>
-      )}
-      {cityLine && (
-        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: text, margin: "2px 0 0" }}>
-          {cityLine}
-        </p>
-      )}
-      {timesLine && (
-        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: accent, margin: "6px 0 0" }}>
-          {timesLine}
-        </p>
-      )}
-
-      {formatDate(profile.rsvpByDate, { year: "numeric", month: "long", day: "numeric" }) && (
-        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, fontWeight: 600,
-                    letterSpacing: "0.12em", textTransform: "uppercase",
-                    color: accent, margin: "10px 0 0" }}>
-          RSVP By: <span style={{ color: text, fontWeight: 600 }}>
-            {formatDate(profile.rsvpByDate, { year: "numeric", month: "long", day: "numeric" })}
-          </span>
-        </p>
       )}
 
       {profile.invitationMessage && (

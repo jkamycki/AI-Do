@@ -99,6 +99,28 @@ function formatPrintDate(date: string | null | undefined): string {
   });
 }
 
+function formatPrintShortDate(date: string | null | undefined): string {
+  if (!date) return "";
+  const [year, month, day] = date.split("-").map(Number);
+  if (!year || !month || !day) return date;
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatPrintTime(value: string | null | undefined): string {
+  if (!value) return "";
+  const [hourRaw, minuteRaw = "0"] = value.split(":");
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return value;
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${String(minute).padStart(2, "0")} ${suffix}`;
+}
+
 function printLocationLines(design: ReturnType<typeof buildInvitationDesignDocument>) {
   return [
     design.fields.venue,
@@ -1049,6 +1071,11 @@ export default function InvitationCustomizationPage({
       const text = pdfRgb(activeDesignDocument.style.textColor, "#1f2933");
       const isSaveTheDate = activeDesignDocument.kind === "saveTheDate";
       const locLines = printLocationLines(activeDesignDocument);
+      const timeLines = [
+        activeDesignDocument.fields.ceremonyTime && `Ceremony ${formatPrintTime(activeDesignDocument.fields.ceremonyTime)}`,
+        activeDesignDocument.fields.receptionTime && `Reception ${formatPrintTime(activeDesignDocument.fields.receptionTime)}`,
+      ].filter((line): line is string => Boolean(line));
+      const rsvpDate = formatPrintShortDate(activeDesignDocument.fields.rsvpByDate);
 
       doc.setFillColor(...bg);
       doc.rect(0, 0, pageWidth, pageHeight, "F");
@@ -1103,7 +1130,7 @@ export default function InvitationCustomizationPage({
         doc.text(formatPrintDate(activeDesignDocument.fields.weddingDate), pageWidth / 2, y, { align: "center" });
         y += 26;
 
-        if (locLines.length > 0) {
+        if (isSaveTheDate && locLines.length > 0) {
           doc.setFont("times", "normal");
           doc.setFontSize(14);
           for (const line of locLines) {
@@ -1111,6 +1138,62 @@ export default function InvitationCustomizationPage({
             y += 18;
           }
           y += 4;
+        }
+
+        if (!isSaveTheDate && (locLines.length > 0 || timeLines.length > 0 || rsvpDate)) {
+          const boxX = 52;
+          const boxW = pageWidth - 104;
+          doc.setDrawColor(...accent);
+          doc.setLineWidth(0.8);
+          doc.line(boxX, y - 4, boxX + boxW, y - 4);
+          y += 13;
+
+          if (activeDesignDocument.fields.venue) {
+            doc.setFont("times", "bold");
+            doc.setFontSize(16);
+            doc.setTextColor(...accent);
+            y = addCenteredText(doc, activeDesignDocument.fields.venue, pageWidth / 2, y, boxW - 26, 18) + 2;
+          }
+
+          if (activeDesignDocument.fields.venueAddress || locLines[2]) {
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8.5);
+            doc.setTextColor(...text);
+            if (activeDesignDocument.fields.venueAddress) {
+              doc.text(activeDesignDocument.fields.venueAddress, pageWidth / 2, y, { align: "center", maxWidth: boxW - 30 });
+              y += 12;
+            }
+            if (locLines[2]) {
+              doc.text(locLines[2], pageWidth / 2, y, { align: "center", maxWidth: boxW - 30 });
+              y += 12;
+            }
+          }
+
+          if (timeLines.length > 0) {
+            y += 5;
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8);
+            doc.setTextColor(...accent);
+            doc.text(timeLines.join("   "), pageWidth / 2, y, { align: "center", maxWidth: boxW - 20 });
+            y += 17;
+          }
+
+          if (rsvpDate) {
+            const label = `RSVP BY ${rsvpDate.toUpperCase()}`;
+            const labelW = Math.min(boxW - 34, doc.getTextWidth(label) + 22);
+            doc.setFillColor(...accent);
+            doc.rect(pageWidth / 2 - labelW / 2, y - 10, labelW, 18, "F");
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8.5);
+            doc.setTextColor(255, 255, 255);
+            doc.text(label, pageWidth / 2, y + 2, { align: "center" });
+            y += 18;
+          }
+
+          doc.setDrawColor(...accent);
+          doc.line(boxX, y + 2, boxX + boxW, y + 2);
+          doc.setTextColor(...text);
+          y += 10;
         }
 
         if (activeDesignDocument.message) {

@@ -23,6 +23,28 @@ function formatDate(date: string | null): string {
   });
 }
 
+function formatShortDate(date: string | null): string {
+  if (!date) return "";
+  const [year, month, day] = date.split("-").map(Number);
+  if (!year || !month || !day) return date;
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatTime(value: string | null): string {
+  if (!value) return "";
+  const [hourRaw, minuteRaw = "0"] = value.split(":");
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return value;
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${String(minute).padStart(2, "0")} ${suffix}`;
+}
+
 function locationLines(design: InvitationDesignDocument): string[] {
   return [
     design.fields.venue,
@@ -80,6 +102,11 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
     const font = `'${design.style.fontFamily || "Playfair Display"}', Georgia, serif`;
     const sans = "'Plus Jakarta Sans', Arial, sans-serif";
     const qrUrl = websiteUrl || "";
+    const timeLines = [
+      design.fields.ceremonyTime && `Ceremony ${formatTime(design.fields.ceremonyTime)}`,
+      design.fields.receptionTime && `Reception ${formatTime(design.fields.receptionTime)}`,
+    ].filter((line): line is string => Boolean(line));
+    const rsvpDate = formatShortDate(design.fields.rsvpByDate);
 
     return (
       <div
@@ -138,13 +165,47 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
               <p style={{ margin: 0, fontFamily: sans, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700 }}>
                 {formatDate(design.fields.weddingDate)}
               </p>
-              {locLines.length > 0 && (
+              {isSaveTheDate && locLines.length > 0 && (
                 <div style={{ margin: "16px auto 0", maxWidth: 360, fontFamily: font, fontSize: 20, lineHeight: 1.4 }}>
                   {locLines.map((line) => (
                     <p key={line} style={{ margin: 0 }}>
                       {line}
                     </p>
                   ))}
+                </div>
+              )}
+              {!isSaveTheDate && (locLines.length > 0 || timeLines.length > 0 || rsvpDate) && (
+                <div style={{ margin: "18px auto 0", maxWidth: 360, padding: "14px 16px", borderTop: `1px solid ${accent}55`, borderBottom: `1px solid ${accent}55`, background: "rgba(255,255,255,0.42)" }}>
+                  {design.fields.venue && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+                      <MapPin style={{ width: 15, height: 15, color: accent, flexShrink: 0 }} />
+                      <p style={{ margin: 0, fontFamily: font, fontSize: 22, lineHeight: 1.2, fontWeight: 600, color: accent }}>
+                        {design.fields.venue}
+                      </p>
+                    </div>
+                  )}
+                  {(design.fields.venueAddress || locLines[2]) && (
+                    <div style={{ marginTop: design.fields.venue ? 8 : 0, fontFamily: sans, fontSize: 10.5, lineHeight: 1.45, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                      {design.fields.venueAddress && <p style={{ margin: 0 }}>{design.fields.venueAddress}</p>}
+                      {locLines[2] && <p style={{ margin: "2px 0 0", opacity: 0.72 }}>{locLines[2]}</p>}
+                    </div>
+                  )}
+                  {timeLines.length > 0 && (
+                    <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 7, marginTop: 11 }}>
+                      {timeLines.map((line) => (
+                        <span key={line} style={{ border: `1px solid ${accent}66`, borderRadius: 999, padding: "5px 9px", fontFamily: sans, fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: accent }}>
+                          {line}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {rsvpDate && (
+                    <div style={{ marginTop: 12 }}>
+                      <span style={{ display: "inline-block", background: accent, color: "#fff", borderRadius: 6, padding: "7px 11px", fontFamily: sans, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                        RSVP By {rsvpDate}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
               {design.message && (
