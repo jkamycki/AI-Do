@@ -167,6 +167,8 @@ const AI_MUTED = "rgba(255,255,255,0.58)";
 const AI_CARD_BDR = "rgba(255,255,255,0.12)";
 const AI_CORMORANT = "'Cormorant Garamond','Playfair Display',Georgia,serif";
 const AI_JAKARTA = "'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif";
+const INVITATION_EMAIL_PHOTO_WIDTH = 380;
+const INVITATION_EMAIL_PHOTO_HEIGHT = 200;
 
 function aiLogoBlock(logoBase64: string | null, accent = AI_GOLD): string {
   return logoBase64
@@ -184,8 +186,8 @@ function aiPhotoBlock(
   return `
         <tr>
           <td bgcolor="${bg}" style="background:${bg};padding:0 20px 12px;line-height:0;font-size:0;">
-            <div style="width:100%;aspect-ratio:520/200;border-radius:8px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,0.5);">
-              <img src="${photoSrc}" alt="${escapeHtml(alt)}" width="520" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${objectPos};border:0;outline:none;text-decoration:none;" />
+            <div style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;border-radius:8px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,0.5);">
+              <img src="${photoSrc}" alt="${escapeHtml(alt)}" width="${INVITATION_EMAIL_PHOTO_WIDTH}" height="${INVITATION_EMAIL_PHOTO_HEIGHT}" style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;display:block;object-fit:cover;object-position:${objectPos};border:0;outline:none;text-decoration:none;" />
             </div>
           </td>
         </tr>`;
@@ -750,7 +752,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           digitalInvitationPhotoUrl.startsWith("/api/storage/public-objects/") ||
           digitalInvitationPhotoUrl.startsWith("/storage/public-objects/")
         ) {
-          return `${origin}${digitalInvitationPhotoUrl}`;
+          return `${apiOrigin}${digitalInvitationPhotoUrl}`;
         }
         return null;
       })();
@@ -1072,7 +1074,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
       if (
         digitalInvitationPhotoUrl.startsWith("/api/storage/public-objects/") ||
         digitalInvitationPhotoUrl.startsWith("/storage/public-objects/")
-      ) return `${origin}${digitalInvitationPhotoUrl}`;
+      ) return `${apiOrigin}${digitalInvitationPhotoUrl}`;
       return null;
     })();
     const photoImgSrc: string | null = photoPublicUrl ?? await getImageAsBase64(digitalInvitationPhotoUrl);
@@ -1337,8 +1339,16 @@ router.get("/rsvp/:token", async (req, res) => {
 
     // Resolve the best available photo URL — prefer the digital invitation
     // customization photo, then fall back to the profile's invitation photo.
-    // We return it directly so the guest page can load it without a proxy hop.
     const resolvedPhotoUrl = customizationPhoto || profile?.invitationPhotoUrl || null;
+    const publicPhotoUrl = resolvedPhotoUrl
+      ? (resolvedPhotoUrl.startsWith("http")
+          ? resolvedPhotoUrl
+          : `${buildOrigin(req)}/api/rsvp/${req.params.token}/photo?v=${crypto
+              .createHash("md5")
+              .update(resolvedPhotoUrl)
+              .digest("hex")
+              .substring(0, 8)}`)
+      : null;
 
     res.json({
       guestName: guest.name,
@@ -1361,7 +1371,7 @@ router.get("/rsvp/:token", async (req, res) => {
       currentStatus: guest.rsvpStatus,
       plusOneAllowed: true,
       hasPhoto: !!resolvedPhotoUrl,
-      photoUrl: resolvedPhotoUrl,
+      photoUrl: publicPhotoUrl,
       photoObjectPosition: (() => {
         const pos = c?.digitalInvitationPhotoPosition as { x?: number; y?: number } | null;
         return pos ? `${pos.x ?? 50}% ${pos.y ?? 50}%` : "50% 50%";

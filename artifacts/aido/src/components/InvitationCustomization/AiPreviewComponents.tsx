@@ -134,8 +134,8 @@ function CardShell({
       borderRadius: 16, padding: "16px 12px",
     }}>
     <div
-      className="rounded-xl overflow-hidden shadow-2xl max-w-sm mx-auto border"
-      style={{ background: bg, borderColor: cardBdr }}
+      className="w-full rounded-xl overflow-hidden shadow-2xl mx-auto border"
+      style={{ maxWidth: 420, background: bg, borderColor: cardBdr }}
     >
       {/* A.IDO logo */}
       <div style={{
