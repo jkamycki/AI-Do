@@ -437,39 +437,41 @@ export function AnimatedInvitationShell({
           background: linear-gradient(180deg, rgba(11,17,42,.76), rgba(6,10,28,.92));
         }
         .aido-invite-anim-animated-owl-delivery .aido-invite-anim-card {
-          animation-delay: 2520ms;
+          animation: aidoOwlInviteCardIn 1450ms cubic-bezier(.2,.84,.18,1) 2700ms both;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-layer {
           opacity: 0;
-          width: min(calc(100% - ${compact ? "88px" : "120px"}), ${compact ? "360px" : "410px"});
-          transform: translate(-50%, -86%) scale(.46) rotate(-18deg);
+          width: min(calc(100% - ${compact ? "72px" : "100px"}), ${compact ? "390px" : "460px"});
+          aspect-ratio: 1.55;
+          transform: translate(-50%, -86%) scale(.46) rotate(-16deg);
           animation:
             aidoOwlEnvelopeDrop 1020ms cubic-bezier(.17,.78,.18,1) 1160ms forwards,
             aidoLayerGone 1ms linear 4300ms forwards;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-flap {
-          animation-delay: 2260ms;
+          animation-delay: 2320ms;
         }
         .aido-invite-anim-animated-owl-delivery .aido-wax-seal {
           animation-delay: 2340ms;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-side.left {
-          animation-delay: 2720ms;
+          animation-delay: 2920ms;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-side.right {
-          animation-delay: 2770ms;
+          animation-delay: 2970ms;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-bottom {
-          animation-delay: 2890ms;
+          animation-delay: 3080ms;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-pocket {
           opacity: 0;
-          width: min(calc(100% - ${compact ? "88px" : "120px"}), ${compact ? "360px" : "410px"});
-          transform: translate(-50%, -82%) scale(.48) rotate(-18deg);
+          width: min(calc(100% - ${compact ? "72px" : "100px"}), ${compact ? "390px" : "460px"});
+          aspect-ratio: 1.55;
+          transform: translate(-50%, -82%) scale(.48) rotate(-16deg);
           animation: aidoOwlEnvelopeDrop 1020ms cubic-bezier(.17,.78,.18,1) 1160ms forwards;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-pocket-face {
-          animation-delay: 2890ms;
+          animation-delay: 3080ms;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-pocket-face::after {
           animation-delay: 2340ms;
@@ -608,11 +610,18 @@ export function AnimatedInvitationShell({
           100% { opacity: 0; transform: translateY(116px) scale(1.42) rotate(7deg); }
         }
         @keyframes aidoOwlEnvelopeDrop {
-          0% { opacity: 0; transform: translate(-50%, -82%) scale(.48) rotate(-18deg); }
+          0% { opacity: 0; transform: translate(-50%, -82%) scale(.48) rotate(-16deg); }
           15% { opacity: 1; }
-          54% { opacity: 1; transform: translate(-50%, -42%) scale(.78) rotate(18deg); }
-          82% { opacity: 1; transform: translate(-50%, -50%) scale(.95) rotate(92deg); }
-          100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(90deg); }
+          54% { opacity: 1; transform: translate(-50%, -42%) scale(.78) rotate(12deg); }
+          82% { opacity: 1; transform: translate(-50%, -50%) scale(.96) rotate(-2deg); }
+          100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+        }
+        @keyframes aidoOwlInviteCardIn {
+          0% { opacity: 0; transform: translateY(18%) scale(.56) rotate(90deg); filter: blur(2px); }
+          20% { opacity: .78; transform: translateY(8%) scale(.66) rotate(90deg); filter: blur(.8px); }
+          48% { opacity: .95; transform: translateY(-2%) scale(.8) rotate(90deg); filter: blur(0); }
+          72% { opacity: 1; transform: translateY(-1%) scale(.92) rotate(28deg); }
+          100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); filter: blur(0); }
         }
         @media (max-width: 640px) {
           .aido-invite-anim {
