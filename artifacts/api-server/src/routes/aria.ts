@@ -564,6 +564,30 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"remove_collaborator", description:"Remove a collaborator or cancel a pending invite. Pass collaboratorId or matchEmail.", parameters:{ type:"object", properties:{ collaboratorId:{type:"number"}, matchEmail:{type:"string"} } } } },
 ];
 
+function relaxToolSchemaForProvider(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(relaxToolSchemaForProvider);
+  if (!value || typeof value !== "object") return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    // OpenRouter/Groq can fail the entire stream if a smaller model emits a
+    // tool call that misses a required field or slightly misses an enum. Keep
+    // provider schemas permissive and enforce correctness in executeTool().
+    if (key === "required" || key === "enum") continue;
+    out[key] = relaxToolSchemaForProvider(child);
+  }
+  return out;
+}
+
+function toolsForProvider(tools: typeof TOOLS): typeof TOOLS {
+  return tools.map((tool) => ({
+    ...tool,
+    function: {
+      ...tool.function,
+      parameters: relaxToolSchemaForProvider(tool.function.parameters),
+    },
+  })) as typeof TOOLS;
+}
+
 const ALLOWED_VENDOR_CATEGORIES = [
   "Venue", "Caterer", "Photographer", "Videographer", "Florist",
   "DJ / Band", "Officiant", "Hair & Makeup", "Transportation",
@@ -2929,7 +2953,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       };
       const params = skipTools
         ? baseParams
-        : { ...baseParams, tools: filteredTools, tool_choice: "auto" as const };
+        : { ...baseParams, tools: toolsForProvider(filteredTools as typeof TOOLS), tool_choice: "auto" as const };
       // 55s timeout per attempt — long enough for a full tool chain + response.
       // The frontend has a 90s client-side abort as a final safety net.
       const callWithTimeout = () => openai.chat.completions.create(params, {
