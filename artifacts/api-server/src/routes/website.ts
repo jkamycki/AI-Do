@@ -160,10 +160,10 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
     .limit(1);
   const invitationColors = (invitationCustomization?.customColors ?? {}) as Record<string, unknown>;
   const customText = { ...(row.customText as Record<string, string>) };
-  if (customText._rsvpAskHotel === undefined && invitationColors.rsvpAskHotel === true) {
+  if (invitationColors.rsvpAskHotel === true && hotelOptions.length > 0) {
     customText._rsvpAskHotel = "true";
   }
-  if (customText._rsvpHotelBlockId === undefined && invitationColors.rsvpHotelBlockId !== undefined && invitationColors.rsvpHotelBlockId !== null) {
+  if (invitationColors.rsvpHotelBlockId !== undefined && invitationColors.rsvpHotelBlockId !== null) {
     customText._rsvpHotelBlockId = String(invitationColors.rsvpHotelBlockId);
   }
 
