@@ -392,6 +392,7 @@ function FullPhotoSaveDatePreview({
   const parsedBaseFs = customColors?.fontSize ? parseFloat(customColors.fontSize) : 16;
   const baseFs = Number.isFinite(parsedBaseFs) && parsedBaseFs > 0 ? parsedBaseFs : 16;
   const sc = customColors ? baseFs / 16 : 1;
+  const textColor = customColors?.text ?? "#ffffff";
 
   const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const handleDown = (e: React.PointerEvent<HTMLElement>) => {
@@ -484,16 +485,18 @@ function FullPhotoSaveDatePreview({
           }}
         />
 
-        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", padding: "34px 28px 38px", color: "#fff", textAlign: "center" }}>
-          <div style={{ margin: "0 auto", width: 46, height: 28, position: "relative" }}>
-            <Heart style={{ width: 24, height: 24, color: "#fff", opacity: 0.9, transform: "rotate(-14deg)" }} />
-            <div style={{ position: "absolute", left: 20, right: 0, top: 18, height: 1, background: "rgba(255,255,255,.72)" }} />
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", padding: "34px 28px 38px", color: textColor, textAlign: "center" }}>
+          <div>
+            <p style={{ fontFamily: labelFont, fontSize: 12 * sc, fontWeight: 700, letterSpacing: "0.34em", textTransform: "uppercase", margin: "0 0 10px", color: textColor }}>
+              Save the Date
+            </p>
+            <div style={{ margin: "0 auto", width: 46, height: 28, position: "relative" }}>
+              <Heart style={{ width: 24, height: 24, color: textColor, opacity: 0.9, transform: "rotate(-14deg)" }} />
+              <div style={{ position: "absolute", left: 20, right: 0, top: 18, height: 1, background: textColor, opacity: 0.72 }} />
+            </div>
           </div>
 
           <div style={{ marginTop: "auto", marginBottom: 20 }}>
-            <p style={{ fontFamily: labelFont, fontSize: 11 * sc, letterSpacing: "0.34em", textTransform: "uppercase", margin: "0 0 14px", color: "rgba(255,255,255,.82)" }}>
-              Save the Date
-            </p>
             <div style={{ fontFamily: displayFont, textTransform: "uppercase", letterSpacing: "0.18em", lineHeight: 1.15 }}>
               <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner1}</div>
               <div style={{ fontSize: `${1.8 * sc}rem`, fontStyle: "italic", textTransform: "none", letterSpacing: "0.08em", margin: "4px 0" }}>and</div>
@@ -505,12 +508,12 @@ function FullPhotoSaveDatePreview({
               </p>
             )}
             {cityLine && (
-              <p style={{ fontFamily: labelFont, fontSize: 12 * sc, margin: "8px 0 0", color: "rgba(255,255,255,.88)" }}>
+              <p style={{ fontFamily: labelFont, fontSize: 12 * sc, margin: "8px 0 0", color: textColor, opacity: 0.88 }}>
                 {cityLine}
               </p>
             )}
             {profile.saveTheDateMessage && (
-              <p style={{ fontFamily: displayFont, fontSize: `${1 * sc}rem`, fontStyle: "italic", lineHeight: 1.55, margin: "18px 0 0", color: "rgba(255,255,255,.9)" }}>
+              <p style={{ fontFamily: displayFont, fontSize: `${1 * sc}rem`, fontStyle: "italic", lineHeight: 1.55, margin: "18px 0 0", color: textColor, opacity: 0.9 }}>
                 &ldquo;{profile.saveTheDateMessage}&rdquo;
               </p>
             )}

@@ -237,16 +237,18 @@ export default function SaveTheDate() {
             background: "linear-gradient(180deg, rgba(0,0,0,.2) 0%, rgba(0,0,0,.08) 35%, rgba(0,0,0,.65) 100%)",
           }}
         />
-        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", padding: "34px 28px 38px", color: "#fff", textAlign: "center" }}>
-          <div style={{ margin: "0 auto", width: 46, height: 28, position: "relative" }}>
-            <Heart style={{ width: 24, height: 24, color: "#fff", opacity: 0.9, transform: "rotate(-14deg)" }} />
-            <span style={{ position: "absolute", left: 20, right: 0, top: 18, height: 1, background: "rgba(255,255,255,.72)" }} />
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", padding: "34px 28px 38px", color: WHITE, textAlign: "center" }}>
+          <div>
+            <p style={{ fontFamily: LABEL_FONT, fontSize: 12 * sc, fontWeight: 700, letterSpacing: "0.34em", textTransform: "uppercase", margin: "0 0 10px", color: WHITE }}>
+              Save the Date
+            </p>
+            <div style={{ margin: "0 auto", width: 46, height: 28, position: "relative" }}>
+              <Heart style={{ width: 24, height: 24, color: WHITE, opacity: 0.9, transform: "rotate(-14deg)" }} />
+              <span style={{ position: "absolute", left: 20, right: 0, top: 18, height: 1, background: WHITE, opacity: 0.72 }} />
+            </div>
           </div>
 
           <div style={{ marginTop: "auto", marginBottom: 20 }}>
-            <p style={{ fontFamily: LABEL_FONT, fontSize: 11 * sc, letterSpacing: "0.34em", textTransform: "uppercase", margin: "0 0 14px", color: "rgba(255,255,255,.82)" }}>
-              Save the Date
-            </p>
             <div style={{ fontFamily: SERIF, textTransform: "uppercase", letterSpacing: "0.18em", lineHeight: 1.15 }}>
               <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner1First}</div>
               <div style={{ fontSize: `${1.8 * sc}rem`, fontStyle: "italic", textTransform: "none", letterSpacing: "0.08em", margin: "4px 0" }}>and</div>
@@ -258,10 +260,10 @@ export default function SaveTheDate() {
               </p>
             )}
             {venueCityState && (
-              <p style={{ fontFamily: LABEL_FONT, fontSize: 12 * sc, margin: "8px 0 0", color: "rgba(255,255,255,.88)" }}>{venueCityState}</p>
+              <p style={{ fontFamily: LABEL_FONT, fontSize: 12 * sc, margin: "8px 0 0", color: WHITE, opacity: 0.88 }}>{venueCityState}</p>
             )}
             {msgText && (
-              <p style={{ fontFamily: SERIF, fontSize: `${1 * sc}rem`, fontStyle: "italic", color: "rgba(255,255,255,.9)", lineHeight: 1.55, margin: "18px 0 0" }}>
+              <p style={{ fontFamily: SERIF, fontSize: `${1 * sc}rem`, fontStyle: "italic", color: WHITE, opacity: 0.9, lineHeight: 1.55, margin: "18px 0 0" }}>
                 &ldquo;{msgText}&rdquo;
               </p>
             )}
