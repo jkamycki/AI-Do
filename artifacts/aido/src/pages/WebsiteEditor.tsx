@@ -37,6 +37,11 @@ interface WebsiteRecord extends WebsiteRendererPayload {
 
 type HotelOption = NonNullable<WebsiteRendererPayload["hotelOptions"]>[number];
 
+interface InvitationHotelSettings {
+  rsvpAskHotel: boolean;
+  rsvpHotelBlockId: string;
+}
+
 // 10 themes (preset color + font combos) — shared with InvitationCustomization.
 
 // Section keys that render a heading + body. Each gets a Title (chip),
@@ -215,7 +220,9 @@ export default function WebsiteEditor() {
   // Load couple data so the live preview can render even before the server
   // joins it. We fetch on demand from the public endpoint after first save.
   const [previewExtra, setPreviewExtra] = useState<{ couple: WebsiteRendererPayload["couple"] } | null>(null);
+  const [profileId, setProfileId] = useState<number | null>(null);
   const [hotelBlocks, setHotelBlocks] = useState<HotelOption[]>([]);
+  const [invitationHotelSettings, setInvitationHotelSettings] = useState<InvitationHotelSettings | null>(null);
   useEffect(() => {
     if (!record) return;
     let cancelled = false;
@@ -224,6 +231,7 @@ export default function WebsiteEditor() {
       if (cancelled) return;
       if (!profileRes?.ok) return;
       const profile = await profileRes.json();
+      setProfileId(typeof profile.id === "number" ? profile.id : null);
       setPreviewExtra({
         couple: {
           partner1Name: profile.partner1Name ?? "",
@@ -242,6 +250,27 @@ export default function WebsiteEditor() {
       cancelled = true;
     };
   }, [record?.id]);
+
+  useEffect(() => {
+    if (!record || !profileId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await authFetch(`/api/invitation-customizations?profileId=${profileId}`);
+        if (cancelled || !r.ok) return;
+        const body = (await r.json()) as { customColors?: { rsvpAskHotel?: boolean; rsvpHotelBlockId?: number | null } | null };
+        setInvitationHotelSettings({
+          rsvpAskHotel: body.customColors?.rsvpAskHotel === true,
+          rsvpHotelBlockId: body.customColors?.rsvpHotelBlockId ? String(body.customColors.rsvpHotelBlockId) : "all",
+        });
+      } catch {
+        if (!cancelled) setInvitationHotelSettings(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId, record?.id]);
 
   useEffect(() => {
     if (!record) return;
@@ -413,6 +442,13 @@ export default function WebsiteEditor() {
   // Must be declared above any early return so the hook count stays stable.
   const livePreview = useMemo<WebsiteRendererPayload | null>(() => {
     if (!record) return null;
+    const previewCustomText = { ...record.customText };
+    if (invitationHotelSettings?.rsvpAskHotel && hotelBlocks.length > 0) {
+      previewCustomText._rsvpAskHotel = "true";
+      if (invitationHotelSettings.rsvpHotelBlockId !== "all") {
+        previewCustomText._rsvpHotelBlockId = invitationHotelSettings.rsvpHotelBlockId;
+      }
+    }
     return {
       slug: record.slug,
       theme: record.theme,
@@ -421,7 +457,7 @@ export default function WebsiteEditor() {
       accentColor: record.accentColor,
       colorPalette: record.colorPalette,
       sectionsEnabled: record.sectionsEnabled,
-      customText: record.customText,
+      customText: previewCustomText,
       textStyles: record.textStyles ?? {},
       textPositions: record.textPositions ?? {},
       galleryImages: record.galleryImages,
@@ -441,7 +477,7 @@ export default function WebsiteEditor() {
         venueState: null,
       },
     };
-  }, [hotelBlocks, record, previewExtra?.couple]);
+  }, [hotelBlocks, invitationHotelSettings, record, previewExtra?.couple]);
 
   const [saveError, setSaveError] = useState(false);
   // Tracks the most recent server/network error so handleSave can surface it
@@ -1162,6 +1198,13 @@ export default function WebsiteEditor() {
       </div>
     );
   }
+
+  const inheritedHotelAsk = invitationHotelSettings?.rsvpAskHotel === true && hotelBlocks.length > 0;
+  const editorHotelAskEnabled = record.customText._rsvpAskHotel === "true" || inheritedHotelAsk;
+  const editorHotelBlockId =
+    record.customText._rsvpHotelBlockId ||
+    (invitationHotelSettings?.rsvpHotelBlockId !== "all" ? invitationHotelSettings?.rsvpHotelBlockId : undefined) ||
+    "all";
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] md:h-screen relative">
@@ -2257,7 +2300,7 @@ export default function WebsiteEditor() {
                         </p>
                       </div>
                       <Switch
-                        checked={record.customText._rsvpAskHotel === "true"}
+                        checked={editorHotelAskEnabled}
                         onCheckedChange={(checked) =>
                           update({
                             customText: {
@@ -2269,13 +2312,18 @@ export default function WebsiteEditor() {
                         aria-label="Ask website RSVP guests if they need a hotel"
                       />
                     </div>
-                    {record.customText._rsvpAskHotel === "true" && hotelBlocks.length > 0 && (
+                    {editorHotelAskEnabled && invitationHotelSettings?.rsvpAskHotel && record.customText._rsvpAskHotel !== "true" && (
+                      <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                        Showing because Invitation Studio has RSVP hotel questions turned on.
+                      </p>
+                    )}
+                    {editorHotelAskEnabled && hotelBlocks.length > 0 && (
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground block">
                           Hotel booking link shown to guests
                         </Label>
                         <Select
-                          value={record.customText._rsvpHotelBlockId || "all"}
+                          value={editorHotelBlockId}
                           onValueChange={(value) =>
                             update({
                               customText: {
@@ -2299,7 +2347,7 @@ export default function WebsiteEditor() {
                         </Select>
                       </div>
                     )}
-                    {record.customText._rsvpAskHotel === "true" && hotelBlocks.length === 0 && (
+                    {editorHotelAskEnabled && hotelBlocks.length === 0 && (
                       <p className="text-xs text-amber-700 dark:text-amber-300">
                         This is turned on, but guests will not see the hotel question until you add a hotel block in the Hotels tab.
                       </p>
