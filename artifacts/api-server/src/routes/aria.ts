@@ -2445,7 +2445,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
     if (!AI_CONFIGURED_FOR_PROD) {
       sseHeaders();
-      res.write(`data: ${JSON.stringify({ type: "error", error: "Aria requires an AI API key. Please add AI_INTEGRATIONS_OPENAI_API_KEY to your Render environment variables." })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: "error", error: "Aria requires an AI API key. Please add OPENAI_API_KEY to your Render environment variables." })}\n\n`);
       res.write("data: [DONE]\n\n");
       res.end();
       return;

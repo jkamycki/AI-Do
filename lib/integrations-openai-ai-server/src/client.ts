@@ -12,6 +12,7 @@ const isReplitProxy = replitBaseUrl.startsWith("http://localhost");
 
 let baseURL: string;
 let apiKey: string;
+let configured = true;
 
 if (isReplitProxy) {
   baseURL = replitBaseUrl;
@@ -23,12 +24,16 @@ if (isReplitProxy) {
   baseURL = directBaseUrl.replace(/\/$/, "");
   apiKey = directApiKey;
 } else {
-  throw new Error(
-    "No AI provider configured. Set AI_INTEGRATIONS_OPENAI_API_KEY or OPENAI_API_KEY.",
-  );
+  // Do not crash the API at import time if an AI env var is missing or mistyped.
+  // The affected feature routes already surface setup errors, while health checks
+  // and non-AI routes should stay available during deployment recovery.
+  configured = false;
+  baseURL = directBaseUrl.replace(/\/$/, "");
+  apiKey = "missing-ai-provider-key";
 }
 
 export const openai = new OpenAI({ apiKey, baseURL });
+export const aiProviderConfigured = configured;
 
 /**
  * Returns the best chat model for the active provider.
