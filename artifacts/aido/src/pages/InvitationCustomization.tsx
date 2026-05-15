@@ -1027,6 +1027,14 @@ export default function InvitationCustomizationPage({
     typeof window !== "undefined" && websiteRecord?.slug && websiteRecord?.published
       ? `${window.location.origin}/w/${websiteRecord.slug}#rsvp`
       : null;
+  const canUsePrintBack = !isSTD;
+  const effectivePrintSide: PrintInvitationSide = canUsePrintBack ? printSide : "front";
+
+  useEffect(() => {
+    if (isSTD && printSide === "back") {
+      setPrintSide("front");
+    }
+  }, [isSTD, printSide]);
 
   const downloadPrintPdf = async () => {
     setExportingPrintPdf(true);
@@ -1053,7 +1061,7 @@ export default function InvitationCustomizationPage({
       doc.setLineDashPattern([], 0);
       doc.setTextColor(...text);
 
-      if (printSide === "front") {
+      if (effectivePrintSide === "front") {
         let y = 56;
         const photoUrl = resolveMediaUrl(activeDesignDocument.image.url);
         const photoDataUrl = await loadImageDataUrl(photoUrl);
@@ -1178,7 +1186,7 @@ export default function InvitationCustomizationPage({
       }
 
       const safeCouple = activeDesignDocument.couple.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") || "wedding";
-      doc.save(`${safeCouple}_${activeDesignDocument.kind}_${spec.label.replace(/\s+/g, "")}_${printSide}.pdf`);
+      doc.save(`${safeCouple}_${activeDesignDocument.kind}_${spec.label.replace(/\s+/g, "")}_${effectivePrintSide}.pdf`);
     } catch (error) {
       console.error("Print PDF export failed", error);
       toast({
@@ -1338,37 +1346,45 @@ export default function InvitationCustomizationPage({
                     ))}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">Side</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(["front", "back"] as PrintInvitationSide[]).map((side) => (
-                      <Button
-                        key={side}
-                        type="button"
-                        size="sm"
-                        variant={printSide === side ? "default" : "outline"}
-                        onClick={() => setPrintSide(side)}
-                        className="capitalize"
-                      >
-                        {side}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <label className="flex items-center justify-between rounded-md border bg-muted/20 px-3 py-2 text-sm">
-                  <span>Show RSVP code area on back</span>
-                  <input
-                    type="checkbox"
-                    checked={includePrintQr}
-                    onChange={(event) => setIncludePrintQr(event.target.checked)}
-                    className="h-4 w-4 accent-primary"
-                  />
-                </label>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  When your wedding website is published, this back side will
-                  automatically include a scannable QR code for guests to RSVP.
-                  Until then, the preview shows a publish-first note.
-                </p>
+                {canUsePrintBack ? (
+                  <>
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">Side</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(["front", "back"] as PrintInvitationSide[]).map((side) => (
+                          <Button
+                            key={side}
+                            type="button"
+                            size="sm"
+                            variant={printSide === side ? "default" : "outline"}
+                            onClick={() => setPrintSide(side)}
+                            className="capitalize"
+                          >
+                            {side}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <label className="flex items-center justify-between rounded-md border bg-muted/20 px-3 py-2 text-sm">
+                      <span>Show RSVP code area on back</span>
+                      <input
+                        type="checkbox"
+                        checked={includePrintQr}
+                        onChange={(event) => setIncludePrintQr(event.target.checked)}
+                        className="h-4 w-4 accent-primary"
+                      />
+                    </label>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      When your wedding website is published, this back side will
+                      automatically include a scannable QR code for guests to RSVP.
+                      Until then, the preview shows a publish-first note.
+                    </p>
+                  </>
+                ) : (
+                  <p className="rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
+                    Save-the-Dates are front-only announcements. RSVP links and QR codes are only added to RSVP invitations.
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
@@ -1776,15 +1792,18 @@ export default function InvitationCustomizationPage({
                 <div className="flex flex-col items-center gap-3">
                   <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
                     <span className="rounded-full border px-2.5 py-1">{PRINT_SIZES[printSize].label}</span>
-                    <span className="rounded-full border px-2.5 py-1 capitalize">{printSide}</span>
+                    <span className="rounded-full border px-2.5 py-1 capitalize">{effectivePrintSide}</span>
                     <span className="rounded-full border px-2.5 py-1">Safe margin visible</span>
+                    {isSTD && (
+                      <span className="rounded-full border px-2.5 py-1">No RSVP or QR</span>
+                    )}
                   </div>
                   <PrintInvitationPreview
                     ref={printPreviewRef}
                     design={activeDesignDocument}
                     size={printSize}
-                    side={printSide}
-                    includeQr={includePrintQr}
+                    side={effectivePrintSide}
+                    includeQr={canUsePrintBack && includePrintQr}
                     websiteUrl={websiteUrl}
                   />
                 </div>
