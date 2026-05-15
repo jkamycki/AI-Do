@@ -810,6 +810,7 @@ export function InvitationSendModal({
                           ceremonyTime: profile.ceremonyTime,
                           receptionTime: profile.receptionTime,
                           invitationMessage: profile.invitationMessage,
+                          guestName: guest?.name ?? "Guest",
                           rsvpByDate: customization.rsvpByDate ?? null,
                         }}
                         palette={digPalette}
@@ -914,6 +915,7 @@ export function InvitationSendModal({
                         ceremonyTime: profile.ceremonyTime,
                         receptionTime: profile.receptionTime,
                         invitationMessage: profile.invitationMessage,
+                        guestName: guest?.name ?? "Guest",
                         rsvpByDate: customization.rsvpByDate ?? null,
                       }}
                       palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}

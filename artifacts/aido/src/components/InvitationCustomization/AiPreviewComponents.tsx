@@ -17,6 +17,7 @@ export interface WeddingInfo {
   receptionTime?: string | null;
   saveTheDateMessage?: string | null;
   invitationMessage?: string | null;
+  guestName?: string | null;
   // Couple-set RSVP deadline as YYYY-MM-DD; rendered as "RSVP By: <date>" on
   // the digital invitation preview (and matching email + public RSVP page).
   rsvpByDate?: string | null;
@@ -313,6 +314,7 @@ export function AiDigitalInvitationPreview({
   const labelFont = customColors ? displayFont : jakarta;
 
   const couple    = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const guestName = profile.guestName || "Guest";
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine  = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   const timesLine = [
@@ -385,7 +387,7 @@ export function AiDigitalInvitationPreview({
       )}
 
       <p style={{ fontFamily: labelFont, fontSize: 11 * sc, color: muted, margin: "14px 0 0" }}>
-        Dear <span style={{ color: text, fontWeight: 600 }}>Guest</span>, will you be joining us?
+        Dear <span style={{ color: text, fontWeight: 600 }}>{guestName}</span>, will you be joining us?
       </p>
 
       <div style={{ height: 1, background: cardBdr, margin: "14px 8px" }} />

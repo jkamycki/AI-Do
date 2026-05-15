@@ -169,6 +169,7 @@ const AI_CORMORANT = "'Cormorant Garamond','Playfair Display',Georgia,serif";
 const AI_JAKARTA = "'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif";
 const INVITATION_EMAIL_PHOTO_WIDTH = 380;
 const INVITATION_EMAIL_PHOTO_HEIGHT = 200;
+const INVITATION_EMAIL_PAGE_PADDING = "16px 12px";
 
 function aiLogoBlock(logoBase64: string | null, accent = AI_GOLD): string {
   return logoBase64
@@ -185,8 +186,8 @@ function aiPhotoBlock(
   if (!photoSrc) return "";
   return `
         <tr>
-          <td bgcolor="${bg}" style="background:${bg};padding:0 20px 12px;line-height:0;font-size:0;">
-            <div style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;border-radius:8px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,0.5);">
+          <td bgcolor="${bg}" style="background:${bg};padding:0 20px 10px;line-height:0;font-size:0;">
+            <div class="invite-photo" style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;border-radius:8px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,0.5);">
               <img src="${photoSrc}" alt="${escapeHtml(alt)}" width="${INVITATION_EMAIL_PHOTO_WIDTH}" height="${INVITATION_EMAIL_PHOTO_HEIGHT}" style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;display:block;object-fit:cover;object-position:${objectPos};border:0;outline:none;text-decoration:none;" />
             </div>
           </td>
@@ -217,6 +218,7 @@ interface AiDigitalInviteOpts {
   overrideMuted?: string;
   overrideCardBdr?: string;
   overrideCoupleFont?: string;
+  overrideFontSize?: string;
 }
 
 function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
@@ -228,7 +230,9 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
   const CARD_BDR = opts.overrideCardBdr  ?? AI_CARD_BDR;
   const SERIF    = opts.overrideCoupleFont
     ? `'${opts.overrideCoupleFont}',${AI_CORMORANT}` : AI_CORMORANT;
-  const FOOTER_BG = BG;
+  const LABEL_FONT = opts.overrideCoupleFont ? SERIF : AI_JAKARTA;
+  const parsedScale = opts.overrideFontSize ? parseFloat(opts.overrideFontSize) / 16 : 1;
+  const sc = Number.isFinite(parsedScale) && parsedScale > 0 ? parsedScale : 1;
   const BTN_TXT  = isLightColor(ACCENT) ? "#000000" : (opts.overrideBg ? TEXT_COL : AI_BG);
   const COLOR_SCHEME = isLightColor(BG) ? "light" : "dark";
 
@@ -254,16 +258,21 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
       body, #body { background-color: ${PAGE_BG} !important; background: ${PAGE_BG} !important; }
       .dig-card { background-color: ${BG} !important; background: ${BG} !important; }
     }
+    @media screen and (max-width: 480px) {
+      .dig-wrap { padding: ${INVITATION_EMAIL_PAGE_PADDING} !important; }
+      .dig-card { width: 100% !important; max-width: 420px !important; }
+      .invite-photo img { width: 100% !important; max-width: ${INVITATION_EMAIL_PHOTO_WIDTH}px !important; height: ${INVITATION_EMAIL_PHOTO_HEIGHT}px !important; }
+    }
   </style>
 </head>
 <body id="body" bgcolor="${PAGE_BG}" style="margin:0;padding:0;background:${PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${PAGE_BG}" style="background:${PAGE_BG};padding:32px 16px;">
+  <table class="dig-wrap" role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${PAGE_BG}" style="background:${PAGE_BG};padding:${INVITATION_EMAIL_PAGE_PADDING};">
     <tr><td bgcolor="${PAGE_BG}" align="center">
 
       <table class="dig-card" role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${BG}" style="max-width:420px;width:100%;background:${BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:20px 0 6px;text-align:center;">
+          <td bgcolor="${BG}" style="background:${BG};padding:20px 0 4px;text-align:center;">
             ${aiLogoBlock(opts.logoBase64, ACCENT)}
           </td>
         </tr>
@@ -271,7 +280,7 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
         ${aiPhotoBlock(opts.photoImgSrc, opts.couple, opts.photoObjectPos, BG)}
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:14px 0 4px;text-align:center;">
+          <td bgcolor="${BG}" style="background:${BG};padding:16px 0 0;text-align:center;">
             <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
               <td width="52" height="52" align="center" valign="middle" style="background:${ACCENT}22;border:1px solid ${ACCENT}44;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:24px;color:${ACCENT};">&hearts;</td>
             </tr></table>
@@ -279,21 +288,21 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
         </tr>
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:700;letter-spacing:4.5px;text-transform:uppercase;color:${ACCENT};">Wedding RSVP</p>
+          <td bgcolor="${BG}" style="background:${BG};padding:12px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;font-weight:700;letter-spacing:4.5px;text-transform:uppercase;color:${ACCENT};">Wedding RSVP</p>
           </td>
         </tr>
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:8px 24px 0;text-align:center;">
-            <h1 style="margin:0;font-family:${SERIF};font-size:32px;font-weight:400;font-style:italic;color:${ACCENT};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
+            <h1 style="margin:0;font-family:${SERIF};font-size:${Math.round(34*sc)}px;font-weight:400;font-style:italic;color:${ACCENT};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
           </td>
         </tr>
 
         ${opts.weddingDateStr ? `
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${TEXT_COL};">${escapeHtml(opts.weddingDateStr)}</p>
+            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(10*sc)}px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${TEXT_COL};">${escapeHtml(opts.weddingDateStr)}</p>
           </td>
         </tr>` : ""}
 
@@ -309,28 +318,28 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
         ${opts.venueAddress ? `
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:4px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${TEXT_COL};">${escapeHtml(opts.venueAddress)}</p>
+            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(10*sc)}px;color:${TEXT_COL};">${escapeHtml(opts.venueAddress)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.cityStateZip ? `
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:2px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${TEXT_COL};">${escapeHtml(opts.cityStateZip)}</p>
+            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(10*sc)}px;color:${TEXT_COL};">${escapeHtml(opts.cityStateZip)}</p>
           </td>
         </tr>` : ""}
 
         ${timesLine ? `
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:8px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;color:${ACCENT};">${escapeHtml(timesLine)}</p>
+            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(10*sc)}px;color:${ACCENT};">${escapeHtml(timesLine)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.rsvpByDateStr ? `
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:10px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${ACCENT};">
+            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(10*sc)}px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${ACCENT};">
               RSVP By: <span style="color:${TEXT_COL};font-weight:600;">${escapeHtml(opts.rsvpByDateStr)}</span>
             </p>
           </td>
@@ -338,21 +347,21 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
 
         ${opts.invitationMessage ? `
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:18px 28px 0;text-align:center;">
-            <p style="margin:0;font-family:${SERIF};font-size:15px;font-style:italic;color:${TEXT_COL};line-height:1.7;">&ldquo;${escapeHtml(opts.invitationMessage)}&rdquo;</p>
+          <td bgcolor="${BG}" style="background:${BG};padding:14px 28px 0;text-align:center;">
+            <p style="margin:0;font-family:${SERIF};font-size:${Math.round(15*sc)}px;font-style:italic;color:${TEXT_COL};line-height:1.7;">&ldquo;${escapeHtml(opts.invitationMessage)}&rdquo;</p>
           </td>
         </tr>` : ""}
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:18px 28px 0;text-align:center;">
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:13px;color:${MUTED};">
+          <td bgcolor="${BG}" style="background:${BG};padding:14px 28px 0;text-align:center;">
+            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;color:${MUTED};">
               Dear <span style="color:${TEXT_COL};font-weight:600;">${escapeHtml(opts.guestName)}</span>, will you be joining us?
             </p>
           </td>
         </tr>
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:18px 32px 0;">
+          <td bgcolor="${BG}" style="background:${BG};padding:14px 32px 0;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
               <td style="border-top:1px solid ${CARD_BDR};height:1px;font-size:1px;line-height:1px;">&nbsp;</td>
             </tr></table>
@@ -360,20 +369,8 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
         </tr>
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:18px 24px 28px;text-align:center;">
-            <a href="${opts.rsvpUrl}" style="display:block;background:${ACCENT};color:${BTN_TXT};font-family:${AI_JAKARTA};font-size:13px;font-weight:700;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;padding:14px 24px;border-radius:8px;">RSVP NOW</a>
-            <p style="margin:12px 0 0;font-family:${AI_JAKARTA};font-size:10px;color:${MUTED};">
-              Button not working? <a href="${opts.rsvpUrl}" style="color:${ACCENT};text-decoration:underline;">Open your RSVP</a>
-            </p>
-          </td>
-        </tr>
-
-        <tr>
-          <td bgcolor="${FOOTER_BG}" style="background:${FOOTER_BG};padding:16px 24px;text-align:center;border-top:1px solid ${CARD_BDR};">
-            <p style="margin:0 0 4px;font-family:${AI_JAKARTA};font-size:10px;color:${MUTED};letter-spacing:0.5px;">Planning your own wedding?</p>
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:10px;color:${MUTED};">
-              <a href="https://aidowedding.net" style="color:${ACCENT};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
-            </p>
+          <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 28px;text-align:center;">
+            <a href="${opts.rsvpUrl}" style="display:block;background:${ACCENT};color:${BTN_TXT};font-family:${LABEL_FONT};font-size:${Math.round(12*sc)}px;font-weight:700;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;padding:12px;border-radius:8px;">RSVP NOW</a>
           </td>
         </tr>
 
@@ -423,8 +420,8 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
   // where labelFont = displayFont when customColors is set).
   const LABEL_FONT = opts.overrideCoupleFont ? SERIF : AI_JAKARTA;
   // Scale all font sizes proportionally when a custom base size is provided.
-  const sc = opts.overrideFontSize ? parseFloat(opts.overrideFontSize) / 16 : 1;
-  const FOOTER_BG = BG;
+  const parsedScale = opts.overrideFontSize ? parseFloat(opts.overrideFontSize) / 16 : 1;
+  const sc = Number.isFinite(parsedScale) && parsedScale > 0 ? parsedScale : 1;
   const timesLine = [
     opts.ceremonyTimeStr ? `Ceremony ${opts.ceremonyTimeStr}` : null,
     opts.receptionTimeStr ? `Reception ${opts.receptionTimeStr}` : null,
@@ -450,16 +447,21 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
       body, #body { background-color: ${PAGE_BG} !important; background: ${PAGE_BG} !important; }
       .std-card { background-color: ${BG} !important; background: ${BG} !important; }
     }
+    @media screen and (max-width: 480px) {
+      .std-wrap { padding: ${INVITATION_EMAIL_PAGE_PADDING} !important; }
+      .std-card { width: 100% !important; max-width: 420px !important; }
+      .invite-photo img { width: 100% !important; max-width: ${INVITATION_EMAIL_PHOTO_WIDTH}px !important; height: ${INVITATION_EMAIL_PHOTO_HEIGHT}px !important; }
+    }
   </style>
 </head>
 <body id="body" bgcolor="${PAGE_BG}" style="margin:0;padding:0;background:${PAGE_BG};-webkit-font-smoothing:antialiased;font-family:${AI_JAKARTA};">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${PAGE_BG}" style="background:${PAGE_BG};padding:32px 16px;">
+  <table class="std-wrap" role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${PAGE_BG}" style="background:${PAGE_BG};padding:${INVITATION_EMAIL_PAGE_PADDING};">
     <tr><td bgcolor="${PAGE_BG}" align="center">
 
       <table class="std-card" role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${BG}" style="max-width:420px;width:100%;background:${BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:20px 0 6px;text-align:center;">
+          <td bgcolor="${BG}" style="background:${BG};padding:20px 0 4px;text-align:center;">
             ${aiLogoBlock(opts.logoBase64, ACCENT)}
           </td>
         </tr>
@@ -467,7 +469,7 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
         ${aiPhotoBlock(opts.photoImgSrc, `Save the Date — ${opts.couple}`, opts.photoObjectPos, BG)}
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:14px 0 4px;text-align:center;">
+          <td bgcolor="${BG}" style="background:${BG};padding:16px 0 0;text-align:center;">
             <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
               <td width="52" height="52" align="center" valign="middle" style="background:${ACCENT}22;border:1px solid ${ACCENT}44;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:22px;color:${ACCENT};">&#9993;</td>
             </tr></table>
@@ -475,14 +477,14 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
         </tr>
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
+          <td bgcolor="${BG}" style="background:${BG};padding:12px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;font-weight:700;letter-spacing:4.5px;text-transform:uppercase;color:${ACCENT};">Save the Date</p>
           </td>
         </tr>
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:8px 24px 0;text-align:center;">
-            <h1 style="margin:0;font-family:${SERIF};font-size:${Math.round(32*sc)}px;font-weight:400;font-style:italic;color:${ACCENT};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
+            <h1 style="margin:0;font-family:${SERIF};font-size:${Math.round(34*sc)}px;font-weight:400;font-style:italic;color:${ACCENT};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
           </td>
         </tr>
 
@@ -497,42 +499,33 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
         ${opts.weddingDateStr ? `
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${TEXT_COL};">${escapeHtml(opts.weddingDateStr)}</p>
+            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(10*sc)}px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:${TEXT_COL};">${escapeHtml(opts.weddingDateStr)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.cityStateZip ? `
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:2px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;color:${TEXT_COL};">${escapeHtml(opts.cityStateZip)}</p>
+            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(10*sc)}px;color:${TEXT_COL};">${escapeHtml(opts.cityStateZip)}</p>
           </td>
         </tr>` : ""}
 
         ${opts.saveTheDateMessage ? `
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:18px 28px 0;text-align:center;">
+          <td bgcolor="${BG}" style="background:${BG};padding:14px 28px 0;text-align:center;">
             <p style="margin:0;font-family:${SERIF};font-size:${Math.round(15*sc)}px;font-style:italic;color:${TEXT_COL};line-height:1.7;">&ldquo;${escapeHtml(opts.saveTheDateMessage)}&rdquo;</p>
           </td>
         </tr>` : ""}
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 0;text-align:center;">
-            <p style="margin:0;font-family:${SERIF};font-size:${Math.round(13*sc)}px;font-style:italic;color:${MUTED};">Formal invitation to follow</p>
+          <td bgcolor="${BG}" style="background:${BG};padding:12px 24px 0;text-align:center;">
+            <p style="margin:0;font-family:${SERIF};font-size:${Math.round(12*sc)}px;font-style:italic;color:${MUTED};">Formal invitation to follow</p>
           </td>
         </tr>
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:18px 24px 28px;text-align:center;">
-            <a href="${opts.viewUrl}" style="display:inline-block;background:${ACCENT}1a;border:1px solid ${CARD_BDR};color:${MUTED};font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;font-weight:600;text-decoration:none;letter-spacing:2px;text-transform:uppercase;padding:12px 28px;border-radius:6px;">&darr;&nbsp;View &amp; Download</a>
-          </td>
-        </tr>
-
-        <tr>
-          <td bgcolor="${FOOTER_BG}" style="background:${FOOTER_BG};padding:16px 24px;text-align:center;border-top:1px solid ${CARD_BDR};">
-            <p style="margin:0 0 4px;font-family:${AI_JAKARTA};font-size:10px;color:${MUTED};letter-spacing:0.5px;">Planning your own wedding?</p>
-            <p style="margin:0;font-family:${AI_JAKARTA};font-size:10px;color:${MUTED};">
-              <a href="https://aidowedding.net" style="color:${ACCENT};text-decoration:none;font-weight:600;">Try A.IDO free</a> — AI-powered wedding planning
-            </p>
+          <td bgcolor="${BG}" style="background:${BG};padding:16px 24px 28px;text-align:center;">
+            <a href="${opts.viewUrl}" style="display:inline-block;background:${ACCENT}1a;border:1px solid ${CARD_BDR};color:${MUTED};font-family:${LABEL_FONT};font-size:${Math.round(10*sc)}px;font-weight:600;text-decoration:none;letter-spacing:2px;text-transform:uppercase;padding:8px 20px;border-radius:6px;">View &amp; Download</a>
           </td>
         </tr>
 
@@ -713,9 +706,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
     // on `customization.digitalInvitationPhotoPosition`. In custom mode the
     // canvas writes the position to the `dig:photo` text override.
     const aiDigPhotoPos = (customization?.digitalInvitationPhotoPosition as { x?: number; y?: number } | null) ?? null;
-    const digPhotoObjectPos = useGenerated
-      ? `${aiDigPhotoPos?.x ?? 50}% ${aiDigPhotoPos?.y ?? 50}%`
-      : `${digPhotoOverride.objectX ?? 50}% ${digPhotoOverride.objectY ?? 50}%`;
+    const digPhotoObjectPos = `${aiDigPhotoPos?.x ?? digPhotoOverride.objectX ?? 50}% ${aiDigPhotoPos?.y ?? digPhotoOverride.objectY ?? 50}%`;
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     const now = new Date();
@@ -921,6 +912,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           overrideMuted: MUTED,
           overrideCardBdr: bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
           overrideCoupleFont: headingFont,
+          overrideFontSize: customization?.digitalInvitationFontSize ?? undefined,
         });
       }
 
@@ -1041,9 +1033,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
       : {}) as Record<string, { text?: string; objectX?: number; objectY?: number }>;
     const digPhotoOverride = digOverrides["dig:photo"] ?? {};
     const aiDigPhotoPos = (customization?.digitalInvitationPhotoPosition as { x?: number; y?: number } | null) ?? null;
-    const digPhotoObjectPos = useGenerated
-      ? `${aiDigPhotoPos?.x ?? 50}% ${aiDigPhotoPos?.y ?? 50}%`
-      : `${digPhotoOverride.objectX ?? 50}% ${digPhotoOverride.objectY ?? 50}%`;
+    const digPhotoObjectPos = `${aiDigPhotoPos?.x ?? digPhotoOverride.objectX ?? 50}% ${aiDigPhotoPos?.y ?? digPhotoOverride.objectY ?? 50}%`;
 
     const formatTime12h = (t: string | null | undefined): string | null => {
       if (!t) return null;
@@ -1130,6 +1120,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         overrideMuted: bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
         overrideCardBdr: bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
         overrideCoupleFont: headingFont,
+        overrideFontSize: customization?.digitalInvitationFontSize ?? undefined,
       });
     }
 
@@ -1622,9 +1613,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
     // on `customization.saveTheDatePhotoPosition`. In custom mode the canvas
     // writes the position to the `std:photo` text override.
     const aiStdPhotoPos = (customization?.saveTheDatePhotoPosition as { x?: number; y?: number } | null) ?? null;
-    const stdPhotoObjectPos = useGenerated
-      ? `${aiStdPhotoPos?.x ?? 50}% ${aiStdPhotoPos?.y ?? 50}%`
-      : `${stdPhotoOverride.objectX ?? 50}% ${stdPhotoOverride.objectY ?? 50}%`;
+    const stdPhotoObjectPos = `${aiStdPhotoPos?.x ?? stdPhotoOverride.objectX ?? 50}% ${aiStdPhotoPos?.y ?? stdPhotoOverride.objectY ?? 50}%`;
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     if (!guest.rsvpToken) {
@@ -1702,9 +1691,6 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       const STD_MUTED = !useGenerated ? (stdBgIsLight ? "#666666" : "#bbbbbb") : "#9a8a7e";
       const STD_TIMES = !useGenerated ? (stdBgIsLight ? "#888888" : "#aaaaaa") : "#b0a09a";
       const STD_ITALIC = !useGenerated ? (stdBgIsLight ? "#7a6a5a" : "#cccccc") : "#7a6a5a";
-      const STD_FOOTER_BG = !useGenerated ? (stdBgIsLight ? "#f5f0eb" : STD_EMAIL_BG) : "#f5f2ef";
-      const STD_FOOTER_TEXT = !useGenerated ? (stdBgIsLight ? "#a89890" : "#bbbbbb") : "#a89890";
-
       // Text overrides — the canvas lets the user edit the actual text of the
       // headline, couple line, date, and message. Honour those edits here so
       // the email reads exactly like the preview.
@@ -1751,7 +1737,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           cityStateZip: stdCityStateZip,
           ceremonyTimeStr,
           receptionTimeStr,
-          saveTheDateMessage: (profile as any).saveTheDateMessage || `Mark your calendar! ${couple} are getting married and we'd love to celebrate with you.`,
+          saveTheDateMessage: (profile as any).saveTheDateMessage || null,
           viewUrl: `${frontendOrigin}/save-the-date/${token}`,
           photoImgSrc,
           photoObjectPos: stdPhotoObjectPos,
@@ -1766,7 +1752,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           cityStateZip: stdCityStateZip,
           ceremonyTimeStr: null,
           receptionTimeStr: null,
-          saveTheDateMessage: stdOverrides["std:message"]?.text || (profile as any).saveTheDateMessage || `Mark your calendar! ${couple} are getting married and we'd love to celebrate with you.`,
+          saveTheDateMessage: stdOverrides["std:message"]?.text || (profile as any).saveTheDateMessage || null,
           viewUrl: `${frontendOrigin}/save-the-date/${token}`,
           photoImgSrc,
           photoObjectPos: stdPhotoObjectPos,
