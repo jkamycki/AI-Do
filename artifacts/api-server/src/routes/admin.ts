@@ -17,6 +17,7 @@ const router = Router();
 
 const OWNER_EMAILS = [
   process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com",
+  "michaelgang31@gmail.com",
 ];
 
 async function isAdmin(userId: string): Promise<boolean> {
