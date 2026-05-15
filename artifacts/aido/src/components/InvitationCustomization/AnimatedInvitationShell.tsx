@@ -148,9 +148,10 @@ export function AnimatedInvitationShell({
           border-radius: ${compact ? "18px" : "24px"};
           overflow: hidden;
           box-shadow:
-            0 34px 80px rgba(11, 9, 18, .38),
-            inset 0 1px 0 rgba(255,255,255,.18),
-            inset 0 -22px 46px rgba(0,0,0,.16);
+            0 38px 82px rgba(11, 9, 18, .34),
+            0 12px 28px rgba(11, 9, 18, .18),
+            inset 0 1px 0 rgba(255,255,255,.32),
+            inset 0 -24px 48px rgba(0,0,0,.12);
           will-change: transform, opacity, visibility;
           animation: aidoLayerGone 1ms linear 2860ms forwards;
         }
@@ -160,7 +161,9 @@ export function AnimatedInvitationShell({
           inset: 0;
           z-index: 5;
           pointer-events: none;
-          box-shadow: inset 0 0 0 1px rgba(255,255,255,.16);
+          box-shadow:
+            inset 0 0 0 1px rgba(255,255,255,.2),
+            inset 0 0 0 2px rgba(0,0,0,.035);
           border-radius: inherit;
         }
         .aido-envelope-flap,
@@ -185,22 +188,32 @@ export function AnimatedInvitationShell({
           inset: 0;
           z-index: 0;
           background:
-            linear-gradient(135deg, rgba(255,255,255,.22), transparent 30%),
-            linear-gradient(45deg, rgba(0,0,0,.24), transparent 49%),
-            radial-gradient(circle at 30% 24%, rgba(255,255,255,.16), transparent 28%),
-            repeating-linear-gradient(100deg, rgba(255,255,255,.06) 0 1px, transparent 1px 9px),
-            repeating-linear-gradient(12deg, rgba(0,0,0,.035) 0 1px, transparent 1px 7px),
+            linear-gradient(145deg, rgba(255,255,255,.26), rgba(255,255,255,.04) 38%, rgba(0,0,0,.08) 100%),
+            radial-gradient(circle at 34% 20%, rgba(255,255,255,.18), transparent 28%),
+            repeating-linear-gradient(96deg, rgba(255,255,255,.035) 0 1px, transparent 1px 7px),
+            repeating-linear-gradient(6deg, rgba(0,0,0,.022) 0 1px, transparent 1px 8px),
             var(--invite-paper);
+        }
+        .aido-envelope-panel::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          opacity: .68;
+          background:
+            linear-gradient(146deg, transparent 49.45%, rgba(255,255,255,.3) 49.8%, rgba(0,0,0,.16) 50.15%, transparent 50.55%),
+            linear-gradient(34deg, transparent 49.45%, rgba(255,255,255,.24) 49.8%, rgba(0,0,0,.14) 50.15%, transparent 50.55%),
+            linear-gradient(180deg, rgba(255,255,255,.18), transparent 24%, rgba(0,0,0,.06));
         }
         .aido-envelope-panel::after {
           content: "";
           position: absolute;
           inset: 0;
-          opacity: .26;
+          opacity: .3;
           background-image:
-            linear-gradient(120deg, rgba(255,255,255,.14) 0 1px, transparent 1px 18px),
-            radial-gradient(circle at 20% 30%, rgba(0,0,0,.18) 0 1px, transparent 1.4px);
-          background-size: 24px 24px, 34px 34px;
+            radial-gradient(circle at 18% 24%, rgba(255,255,255,.26) 0 1px, transparent 1.4px),
+            radial-gradient(circle at 68% 72%, rgba(0,0,0,.12) 0 1px, transparent 1.5px),
+            linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, transparent 1px 16px);
+          background-size: 36px 36px, 42px 42px, 28px 28px;
         }
         .aido-envelope-bottom {
           left: 0;
@@ -210,9 +223,11 @@ export function AnimatedInvitationShell({
           z-index: 1;
           clip-path: polygon(0 100%, 50% 0, 100% 100%);
           background:
-            linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.18)),
-            linear-gradient(36deg, transparent 49.4%, rgba(255,255,255,.14) 49.8%, rgba(0,0,0,.18) 50.8%, transparent 51.2%),
+            linear-gradient(180deg, rgba(255,255,255,.18), rgba(0,0,0,.12)),
+            linear-gradient(36deg, transparent 49.35%, rgba(255,255,255,.26) 49.75%, rgba(0,0,0,.16) 50.25%, transparent 50.75%),
+            repeating-linear-gradient(104deg, rgba(255,255,255,.035) 0 1px, transparent 1px 8px),
             var(--invite-paper);
+          filter: drop-shadow(0 -10px 18px rgba(0,0,0,.12));
           animation: aidoBottomDrop 1150ms cubic-bezier(.28,.76,.18,1) 1040ms forwards;
         }
         .aido-envelope-pocket {
@@ -240,9 +255,10 @@ export function AnimatedInvitationShell({
           inset: 0;
           clip-path: polygon(0 100%, 50% 0, 100% 100%);
           background:
-            linear-gradient(180deg, rgba(255,255,255,.2), rgba(0,0,0,.2)),
-            linear-gradient(36deg, transparent 49.3%, rgba(255,255,255,.18) 49.7%, rgba(0,0,0,.2) 50.7%, transparent 51.2%),
-            repeating-linear-gradient(108deg, rgba(255,255,255,.055) 0 1px, transparent 1px 10px),
+            linear-gradient(180deg, rgba(255,255,255,.24), rgba(0,0,0,.13)),
+            linear-gradient(36deg, transparent 49.35%, rgba(255,255,255,.3) 49.75%, rgba(0,0,0,.18) 50.25%, transparent 50.75%),
+            repeating-linear-gradient(108deg, rgba(255,255,255,.04) 0 1px, transparent 1px 8px),
+            repeating-linear-gradient(8deg, rgba(0,0,0,.02) 0 1px, transparent 1px 9px),
             var(--invite-paper);
         }
         .aido-envelope-pocket-face::after {
@@ -253,14 +269,16 @@ export function AnimatedInvitationShell({
           top: 4%;
           border-radius: 999px;
           background:
-            radial-gradient(circle at 34% 26%, rgba(255,255,255,.5), transparent 17%),
-            radial-gradient(circle at 50% 52%, #e4bd54, #a67825 68%, #785016 100%);
+            radial-gradient(circle at 34% 24%, rgba(255,255,255,.62), transparent 16%),
+            radial-gradient(circle at 58% 62%, rgba(70,43,10,.28), transparent 48%),
+            radial-gradient(circle at 50% 52%, #e8c467, #af7d2a 66%, #735018 100%);
           box-shadow:
-            0 14px 28px rgba(0,0,0,.34),
-            inset 0 0 0 4px rgba(255,255,255,.16),
-            inset 0 0 0 8px rgba(83,54,13,.22),
-            inset 0 -10px 16px rgba(79,50,10,.2);
-          opacity: .92;
+            0 14px 28px rgba(0,0,0,.3),
+            inset 0 0 0 3px rgba(255,255,255,.16),
+            inset 0 0 0 7px rgba(78,52,15,.18),
+            inset 0 12px 14px rgba(255,255,255,.14),
+            inset 0 -12px 18px rgba(70,43,10,.28);
+          opacity: .96;
           z-index: 1;
           animation: aidoSealLift 980ms cubic-bezier(.2,.82,.18,1) 520ms forwards;
         }
@@ -296,9 +314,11 @@ export function AnimatedInvitationShell({
           inset: 0;
           z-index: 4;
           background:
-            linear-gradient(160deg, rgba(255,255,255,.18), transparent 42%),
-            linear-gradient(140deg, transparent 49.6%, rgba(255,255,255,.16) 49.9%, rgba(0,0,0,.24) 50.8%, transparent 51.2%),
-            repeating-linear-gradient(105deg, rgba(255,255,255,.055) 0 1px, transparent 1px 10px),
+            linear-gradient(160deg, rgba(255,255,255,.26), transparent 42%),
+            linear-gradient(180deg, rgba(255,255,255,.1), rgba(0,0,0,.08)),
+            linear-gradient(140deg, transparent 49.55%, rgba(255,255,255,.32) 49.88%, rgba(0,0,0,.18) 50.22%, transparent 50.62%),
+            repeating-linear-gradient(104deg, rgba(255,255,255,.04) 0 1px, transparent 1px 8px),
+            repeating-linear-gradient(8deg, rgba(0,0,0,.018) 0 1px, transparent 1px 9px),
             var(--invite-paper);
           clip-path: polygon(0 0, 100% 0, 50% 60%);
           transform-origin: top center;
@@ -312,8 +332,9 @@ export function AnimatedInvitationShell({
           z-index: 2;
           width: 58%;
           background:
-            linear-gradient(40deg, rgba(255,255,255,.18) 0 49%, rgba(0,0,0,.22) 50%, transparent 51%),
-            repeating-linear-gradient(100deg, rgba(255,255,255,.045) 0 1px, transparent 1px 10px),
+            linear-gradient(40deg, rgba(255,255,255,.22) 0 49.4%, rgba(0,0,0,.14) 50.15%, transparent 50.8%),
+            linear-gradient(90deg, rgba(255,255,255,.12), transparent 55%, rgba(0,0,0,.08)),
+            repeating-linear-gradient(100deg, rgba(255,255,255,.035) 0 1px, transparent 1px 8px),
             var(--invite-paper);
           clip-path: polygon(0 0, 100% 50%, 0 100%);
           will-change: transform, opacity;
@@ -327,8 +348,8 @@ export function AnimatedInvitationShell({
           width: 58%;
           background:
             linear-gradient(145deg, rgba(255,255,255,.12), transparent 42%),
-            linear-gradient(38deg, transparent 49.5%, rgba(255,255,255,.08) 50%, rgba(0,0,0,.24) 51%, transparent 51.4%),
-            repeating-linear-gradient(100deg, rgba(255,255,255,.035) 0 1px, transparent 1px 10px),
+            linear-gradient(38deg, transparent 49.45%, rgba(255,255,255,.16) 49.85%, rgba(0,0,0,.16) 50.25%, transparent 50.75%),
+            repeating-linear-gradient(100deg, rgba(255,255,255,.032) 0 1px, transparent 1px 8px),
             var(--invite-dark);
           clip-path: polygon(100% 0, 0 50%, 100% 100%);
           will-change: transform, opacity;
