@@ -455,7 +455,7 @@ function BlockedScreen({
         <div className="space-y-2 max-w-sm">
           <h3 className="text-lg font-semibold text-foreground">Continue without photos?</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Your invitation will be sent without a photo. You can always add photos later from the Invitation Customization page.
+            Your invitation will be sent without a photo. You can always add photos later from Invitation Studio.
           </p>
         </div>
         <div className="flex flex-col gap-3 w-full max-w-xs">

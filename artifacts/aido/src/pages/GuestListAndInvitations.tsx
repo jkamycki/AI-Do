@@ -180,7 +180,7 @@ export default function GuestListAndInvitations() {
         </TabsContent>
 
         <TabsContent value="invitation-customization" forceMount className="mt-6 data-[state=inactive]:hidden">
-          <TabErrorBoundary tabName="Invitation Customization">
+          <TabErrorBoundary tabName="Invitation Studio">
             <Suspense fallback={<TabSkeleton />}>
               <InvitationCustomization
                 profileId={profileId}
