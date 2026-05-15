@@ -45,6 +45,7 @@ import {
   Printer,
   FileDown,
   Send,
+  Play,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type {
@@ -241,6 +242,7 @@ export default function InvitationCustomizationPage({
     saveTheDate: "animated-envelope",
     rsvpInvitation: "animated-envelope",
   });
+  const [animationPreviewNonce, setAnimationPreviewNonce] = useState(0);
 
   // ── Shared brand-color state ──────────────────────────────────────────────
   const [primaryColor, setPrimaryColor] = useState("#D4A017");
@@ -1364,6 +1366,26 @@ export default function InvitationCustomizationPage({
     }
   };
 
+  const replayInvitationPreview = () => {
+    setAnimationPreviewNonce((current) => current + 1);
+  };
+
+  const selectPreviewTab = (tab: PreviewTab) => {
+    setPreviewTab(tab);
+    setAnimationPreviewNonce((current) => current + 1);
+  };
+
+  const selectDeliveryMode = (mode: InvitationDeliveryMode) => {
+    setDeliveryMode(mode);
+    setAnimationPreviewNonce((current) => current + 1);
+  };
+
+  const activeAnimationKey: InvitationDesignKey = isSTD ? "saveTheDate" : "rsvpInvitation";
+  const activePreviewAnimationLayout =
+    designMode === "custom" ? animationLayouts[activeAnimationKey] : "classic";
+  const canReplayAnimation =
+    deliveryMode === "digital" && activePreviewAnimationLayout !== "classic";
+
   return (
     <div className="max-w-7xl mx-auto p-3 sm:p-4 space-y-4 sm:space-y-6">
       <div>
@@ -1385,7 +1407,7 @@ export default function InvitationCustomizationPage({
                 variant={previewTab === "saveTheDate" ? "default" : "outline"}
                 size="sm"
                 className="gap-2"
-                onClick={() => setPreviewTab("saveTheDate")}
+                onClick={() => selectPreviewTab("saveTheDate")}
               >
                 <Calendar className="h-4 w-4" />
                 Save Date
@@ -1395,7 +1417,7 @@ export default function InvitationCustomizationPage({
                 variant={previewTab === "digitalInvitation" ? "default" : "outline"}
                 size="sm"
                 className="gap-2"
-                onClick={() => setPreviewTab("digitalInvitation")}
+                onClick={() => selectPreviewTab("digitalInvitation")}
               >
                 <Heart className="h-4 w-4" />
                 RSVP
@@ -1411,7 +1433,7 @@ export default function InvitationCustomizationPage({
                 variant={deliveryMode === "digital" ? "default" : "outline"}
                 size="sm"
                 className="gap-2"
-                onClick={() => setDeliveryMode("digital")}
+                onClick={() => selectDeliveryMode("digital")}
               >
                 <Mail className="h-4 w-4" />
                 Digital
@@ -1421,7 +1443,7 @@ export default function InvitationCustomizationPage({
                 variant={deliveryMode === "print" ? "default" : "outline"}
                 size="sm"
                 className="gap-2"
-                onClick={() => setDeliveryMode("print")}
+                onClick={() => selectDeliveryMode("print")}
               >
                 <Printer className="h-4 w-4" />
                 Print
@@ -1460,7 +1482,10 @@ export default function InvitationCustomizationPage({
 
       <Tabs
         value={designMode}
-        onValueChange={(v) => setDesignMode(v as "ai" | "custom")}
+        onValueChange={(v) => {
+          setDesignMode(v as "ai" | "custom");
+          setAnimationPreviewNonce((current) => current + 1);
+        }}
       >
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger
@@ -1765,6 +1790,7 @@ export default function InvitationCustomizationPage({
                 ...current,
                 [activeKey]: layout,
               }));
+              setAnimationPreviewNonce((current) => current + 1);
             };
             const isThemeActive = (themeId: string) => {
               const t = WEBSITE_THEMES.find((x) => x.id === themeId);
@@ -1995,19 +2021,33 @@ export default function InvitationCustomizationPage({
                     {activeDesignDocument.title} / {deliveryMode === "digital" ? "Digital" : "Print"}
                   </p>
                 </div>
-                {deliveryMode === "print" && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="gap-2"
-                    onClick={downloadPrintPdf}
-                    disabled={exportingPrintPdf}
-                  >
-                    {exportingPrintPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
-                    PDF
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {canReplayAnimation && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={replayInvitationPreview}
+                    >
+                      <Play className="h-3.5 w-3.5" />
+                      Replay
+                    </Button>
+                  )}
+                  {deliveryMode === "print" && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={downloadPrintPdf}
+                      disabled={exportingPrintPdf}
+                    >
+                      {exportingPrintPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+                      PDF
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -2059,13 +2099,16 @@ export default function InvitationCustomizationPage({
                 const activeAnimationLayout = isCustom
                   ? animationLayouts[isSTD ? "saveTheDate" : "rsvpInvitation"]
                   : "classic";
+                const animationReplayKey = `${previewTab}-${deliveryMode}-${designMode}-${activeAnimationLayout}-${animationPreviewNonce}`;
                 return (
                   <AnimatedInvitationShell
+                    key={animationReplayKey}
                     layout={activeAnimationLayout}
                     accent={cd.accentColor}
                     paper="#d9c8ad"
                     darkPanel="#15131f"
                     compact
+                    replayKey={animationReplayKey}
                   >
                     {isSTD ? (
                       <AiSaveDatePreview
