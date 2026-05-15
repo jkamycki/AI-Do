@@ -2,6 +2,7 @@ import { forwardRef } from "react";
 import { Calendar, Heart, MapPin, QrCode } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import type { InvitationDesignDocument } from "@/lib/invitationDesignModel";
+import { qrSvgDataUrl } from "@/lib/localQr";
 
 export type PrintInvitationSize = "5x7" | "4x6";
 export type PrintInvitationSide = "front" | "back";
@@ -55,10 +56,6 @@ function locationLines(design: InvitationDesignDocument): string[] {
   ].filter(Boolean);
 }
 
-function qrImageUrl(url: string, size = 420) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=12&data=${encodeURIComponent(url)}`;
-}
-
 function RealQrCode({ url, accent }: { url: string; accent: string }) {
   return (
     <div
@@ -72,9 +69,8 @@ function RealQrCode({ url, accent }: { url: string; accent: string }) {
       }}
     >
       <img
-        src={qrImageUrl(url)}
+        src={qrSvgDataUrl(url)}
         alt="Scan to RSVP"
-        crossOrigin="anonymous"
         style={{ display: "block", width: "100%", height: "100%" }}
       />
     </div>
@@ -96,6 +92,7 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
     const hasPhoto = !!photoUrl;
     const locLines = locationLines(design);
     const isSaveTheDate = design.kind === "saveTheDate";
+    const saveTheDateLocation = [design.fields.venueCity, design.fields.venueState].filter(Boolean).join(", ");
     const bg = design.style.backgroundColor || "#f8f4ef";
     const accent = design.style.accentColor || "#D4A017";
     const text = design.style.textColor || "#1f2933";
@@ -176,9 +173,9 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
               <p style={{ margin: 0, fontFamily: sans, fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, color: text }}>
                 {formatDate(design.fields.weddingDate)}
               </p>
-              {isSaveTheDate && [design.fields.venueCity, design.fields.venueState].filter(Boolean).length > 0 && (
+              {isSaveTheDate && saveTheDateLocation && (
                 <p style={{ margin: "6px 0 0", fontFamily: sans, fontSize: 11, color: text }}>
-                  {[design.fields.venueCity, design.fields.venueState].filter(Boolean).join(", ")}
+                  {saveTheDateLocation}
                 </p>
               )}
               {!isSaveTheDate && (locLines.length > 0 || timeLines.length > 0 || rsvpDate) && (
@@ -252,13 +249,9 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
               <p style={{ margin: 0, fontFamily: sans, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700 }}>
                 {formatDate(design.fields.weddingDate)}
               </p>
-              {isSaveTheDate && locLines.length > 0 && (
+              {isSaveTheDate && saveTheDateLocation && (
                 <div style={{ margin: "16px auto 0", maxWidth: 360, fontFamily: font, fontSize: 20, lineHeight: 1.4 }}>
-                  {locLines.map((line) => (
-                    <p key={line} style={{ margin: 0 }}>
-                      {line}
-                    </p>
-                  ))}
+                  <p style={{ margin: 0 }}>{saveTheDateLocation}</p>
                 </div>
               )}
               {!isSaveTheDate && (locLines.length > 0 || timeLines.length > 0 || rsvpDate) && (

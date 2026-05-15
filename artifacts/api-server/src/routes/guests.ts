@@ -5,6 +5,13 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 
 const router = Router();
+const INVITATION_STATUSES = new Set(["pending", "sent"]);
+const RSVP_STATUSES = new Set(["pending", "attending", "maybe", "declined"]);
+const EINVITE_STATUSES = new Set(["not_sent", "sent"]);
+
+function invalidStatus(value: unknown, allowed: Set<string>) {
+  return typeof value !== "string" || !allowed.has(value);
+}
 
 router.get("/guests", requireAuth, async (req, res) => {
   try {
@@ -64,6 +71,12 @@ router.post("/guests", requireAuth, async (req, res) => {
 
     const trimmedName = name.trim();
     const cleanEmail = email?.trim() || null;
+    if (invitationStatus !== undefined && invalidStatus(invitationStatus, INVITATION_STATUSES)) {
+      return res.status(400).json({ error: "Invalid invitation status" });
+    }
+    if (rsvpStatus !== undefined && invalidStatus(rsvpStatus, RSVP_STATUSES)) {
+      return res.status(400).json({ error: "Invalid RSVP status" });
+    }
 
     if (req.query.force !== "true") {
       const dupConditions = [ilike(guests.name, trimmedName)];
@@ -133,6 +146,18 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     if (!profileId) return res.status(400).json({ error: "No wedding profile found." });
 
     const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, needsHotel, bookedHotelBlockId, notes, phone, address, aptUnit, guestCity, guestState, guestZip, guestCountry, saveTheDateStatus, rsvpReminderStatus } = req.body;
+    if (invitationStatus !== undefined && invalidStatus(invitationStatus, INVITATION_STATUSES)) {
+      return res.status(400).json({ error: "Invalid invitation status" });
+    }
+    if (rsvpStatus !== undefined && invalidStatus(rsvpStatus, RSVP_STATUSES)) {
+      return res.status(400).json({ error: "Invalid RSVP status" });
+    }
+    if (saveTheDateStatus !== undefined && invalidStatus(saveTheDateStatus, EINVITE_STATUSES)) {
+      return res.status(400).json({ error: "Invalid save-the-date status" });
+    }
+    if (rsvpReminderStatus !== undefined && invalidStatus(rsvpReminderStatus, EINVITE_STATUSES)) {
+      return res.status(400).json({ error: "Invalid RSVP reminder status" });
+    }
 
     if (name !== undefined || email !== undefined) {
       const checkName = (name ?? "").trim();

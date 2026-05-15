@@ -90,9 +90,25 @@ router.patch("/wedding-party/:id", requireAuth, async (req, res) => {
       name, role, side, phone, email,
       outfitDetails, shoeSize, outfitStore, fittingDate, notes, photoUrl, sortOrder,
     } = req.body;
+    const patch: Partial<typeof weddingParty.$inferInsert> = {};
+    if (name !== undefined) patch.name = name;
+    if (role !== undefined) patch.role = role;
+    if (side !== undefined) patch.side = side;
+    if (phone !== undefined) patch.phone = phone;
+    if (email !== undefined) patch.email = email;
+    if (outfitDetails !== undefined) patch.outfitDetails = outfitDetails;
+    if (shoeSize !== undefined) patch.shoeSize = shoeSize;
+    if (outfitStore !== undefined) patch.outfitStore = outfitStore;
+    if (fittingDate !== undefined) patch.fittingDate = fittingDate;
+    if (notes !== undefined) patch.notes = notes;
+    if (photoUrl !== undefined) patch.photoUrl = photoUrl;
+    if (sortOrder !== undefined) patch.sortOrder = sortOrder;
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ error: "No updates provided" });
+    }
     const [updated] = await db
       .update(weddingParty)
-      .set({ name, role, side, phone, email, outfitDetails, shoeSize, outfitStore, fittingDate, notes, photoUrl, sortOrder })
+      .set(patch)
       .where(and(eq(weddingParty.id, id), condition))
       .returning();
     if (!updated) return res.status(404).json({ error: "Not found" });

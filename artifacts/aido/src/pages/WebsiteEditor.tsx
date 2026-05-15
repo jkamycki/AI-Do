@@ -22,6 +22,7 @@ import { flushPendingEditableCommits, subscribeEditableDrag } from "@/components
 import { EDITABLE_HIDDEN_MARKER, isEditableHiddenMarker } from "@/components/website/hiddenMarker";
 import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
+import { qrSvgDataUrl } from "@/lib/localQr";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
@@ -2874,8 +2875,10 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
   const [copied, setCopied] = useState(false);
   const [selectedSize, setSelectedSize] = useState(800);
 
-  const qrUrl = (size: number) =>
-    `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=12&data=${encodeURIComponent(publicUrl)}`;
+  const qrUrl = useMemo(
+    () => qrSvgDataUrl(publicUrl, Math.max(2, Math.round(selectedSize / 100)), 4),
+    [publicUrl, selectedSize],
+  );
 
   const copyLink = async () => {
     try {
@@ -2914,7 +2917,7 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
       <div className="flex justify-center">
         <div className="rounded-xl border-2 border-border bg-white p-3 shadow-sm inline-block">
           <img
-            src={qrUrl(300)}
+            src={qrUrl}
             alt="Wedding website QR code"
             className="w-40 h-40 block"
           />
@@ -2949,8 +2952,8 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
 
       {/* Download */}
       <a
-        href={qrUrl(selectedSize)}
-        download={`wedding-qr-${selectedSize}px.png`}
+        href={qrUrl}
+        download={`wedding-qr-${selectedSize}px.svg`}
         target="_blank"
         rel="noopener noreferrer"
         className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"

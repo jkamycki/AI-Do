@@ -22,6 +22,7 @@ import {
   type InvitationDeliveryMode,
 } from "@/lib/invitationDesignModel";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { qrPngDataUrl } from "@/lib/localQr";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -129,10 +130,6 @@ function printLocationLines(design: ReturnType<typeof buildInvitationDesignDocum
       .filter(Boolean)
       .join(", "),
   ].filter(Boolean);
-}
-
-function qrImageUrl(url: string, size = 420) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=12&data=${encodeURIComponent(url)}`;
 }
 
 async function fileToDataUrl(blob: Blob) {
@@ -1071,6 +1068,10 @@ export default function InvitationCustomizationPage({
       const text = pdfRgb(activeDesignDocument.style.textColor, "#1f2933");
       const isSaveTheDate = activeDesignDocument.kind === "saveTheDate";
       const locLines = printLocationLines(activeDesignDocument);
+      const saveTheDateLocation = [
+        activeDesignDocument.fields.venueCity,
+        activeDesignDocument.fields.venueState,
+      ].filter(Boolean).join(", ");
       const timeLines = [
         activeDesignDocument.fields.ceremonyTime && `Ceremony ${formatPrintTime(activeDesignDocument.fields.ceremonyTime)}`,
         activeDesignDocument.fields.receptionTime && `Reception ${formatPrintTime(activeDesignDocument.fields.receptionTime)}`,
@@ -1182,13 +1183,11 @@ export default function InvitationCustomizationPage({
           y += 26;
         }
 
-        if (isSaveTheDate && locLines.length > 0) {
+        if (isSaveTheDate && saveTheDateLocation) {
           doc.setFont("times", "normal");
           doc.setFontSize(14);
-          for (const line of locLines) {
-            doc.text(line, pageWidth / 2, y, { align: "center", maxWidth: pageWidth - 82 });
-            y += 18;
-          }
+          doc.text(saveTheDateLocation, pageWidth / 2, y, { align: "center", maxWidth: pageWidth - 82 });
+          y += 18;
           y += 4;
         }
 
@@ -1274,7 +1273,7 @@ export default function InvitationCustomizationPage({
         y = addCenteredText(doc, "We hope to celebrate with you", pageWidth / 2, y, pageWidth - 82, 30) + 10;
 
         if (includePrintQr && websiteUrl) {
-          const qrDataUrl = await loadImageDataUrl(qrImageUrl(websiteUrl));
+          const qrDataUrl = await qrPngDataUrl(websiteUrl);
           if (qrDataUrl) {
             const qrSize = 126;
             const qrX = pageWidth / 2 - qrSize / 2;
