@@ -28,8 +28,8 @@ export const INVITATION_ANIMATION_TEMPLATES: Array<{
   },
   {
     id: "animated-full-photo-save-date",
-    name: "Full Photo Save Date",
-    description: "Envelope opens into a full-screen photo Save the Date.",
+    name: "Full Photo Reveal",
+    description: "Envelope opens into a full-photo invitation reveal.",
   },
 ];
 

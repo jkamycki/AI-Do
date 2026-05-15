@@ -1824,9 +1824,7 @@ export default function InvitationCustomizationPage({
               }));
               setAnimationPreviewNonce((current) => current + 1);
             };
-            const animationTemplates = activeKey === "saveTheDate"
-              ? INVITATION_ANIMATION_TEMPLATES
-              : INVITATION_ANIMATION_TEMPLATES.filter((template) => template.id !== "animated-full-photo-save-date");
+            const animationTemplates = INVITATION_ANIMATION_TEMPLATES;
             const isThemeActive = (themeId: string) => {
               const t = WEBSITE_THEMES.find((x) => x.id === themeId);
               if (!t) return false;
