@@ -192,8 +192,8 @@ export default function SaveTheDate() {
       <AnimatedInvitationShell
         layout={useCustom ? info.customLayout : "classic"}
         accent={GOLD}
-        paper="#59634f"
-        darkPanel="#313a2f"
+        paper={useCustom ? BG : undefined}
+        darkPanel={useCustom ? GOLD : undefined}
         monogram={`${info.partner1Name || ""} ${info.partner2Name || ""}`}
       >
       {isFullPhotoLayout ? (

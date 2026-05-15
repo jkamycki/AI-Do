@@ -358,8 +358,8 @@ export default function Rsvp() {
         <AnimatedInvitationShell
           layout={isCustomMode ? info.layout : "classic"}
           accent={GOLD}
-          paper="#59634f"
-          darkPanel="#313a2f"
+          paper={isCustomMode ? BG : undefined}
+          darkPanel={isCustomMode ? GOLD : undefined}
           monogram={`${info.partner1Name || ""} ${info.partner2Name || ""}`}
         >
         <div

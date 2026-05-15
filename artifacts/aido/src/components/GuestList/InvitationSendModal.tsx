@@ -771,6 +771,8 @@ export function InvitationSendModal({
                       <AnimatedInvitationShell
                         layout={customization.saveTheDateLayout}
                         accent={stdAccent}
+                        paper={stdPreviewColors.bg}
+                        darkPanel={stdPreviewColors.accent}
                         monogram={`${profile.partner1Name || ""} ${profile.partner2Name || ""}`}
                       >
                       <AiSaveDatePreview
@@ -809,6 +811,8 @@ export function InvitationSendModal({
                       <AnimatedInvitationShell
                         layout={customization.digitalInvitationLayout}
                         accent={digAccent}
+                        paper={digPreviewColors.bg}
+                        darkPanel={digPreviewColors.accent}
                         monogram={`${profile.partner1Name || ""} ${profile.partner2Name || ""}`}
                       >
                       <AiDigitalInvitationPreview
