@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { openai, getModel } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel, supportsCustomTemperature } from "@workspace/integrations-openai-ai-server";
 import {
   db, vendors, vendorPayments, checklistItems, weddingProfiles, timelines,
   guests, weddingParty, hotelBlocks, manualExpenses, budgets, budgetItems, budgetPaymentLogs,
@@ -3022,14 +3022,15 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
     // Helper: call with one automatic retry on Groq rate-limit (429)
     const createStream = async () => {
+      const model = getModel();
       const baseParams = {
-        model: getModel(),
+        model,
         // 600 tokens allows thorough conversational responses (~450 words).
         // Groq llama-3.1-8b-instant has 20K TPM — easily covers
         // system prompt + tools schema (~3,700 tok) + 6 history msgs + 600 output.
         // If the model hits this limit, the continuation loop below requests more.
         max_completion_tokens: 600,
-        temperature: 0.1,   // low temp = reliable, consistent tool calls
+        ...(supportsCustomTemperature(model) ? { temperature: 0.1 } : {}),
         messages: convo as unknown as Parameters<typeof openai.chat.completions.create>[0]["messages"],
         stream: true as const,
       };

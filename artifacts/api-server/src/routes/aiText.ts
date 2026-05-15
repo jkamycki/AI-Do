@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { openai, getModel } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel, supportsCustomTemperature } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router = Router();
@@ -40,14 +40,15 @@ router.post("/ai/generate-text", requireAuth, async (req, res) => {
       `User asked: ${prompt.trim()}`,
     ].filter(Boolean).join("\n\n");
 
+    const model = getModel();
     const completion = await openai.chat.completions.create({
-      model: getModel(),
+      model,
       messages: [
         { role: "system", content: sys },
         { role: "user", content: userMessage },
       ],
-      max_tokens: 600,
-      temperature: 0.8,
+      max_completion_tokens: 600,
+      ...(supportsCustomTemperature(model) ? { temperature: 0.8 } : {}),
     });
 
     const text = completion.choices[0]?.message?.content?.trim() ?? "";

@@ -173,7 +173,7 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       // 2048 tokens for comprehensive risk analyses with full clause coverage.
-      max_tokens: 2048,
+      max_completion_tokens: 2048,
     }, { signal: AbortSignal.timeout(90_000) });
 
     const analysisRaw = completion.choices[0]?.message?.content ?? "{}";
@@ -305,7 +305,7 @@ Write a polite, firm negotiation email from the couple. Open with appreciation, 
       model: getModel(),
       messages: [{ role: "user", content: prompt }],
       // Was 1200. Negotiation emails are 200-400 words ≈ 600 tokens; 800 leaves room for longer flag lists.
-      max_tokens: 800,
+      max_completion_tokens: 800,
     });
 
     const emailText = completion.choices[0]?.message?.content?.trim() ?? "";

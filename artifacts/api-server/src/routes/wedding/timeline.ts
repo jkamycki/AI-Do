@@ -192,7 +192,7 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
     const completion = await openai.chat.completions.create({
       model: getModel(),
       // Keep output bounded for lower latency while still covering a full day.
-      max_tokens: 1800,
+      max_completion_tokens: 1800,
       messages: [{ role: "user", content: prompt }],
     }, { signal: AbortSignal.timeout(45_000) });
 

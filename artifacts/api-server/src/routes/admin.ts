@@ -11,7 +11,7 @@ import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { purgeUserData, snapshotUserData } from "../lib/userCleanup";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
-import { openai, getModel } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel, supportsCustomTemperature } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
@@ -972,8 +972,9 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
 
 router.post("/admin/marketing/generate", requireAuth, requireAdmin, async (req, res) => {
   try {
+    const model = getModel();
     const completion = await openai.chat.completions.create({
-      model: getModel(),
+      model,
       messages: [
         {
           role: "system",
@@ -986,7 +987,7 @@ router.post("/admin/marketing/generate", requireAuth, requireAdmin, async (req, 
 Return ONLY JSON: {"subject":"...","body":"..."}`,
         },
       ],
-      temperature: 0.9,
+      ...(supportsCustomTemperature(model) ? { temperature: 0.9 } : {}),
       // PREVIOUSLY UNCAPPED — defaulted to model max, which on llama-3.1-8b
       // is huge. 150-word email ≈ 220 tok; 400 is safe ceiling.
       max_completion_tokens: 400,

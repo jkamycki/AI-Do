@@ -253,7 +253,7 @@ Use only the exact guest names from the list. Only create tables that have guest
       // Roughly: each guest entry costs ~6 tokens, plus a few hundred for
       // table chrome / insights / warnings. 1500 was tight for >40 guests
       // and could truncate the JSON; allow more headroom for big weddings.
-      max_tokens: Math.max(2000, guests.length * 25 + 800),
+      max_completion_tokens: Math.max(2000, guests.length * 25 + 800),
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";

@@ -7,7 +7,7 @@ import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceA
 import { FROM_EMAIL, sendEmail } from "../lib/resend";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { evaluateCustomDesignCompleteness } from "../lib/customDesignValidation";
-import { openai, getModel } from "@workspace/integrations-openai-ai-server";
+import { openai, getModel, supportsCustomTemperature } from "@workspace/integrations-openai-ai-server";
 import crypto from "crypto";
 
 const objectStorageService = new ObjectStorageService();
@@ -2082,8 +2082,9 @@ router.post("/profile/generate-invitation-message", requireAuth, async (req, res
       details && `What the couple wants to convey: ${details}`,
     ].filter(Boolean).join("\n");
 
+    const model = getModel();
     const completion = await openai.chat.completions.create({
-      model: getModel(),
+      model,
       messages: [
         {
           role: "system",
@@ -2094,8 +2095,8 @@ router.post("/profile/generate-invitation-message", requireAuth, async (req, res
           content: context,
         },
       ],
-      max_tokens: 150,
-      temperature: 0.85,
+      max_completion_tokens: 150,
+      ...(supportsCustomTemperature(model) ? { temperature: 0.85 } : {}),
     });
 
     const message = completion.choices[0]?.message?.content?.trim() ?? "";

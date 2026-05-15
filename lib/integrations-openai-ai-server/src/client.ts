@@ -56,6 +56,10 @@ export function getModel(): string {
   return "gpt-4o-mini";
 }
 
+export function supportsCustomTemperature(model = getModel()): boolean {
+  return !/^gpt-5(?:-|$)/i.test(model);
+}
+
 /**
  * Returns a vision-capable chat model for the active provider.
  * Most cheap text-only models (e.g. Llama 3.1/3.3 instant/versatile on Groq)
