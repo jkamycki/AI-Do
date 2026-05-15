@@ -20,6 +20,7 @@ import type { Guest } from "@workspace/api-client-react";
 import type { TextOverrides, ColorPalette } from "@/types/invitations";
 import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
 import { AiSaveDatePreview, AiDigitalInvitationPreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
+import { AnimatedInvitationShell } from "@/components/InvitationCustomization/AnimatedInvitationShell";
 import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
 
 interface Customization {
@@ -744,7 +745,7 @@ export function InvitationSendModal({
                 <div>
                   <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Custom design is complete</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Your personalized design will be emailed exactly as you customized it — fonts, colors, layout, and all.
+                    Your personalized design will be sent with matching colors and fonts. Animated templates play after the guest opens the invitation link.
                   </p>
                 </div>
               </div>
@@ -763,10 +764,15 @@ export function InvitationSendModal({
 
                 <TabsContent value="saveTheDate" className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground text-center">
-                    This is exactly what will be emailed to your guest
+                    The guest link opens with this custom animation
                   </p>
                   <div className="flex justify-center">
                     {profile && (
+                      <AnimatedInvitationShell
+                        layout={customization.saveTheDateLayout}
+                        accent={stdAccent}
+                        compact
+                      >
                       <AiSaveDatePreview
                         profile={profile}
                         palette={stdPalette}
@@ -774,6 +780,7 @@ export function InvitationSendModal({
                         photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                         customColors={stdPreviewColors}
                       />
+                      </AnimatedInvitationShell>
                     )}
                   </div>
                   <Button
@@ -793,10 +800,15 @@ export function InvitationSendModal({
 
                 <TabsContent value="digitalInvitation" className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground text-center">
-                    This is exactly what will be emailed to your guest
+                    The guest link opens with this custom animation
                   </p>
                   <div className="flex justify-center overflow-hidden">
                     {profile && (
+                      <AnimatedInvitationShell
+                        layout={customization.digitalInvitationLayout}
+                        accent={digAccent}
+                        compact
+                      >
                       <AiDigitalInvitationPreview
                         profile={{
                           partner1Name: profile.partner1Name,
@@ -819,6 +831,7 @@ export function InvitationSendModal({
                         onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
                         customColors={digPreviewColors}
                       />
+                      </AnimatedInvitationShell>
                     )}
                   </div>
                   {reminderOnly ? (

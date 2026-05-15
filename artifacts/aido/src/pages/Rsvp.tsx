@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Heart, CheckCircle2, XCircle, AlertCircle, Loader2, User, Download, MapPin } from "lucide-react";
+import { AnimatedInvitationShell } from "@/components/InvitationCustomization/AnimatedInvitationShell";
 
 const schema = z.object({
   attendance: z.enum(["attending", "declined"], { required_error: "Please select Accept or Decline." }),
@@ -352,6 +353,12 @@ export default function Rsvp() {
       <div className="w-full space-y-6" style={{ maxWidth: 420 }}>
 
         {/* Invitation card — captured by html2canvas for PDF */}
+        <AnimatedInvitationShell
+          layout={isCustomMode ? info.layout : "classic"}
+          accent={GOLD}
+          paper="#d9c8ad"
+          darkPanel="#15131f"
+        >
         <div
           ref={cardRef}
           className="w-full rounded-2xl overflow-hidden shadow-2xl"
@@ -475,6 +482,7 @@ export default function Rsvp() {
 
           </div>
         </div>{/* end cardRef */}
+        </AnimatedInvitationShell>
 
         {/* Download button — dark pill so the white label reads on a white page. */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>

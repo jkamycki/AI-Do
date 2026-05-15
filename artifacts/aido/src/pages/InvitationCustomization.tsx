@@ -10,6 +10,11 @@ import {
   AiDigitalInvitationPreview,
 } from "@/components/InvitationCustomization/AiPreviewComponents";
 import {
+  AnimatedInvitationShell,
+  INVITATION_ANIMATION_TEMPLATES,
+  type InvitationAnimationLayout,
+} from "@/components/InvitationCustomization/AnimatedInvitationShell";
+import {
   PrintInvitationPreview,
   PRINT_SIZES,
   type PrintInvitationSide,
@@ -68,6 +73,13 @@ type InvitationDesignFields = {
   fontColor: string;
 };
 type CustomDesignState = Record<InvitationDesignKey, InvitationDesignFields>;
+type AnimationLayoutState = Record<InvitationDesignKey, InvitationAnimationLayout>;
+
+function asAnimationLayout(value: string | null | undefined): InvitationAnimationLayout {
+  return INVITATION_ANIMATION_TEMPLATES.some((template) => template.id === value)
+    ? (value as InvitationAnimationLayout)
+    : "animated-envelope";
+}
 
 function safePdfColor(color: string | null | undefined, fallback: string) {
   if (!color) return fallback;
@@ -224,6 +236,10 @@ export default function InvitationCustomizationPage({
   const [customDesign, setCustomDesign] = useState<CustomDesignState>({
     saveTheDate: { backgroundColor: "#FFFFFF", accentColor: "#D4A017", fontFamily: "Playfair Display", fontSize: "16", fontColor: "#222222" },
     rsvpInvitation: { backgroundColor: "#FFFFFF", accentColor: "#D4A017", fontFamily: "Playfair Display", fontSize: "16", fontColor: "#222222" },
+  });
+  const [animationLayouts, setAnimationLayouts] = useState<AnimationLayoutState>({
+    saveTheDate: "animated-envelope",
+    rsvpInvitation: "animated-envelope",
   });
 
   // ── Shared brand-color state ──────────────────────────────────────────────
@@ -593,6 +609,10 @@ export default function InvitationCustomizationPage({
           fontColor: customization.digitalInvitationFontColor ?? "#222222",
         },
       });
+      setAnimationLayouts({
+        saveTheDate: asAnimationLayout(customization.saveTheDateLayout ?? customization.selectedLayout),
+        rsvpInvitation: asAnimationLayout(customization.digitalInvitationLayout ?? customization.selectedLayout),
+      });
       resetCustomDesignUndo();
 
       if (customization.saveTheDatePhotoPosition) {
@@ -914,6 +934,9 @@ export default function InvitationCustomizationPage({
       // legacy shared customColors.accent.
       saveTheDateAccentColor: stdCustom ? d.saveTheDate.accentColor : null,
       digitalInvitationAccentColor: digCustom ? d.rsvpInvitation.accentColor : null,
+      selectedLayout: eitherCustom ? animationLayouts[isSTD ? "saveTheDate" : "rsvpInvitation"] : "classic",
+      saveTheDateLayout: stdCustom ? animationLayouts.saveTheDate : "classic",
+      digitalInvitationLayout: digCustom ? animationLayouts.rsvpInvitation : "classic",
       // Couple-set RSVP deadline; null clears a previously-saved value.
       rsvpByDate: rsvpByDate || null,
     };
@@ -984,6 +1007,7 @@ export default function InvitationCustomizationPage({
     backgroundImageUrl,
     designMode,
     customDesign,
+    animationLayouts,
     rsvpByDate,
   ]);
 
@@ -1736,6 +1760,12 @@ export default function InvitationCustomizationPage({
             const updateField = (field: keyof typeof fields, value: string) => {
               updateCustomDesignField(activeKey, field, value);
             };
+            const updateAnimationLayout = (layout: InvitationAnimationLayout) => {
+              setAnimationLayouts((current) => ({
+                ...current,
+                [activeKey]: layout,
+              }));
+            };
             const isThemeActive = (themeId: string) => {
               const t = WEBSITE_THEMES.find((x) => x.id === themeId);
               if (!t) return false;
@@ -1769,6 +1799,59 @@ export default function InvitationCustomizationPage({
                       Clicking one populates the colour + font fields below
                       so the Save the Date / RSVP invitation can match the
                       wedding website at a tap. */}
+                  {deliveryMode === "digital" && (
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Digital animation template
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          Used only for custom digital invitations. RSVP opens into the RSVP page, then stays still for guests to respond.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        {INVITATION_ANIMATION_TEMPLATES.map((template) => {
+                          const selected = animationLayouts[activeKey] === template.id;
+                          return (
+                            <button
+                              key={template.id}
+                              type="button"
+                              onClick={() => updateAnimationLayout(template.id)}
+                              className={`flex items-center gap-3 rounded-md border p-2.5 text-left transition-all ${
+                                selected
+                                  ? "border-primary bg-primary/5 ring-2 ring-primary/15"
+                                  : "border-border hover:border-primary/45"
+                              }`}
+                            >
+                              <span
+                                className="relative h-10 w-12 shrink-0 overflow-hidden rounded border"
+                                style={{ background: fields.backgroundColor }}
+                              >
+                                <span
+                                  className="absolute inset-x-1 top-1 h-5 rounded-sm"
+                                  style={{ background: fields.accentColor + "22", border: `1px solid ${fields.accentColor}55` }}
+                                />
+                                {template.id !== "classic" && (
+                                  <>
+                                    <span className="absolute inset-y-0 left-0 w-7 origin-left rotate-[-18deg]" style={{ background: "#d9c8ad" }} />
+                                    <span className="absolute inset-y-0 right-0 w-7 origin-right rotate-[18deg]" style={{ background: "#15131f" }} />
+                                    <span className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: fields.accentColor }} />
+                                  </>
+                                )}
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-xs font-semibold">{template.name}</span>
+                                <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+                                  {template.description}
+                                </span>
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <p className="text-xs text-muted-foreground">
                       Quick themes (same as the website editor)
@@ -1973,8 +2056,17 @@ export default function InvitationCustomizationPage({
                       fontSize: cd.fontSize,
                     }
                   : undefined;
+                const activeAnimationLayout = isCustom
+                  ? animationLayouts[isSTD ? "saveTheDate" : "rsvpInvitation"]
+                  : "classic";
                 return (
-                  <div>
+                  <AnimatedInvitationShell
+                    layout={activeAnimationLayout}
+                    accent={cd.accentColor}
+                    paper="#d9c8ad"
+                    darkPanel="#15131f"
+                    compact
+                  >
                     {isSTD ? (
                       <AiSaveDatePreview
                         profile={{
@@ -2018,7 +2110,7 @@ export default function InvitationCustomizationPage({
                         customColors={isCustom ? previewCustomColors : undefined}
                       />
                     )}
-                  </div>
+                  </AnimatedInvitationShell>
                 );
               })()
               )}

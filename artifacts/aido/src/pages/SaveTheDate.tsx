@@ -3,6 +3,7 @@ import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Download, AlertCircle } from "lucide-react";
+import { AnimatedInvitationShell } from "@/components/InvitationCustomization/AnimatedInvitationShell";
 
 interface SaveTheDateInfo {
   guestName: string;
@@ -182,6 +183,12 @@ export default function SaveTheDate() {
     <div className="min-h-screen flex flex-col items-center py-10 px-4" style={{ background: PAGE_BG, backgroundImage: PAGE_BG_PATTERN, backgroundSize: PAGE_BG_PATTERN ? "22px 22px" : undefined }}>
 
       {/* Card — this is what gets captured for the PDF */}
+      <AnimatedInvitationShell
+        layout={useCustom ? info.customLayout : "classic"}
+        accent={GOLD}
+        paper="#d9c8ad"
+        darkPanel="#15131f"
+      >
       <div
         ref={cardRef}
         className="w-full rounded-2xl overflow-hidden shadow-2xl"
@@ -286,6 +293,7 @@ export default function SaveTheDate() {
         </div>
 
       </div>
+      </AnimatedInvitationShell>
 
     </div>
   );
