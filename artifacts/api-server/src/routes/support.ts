@@ -5,7 +5,7 @@ import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../middlewares/requireAuth";
 import { aiLimiter, incrementDailySupport } from "../middlewares/rateLimiter";
 import { getAuth, clerkClient } from "@clerk/express";
-import { db, supportTickets } from "@workspace/db";
+import { db, supportTickets, contactMessages } from "@workspace/db";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
 
 const router = Router();
@@ -68,6 +68,8 @@ const SUPPORT_BOT_PROMPT = `You are a friendly and helpful customer support assi
 - Be empathetic and understanding — customers may be frustrated
 - Ask clarifying questions to understand their issue fully
 - Provide clear, step-by-step solutions when possible
+- When a user reports a problem, start with 1-3 short troubleshooting steps or one clarifying question. Do not overwhelm them with a long checklist.
+- If the troubleshooting does not fix it, or the issue needs admin/backend access, offer to file a ticket and ask for their full name and best email to reach them.
 - Be honest if you need to escalate to the human support team
 - Acknowledge their concern and thank them for their patience
 - Keep responses concise and scannable with bullet points when helpful
@@ -115,6 +117,8 @@ const ARIA_SYSTEM_PROMPT = `You are Aria, an expert AI wedding planning assistan
 - If the user's question is vague, ask one clarifying question before diving in
 - Celebrate wins and acknowledge stress — planning a wedding is emotional, not just logistical
 - For "how do I use the portal" questions, give direct in-app click paths using the actual page names (e.g., "Go to Budget → Add Item"), then list 1-3 short steps.
+- When a user reports something broken, start with one clarifying question or 1-3 quick troubleshooting steps, then ask them to tell you if that fixed it. Keep this short.
+- If it still does not work, or it needs admin/backend help, offer to file a support ticket and ask for their full name and best email to reach them.
 
 ## Filing a support ticket — STRICT RULES:
 
@@ -130,6 +134,7 @@ use the function-calling API. Do not type \`{"name": "submit_support_ticket", ..
 as message content — that is a bug; use the tool API.
 
 Flow when the user reports an issue:
+Updated behavior: before collecting contact info, try one concise troubleshooting pass first. Ask no more than one clarifying question OR give 1-3 quick steps, then ask whether that fixed it. Only if it still does not work, they cannot complete the steps, or it clearly needs admin/backend help, offer to file a ticket. When collecting contact info, ask for their full name and best email to reach them. If known user context exists, confirm it is the best name/email to use. After filing, mention the request is visible to the A.IDO team in Operations Center Messages.
 1. Ask the user to describe the issue clearly (steps, what happened, what they expected).
 2. Confirm name + email:
    - If a User Context block above gave you their name + email, say
@@ -209,6 +214,18 @@ async function fileSupportTicket(args: Record<string, unknown>, userId: string |
         userId,
       })
       .returning();
+
+    // Mirror Aria-filed tickets into Operations Center -> Messages so the
+    // team can triage and reply from the same message inbox as contact forms.
+    await db.insert(contactMessages).values({
+      userId,
+      name,
+      email,
+      subject: `[${ticketNumber}] ${subject.slice(0, 160)}`,
+      message,
+      isRead: false,
+      isResolved: false,
+    });
 
     sendEmail({
       to: OWNER_EMAILS[0],
