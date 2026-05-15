@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { Calendar, MapPin, QrCode } from "lucide-react";
+import { Calendar, Heart, MapPin, QrCode } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import type { InvitationDesignDocument } from "@/lib/invitationDesignModel";
 
@@ -102,6 +102,8 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
     const font = `'${design.style.fontFamily || "Playfair Display"}', Georgia, serif`;
     const sans = "'Plus Jakarta Sans', Arial, sans-serif";
     const qrUrl = websiteUrl || "";
+    const dotPattern = `radial-gradient(${accent}22 1px, transparent 1px)`;
+    const aiPrint = design.designMode === "ai";
     const timeLines = [
       design.fields.ceremonyTime && `Ceremony ${formatTime(design.fields.ceremonyTime)}`,
       design.fields.receptionTime && `Reception ${formatTime(design.fields.receptionTime)}`,
@@ -140,7 +142,92 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
           }}
         />
 
-        {side === "front" ? (
+        {side === "front" && aiPrint ? (
+          <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", textAlign: "center", backgroundImage: dotPattern, backgroundSize: "22px 22px" }}>
+            <div style={{ display: "flex", justifyContent: "center", padding: "20px 0 4px" }}>
+              <img src="/logo.png" alt="A.IDO" style={{ height: 44, width: "auto", objectFit: "contain", opacity: 0.86 }} />
+            </div>
+            <div style={{ padding: "10px 34px 28px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              {!isSaveTheDate && (
+                <div style={{ width: 46, height: 46, borderRadius: "50%", margin: "0 auto 8px", background: `${accent}22`, boxShadow: `0 0 0 1px ${accent}44`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Heart style={{ width: 20, height: 20, color: accent, fill: accent }} />
+                </div>
+              )}
+              <p style={{ margin: 0, fontFamily: sans, fontSize: 11, letterSpacing: "0.36em", textTransform: "uppercase", color: accent, fontWeight: 700 }}>
+                {isSaveTheDate ? "Save the Date" : "Wedding RSVP"}
+              </p>
+              <h2 style={{ margin: "10px 0 0", fontFamily: font, fontSize: size === "5x7" ? 38 : 32, lineHeight: 1.12, fontStyle: "italic", fontWeight: 400, color: accent }}>
+                {design.couple}
+              </h2>
+              {hasPhoto && (
+                <div
+                  style={{
+                    height: isSaveTheDate ? "34%" : "30%",
+                    margin: "18px 0 16px",
+                    backgroundImage: `url("${photoUrl}")`,
+                    backgroundSize: "cover",
+                    backgroundPosition: `${design.image.position.x}% ${design.image.position.y}%`,
+                    borderRadius: 8,
+                    boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
+                  }}
+                />
+              )}
+              <div style={{ width: "82%", height: 1, background: "rgba(255,255,255,0.12)", margin: "0 auto 14px" }} />
+              <p style={{ margin: 0, fontFamily: sans, fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, color: text }}>
+                {formatDate(design.fields.weddingDate)}
+              </p>
+              {isSaveTheDate && [design.fields.venueCity, design.fields.venueState].filter(Boolean).length > 0 && (
+                <p style={{ margin: "6px 0 0", fontFamily: sans, fontSize: 11, color: text }}>
+                  {[design.fields.venueCity, design.fields.venueState].filter(Boolean).join(", ")}
+                </p>
+              )}
+              {!isSaveTheDate && (locLines.length > 0 || timeLines.length > 0 || rsvpDate) && (
+                <div style={{ margin: "12px auto 0", padding: "10px 12px", width: "100%", borderTop: `1px solid ${accent}55`, borderBottom: `1px solid ${accent}55`, background: "rgba(255,255,255,0.035)" }}>
+                  {design.fields.venue && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      <MapPin style={{ width: 13, height: 13, color: accent, flexShrink: 0 }} />
+                      <p style={{ margin: 0, fontFamily: font, fontSize: 17, lineHeight: 1.2, fontWeight: 600, color: accent }}>
+                        {design.fields.venue}
+                      </p>
+                    </div>
+                  )}
+                  {(design.fields.venueAddress || locLines[2]) && (
+                    <div style={{ marginTop: design.fields.venue ? 6 : 0, fontFamily: sans, fontSize: 9, lineHeight: 1.35, letterSpacing: "0.04em", textTransform: "uppercase", color: text }}>
+                      {design.fields.venueAddress && <p style={{ margin: 0 }}>{design.fields.venueAddress}</p>}
+                      {locLines[2] && <p style={{ margin: "2px 0 0", opacity: 0.7 }}>{locLines[2]}</p>}
+                    </div>
+                  )}
+                  {timeLines.length > 0 && (
+                    <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
+                      {timeLines.map((line) => (
+                        <span key={line} style={{ border: `1px solid ${accent}66`, borderRadius: 999, padding: "4px 7px", fontFamily: sans, fontSize: 7.6, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: accent }}>
+                          {line}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {rsvpDate && (
+                    <div style={{ marginTop: 9 }}>
+                      <span style={{ display: "inline-block", background: accent, color: bg, borderRadius: 6, padding: "6px 9px", fontFamily: sans, fontSize: 8.5, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                        RSVP By {rsvpDate}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+              {design.message && (
+                <p style={{ margin: "14px auto 0", maxWidth: 340, fontFamily: font, fontSize: isSaveTheDate ? 15 : 13.5, lineHeight: 1.55, fontStyle: "italic", color: text }}>
+                  &ldquo;{design.message}&rdquo;
+                </p>
+              )}
+              {isSaveTheDate && (
+                <p style={{ margin: "12px 0 0", fontFamily: font, fontSize: 13, fontStyle: "italic", color: "rgba(255,255,255,0.58)" }}>
+                  Formal invitation to follow
+                </p>
+              )}
+            </div>
+          </div>
+        ) : side === "front" ? (
           <div style={{ position: "relative", height: "100%", padding: 48, display: "flex", flexDirection: "column", textAlign: "center" }}>
             {hasPhoto && (
               <div

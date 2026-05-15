@@ -1089,10 +1089,60 @@ export default function InvitationCustomizationPage({
       doc.setTextColor(...text);
 
       if (effectivePrintSide === "front") {
-        let y = 56;
+        const aiPrint = activeDesignDocument.designMode === "ai";
+        let y = aiPrint ? 72 : 56;
         const photoUrl = resolveMediaUrl(activeDesignDocument.image.url);
         const photoDataUrl = await loadImageDataUrl(photoUrl);
-        if (photoDataUrl) {
+
+        if (aiPrint) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9.5);
+          doc.setTextColor(...accent);
+          doc.text(isSaveTheDate ? "SAVE THE DATE" : "WEDDING RSVP", pageWidth / 2, y, { align: "center" });
+          y += 30;
+
+          doc.setFont("times", "italic");
+          doc.setFontSize(printSize === "5x7" ? 31 : 27);
+          y = addCenteredText(doc, activeDesignDocument.couple, pageWidth / 2, y, pageWidth - 84, 32) + 10;
+
+          if (photoDataUrl) {
+            const photoX = 48;
+            const photoY = y;
+            const photoWidth = pageWidth - 96;
+            const photoHeight = isSaveTheDate ? pageHeight * 0.28 : pageHeight * 0.25;
+            const coveredPhoto = await coverImageDataUrl(
+              photoDataUrl,
+              photoWidth * 3,
+              photoHeight * 3,
+              activeDesignDocument.image.position,
+            );
+            doc.addImage(coveredPhoto, "JPEG", photoX, photoY, photoWidth, photoHeight);
+            y = photoY + photoHeight + 16;
+          }
+
+          doc.setDrawColor(255, 255, 255);
+          doc.setLineWidth(0.4);
+          doc.line(60, y, pageWidth - 60, y);
+          y += 18;
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          doc.setTextColor(...text);
+          doc.text(formatPrintDate(activeDesignDocument.fields.weddingDate), pageWidth / 2, y, { align: "center" });
+          y += 18;
+
+          if (isSaveTheDate) {
+            const cityState = [activeDesignDocument.fields.venueCity, activeDesignDocument.fields.venueState]
+              .filter(Boolean)
+              .join(", ");
+            if (cityState) {
+              doc.setFont("helvetica", "normal");
+              doc.setFontSize(9);
+              doc.text(cityState, pageWidth / 2, y, { align: "center" });
+              y += 16;
+            }
+          }
+        } else if (photoDataUrl) {
           const photoX = 48;
           const photoY = 48;
           const photoWidth = pageWidth - 96;
@@ -1111,24 +1161,26 @@ export default function InvitationCustomizationPage({
           y = pageHeight * 0.2;
         }
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.setTextColor(...accent);
-        doc.text(isSaveTheDate ? "SAVE THE DATE" : "THE WEDDING CELEBRATION OF", pageWidth / 2, y, { align: "center" });
+        if (!aiPrint) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10);
+          doc.setTextColor(...accent);
+          doc.text(isSaveTheDate ? "SAVE THE DATE" : "THE WEDDING CELEBRATION OF", pageWidth / 2, y, { align: "center" });
 
-        doc.setFont("times", "italic");
-        doc.setFontSize(printSize === "5x7" ? 34 : 29);
-        y = addCenteredText(doc, activeDesignDocument.couple, pageWidth / 2, y + 36, pageWidth - 84, 36) + 8;
+          doc.setFont("times", "italic");
+          doc.setFontSize(printSize === "5x7" ? 34 : 29);
+          y = addCenteredText(doc, activeDesignDocument.couple, pageWidth / 2, y + 36, pageWidth - 84, 36) + 8;
 
-        doc.setDrawColor(...accent);
-        doc.line(pageWidth / 2 - 42, y, pageWidth / 2 + 42, y);
-        y += 28;
+          doc.setDrawColor(...accent);
+          doc.line(pageWidth / 2 - 42, y, pageWidth / 2 + 42, y);
+          y += 28;
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.setTextColor(...text);
-        doc.text(formatPrintDate(activeDesignDocument.fields.weddingDate), pageWidth / 2, y, { align: "center" });
-        y += 26;
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10);
+          doc.setTextColor(...text);
+          doc.text(formatPrintDate(activeDesignDocument.fields.weddingDate), pageWidth / 2, y, { align: "center" });
+          y += 26;
+        }
 
         if (isSaveTheDate && locLines.length > 0) {
           doc.setFont("times", "normal");
@@ -1198,8 +1250,15 @@ export default function InvitationCustomizationPage({
 
         if (activeDesignDocument.message) {
           doc.setFont("times", "italic");
-          doc.setFontSize(12);
-          addCenteredText(doc, activeDesignDocument.message, pageWidth / 2, y + 8, pageWidth - 92, 16);
+          doc.setFontSize(aiPrint ? 11.5 : 12);
+          y = addCenteredText(doc, activeDesignDocument.message, pageWidth / 2, y + 8, pageWidth - 92, 16);
+        }
+
+        if (aiPrint && isSaveTheDate) {
+          doc.setFont("times", "italic");
+          doc.setFontSize(10.5);
+          doc.setTextColor(190, 190, 190);
+          doc.text("Formal invitation to follow", pageWidth / 2, y + 14, { align: "center" });
         }
       } else {
         let y = pageHeight * 0.2;
