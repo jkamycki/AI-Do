@@ -146,7 +146,7 @@ export default function SaveTheDate() {
   const msgText    = (overrides["std:message"]?.text as string | undefined) || info?.saveTheDateMessage || defaultMsg;
   const photoPos   = info?.photoObjectPosition ?? "50% 50%";
   const photoFilter = photoEffectToFilter(info?.photoEffect);
-  const isFullPhotoLayout = !!(useCustom && info?.customLayout === "animated-full-photo-save-date");
+  const isFullPhotoLayout = false;
   const partner1First = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";
   const partner2First = String(info?.partner2Name || "").trim().split(/\s+/)[0] || "Partner";
 
@@ -210,7 +210,7 @@ export default function SaveTheDate() {
 
       {/* Card — this is what gets captured for the PDF */}
       <AnimatedInvitationShell
-        layout={useCustom ? info.customLayout : "classic"}
+        layout="classic"
         accent={GOLD}
         paper={useCustom ? BG : undefined}
         darkPanel={useCustom ? GOLD : undefined}

@@ -563,8 +563,8 @@ export function InvitationSendModal({
         selectedLayout: rawCustomization.selectedLayout ?? null,
         saveTheDateFont: rawCustomization.saveTheDateFont || rawCustomization.selectedFont || "Playfair Display",
         digitalInvitationFont: rawCustomization.digitalInvitationFont || rawCustomization.selectedFont || "Playfair Display",
-        saveTheDateLayout: rawCustomization.saveTheDateLayout || rawCustomization.selectedLayout || "classic",
-        digitalInvitationLayout: rawCustomization.digitalInvitationLayout || rawCustomization.selectedLayout || "classic",
+        saveTheDateLayout: "classic",
+        digitalInvitationLayout: "classic",
         saveTheDateBackground: rawCustomization.saveTheDateBackground ?? null,
         digitalInvitationBackground: rawCustomization.digitalInvitationBackground ?? null,
         saveTheDateFontColor: rawCustomization.saveTheDateFontColor ?? null,
@@ -598,8 +598,8 @@ export function InvitationSendModal({
               selectedLayout: old.selectedLayout ?? null,
               saveTheDateFont: old.saveTheDateFont || old.selectedFont || "Playfair Display",
               digitalInvitationFont: old.digitalInvitationFont || old.selectedFont || "Playfair Display",
-              saveTheDateLayout: old.saveTheDateLayout || old.selectedLayout || "classic",
-              digitalInvitationLayout: old.digitalInvitationLayout || old.selectedLayout || "classic",
+              saveTheDateLayout: "classic",
+              digitalInvitationLayout: "classic",
               saveTheDateBackground: old.saveTheDateBackground ?? null,
               digitalInvitationBackground: old.digitalInvitationBackground ?? null,
               saveTheDateFontColor: old.saveTheDateFontColor ?? null,
@@ -745,7 +745,7 @@ export function InvitationSendModal({
                 <div>
                   <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Custom design is complete</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Your personalized design will be sent with matching colors and fonts. Animated templates play after the guest opens the invitation link.
+                    Your personalized design will be sent with matching colors and fonts.
                   </p>
                 </div>
               </div>
@@ -764,7 +764,7 @@ export function InvitationSendModal({
 
                 <TabsContent value="saveTheDate" className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground text-center">
-                    The guest link opens with this custom animation
+                    The guest link opens with this custom design
                   </p>
                   <div className="flex justify-center">
                     {profile && (
@@ -781,7 +781,7 @@ export function InvitationSendModal({
                         photoUrl={customization.saveTheDatePhotoUrl || null}
                         photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                         customColors={stdPreviewColors}
-                        fullPhoto={customization.saveTheDateLayout === "animated-full-photo-save-date"}
+                        fullPhoto={false}
                         photoEffect={customization.customColors?.saveTheDatePhotoEffect ?? "none"}
                       />
                       </AnimatedInvitationShell>
@@ -804,7 +804,7 @@ export function InvitationSendModal({
 
                 <TabsContent value="digitalInvitation" className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground text-center">
-                    The guest link opens with this custom animation
+                    The guest link opens with this custom design
                   </p>
                   <div className="flex justify-center">
                     {profile && (
@@ -837,7 +837,7 @@ export function InvitationSendModal({
                         onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
                         customColors={digPreviewColors}
                         photoEffect={customization.customColors?.digitalInvitationPhotoEffect ?? "none"}
-                        fullPhoto={customization.digitalInvitationLayout === "animated-full-photo-save-date"}
+                        fullPhoto={false}
                       />
                       </AnimatedInvitationShell>
                     )}

@@ -279,7 +279,7 @@ export default function Rsvp() {
     info && !info.ceremonyAtVenue &&
     (info.ceremonyVenueName || info.ceremonyAddress || info.ceremonyCity)
   );
-  const isFullPhotoLayout = !!(isCustomMode && info?.layout === "animated-full-photo-save-date");
+  const isFullPhotoLayout = false;
 
   const downloadInvitationPdf = async () => {
     if (!info || !cardRef.current) return;
@@ -383,7 +383,7 @@ export default function Rsvp() {
 
         {/* Invitation card — captured by html2canvas for PDF */}
         <AnimatedInvitationShell
-          layout={isCustomMode ? info.layout : "classic"}
+          layout="classic"
           accent={GOLD}
           paper={isCustomMode ? BG : undefined}
           darkPanel={isCustomMode ? GOLD : undefined}

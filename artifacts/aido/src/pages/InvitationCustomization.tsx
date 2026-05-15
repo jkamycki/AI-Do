@@ -9,11 +9,7 @@ import {
   AiSaveDatePreview,
   AiDigitalInvitationPreview,
 } from "@/components/InvitationCustomization/AiPreviewComponents";
-import {
-  AnimatedInvitationShell,
-  INVITATION_ANIMATION_TEMPLATES,
-  type InvitationAnimationLayout,
-} from "@/components/InvitationCustomization/AnimatedInvitationShell";
+import { AnimatedInvitationShell } from "@/components/InvitationCustomization/AnimatedInvitationShell";
 import {
   PrintInvitationPreview,
   PRINT_SIZES,
@@ -45,7 +41,6 @@ import {
   Printer,
   FileDown,
   Send,
-  Play,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type {
@@ -74,13 +69,6 @@ type InvitationDesignFields = {
   fontColor: string;
 };
 type CustomDesignState = Record<InvitationDesignKey, InvitationDesignFields>;
-type AnimationLayoutState = Record<InvitationDesignKey, InvitationAnimationLayout>;
-
-function asAnimationLayout(value: string | null | undefined): InvitationAnimationLayout {
-  return INVITATION_ANIMATION_TEMPLATES.some((template) => template.id === value)
-    ? (value as InvitationAnimationLayout)
-    : "animated-envelope";
-}
 
 function safePdfColor(color: string | null | undefined, fallback: string) {
   if (!color) return fallback;
@@ -238,11 +226,7 @@ export default function InvitationCustomizationPage({
     saveTheDate: { backgroundColor: "#FFFFFF", accentColor: "#D4A017", fontFamily: "Playfair Display", fontSize: "16", fontColor: "#222222" },
     rsvpInvitation: { backgroundColor: "#FFFFFF", accentColor: "#D4A017", fontFamily: "Playfair Display", fontSize: "16", fontColor: "#222222" },
   });
-  const [animationLayouts, setAnimationLayouts] = useState<AnimationLayoutState>({
-    saveTheDate: "animated-envelope",
-    rsvpInvitation: "animated-envelope",
-  });
-  const [animationPreviewNonce, setAnimationPreviewNonce] = useState(0);
+  const [previewRefreshNonce, setPreviewRefreshNonce] = useState(0);
 
   // ── Shared brand-color state ──────────────────────────────────────────────
   const [primaryColor, setPrimaryColor] = useState("#D4A017");
@@ -625,10 +609,6 @@ export default function InvitationCustomizationPage({
           fontColor: customization.digitalInvitationFontColor ?? "#222222",
         },
       });
-      setAnimationLayouts({
-        saveTheDate: asAnimationLayout(customization.saveTheDateLayout ?? customization.selectedLayout),
-        rsvpInvitation: asAnimationLayout(customization.digitalInvitationLayout ?? customization.selectedLayout),
-      });
       resetCustomDesignUndo();
 
       if (customization.saveTheDatePhotoPosition) {
@@ -956,9 +936,9 @@ export default function InvitationCustomizationPage({
       // legacy shared customColors.accent.
       saveTheDateAccentColor: stdCustom ? d.saveTheDate.accentColor : null,
       digitalInvitationAccentColor: digCustom ? d.rsvpInvitation.accentColor : null,
-      selectedLayout: eitherCustom ? animationLayouts[isSTD ? "saveTheDate" : "rsvpInvitation"] : "classic",
-      saveTheDateLayout: stdCustom ? animationLayouts.saveTheDate : "classic",
-      digitalInvitationLayout: digCustom ? animationLayouts.rsvpInvitation : "classic",
+      selectedLayout: "classic",
+      saveTheDateLayout: "classic",
+      digitalInvitationLayout: "classic",
       // Couple-set RSVP deadline; null clears a previously-saved value.
       rsvpByDate: rsvpByDate || null,
     };
@@ -1031,7 +1011,6 @@ export default function InvitationCustomizationPage({
     backgroundImageUrl,
     designMode,
     customDesign,
-    animationLayouts,
     rsvpByDate,
   ]);
 
@@ -1394,25 +1373,15 @@ export default function InvitationCustomizationPage({
     }
   };
 
-  const replayInvitationPreview = () => {
-    setAnimationPreviewNonce((current) => current + 1);
-  };
-
   const selectPreviewTab = (tab: PreviewTab) => {
     setPreviewTab(tab);
-    setAnimationPreviewNonce((current) => current + 1);
+    setPreviewRefreshNonce((current) => current + 1);
   };
 
   const selectDeliveryMode = (mode: InvitationDeliveryMode) => {
     setDeliveryMode(mode);
-    setAnimationPreviewNonce((current) => current + 1);
+    setPreviewRefreshNonce((current) => current + 1);
   };
-
-  const activeAnimationKey: InvitationDesignKey = isSTD ? "saveTheDate" : "rsvpInvitation";
-  const activePreviewAnimationLayout =
-    designMode === "custom" ? animationLayouts[activeAnimationKey] : "classic";
-  const canReplayAnimation =
-    deliveryMode === "digital" && activePreviewAnimationLayout !== "classic";
 
   return (
     <div className="max-w-7xl mx-auto p-3 sm:p-4 space-y-4 sm:space-y-6">
@@ -1512,7 +1481,7 @@ export default function InvitationCustomizationPage({
         value={designMode}
         onValueChange={(v) => {
           setDesignMode(v as "ai" | "custom");
-          setAnimationPreviewNonce((current) => current + 1);
+          setPreviewRefreshNonce((current) => current + 1);
         }}
       >
         <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -1817,14 +1786,6 @@ export default function InvitationCustomizationPage({
             const updateField = (field: keyof typeof fields, value: string) => {
               updateCustomDesignField(activeKey, field, value);
             };
-            const updateAnimationLayout = (layout: InvitationAnimationLayout) => {
-              setAnimationLayouts((current) => ({
-                ...current,
-                [activeKey]: layout,
-              }));
-              setAnimationPreviewNonce((current) => current + 1);
-            };
-            const animationTemplates = INVITATION_ANIMATION_TEMPLATES;
             const isThemeActive = (themeId: string) => {
               const t = WEBSITE_THEMES.find((x) => x.id === themeId);
               if (!t) return false;
@@ -1858,59 +1819,6 @@ export default function InvitationCustomizationPage({
                       Clicking one populates the colour + font fields below
                       so the Save the Date / RSVP invitation can match the
                       wedding website at a tap. */}
-                  {deliveryMode === "digital" && (
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground">
-                          Digital animation template
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          Used only for custom digital invitations. RSVP opens into the RSVP page, then stays still for guests to respond.
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-1 gap-2">
-                        {animationTemplates.map((template) => {
-                          const selected = animationLayouts[activeKey] === template.id;
-                          return (
-                            <button
-                              key={template.id}
-                              type="button"
-                              onClick={() => updateAnimationLayout(template.id)}
-                              className={`flex items-center gap-3 rounded-md border p-2.5 text-left transition-all ${
-                                selected
-                                  ? "border-primary bg-primary/5 ring-2 ring-primary/15"
-                                  : "border-border hover:border-primary/45"
-                              }`}
-                            >
-                              <span
-                                className="relative h-10 w-12 shrink-0 overflow-hidden rounded border"
-                                style={{ background: fields.backgroundColor }}
-                              >
-                                <span
-                                  className="absolute inset-x-1 top-1 h-5 rounded-sm"
-                                  style={{ background: fields.accentColor + "22", border: `1px solid ${fields.accentColor}55` }}
-                                />
-                                {template.id !== "classic" && (
-                                  <>
-                                    <span className="absolute inset-y-0 left-0 w-7 origin-left rotate-[-18deg]" style={{ background: "#d9c8ad" }} />
-                                    <span className="absolute inset-y-0 right-0 w-7 origin-right rotate-[18deg]" style={{ background: "#15131f" }} />
-                                    <span className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: fields.accentColor }} />
-                                  </>
-                                )}
-                              </span>
-                              <span className="min-w-0 flex-1">
-                                <span className="block text-xs font-semibold">{template.name}</span>
-                                <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
-                                  {template.description}
-                                </span>
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
                   <div className="space-y-2">
                     <p className="text-xs text-muted-foreground">
                       Quick themes (same as the website editor)
@@ -2055,18 +1963,6 @@ export default function InvitationCustomizationPage({
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {canReplayAnimation && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="gap-2"
-                      onClick={replayInvitationPreview}
-                    >
-                      <Play className="h-3.5 w-3.5" />
-                      Replay
-                    </Button>
-                  )}
                   {deliveryMode === "print" && (
                     <Button
                       type="button"
@@ -2129,18 +2025,16 @@ export default function InvitationCustomizationPage({
                       fontSize: cd.fontSize,
                     }
                   : undefined;
-                const activeAnimationLayout = isCustom
-                  ? animationLayouts[isSTD ? "saveTheDate" : "rsvpInvitation"]
-                  : "classic";
-                const animationReplayKey = `${previewTab}-${deliveryMode}-${designMode}-${activeAnimationLayout}-${animationPreviewNonce}`;
+                const activeInvitationLayout = "classic";
+                const previewRefreshKey = `${previewTab}-${deliveryMode}-${designMode}-${activeInvitationLayout}-${previewRefreshNonce}`;
                 return (
                   <AnimatedInvitationShell
-                    key={animationReplayKey}
-                    layout={activeAnimationLayout}
+                    key={previewRefreshKey}
+                    layout={activeInvitationLayout}
                     accent={cd.accentColor}
                     paper={isCustom ? cd.backgroundColor : undefined}
                     darkPanel={isCustom ? cd.accentColor : undefined}
-                    replayKey={animationReplayKey}
+                    replayKey={previewRefreshKey}
                     monogram={`${displayWeddingProfile.partner1Name || ""} ${displayWeddingProfile.partner2Name || ""}`}
                   >
                     {isSTD ? (
@@ -2162,7 +2056,7 @@ export default function InvitationCustomizationPage({
                         photoPosition={saveTheDatePhotoPosition}
                         onPhotoPositionChange={setSaveTheDatePhotoPosition}
                         customColors={previewCustomColors}
-                        fullPhoto={activeAnimationLayout === "animated-full-photo-save-date"}
+                        fullPhoto={false}
                         photoEffect={saveTheDatePhotoEffect}
                       />
                     ) : (
@@ -2187,7 +2081,7 @@ export default function InvitationCustomizationPage({
                         onPhotoPositionChange={setDigitalInvitationPhotoPosition}
                         customColors={isCustom ? previewCustomColors : undefined}
                         photoEffect={digitalInvitationPhotoEffect}
-                        fullPhoto={activeAnimationLayout === "animated-full-photo-save-date"}
+                        fullPhoto={false}
                       />
                     )}
                   </AnimatedInvitationShell>
