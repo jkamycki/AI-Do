@@ -176,9 +176,9 @@ const GROUP_OPTIONS = [
 function groupColorClasses(group: string | null | undefined): string {
   switch (group) {
     case "Bride's Family":
-      return "bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-900/40 dark:text-rose-200 dark:border-rose-700";
+      return "bg-indigo-100 text-indigo-900 border-indigo-300 dark:bg-indigo-900/40 dark:text-indigo-200 dark:border-indigo-700";
     case "Bride's Friends":
-      return "bg-pink-100 text-pink-900 border-pink-300 dark:bg-pink-900/40 dark:text-pink-200 dark:border-pink-700";
+      return "bg-cyan-100 text-cyan-900 border-cyan-300 dark:bg-cyan-900/40 dark:text-cyan-200 dark:border-cyan-700";
     case "Groom's Family":
       return "bg-sky-100 text-sky-900 border-sky-300 dark:bg-sky-900/40 dark:text-sky-200 dark:border-sky-700";
     case "Groom's Friends":
@@ -1251,7 +1251,7 @@ function GuestCollectorCard() {
                   <AlertDialogFooter>
                     <AlertDialogCancel>{t("guests.cancel")}</AlertDialogCancel>
                     <AlertDialogAction
-                      className="bg-rose-500 hover:bg-rose-600"
+                      className="bg-red-600 hover:bg-red-700"
                       onClick={() => regenerate.mutate()}
                     >
                       {t("guests.yes_regenerate")}
@@ -2609,7 +2609,7 @@ export default function Guests({
             icon: Heart,
             labelKey: "stat_plus_ones",
             value: summary.plusOnes,
-            color: "text-rose-500",
+            color: "text-violet-500",
           },
         ].map(({ icon: Icon, labelKey, value, color }) => (
           <Card key={labelKey} className="border-border/60 shadow-sm">
@@ -2628,13 +2628,13 @@ export default function Guests({
 
       {/* New guests alert — recently self-added via collector link */}
       {rsvpReviewGuests.length > 0 && (
-        <Card className="border-rose-300/70 bg-rose-50/80 dark:bg-rose-900/15 dark:border-rose-700/50 shadow-sm">
+        <Card className="border-orange-300/70 bg-orange-50/80 dark:bg-orange-900/15 dark:border-orange-700/50 shadow-sm">
           <CardContent className="py-3 px-4 flex items-start sm:items-center gap-3">
-            <div className="shrink-0 h-9 w-9 rounded-full bg-rose-200/80 dark:bg-rose-800/40 flex items-center justify-center ring-1 ring-rose-300/60 dark:ring-rose-700/60">
-              <AlertTriangle className="h-4 w-4 text-rose-700 dark:text-rose-300" />
+            <div className="shrink-0 h-9 w-9 rounded-full bg-orange-200/80 dark:bg-orange-800/40 flex items-center justify-center ring-1 ring-orange-300/60 dark:ring-orange-700/60">
+              <AlertTriangle className="h-4 w-4 text-orange-700 dark:text-orange-300" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-rose-900 dark:text-rose-200">
+              <p className="text-sm font-semibold text-orange-900 dark:text-orange-200">
                 {rsvpReviewGuests.length === 1
                   ? t("guests.rsvp_self_add_alert_one", {
                       name: rsvpReviewGuests[0].name,
@@ -2645,7 +2645,7 @@ export default function Guests({
                       defaultValue: "{{count}} guests RSVPed but were not on your guest list",
                     })}
               </p>
-              <p className="text-xs text-rose-800/80 dark:text-rose-300/70 mt-0.5">
+              <p className="text-xs text-orange-800/80 dark:text-orange-300/70 mt-0.5">
                 {t("guests.rsvp_self_add_alert_desc", {
                   defaultValue: "They used RSVP anyway after they could not find themselves. They were added to your guest list so you can review and confirm them.",
                 })}
@@ -2654,7 +2654,7 @@ export default function Guests({
             <Button
               variant="ghost"
               size="sm"
-              className="shrink-0 text-rose-900 dark:text-rose-200 hover:bg-rose-200/60 dark:hover:bg-rose-800/30"
+              className="shrink-0 text-orange-900 dark:text-orange-200 hover:bg-orange-200/60 dark:hover:bg-orange-800/30"
               onClick={() => handleAcknowledgeMany(rsvpReviewGuests.map((g) => g.id))}
               data-testid="button-acknowledge-rsvp-self-added"
             >
@@ -2710,7 +2710,7 @@ export default function Guests({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-rose-500" />
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
               Duplicate guest detected
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -2730,7 +2730,7 @@ export default function Guests({
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-rose-500 hover:bg-rose-600"
+              className="bg-red-600 hover:bg-red-700"
               onClick={handleForceAdd}
             >
               Add Anyway
@@ -2741,17 +2741,17 @@ export default function Guests({
 
       {/* Duplicate highlight banner (shown after dismissing the dialog) */}
       {duplicateGuestIds.size > 0 && !pendingGuestData && (
-        <Card className="border-rose-300/60 bg-rose-50/70 dark:bg-rose-900/15 dark:border-rose-700/50 shadow-sm">
+        <Card className="border-orange-300/60 bg-orange-50/70 dark:bg-orange-900/15 dark:border-orange-700/50 shadow-sm">
           <CardContent className="py-3 px-4 flex items-start sm:items-center gap-3">
-            <div className="shrink-0 h-9 w-9 rounded-full bg-rose-200/80 dark:bg-rose-800/40 flex items-center justify-center ring-1 ring-rose-300/60 dark:ring-rose-700/60">
-              <AlertTriangle className="h-4 w-4 text-rose-700 dark:text-rose-300" />
+            <div className="shrink-0 h-9 w-9 rounded-full bg-orange-200/80 dark:bg-orange-800/40 flex items-center justify-center ring-1 ring-orange-300/60 dark:ring-orange-700/60">
+              <AlertTriangle className="h-4 w-4 text-orange-700 dark:text-orange-300" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-rose-900 dark:text-rose-200">
+              <p className="text-sm font-semibold text-orange-900 dark:text-orange-200">
                 Existing {duplicateGuestIds.size === 1 ? "guest" : "guests"}{" "}
                 highlighted below
               </p>
-              <p className="text-xs text-rose-800/80 dark:text-rose-300/70 mt-0.5">
+              <p className="text-xs text-orange-800/80 dark:text-orange-300/70 mt-0.5">
                 {duplicateGuestIds.size === 1
                   ? "This entry matches"
                   : "These entries match"}{" "}
@@ -2761,7 +2761,7 @@ export default function Guests({
             <Button
               variant="ghost"
               size="sm"
-              className="shrink-0 text-rose-900 dark:text-rose-200 hover:bg-rose-200/60 dark:hover:bg-rose-800/30"
+              className="shrink-0 text-orange-900 dark:text-orange-200 hover:bg-orange-200/60 dark:hover:bg-orange-800/30"
               onClick={() => setDuplicateGuestIds(new Set())}
             >
               <XIcon className="h-3.5 w-3.5 mr-1.5" />
@@ -2841,7 +2841,7 @@ export default function Guests({
                 return (
                   <div
                     key={`mobile-${g.id}`}
-                    className={`rounded-lg border p-3 space-y-3 ${isDuplicate ? "bg-rose-50/60 dark:bg-rose-900/15 border-rose-300 dark:border-rose-700" : isNew ? (isRsvpSelfAdded ? "bg-rose-50/60 dark:bg-rose-900/15 border-rose-300 dark:border-rose-700" : "bg-amber-50/40 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700") : "bg-background"}`}
+                    className={`rounded-lg border p-3 space-y-3 ${isDuplicate ? "bg-orange-50/60 dark:bg-orange-900/15 border-orange-300 dark:border-orange-700" : isNew ? (isRsvpSelfAdded ? "bg-orange-50/60 dark:bg-orange-900/15 border-orange-300 dark:border-orange-700" : "bg-amber-50/40 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700") : "bg-background"}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -2854,7 +2854,7 @@ export default function Guests({
                             onClick={() => handleAcknowledge(g.id)}
                             className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border hover:opacity-80 transition-opacity ${
                               isRsvpSelfAdded
-                                ? "bg-rose-200 dark:bg-rose-700/60 text-rose-900 dark:text-rose-100 border-rose-300 dark:border-rose-600"
+                                ? "bg-orange-200 dark:bg-orange-700/60 text-orange-950 dark:text-orange-100 border-orange-300 dark:border-orange-600"
                                 : "bg-amber-200 dark:bg-amber-700/60 text-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-600"
                             }`}
                             title={t("guests.dismiss_new_badge")}
@@ -3059,7 +3059,7 @@ export default function Guests({
                     return (
                       <TableRow
                         key={g.id}
-                        className={`group ${isDuplicate ? "bg-rose-50/60 dark:bg-rose-900/15 border-l-4 border-l-rose-500 dark:border-l-rose-400" : isNew ? "bg-amber-50/40 dark:bg-amber-900/10 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
+                        className={`group ${isDuplicate ? "bg-orange-50/60 dark:bg-orange-900/15 border-l-4 border-l-orange-500 dark:border-l-orange-400" : isNew ? "bg-amber-50/40 dark:bg-amber-900/10 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
                       >
                         <TableCell className="min-w-[200px]">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -3070,7 +3070,7 @@ export default function Guests({
                                 onClick={() => handleAcknowledge(g.id)}
                                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border hover:opacity-80 transition-opacity ${
                                   isRsvpSelfAdded
-                                    ? "bg-rose-200 dark:bg-rose-700/60 text-rose-900 dark:text-rose-100 border-rose-300 dark:border-rose-600"
+                                    ? "bg-orange-200 dark:bg-orange-700/60 text-orange-950 dark:text-orange-100 border-orange-300 dark:border-orange-600"
                                     : "bg-amber-200 dark:bg-amber-700/60 text-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-600"
                                 }`}
                                 title={t("guests.dismiss_new_badge")}
