@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { clerkClient } from "@clerk/express";
-import { db, guests, weddingProfiles, invitationCustomizations } from "@workspace/db";
+import { db, guests, weddingProfiles, invitationCustomizations, hotelBlocks } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
@@ -1369,6 +1369,25 @@ router.get("/rsvp/:token", async (req, res) => {
       : [];
     const c = customizationRows[0] ?? null;
     const customizationPhoto = c?.digitalInvitationPhotoUrl ?? null;
+    const rsvpAskHotel = !!c?.customColors?.rsvpAskHotel;
+    const preferredHotelBlockId = c?.customColors?.rsvpHotelBlockId ?? null;
+    const hotelRows = rsvpAskHotel && profile
+      ? await db
+          .select({
+            id: hotelBlocks.id,
+            hotelName: hotelBlocks.hotelName,
+            bookingLink: hotelBlocks.bookingLink,
+            address: hotelBlocks.address,
+            city: hotelBlocks.city,
+            state: hotelBlocks.state,
+            zip: hotelBlocks.zip,
+          })
+          .from(hotelBlocks)
+          .where(eq(hotelBlocks.profileId, profile.id))
+      : [];
+    const sortedHotelRows = preferredHotelBlockId
+      ? [...hotelRows].sort((a, b) => (a.id === preferredHotelBlockId ? -1 : b.id === preferredHotelBlockId ? 1 : 0))
+      : hotelRows;
 
     // Merge customColors on top of the palette (same logic as the frontend)
     const basePalette = c?.colorPalette ?? DEFAULT_COLORS;
@@ -1431,6 +1450,9 @@ router.get("/rsvp/:token", async (req, res) => {
       // null = not in custom mode, fall back to colorPalette.primary.
       accentColor: (c?.useGeneratedInvitation === false) ? (c?.digitalInvitationAccentColor ?? null) : null,
       fontColor: (c?.useGeneratedInvitation === false) ? (c?.digitalInvitationFontColor ?? null) : null,
+      askHotelOnRsvp: rsvpAskHotel,
+      preferredHotelBlockId,
+      hotelOptions: sortedHotelRows,
     });
   } catch (err) {
     req.log.error(err, "Failed to get RSVP info");
@@ -1460,6 +1482,8 @@ router.post("/rsvp/:token", async (req, res) => {
       dietaryRestrictions,
       rsvpMessage,
       notes,
+      hotelNeeded,
+      bookedHotelBlockId,
     } = req.body;
 
     if (attendance !== "attending" && attendance !== "declined") {
@@ -1492,6 +1516,26 @@ router.post("/rsvp/:token", async (req, res) => {
     if (attendance === "attending") {
       // Always set mealChoice (including null for "none") so guests can clear it.
       updateData.mealChoice = normalizeMeal(mealChoice);
+      if (hotelNeeded !== undefined) {
+        const wantsHotel = hotelNeeded === true || hotelNeeded === "true";
+        updateData.needsHotel = wantsHotel;
+        updateData.bookedHotelBlockId = null;
+        if (wantsHotel && bookedHotelBlockId !== undefined && bookedHotelBlockId !== null && bookedHotelBlockId !== "") {
+          const hotelId = Number(bookedHotelBlockId);
+          if (!Number.isInteger(hotelId) || hotelId <= 0) {
+            return res.status(400).json({ error: "Invalid hotel block selection." });
+          }
+          const [hotel] = await db
+            .select({ id: hotelBlocks.id })
+            .from(hotelBlocks)
+            .where(and(eq(hotelBlocks.id, hotelId), eq(hotelBlocks.profileId, guest.profileId)))
+            .limit(1);
+          if (!hotel) {
+            return res.status(400).json({ error: "That hotel block is not available for this RSVP." });
+          }
+          updateData.bookedHotelBlockId = hotel.id;
+        }
+      }
       if (plusOne !== undefined) {
         updateData.plusOne = !!plusOne;
         // Prefer split first/last when provided; fall back to combined plusOneName.
@@ -1509,6 +1553,8 @@ router.post("/rsvp/:token", async (req, res) => {
       updateData.plusOneName = null;
       updateData.plusOneMealChoice = null;
       updateData.mealChoice = null;
+      updateData.needsHotel = false;
+      updateData.bookedHotelBlockId = null;
     }
 
     const [updated] = await db
@@ -1548,6 +1594,8 @@ router.post("/rsvp/:token", async (req, res) => {
             `Plus One: ${updated.plusOne ? "Yes" : "No"}`,
             `Plus One Name: ${updated.plusOneName ?? "(none)"}`,
             `Plus One Meal Choice: ${updated.plusOneMealChoice ?? "(none)"}`,
+            `Needs Hotel: ${updated.needsHotel ? "Yes" : "No"}`,
+            `Hotel Block ID: ${updated.bookedHotelBlockId ?? "(none)"}`,
             `Dietary Restrictions: ${updated.dietaryNotes ?? "(none)"}`,
             `RSVP Message: ${updated.rsvpMessage ?? "(none)"}`,
             `Notes: ${updated.notes ?? "(none)"}`,

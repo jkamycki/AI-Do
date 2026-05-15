@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -31,6 +31,8 @@ const schema = z.object({
   plusOneLastName: z.string().optional(),
   plusOneMealChoice: z.string().optional(),
   dietaryRestrictions: z.string().optional(),
+  hotelNeeded: z.boolean().default(false),
+  bookedHotelBlockId: z.string().optional(),
 }).refine(
   (data) => {
     if (data.attendance !== "attending" || !data.plusOne) return true;
@@ -87,6 +89,17 @@ interface RsvpInfo {
   // Independent per-invitation accent / font color (may differ from STD accent)
   accentColor: string | null;
   fontColor: string | null;
+  askHotelOnRsvp?: boolean;
+  preferredHotelBlockId?: number | null;
+  hotelOptions?: Array<{
+    id: number;
+    hotelName: string;
+    bookingLink?: string | null;
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip?: string | null;
+  }>;
 }
 
 function formatTime(timeStr: string | null | undefined) {
@@ -161,11 +174,21 @@ export default function Rsvp() {
       plusOneLastName: "",
       plusOneMealChoice: "",
       dietaryRestrictions: "",
+      hotelNeeded: false,
+      bookedHotelBlockId: "",
     },
   });
 
   const attendance = form.watch("attendance");
   const plusOne = form.watch("plusOne");
+  const hotelNeeded = form.watch("hotelNeeded");
+  const selectedHotelBlockId = form.watch("bookedHotelBlockId");
+  const selectedHotel = info?.hotelOptions?.find((hotel) => String(hotel.id) === selectedHotelBlockId) ?? null;
+
+  useEffect(() => {
+    if (!info?.askHotelOnRsvp || !info.preferredHotelBlockId) return;
+    form.setValue("bookedHotelBlockId", String(info.preferredHotelBlockId));
+  }, [form, info?.askHotelOnRsvp, info?.preferredHotelBlockId]);
 
   const submit = useMutation({
     mutationFn: async (data: FormData) => {
@@ -183,6 +206,8 @@ export default function Rsvp() {
         plusOneLastName: data.plusOneLastName?.trim() || "",
         plusOneMealChoice: data.plusOneMealChoice,
         dietaryRestrictions: data.dietaryRestrictions,
+        hotelNeeded: data.hotelNeeded,
+        bookedHotelBlockId: data.hotelNeeded && data.bookedHotelBlockId ? Number(data.bookedHotelBlockId) : null,
       };
       const res = await apiFetch(`/api/rsvp/${token}`, {
         method: "POST",
@@ -847,6 +872,107 @@ export default function Rsvp() {
                         </div>
                       )}
                     </div>
+
+                    {info.askHotelOnRsvp && (
+                      <div className="rounded-xl p-4 space-y-4" style={{ border: `1px solid ${GOLD}33`, background: `${GOLD}0d` }}>
+                        <FormField
+                          control={form.control}
+                          name="hotelNeeded"
+                          render={({ field }) => (
+                            <FormItem className="space-y-3">
+                              <div>
+                                <FormLabel className="text-base" style={{ color: WHITE, fontFamily: jakarta }}>
+                                  Will you need a hotel room?
+                                </FormLabel>
+                                <p className="text-xs mt-0.5" style={{ color: MUTED, fontFamily: jakarta }}>
+                                  Let the couple know if you plan to book through their hotel block.
+                                </p>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => field.onChange(true)}
+                                  className="px-4 py-2 rounded-lg border transition-colors text-sm font-medium"
+                                  style={field.value
+                                    ? { background: GOLD, borderColor: GOLD, color: BG, fontFamily: jakarta }
+                                    : { background: "rgba(255,255,255,0.05)", borderColor: CARD_BDR, color: MUTED, fontFamily: jakarta }
+                                  }
+                                >
+                                  Yes
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    field.onChange(false);
+                                    form.setValue("bookedHotelBlockId", "");
+                                  }}
+                                  className="px-4 py-2 rounded-lg border transition-colors text-sm font-medium"
+                                  style={!field.value
+                                    ? { background: GOLD, borderColor: GOLD, color: BG, fontFamily: jakarta }
+                                    : { background: "rgba(255,255,255,0.05)", borderColor: CARD_BDR, color: MUTED, fontFamily: jakarta }
+                                  }
+                                >
+                                  No
+                                </button>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+
+                        {hotelNeeded && (
+                          <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+                            {info.hotelOptions && info.hotelOptions.length > 0 ? (
+                              <FormField
+                                control={form.control}
+                                name="bookedHotelBlockId"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel style={{ color: MUTED, fontFamily: jakarta }}>
+                                      Which hotel block will you book?
+                                    </FormLabel>
+                                    <Select
+                                      value={field.value || "pending"}
+                                      onValueChange={(value) => field.onChange(value === "pending" ? "" : value)}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger style={{ background: "rgba(255,255,255,0.05)", borderColor: CARD_BDR, color: WHITE, fontFamily: jakarta }}>
+                                          <SelectValue placeholder="Select a hotel block" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="pending">I will decide later</SelectItem>
+                                        {info.hotelOptions?.map((hotel) => (
+                                          <SelectItem key={hotel.id} value={String(hotel.id)}>
+                                            {hotel.hotelName || "Hotel block"}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            ) : (
+                              <p className="text-xs" style={{ color: MUTED, fontFamily: jakarta }}>
+                                Hotel details are coming soon. We will mark you as needing hotel information.
+                              </p>
+                            )}
+
+                            {selectedHotel?.bookingLink && (
+                              <a
+                                href={selectedHotel.bookingLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block text-center rounded-lg px-4 py-2 text-sm font-semibold"
+                                style={{ background: "rgba(255,255,255,0.08)", border: `1px solid ${CARD_BDR}`, color: WHITE, fontFamily: jakarta }}
+                              >
+                                Open booking link
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <FormField
                       control={form.control}

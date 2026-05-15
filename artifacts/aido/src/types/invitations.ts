@@ -11,6 +11,8 @@ export interface ColorPalette {
   digitalInvitationPhotoEffect?: string;
   saveTheDatePhotoZoom?: number;
   digitalInvitationPhotoZoom?: number;
+  rsvpAskHotel?: boolean;
+  rsvpHotelBlockId?: number | null;
 }
 
 export interface ElementOverride {

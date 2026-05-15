@@ -27,6 +27,8 @@ import { qrPngDataUrl } from "@/lib/localQr";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Calendar,
   Loader2,
@@ -69,6 +71,11 @@ type InvitationDesignFields = {
   fontColor: string;
 };
 type CustomDesignState = Record<InvitationDesignKey, InvitationDesignFields>;
+type HotelOption = {
+  id: number;
+  hotelName: string;
+  bookingLink?: string | null;
+};
 
 function safePdfColor(color: string | null | undefined, fallback: string) {
   if (!color) return fallback;
@@ -260,6 +267,8 @@ export default function InvitationCustomizationPage({
   // RSVP deadline shown on the RSVP invitation (preview, email, public page).
   // Stored as ISO YYYY-MM-DD so it round-trips through <input type="date">.
   const [rsvpByDate, setRsvpByDate] = useState<string>("");
+  const [rsvpAskHotel, setRsvpAskHotel] = useState(false);
+  const [rsvpHotelBlockId, setRsvpHotelBlockId] = useState<string>("all");
   const [showStdAiPanel, setShowStdAiPanel] = useState(false);
   const [stdAiDetails, setStdAiDetails] = useState("");
   const [stdGenerating, setStdGenerating] = useState(false);
@@ -298,6 +307,8 @@ export default function InvitationCustomizationPage({
     designMode,
     customDesign,
     rsvpByDate,
+    rsvpAskHotel,
+    rsvpHotelBlockId,
   });
   const saveTheDateBlobUrlRef = useRef<string | null>(null);
   const digitalInvitationBlobUrlRef = useRef<string | null>(null);
@@ -402,6 +413,8 @@ export default function InvitationCustomizationPage({
     designMode,
     customDesign,
     rsvpByDate,
+    rsvpAskHotel,
+    rsvpHotelBlockId,
   };
 
   useEffect(() => {
@@ -431,6 +444,8 @@ export default function InvitationCustomizationPage({
             digitalInvitationPhotoEffect: v.digitalInvitationPhotoEffect,
             saveTheDatePhotoZoom: v.saveTheDatePhotoZoom,
             digitalInvitationPhotoZoom: v.digitalInvitationPhotoZoom,
+            rsvpAskHotel: v.rsvpAskHotel,
+            rsvpHotelBlockId: v.rsvpHotelBlockId === "all" ? null : Number(v.rsvpHotelBlockId),
           }
         : {
             ...(v.customColors ?? {}),
@@ -438,6 +453,8 @@ export default function InvitationCustomizationPage({
             digitalInvitationPhotoEffect: v.digitalInvitationPhotoEffect,
             saveTheDatePhotoZoom: v.saveTheDatePhotoZoom,
             digitalInvitationPhotoZoom: v.digitalInvitationPhotoZoom,
+            rsvpAskHotel: v.rsvpAskHotel,
+            rsvpHotelBlockId: v.rsvpHotelBlockId === "all" ? null : Number(v.rsvpHotelBlockId),
           };
       const body = JSON.stringify({
         profileId: v.profileId,
@@ -563,6 +580,18 @@ export default function InvitationCustomizationPage({
     retry: 1,
   });
 
+  const { data: hotelBlocks = [] } = useQuery<HotelOption[]>({
+    queryKey: ["hotels", profileId],
+    queryFn: async () => {
+      if (!profileId) return [];
+      const r = await authedFetch("/api/hotels");
+      if (!r.ok) return [];
+      return r.json() as Promise<HotelOption[]>;
+    },
+    enabled: !!profileId,
+    retry: 1,
+  });
+
   // ── Load DB data into state ───────────────────────────────────────────────
   useEffect(() => {
     if (!customization) return;
@@ -584,6 +613,12 @@ export default function InvitationCustomizationPage({
       setSaveTheDatePhotoZoom(customization.customColors?.saveTheDatePhotoZoom ?? 1);
       setDigitalInvitationPhotoZoom(customization.customColors?.digitalInvitationPhotoZoom ?? 1);
       setRsvpByDate(customization.rsvpByDate ?? "");
+      setRsvpAskHotel(!!customization.customColors?.rsvpAskHotel);
+      setRsvpHotelBlockId(
+        customization.customColors?.rsvpHotelBlockId
+          ? String(customization.customColors.rsvpHotelBlockId)
+          : "all",
+      );
 
       // Restore the per-invitation design mode + custom design fields from
       // the saved record so the toggle and panel reflect what was last saved.
@@ -926,6 +961,8 @@ export default function InvitationCustomizationPage({
           digitalInvitationPhotoEffect,
           saveTheDatePhotoZoom,
           digitalInvitationPhotoZoom,
+          rsvpAskHotel,
+          rsvpHotelBlockId: rsvpHotelBlockId === "all" ? null : Number(rsvpHotelBlockId),
         }
       : {
           ...(customColors ?? {}),
@@ -933,6 +970,8 @@ export default function InvitationCustomizationPage({
           digitalInvitationPhotoEffect,
           saveTheDatePhotoZoom,
           digitalInvitationPhotoZoom,
+          rsvpAskHotel,
+          rsvpHotelBlockId: rsvpHotelBlockId === "all" ? null : Number(rsvpHotelBlockId),
         };
     return {
       profileId,
@@ -1036,6 +1075,8 @@ export default function InvitationCustomizationPage({
     designMode,
     customDesign,
     rsvpByDate,
+    rsvpAskHotel,
+    rsvpHotelBlockId,
   ]);
 
   // Flush any pending position changes to the DB when navigating away so the
@@ -1054,6 +1095,8 @@ export default function InvitationCustomizationPage({
           ...(v.customColors ?? {}),
           saveTheDatePhotoEffect: v.saveTheDatePhotoEffect,
           digitalInvitationPhotoEffect: v.digitalInvitationPhotoEffect,
+          rsvpAskHotel: v.rsvpAskHotel,
+          rsvpHotelBlockId: v.rsvpHotelBlockId === "all" ? null : Number(v.rsvpHotelBlockId),
         },
       };
       authFetch("/api/invitation-customizations", {
@@ -1775,31 +1818,72 @@ export default function InvitationCustomizationPage({
               same debounced effect as the rest of this tab. */}
           {!isSTD && (
             <Card>
-              <CardContent className="p-4 space-y-2">
-                <label htmlFor="rsvpByDate" className="text-sm font-medium block">
-                  RSVP By
-                </label>
-                <p className="text-xs text-muted-foreground">
-                  Date you want guests to RSVP by. Shown as "RSVP By: (Date)" on the invitation preview, email, and the public RSVP page.
-                </p>
-                <div className="flex items-center gap-2">
-                  <input
-                    id="rsvpByDate"
-                    type="date"
-                    value={rsvpByDate}
-                    onChange={(e) => setRsvpByDate(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                  {rsvpByDate && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 text-xs h-9 px-2"
-                      onClick={() => setRsvpByDate("")}
-                    >
-                      Clear
-                    </Button>
+              <CardContent className="p-4 space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="rsvpByDate" className="text-sm font-medium block">
+                    RSVP By
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Date you want guests to RSVP by. Shown as "RSVP By: (Date)" on the invitation preview, email, and the public RSVP page.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="rsvpByDate"
+                      type="date"
+                      value={rsvpByDate}
+                      onChange={(e) => setRsvpByDate(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                    {rsvpByDate && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 text-xs h-9 px-2"
+                        onClick={() => setRsvpByDate("")}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">Ask about hotel needs</p>
+                      <p className="text-xs text-muted-foreground">
+                        Adds a hotel question to the RSVP form. If guests choose yes, their guest-list hotel status updates automatically.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={rsvpAskHotel}
+                      onCheckedChange={(checked) => setRsvpAskHotel(checked)}
+                      aria-label="Ask guests if they need a hotel while RSVPing"
+                    />
+                  </div>
+                  {rsvpAskHotel && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Hotel booking link shown to guests
+                      </label>
+                      <Select value={rsvpHotelBlockId} onValueChange={setRsvpHotelBlockId}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Choose hotel block" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Let guests choose from all hotel blocks</SelectItem>
+                          {hotelBlocks.map((hotel) => (
+                            <SelectItem key={hotel.id} value={String(hotel.id)}>
+                              {hotel.hotelName || "Unnamed Hotel"}{hotel.bookingLink ? " - booking link" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Add or edit hotel booking links in the Hotels tab. Guests can still RSVP if no booking link is available yet.
+                      </p>
+                    </div>
                   )}
                 </div>
               </CardContent>
