@@ -2001,22 +2001,6 @@ export default function Guests() {
                   {invitationEligible.length}
                 </Badge>
               </Button>
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto justify-center whitespace-normal sm:whitespace-nowrap"
-                disabled={sendingReminders || reminderEligible.length === 0}
-                onClick={() => setConfirmBulkSend("reminder")}
-              >
-                {sendingReminders ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Send All RSVP Reminders
-                <Badge variant="secondary" className="ml-2">
-                  {reminderEligible.length}
-                </Badge>
-              </Button>
               <AlertDialog
                 open={confirmBulkSend !== null}
                 onOpenChange={(open) => {
@@ -2538,7 +2522,11 @@ export default function Guests() {
                             g.rsvpStatus === "declined"
                           )
                             return;
-                          setSendModalDefaultTab("saveTheDate");
+                          setSendModalDefaultTab(
+                            (g as any).saveTheDateStatus === "sent"
+                              ? "digitalInvitation"
+                              : "saveTheDate",
+                          );
                           setSendModalReminderOnly(false);
                           setSendModalGuest(g);
                         }}
@@ -2718,115 +2706,25 @@ export default function Guests() {
                               <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">
                                 Save the Date
                               </span>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <button
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${(g as any).saveTheDateStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}
-                                  >
-                                    {(g as any).saveTheDateStatus === "sent"
-                                      ? "Sent"
-                                      : "Not Sent"}
-                                    <ChevronDown className="h-2.5 w-2.5 opacity-60" />
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                  align="start"
-                                  className="w-28"
-                                >
-                                  <DropdownMenuItem
-                                    className={`text-xs cursor-pointer ${(g as any).saveTheDateStatus !== "sent" ? "opacity-50 pointer-events-none" : ""}`}
-                                    onClick={() =>
-                                      handleSaveDateChange(g, "not_sent")
-                                    }
-                                  >
-                                    Not Sent
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className={`text-xs font-medium cursor-pointer ${(g as any).saveTheDateStatus === "sent" ? "opacity-50 pointer-events-none" : ""}`}
-                                    onClick={() =>
-                                      handleSaveDateChange(g, "sent")
-                                    }
-                                  >
-                                    Sent
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${(g as any).saveTheDateStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}
+                              >
+                                {(g as any).saveTheDateStatus === "sent"
+                                  ? "Sent"
+                                  : "Not Sent"}
+                              </span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">
                                 RSVP Invitation
                               </span>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <button
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${g.invitationStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}
-                                  >
-                                    {g.invitationStatus === "sent"
-                                      ? "Sent"
-                                      : "Not Sent"}
-                                    <ChevronDown className="h-2.5 w-2.5 opacity-60" />
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                  align="start"
-                                  className="w-28"
-                                >
-                                  {INVITATION_OPTIONS.map((opt) => (
-                                    <DropdownMenuItem
-                                      key={opt.value}
-                                      className={`text-xs font-medium cursor-pointer ${g.invitationStatus === opt.value ? "opacity-50 pointer-events-none" : ""}`}
-                                      onClick={() =>
-                                        handleInvitationChange(g, opt.value)
-                                      }
-                                    >
-                                      {opt.value === "sent"
-                                        ? "Sent"
-                                        : "Not Sent"}
-                                    </DropdownMenuItem>
-                                  ))}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                            {/* RSVP Reminder — flips to "sent" automatically when
-                                the planner uses the Send RSVP Reminder button,
-                                and can also be toggled manually here. */}
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] text-muted-foreground w-[90px] shrink-0 leading-tight">
-                                RSVP Reminder
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${g.invitationStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}
+                              >
+                                {g.invitationStatus === "sent"
+                                  ? "Sent"
+                                  : "Not Sent"}
                               </span>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <button
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${(g as any).rsvpReminderStatus === "sent" ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40" : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700"}`}
-                                  >
-                                    {(g as any).rsvpReminderStatus === "sent"
-                                      ? "Sent"
-                                      : "Not Sent"}
-                                    <ChevronDown className="h-2.5 w-2.5 opacity-60" />
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                  align="start"
-                                  className="w-28"
-                                >
-                                  <DropdownMenuItem
-                                    className={`text-xs cursor-pointer ${(g as any).rsvpReminderStatus !== "sent" ? "opacity-50 pointer-events-none" : ""}`}
-                                    onClick={() =>
-                                      handleReminderChange(g, "not_sent")
-                                    }
-                                  >
-                                    Not Sent
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className={`text-xs font-medium cursor-pointer ${(g as any).rsvpReminderStatus === "sent" ? "opacity-50 pointer-events-none" : ""}`}
-                                    onClick={() =>
-                                      handleReminderChange(g, "sent")
-                                    }
-                                  >
-                                    Sent
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
                             </div>
                           </div>
                         </TableCell>
@@ -3008,7 +2906,11 @@ export default function Guests() {
                                   g.rsvpStatus === "declined"
                                 )
                                   return;
-                                setSendModalDefaultTab("saveTheDate");
+                                setSendModalDefaultTab(
+                                  (g as any).saveTheDateStatus === "sent"
+                                    ? "digitalInvitation"
+                                    : "saveTheDate",
+                                );
                                 setSendModalReminderOnly(false);
                                 setSendModalGuest(g);
                               }}
