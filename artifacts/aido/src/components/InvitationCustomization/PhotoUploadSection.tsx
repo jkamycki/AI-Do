@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 import { InvitationCropDialog } from "@/components/InvitationCropDialog";
-import type { PhotoPosition } from "@/components/InvitationCustomization/AiPreviewComponents";
+import { PHOTO_EFFECT_OPTIONS, photoEffectToFilter, type PhotoPosition } from "@/components/InvitationCustomization/AiPreviewComponents";
 
 interface PhotoUploadSectionProps {
   mode: "saveTheDate" | "digitalInvitation";
@@ -30,6 +30,10 @@ interface PhotoUploadSectionProps {
   onSaveTheDatePositionChange?: (pos: PhotoPosition) => void;
   digitalInvitationPhotoPosition?: PhotoPosition;
   onDigitalInvitationPositionChange?: (pos: PhotoPosition) => void;
+  saveTheDatePhotoEffect?: string;
+  onSaveTheDatePhotoEffectChange?: (effect: string) => void;
+  digitalInvitationPhotoEffect?: string;
+  onDigitalInvitationPhotoEffectChange?: (effect: string) => void;
 }
 
 export function PhotoUploadSection({
@@ -46,6 +50,10 @@ export function PhotoUploadSection({
   onSaveTheDatePositionChange,
   digitalInvitationPhotoPosition,
   onDigitalInvitationPositionChange,
+  saveTheDatePhotoEffect = "none",
+  onSaveTheDatePhotoEffectChange,
+  digitalInvitationPhotoEffect = "none",
+  onDigitalInvitationPhotoEffectChange,
 }: PhotoUploadSectionProps) {
   const [saveTheDateError, setSaveTheDateError] = useState<string | null>(null);
   const [digitalInvitationError, setDigitalInvitationError] = useState<
@@ -77,6 +85,8 @@ export function PhotoUploadSection({
     ? onSaveTheDatePositionChange
     : onDigitalInvitationPositionChange;
   const hasReposition = !!(position && onPositionChange);
+  const photoEffect = isSaveTheDate ? saveTheDatePhotoEffect : digitalInvitationPhotoEffect;
+  const onPhotoEffectChange = isSaveTheDate ? onSaveTheDatePhotoEffectChange : onDigitalInvitationPhotoEffectChange;
   const posRef = useRef<PhotoPosition>({ x: 50, y: 50 });
   const onChangeRef = useRef<((p: PhotoPosition) => void) | undefined>(
     undefined,
@@ -272,10 +282,11 @@ export function PhotoUploadSection({
                     hasReposition && position
                       ? {
                           objectPosition: `${position.x}% ${position.y}%`,
+                          filter: photoEffectToFilter(photoEffect),
                           userSelect: "none",
                           pointerEvents: "none",
                         }
-                      : { pointerEvents: "none" }
+                      : { pointerEvents: "none", filter: photoEffectToFilter(photoEffect) }
                   }
                   draggable={false}
                 />
@@ -390,6 +401,21 @@ export function PhotoUploadSection({
                     Remove
                   </button>
                 </p>
+              )}
+
+              {onPhotoEffectChange && (
+                <div className="space-y-1.5 rounded-md border bg-muted/20 p-2">
+                  <label className="text-[11px] font-medium text-muted-foreground">Photo effect</label>
+                  <select
+                    value={photoEffect}
+                    onChange={(event) => onPhotoEffectChange(event.target.value)}
+                    className="block h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                  >
+                    {PHOTO_EFFECT_OPTIONS.map((effect) => (
+                      <option key={effect.id} value={effect.id}>{effect.label}</option>
+                    ))}
+                  </select>
+                </div>
               )}
 
               {onSavePhoto && (

@@ -25,6 +25,34 @@ export interface WeddingInfo {
 
 export interface PhotoPosition { x: number; y: number }
 
+export type PhotoEffect = "none" | "bw" | "sepia" | "vintage" | "soft" | "warm" | "dramatic" | "noir";
+
+export const PHOTO_EFFECT_OPTIONS: Array<{ id: PhotoEffect; label: string }> = [
+  { id: "none", label: "Original" },
+  { id: "bw", label: "Black & white" },
+  { id: "sepia", label: "Sepia" },
+  { id: "vintage", label: "Vintage" },
+  { id: "soft", label: "Soft" },
+  { id: "warm", label: "Warm" },
+  { id: "dramatic", label: "Dramatic" },
+  { id: "noir", label: "Noir" },
+];
+
+const PHOTO_EFFECT_FILTERS: Record<PhotoEffect, string> = {
+  none: "none",
+  bw: "grayscale(1) contrast(1.05)",
+  sepia: "sepia(0.7) saturate(1.1)",
+  vintage: "sepia(0.35) contrast(0.95) saturate(0.85) brightness(0.95)",
+  soft: "contrast(0.92) brightness(1.05) saturate(0.9) blur(0.4px)",
+  warm: "hue-rotate(8deg) saturate(1.15) brightness(1.04)",
+  dramatic: "contrast(1.25) saturate(1.2) brightness(0.92)",
+  noir: "grayscale(1) contrast(1.35) brightness(0.85)",
+};
+
+export function photoEffectToFilter(effect?: string | null): string {
+  return PHOTO_EFFECT_FILTERS[(effect || "none") as PhotoEffect] ?? "none";
+}
+
 // ── A.IDO brand palette — matches the RSVP Page preview exactly ───────────────
 const BG       = "#1E1A2E";
 const GOLD     = "#D4A017";
@@ -111,6 +139,7 @@ function CardShell({
   photoPosition = { x: 50, y: 50 },
   onPhotoPositionChange,
   customColors,
+  photoEffect = "none",
 }: {
   topContent?: ReactNode;
   children: ReactNode;
@@ -118,6 +147,7 @@ function CardShell({
   photoPosition?: PhotoPosition;
   onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
+  photoEffect?: string | null;
 }) {
   const bg      = customColors?.bg      ?? BG;
   const accent  = customColors?.accent  ?? GOLD;
@@ -204,6 +234,7 @@ function CardShell({
               width: "100%", height: 200, objectFit: "cover", borderRadius: 8,
               display: "block", boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
               objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
+              filter: photoEffectToFilter(photoEffect),
               pointerEvents: "none", userSelect: "none",
             }}
           />
@@ -233,6 +264,7 @@ export function AiSaveDatePreview({
   onPhotoPositionChange,
   customColors,
   fullPhoto = false,
+  photoEffect = "none",
 }: {
   profile: WeddingInfo;
   palette: ColorPalette;
@@ -241,6 +273,7 @@ export function AiSaveDatePreview({
   onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
   fullPhoto?: boolean;
+  photoEffect?: string | null;
 }) {
   if (fullPhoto) {
     return (
@@ -250,6 +283,7 @@ export function AiSaveDatePreview({
         photoPosition={photoPosition}
         onPhotoPositionChange={onPhotoPositionChange}
         customColors={customColors}
+        photoEffect={photoEffect}
       />
     );
   }
@@ -278,6 +312,7 @@ export function AiSaveDatePreview({
       photoPosition={photoPosition}
       onPhotoPositionChange={onPhotoPositionChange}
       customColors={customColors}
+      photoEffect={photoEffect}
       topContent={
         <>
       <p style={{ fontFamily: labelFont, fontSize: 11 * sc, fontWeight: 700,
@@ -341,12 +376,14 @@ function FullPhotoSaveDatePreview({
   photoPosition = { x: 50, y: 50 },
   onPhotoPositionChange,
   customColors,
+  photoEffect,
 }: {
   profile: WeddingInfo;
   photoUrl?: string | null;
   photoPosition?: PhotoPosition;
   onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
+  photoEffect?: string | null;
 }) {
   const displayFont = customColors?.font
     ? `'${customColors.font}', ${cormorant}`
@@ -422,7 +459,7 @@ function FullPhotoSaveDatePreview({
               height: "100%",
               objectFit: "cover",
               objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
-              filter: "grayscale(1)",
+              filter: photoEffectToFilter(photoEffect),
               pointerEvents: "none",
             }}
           />
@@ -494,6 +531,7 @@ export function AiDigitalInvitationPreview({
   photoPosition,
   onPhotoPositionChange,
   customColors,
+  photoEffect = "none",
 }: {
   profile: WeddingInfo;
   palette: ColorPalette;
@@ -501,6 +539,7 @@ export function AiDigitalInvitationPreview({
   photoPosition?: PhotoPosition;
   onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
+  photoEffect?: string | null;
 }) {
   const bg      = customColors?.bg      ?? BG;
   const accent  = customColors?.accent  ?? GOLD;
@@ -529,7 +568,7 @@ export function AiDigitalInvitationPreview({
   const rsvpDate = formatDate(profile.rsvpByDate, { year: "numeric", month: "long", day: "numeric" });
 
   return (
-    <CardShell photoUrl={photoUrl} photoPosition={photoPosition} onPhotoPositionChange={onPhotoPositionChange} customColors={customColors}>
+    <CardShell photoUrl={photoUrl} photoPosition={photoPosition} onPhotoPositionChange={onPhotoPositionChange} customColors={customColors} photoEffect={photoEffect}>
       <Badge accent={accent}><Heart style={{ width: 22, height: 22, color: accent, fill: accent }} /></Badge>
 
       <p style={{ fontFamily: labelFont, fontSize: 11 * sc, fontWeight: 700,

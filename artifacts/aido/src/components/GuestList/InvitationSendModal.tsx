@@ -780,6 +780,7 @@ export function InvitationSendModal({
                         photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                         customColors={stdPreviewColors}
                         fullPhoto={customization.saveTheDateLayout === "animated-full-photo-save-date"}
+                        photoEffect={customization.customColors?.saveTheDatePhotoEffect ?? "none"}
                       />
                       </AnimatedInvitationShell>
                     )}
@@ -831,6 +832,7 @@ export function InvitationSendModal({
                         photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                         onPhotoPositionChange={(pos) => setCustomization((c) => c ? { ...c, digitalInvitationPhotoPosition: pos } : c)}
                         customColors={digPreviewColors}
+                        photoEffect={customization.customColors?.digitalInvitationPhotoEffect ?? "none"}
                       />
                       </AnimatedInvitationShell>
                     )}
@@ -896,6 +898,7 @@ export function InvitationSendModal({
                       palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
                       photoUrl={customization.saveTheDatePhotoUrl || null}
                       photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
+                      photoEffect={customization.customColors?.saveTheDatePhotoEffect ?? "none"}
                     />
                   )}
                   <Button
@@ -935,6 +938,7 @@ export function InvitationSendModal({
                       palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
                       photoUrl={customization.digitalInvitationPhotoUrl || null}
                       photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
+                      photoEffect={customization.customColors?.digitalInvitationPhotoEffect ?? "none"}
                     />
                   )}
                   {reminderOnly ? (

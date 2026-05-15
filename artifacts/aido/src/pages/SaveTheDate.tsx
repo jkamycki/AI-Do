@@ -4,6 +4,7 @@ import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Download, AlertCircle, Heart } from "lucide-react";
 import { AnimatedInvitationShell } from "@/components/InvitationCustomization/AnimatedInvitationShell";
+import { photoEffectToFilter } from "@/components/InvitationCustomization/AiPreviewComponents";
 
 interface SaveTheDateInfo {
   guestName: string;
@@ -34,6 +35,7 @@ interface SaveTheDateInfo {
   customFontSize: string | null;
   customTextOverrides: Record<string, Record<string, unknown>>;
   photoObjectPosition: string;
+  photoEffect?: string | null;
   customColorPalette: Record<string, string> | null;
   customLayout: string | null;
 }
@@ -125,6 +127,7 @@ export default function SaveTheDate() {
   const defaultMsg = couple ? `Mark your calendar! ${couple} are getting married and we'd love to celebrate with you.` : null;
   const msgText    = (overrides["std:message"]?.text as string | undefined) || info?.saveTheDateMessage || defaultMsg;
   const photoPos   = info?.photoObjectPosition ?? "50% 50%";
+  const photoFilter = photoEffectToFilter(info?.photoEffect);
   const isFullPhotoLayout = !!(useCustom && info?.customLayout === "animated-full-photo-save-date");
   const partner1First = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";
   const partner2First = String(info?.partner2Name || "").trim().split(/\s+/)[0] || "Partner";
@@ -215,7 +218,7 @@ export default function SaveTheDate() {
               backgroundImage: `url('/api/save-the-date/${token}/photo?v=${info.photoVersion}')`,
               backgroundSize: "cover",
               backgroundPosition: photoPos,
-              filter: "grayscale(1)",
+              filter: photoFilter,
             }}
           />
         ) : (
@@ -324,6 +327,7 @@ export default function SaveTheDate() {
                   backgroundImage: `url('/api/save-the-date/${token}/photo?v=${info.photoVersion}')`,
                   backgroundSize: "cover",
                   backgroundPosition: photoPos,
+                  filter: photoFilter,
                   borderRadius: 8,
                   boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
                 }}

@@ -1390,6 +1390,9 @@ router.get("/rsvp/:token", async (req, res) => {
       plusOneAllowed: true,
       hasPhoto: !!resolvedPhotoUrl,
       photoUrl: publicPhotoUrl,
+      photoEffect: (c?.useGeneratedInvitation === false)
+        ? ((c?.customColors as Record<string, string> | null)?.digitalInvitationPhotoEffect ?? null)
+        : null,
       photoObjectPosition: (() => {
         const pos = c?.digitalInvitationPhotoPosition as { x?: number; y?: number } | null;
         return pos ? `${pos.x ?? 50}% ${pos.y ?? 50}%` : "50% 50%";
@@ -1841,6 +1844,7 @@ router.get("/save-the-date/:token", async (req, res) => {
       fontSize: string | null;
       textOverrides: Record<string, unknown>;
       photoObjectPosition: string;
+      photoEffect: string | null;
       saveTheDatePhotoUrl: string | null;
       // Surface the full palette + layout so the public page can render the
       // exact same canvas component the editor preview uses (pixel parity).
@@ -1855,6 +1859,7 @@ router.get("/save-the-date/:token", async (req, res) => {
       fontSize: null,
       textOverrides: {},
       photoObjectPosition: "50% 50%",
+      photoEffect: null,
       saveTheDatePhotoUrl: null,
       colorPalette: null,
       layout: null,
@@ -1909,6 +1914,7 @@ router.get("/save-the-date/:token", async (req, res) => {
           fontSize: useGenerated ? null : (cust.saveTheDateFontSize ?? null),
           textOverrides: useGenerated ? {} : allOverrides,
           photoObjectPosition: `${ox}% ${oy}%`,
+          photoEffect: useGenerated ? null : (customColors.saveTheDatePhotoEffect ?? null),
           saveTheDatePhotoUrl: cust.saveTheDatePhotoUrl ?? null,
           colorPalette: useGenerated ? null : mergedPalette,
           layout: useGenerated ? null : (cust.saveTheDateLayout ?? cust.digitalInvitationLayout ?? cust.selectedLayout ?? "classic"),
@@ -1950,6 +1956,7 @@ router.get("/save-the-date/:token", async (req, res) => {
       customFontSize: customizationData.fontSize,
       customTextOverrides: customizationData.textOverrides,
       photoObjectPosition: customizationData.photoObjectPosition,
+      photoEffect: customizationData.photoEffect,
       customColorPalette: customizationData.colorPalette,
       customLayout: customizationData.layout,
     });

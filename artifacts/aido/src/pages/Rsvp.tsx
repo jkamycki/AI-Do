@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Heart, CheckCircle2, XCircle, AlertCircle, Loader2, User, Download, MapPin } from "lucide-react";
 import { AnimatedInvitationShell } from "@/components/InvitationCustomization/AnimatedInvitationShell";
+import { photoEffectToFilter } from "@/components/InvitationCustomization/AiPreviewComponents";
 
 const schema = z.object({
   attendance: z.enum(["attending", "declined"], { required_error: "Please select Accept or Decline." }),
@@ -73,6 +74,7 @@ interface RsvpInfo {
   hasPhoto: boolean;
   photoUrl: string | null;
   photoObjectPosition?: string | null;
+  photoEffect?: string | null;
   invitationMessage: string | null;
   // Couple-set RSVP deadline (YYYY-MM-DD); rendered as "RSVP By: (Date)" on
   // the invitation card so guests know when they need to respond by.
@@ -380,6 +382,7 @@ export default function Rsvp() {
                 style={{
                   width: "100%", height: 200, objectFit: "cover",
                   objectPosition: info.photoObjectPosition ?? "50% 50%",
+                  filter: photoEffectToFilter(info.photoEffect),
                   borderRadius: 8, display: "block",
                   boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
                 }}

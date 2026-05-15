@@ -263,8 +263,10 @@ export default function InvitationCustomizationPage({
   // ── Photos ────────────────────────────────────────────────────────────────
   const [saveTheDatePhotoUrl, setSaveTheDatePhotoUrl] = useState<string | null>(null);
   const [saveTheDatePhotoPosition, setSaveTheDatePhotoPosition] = useState({ x: 50, y: 50 });
+  const [saveTheDatePhotoEffect, setSaveTheDatePhotoEffect] = useState("none");
   const [digitalInvitationPhotoUrl, setDigitalInvitationPhotoUrl] = useState<string | null>(null);
   const [digitalInvitationPhotoPosition, setDigitalInvitationPhotoPosition] = useState({ x: 50, y: 50 });
+  const [digitalInvitationPhotoEffect, setDigitalInvitationPhotoEffect] = useState("none");
 
   // ── Messages ──────────────────────────────────────────────────────────────
   const [saveTheDateMessage, setSaveTheDateMessage] = useState("");
@@ -300,8 +302,10 @@ export default function InvitationCustomizationPage({
     selectedPalette,
     saveTheDatePhotoUrl,
     saveTheDatePhotoPosition,
+    saveTheDatePhotoEffect,
     digitalInvitationPhotoUrl,
     digitalInvitationPhotoPosition,
+    digitalInvitationPhotoEffect,
     backgroundImageUrl,
     designMode,
     customDesign,
@@ -400,8 +404,10 @@ export default function InvitationCustomizationPage({
     selectedPalette,
     saveTheDatePhotoUrl,
     saveTheDatePhotoPosition,
+    saveTheDatePhotoEffect,
     digitalInvitationPhotoUrl,
     digitalInvitationPhotoPosition,
+    digitalInvitationPhotoEffect,
     backgroundImageUrl,
     designMode,
     customDesign,
@@ -431,8 +437,14 @@ export default function InvitationCustomizationPage({
             primary: v.customDesign.saveTheDate.accentColor,
             saveTheDateAccent: v.customDesign.saveTheDate.accentColor,
             digitalInvitationAccent: v.customDesign.rsvpInvitation.accentColor,
+            saveTheDatePhotoEffect: v.saveTheDatePhotoEffect,
+            digitalInvitationPhotoEffect: v.digitalInvitationPhotoEffect,
           }
-        : v.customColors;
+        : {
+            ...(v.customColors ?? {}),
+            saveTheDatePhotoEffect: v.saveTheDatePhotoEffect,
+            digitalInvitationPhotoEffect: v.digitalInvitationPhotoEffect,
+          };
       const body = JSON.stringify({
         profileId: v.profileId,
         primaryColor: v.primaryColor,
@@ -573,6 +585,8 @@ export default function InvitationCustomizationPage({
 
       setSaveTheDatePhotoUrl(customization.saveTheDatePhotoUrl);
       setDigitalInvitationPhotoUrl(customization.digitalInvitationPhotoUrl);
+      setSaveTheDatePhotoEffect(customization.customColors?.saveTheDatePhotoEffect ?? "none");
+      setDigitalInvitationPhotoEffect(customization.customColors?.digitalInvitationPhotoEffect ?? "none");
       setRsvpByDate(customization.rsvpByDate ?? "");
 
       // Restore the per-invitation design mode + custom design fields from
@@ -910,8 +924,14 @@ export default function InvitationCustomizationPage({
           ...(customColors ?? {}),
           saveTheDateAccent: d.saveTheDate.accentColor,
           digitalInvitationAccent: d.rsvpInvitation.accentColor,
+          saveTheDatePhotoEffect,
+          digitalInvitationPhotoEffect,
         }
-      : customColors;
+      : {
+          ...(customColors ?? {}),
+          saveTheDatePhotoEffect,
+          digitalInvitationPhotoEffect,
+        };
     return {
       profileId,
       primaryColor,
@@ -1006,6 +1026,8 @@ export default function InvitationCustomizationPage({
     saveTheDatePhotoPosition,
     digitalInvitationPhotoUrl,
     digitalInvitationPhotoPosition,
+    saveTheDatePhotoEffect,
+    digitalInvitationPhotoEffect,
     backgroundImageUrl,
     designMode,
     customDesign,
@@ -1022,8 +1044,14 @@ export default function InvitationCustomizationPage({
       if (v.saveTheDatePhotoUrl?.startsWith("blob:")) return;
       if (v.digitalInvitationPhotoUrl?.startsWith("blob:")) return;
       const payload = {
+        profileId: v.profileId,
         saveTheDatePhotoPosition: v.saveTheDatePhotoPosition,
         digitalInvitationPhotoPosition: v.digitalInvitationPhotoPosition,
+        customColors: {
+          ...(v.customColors ?? {}),
+          saveTheDatePhotoEffect: v.saveTheDatePhotoEffect,
+          digitalInvitationPhotoEffect: v.digitalInvitationPhotoEffect,
+        },
       };
       authFetch("/api/invitation-customizations", {
         method: "POST",
@@ -1594,6 +1622,10 @@ export default function InvitationCustomizationPage({
             onSaveTheDatePositionChange={setSaveTheDatePhotoPosition}
             digitalInvitationPhotoPosition={digitalInvitationPhotoPosition}
             onDigitalInvitationPositionChange={setDigitalInvitationPhotoPosition}
+            saveTheDatePhotoEffect={saveTheDatePhotoEffect}
+            onSaveTheDatePhotoEffectChange={setSaveTheDatePhotoEffect}
+            digitalInvitationPhotoEffect={digitalInvitationPhotoEffect}
+            onDigitalInvitationPhotoEffectChange={setDigitalInvitationPhotoEffect}
           />
 
           {/* Message */}
@@ -2133,6 +2165,7 @@ export default function InvitationCustomizationPage({
                         onPhotoPositionChange={setSaveTheDatePhotoPosition}
                         customColors={previewCustomColors}
                         fullPhoto={activeAnimationLayout === "animated-full-photo-save-date"}
+                        photoEffect={saveTheDatePhotoEffect}
                       />
                     ) : (
                       <AiDigitalInvitationPreview
@@ -2155,6 +2188,7 @@ export default function InvitationCustomizationPage({
                         photoPosition={digitalInvitationPhotoPosition}
                         onPhotoPositionChange={setDigitalInvitationPhotoPosition}
                         customColors={isCustom ? previewCustomColors : undefined}
+                        photoEffect={digitalInvitationPhotoEffect}
                       />
                     )}
                   </AnimatedInvitationShell>

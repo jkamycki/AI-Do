@@ -7,6 +7,8 @@ export interface ColorPalette {
   // modal shows independent accents even before the dedicated DB columns exist.
   saveTheDateAccent?: string;
   digitalInvitationAccent?: string;
+  saveTheDatePhotoEffect?: string;
+  digitalInvitationPhotoEffect?: string;
 }
 
 export interface ElementOverride {
