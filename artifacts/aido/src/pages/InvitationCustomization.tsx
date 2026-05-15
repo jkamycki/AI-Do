@@ -21,6 +21,7 @@ import {
   buildInvitationDesignDocument,
   type InvitationDeliveryMode,
 } from "@/lib/invitationDesignModel";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -66,6 +67,117 @@ type InvitationDesignFields = {
   fontColor: string;
 };
 type CustomDesignState = Record<InvitationDesignKey, InvitationDesignFields>;
+
+function safePdfColor(color: string | null | undefined, fallback: string) {
+  if (!color) return fallback;
+  const trimmed = color.trim();
+  if (/^#[0-9a-f]{3}$/i.test(trimmed)) {
+    return `#${trimmed[1]}${trimmed[1]}${trimmed[2]}${trimmed[2]}${trimmed[3]}${trimmed[3]}`;
+  }
+  if (/^#[0-9a-f]{6}$/i.test(trimmed)) return trimmed;
+  return fallback;
+}
+
+function pdfRgb(color: string | null | undefined, fallback: string): [number, number, number] {
+  const hex = safePdfColor(color, fallback).replace("#", "");
+  return [
+    parseInt(hex.slice(0, 2), 16),
+    parseInt(hex.slice(2, 4), 16),
+    parseInt(hex.slice(4, 6), 16),
+  ];
+}
+
+function formatPrintDate(date: string | null | undefined): string {
+  if (!date) return "Wedding date";
+  const [year, month, day] = date.split("-").map(Number);
+  if (!year || !month || !day) return date;
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function printLocationLines(design: ReturnType<typeof buildInvitationDesignDocument>) {
+  return [
+    design.fields.venue,
+    design.fields.venueAddress,
+    [design.fields.venueCity, [design.fields.venueState, design.fields.venueZip].filter(Boolean).join(" ")]
+      .filter(Boolean)
+      .join(", "),
+  ].filter(Boolean);
+}
+
+function qrImageUrl(url: string, size = 420) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=12&data=${encodeURIComponent(url)}`;
+}
+
+async function fileToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function loadImageDataUrl(url: string | null | undefined) {
+  if (!url) return null;
+  if (url.startsWith("data:")) return url;
+  try {
+    const response = await fetch(url, { credentials: "include", mode: "cors" });
+    if (!response.ok) return null;
+    return await fileToDataUrl(await response.blob());
+  } catch {
+    return null;
+  }
+}
+
+async function coverImageDataUrl(
+  imageDataUrl: string,
+  width: number,
+  height: number,
+  position: { x: number; y: number },
+) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(width));
+      canvas.height = Math.max(1, Math.round(height));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Could not create image canvas"));
+        return;
+      }
+      const scale = Math.max(canvas.width / image.width, canvas.height / image.height);
+      const drawWidth = image.width * scale;
+      const drawHeight = image.height * scale;
+      const offsetX = (canvas.width - drawWidth) * (Math.min(100, Math.max(0, position.x)) / 100);
+      const offsetY = (canvas.height - drawHeight) * (Math.min(100, Math.max(0, position.y)) / 100);
+      ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+      resolve(canvas.toDataURL("image/jpeg", 0.96));
+    };
+    image.onerror = () => reject(new Error("Could not load invitation photo"));
+    image.src = imageDataUrl;
+  });
+}
+
+function addCenteredText(
+  doc: any,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+) {
+  const lines = doc.splitTextToSize(text, maxWidth);
+  lines.forEach((line: string, index: number) => {
+    doc.text(line, x, y + index * lineHeight, { align: "center" });
+  });
+  return y + lines.length * lineHeight;
+}
 
 export default function InvitationCustomizationPage({
   profileId: propProfileId,
@@ -917,32 +1029,161 @@ export default function InvitationCustomizationPage({
       : null;
 
   const downloadPrintPdf = async () => {
-    if (!printPreviewRef.current) return;
     setExportingPrintPdf(true);
     try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
-      ]);
-      const canvas = await html2canvas(printPreviewRef.current, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: activeDesignDocument.style.backgroundColor,
-        logging: false,
-      });
-      const imgData = canvas.toDataURL("image/jpeg", 0.96);
+      const { jsPDF } = await import("jspdf");
       const spec = PRINT_SIZES[printSize];
       const pageWidth = printSize === "5x7" ? 5 * 72 : 4 * 72;
       const pageHeight = printSize === "5x7" ? 7 * 72 : 6 * 72;
       const doc = new jsPDF({ orientation: "p", unit: "pt", format: [pageWidth, pageHeight] });
-      doc.addImage(imgData, "JPEG", 0, 0, pageWidth, pageHeight);
+      const bg = pdfRgb(activeDesignDocument.style.backgroundColor, "#fffaf4");
+      const accent = pdfRgb(activeDesignDocument.style.accentColor, "#D4A017");
+      const text = pdfRgb(activeDesignDocument.style.textColor, "#1f2933");
+      const isSaveTheDate = activeDesignDocument.kind === "saveTheDate";
+      const locLines = printLocationLines(activeDesignDocument);
+
+      doc.setFillColor(...bg);
+      doc.rect(0, 0, pageWidth, pageHeight, "F");
+      doc.setDrawColor(...accent);
+      doc.setLineWidth(1);
+      doc.rect(18, 18, pageWidth - 36, pageHeight - 36);
+      doc.setLineDashPattern([4, 4], 0);
+      doc.setDrawColor(102, 102, 102);
+      doc.rect(34, 34, pageWidth - 68, pageHeight - 68);
+      doc.setLineDashPattern([], 0);
+      doc.setTextColor(...text);
+
+      if (printSide === "front") {
+        let y = 56;
+        const photoUrl = resolveMediaUrl(activeDesignDocument.image.url);
+        const photoDataUrl = await loadImageDataUrl(photoUrl);
+        if (photoDataUrl) {
+          const photoX = 48;
+          const photoY = 48;
+          const photoWidth = pageWidth - 96;
+          const photoHeight = isSaveTheDate ? pageHeight * 0.31 : pageHeight * 0.26;
+          const coveredPhoto = await coverImageDataUrl(
+            photoDataUrl,
+            photoWidth * 3,
+            photoHeight * 3,
+            activeDesignDocument.image.position,
+          );
+          doc.addImage(coveredPhoto, "JPEG", photoX, photoY, photoWidth, photoHeight);
+          doc.setDrawColor(...accent);
+          doc.rect(photoX, photoY, photoWidth, photoHeight);
+          y = photoY + photoHeight + 34;
+        } else {
+          y = pageHeight * 0.2;
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(...accent);
+        doc.text(isSaveTheDate ? "SAVE THE DATE" : "THE WEDDING CELEBRATION OF", pageWidth / 2, y, { align: "center" });
+
+        doc.setFont("times", "italic");
+        doc.setFontSize(printSize === "5x7" ? 34 : 29);
+        y = addCenteredText(doc, activeDesignDocument.couple, pageWidth / 2, y + 36, pageWidth - 84, 36) + 8;
+
+        doc.setDrawColor(...accent);
+        doc.line(pageWidth / 2 - 42, y, pageWidth / 2 + 42, y);
+        y += 28;
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(...text);
+        doc.text(formatPrintDate(activeDesignDocument.fields.weddingDate), pageWidth / 2, y, { align: "center" });
+        y += 26;
+
+        if (locLines.length > 0) {
+          doc.setFont("times", "normal");
+          doc.setFontSize(14);
+          for (const line of locLines) {
+            doc.text(line, pageWidth / 2, y, { align: "center", maxWidth: pageWidth - 82 });
+            y += 18;
+          }
+          y += 4;
+        }
+
+        if (activeDesignDocument.message) {
+          doc.setFont("times", "italic");
+          doc.setFontSize(12);
+          addCenteredText(doc, activeDesignDocument.message, pageWidth / 2, y + 8, pageWidth - 92, 16);
+        }
+      } else {
+        let y = pageHeight * 0.2;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(...accent);
+        doc.text("RSVP ONLINE", pageWidth / 2, y, { align: "center" });
+        y += 34;
+
+        doc.setFont("times", "italic");
+        doc.setFontSize(26);
+        doc.setTextColor(...text);
+        y = addCenteredText(doc, "We hope to celebrate with you", pageWidth / 2, y, pageWidth - 82, 30) + 10;
+
+        if (includePrintQr && websiteUrl) {
+          const qrDataUrl = await loadImageDataUrl(qrImageUrl(websiteUrl));
+          if (qrDataUrl) {
+            const qrSize = 126;
+            const qrX = pageWidth / 2 - qrSize / 2;
+            doc.setFillColor(255, 255, 255);
+            doc.rect(qrX - 8, y, qrSize + 16, qrSize + 16, "F");
+            doc.setDrawColor(...accent);
+            doc.rect(qrX - 8, y, qrSize + 16, qrSize + 16);
+            doc.addImage(qrDataUrl, "PNG", qrX, y + 8, qrSize, qrSize);
+            y += qrSize + 40;
+          }
+        }
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(...text);
+        y = addCenteredText(
+          doc,
+          websiteUrl ? "Use the link below to RSVP and see wedding details." : "Publish your wedding website to turn this into a live RSVP link.",
+          pageWidth / 2,
+          y,
+          pageWidth - 88,
+          13,
+        ) + 12;
+
+        if (websiteUrl) {
+          doc.setTextColor(...accent);
+          doc.setFontSize(8);
+          y = addCenteredText(doc, websiteUrl, pageWidth / 2, y, pageWidth - 82, 11) + 18;
+        } else if (includePrintQr) {
+          doc.setTextColor(...text);
+          doc.setFontSize(8);
+          y = addCenteredText(
+            doc,
+            "Publish your wedding website to automatically add a scannable RSVP QR code.",
+            pageWidth / 2,
+            y,
+            pageWidth - 100,
+            11,
+          ) + 18;
+        }
+
+        doc.setTextColor(...text);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text(formatPrintDate(activeDesignDocument.fields.weddingDate), pageWidth / 2, y, { align: "center" });
+        y += 18;
+        for (const line of locLines) {
+          doc.text(line, pageWidth / 2, y, { align: "center", maxWidth: pageWidth - 82 });
+          y += 13;
+        }
+      }
+
       const safeCouple = activeDesignDocument.couple.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") || "wedding";
       doc.save(`${safeCouple}_${activeDesignDocument.kind}_${spec.label.replace(/\s+/g, "")}_${printSide}.pdf`);
     } catch (error) {
       console.error("Print PDF export failed", error);
       toast({
         title: "Could not export PDF",
-        description: "Please try again after the print preview finishes loading.",
+        description: error instanceof Error ? error.message : "Please try again after the print preview finishes loading.",
         variant: "destructive",
       });
     } finally {
