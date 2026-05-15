@@ -689,57 +689,99 @@ export function AnimatedInvitationShell({
                 <stop offset="0%" stopColor="#ffffff" />
                 <stop offset="100%" stopColor="#b6aa93" />
               </linearGradient>
+              <radialGradient id={`owl-face-${svgIdSeed}`} cx="50%" cy="42%" r="62%">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="72%" stopColor="#f4efe2" />
+                <stop offset="100%" stopColor="#cfc5ad" />
+              </radialGradient>
             </defs>
             <path
               className="aido-owl-wing-svg left"
-              d="M165 83 C122 32 61 24 8 68 C48 70 77 82 104 102 C75 102 43 114 19 134 C80 132 128 120 165 94 Z"
+              d="M167 84 C128 18 60 10 9 58 C44 55 78 66 110 90 C76 91 42 104 14 126 C74 130 128 117 167 96 Z"
               fill={`url(#owl-feather-${svgIdSeed})`}
               stroke="#d8d0bd"
               strokeWidth="2"
             />
             <path
               className="aido-owl-wing-svg right"
-              d="M175 83 C218 32 279 24 332 68 C292 70 263 82 236 102 C265 102 297 114 321 134 C260 132 212 120 175 94 Z"
+              d="M173 84 C212 18 280 10 331 58 C296 55 262 66 230 90 C264 91 298 104 326 126 C266 130 212 117 173 96 Z"
               fill={`url(#owl-feather-${svgIdSeed})`}
               stroke="#d8d0bd"
               strokeWidth="2"
             />
-            {[28, 48, 68, 88, 108, 128].map((x) => (
+            {[24, 43, 62, 81, 100, 119, 138].map((x) => (
               <path
                 key={`left-feather-${x}`}
-                d={`M${x} 70 C${x + 30} 76 ${x + 55} 88 165 90`}
+                d={`M${x} 62 C${x + 28} 71 ${x + 54} 84 166 90`}
                 fill="none"
-                stroke="#c8beaa"
-                strokeWidth="1.4"
-                opacity="0.62"
+                stroke="#bdb39e"
+                strokeWidth="1.25"
+                opacity="0.68"
               />
             ))}
-            {[312, 292, 272, 252, 232, 212].map((x) => (
+            {[316, 297, 278, 259, 240, 221, 202].map((x) => (
               <path
                 key={`right-feather-${x}`}
-                d={`M${x} 70 C${x - 30} 76 ${x - 55} 88 175 90`}
+                d={`M${x} 62 C${x - 28} 71 ${x - 54} 84 174 90`}
                 fill="none"
-                stroke="#c8beaa"
-                strokeWidth="1.4"
-                opacity="0.62"
+                stroke="#bdb39e"
+                strokeWidth="1.25"
+                opacity="0.68"
               />
             ))}
-            <ellipse cx="170" cy="104" rx="44" ry="58" fill={`url(#owl-shadow-${svgIdSeed})`} stroke="#d8d0bd" strokeWidth="2" />
+            {[42, 61, 80, 99, 118].map((x) => (
+              <path
+                key={`left-tip-${x}`}
+                d={`M${x} 103 C${x + 12} 119 ${x + 24} 128 ${x + 40} 134`}
+                fill="none"
+                stroke="#d4ccba"
+                strokeWidth="1"
+                opacity="0.55"
+              />
+            ))}
+            {[298, 279, 260, 241, 222].map((x) => (
+              <path
+                key={`right-tip-${x}`}
+                d={`M${x} 103 C${x - 12} 119 ${x - 24} 128 ${x - 40} 134`}
+                fill="none"
+                stroke="#d4ccba"
+                strokeWidth="1"
+                opacity="0.55"
+              />
+            ))}
+            <ellipse cx="170" cy="106" rx="42" ry="62" fill={`url(#owl-shadow-${svgIdSeed})`} stroke="#d8d0bd" strokeWidth="2" />
+            <path d="M137 91 C151 76 189 76 203 91 C197 123 188 150 170 160 C152 150 143 123 137 91 Z" fill="#f8f6ef" opacity="0.86" />
+            {[150, 160, 170, 180, 190].map((x, index) => (
+              <path
+                key={`chest-${x}`}
+                d={`M${x} ${112 + index * 3} C${x + 5} ${120 + index * 3} ${x + 9} ${120 + index * 3} ${x + 14} ${112 + index * 3}`}
+                fill="none"
+                stroke="#b8ad98"
+                strokeWidth="1.4"
+                opacity="0.52"
+              />
+            ))}
             <path
-              d="M140 70 C145 40 160 31 170 49 C180 31 195 40 200 70 C192 60 181 58 170 65 C159 58 148 60 140 70 Z"
-              fill="#fffdf5"
+              d="M134 75 C138 42 158 31 170 49 C182 31 202 42 206 75 C197 60 182 58 170 68 C158 58 143 60 134 75 Z"
+              fill={`url(#owl-face-${svgIdSeed})`}
               stroke="#d8d0bd"
               strokeWidth="2"
             />
-            <circle cx="154" cy="78" r="13" fill="#f3cf59" stroke="#7c5c19" strokeWidth="2" />
-            <circle cx="186" cy="78" r="13" fill="#f3cf59" stroke="#7c5c19" strokeWidth="2" />
-            <circle cx="154" cy="78" r="5" fill="#17131b" />
-            <circle cx="186" cy="78" r="5" fill="#17131b" />
-            <path d="M170 88 L161 100 H179 Z" fill="#4d3624" />
+            <path d="M143 72 C149 62 160 61 167 70 C160 68 153 70 147 76 Z" fill="#e5dfcf" opacity="0.75" />
+            <path d="M197 72 C191 62 180 61 173 70 C180 68 187 70 193 76 Z" fill="#e5dfcf" opacity="0.75" />
+            <ellipse cx="154" cy="79" rx="13" ry="12" fill="#f3cf59" stroke="#7c5c19" strokeWidth="2" />
+            <ellipse cx="186" cy="79" rx="13" ry="12" fill="#f3cf59" stroke="#7c5c19" strokeWidth="2" />
+            <circle cx="154" cy="79" r="5" fill="#17131b" />
+            <circle cx="186" cy="79" r="5" fill="#17131b" />
+            <circle cx="152" cy="77" r="1.5" fill="#ffffff" opacity="0.9" />
+            <circle cx="184" cy="77" r="1.5" fill="#ffffff" opacity="0.9" />
+            <path d="M170 88 L161 99 H179 Z" fill="#4d3624" />
+            <path d="M163 103 C167 107 173 107 177 103" fill="none" stroke="#8d806d" strokeWidth="1.4" opacity="0.55" />
             <path d="M145 116 C156 126 184 126 195 116" fill="none" stroke="#b4a68d" strokeWidth="2" opacity="0.7" />
             <path d="M151 134 C160 144 180 144 189 134" fill="none" stroke="#b4a68d" strokeWidth="2" opacity="0.5" />
-            <path d="M151 157 C156 166 162 166 166 157" fill="none" stroke="#7b6040" strokeWidth="3" strokeLinecap="round" />
-            <path d="M174 157 C178 166 184 166 189 157" fill="none" stroke="#7b6040" strokeWidth="3" strokeLinecap="round" />
+            <path d="M151 157 C154 166 160 168 166 157" fill="none" stroke="#7b6040" strokeWidth="3" strokeLinecap="round" />
+            <path d="M174 157 C180 168 186 166 189 157" fill="none" stroke="#7b6040" strokeWidth="3" strokeLinecap="round" />
+            <path d="M146 160 L139 166 M160 161 L157 170 M181 161 L184 170 M194 160 L201 166" stroke="#7b6040" strokeWidth="2" strokeLinecap="round" opacity="0.75" />
             <g className="aido-owl-envelope-svg">
               <rect x="126" y="154" width="88" height="26" rx="3" fill={paper} stroke="#a8946d" strokeWidth="2" />
               <path d="M126 154 L170 172 L214 154" fill="none" stroke="#9e8a66" strokeWidth="2" />
