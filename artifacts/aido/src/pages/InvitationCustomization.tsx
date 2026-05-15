@@ -2107,7 +2107,6 @@ export default function InvitationCustomizationPage({
                     accent={cd.accentColor}
                     paper="#d9c8ad"
                     darkPanel="#15131f"
-                    compact
                     replayKey={animationReplayKey}
                   >
                     {isSTD ? (
