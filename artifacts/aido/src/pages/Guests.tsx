@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useForm } from "react-hook-form";
+import ExcelJS from "exceljs";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -82,6 +83,7 @@ import {
   Trash2,
   Edit2,
   Download,
+  Upload,
   ChevronDown,
   RotateCcw,
   Link2,
@@ -865,6 +867,201 @@ function exportCSV(guestList: Guest[], hotels: HotelOption[] = []) {
   URL.revokeObjectURL(url);
 }
 
+const GUEST_IMPORT_TEMPLATE_HEADERS = [
+  "Full Name",
+  "Email",
+  "Phone",
+  "RSVP Status",
+  "Invitation Status",
+  "Meal Choice",
+  "Dietary Notes",
+  "Guest Group",
+  "Plus One",
+  "Plus One Name",
+  "Table",
+  "Needs Hotel",
+  "Street Address",
+  "Apt/Unit",
+  "City",
+  "State",
+  "ZIP",
+  "Country",
+  "Notes",
+];
+
+const GUEST_IMPORT_SAMPLE_ROW = [
+  "Jane Doe",
+  "jane@example.com",
+  "631-555-1234",
+  "pending",
+  "pending",
+  "vegetarian",
+  "No shellfish",
+  "Bride's Friends",
+  "yes",
+  "John Doe",
+  "5",
+  "no",
+  "123 Ses Drive",
+  "Apt 2B",
+  "Clayton",
+  "NC",
+  "27520",
+  "United States",
+  "College friend",
+];
+
+function normalizeImportHeader(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function normalizeImportStatus(
+  value: unknown,
+  allowed: readonly string[],
+  fallback: string,
+) {
+  const raw = String(value ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+  if (!raw) return fallback;
+  if (raw === "yes" || raw === "attending") return allowed.includes("attending") ? "attending" : fallback;
+  if (raw === "no" || raw === "not_sent" || raw === "notsent") return allowed.includes("pending") ? "pending" : fallback;
+  if (raw === "sent") return allowed.includes("sent") ? "sent" : fallback;
+  return allowed.includes(raw) ? raw : fallback;
+}
+
+function parseImportBoolean(value: unknown) {
+  const raw = String(value ?? "").trim().toLowerCase();
+  return ["yes", "y", "true", "1", "x"].includes(raw);
+}
+
+function getImportCell(
+  row: ExcelJS.Row,
+  headerMap: Map<string, number>,
+  aliases: string[],
+) {
+  for (const alias of aliases) {
+    const column = headerMap.get(normalizeImportHeader(alias));
+    if (!column) continue;
+    const value = row.getCell(column).value;
+    if (value && typeof value === "object" && "text" in value) {
+      return String((value as { text?: string }).text ?? "").trim();
+    }
+    if (value && typeof value === "object" && "result" in value) {
+      return String((value as { result?: unknown }).result ?? "").trim();
+    }
+    return String(value ?? "").trim();
+  }
+  return "";
+}
+
+function importRowHasAnyValue(row: ExcelJS.Row) {
+  let hasAnyValue = false;
+  row.eachCell((cell) => {
+    if (String(cell.value ?? "").trim().length > 0) {
+      hasAnyValue = true;
+    }
+  });
+  return hasAnyValue;
+}
+
+async function downloadGuestImportTemplate() {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Guest Import");
+  sheet.addRow(GUEST_IMPORT_TEMPLATE_HEADERS);
+  sheet.addRow(GUEST_IMPORT_SAMPLE_ROW);
+  sheet.addRow([
+    "Required: Full Name. Everything else is optional. RSVP Status: pending, attending, maybe, declined. Invitation Status: pending or sent. Plus One/Needs Hotel: yes or no.",
+  ]);
+  sheet.getRow(1).font = { bold: true };
+  sheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFF3E6B1" },
+  };
+  sheet.columns.forEach((column) => {
+    column.width = 18;
+  });
+  sheet.getCell("A3").font = { italic: true, color: { argb: "FF666666" } };
+  sheet.mergeCells(3, 1, 3, GUEST_IMPORT_TEMPLATE_HEADERS.length);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "aido-guest-import-template.xlsx";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function parseGuestImportWorkbook(file: File) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await file.arrayBuffer());
+  const sheet = workbook.worksheets[0];
+  if (!sheet) throw new Error("No worksheet found in this Excel file.");
+
+  const headerMap = new Map<string, number>();
+  sheet.getRow(1).eachCell((cell, columnNumber) => {
+    const header = normalizeImportHeader(cell.value);
+    if (header) headerMap.set(header, columnNumber);
+  });
+
+  const guestsToImport: Array<GuestFormValues & { plusOneName?: string }> = [];
+  const skipped: string[] = [];
+
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const name = getImportCell(row, headerMap, ["Full Name", "Name", "Guest Name"]);
+    const isInstructionRow = name.toLowerCase().startsWith("required:");
+    const hasAnyValue = importRowHasAnyValue(row);
+    if (!hasAnyValue || isInstructionRow) return;
+    if (!name) {
+      skipped.push(`Row ${rowNumber}: missing Full Name`);
+      return;
+    }
+
+    const plusOneName = getImportCell(row, headerMap, ["Plus One Name", "Plus 1 Name", "Guest Plus One"]);
+    guestsToImport.push({
+      name,
+      email: getImportCell(row, headerMap, ["Email", "Email Address"]),
+      phone: getImportCell(row, headerMap, ["Phone", "Phone Number", "Mobile"]),
+      rsvpStatus: normalizeImportStatus(
+        getImportCell(row, headerMap, ["RSVP Status", "RSVP"]),
+        ["pending", "attending", "maybe", "declined"],
+        "pending",
+      ) as GuestFormValues["rsvpStatus"],
+      invitationStatus: normalizeImportStatus(
+        getImportCell(row, headerMap, ["Invitation Status", "Invite Status", "Invitation Sent"]),
+        ["pending", "sent"],
+        "pending",
+      ) as GuestFormValues["invitationStatus"],
+      mealChoice: getImportCell(row, headerMap, ["Meal Choice", "Meal"]),
+      dietaryNotes: getImportCell(row, headerMap, ["Dietary Notes", "Dietary Restrictions", "Allergies"]),
+      guestGroup: getImportCell(row, headerMap, ["Guest Group", "Group", "Category"]),
+      plusOne: parseImportBoolean(getImportCell(row, headerMap, ["Plus One", "Plus 1", "PlusOne"])),
+      plusOneFirstName: "",
+      plusOneLastName: "",
+      plusOneName,
+      tableAssignment: getImportCell(row, headerMap, ["Table", "Table Assignment"]),
+      needsHotel: parseImportBoolean(getImportCell(row, headerMap, ["Needs Hotel", "Hotel Needed"])),
+      bookedHotelBlockId: null,
+      address: getImportCell(row, headerMap, ["Street Address", "Address"]),
+      aptUnit: getImportCell(row, headerMap, ["Apt/Unit", "Apartment", "Unit", "Apt"]),
+      guestCity: getImportCell(row, headerMap, ["City", "Town"]),
+      guestState: getImportCell(row, headerMap, ["State", "Province"]),
+      guestZip: getImportCell(row, headerMap, ["ZIP", "Zip Code", "Postal Code"]),
+      guestCountry: getImportCell(row, headerMap, ["Country"]),
+      notes: getImportCell(row, headerMap, ["Notes", "Note"]),
+    });
+  });
+
+  return { guestsToImport, skipped };
+}
+
 function GuestCollectorCard() {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -1088,6 +1285,12 @@ export default function Guests() {
   const [search, setSearch] = useState("");
   const [rsvpFilter, setRsvpFilter] = useState<string>("all");
   const [isAdding, setIsAdding] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isImportingGuests, setIsImportingGuests] = useState(false);
+  const [importSummary, setImportSummary] = useState<{
+    added: number;
+    skipped: string[];
+  } | null>(null);
   const [editGuest, setEditGuest] = useState<Guest | null>(null);
 
   const [duplicateGuestIds, setDuplicateGuestIds] = useState<Set<number>>(
@@ -1927,6 +2130,81 @@ export default function Guests() {
     }
   }
 
+  async function handleGuestImport(file: File | null) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      toast({
+        title: "Use an Excel .xlsx file",
+        description: "Download the template if you want the easiest format.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsImportingGuests(true);
+    setImportSummary(null);
+    try {
+      const { guestsToImport, skipped } = await parseGuestImportWorkbook(file);
+      if (guestsToImport.length === 0) {
+        setImportSummary({ added: 0, skipped: skipped.length ? skipped : ["No guests found to import."] });
+        return;
+      }
+
+      let added = 0;
+      const importSkipped = [...skipped];
+      for (const guest of guestsToImport) {
+        const payload = {
+          name: guest.name,
+          email: guest.email || undefined,
+          invitationStatus: guest.invitationStatus,
+          rsvpStatus: guest.rsvpStatus,
+          mealChoice: guest.mealChoice || undefined,
+          dietaryNotes: guest.dietaryNotes || undefined,
+          guestGroup: guest.guestGroup || undefined,
+          plusOne: guest.plusOne || !!guest.plusOneName,
+          plusOneName: guest.plusOneName || undefined,
+          tableAssignment: guest.tableAssignment || undefined,
+          needsHotel: guest.needsHotel,
+          bookedHotelBlockId: null,
+          notes: guest.notes || undefined,
+          phone: guest.phone || undefined,
+          address: guest.address || undefined,
+          aptUnit: guest.aptUnit || undefined,
+          guestCity: guest.guestCity || undefined,
+          guestState: guest.guestState || undefined,
+          guestZip: guest.guestZip || undefined,
+          guestCountry: guest.guestCountry || undefined,
+        };
+        const res = await authFetch("/api/guests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          added += 1;
+          continue;
+        }
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        importSkipped.push(`${guest.name}: ${body.error ?? "could not be imported"}`);
+      }
+
+      invalidate();
+      setImportSummary({ added, skipped: importSkipped });
+      toast({
+        title: "Guest import complete",
+        description: `${added} guest${added === 1 ? "" : "s"} added${importSkipped.length ? `, ${importSkipped.length} skipped` : ""}.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Could not import guest list",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setIsImportingGuests(false);
+    }
+  }
+
   function handleEdit(data: GuestFormValues) {
     if (!editGuest) return;
     const plusOneName = data.plusOne
@@ -2071,6 +2349,92 @@ export default function Guests() {
               <Download className="h-4 w-4 mr-2" /> {t("guests.export_csv")}
             </Button>
           )}
+          <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-auto justify-center whitespace-normal sm:whitespace-nowrap">
+                <Upload className="h-4 w-4 mr-2" /> Import Excel
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[560px]">
+              <DialogHeader>
+                <DialogTitle className="font-serif text-2xl text-primary">
+                  Import Guest List
+                </DialogTitle>
+                <DialogDescription>
+                  Upload an Excel .xlsx file and A.IDO will add each row as a guest.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="rounded-lg border border-border/70 bg-muted/20 p-4 text-sm space-y-2">
+                  <p className="font-medium">Template columns</p>
+                  <p className="text-muted-foreground">
+                    Required: <span className="font-medium text-foreground">Full Name</span>. Optional:
+                    Email, Phone, RSVP Status, Meal Choice, Guest Group, Plus One,
+                    Plus One Name, Address, City, State, ZIP, Country, and Notes.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    RSVP Status can be pending, attending, maybe, or declined. Plus One and Needs Hotel can be yes or no.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => {
+                      downloadGuestImportTemplate().catch((err) => {
+                        toast({
+                          title: "Could not create template",
+                          description: err instanceof Error ? err.message : undefined,
+                          variant: "destructive",
+                        });
+                      });
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" /> Download Template
+                  </Button>
+                  <label className="flex-1">
+                    <input
+                      type="file"
+                      accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                      className="hidden"
+                      disabled={isImportingGuests}
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0] ?? null;
+                        handleGuestImport(file);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                    <span className="inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90">
+                      {isImportingGuests ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4 mr-2" />
+                      )}
+                      Upload Excel
+                    </span>
+                  </label>
+                </div>
+                {importSummary && (
+                  <div className="rounded-lg border border-border/70 p-4 text-sm">
+                    <p className="font-medium">
+                      {importSummary.added} guest{importSummary.added === 1 ? "" : "s"} added
+                    </p>
+                    {importSummary.skipped.length > 0 && (
+                      <div className="mt-2 text-xs text-muted-foreground space-y-1">
+                        <p>{importSummary.skipped.length} row{importSummary.skipped.length === 1 ? "" : "s"} skipped:</p>
+                        <ul className="max-h-32 overflow-y-auto list-disc pl-4">
+                          {importSummary.skipped.map((item, index) => (
+                            <li key={`${item}-${index}`}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
           {allGuests.length > 0 && (
             <>
               <Button
