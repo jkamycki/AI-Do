@@ -239,17 +239,17 @@ export default function SaveTheDate() {
         />
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", padding: "34px 28px 38px", color: WHITE, textAlign: "center" }}>
           <div>
-            <p style={{ fontFamily: LABEL_FONT, fontSize: 12 * sc, fontWeight: 700, letterSpacing: "0.34em", textTransform: "uppercase", margin: "0 0 10px", color: WHITE }}>
+            <p style={{ fontFamily: LABEL_FONT, fontSize: 12 * sc, fontWeight: 700, letterSpacing: "0.34em", textTransform: "uppercase", margin: "0 0 10px", color: GOLD }}>
               Save the Date
             </p>
             <div style={{ margin: "0 auto", width: 46, height: 28, position: "relative" }}>
-              <Heart style={{ width: 24, height: 24, color: WHITE, opacity: 0.9, transform: "rotate(-14deg)" }} />
-              <span style={{ position: "absolute", left: 20, right: 0, top: 18, height: 1, background: WHITE, opacity: 0.72 }} />
+              <Heart style={{ width: 24, height: 24, color: GOLD, opacity: 0.9, transform: "rotate(-14deg)" }} />
+              <span style={{ position: "absolute", left: 20, right: 0, top: 18, height: 1, background: GOLD, opacity: 0.72 }} />
             </div>
           </div>
 
           <div style={{ marginTop: "auto", marginBottom: 20 }}>
-            <div style={{ fontFamily: SERIF, textTransform: "uppercase", letterSpacing: "0.18em", lineHeight: 1.15 }}>
+            <div style={{ fontFamily: SERIF, textTransform: "uppercase", letterSpacing: "0.18em", lineHeight: 1.15, color: GOLD }}>
               <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner1First}</div>
               <div style={{ fontSize: `${1.8 * sc}rem`, fontStyle: "italic", textTransform: "none", letterSpacing: "0.08em", margin: "4px 0" }}>and</div>
               <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner2First}</div>
