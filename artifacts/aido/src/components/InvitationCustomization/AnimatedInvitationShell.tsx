@@ -158,6 +158,8 @@ export function AnimatedInvitationShell({
         .aido-envelope-pocket-face::before,
         .aido-envelope-pocket-face::after,
         .aido-wax-seal,
+        .aido-castle-backdrop,
+        .aido-castle-backdrop *,
         .aido-owl-delivery,
         .aido-owl-delivery::before,
         .aido-owl-delivery::after {
@@ -344,9 +346,101 @@ export function AnimatedInvitationShell({
         .aido-invite-anim-animated-owl-delivery {
           background:
             radial-gradient(circle at 72% 14%, rgba(255,255,255,.56) 0 3%, transparent 4%),
+            radial-gradient(circle at 80% 20%, rgba(255,255,255,.34) 0 1px, transparent 2px),
+            radial-gradient(circle at 22% 28%, rgba(255,255,255,.28) 0 1px, transparent 2px),
+            radial-gradient(circle at 52% 16%, rgba(255,255,255,.22) 0 1px, transparent 2px),
             radial-gradient(circle at 46% 34%, rgba(114,129,255,.42), transparent 32%),
             radial-gradient(circle at 18% 12%, rgba(255,255,255,.2), transparent 26%),
             linear-gradient(150deg, #10162b 0%, #1f2f72 48%, #6b5b8f 100%);
+        }
+        .aido-castle-backdrop {
+          left: 50%;
+          bottom: -2%;
+          z-index: 0;
+          width: min(84%, 620px);
+          height: ${compact ? "190px" : "250px"};
+          transform: translateX(-50%);
+          opacity: .44;
+          filter: drop-shadow(0 -18px 36px rgba(167,185,255,.14));
+        }
+        .aido-castle-backdrop::before {
+          content: "";
+          position: absolute;
+          left: 50%;
+          bottom: -20%;
+          width: 118%;
+          height: 42%;
+          transform: translateX(-50%);
+          border-radius: 999px;
+          background: radial-gradient(ellipse at center, rgba(255,255,255,.22), transparent 68%);
+          filter: blur(12px);
+        }
+        .aido-castle-keep {
+          left: 26%;
+          right: 26%;
+          bottom: 0;
+          height: 55%;
+          border-radius: 12px 12px 0 0;
+          background:
+            radial-gradient(circle at 26% 34%, rgba(245,222,151,.42) 0 2px, transparent 3px),
+            radial-gradient(circle at 74% 34%, rgba(245,222,151,.34) 0 2px, transparent 3px),
+            linear-gradient(180deg, rgba(20,26,58,.86), rgba(8,13,32,.94));
+        }
+        .aido-castle-keep::before {
+          content: "";
+          position: absolute;
+          left: 8%;
+          right: 8%;
+          top: -16px;
+          height: 16px;
+          background:
+            linear-gradient(90deg, rgba(12,18,42,.92) 0 12%, transparent 12% 22%, rgba(12,18,42,.92) 22% 34%, transparent 34% 44%, rgba(12,18,42,.92) 44% 56%, transparent 56% 66%, rgba(12,18,42,.92) 66% 78%, transparent 78% 88%, rgba(12,18,42,.92) 88% 100%);
+        }
+        .aido-castle-tower {
+          bottom: 0;
+          width: 18%;
+          height: 68%;
+          border-radius: 10px 10px 0 0;
+          background:
+            radial-gradient(circle at 50% 34%, rgba(245,222,151,.44) 0 2px, transparent 3px),
+            linear-gradient(180deg, rgba(18,24,55,.9), rgba(7,12,31,.96));
+        }
+        .aido-castle-tower::before {
+          content: "";
+          position: absolute;
+          left: 50%;
+          top: -34px;
+          width: 84%;
+          height: 38px;
+          transform: translateX(-50%);
+          clip-path: polygon(50% 0, 100% 100%, 0 100%);
+          background: linear-gradient(180deg, rgba(33,43,90,.9), rgba(8,13,32,.96));
+        }
+        .aido-castle-tower.left {
+          left: 8%;
+          height: 58%;
+        }
+        .aido-castle-tower.center-left {
+          left: 31%;
+          width: 15%;
+          height: 82%;
+        }
+        .aido-castle-tower.center-right {
+          right: 31%;
+          width: 15%;
+          height: 78%;
+        }
+        .aido-castle-tower.right {
+          right: 8%;
+          height: 62%;
+        }
+        .aido-castle-bridge {
+          left: 11%;
+          right: 11%;
+          bottom: 0;
+          height: 22%;
+          border-radius: 18px 18px 0 0;
+          background: linear-gradient(180deg, rgba(11,17,42,.76), rgba(6,10,28,.92));
         }
         .aido-invite-anim-animated-owl-delivery .aido-invite-anim-card {
           animation-delay: 2520ms;
@@ -553,6 +647,16 @@ export function AnimatedInvitationShell({
       <div key={`pocket-${replay}`} className="aido-envelope-pocket" aria-hidden="true">
         <div className="aido-envelope-pocket-face" />
       </div>
+      {showOwlDelivery && (
+        <div key={`castle-${replay}`} className="aido-castle-backdrop" aria-hidden="true">
+          <div className="aido-castle-tower left" />
+          <div className="aido-castle-tower center-left" />
+          <div className="aido-castle-keep" />
+          <div className="aido-castle-tower center-right" />
+          <div className="aido-castle-tower right" />
+          <div className="aido-castle-bridge" />
+        </div>
+      )}
       {showOwlDelivery && (
         <div key={`owl-${replay}`} className="aido-owl-delivery" aria-hidden="true">
           <svg className="aido-owl-svg" viewBox="0 0 340 196" role="presentation" focusable="false">
