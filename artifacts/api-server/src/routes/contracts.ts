@@ -19,6 +19,7 @@ type VendorFile = {
   name: string;
   url: string;
   type: string;
+  uploadedAt?: string;
   contractId?: number;
   contractFileName?: string;
 };
@@ -221,6 +222,7 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
           name: displayName,
           url: storedUrl,
           type: mimetype,
+          uploadedAt: saved.createdAt.toISOString(),
           contractId: saved.id,
           contractFileName: displayName,
         };

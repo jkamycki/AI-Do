@@ -813,7 +813,7 @@ function AddPaymentForm({
 function FileUploadSection({
   vendor,
 }: {
-  vendor: { id: number; files: Array<{ name: string; url: string; type: string }> };
+  vendor: { id: number; files: Array<{ name: string; url: string; type: string; uploadedAt?: string }> };
 }) {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -840,6 +840,7 @@ function FileUploadSection({
         name: pendingFileRef.current?.name ?? response.objectPath.split("/").pop() ?? "File",
         url: response.objectPath,
         type: pendingFileRef.current?.type ?? "application/octet-stream",
+        uploadedAt: new Date().toISOString(),
       };
       updateMutation.mutate({
         id: vendor.id,
@@ -867,6 +868,17 @@ function FileUploadSection({
     updateMutation.mutate({ id: vendor.id, data: { files: newFiles } });
   }
 
+  function formatUploadedDate(uploadedAt?: string) {
+    if (!uploadedAt) return "";
+    const date = new Date(uploadedAt);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -881,22 +893,34 @@ function FileUploadSection({
         <p className="text-sm text-muted-foreground italic">{t("vendors.no_files_desc")}</p>
       ) : (
         <div className="space-y-2">
-          {vendor.files.map((file, idx) => (
-            <div key={idx} className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20">
-              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              <a
-                href={`/api/storage/objects${file.url.replace(/^\/objects/, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline flex-1 truncate"
-              >
-                {file.name}
-              </a>
-              <button onClick={() => removeFile(idx)} className="text-muted-foreground hover:text-destructive">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
+          {vendor.files.map((file, idx) => {
+            const uploadedDate = formatUploadedDate(file.uploadedAt);
+            return (
+              <div key={idx} className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20">
+                <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <a
+                      href={`/api/storage/objects${file.url.replace(/^\/objects/, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="truncate text-sm text-primary hover:underline"
+                    >
+                      {file.name}
+                    </a>
+                    {uploadedDate && (
+                      <span className="shrink-0 text-[11px] text-muted-foreground">
+                        Uploaded {uploadedDate}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button onClick={() => removeFile(idx)} className="text-muted-foreground hover:text-destructive">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

@@ -121,7 +121,7 @@ export const vendors = pgTable("vendors", {
   depositAmount: numeric("deposit_amount", { precision: 12, scale: 2 }).default("0").notNull(),
   contractSigned: boolean("contract_signed").default(false).notNull(),
   nextPaymentDue: text("next_payment_due"),
-  files: jsonb("files").$type<Array<{ name: string; url: string; type: string }>>().default([]).notNull(),
+  files: jsonb("files").$type<Array<{ name: string; url: string; type: string; uploadedAt?: string; contractId?: number; contractFileName?: string }>>().default([]).notNull(),
   primaryContact: text("primary_contact"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
