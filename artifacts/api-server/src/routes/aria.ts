@@ -86,6 +86,40 @@ function isInfoQuestion(text: string): boolean {
   return INFO_QUESTION_PATTERNS.some((re) => re.test(trimmed));
 }
 
+const ARIA_CAPABILITIES_MESSAGE = [
+  "I can help across the planner, with two kinds of tasks:",
+  "",
+  "**I can update for you in chat:** vendors and payments, guests and RSVPs, wedding party, hotel blocks, budget items, one-off expenses, checklist tasks, wedding day timeline, profile details, seating charts, contract summaries, and collaborators.",
+  "",
+  "**I can guide you step-by-step:** Invitation Studio sends/design/PDFs, Website Editor publishing/layout/photos, Mood Board uploads, file uploads, account settings, and Operations Center recovery.",
+  "",
+  "For anything that creates, edits, or deletes data, I'll ask for missing required details and confirm before saving.",
+].join("\n");
+
+function capabilityReply(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  if (/\b(what can (you|u|aria) do|help menu|show capabilities|your capabilities|what tasks can (you|u|aria) (do|handle)|how can (you|u|aria) help)\b/i.test(trimmed)) {
+    return ARIA_CAPABILITIES_MESSAGE;
+  }
+  return null;
+}
+
+function deterministicSmallTalkReply(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length > 80) return null;
+  if (/^(hi|hey|hello|yo|sup|hola|howdy)[\s.!?]*$/i.test(trimmed)) {
+    return "Hi! I'm here. Tell me what you want to plan, update, or check.";
+  }
+  if (/^(thank you|thanks|thx|ty)[\s.!?]*$/i.test(trimmed)) {
+    return "You're welcome. What should we tackle next?";
+  }
+  if (/^(ok|okay|got it|sounds good|perfect)[\s.!?]*$/i.test(trimmed)) {
+    return "Got it.";
+  }
+  return null;
+}
+
 function siteTaskGuide(text: string): string | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
@@ -2637,6 +2671,15 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const userClarifiesGuestList =
       /\b(?:talking about|mean|meant|focus on)\s+(?:my\s+)?guest list\b/i.test(lastUserText);
 
+    const deterministicReply = capabilityReply(lastUserText) ?? deterministicSmallTalkReply(lastUserText);
+    if (deterministicReply) {
+      send({ type: "content", content: deterministicReply });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
     if (userIsChoosingGuestPriority || userClarifiesGuestList) {
       send({
         type: "content",
@@ -3366,6 +3409,12 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         // emit numbers as strings, and Groq rejects with a verbose schema
         // dump. Hide the dump and give the user a clean recovery prompt.
         userMsg = "Aria got a little tangled up trying to use one of her tools. Try rephrasing your message — for general planning advice, you don't need to mention adding anything.";
+      } else if (
+        detail.toLowerCase().includes("unsupported value") ||
+        detail.toLowerCase().includes("unsupported parameter") ||
+        detail.toLowerCase().includes("does not support")
+      ) {
+        userMsg = "The AI provider rejected one of Aria's model settings. Please redeploy the latest backend and try again.";
       } else if (status === 404 || detail.toLowerCase().includes("model")) {
         userMsg = `AI model not found. (${detail || "no detail"})`;
       } else if (detail) {
