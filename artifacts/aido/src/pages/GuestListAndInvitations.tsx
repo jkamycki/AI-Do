@@ -179,7 +179,7 @@ export default function GuestListAndInvitations() {
         <TabsContent value="invitation-customization" forceMount className="mt-6 data-[state=inactive]:hidden">
           <TabErrorBoundary tabName="Invitation Customization">
             <Suspense fallback={<TabSkeleton />}>
-              <InvitationCustomization profileId={profileId} />
+              <InvitationCustomization profileId={profileId} onOpenGuestList={() => setActiveTab("guest-list")} />
             </Suspense>
           </TabErrorBoundary>
         </TabsContent>

@@ -36,11 +36,8 @@ import {
   Heart,
   Mail,
   Printer,
-  Palette,
-  Eye,
-  Send,
   FileDown,
-  ExternalLink,
+  Send,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type {
@@ -57,6 +54,7 @@ interface RouteParams {
 
 interface InvitationCustomizationProps {
   profileId?: number;
+  onOpenGuestList?: () => void;
 }
 
 type InvitationDesignKey = "saveTheDate" | "rsvpInvitation";
@@ -71,6 +69,7 @@ type CustomDesignState = Record<InvitationDesignKey, InvitationDesignFields>;
 
 export default function InvitationCustomizationPage({
   profileId: propProfileId,
+  onOpenGuestList,
 }: InvitationCustomizationProps = {}) {
   const { getToken } = useAuth();
   const { user } = useUser();
@@ -912,9 +911,6 @@ export default function InvitationCustomizationPage({
     customStyle: activeCustomStyle,
     rsvpByDate,
   });
-  const hasPhoto = !!activeDesignDocument.image.url;
-  const hasMessage = !!activeDesignDocument.message?.trim();
-  const deliveryLabel = deliveryMode === "digital" ? "Digital Send" : "Print / Canva";
   const websiteUrl =
     typeof window !== "undefined" && websiteRecord?.slug && websiteRecord?.published
       ? `${window.location.origin}/w/${websiteRecord.slug}`
@@ -961,117 +957,86 @@ export default function InvitationCustomizationPage({
           Invitation Studio
         </h1>
         <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-          Design once, then choose a digital send path or a print-ready path for your invitation suite.
+          Design your invitation, then send it from the guest list or export a print version.
         </p>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-lg border bg-card p-3 sm:p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">
-                Current Suite Piece
-              </p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant={previewTab === "saveTheDate" ? "default" : "outline"}
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => setPreviewTab("saveTheDate")}
-                >
-                  <Calendar className="h-4 w-4" />
-                  Save the Date
-                </Button>
-                <Button
-                  type="button"
-                  variant={previewTab === "digitalInvitation" ? "default" : "outline"}
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => setPreviewTab("digitalInvitation")}
-                >
-                  <Heart className="h-4 w-4" />
-                  RSVP Invitation
-                </Button>
-              </div>
-            </div>
-            <div className="rounded-md border bg-muted/25 px-3 py-2 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{activeDesignDocument.title}</span>
-              <span className="mx-2">/</span>
-              <span>{designMode === "ai" ? "AI generated" : "Custom design"}</span>
-              <span className="mx-2">/</span>
-              <span>{deliveryLabel}</span>
+      <div className="rounded-lg border bg-card p-3 sm:p-4 space-y-4">
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Invitation</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={previewTab === "saveTheDate" ? "default" : "outline"}
+                size="sm"
+                className="gap-2"
+                onClick={() => setPreviewTab("saveTheDate")}
+              >
+                <Calendar className="h-4 w-4" />
+                Save Date
+              </Button>
+              <Button
+                type="button"
+                variant={previewTab === "digitalInvitation" ? "default" : "outline"}
+                size="sm"
+                className="gap-2"
+                onClick={() => setPreviewTab("digitalInvitation")}
+              >
+                <Heart className="h-4 w-4" />
+                RSVP
+              </Button>
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-4">
-            {[
-              { label: "Generate", icon: Sparkles, done: true },
-              { label: "Customize", icon: Palette, done: designMode === "custom" || hasPhoto || hasMessage },
-              { label: "Review", icon: Eye, done: hasPhoto && hasMessage },
-              { label: deliveryMode === "digital" ? "Send" : "Export", icon: deliveryMode === "digital" ? Send : FileDown, done: false },
-            ].map((step, index) => {
-              const Icon = step.icon;
-              return (
-                <div
-                  key={step.label}
-                  className="flex items-center gap-2 rounded-md border border-border/70 bg-background px-3 py-2"
-                >
-                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${step.done ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                    <Icon className="h-3.5 w-3.5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium">{index + 1}. {step.label}</p>
-                    <p className="text-[10px] text-muted-foreground">{step.done ? "Ready" : "Next"}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="rounded-lg border bg-card p-3 sm:p-4">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">
-            Delivery
-          </p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setDeliveryMode("digital")}
-              className={`rounded-md border p-3 text-left transition-colors ${
-                deliveryMode === "digital"
-                  ? "border-primary bg-primary/10"
-                  : "border-border hover:border-primary/40"
-              }`}
-            >
-              <Mail className="h-4 w-4 text-primary" />
-              <p className="mt-2 text-sm font-medium">Digital</p>
-              <p className="mt-1 text-xs text-muted-foreground">Email guests and track RSVPs.</p>
-            </button>
-            <button
-              type="button"
-              onClick={() => setDeliveryMode("print")}
-              className={`rounded-md border p-3 text-left transition-colors ${
-                deliveryMode === "print"
-                  ? "border-primary bg-primary/10"
-                  : "border-border hover:border-primary/40"
-              }`}
-            >
-              <Printer className="h-4 w-4 text-primary" />
-              <p className="mt-2 text-sm font-medium">Print</p>
-              <p className="mt-1 text-xs text-muted-foreground">Prepare for PDF or Canva.</p>
-            </button>
-          </div>
-          {deliveryMode === "print" && (
-            <div className="mt-3 rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 text-xs text-muted-foreground">
-              <div className="flex items-start gap-2">
-                <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                <p>
-                  Print export and Canva handoff use the same wedding data, but render a separate print layout with safe margins and no email-style RSVP button.
-                </p>
-              </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Send Type</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={deliveryMode === "digital" ? "default" : "outline"}
+                size="sm"
+                className="gap-2"
+                onClick={() => setDeliveryMode("digital")}
+              >
+                <Mail className="h-4 w-4" />
+                Digital
+              </Button>
+              <Button
+                type="button"
+                variant={deliveryMode === "print" ? "default" : "outline"}
+                size="sm"
+                className="gap-2"
+                onClick={() => setDeliveryMode("print")}
+              >
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
             </div>
-          )}
+          </div>
+
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Finish</p>
+            <Button
+              type="button"
+              size="sm"
+              className="mt-2 w-full gap-2"
+              onClick={deliveryMode === "digital" ? onOpenGuestList : downloadPrintPdf}
+              disabled={deliveryMode === "digital" ? !onOpenGuestList : exportingPrintPdf}
+            >
+              {deliveryMode === "digital" ? (
+                <>
+                  <Send className="h-4 w-4" />
+                  Send From Guest List
+                </>
+              ) : (
+                <>
+                  {exportingPrintPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                  Download Print PDF
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1106,9 +1071,9 @@ export default function InvitationCustomizationPage({
                     <Printer className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">Print-ready path</p>
+                    <p className="text-sm font-medium">Print Settings</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Keep editing the same design here. The future print export and Canva integration will start from this exact invitation snapshot.
+                      Physical invitations use a print layout separate from the digital email.
                     </p>
                   </div>
                 </div>
@@ -1154,23 +1119,6 @@ export default function InvitationCustomizationPage({
                     className="h-4 w-4 accent-primary"
                   />
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="gap-2"
-                    onClick={downloadPrintPdf}
-                    disabled={exportingPrintPdf}
-                  >
-                    {exportingPrintPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
-                    PDF
-                  </Button>
-                  <Button type="button" size="sm" variant="outline" className="gap-2" disabled>
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    Canva soon
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           )}
@@ -1550,22 +1498,27 @@ export default function InvitationCustomizationPage({
         <div className="lg:col-span-2">
           <Card className="flex flex-col lg:h-[90vh]">
             <div className="border-b p-3 sm:p-4 space-y-3">
-              <p className="text-xs text-muted-foreground">Preview</p>
-              <Tabs
-                value={previewTab}
-                onValueChange={(value) => setPreviewTab(value as PreviewTab)}
-              >
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="saveTheDate" className="text-xs sm:text-sm px-1 sm:px-3">
-                    <span className="sm:hidden">Save Date</span>
-                    <span className="hidden sm:inline">Save the Date</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="digitalInvitation" className="text-xs sm:text-sm px-1 sm:px-3">
-                    <span className="sm:hidden">Invitation</span>
-                    <span className="hidden sm:inline">RSVP Invitation</span>
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Preview</p>
+                  <p className="text-sm font-medium">
+                    {activeDesignDocument.title} / {deliveryMode === "digital" ? "Digital" : "Print"}
+                  </p>
+                </div>
+                {deliveryMode === "print" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                    onClick={downloadPrintPdf}
+                    disabled={exportingPrintPdf}
+                  >
+                    {exportingPrintPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+                    PDF
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div ref={previewContainerRef} className="flex-1 overflow-auto p-3 sm:p-4">
