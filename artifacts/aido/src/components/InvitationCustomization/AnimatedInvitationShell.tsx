@@ -69,6 +69,7 @@ export function AnimatedInvitationShell({
 
   const seed = layout.replace(/[^a-z0-9-]/gi, "");
   const replay = replayKey ?? `${seed}-${accent}-${paper}-${darkPanel}-${compact ? "compact" : "full"}`;
+  const svgIdSeed = String(replay).replace(/[^a-z0-9-]/gi, "-");
   const showOwlDelivery = layout === "animated-owl-delivery";
 
   return (
@@ -152,10 +153,8 @@ export function AnimatedInvitationShell({
         .aido-envelope-pocket-face::after,
         .aido-wax-seal,
         .aido-owl-delivery,
-        .aido-owl-delivery *,
         .aido-owl-delivery::before,
-        .aido-owl-delivery::after,
-        .aido-owl-head::after {
+        .aido-owl-delivery::after {
           position: absolute;
           pointer-events: none;
         }
@@ -413,91 +412,25 @@ export function AnimatedInvitationShell({
           background: rgba(255,255,255,.24);
           filter: blur(16px);
         }
-        .aido-owl-wing {
-          top: 22%;
-          z-index: 1;
-          width: 48%;
-          height: 44%;
-          border-radius: 100% 100% 28% 70%;
-          background:
-            repeating-linear-gradient(105deg, rgba(115,108,96,.16) 0 2px, transparent 2px 9px),
-            linear-gradient(180deg, rgba(255,255,255,.98), rgba(239,236,226,.96) 58%, rgba(190,181,160,.92));
-          box-shadow: inset 0 -16px 20px rgba(111,98,76,.18);
-          transform-origin: 92% 50%;
+        .aido-owl-svg {
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          overflow: visible;
+          position: absolute;
+        }
+        .aido-owl-wing-svg {
+          transform-box: fill-box;
+          transform-origin: 88% 58%;
           animation: aidoOwlWingToward 340ms ease-in-out infinite alternate;
         }
-        .aido-owl-wing.left {
-          left: 4%;
-          transform: rotate(13deg) translateY(0) skewX(-8deg);
-        }
-        .aido-owl-wing.right {
-          right: 4%;
-          transform: scaleX(-1) rotate(13deg) translateY(0) skewX(-8deg);
+        .aido-owl-wing-svg.right {
+          transform-origin: 12% 58%;
           animation-name: aidoOwlWingTowardRight;
         }
-        .aido-owl-body {
-          left: 41%;
-          top: 32%;
-          z-index: 3;
-          width: 18%;
-          height: 42%;
-          border-radius: 50% 50% 44% 44%;
-          background:
-            repeating-linear-gradient(95deg, transparent 0 7px, rgba(143,132,112,.16) 7px 9px),
-            linear-gradient(180deg, #ffffff 0%, #eee9dc 52%, #c8bca3 100%);
-          box-shadow: inset 0 -12px 18px rgba(92,82,64,.24);
-        }
-        .aido-owl-body::before,
-        .aido-owl-body::after {
-          content: "";
-          position: absolute;
-          top: 34%;
-          width: 9%;
-          height: 9%;
-          border-radius: 999px;
-          background: #17131b;
-          box-shadow: 0 0 0 2px rgba(198,162,48,.78);
-        }
-        .aido-owl-body::before {
-          left: 33%;
-        }
-        .aido-owl-body::after {
-          right: 33%;
-        }
-        .aido-owl-head {
-          left: 42%;
-          top: 14%;
-          z-index: 4;
-          width: 16%;
-          height: 22%;
-          border-radius: 50% 50% 44% 44%;
-          background:
-            radial-gradient(circle at 34% 54%, #f7d66a 0 9%, transparent 10%),
-            radial-gradient(circle at 66% 54%, #f7d66a 0 9%, transparent 10%),
-            linear-gradient(135deg, transparent 0 20%, #fffdf4 21% 72%, transparent 73%),
-            linear-gradient(225deg, transparent 0 20%, #fffdf4 21% 72%, transparent 73%);
-          box-shadow: 0 8px 14px rgba(62,52,38,.16);
-        }
-        .aido-owl-head::after {
-          content: "";
-          left: 45%;
-          top: 62%;
-          width: 10%;
-          height: 14%;
-          clip-path: polygon(50% 100%, 0 0, 100% 0);
-          background: #4b3724;
-        }
-        .aido-owl-envelope {
-          left: 36%;
-          top: 77%;
-          z-index: 2;
-          width: 28%;
-          height: 13%;
-          border-radius: 2px;
-          background:
-            linear-gradient(135deg, transparent 49%, rgba(0,0,0,.18) 50%, transparent 51%),
-            var(--invite-paper);
-          box-shadow: 0 8px 12px rgba(0,0,0,.26);
+        .aido-owl-envelope-svg {
+          transform-box: fill-box;
+          transform-origin: 50% 50%;
           animation: aidoOwlTinyEnvelopeDrop 700ms cubic-bezier(.28,.68,.28,1) 1040ms forwards;
         }
         @keyframes aidoInviteCardIn {
@@ -565,12 +498,12 @@ export function AnimatedInvitationShell({
           }
         }
         @keyframes aidoOwlWingToward {
-          from { transform: rotate(13deg) translateY(0) skewX(-8deg) scaleY(.94); }
-          to { transform: rotate(-7deg) translateY(-13px) skewX(-8deg) scaleY(1.06); }
+          from { transform: rotate(9deg) translateY(0) scaleY(.96); }
+          to { transform: rotate(-8deg) translateY(-10px) scaleY(1.05); }
         }
         @keyframes aidoOwlWingTowardRight {
-          from { transform: scaleX(-1) rotate(13deg) translateY(0) skewX(-8deg) scaleY(.94); }
-          to { transform: scaleX(-1) rotate(-7deg) translateY(-13px) skewX(-8deg) scaleY(1.06); }
+          from { transform: rotate(-9deg) translateY(0) scaleY(.96); }
+          to { transform: rotate(8deg) translateY(-10px) scaleY(1.05); }
         }
         @keyframes aidoOwlTrail {
           0% { opacity: 0; transform: translate(42px, 26px) scale(.5); }
@@ -602,7 +535,7 @@ export function AnimatedInvitationShell({
           .aido-invite-anim-card, .aido-envelope-layer, .aido-envelope-flap,
           .aido-envelope-side, .aido-envelope-bottom, .aido-envelope-pocket,
           .aido-envelope-pocket-face, .aido-envelope-pocket-face::after, .aido-wax-seal,
-          .aido-owl-delivery, .aido-owl-wing, .aido-owl-envelope {
+          .aido-owl-delivery, .aido-owl-wing-svg, .aido-owl-envelope-svg {
             animation-duration: 1ms !important;
             animation-delay: 0ms !important;
           }
@@ -616,11 +549,75 @@ export function AnimatedInvitationShell({
       </div>
       {showOwlDelivery && (
         <div key={`owl-${replay}`} className="aido-owl-delivery" aria-hidden="true">
-          <div className="aido-owl-wing left" />
-          <div className="aido-owl-wing right" />
-          <div className="aido-owl-head" />
-          <div className="aido-owl-body" />
-          <div className="aido-owl-envelope" />
+          <svg className="aido-owl-svg" viewBox="0 0 340 196" role="presentation" focusable="false">
+            <defs>
+              <linearGradient id={`owl-feather-${svgIdSeed}`} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="58%" stopColor="#f2eee2" />
+                <stop offset="100%" stopColor="#cfc4ad" />
+              </linearGradient>
+              <linearGradient id={`owl-shadow-${svgIdSeed}`} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="100%" stopColor="#b6aa93" />
+              </linearGradient>
+            </defs>
+            <path
+              className="aido-owl-wing-svg left"
+              d="M165 83 C122 32 61 24 8 68 C48 70 77 82 104 102 C75 102 43 114 19 134 C80 132 128 120 165 94 Z"
+              fill={`url(#owl-feather-${svgIdSeed})`}
+              stroke="#d8d0bd"
+              strokeWidth="2"
+            />
+            <path
+              className="aido-owl-wing-svg right"
+              d="M175 83 C218 32 279 24 332 68 C292 70 263 82 236 102 C265 102 297 114 321 134 C260 132 212 120 175 94 Z"
+              fill={`url(#owl-feather-${svgIdSeed})`}
+              stroke="#d8d0bd"
+              strokeWidth="2"
+            />
+            {[28, 48, 68, 88, 108, 128].map((x) => (
+              <path
+                key={`left-feather-${x}`}
+                d={`M${x} 70 C${x + 30} 76 ${x + 55} 88 165 90`}
+                fill="none"
+                stroke="#c8beaa"
+                strokeWidth="1.4"
+                opacity="0.62"
+              />
+            ))}
+            {[312, 292, 272, 252, 232, 212].map((x) => (
+              <path
+                key={`right-feather-${x}`}
+                d={`M${x} 70 C${x - 30} 76 ${x - 55} 88 175 90`}
+                fill="none"
+                stroke="#c8beaa"
+                strokeWidth="1.4"
+                opacity="0.62"
+              />
+            ))}
+            <ellipse cx="170" cy="104" rx="44" ry="58" fill={`url(#owl-shadow-${svgIdSeed})`} stroke="#d8d0bd" strokeWidth="2" />
+            <path
+              d="M140 70 C145 40 160 31 170 49 C180 31 195 40 200 70 C192 60 181 58 170 65 C159 58 148 60 140 70 Z"
+              fill="#fffdf5"
+              stroke="#d8d0bd"
+              strokeWidth="2"
+            />
+            <circle cx="154" cy="78" r="13" fill="#f3cf59" stroke="#7c5c19" strokeWidth="2" />
+            <circle cx="186" cy="78" r="13" fill="#f3cf59" stroke="#7c5c19" strokeWidth="2" />
+            <circle cx="154" cy="78" r="5" fill="#17131b" />
+            <circle cx="186" cy="78" r="5" fill="#17131b" />
+            <path d="M170 88 L161 100 H179 Z" fill="#4d3624" />
+            <path d="M145 116 C156 126 184 126 195 116" fill="none" stroke="#b4a68d" strokeWidth="2" opacity="0.7" />
+            <path d="M151 134 C160 144 180 144 189 134" fill="none" stroke="#b4a68d" strokeWidth="2" opacity="0.5" />
+            <path d="M151 157 C156 166 162 166 166 157" fill="none" stroke="#7b6040" strokeWidth="3" strokeLinecap="round" />
+            <path d="M174 157 C178 166 184 166 189 157" fill="none" stroke="#7b6040" strokeWidth="3" strokeLinecap="round" />
+            <g className="aido-owl-envelope-svg">
+              <rect x="126" y="154" width="88" height="26" rx="3" fill={paper} stroke="#a8946d" strokeWidth="2" />
+              <path d="M126 154 L170 172 L214 154" fill="none" stroke="#9e8a66" strokeWidth="2" />
+              <path d="M126 180 L159 164 M214 180 L181 164" fill="none" stroke="#9e8a66" strokeWidth="1.6" />
+              <circle cx="170" cy="166" r="6" fill={accent} opacity="0.92" />
+            </g>
+          </svg>
         </div>
       )}
       <div key={`layer-${replay}`} className="aido-envelope-layer" aria-hidden="true">
