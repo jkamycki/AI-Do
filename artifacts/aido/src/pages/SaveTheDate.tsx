@@ -58,6 +58,24 @@ function isLightHex(hex: string): boolean {
   return r * 0.299 + g * 0.587 + b * 0.114 > 160;
 }
 
+function cloneCardForPdf(element: HTMLElement) {
+  const rect = element.getBoundingClientRect();
+  const clone = element.cloneNode(true) as HTMLElement;
+  clone.style.position = "fixed";
+  clone.style.left = "-10000px";
+  clone.style.top = "0";
+  clone.style.width = `${rect.width || element.offsetWidth}px`;
+  clone.style.margin = "0";
+  clone.style.transform = "none";
+  clone.style.animation = "none";
+  clone.style.zIndex = "-1";
+  document.body.appendChild(clone);
+  return {
+    element: clone,
+    cleanup: () => clone.remove(),
+  };
+}
+
 export default function SaveTheDate() {
   const [, params] = useRoute("/save-the-date/:token");
   const token = params?.token ?? "";
@@ -135,13 +153,14 @@ export default function SaveTheDate() {
   const downloadPdf = async () => {
     if (!info || !cardRef.current) return;
     setDownloadingPdf(true);
+    const pdfTarget = cloneCardForPdf(cardRef.current);
     try {
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import("html2canvas"),
         import("jspdf"),
       ]);
 
-      const canvas = await html2canvas(cardRef.current, {
+      const canvas = await html2canvas(pdfTarget.element, {
         scale: 2,
         useCORS: true,
         backgroundColor: BG,
@@ -161,6 +180,7 @@ export default function SaveTheDate() {
     } catch (err) {
       console.error("PDF generation failed", err);
     } finally {
+      pdfTarget.cleanup();
       setDownloadingPdf(false);
     }
   };
