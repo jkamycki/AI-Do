@@ -767,7 +767,8 @@ function FullPhotoRsvpPreview({
 
   const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
-  const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const partner1 = firstName(profile.partner1Name) || "Partner";
+  const partner2 = firstName(profile.partner2Name) || "Partner";
   const guestName = profile.guestName || "Guest";
   const dateStr = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
@@ -837,50 +838,56 @@ function FullPhotoRsvpPreview({
             <p style={{ fontFamily: labelFont, fontSize: 12 * sc, fontWeight: 700, letterSpacing: "0.34em", textTransform: "uppercase", margin: "0 0 10px", color: accent }}>
               Wedding RSVP
             </p>
+            <div style={{ margin: "0 auto", width: 46, height: 28, position: "relative" }}>
+              <Heart style={{ width: 24, height: 24, color: accent, opacity: 0.9, transform: "rotate(-14deg)" }} />
+              <div style={{ position: "absolute", left: 20, right: 0, top: 18, height: 1, background: accent, opacity: 0.72 }} />
+            </div>
             {rsvpDate && (
-              <p style={{ fontFamily: labelFont, fontSize: 9.5 * sc, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", margin: 0, color: textColor }}>
+              <p style={{ fontFamily: labelFont, fontSize: 9.5 * sc, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", margin: "8px 0 0", color: textColor }}>
                 RSVP By {rsvpDate}
               </p>
             )}
           </div>
 
-          <div style={{ marginTop: "auto" }}>
-            <h2 style={{ fontFamily: displayFont, fontSize: `${2.15 * sc}rem`, fontWeight: 500, fontStyle: "italic", color: accent, lineHeight: 1.15, margin: 0 }}>
-              {couple}
-            </h2>
+          <div style={{ marginTop: "auto", marginBottom: 8 }}>
+            <div style={{ fontFamily: displayFont, textTransform: "uppercase", letterSpacing: "0.18em", lineHeight: 1.15, color: accent }}>
+              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner1}</div>
+              <div style={{ fontSize: `${1.8 * sc}rem`, fontStyle: "italic", textTransform: "none", letterSpacing: "0.08em", margin: "4px 0" }}>and</div>
+              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner2}</div>
+            </div>
             {dateStr && (
-              <p style={{ fontFamily: labelFont, fontSize: 10.5 * sc, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", margin: "16px 0 0", color: textColor }}>
+              <p style={{ fontFamily: labelFont, fontSize: 11 * sc, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", margin: "18px 0 0", color: textColor }}>
                 {dateStr}
               </p>
             )}
             {(profile.venue || cityLine || timeLines.length > 0) && (
-              <div style={{ marginTop: 12, padding: "10px 12px", borderTop: `1px solid ${accent}66`, borderBottom: `1px solid ${accent}66`, background: "rgba(0,0,0,.22)" }}>
+              <div style={{ marginTop: 12, padding: "9px 12px", borderTop: `1px solid ${accent}66`, borderBottom: `1px solid ${accent}66`, background: "rgba(0,0,0,.22)" }}>
                 {profile.venue && (
-                  <p style={{ fontFamily: displayFont, fontSize: `${1.05 * sc}rem`, fontWeight: 600, color: accent, margin: 0, lineHeight: 1.25 }}>
+                  <p style={{ fontFamily: displayFont, fontSize: `${1 * sc}rem`, fontWeight: 600, color: accent, margin: 0, lineHeight: 1.25 }}>
                     {profile.venue}
                   </p>
                 )}
                 {cityLine && (
-                  <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: textColor, margin: "4px 0 0" }}>
+                  <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: textColor, margin: "4px 0 0", opacity: 0.88 }}>
                     {cityLine}
                   </p>
                 )}
                 {timeLines.length > 0 && (
-                  <p style={{ fontFamily: labelFont, fontSize: 9 * sc, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: textColor, margin: "7px 0 0" }}>
+                  <p style={{ fontFamily: labelFont, fontSize: 9 * sc, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: textColor, margin: "7px 0 0", opacity: 0.92 }}>
                     {timeLines.join("  /  ")}
                   </p>
                 )}
               </div>
             )}
             {profile.invitationMessage && (
-              <p style={{ fontFamily: displayFont, fontSize: `${0.95 * sc}rem`, fontStyle: "italic", color: textColor, lineHeight: 1.55, margin: "14px 0 0" }}>
+              <p style={{ fontFamily: displayFont, fontSize: `${0.95 * sc}rem`, fontStyle: "italic", color: textColor, lineHeight: 1.55, margin: "13px 0 0", opacity: 0.9 }}>
                 &ldquo;{profile.invitationMessage}&rdquo;
               </p>
             )}
-            <p style={{ fontFamily: labelFont, fontSize: 10.5 * sc, color: textColor, margin: "14px 0 0" }}>
+            <p style={{ fontFamily: labelFont, fontSize: 10.5 * sc, color: textColor, margin: "13px 0 0" }}>
               Dear <span style={{ fontWeight: 700 }}>{guestName}</span>, will you be joining us?
             </p>
-            <div style={{ marginTop: 14, background: accent, borderRadius: 8, padding: "11px 14px", textAlign: "center" }}>
+            <div style={{ marginTop: 13, background: accent, borderRadius: 8, padding: "11px 14px", textAlign: "center" }}>
               <span style={{ fontFamily: labelFont, fontSize: 11.5 * sc, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: isLightHex(accent) ? "#1a1a1a" : "#ffffff" }}>
                 RSVP Now
               </span>

@@ -233,6 +233,8 @@ export default function Rsvp() {
   const PAGE_BG_PATTERN: string | undefined = undefined;
 
   const couple = [info?.partner1Name, info?.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const partner1First = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";
+  const partner2First = String(info?.partner2Name || "").trim().split(/\s+/)[0] || "Partner";
 
   const weddingDateStr = info?.weddingDate
     ? (() => {
@@ -436,48 +438,54 @@ export default function Rsvp() {
               <p style={{ fontFamily: LABEL_FONT, fontSize: 12, fontWeight: 700, letterSpacing: "0.34em", textTransform: "uppercase", margin: "0 0 10px", color: GOLD }}>
                 Wedding RSVP
               </p>
+              <div style={{ margin: "0 auto", width: 46, height: 28, position: "relative" }}>
+                <Heart style={{ width: 24, height: 24, color: GOLD, opacity: 0.9, transform: "rotate(-14deg)" }} />
+                <span style={{ position: "absolute", left: 20, right: 0, top: 18, height: 1, background: GOLD, opacity: 0.72 }} />
+              </div>
               {rsvpByDateStr && (
-                <p style={{ fontFamily: LABEL_FONT, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", margin: 0, color: WHITE }}>
+                <p style={{ fontFamily: LABEL_FONT, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", margin: "8px 0 0", color: WHITE }}>
                   RSVP By {rsvpByDateStr}
                 </p>
               )}
             </div>
 
-            <div style={{ marginTop: "auto" }}>
-              <h1 style={{ fontFamily: SERIF, fontSize: "2.25rem", fontWeight: 500, fontStyle: "italic", color: GOLD, lineHeight: 1.15, margin: 0 }}>
-                {couple}
-              </h1>
+            <div style={{ marginTop: "auto", marginBottom: 8 }}>
+              <div style={{ fontFamily: SERIF, textTransform: "uppercase", letterSpacing: "0.18em", lineHeight: 1.15, color: GOLD }}>
+                <div style={{ fontSize: "2.2rem", fontWeight: 500 }}>{partner1First}</div>
+                <div style={{ fontSize: "1.8rem", fontStyle: "italic", textTransform: "none", letterSpacing: "0.08em", margin: "4px 0" }}>and</div>
+                <div style={{ fontSize: "2.2rem", fontWeight: 500 }}>{partner2First}</div>
+              </div>
               {weddingDateStr && (
-                <p style={{ fontFamily: LABEL_FONT, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: WHITE, margin: "16px 0 0" }}>
+                <p style={{ fontFamily: LABEL_FONT, fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: WHITE, margin: "18px 0 0" }}>
                   {weddingDateStr}
                 </p>
               )}
               {(info.venue || venueCityStateZip || timesLine) && (
-                <div style={{ marginTop: 12, padding: "10px 12px", borderTop: `1px solid ${GOLD}66`, borderBottom: `1px solid ${GOLD}66`, background: "rgba(0,0,0,.22)" }}>
+                <div style={{ marginTop: 12, padding: "9px 12px", borderTop: `1px solid ${GOLD}66`, borderBottom: `1px solid ${GOLD}66`, background: "rgba(0,0,0,.22)" }}>
                   {info.venue && (
-                    <p style={{ fontFamily: SERIF, fontSize: "1.05rem", fontWeight: 600, color: GOLD, margin: 0, lineHeight: 1.25 }}>
+                    <p style={{ fontFamily: SERIF, fontSize: "1rem", fontWeight: 600, color: GOLD, margin: 0, lineHeight: 1.25 }}>
                       {info.venue}
                     </p>
                   )}
                   {venueCityStateZip && (
-                    <p style={{ fontFamily: LABEL_FONT, fontSize: 10, color: WHITE, margin: "4px 0 0" }}>{venueCityStateZip}</p>
+                    <p style={{ fontFamily: LABEL_FONT, fontSize: 10, color: WHITE, margin: "4px 0 0", opacity: 0.88 }}>{venueCityStateZip}</p>
                   )}
                   {timesLine && (
-                    <p style={{ fontFamily: LABEL_FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: WHITE, margin: "7px 0 0" }}>
+                    <p style={{ fontFamily: LABEL_FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: WHITE, margin: "7px 0 0", opacity: 0.92 }}>
                       {timesLine}
                     </p>
                   )}
                 </div>
               )}
               {info.invitationMessage && (
-                <p style={{ fontFamily: SERIF, fontSize: "0.95rem", fontStyle: "italic", color: WHITE, lineHeight: 1.55, margin: "14px 0 0" }}>
+                <p style={{ fontFamily: SERIF, fontSize: "0.95rem", fontStyle: "italic", color: WHITE, opacity: 0.9, lineHeight: 1.55, margin: "13px 0 0" }}>
                   &ldquo;{info.invitationMessage}&rdquo;
                 </p>
               )}
-              <p style={{ fontFamily: LABEL_FONT, fontSize: 10.5, color: WHITE, margin: "14px 0 0" }}>
+              <p style={{ fontFamily: LABEL_FONT, fontSize: 10.5, color: WHITE, margin: "13px 0 0" }}>
                 Dear <span style={{ fontWeight: 700 }}>{info.guestName}</span>, will you be joining us?
               </p>
-              <div style={{ marginTop: 14, background: GOLD, borderRadius: 8, padding: "11px 14px", textAlign: "center" }}>
+              <div style={{ marginTop: 13, background: GOLD, borderRadius: 8, padding: "11px 14px", textAlign: "center" }}>
                 <span style={{ fontFamily: LABEL_FONT, fontSize: 11.5, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: isLightHex(GOLD) ? "#1a1a1a" : "#ffffff" }}>
                   RSVP Now
                 </span>
