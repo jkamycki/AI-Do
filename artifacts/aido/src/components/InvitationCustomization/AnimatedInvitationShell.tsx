@@ -115,8 +115,14 @@ export function AnimatedInvitationShell({
           position: relative;
           z-index: 3;
           width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           transform-origin: 50% 58%;
           animation: aidoInviteCardIn 1260ms cubic-bezier(.2,.84,.18,1) 1080ms both;
+        }
+        .aido-invite-anim-card > * {
+          flex: 0 1 auto;
         }
         .aido-envelope-layer {
           position: absolute;
