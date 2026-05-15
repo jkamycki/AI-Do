@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -216,9 +217,41 @@ const MEAL_OPTIONS = [
   { value: "other", label: "Other" },
 ];
 
+const WEDDING_PARTY_ROLES = [
+  "Bride",
+  "Groom",
+  "Maid of Honor",
+  "Best Man",
+  "Bridesmaid",
+  "Groomsman",
+  "Flower Girl",
+  "Ring Bearer",
+  "Junior Bridesmaid",
+  "Groomslady",
+  "Bridesmen",
+  "Officiant",
+  "Other",
+];
+
+const WEDDING_PARTY_SIDES = [
+  { value: "bride", label: "Bridal Party" },
+  { value: "groom", label: "Groom Side" },
+];
+
 interface HotelOption {
   id: number;
   hotelName: string;
+}
+
+interface WeddingPartyMemberLite {
+  id: number;
+  name: string;
+  role: string;
+  side: string;
+  phone?: string | null;
+  email?: string | null;
+  notes?: string | null;
+  sortOrder?: number | null;
 }
 
 const guestSchema = z.object({
@@ -245,9 +278,30 @@ const guestSchema = z.object({
   guestZip: z.string().optional().default(""),
   guestCountry: z.string().optional().default(""),
   notes: z.string().optional(),
+  isWeddingPartyMember: z.boolean().default(false),
+  weddingPartyRole: z.string().optional().default("Bridesmaid"),
+  weddingPartySide: z.string().optional().default("bride"),
 });
 
 type GuestFormValues = z.infer<typeof guestSchema>;
+
+function getGuestApiValues(
+  data: GuestFormValues,
+): Omit<
+  GuestFormValues,
+  "isWeddingPartyMember" | "weddingPartyRole" | "weddingPartySide"
+> {
+  const {
+    isWeddingPartyMember: _isWeddingPartyMember,
+    weddingPartyRole: _weddingPartyRole,
+    weddingPartySide: _weddingPartySide,
+    ...guestData
+  } = data;
+  void _isWeddingPartyMember;
+  void _weddingPartyRole;
+  void _weddingPartySide;
+  return guestData;
+}
 
 function getRsvpBadge(status: string) {
   const opt = RSVP_OPTIONS.find((o) => o.value === status);
@@ -293,6 +347,9 @@ function GuestForm({
       guestZip: "",
       guestCountry: "",
       notes: "",
+      isWeddingPartyMember: false,
+      weddingPartyRole: "Bridesmaid",
+      weddingPartySide: "bride",
       ...defaultValues,
     },
   });
@@ -300,6 +357,7 @@ function GuestForm({
   const plusOne = form.watch("plusOne");
   const meal = form.watch("mealChoice");
   const needsHotel = form.watch("needsHotel");
+  const isWeddingPartyMember = form.watch("isWeddingPartyMember");
 
   return (
     <Form {...form}>
@@ -543,6 +601,87 @@ function GuestForm({
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name="isWeddingPartyMember"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start gap-3 rounded-lg border p-3 shadow-sm">
+              <FormControl>
+                <Checkbox
+                  className="mt-0.5"
+                  checked={field.value}
+                  onCheckedChange={(checked) => field.onChange(checked === true)}
+                />
+              </FormControl>
+              <div className="space-y-0.5">
+                <FormLabel>Wedding party member</FormLabel>
+                <p className="text-xs text-muted-foreground">
+                  Sync this guest to the Wedding Party tab.
+                </p>
+              </div>
+            </FormItem>
+          )}
+        />
+
+        {isWeddingPartyMember && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <FormField
+              control={form.control}
+              name="weddingPartyRole"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Wedding party role</FormLabel>
+                  <Select
+                    value={field.value || "Bridesmaid"}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {WEDDING_PARTY_ROLES.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {role}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="weddingPartySide"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Wedding party side</FormLabel>
+                  <Select
+                    value={field.value || "bride"}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select side" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {WEDDING_PARTY_SIDES.map((side) => (
+                        <SelectItem key={side.value} value={side.value}>
+                          {side.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
 
         {meal === "other" && (
           <FormField
@@ -801,6 +940,9 @@ function GuestForm({
                 guestZip: "",
                 guestCountry: "",
                 notes: "",
+                isWeddingPartyMember: false,
+                weddingPartyRole: "Bridesmaid",
+                weddingPartySide: "bride",
               })
             }
           >
@@ -1320,6 +1462,16 @@ export default function Guests({
       return res.json();
     },
   });
+  const { data: weddingPartyMembers = [] } = useQuery<WeddingPartyMemberLite[]>(
+    {
+      queryKey: ["wedding-party"],
+      queryFn: async () => {
+        const res = await authFetch("/api/wedding-party");
+        if (!res.ok) return [];
+        return res.json();
+      },
+    },
+  );
   const addGuest = useAddGuest();
   const updateGuest = useUpdateGuest();
   const deleteGuest = useDeleteGuest();
@@ -1694,6 +1846,56 @@ export default function Guests({
     });
   };
 
+  function findWeddingPartyMemberForGuest(
+    guest: { name?: string | null; email?: string | null },
+    members = weddingPartyMembers,
+  ) {
+    const name = (guest.name ?? "").trim().toLowerCase();
+    const email = (guest.email ?? "").trim().toLowerCase();
+    return members.find((member) => {
+      const memberEmail = (member.email ?? "").trim().toLowerCase();
+      const memberName = (member.name ?? "").trim().toLowerCase();
+      return (email && memberEmail === email) || (!!name && memberName === name);
+    });
+  }
+
+  async function syncGuestToWeddingParty(data: GuestFormValues) {
+    if (!data.isWeddingPartyMember) return;
+
+    const name = data.name.trim();
+    if (!name) return;
+
+    const res = await authFetch("/api/wedding-party");
+    if (!res.ok) throw new Error("Failed to load wedding party");
+
+    const members = (await res.json()) as WeddingPartyMemberLite[];
+    const existing = findWeddingPartyMemberForGuest(
+      { name, email: data.email ?? "" },
+      members,
+    );
+    const payload = {
+      name,
+      role: data.weddingPartyRole || "Bridesmaid",
+      side: data.weddingPartySide || "bride",
+      phone: data.phone?.trim() || null,
+      email: data.email?.trim() || null,
+      notes: existing?.notes ?? null,
+      sortOrder: existing?.sortOrder ?? 0,
+    };
+
+    const saveRes = await authFetch(
+      existing ? `/api/wedding-party/${existing.id}` : "/api/wedding-party",
+      {
+        method: existing ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
+    if (!saveRes.ok) throw new Error("Failed to sync wedding party member");
+
+    queryClient.invalidateQueries({ queryKey: ["wedding-party"] });
+  }
+
   function optimisticUpdate(guestId: number, patch: Partial<Guest>) {
     queryClient.setQueryData(queryKey, (old: typeof data) => {
       if (!old) return old;
@@ -2021,6 +2223,7 @@ export default function Guests({
   }
 
   function handleAdd(data: GuestFormValues) {
+    const guestData = getGuestApiValues(data);
     const plusOneName = data.plusOne
       ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()]
           .filter(Boolean)
@@ -2029,7 +2232,7 @@ export default function Guests({
     addGuest.mutate(
       {
         data: {
-          ...data,
+          ...guestData,
           plusOneName,
           email: data.email || undefined,
           mealChoice:
@@ -2048,6 +2251,12 @@ export default function Guests({
           setIsAdding(false);
           setDuplicateGuestIds(new Set());
           invalidate();
+          void syncGuestToWeddingParty(data).catch(() => {
+            toast({
+              title: "Guest added, but wedding party sync failed",
+              variant: "destructive",
+            });
+          });
         },
         onError: (err: unknown) => {
           const status = (err as { status?: number })?.status;
@@ -2075,13 +2284,14 @@ export default function Guests({
   async function handleForceAdd() {
     if (!pendingGuestData) return;
     const data = pendingGuestData;
+    const guestData = getGuestApiValues(data);
     const plusOneName = data.plusOne
       ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()]
           .filter(Boolean)
           .join(" ") || undefined
       : undefined;
     const payload = {
-      ...data,
+      ...guestData,
       plusOneName,
       email: data.email || undefined,
       mealChoice:
@@ -2100,6 +2310,12 @@ export default function Guests({
       setPendingGuestData(null);
       setDuplicateGuestIds(new Set());
       invalidate();
+      void syncGuestToWeddingParty(data).catch(() => {
+        toast({
+          title: "Guest added, but wedding party sync failed",
+          variant: "destructive",
+        });
+      });
     } catch {
       toast({ title: "Failed to add guest", variant: "destructive" });
     }
@@ -2246,6 +2462,12 @@ export default function Guests({
           toast({ title: "Guest updated" });
           setEditGuest(null);
           invalidate();
+          void syncGuestToWeddingParty(data).catch(() => {
+            toast({
+              title: "Guest updated, but wedding party sync failed",
+              variant: "destructive",
+            });
+          });
         },
         onError: (err: unknown) => {
           const status = (err as { status?: number })?.status;
@@ -2278,6 +2500,10 @@ export default function Guests({
       },
     );
   }
+
+  const editWeddingPartyMember = editGuest
+    ? findWeddingPartyMemberForGuest(editGuest)
+    : undefined;
 
   if (!profileLoading && !weddingProfile) {
     return (
@@ -3600,6 +3826,10 @@ export default function Guests({
                 guestZip: (editGuest as any).guestZip ?? "",
                 guestCountry: (editGuest as any).guestCountry ?? "",
                 notes: editGuest.notes ?? "",
+                isWeddingPartyMember: !!editWeddingPartyMember,
+                weddingPartyRole:
+                  editWeddingPartyMember?.role ?? "Bridesmaid",
+                weddingPartySide: editWeddingPartyMember?.side ?? "bride",
               }}
               hotels={hotels}
               onSubmit={handleEdit}
