@@ -129,7 +129,6 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
     partner2Name: "",
     weddingDate: "",
     venue: "",
-    location: "",
   });
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -169,7 +168,7 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
       setActiveWorkspace({ ...ws, role: "owner" });
       setCreateOpen(false);
       setOpen(false);
-      setNewWorkspace({ workstationName: "", partner1Name: "", partner2Name: "", weddingDate: "", venue: "", location: "" });
+      setNewWorkspace({ workstationName: "", partner1Name: "", partner2Name: "", weddingDate: "", venue: "" });
       setLocation("/dashboard");
       onClose();
     },
@@ -417,10 +416,6 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
             <div className="grid gap-1.5">
               <label className="text-sm font-medium">Venue</label>
               <Input value={newWorkspace.venue} onChange={(e) => setNewWorkspace((v) => ({ ...v, venue: e.target.value }))} placeholder="Optional" />
-            </div>
-            <div className="grid gap-1.5">
-              <label className="text-sm font-medium">Location</label>
-              <Input value={newWorkspace.location} onChange={(e) => setNewWorkspace((v) => ({ ...v, location: e.target.value }))} placeholder="Optional" />
             </div>
             {createWorkspace.isError && (
               <p className="text-sm text-destructive">{(createWorkspace.error as Error).message}</p>

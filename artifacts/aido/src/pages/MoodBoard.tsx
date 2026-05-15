@@ -54,6 +54,8 @@ import {
 import { cn } from "@/lib/utils";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
+import { authFetch } from "@/lib/authFetch";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 
 const TAG_DRAG_TYPE = "application/x-mood-tag";
 
@@ -108,19 +110,6 @@ function objectUrl(objectPath: string): string {
   if (objectPath.startsWith("/api/storage/public-objects/")) return objectPath;
   if (objectPath.startsWith("/storage/public-objects/")) return `/api${objectPath}`;
   return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
-}
-
-async function authFetch(url: string, options: RequestInit = {}, getToken: () => Promise<string | null>) {
-  const token = await getToken();
-  return fetch(applyApiBase(url), {
-    ...options,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers as Record<string, string> ?? {}),
-    },
-  });
 }
 
 // ─── Authenticated image loader ───────────────────────────────────────────────
@@ -288,6 +277,7 @@ function SortableImageCard({
 export default function MoodBoard() {
   const { t } = useTranslation();
   const { getToken } = useAuth();
+  const { activeWorkspace } = useWorkspace();
   const qc = useQueryClient();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -329,21 +319,21 @@ export default function MoodBoard() {
 
   // ─── Fetch mood board ─────────────────────────────────────────────────────
   const { data: serverBoard, isLoading } = useQuery<MoodBoardData>({
-    queryKey: ["mood-board"],
+    queryKey: ["mood-board", activeWorkspace?.profileId ?? "default"],
     queryFn: async () => {
-      const token = await getToken();
-      const r = await fetch(applyApiBase("/api/mood-board"), {
-        credentials: "include",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const r = await authFetch("/api/mood-board");
       if (!r.ok) throw new Error("Failed to load");
       return r.json();
     },
   });
 
   useEffect(() => {
-    if (serverBoard && !localBoard) setLocalBoard(serverBoard);
-  }, [serverBoard]);
+    if (serverBoard) setLocalBoard(serverBoard);
+  }, [serverBoard, activeWorkspace?.profileId]);
+
+  useEffect(() => {
+    setLocalBoard(null);
+  }, [activeWorkspace?.profileId]);
 
   const board = localBoard ?? serverBoard ?? {
     images: [], colorPalette: [], styleTags: [], aiSummary: null, notes: null,
@@ -355,22 +345,19 @@ export default function MoodBoard() {
     setSavePending(true);
     saveTimerRef.current = setTimeout(async () => {
       try {
-        const token = await getToken();
-        await fetch(applyApiBase("/api/mood-board"), {
+        await authFetch("/api/mood-board", {
           method: "PUT",
-          credentials: "include",
           headers: {
             "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(data),
         });
-        qc.invalidateQueries({ queryKey: ["mood-board"] });
+        qc.invalidateQueries({ queryKey: ["mood-board", activeWorkspace?.profileId ?? "default"] });
       } finally {
         setSavePending(false);
       }
     }, 1000);
-  }, [getToken, qc]);
+  }, [activeWorkspace?.profileId, qc]);
 
   const update = useCallback((patch: Partial<MoodBoardData>) => {
     setLocalBoard(prev => {
@@ -470,29 +457,40 @@ export default function MoodBoard() {
   };
 
   // ─── Analyze single image ─────────────────────────────────────────────────
-  const analyzeImage = async (objectPath: string) => {
+  const analyzeImage = async (
+    objectPath: string,
+    options: { generateSummary?: boolean; sourceBoard?: MoodBoardData } = {},
+  ) => {
     setAnalyzingPath(objectPath);
     try {
       const r = await authFetch("/api/mood-board/analyze-image", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ objectPath }),
-      }, getToken);
+      });
       if (!r.ok) throw new Error("Analysis failed");
       const { analysis } = await r.json() as { analysis: ImageAnalysis };
 
-      const updatedImages = board.images.map(img => {
+      const current = options.sourceBoard ?? board;
+      const updatedImages = current.images.map(img => {
         if (img.objectPath !== objectPath) return img;
         const existing = img.tags ?? [];
         const aiTags = analysis.styleKeywords ?? [];
         const mergedTags = [...existing, ...aiTags.filter(t => !existing.includes(t))];
         return { ...img, analysis, tags: mergedTags };
       });
-
       const allColors = updatedImages.flatMap(img => img.analysis?.dominantColors ?? []);
-      const palette = buildPalette(allColors, board.colorPalette);
-      update({ images: updatedImages, colorPalette: palette });
+      const palette = buildPalette(allColors, current.colorPalette);
+      const nextBoard = { ...current, images: updatedImages, colorPalette: palette };
+      setLocalBoard(nextBoard);
+      save(nextBoard);
+      if (options.generateSummary !== false) {
+        await generateSummaryMutation.mutateAsync(nextBoard);
+      }
+      return nextBoard;
     } catch {
       toast({ title: "Analysis failed", description: "Could not analyze this image.", variant: "destructive" });
+      return null;
     } finally {
       setAnalyzingPath(null);
     }
@@ -510,24 +508,28 @@ export default function MoodBoard() {
       await generateSummaryMutation.mutateAsync();
       return;
     }
+    let latestBoard: MoodBoardData = board;
     for (const img of needsAnalysis) {
-      await analyzeImage(img.objectPath);
+      const analyzedBoard = await analyzeImage(img.objectPath, { generateSummary: false, sourceBoard: latestBoard });
+      if (analyzedBoard) latestBoard = analyzedBoard;
     }
-    await generateSummaryMutation.mutateAsync();
+    await generateSummaryMutation.mutateAsync(latestBoard);
     toast({ title: "Analysis complete" });
   };
 
   // ─── Generate AI summary ──────────────────────────────────────────────────
   const generateSummaryMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (sourceBoard?: MoodBoardData) => {
+      const boardForSummary = sourceBoard ?? board;
       const r = await authFetch("/api/mood-board/generate-summary", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          styleTags: board.styleTags,
-          images: board.images,
-          colorPalette: board.colorPalette,
+          styleTags: boardForSummary.styleTags,
+          images: boardForSummary.images,
+          colorPalette: boardForSummary.colorPalette,
         }),
-      }, getToken);
+      });
       if (!r.ok) throw new Error("Failed");
       return (await r.json() as { summary: string }).summary;
     },
@@ -672,7 +674,7 @@ export default function MoodBoard() {
       let partner1 = "";
       let partner2 = "";
       try {
-        const profileRes = await authFetch("/api/profile", {}, getToken);
+        const profileRes = await authFetch("/api/profile");
         if (profileRes.ok) {
           const p = await profileRes.json() as { partner1Name?: string; partner2Name?: string };
           partner1 = p.partner1Name ?? "";
