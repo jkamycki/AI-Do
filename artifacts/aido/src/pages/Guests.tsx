@@ -871,14 +871,9 @@ const GUEST_IMPORT_TEMPLATE_HEADERS = [
   "Full Name",
   "Email",
   "Phone",
-  "RSVP Status",
-  "Invitation Status",
-  "Meal Choice",
-  "Dietary Notes",
   "Guest Group",
   "Plus One",
   "Plus One Name",
-  "Table",
   "Needs Hotel",
   "Street Address",
   "Apt/Unit",
@@ -886,21 +881,15 @@ const GUEST_IMPORT_TEMPLATE_HEADERS = [
   "State",
   "ZIP",
   "Country",
-  "Notes",
 ];
 
 const GUEST_IMPORT_SAMPLE_ROW = [
   "Jane Doe",
   "jane@example.com",
   "631-555-1234",
-  "pending",
-  "pending",
-  "vegetarian",
-  "No shellfish",
   "Bride's Friends",
   "yes",
   "John Doe",
-  "5",
   "no",
   "123 Ses Drive",
   "Apt 2B",
@@ -908,7 +897,6 @@ const GUEST_IMPORT_SAMPLE_ROW = [
   "NC",
   "27520",
   "United States",
-  "College friend",
 ];
 
 function normalizeImportHeader(value: unknown) {
@@ -972,7 +960,7 @@ async function downloadGuestImportTemplate() {
   sheet.addRow(GUEST_IMPORT_TEMPLATE_HEADERS);
   sheet.addRow(GUEST_IMPORT_SAMPLE_ROW);
   sheet.addRow([
-    "Required: Full Name. Everything else is optional. RSVP Status: pending, attending, maybe, declined. Invitation Status: pending or sent. Plus One/Needs Hotel: yes or no.",
+    "Required: Full Name and Street Address. Everything else is optional. Plus One and Needs Hotel can be yes or no.",
   ]);
   sheet.getRow(1).font = { bold: true };
   sheet.getRow(1).fill = {
@@ -1023,6 +1011,11 @@ async function parseGuestImportWorkbook(file: File) {
       skipped.push(`Row ${rowNumber}: missing Full Name`);
       return;
     }
+    const address = getImportCell(row, headerMap, ["Street Address", "Address"]);
+    if (!address) {
+      skipped.push(`Row ${rowNumber}: missing Street Address`);
+      return;
+    }
 
     const plusOneName = getImportCell(row, headerMap, ["Plus One Name", "Plus 1 Name", "Guest Plus One"]);
     guestsToImport.push({
@@ -1049,7 +1042,7 @@ async function parseGuestImportWorkbook(file: File) {
       tableAssignment: getImportCell(row, headerMap, ["Table", "Table Assignment"]),
       needsHotel: parseImportBoolean(getImportCell(row, headerMap, ["Needs Hotel", "Hotel Needed"])),
       bookedHotelBlockId: null,
-      address: getImportCell(row, headerMap, ["Street Address", "Address"]),
+      address,
       aptUnit: getImportCell(row, headerMap, ["Apt/Unit", "Apartment", "Unit", "Apt"]),
       guestCity: getImportCell(row, headerMap, ["City", "Town"]),
       guestState: getImportCell(row, headerMap, ["State", "Province"]),
@@ -2341,12 +2334,13 @@ export default function Guests({
                 <div className="rounded-lg border border-border/70 bg-muted/20 p-4 text-sm space-y-2">
                   <p className="font-medium">Template columns</p>
                   <p className="text-muted-foreground">
-                    Required: <span className="font-medium text-foreground">Full Name</span>. Optional:
-                    Email, Phone, RSVP Status, Meal Choice, Guest Group, Plus One,
-                    Plus One Name, Address, City, State, ZIP, Country, and Notes.
+                    Required: <span className="font-medium text-foreground">Full Name</span> and{" "}
+                    <span className="font-medium text-foreground">Street Address</span>. Optional:
+                    Email, Phone, Guest Group, Plus One, Plus One Name, Needs Hotel,
+                    Apt/Unit, City, State, ZIP, and Country.
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    RSVP Status can be pending, attending, maybe, or declined. Plus One and Needs Hotel can be yes or no.
+                    Plus One and Needs Hotel can be yes or no.
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
