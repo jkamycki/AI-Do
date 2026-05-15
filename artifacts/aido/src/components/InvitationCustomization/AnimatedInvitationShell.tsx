@@ -112,10 +112,10 @@ export function AnimatedInvitationShell({
         }
         .aido-invite-anim-card {
           position: relative;
-          z-index: 1;
+          z-index: 3;
           width: 100%;
           transform-origin: 50% 58%;
-          animation: aidoInviteCardIn 1180ms cubic-bezier(.2,.84,.18,1) 980ms both;
+          animation: aidoInviteCardIn 1260ms cubic-bezier(.2,.84,.18,1) 980ms both;
         }
         .aido-envelope-layer {
           position: absolute;
@@ -124,7 +124,7 @@ export function AnimatedInvitationShell({
           width: min(calc(100% - ${compact ? "20px" : "34px"}), ${compact ? "440px" : "490px"});
           aspect-ratio: .68;
           transform: translate(-50%, -50%);
-          z-index: 3;
+          z-index: 2;
           pointer-events: none;
           border-radius: ${compact ? "18px" : "24px"};
           overflow: hidden;
@@ -146,6 +146,10 @@ export function AnimatedInvitationShell({
         .aido-envelope-panel,
         .aido-envelope-side,
         .aido-envelope-bottom,
+        .aido-envelope-pocket,
+        .aido-envelope-pocket-face,
+        .aido-envelope-pocket-face::before,
+        .aido-envelope-pocket-face::after,
         .aido-wax-seal,
         .aido-owl-delivery,
         .aido-owl-delivery *,
@@ -186,6 +190,48 @@ export function AnimatedInvitationShell({
             var(--invite-paper);
           animation: aidoBottomDrop 1150ms cubic-bezier(.28,.76,.18,1) 1040ms forwards;
         }
+        .aido-envelope-pocket {
+          left: 50%;
+          top: 50%;
+          width: min(calc(100% - ${compact ? "20px" : "34px"}), ${compact ? "440px" : "490px"});
+          aspect-ratio: .68;
+          transform: translate(-50%, -50%);
+          z-index: 4;
+          pointer-events: none;
+        }
+        .aido-envelope-pocket-face {
+          left: 0;
+          right: 0;
+          bottom: 0;
+          height: 58%;
+          filter: drop-shadow(0 -10px 18px rgba(0,0,0,.12));
+          animation: aidoPocketRelease 980ms cubic-bezier(.28,.76,.18,1) 1180ms forwards;
+        }
+        .aido-envelope-pocket-face::before {
+          content: "";
+          inset: 0;
+          clip-path: polygon(0 100%, 50% 0, 100% 100%);
+          background:
+            linear-gradient(180deg, rgba(255,255,255,.32), rgba(0,0,0,.12)),
+            var(--invite-paper);
+        }
+        .aido-envelope-pocket-face::after {
+          content: "";
+          width: ${compact ? "58px" : "72px"};
+          height: ${compact ? "58px" : "72px"};
+          left: calc(50% - ${compact ? "29px" : "36px"});
+          top: 4%;
+          border-radius: 999px;
+          background:
+            radial-gradient(circle at 34% 28%, rgba(255,255,255,.4), transparent 18%),
+            radial-gradient(circle at 50% 52%, var(--invite-accent), #8a6320 74%);
+          box-shadow:
+            0 12px 24px rgba(0,0,0,.28),
+            inset 0 0 0 5px rgba(255,255,255,.14),
+            inset 0 0 0 10px rgba(0,0,0,.1);
+          opacity: .92;
+          animation: aidoSealLift 980ms cubic-bezier(.2,.82,.18,1) 520ms forwards;
+        }
         .aido-envelope-flap {
           inset: 0;
           z-index: 4;
@@ -222,6 +268,7 @@ export function AnimatedInvitationShell({
           animation: aidoPanelRight 1320ms cubic-bezier(.28,.76,.18,1) 880ms forwards;
         }
         .aido-wax-seal {
+          display: none;
           width: ${compact ? "70px" : "88px"};
           height: ${compact ? "70px" : "88px"};
           z-index: 6;
@@ -265,6 +312,9 @@ export function AnimatedInvitationShell({
         .aido-invite-anim-animated-photo-peel .aido-envelope-bottom {
           animation-delay: 1120ms;
         }
+        .aido-invite-anim-animated-photo-peel .aido-envelope-pocket-face {
+          animation-delay: 1260ms;
+        }
         .aido-invite-anim-animated-photo-peel .aido-envelope-side.right {
           animation-delay: 980ms;
         }
@@ -277,6 +327,9 @@ export function AnimatedInvitationShell({
         .aido-invite-anim-animated-seal-reveal .aido-envelope-flap {
           animation-delay: 1020ms;
         }
+        .aido-invite-anim-animated-seal-reveal .aido-envelope-pocket-face {
+          animation-delay: 1480ms;
+        }
         .aido-invite-anim-animated-owl-delivery {
           background:
             radial-gradient(circle at 72% 14%, rgba(255,255,255,.56) 0 3%, transparent 4%),
@@ -285,7 +338,7 @@ export function AnimatedInvitationShell({
             linear-gradient(150deg, #10162b 0%, #1f2f72 48%, #6b5b8f 100%);
         }
         .aido-invite-anim-animated-owl-delivery .aido-invite-anim-card {
-          animation-delay: 2920ms;
+          animation-delay: 2520ms;
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-layer {
           opacity: 0;
@@ -308,6 +361,17 @@ export function AnimatedInvitationShell({
         }
         .aido-invite-anim-animated-owl-delivery .aido-envelope-bottom {
           animation-delay: 2750ms;
+        }
+        .aido-invite-anim-animated-owl-delivery .aido-envelope-pocket {
+          opacity: 0;
+          transform: translate(-50%, -82%) scale(.48) rotate(-3deg);
+          animation: aidoOwlEnvelopeDrop 820ms cubic-bezier(.17,.78,.18,1) 1160ms forwards;
+        }
+        .aido-invite-anim-animated-owl-delivery .aido-envelope-pocket-face {
+          animation-delay: 2750ms;
+        }
+        .aido-invite-anim-animated-owl-delivery .aido-envelope-pocket-face::after {
+          animation-delay: 2180ms;
         }
         .aido-owl-delivery {
           left: 50%;
@@ -431,8 +495,9 @@ export function AnimatedInvitationShell({
           animation: aidoOwlTinyEnvelopeDrop 700ms cubic-bezier(.28,.68,.28,1) 1040ms forwards;
         }
         @keyframes aidoInviteCardIn {
-          0% { opacity: 0; transform: translateY(24px) scale(.945); filter: blur(3px); }
-          58% { opacity: .82; transform: translateY(7px) scale(.985); filter: blur(.6px); }
+          0% { opacity: 0; transform: translateY(34%) scale(.84); filter: blur(3px); }
+          18% { opacity: .72; }
+          56% { opacity: .92; transform: translateY(8%) scale(.97); filter: blur(.7px); }
           100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
         }
         @keyframes aidoLayerGone { to { visibility: hidden; } }
@@ -444,6 +509,11 @@ export function AnimatedInvitationShell({
         @keyframes aidoBottomDrop {
           0% { transform: translateY(0); opacity: 1; }
           100% { transform: translateY(70%); opacity: 0; }
+        }
+        @keyframes aidoPocketRelease {
+          0% { transform: translateY(0); opacity: 1; }
+          78% { opacity: 1; }
+          100% { transform: translateY(82%) scale(.98); opacity: 0; }
         }
         @keyframes aidoPanelLeft {
           0% { transform: translateX(0) rotate(0); opacity: 1; }
@@ -524,7 +594,8 @@ export function AnimatedInvitationShell({
         }
         @media (prefers-reduced-motion: reduce) {
           .aido-invite-anim-card, .aido-envelope-layer, .aido-envelope-flap,
-          .aido-envelope-side, .aido-envelope-bottom, .aido-wax-seal,
+          .aido-envelope-side, .aido-envelope-bottom, .aido-envelope-pocket,
+          .aido-envelope-pocket-face, .aido-envelope-pocket-face::after, .aido-wax-seal,
           .aido-owl-delivery, .aido-owl-wing, .aido-owl-envelope {
             animation-duration: 1ms !important;
             animation-delay: 0ms !important;
@@ -533,6 +604,9 @@ export function AnimatedInvitationShell({
       `}</style>
       <div key={`card-${replay}`} className="aido-invite-anim-card">
         {children}
+      </div>
+      <div key={`pocket-${replay}`} className="aido-envelope-pocket" aria-hidden="true">
+        <div className="aido-envelope-pocket-face" />
       </div>
       {showOwlDelivery && (
         <div key={`owl-${replay}`} className="aido-owl-delivery" aria-hidden="true">
