@@ -26,6 +26,14 @@ function fontStack(font: string): string {
   return `'${font}', 'Playfair Display', Georgia, serif`;
 }
 
+function hotelAddressLine(hotel: NonNullable<WebsiteRendererPayload["hotelOptions"]>[number]) {
+  return [
+    hotel.address,
+    [hotel.city, hotel.state].filter(Boolean).join(", "),
+    hotel.zip,
+  ].filter(Boolean).join(" ");
+}
+
 export function RsvpFlow({
   data,
   slug,
@@ -76,6 +84,27 @@ export function RsvpFlow({
     : allHotelOptions;
   const showHotelQuestion = data.customText._rsvpAskHotel === "true" && hotelOptions.length > 0;
   const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === hotelBlockId) ?? null;
+  const renderHotelDetails = () => selectedHotel ? (
+    <div className="rounded-lg p-3 space-y-2 text-sm" style={{ border: `1px solid ${accent}33`, background: `${accent}10`, color: text }}>
+      <div>
+        <p className="font-semibold">{selectedHotel.hotelName || "Hotel block"}</p>
+        {hotelAddressLine(selectedHotel) && (
+          <p className="text-xs mt-0.5 opacity-75">{hotelAddressLine(selectedHotel)}</p>
+        )}
+      </div>
+      {selectedHotel.bookingLink && (
+        <a
+          href={selectedHotel.bookingLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
+          style={{ background: accent, color: "#fff" }}
+        >
+          {t("rsvp.open_booking_link", { defaultValue: "Open booking link" })}
+        </a>
+      )}
+    </div>
+  ) : null;
 
   const passwordHeader: Record<string, string> = password ? { "X-Site-Password": password } : {};
 
@@ -541,17 +570,7 @@ export function RsvpFlow({
                               </option>
                             ))}
                           </select>
-                          {selectedHotel?.bookingLink && (
-                            <a
-                              href={selectedHotel.bookingLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex text-sm underline font-medium"
-                              style={{ color: accent }}
-                            >
-                              {t("rsvp.open_booking_link", { defaultValue: "Open booking link" })}
-                            </a>
-                          )}
+                          {renderHotelDetails()}
                         </div>
                       )}
                     </div>
@@ -773,17 +792,7 @@ export function RsvpFlow({
                               </option>
                             ))}
                           </select>
-                          {selectedHotel?.bookingLink && (
-                            <a
-                              href={selectedHotel.bookingLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex text-sm underline font-medium"
-                              style={{ color: accent }}
-                            >
-                              {t("rsvp.open_booking_link", { defaultValue: "Open booking link" })}
-                            </a>
-                          )}
+                          {renderHotelDetails()}
                         </div>
                       )}
                     </div>

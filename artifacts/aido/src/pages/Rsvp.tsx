@@ -111,6 +111,14 @@ function formatTime(timeStr: string | null | undefined) {
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
+function hotelAddressLine(hotel: NonNullable<RsvpInfo["hotelOptions"]>[number]) {
+  return [
+    hotel.address,
+    [hotel.city, hotel.state].filter(Boolean).join(", "),
+    hotel.zip,
+  ].filter(Boolean).join(" ");
+}
+
 const DEFAULT_BG   = "#1E1A2E";
 const DEFAULT_GOLD = "#D4A017";
 const cormorant = "'Cormorant Garamond', 'Playfair Display', Georgia, serif";
@@ -953,16 +961,31 @@ export default function Rsvp() {
                               )}
                             />
 
-                            {selectedHotel?.bookingLink && (
-                              <a
-                                href={selectedHotel.bookingLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block text-center rounded-lg px-4 py-2 text-sm font-semibold"
-                                style={{ background: "rgba(255,255,255,0.08)", border: `1px solid ${CARD_BDR}`, color: WHITE, fontFamily: jakarta }}
+                            {selectedHotel && (
+                              <div
+                                className="rounded-lg p-3 space-y-2 text-sm"
+                                style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${CARD_BDR}`, color: WHITE, fontFamily: jakarta }}
                               >
-                                Open booking link
-                              </a>
+                                <div>
+                                  <p className="font-semibold">{selectedHotel.hotelName || "Hotel block"}</p>
+                                  {hotelAddressLine(selectedHotel) && (
+                                    <p className="text-xs mt-0.5" style={{ color: MUTED }}>
+                                      {hotelAddressLine(selectedHotel)}
+                                    </p>
+                                  )}
+                                </div>
+                                {selectedHotel.bookingLink && (
+                                  <a
+                                    href={selectedHotel.bookingLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block text-center rounded-lg px-4 py-2 text-sm font-semibold"
+                                    style={{ background: GOLD, color: BG }}
+                                  >
+                                    Open booking link
+                                  </a>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
