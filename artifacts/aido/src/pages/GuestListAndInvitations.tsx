@@ -158,14 +158,14 @@ export default function GuestListAndInvitations() {
           </span>
         </h1>
         <p className="text-muted-foreground mt-1">
-          {t("guests.page_subtitle", { defaultValue: "Manage your guests and customize your invitation designs" })}
+          {t("guests.page_subtitle", { defaultValue: "Manage guests, design digital invitations, and prepare print-ready invitation suites." })}
         </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="guest-list">{t("guests.tab_guest_list", { defaultValue: "Guest List" })}</TabsTrigger>
-          <TabsTrigger value="invitation-customization">{t("guests.tab_invitation", { defaultValue: "Invitation Customization" })}</TabsTrigger>
+          <TabsTrigger value="invitation-customization">{t("guests.tab_invitation", { defaultValue: "Invitation Studio" })}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="guest-list" className="mt-6">
