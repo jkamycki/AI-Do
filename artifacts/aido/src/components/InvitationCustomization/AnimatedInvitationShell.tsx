@@ -254,6 +254,7 @@ export function AnimatedInvitationShell({
             inset 0 0 0 8px rgba(83,54,13,.22),
             inset 0 -10px 16px rgba(79,50,10,.2);
           opacity: .92;
+          z-index: 1;
           animation: aidoSealLift 980ms cubic-bezier(.2,.82,.18,1) 520ms forwards;
         }
         .aido-envelope-monogram {
@@ -261,7 +262,7 @@ export function AnimatedInvitationShell({
           height: ${compact ? "64px" : "80px"};
           left: calc(50% - ${compact ? "32px" : "40px"});
           top: 4%;
-          z-index: 1;
+          z-index: 2;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -271,6 +272,7 @@ export function AnimatedInvitationShell({
           font-weight: 700;
           letter-spacing: .08em;
           text-shadow: 0 1px 2px rgba(0,0,0,.28);
+          pointer-events: none;
           animation: aidoSealLift 980ms cubic-bezier(.2,.82,.18,1) 520ms forwards;
         }
         .aido-envelope-monogram::before {
@@ -497,6 +499,9 @@ export function AnimatedInvitationShell({
         .aido-invite-anim-animated-owl-delivery .aido-envelope-pocket-face::after {
           animation-delay: 2340ms;
         }
+        .aido-invite-anim-animated-owl-delivery .aido-envelope-monogram {
+          animation-delay: 2340ms;
+        }
         .aido-owl-delivery {
           left: 50%;
           top: 6%;
@@ -550,6 +555,7 @@ export function AnimatedInvitationShell({
         .aido-owl-envelope-svg {
           transform-box: fill-box;
           transform-origin: 50% 50%;
+          filter: drop-shadow(0 4px 5px rgba(0,0,0,.22));
           animation: aidoOwlTinyEnvelopeDrop 700ms cubic-bezier(.28,.68,.28,1) 1040ms forwards;
         }
         @keyframes aidoInviteCardIn {
@@ -626,9 +632,9 @@ export function AnimatedInvitationShell({
           100% { opacity: 0; transform: translate(-34px, -8px) scale(1.15); }
         }
         @keyframes aidoOwlTinyEnvelopeDrop {
-          0% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
-          62% { opacity: 1; transform: translateY(84px) scale(1.22) rotate(4deg); }
-          100% { opacity: 0; transform: translateY(116px) scale(1.42) rotate(7deg); }
+          0% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+          52% { opacity: 1; transform: translateY(70px) scale(1.16) rotate(0deg); }
+          100% { opacity: 0; transform: translateY(112px) scale(1.36) rotate(0deg); }
         }
         @keyframes aidoOwlEnvelopeDrop {
           0% { opacity: 0; transform: translate(-50%, -82%) scale(.48) rotate(-16deg); }
@@ -789,16 +795,16 @@ export function AnimatedInvitationShell({
             <path d="M174 157 C180 168 186 166 189 157" fill="none" stroke="#7b6040" strokeWidth="3" strokeLinecap="round" />
             <path d="M146 160 L139 166 M160 161 L157 170 M181 161 L184 170 M194 160 L201 166" stroke="#7b6040" strokeWidth="2" strokeLinecap="round" opacity="0.75" />
             <g className="aido-owl-envelope-svg">
-              <rect x="126" y="154" width="88" height="26" rx="3" fill={paper} stroke="#a8946d" strokeWidth="2" />
-              <path d="M126 154 L170 172 L214 154" fill="none" stroke="#9e8a66" strokeWidth="2" />
-              <path d="M126 180 L159 164 M214 180 L181 164" fill="none" stroke="#9e8a66" strokeWidth="1.6" />
-              <circle cx="170" cy="166" r="6" fill={accent} opacity="0.92" />
+              <rect x="116" y="150" width="108" height="34" rx="4" fill={paper} stroke="rgba(255,255,255,.42)" strokeWidth="1.4" />
+              <path d="M116 150 L170 174 L224 150" fill="none" stroke="rgba(0,0,0,.28)" strokeWidth="2" />
+              <path d="M116 184 L156 164 M224 184 L184 164" fill="none" stroke="rgba(0,0,0,.24)" strokeWidth="1.7" />
+              <circle cx="170" cy="167" r="8" fill={accent} opacity="0.96" stroke="rgba(255,255,255,.38)" strokeWidth="1.2" />
               <text
                 x="170"
-                y="169"
+                y="170"
                 textAnchor="middle"
                 fontFamily="Georgia, serif"
-                fontSize="6"
+                fontSize="7"
                 fontWeight="700"
                 fill="#ffffff"
               >
