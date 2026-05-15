@@ -1429,9 +1429,13 @@ export default function Guests() {
     plusOnes: 0,
   };
 
-  const newGuests = allGuests.filter(
+  const collectorNewGuests = allGuests.filter(
     (g) => (g as any).source === "self_collect" && !(g as any).acknowledgedAt,
   );
+  const rsvpReviewGuests = allGuests.filter(
+    (g) => (g as any).source === "rsvp_self_add" && !(g as any).acknowledgedAt,
+  );
+  const newGuests = [...collectorNewGuests, ...rsvpReviewGuests];
   const newGuestIds = new Set(newGuests.map((g) => g.id));
 
   const handleAcknowledge = (guestId: number) => {
@@ -1456,16 +1460,16 @@ export default function Guests() {
     );
   };
 
-  const handleAcknowledgeAll = () => {
-    const ids = Array.from(newGuestIds);
+  const handleAcknowledgeMany = (ids: number[]) => {
     if (ids.length === 0) return;
+    const idSet = new Set(ids);
     queryClient.setQueryData(getGetGuestsQueryKey(), (old: typeof data) => {
       if (!old) return old;
       const now = new Date().toISOString();
       return {
         ...old,
         guests: old.guests.map((g: Guest) =>
-          newGuestIds.has(g.id) ? ({ ...g, acknowledgedAt: now } as Guest) : g,
+          idSet.has(g.id) ? ({ ...g, acknowledgedAt: now } as Guest) : g,
         ),
       };
     });
@@ -2202,7 +2206,45 @@ export default function Guests() {
       </div>
 
       {/* New guests alert — recently self-added via collector link */}
-      {newGuests.length > 0 && (
+      {rsvpReviewGuests.length > 0 && (
+        <Card className="border-rose-300/70 bg-rose-50/80 dark:bg-rose-900/15 dark:border-rose-700/50 shadow-sm">
+          <CardContent className="py-3 px-4 flex items-start sm:items-center gap-3">
+            <div className="shrink-0 h-9 w-9 rounded-full bg-rose-200/80 dark:bg-rose-800/40 flex items-center justify-center ring-1 ring-rose-300/60 dark:ring-rose-700/60">
+              <AlertTriangle className="h-4 w-4 text-rose-700 dark:text-rose-300" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-rose-900 dark:text-rose-200">
+                {rsvpReviewGuests.length === 1
+                  ? t("guests.rsvp_self_add_alert_one", {
+                      name: rsvpReviewGuests[0].name,
+                      defaultValue: "{{name}} RSVPed but was not on your guest list",
+                    })
+                  : t("guests.rsvp_self_add_alert_other", {
+                      count: rsvpReviewGuests.length,
+                      defaultValue: "{{count}} guests RSVPed but were not on your guest list",
+                    })}
+              </p>
+              <p className="text-xs text-rose-800/80 dark:text-rose-300/70 mt-0.5">
+                {t("guests.rsvp_self_add_alert_desc", {
+                  defaultValue: "They used RSVP anyway after they could not find themselves. They were added to your guest list so you can review and confirm them.",
+                })}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 text-rose-900 dark:text-rose-200 hover:bg-rose-200/60 dark:hover:bg-rose-800/30"
+              onClick={() => handleAcknowledgeMany(rsvpReviewGuests.map((g) => g.id))}
+              data-testid="button-acknowledge-rsvp-self-added"
+            >
+              <CheckCheck className="h-3.5 w-3.5 mr-1.5" />
+              {t("guests.dismiss_new_alert")}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {collectorNewGuests.length > 0 && (
         <Card className="border-amber-300/60 bg-amber-50/70 dark:bg-amber-900/15 dark:border-amber-700/50 shadow-sm">
           <CardContent className="py-3 px-4 flex items-start sm:items-center gap-3">
             <div className="shrink-0 h-9 w-9 rounded-full bg-amber-200/80 dark:bg-amber-800/40 flex items-center justify-center ring-1 ring-amber-300/60 dark:ring-amber-700/60">
@@ -2210,10 +2252,10 @@ export default function Guests() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                {newGuests.length === 1
-                  ? t("guests.new_guest_alert_one", { name: newGuests[0].name })
+                {collectorNewGuests.length === 1
+                  ? t("guests.new_guest_alert_one", { name: collectorNewGuests[0].name })
                   : t("guests.new_guest_alert_other", {
-                      count: newGuests.length,
+                      count: collectorNewGuests.length,
                     })}
               </p>
               <p className="text-xs text-amber-800/80 dark:text-amber-300/70 mt-0.5">
@@ -2224,7 +2266,7 @@ export default function Guests() {
               variant="ghost"
               size="sm"
               className="shrink-0 text-amber-900 dark:text-amber-200 hover:bg-amber-200/60 dark:hover:bg-amber-800/30"
-              onClick={handleAcknowledgeAll}
+              onClick={() => handleAcknowledgeMany(collectorNewGuests.map((g) => g.id))}
               data-testid="button-acknowledge-all-new"
             >
               <CheckCheck className="h-3.5 w-3.5 mr-1.5" />
@@ -2373,17 +2415,36 @@ export default function Guests() {
               {filtered.map((g) => {
                 const badge = getRsvpBadge(g.rsvpStatus);
                 const isNew = newGuestIds.has(g.id);
+                const isRsvpSelfAdded = (g as any).source === "rsvp_self_add";
                 const isDuplicate = duplicateGuestIds.has(g.id);
                 return (
                   <div
                     key={`mobile-${g.id}`}
-                    className={`rounded-lg border p-3 space-y-3 ${isDuplicate ? "bg-rose-50/60 dark:bg-rose-900/15 border-rose-300 dark:border-rose-700" : isNew ? "bg-amber-50/40 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700" : "bg-background"}`}
+                    className={`rounded-lg border p-3 space-y-3 ${isDuplicate ? "bg-rose-50/60 dark:bg-rose-900/15 border-rose-300 dark:border-rose-700" : isNew ? (isRsvpSelfAdded ? "bg-rose-50/60 dark:bg-rose-900/15 border-rose-300 dark:border-rose-700" : "bg-amber-50/40 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700") : "bg-background"}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-medium leading-tight break-words">
                           {g.name}
                         </p>
+                        {isNew && (
+                          <button
+                            type="button"
+                            onClick={() => handleAcknowledge(g.id)}
+                            className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border hover:opacity-80 transition-opacity ${
+                              isRsvpSelfAdded
+                                ? "bg-rose-200 dark:bg-rose-700/60 text-rose-900 dark:text-rose-100 border-rose-300 dark:border-rose-600"
+                                : "bg-amber-200 dark:bg-amber-700/60 text-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-600"
+                            }`}
+                            title={t("guests.dismiss_new_badge")}
+                          >
+                            <Sparkles className="h-2.5 w-2.5" />
+                            {isRsvpSelfAdded
+                              ? t("guests.rsvp_self_add_badge", { defaultValue: "Review RSVP" })
+                              : t("guests.new_guest_badge")}
+                            <XIcon className="h-2.5 w-2.5 opacity-70" />
+                          </button>
+                        )}
                         {g.email && (
                           <p className="text-xs text-muted-foreground break-all mt-0.5">
                             {g.email}
@@ -2556,6 +2617,7 @@ export default function Guests() {
                   {filtered.map((g) => {
                     const badge = getRsvpBadge(g.rsvpStatus);
                     const isNew = newGuestIds.has(g.id);
+                    const isRsvpSelfAdded = (g as any).source === "rsvp_self_add";
                     const isDuplicate = duplicateGuestIds.has(g.id);
                     return (
                       <TableRow
@@ -2569,12 +2631,18 @@ export default function Guests() {
                               <button
                                 type="button"
                                 onClick={() => handleAcknowledge(g.id)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-200 dark:bg-amber-700/60 text-amber-900 dark:text-amber-100 border border-amber-300 dark:border-amber-600 hover:opacity-80 transition-opacity"
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border hover:opacity-80 transition-opacity ${
+                                  isRsvpSelfAdded
+                                    ? "bg-rose-200 dark:bg-rose-700/60 text-rose-900 dark:text-rose-100 border-rose-300 dark:border-rose-600"
+                                    : "bg-amber-200 dark:bg-amber-700/60 text-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-600"
+                                }`}
                                 title={t("guests.dismiss_new_badge")}
                                 data-testid={`button-dismiss-new-${g.id}`}
                               >
                                 <Sparkles className="h-2.5 w-2.5" />
-                                {t("guests.new_guest_badge")}
+                                {isRsvpSelfAdded
+                                  ? t("guests.rsvp_self_add_badge", { defaultValue: "Review RSVP" })
+                                  : t("guests.new_guest_badge")}
                                 <XIcon className="h-2.5 w-2.5 opacity-70" />
                               </button>
                             )}

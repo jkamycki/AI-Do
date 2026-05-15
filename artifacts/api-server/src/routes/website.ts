@@ -695,7 +695,7 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
       // Notes column is reserved for couple-authored notes; the guest's
       // RSVP message lives in rsvpMessage so it can render in the RSVP
       // column on the guest list page.
-      notes: "Self-added via RSVP page (verify before sending invites).",
+      notes: "Guest used RSVP anyway because they could not find themselves on the guest list. Review before sending future invites.",
       rsvpMessage: messageClean || null,
       source: "rsvp_self_add",
     }).returning();
