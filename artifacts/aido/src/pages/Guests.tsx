@@ -2375,8 +2375,7 @@ export default function Guests({
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Button
                     type="button"
-                    variant="secondary"
-                    className="flex-1"
+                    className="flex-1 border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 dark:border-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500"
                     onClick={() => {
                       downloadGuestImportTemplate().catch((err) => {
                         toast({
