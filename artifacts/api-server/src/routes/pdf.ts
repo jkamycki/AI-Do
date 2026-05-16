@@ -14,10 +14,12 @@ const router = Router();
 const BRAND_PRIMARY = "#C38813"; // Warm gold (hsl 40 82% 42%) — matches "Do" in logo
 const BRAND_GOLD = "#D4A017";    // Rich gold accent
 const BRAND_GOLD_LIGHT = "#F5C842";
+const BRAND_DARK = "#1A1025";
+const BRAND_DARK_ALT = "#24162F";
 const BRAND_PURPLE = "#7B2FBE";  // From brand gradient (pink → purple → blue)
 const BRAND_PINK = "#E91E8C";
 const BRAND_BLUE = "#4F8EF7";
-const BRAND_LIGHT = "#FAF5E8";   // Soft warm cream
+const BRAND_LIGHT = "#FFF8EA";   // Soft warm cream
 const BRAND_RULE = "#E8DCC0";    // Hairline rule color (warm)
 const BRAND_MUTED = "#8B6914";   // Muted warm gold/brown for footer text
 
@@ -78,10 +80,11 @@ function drawHeader(doc: InstanceType<typeof PDFDocument>, subtitle: string) {
   const pageW = doc.page.width;
   const headerH = 76;
 
-  // Solid gold header band
-  doc.rect(0, 0, pageW, headerH).fill(BRAND_PRIMARY);
+  // A.IDO header band: dark plum canvas with warm gold accents.
+  doc.rect(0, 0, pageW, headerH).fill(BRAND_DARK);
+  doc.rect(0, headerH - 16, pageW, 16).fill(BRAND_DARK_ALT);
 
-  // Thin accent rule along the bottom of the header (gold gradient feel via two stripes)
+  // Thin accent rule along the bottom of the header.
   doc.rect(0, headerH, pageW, 2).fill(BRAND_GOLD);
   doc.rect(0, headerH + 2, pageW, 1).fill(BRAND_GOLD_LIGHT);
 
@@ -98,11 +101,11 @@ function drawHeader(doc: InstanceType<typeof PDFDocument>, subtitle: string) {
     }
   }
 
-  doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(20).text("A.IDO", textX, 18);
-  doc.fillColor("rgba(255,255,255,0.75)").font("Helvetica").fontSize(8.5)
+  doc.fillColor(BRAND_GOLD_LIGHT).font("Helvetica-Bold").fontSize(20).text("A.IDO", textX, 18);
+  doc.fillColor("#E8DCC0").font("Helvetica").fontSize(8.5)
     .text("AI WEDDING PLANNING OS", textX, 44, { characterSpacing: 1.2 });
 
-  doc.fillColor("rgba(255,255,255,0.92)").font("Helvetica").fontSize(11)
+  doc.fillColor(BRAND_LIGHT).font("Helvetica").fontSize(11)
     .text(subtitle, 0, 28, { align: "right", width: pageW - 36 });
 
   doc.moveDown(0);
@@ -204,10 +207,11 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
 
       const rowY = doc.y;
 
-      // event card
+      // Event card - warm cream and gold to match the A.IDO vendor portal.
       const cardX = margin + 18;
       const cardW = contentW - 18;
-      doc.roundedRect(cardX, rowY - 2, cardW, estimatedHeight - 10, 10).fillAndStroke("#F4ECFF", "#D9C6F3");
+      doc.roundedRect(cardX, rowY - 2, cardW, estimatedHeight - 10, 10).fillAndStroke("#FFF9EF", BRAND_RULE);
+      doc.rect(cardX, rowY - 2, 3, estimatedHeight - 10).fill(BRAND_GOLD);
 
       doc.circle(margin + 8, rowY + 10, 5).fill(dotColor);
       doc.circle(margin + 8, rowY + 10, 2.2).fill("#FFFFFF");
@@ -238,8 +242,8 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
       });
 
       const catLabel = (event.category ?? "").charAt(0).toUpperCase() + (event.category ?? "").slice(1);
-      doc.roundedRect(pageW - margin - 56, rowY + 8, 56, 16, 8).fill(dotColor + "22");
-      doc.fillColor(dotColor).font("Helvetica-Bold").fontSize(7.5)
+      doc.roundedRect(pageW - margin - 56, rowY + 8, 56, 16, 8).fill("#F8EAC3");
+      doc.fillColor(BRAND_MUTED).font("Helvetica-Bold").fontSize(7.5)
         .text(catLabel, pageW - margin - 56, rowY + 11, { width: 56, align: "center" });
 
       if (event.status) {
