@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useUser } from "@clerk/react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -14,13 +15,23 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Heart, Calendar, MapPin, Users, DollarSign, Sparkles, ArrowRight, Check, Globe, BriefcaseBusiness } from "lucide-react";
 
-const ONBOARDING_KEY = "aido_onboarding_done";
+const ONBOARDING_KEY_PREFIX = "aido_onboarding_dismissed";
 
 const LANGUAGES = [
   "English", "Spanish", "French", "German", "Italian", "Portuguese",
   "Chinese (Simplified)", "Japanese", "Korean", "Arabic", "Hindi",
   "Russian", "Dutch", "Polish",
 ];
+
+function getInitialAccountType(): "couple_individual" | "wedding_planner" {
+  try {
+    return sessionStorage.getItem("aido_signup_account_type") === "wedding_planner"
+      ? "wedding_planner"
+      : "couple_individual";
+  } catch {
+    return "couple_individual";
+  }
+}
 
 const schema = z.object({
   accountType: z.enum(["couple_individual", "wedding_planner"]),
@@ -48,6 +59,7 @@ const STEP_DEFS = [
 
 export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss: () => void }) {
   const { t } = useTranslation();
+  const { user } = useUser();
   const [step, setStep] = useState(1);
   const queryClient = useQueryClient();
   const saveProfile = useSaveProfile();
@@ -55,7 +67,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
   const form = useForm<WizardValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      accountType: "couple_individual",
+      accountType: getInitialAccountType(),
       partner1Name: "",
       partner2Name: "",
       weddingDate: "",
@@ -72,7 +84,11 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
   });
 
   function dismiss() {
-    localStorage.setItem(ONBOARDING_KEY, "true");
+    if (user?.id) {
+      try {
+        sessionStorage.setItem(`${ONBOARDING_KEY_PREFIX}:${user.id}`, "true");
+      } catch {}
+    }
     onDismiss();
   }
 
@@ -93,7 +109,12 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
         queryClient.invalidateQueries({ queryKey: getGetProfileQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
         queryClient.invalidateQueries({ queryKey: ["my-workspaces"] });
-        localStorage.setItem(ONBOARDING_KEY, "true");
+        if (user?.id) {
+          try {
+            sessionStorage.setItem(`${ONBOARDING_KEY_PREFIX}:${user.id}`, "true");
+            sessionStorage.removeItem("aido_signup_account_type");
+          } catch {}
+        }
         onDismiss();
       },
     });
@@ -339,12 +360,32 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
 }
 
 export function useOnboardingWizard(hasProfile: boolean) {
-  const [dismissed, setDismissed] = useState(() => {
-    return localStorage.getItem(ONBOARDING_KEY) === "true";
-  });
+  const { user } = useUser();
+  const key = user?.id ? `${ONBOARDING_KEY_PREFIX}:${user.id}` : null;
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (!key) {
+      setDismissed(false);
+      return;
+    }
+    try {
+      setDismissed(sessionStorage.getItem(key) === "true");
+    } catch {
+      setDismissed(false);
+    }
+  }, [key]);
+
   const shouldShow = !hasProfile && !dismissed;
   return {
     shouldShow,
-    dismiss: () => setDismissed(true),
+    dismiss: () => {
+      if (key) {
+        try {
+          sessionStorage.setItem(key, "true");
+        } catch {}
+      }
+      setDismissed(true);
+    },
   };
 }

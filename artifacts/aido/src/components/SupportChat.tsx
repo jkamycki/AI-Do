@@ -277,7 +277,7 @@ export function SupportChat() {
         {
           id: `beta-feedback-thanks-${Date.now()}`,
           role: "assistant",
-          content: "Thank you. Your beta feedback was sent to the A.IDO team and will show in Operations Center Messages & Feedback.",
+          content: "Thank you. Your feedback was sent to the A.IDO team, and we truly appreciate you choosing A.IDO as your ultimate wedding planning tool.",
         },
       ]);
       setBetaFeedbackText("");

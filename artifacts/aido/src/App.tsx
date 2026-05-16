@@ -12,6 +12,7 @@ import { ApiHealthBanner } from "@/components/ApiHealthBanner";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/WorkspaceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useGetProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
+import { useTracking } from "@/hooks/useTracking";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
@@ -226,6 +227,10 @@ function TestAccountCallout() {
         }
       ).create({ strategy: "ticket", ticket: token });
       if (attempt.status === "complete" && attempt.createdSessionId) {
+        try {
+          sessionStorage.setItem("aido_show_test_account_notice", "true");
+          localStorage.setItem("aido_test_account_mode", "true");
+        } catch {}
         await clerk.setActive({ session: attempt.createdSessionId });
         setLocation("/dashboard");
       } else {
@@ -739,6 +744,7 @@ function CustomSignUpForm() {
   const { signUp } = useSignUp();
   const signUpLoaded = !!signUp;
   const [, setLocation] = useLocation();
+  const [accountType, setAccountType] = useState<"couple_individual" | "wedding_planner">("couple_individual");
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -820,6 +826,7 @@ function CustomSignUpForm() {
       return;
     }
     try {
+      sessionStorage.setItem("aido_signup_account_type", accountType);
       // Use Clerk's frontend SDK so the email-verification code is the proof
       // of ownership before any session is issued. This is the secure flow.
       // The password is generated under the hood with strong entropy and
@@ -925,6 +932,7 @@ function CustomSignUpForm() {
     try {
       sessionStorage.setItem("aido_oauth_intent", "signup");
       sessionStorage.setItem("aido_oauth_intent_at", String(Date.now()));
+      sessionStorage.setItem("aido_signup_account_type", accountType);
     } catch {}
     try {
       setOauthLoading(strategy);
@@ -1104,6 +1112,45 @@ function CustomSignUpForm() {
         Welcome! Let's get your wedding planning started.
       </p>
 
+      <div style={{ marginBottom: "1rem" }}>
+        <label style={labelStyle}>How will you use A.IDO?</label>
+        <div style={{ display: "grid", gap: "0.6rem", gridTemplateColumns: "1fr 1fr" }}>
+          {[
+            {
+              value: "couple_individual" as const,
+              title: "Couple",
+              desc: "Planning my wedding",
+            },
+            {
+              value: "wedding_planner" as const,
+              title: "Planner",
+              desc: "Managing clients",
+            },
+          ].map((option) => {
+            const selected = accountType === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setAccountType(option.value)}
+                style={{
+                  border: selected ? "1px solid #F5C842" : "1px solid rgba(255,255,255,0.15)",
+                  borderRadius: "0.65rem",
+                  background: selected ? "rgba(245,200,66,0.16)" : "rgba(255,255,255,0.05)",
+                  color: "#ffffff",
+                  cursor: "pointer",
+                  padding: "0.75rem 0.7rem",
+                  textAlign: "left",
+                }}
+              >
+                <span style={{ display: "block", fontWeight: 700, fontSize: "0.9rem" }}>{option.title}</span>
+                <span style={{ display: "block", color: "#b8a9cc", fontSize: "0.72rem", marginTop: "0.15rem" }}>{option.desc}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <TestAccountCallout />
 
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
@@ -1256,6 +1303,50 @@ function PendingInviteRedirector() {
   // to accept (the /invite/:token route handles that flow with an explicit
   // email match check). New accounts with previously-invited emails will not
   // be silently linked into any workspace.
+  return null;
+}
+
+function AppTracking() {
+  const [location] = useLocation();
+  const { track, testMode, sessionId } = useTracking();
+
+  useEffect(() => {
+    if (!sessionId) return;
+    void track("page_view", {
+      path: location,
+      title: typeof document !== "undefined" ? document.title : "",
+    });
+  }, [location, sessionId, track]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    const onError = (event: ErrorEvent) => {
+      void track("client_error", {
+        message: event.message,
+        source: event.filename,
+        line: event.lineno,
+        column: event.colno,
+      });
+    };
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      void track("client_error", {
+        message: event.reason instanceof Error ? event.reason.message : String(event.reason ?? "Unhandled promise rejection"),
+        source: "unhandledrejection",
+      });
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+    };
+  }, [sessionId, track]);
+
+  useEffect(() => {
+    if (!testMode || !sessionId) return;
+    void track("test_session_active", { source: "app_tracking" });
+  }, [sessionId, testMode, track]);
+
   return null;
 }
 
@@ -1572,6 +1663,7 @@ function ClerkProviderWithRoutes() {
         <WorkspaceProvider>
           <ThemeProvider>
             <TooltipProvider>
+              <AppTracking />
               <Router />
               <Toaster />
             </TooltipProvider>

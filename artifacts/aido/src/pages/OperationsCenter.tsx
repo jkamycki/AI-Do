@@ -22,8 +22,26 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Clock, AlertCircle, CheckCircle2, Eye, Trash2, Inbox, Ticket } from "lucide-react";
+import { Mail, Clock, AlertCircle, CheckCircle2, Eye, Trash2, Inbox, Ticket, FlaskConical } from "lucide-react";
 import MessagesSection from "@/components/admin/MessagesSection";
+
+type TestSessionRow = {
+  sessionId: string;
+  testMode: boolean;
+  createdAt: string;
+  lastActiveAt: string;
+  totalEvents: number;
+  workflowProgress: {
+    pageViews: number;
+    profileVisits: number;
+    guestListVisits: number;
+    invitationStudioVisits: number;
+    websiteEditorVisits: number;
+  };
+  pagesVisited: string[];
+  wizardsUsed: string[];
+  errorsEncountered: number;
+};
 
 export default function OperationsCenterPage() {
   const { getToken } = useAuth();
@@ -32,7 +50,8 @@ export default function OperationsCenterPage() {
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"tickets" | "messages">("tickets");
+  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "testActivity">("tickets");
+  const [testSessionFilter, setTestSessionFilter] = useState<"test" | "all" | "real">("test");
   const [followUpForm, setFollowUpForm] = useState({
     followUpEmail: "",
     followUpNotes: "",
@@ -80,6 +99,18 @@ export default function OperationsCenterPage() {
     refetchInterval: 30000,
   });
   const unreadMessageCount = messagesData?.unreadCount ?? 0;
+
+  const { data: testSessionsData, isLoading: isLoadingTestSessions } = useQuery<{ sessions: TestSessionRow[] }>({
+    queryKey: ["admin-test-sessions", testSessionFilter],
+    queryFn: async () => {
+      const r = await authedFetch(`/api/admin/test-sessions?mode=${testSessionFilter}`);
+      if (!r.ok) throw new Error("Failed to fetch test sessions");
+      return r.json();
+    },
+    enabled: activeTab === "testActivity",
+    refetchInterval: activeTab === "testActivity" ? 30000 : false,
+  });
+  const testSessions = testSessionsData?.sessions ?? [];
 
   const lastSeenUnread = useRef<number | null>(null);
   useEffect(() => {
@@ -211,6 +242,14 @@ export default function OperationsCenterPage() {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab("testActivity")}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+            ${activeTab === "testActivity" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+        >
+          <FlaskConical className="h-4 w-4" />
+          Free Test Account Activity
+        </button>
       </div>
 
       {activeTab === "messages" && (
@@ -218,6 +257,96 @@ export default function OperationsCenterPage() {
           title="Messages & Feedback"
           description="Contact requests (including emails to support@aidowedding.net) and user feedback."
         />
+      )}
+
+      {activeTab === "testActivity" && (
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-xl font-serif font-semibold text-foreground">Free Test Account Activity</h2>
+              <p className="text-sm text-muted-foreground">
+                Anonymous test sessions are separated from real user analytics.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {[
+                { value: "test", label: "Show only testMode sessions" },
+                { value: "all", label: "Show all sessions" },
+                { value: "real", label: "Show real users only" },
+              ].map((option) => (
+                <Button
+                  key={option.value}
+                  size="sm"
+                  variant={testSessionFilter === option.value ? "default" : "outline"}
+                  onClick={() => setTestSessionFilter(option.value as "test" | "all" | "real")}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {isLoadingTestSessions ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-lg" />)}
+            </div>
+          ) : testSessions.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <FlaskConical className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                <p className="text-muted-foreground">No sessions found for this filter.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {testSessions.map((session) => (
+                <Card key={session.sessionId}>
+                  <CardContent className="py-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <h3 className="font-mono text-sm font-semibold text-foreground break-all">{session.sessionId}</h3>
+                          <Badge className={session.testMode ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
+                            testMode = {String(session.testMode)}
+                          </Badge>
+                          {session.errorsEncountered > 0 && (
+                            <Badge className="bg-red-100 text-red-800">{session.errorsEncountered} errors</Badge>
+                          )}
+                        </div>
+                        <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+                          <span>Created: {new Date(session.createdAt).toLocaleString()}</span>
+                          <span>Last active: {new Date(session.lastActiveAt).toLocaleString()}</span>
+                          <span>Total events: {session.totalEvents}</span>
+                          <span>Pages visited: {session.pagesVisited.length}</span>
+                        </div>
+                        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-5">
+                          <span className="rounded-md bg-muted px-2 py-1">Page views: {session.workflowProgress.pageViews}</span>
+                          <span className="rounded-md bg-muted px-2 py-1">Profile: {session.workflowProgress.profileVisits}</span>
+                          <span className="rounded-md bg-muted px-2 py-1">Guests: {session.workflowProgress.guestListVisits}</span>
+                          <span className="rounded-md bg-muted px-2 py-1">Invites: {session.workflowProgress.invitationStudioVisits}</span>
+                          <span className="rounded-md bg-muted px-2 py-1">Website: {session.workflowProgress.websiteEditorVisits}</span>
+                        </div>
+                        {session.pagesVisited.length > 0 && (
+                          <p className="mt-3 text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground">Pages:</span>{" "}
+                            {session.pagesVisited.slice(0, 10).join(", ")}
+                            {session.pagesVisited.length > 10 ? ` +${session.pagesVisited.length - 10} more` : ""}
+                          </p>
+                        )}
+                        {session.wizardsUsed.length > 0 && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground">Wizards used:</span>{" "}
+                            {session.wizardsUsed.join(", ")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {activeTab === "tickets" && (<>

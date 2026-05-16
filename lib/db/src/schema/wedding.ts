@@ -214,6 +214,19 @@ export const analyticsEvents = pgTable("analytics_events", {
 
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 
+export const anonymousSessions = pgTable("anonymous_sessions", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  testMode: boolean("test_mode").notNull().default(false),
+  event: text("event").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastActiveAt: timestamp("last_active_at").defaultNow().notNull(),
+});
+
+export type AnonymousSession = typeof anonymousSessions.$inferSelect;
+
 export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull().unique(),

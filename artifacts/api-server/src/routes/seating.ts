@@ -44,7 +44,7 @@ async function syncTableAssignments(
         await db
           .update(guestRecords)
           .set({ tableAssignment: label })
-          .where(eq(guestRecords.id, id));
+          .where(and(eq(guestRecords.id, id), eq(guestRecords.profileId, profileId)));
       }
     }
   }

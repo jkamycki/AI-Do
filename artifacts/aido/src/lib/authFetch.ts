@@ -33,6 +33,20 @@ function getActiveWorkspaceProfileId(): number | null {
   return _workspaceProfileId;
 }
 
+function getInternalTrackingHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const isTestMode = window.localStorage.getItem("aido_test_account_mode") === "true";
+    const sessionId = window.localStorage.getItem(isTestMode ? "aido_test_anonymous_session_id" : "aido_anonymous_session_id");
+    return {
+      ...(isTestMode ? { "x-aido-test-mode": "true" } : {}),
+      ...(sessionId ? { "x-aido-session-id": sessionId } : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
 export function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
   return fetch(applyBase(input), init);
 }
@@ -47,6 +61,7 @@ export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}
       ...init.headers,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(wsId != null ? { "x-workspace-profile-id": String(wsId) } : {}),
+      ...getInternalTrackingHeaders(),
     },
   });
 }

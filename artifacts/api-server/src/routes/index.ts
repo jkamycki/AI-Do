@@ -32,6 +32,7 @@ import rsvpRouter from "./rsvp";
 import moodboardRouter from "./moodboard";
 import invitationCustomizationsRouter from "./invitationCustomizations";
 import websiteRouter from "./website";
+import trackRouter from "./track";
 
 const router: IRouter = Router();
 
@@ -68,5 +69,6 @@ router.use(rsvpRouter);
 router.use(moodboardRouter);
 router.use(invitationCustomizationsRouter);
 router.use(websiteRouter);
+router.use(trackRouter);
 
 export default router;

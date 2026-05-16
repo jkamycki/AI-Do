@@ -729,6 +729,22 @@ function DashboardContent() {
     }
   };
 
+  useEffect(() => {
+    let shouldShowNotice = false;
+    try {
+      shouldShowNotice = sessionStorage.getItem("aido_show_test_account_notice") === "true";
+      if (shouldShowNotice) {
+        sessionStorage.removeItem("aido_show_test_account_notice");
+      }
+    } catch {}
+    if (!shouldShowNotice) return;
+
+    toast({
+      title: "You are in the test account",
+      description: "Feel free to add, update, delete, and explore anything here. This workspace is only for testing.",
+    });
+  }, [toast]);
+
   // Non-owner collaborators always land on the shared workspace, not their own dashboard
   useEffect(() => {
     if (activeWorkspace && activeWorkspace.role !== "owner" && !isLoading) {

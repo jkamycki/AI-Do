@@ -15,14 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarIcon, Save, RotateCcw, Loader2, RefreshCw } from "lucide-react";
+import { BriefcaseBusiness, Heart, Save, RotateCcw, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { COUNTRIES } from "@/lib/countries";
 import { getAddressFormat } from "@/lib/addressFormat";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { VenueQuestion, type VenueStatus } from "@/components/Profile/VenueQuestion";
 import { VenueWizard, emptyVenueDiscoveryData, type VenueDiscoveryData } from "@/components/Profile/VenueWizard";
-import { VenueBrainstorm, emptyVenueBrainstormData, type VenueBrainstormData } from "@/components/Profile/VenueBrainstorm";
 
 const NO_COUNTRY = "__none__";
 
@@ -39,9 +38,8 @@ const profileSchema = z.object({
   weddingDate: z.string().min(1, "Date is required"),
   ceremonyTime: z.string().min(1, "Time is required"),
   receptionTime: z.string().min(1, "Time is required"),
-  venueStatus: z.enum(["booked", "not_yet", "deciding"]).default("booked"),
+  venueStatus: z.enum(["booked", "not_yet"]).default("booked"),
   venueDiscovery: z.custom<VenueDiscoveryData>().default(emptyVenueDiscoveryData),
-  venueBrainstorm: z.custom<VenueBrainstormData>().default(emptyVenueBrainstormData),
   venue: z.string().optional().default(""),
   location: z.string().optional().default(""),
   venueCity: z.string().optional().default(""),
@@ -81,16 +79,8 @@ function normalizeVenueDiscovery(value?: VenueDiscoveryData | null): VenueDiscov
   };
 }
 
-function normalizeVenueBrainstorm(value?: VenueBrainstormData | null): VenueBrainstormData {
-  const source = value ?? emptyVenueBrainstormData;
-  return {
-    ...emptyVenueBrainstormData,
-    ...source,
-    ideas: Array.isArray(source.ideas) ? source.ideas : [],
-    inspiration: Array.isArray(source.inspiration) ? source.inspiration : [],
-    conversations: Array.isArray(source.conversations) ? source.conversations : [],
-    suggestions: Array.isArray(source.suggestions) ? source.suggestions : [],
-  };
+function normalizeVenueStatus(value?: string | null): VenueStatus {
+  return value === "not_yet" || value === "deciding" ? "not_yet" : "booked";
 }
 
 export default function Profile() {
@@ -126,7 +116,6 @@ export default function Profile() {
       receptionTime: "18:00",
       venueStatus: "booked",
       venueDiscovery: emptyVenueDiscoveryData,
-      venueBrainstorm: emptyVenueBrainstormData,
       venue: "",
       location: "",
       venueCity: "",
@@ -148,9 +137,8 @@ export default function Profile() {
   useEffect(() => {
     if (profile) {
       const profileWithVenueFlow = profile as typeof profile & {
-        venueStatus?: VenueStatus | null;
+        venueStatus?: string | null;
         venueDiscovery?: VenueDiscoveryData | null;
-        venueBrainstorm?: VenueBrainstormData | null;
       };
       form.reset({
         partner1Name: profile.partner1Name,
@@ -159,9 +147,8 @@ export default function Profile() {
         weddingDate: (profile.weddingDate ?? "").split('T')[0],
         ceremonyTime: profile.ceremonyTime,
         receptionTime: profile.receptionTime,
-        venueStatus: profileWithVenueFlow.venueStatus ?? "booked",
+        venueStatus: normalizeVenueStatus(profileWithVenueFlow.venueStatus),
         venueDiscovery: normalizeVenueDiscovery(profileWithVenueFlow.venueDiscovery),
-        venueBrainstorm: normalizeVenueBrainstorm(profileWithVenueFlow.venueBrainstorm),
         venue: profile.venue,
         location: profile.location,
         venueCity: profile.venueCity ?? "",
@@ -274,6 +261,56 @@ export default function Profile() {
         <CardContent className="p-6 pt-8">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <FormField
+                control={form.control}
+                name="accountType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>How will you use A.IDO?</FormLabel>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {[
+                        {
+                          value: "couple_individual",
+                          title: "Couple / Individual",
+                          description: "Plan one wedding workspace for yourself.",
+                          icon: Heart,
+                        },
+                        {
+                          value: "wedding_planner",
+                          title: "Wedding Planner",
+                          description: "Manage multiple client workstations.",
+                          icon: BriefcaseBusiness,
+                        },
+                      ].map((option) => {
+                        const selected = field.value === option.value;
+                        const Icon = option.icon;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => field.onChange(option.value)}
+                            className={`rounded-lg border p-4 text-left transition-colors ${
+                              selected ? "border-primary bg-primary/10" : "border-border bg-background hover:bg-muted/40"
+                            }`}
+                            data-testid={`account-type-${option.value}`}
+                          >
+                            <span className="flex items-start gap-3">
+                              <span className={`mt-0.5 rounded-md p-2 ${selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                                <Icon className="h-4 w-4" />
+                              </span>
+                              <span>
+                                <span className="block font-semibold text-foreground">{option.title}</span>
+                                <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{option.description}</span>
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               <div className="grid md:grid-cols-2 gap-6">
                 <FormField
@@ -358,13 +395,6 @@ export default function Profile() {
                   value={form.watch("venueDiscovery")}
                   onChange={(value) => form.setValue("venueDiscovery", value, { shouldDirty: true })}
                   coupleNames={coupleNames || undefined}
-                />
-              )}
-
-              {venueStatus === "deciding" && (
-                <VenueBrainstorm
-                  value={form.watch("venueBrainstorm")}
-                  onChange={(value) => form.setValue("venueBrainstorm", value, { shouldDirty: true })}
                 />
               )}
 
@@ -657,6 +687,7 @@ export default function Profile() {
                   size="lg"
                   variant="outline"
                   onClick={() => form.reset({
+                    accountType: "couple_individual",
                     partner1Name: "",
                     partner2Name: "",
                     weddingDate: "",
@@ -664,7 +695,6 @@ export default function Profile() {
                     receptionTime: "",
                     venueStatus: "booked",
                     venueDiscovery: emptyVenueDiscoveryData,
-                    venueBrainstorm: emptyVenueBrainstormData,
                     venue: "",
                     location: "",
                     venueCity: "",

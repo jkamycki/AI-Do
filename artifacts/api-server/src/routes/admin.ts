@@ -246,6 +246,86 @@ router.get("/admin/events", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+router.get("/admin/test-sessions", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const mode = String(req.query.mode ?? "test");
+    const where =
+      mode === "real"
+        ? sql`WHERE test_mode = false`
+        : mode === "all"
+          ? sql``
+          : sql`WHERE test_mode = true`;
+
+    const rows = await db.execute(sql`
+      WITH grouped AS (
+        SELECT
+          session_id,
+          bool_or(test_mode) as test_mode,
+          min(created_at) as created_at,
+          max(last_active_at) as last_active_at,
+          count(*)::int as total_events,
+          array_remove(array_agg(DISTINCT metadata->>'path') FILTER (WHERE event = 'page_view'), NULL) as pages_visited,
+          array_remove(array_agg(DISTINCT event) FILTER (
+            WHERE event ILIKE '%wizard%'
+               OR metadata->>'path' ILIKE '%profile%'
+               OR metadata->>'path' ILIKE '%invitation%'
+               OR metadata->>'path' ILIKE '%website-editor%'
+          ), NULL) as wizards_used,
+          count(*) FILTER (WHERE event = 'client_error' OR event ILIKE '%error%')::int as errors_encountered,
+          count(*) FILTER (WHERE event = 'page_view')::int as page_view_count,
+          count(*) FILTER (WHERE metadata->>'path' ILIKE '%profile%')::int as profile_visits,
+          count(*) FILTER (WHERE metadata->>'path' ILIKE '%guests%')::int as guest_visits,
+          count(*) FILTER (WHERE metadata->>'path' ILIKE '%invitation%')::int as invitation_visits,
+          count(*) FILTER (WHERE metadata->>'path' ILIKE '%website-editor%')::int as website_visits
+        FROM anonymous_sessions
+        ${where}
+        GROUP BY session_id
+      )
+      SELECT *
+      FROM grouped
+      ORDER BY last_active_at DESC
+      LIMIT 200
+    `);
+
+    const sessions = (rows.rows as Array<{
+      session_id: string;
+      test_mode: boolean;
+      created_at: string | Date;
+      last_active_at: string | Date;
+      total_events: number;
+      pages_visited: string[] | null;
+      wizards_used: string[] | null;
+      errors_encountered: number;
+      page_view_count: number;
+      profile_visits: number;
+      guest_visits: number;
+      invitation_visits: number;
+      website_visits: number;
+    }>).map((row) => ({
+      sessionId: row.session_id,
+      testMode: row.test_mode,
+      createdAt: new Date(row.created_at).toISOString(),
+      lastActiveAt: new Date(row.last_active_at).toISOString(),
+      totalEvents: row.total_events,
+      workflowProgress: {
+        pageViews: row.page_view_count,
+        profileVisits: row.profile_visits,
+        guestListVisits: row.guest_visits,
+        invitationStudioVisits: row.invitation_visits,
+        websiteEditorVisits: row.website_visits,
+      },
+      pagesVisited: row.pages_visited ?? [],
+      wizardsUsed: row.wizards_used ?? [],
+      errorsEncountered: row.errors_encountered,
+    }));
+
+    res.json({ sessions, mode });
+  } catch (err) {
+    req.log.error(err, "Admin test sessions error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
   try {
     const search = String(req.query.search ?? "").trim().toLowerCase();

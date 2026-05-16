@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
 import { useGetGuests, useGetProfile, getGetGuestsQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import type { Guest as GuestListGuest } from "@workspace/api-client-react";
+import { authFetch } from "@/lib/authFetch";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +58,7 @@ interface SavedChart {
 }
 
 const GROUPS = ["Bride's Family", "Groom's Family", "Bride's Friends", "Groom's Friends", "Colleagues", "Other"];
+const LEGACY_DRAFT_STORAGE_KEY = "aido_seating_draft_v1";
 
 const TABLE_ACCENTS = [
   { bar: "bg-rose-500", chip: "bg-rose-100 text-rose-900 dark:bg-rose-900/50 dark:text-rose-100" },
@@ -372,52 +375,96 @@ function TableCard({
 
 export default function SeatingChartPage() {
   const { t, i18n } = useTranslation();
-  const { getToken } = useAuth();
+  const { userId } = useAuth();
+  const { activeWorkspace } = useWorkspace();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const uid = useId();
   const { data: profile } = useGetProfile();
   const [exportingPdf, setExportingPdf] = useState(false);
   const [resetting, setResetting] = useState(false);
-  const STORAGE_KEY = "aido_seating_draft_v1";
-  const draft = (() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) as {
-        guests?: Guest[];
-        tableCount?: number;
-        seatsPerTable?: number;
-        additionalNotes?: string;
-      } : null;
-    } catch { return null; }
-  })();
+  const storageScopeKey = activeWorkspace?.profileId
+    ? `workspace:${activeWorkspace.profileId}`
+    : userId
+      ? `user:${userId}`
+      : null;
+  const draftStorageKey = storageScopeKey ? `aido_seating_draft_v2:${storageScopeKey}` : null;
+  const seatingChartsQueryKey = ["seating-charts", storageScopeKey] as const;
+  const starterGuest = () => ({ id: `${uid}-0`, name: "", group: "Bride's Family", plusOne: false, notes: "", relations: [] });
 
-  const [guests, setGuests] = useState<Guest[]>(
-    draft?.guests && Array.isArray(draft.guests) && draft.guests.length > 0
-      ? draft.guests
-      : [{ id: `${uid}-0`, name: "", group: "Bride's Family", plusOne: false, notes: "", relations: [] }]
-  );
-  const [tableCount, setTableCount] = useState(draft?.tableCount ?? 6);
-  const [seatsPerTable, setSeatsPerTable] = useState(draft?.seatsPerTable ?? 8);
-  const [additionalNotes, setAdditionalNotes] = useState(draft?.additionalNotes ?? "");
+  const [guests, setGuests] = useState<Guest[]>([starterGuest()]);
+  const [tableCount, setTableCount] = useState(6);
+  const [seatsPerTable, setSeatsPerTable] = useState(8);
+  const [additionalNotes, setAdditionalNotes] = useState("");
+  const autoLoadedRef = useRef(false);
+  const loadedDraftKeyRef = useRef<string | null>(null);
 
   // Persist the in-progress chart so leaving and returning to the tab
-  // preserves whatever was being entered.
+  // preserves whatever was being entered. The key is scoped by user/workspace;
+  // never reuse a prior account's draft guests.
   useEffect(() => {
+    if (!draftStorageKey || loadedDraftKeyRef.current !== draftStorageKey) return;
     try {
       localStorage.setItem(
-        STORAGE_KEY,
+        draftStorageKey,
         JSON.stringify({ guests, tableCount, seatsPerTable, additionalNotes })
       );
     } catch {
       // ignore quota errors
     }
-  }, [guests, tableCount, seatsPerTable, additionalNotes]);
+  }, [draftStorageKey, guests, tableCount, seatsPerTable, additionalNotes]);
   const [result, setResult] = useState<SeatingResult | null>(null);
   const [chartDirty, setChartDirty] = useState(false);
   const [activeChartId, setActiveChartId] = useState<number | null>(null);
   const [showGuests, setShowGuests] = useState(true);
   const [showSaved, setShowSaved] = useState(true);
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem(LEGACY_DRAFT_STORAGE_KEY);
+    } catch {
+      // best-effort cleanup
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftStorageKey) {
+      loadedDraftKeyRef.current = null;
+      return;
+    }
+    autoLoadedRef.current = false;
+    loadedDraftKeyRef.current = null;
+    setResult(null);
+    setChartDirty(false);
+    setActiveChartId(null);
+    setShowGuests(true);
+    setShowSaved(true);
+    try {
+      const raw = localStorage.getItem(draftStorageKey);
+      const draft = raw ? JSON.parse(raw) as {
+        guests?: Guest[];
+        tableCount?: number;
+        seatsPerTable?: number;
+        additionalNotes?: string;
+      } : null;
+      setGuests(
+        draft?.guests && Array.isArray(draft.guests) && draft.guests.length > 0
+          ? draft.guests
+          : [starterGuest()]
+      );
+      setTableCount(Number.isFinite(Number(draft?.tableCount)) ? Number(draft?.tableCount) : 6);
+      setSeatsPerTable(Number.isFinite(Number(draft?.seatsPerTable)) ? Number(draft?.seatsPerTable) : 8);
+      setAdditionalNotes(typeof draft?.additionalNotes === "string" ? draft.additionalNotes : "");
+      loadedDraftKeyRef.current = draftStorageKey;
+    } catch {
+      setGuests([starterGuest()]);
+      setTableCount(6);
+      setSeatsPerTable(8);
+      setAdditionalNotes("");
+      loadedDraftKeyRef.current = draftStorageKey;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftStorageKey]);
 
   const moveGuest = (fromTableNumber: number, toTableNumber: number, guestName: string) => {
     if (fromTableNumber === toTableNumber || !result) return;
@@ -576,25 +623,23 @@ export default function SeatingChartPage() {
   };
 
   const authedFetch = async (url: string, init: RequestInit = {}) => {
-    const token = await getToken();
-    return fetch(url, {
+    return authFetch(url, {
       ...init,
-      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         ...(init.headers ?? {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
   };
 
   const { data: savedCharts = [], isLoading: chartsLoading } = useQuery<SavedChart[]>({
-    queryKey: ["seating-charts"],
+    queryKey: seatingChartsQueryKey,
     queryFn: async () => {
       const r = await authedFetch("/api/seating/charts");
       if (!r.ok) return [];
       return r.json();
     },
+    enabled: !!storageScopeKey,
   });
 
   const saveChartMutation = useMutation({
@@ -615,8 +660,7 @@ export default function SeatingChartPage() {
       return r.json() as Promise<SavedChart>;
     },
     onSuccess: (saved) => {
-      queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
-      queryClient.invalidateQueries({ queryKey: ["next-steps", "seating-charts"] });
+      queryClient.invalidateQueries({ queryKey: seatingChartsQueryKey });
       queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
       if (saved && typeof saved.id === "number") {
         setActiveChartId(saved.id);
@@ -625,7 +669,9 @@ export default function SeatingChartPage() {
         // explicitly clicking Load.
         applyChartMutation.mutate(saved.id);
       }
-      try { localStorage.removeItem(STORAGE_KEY); } catch {}
+      if (draftStorageKey) {
+        try { localStorage.removeItem(draftStorageKey); } catch {}
+      }
     },
   });
 
@@ -645,8 +691,7 @@ export default function SeatingChartPage() {
       return r.json() as Promise<SavedChart>;
     },
     onSuccess: (saved) => {
-      queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
-      queryClient.invalidateQueries({ queryKey: ["next-steps", "seating-charts"] });
+      queryClient.invalidateQueries({ queryKey: seatingChartsQueryKey });
       queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
       // The chart being updated is by definition the currently loaded one,
       // so sync the guest list to its new tables.
@@ -662,8 +707,7 @@ export default function SeatingChartPage() {
       if (!r.ok) throw new Error("Delete failed");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
-      queryClient.invalidateQueries({ queryKey: ["next-steps", "seating-charts"] });
+      queryClient.invalidateQueries({ queryKey: seatingChartsQueryKey });
       queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       toast({ title: t("seating.chart_deleted") });
@@ -751,7 +795,6 @@ export default function SeatingChartPage() {
   // charts, surface the most recently generated chart as the active view.
   // savedCharts come back ordered by desc(createdAt), so [0] is the latest.
   // Older charts stay accessible from the "Saved charts" list.
-  const autoLoadedRef = useRef(false);
   useEffect(() => {
     if (autoLoadedRef.current) return;
     if (result || activeChartId !== null) { autoLoadedRef.current = true; return; }
@@ -781,9 +824,13 @@ export default function SeatingChartPage() {
       setChartDirty(false);
       setShowSaved(false);
       setShowGuests(true);
+      setGuests([starterGuest()]);
+      if (draftStorageKey) {
+        try { localStorage.removeItem(draftStorageKey); } catch {}
+      }
       // Refresh the saved-charts list and the dashboard tile (which reads
       // from /dashboard/summary's seatingSummary block).
-      queryClient.invalidateQueries({ queryKey: ["seating-charts"] });
+      queryClient.invalidateQueries({ queryKey: seatingChartsQueryKey });
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetGuestsQueryKey() });
       toast({ title: t("seating.reset_done", { defaultValue: "Seating chart reset" }) });

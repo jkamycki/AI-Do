@@ -1,7 +1,7 @@
-import { Building2, Compass, MapPin } from "lucide-react";
+import { Building2, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export type VenueStatus = "booked" | "not_yet" | "deciding";
+export type VenueStatus = "booked" | "not_yet";
 
 type VenueQuestionProps = {
   value: VenueStatus;
@@ -26,12 +26,6 @@ const OPTIONS: Array<{
     description: "Help me compare venues and reach out.",
     icon: MapPin,
   },
-  {
-    value: "deciding",
-    label: "Still deciding",
-    description: "I am collecting ideas before choosing.",
-    icon: Compass,
-  },
 ];
 
 export function VenueQuestion({ value, onChange }: VenueQuestionProps) {
@@ -44,7 +38,7 @@ export function VenueQuestion({ value, onChange }: VenueQuestionProps) {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         {OPTIONS.map((option) => {
           const Icon = option.icon;
           const selected = value === option.value;
