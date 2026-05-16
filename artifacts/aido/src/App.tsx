@@ -318,9 +318,56 @@ function TestAccountCallout() {
   );
 }
 
+function ActiveAccountNotice({
+  email,
+  context,
+  onContinue,
+}: {
+  email: string;
+  context: "sign-in" | "sign-up";
+  onContinue: () => void;
+}) {
+  const accountLabel = email || "this account";
+  return (
+    <div
+      role="status"
+      style={{
+        border: "1px solid rgba(20,184,166,0.45)",
+        borderRadius: "0.75rem",
+        background: "rgba(20,184,166,0.12)",
+        padding: "0.75rem",
+        marginBottom: "0.85rem",
+      }}
+    >
+      <p style={{ color: "#d9f7ef", fontSize: "0.82rem", lineHeight: 1.45, margin: 0 }}>
+        You are currently signed in as <strong>{accountLabel}</strong>. Continue with this account, or use Google below to choose a different account first.
+      </p>
+      <button
+        type="button"
+        onClick={onContinue}
+        style={{
+          width: "100%",
+          border: "1px solid rgba(20,184,166,0.5)",
+          borderRadius: "0.55rem",
+          background: "rgba(20,184,166,0.2)",
+          color: "#ffffff",
+          cursor: "pointer",
+          fontSize: "0.84rem",
+          fontWeight: 700,
+          marginTop: "0.65rem",
+          padding: "0.6rem 0.75rem",
+        }}
+      >
+        {context === "sign-up" ? "Continue to dashboard" : `Continue as ${accountLabel}`}
+      </button>
+    </div>
+  );
+}
+
 function CustomSignInForm() {
   const clerk = useClerk();
   const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const [, setLocation] = useLocation();
   const [mode, setMode] = useState<"code_request" | "code_verify">(
     "code_request",
@@ -331,12 +378,10 @@ function CustomSignInForm() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [oauthLoading, setOauthLoading] = useState<"oauth_google" | null>(null);
-
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      setLocation("/dashboard", { replace: true });
-    }
-  }, [isLoaded, isSignedIn, setLocation]);
+  const activeEmail =
+    user?.primaryEmailAddress?.emailAddress ??
+    user?.emailAddresses?.[0]?.emailAddress ??
+    "";
 
   useEffect(() => {
     try {
@@ -357,20 +402,27 @@ function CustomSignInForm() {
     return first?.longMessage || first?.message || (err as Error)?.message || fallback;
   }
 
+  function matchesActiveEmail(candidate: string): boolean {
+    return !!activeEmail && activeEmail.toLowerCase() === candidate.trim().toLowerCase();
+  }
+
   async function handleSendLoginCode(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setInfo(null);
-    if (isSignedIn) {
-      setLocation("/dashboard", { replace: true });
-      return;
-    }
     if (!email.trim()) {
       setError("Please enter your email address.");
       return;
     }
     setSubmitting(true);
     try {
+      if (isLoaded && isSignedIn) {
+        if (matchesActiveEmail(email)) {
+          setLocation("/dashboard", { replace: true });
+          return;
+        }
+        await clerk.signOut();
+      }
       const signInClient = await waitForSignInClient();
       if (!signInClient) {
         setError("Auth is still loading. Please try again in a moment.");
@@ -456,12 +508,11 @@ function CustomSignInForm() {
 
   async function handleGoogle() {
     setError(null);
-    if (isSignedIn) {
-      setLocation("/dashboard", { replace: true });
-      return;
-    }
     setOauthLoading("oauth_google");
     try {
+      if (isLoaded && isSignedIn) {
+        await clerk.signOut();
+      }
       const signInClient = await waitForSignInClient();
       if (!signInClient) {
         setOauthLoading(null);
@@ -549,6 +600,14 @@ function CustomSignInForm() {
 
       <TestAccountCallout />
 
+      {isLoaded && isSignedIn && (
+        <ActiveAccountNotice
+          email={activeEmail}
+          context="sign-in"
+          onContinue={() => setLocation("/dashboard", { replace: true })}
+        />
+      )}
+
       {info && (
         <div
           role="status"
@@ -589,7 +648,7 @@ function CustomSignInForm() {
           disabled={oauthLoading !== null}
           style={{ ...oauthBtn, opacity: oauthLoading ? 0.7 : 1, cursor: oauthLoading ? "wait" : "pointer" }}
         >
-          {oauthLoading === "oauth_google" ? "Redirecting to Google…" : "Continue with Google"}
+          {oauthLoading === "oauth_google" ? "Redirecting to Google…" : isSignedIn ? "Choose a Google account" : "Continue with Google"}
         </button>
       </div>
 
@@ -730,6 +789,9 @@ function SsoCallbackPage() {
         <p style={{ marginBottom: "0.5rem", fontSize: "1rem", fontWeight: 500 }}>Finishing sign in...</p>
         <p style={{ color: "#b8a9cc", fontSize: "0.85rem" }}>One moment while we get you into A.IDO.</p>
         <AuthenticateWithRedirectCallback
+          transferable={false}
+          signInUrl={`${basePath}/sign-in`}
+          signUpUrl={`${basePath}/sign-up`}
           signInFallbackRedirectUrl={`${basePath}/dashboard`}
           signUpFallbackRedirectUrl={`${basePath}/dashboard`}
         />
@@ -741,6 +803,7 @@ function SsoCallbackPage() {
 function CustomSignUpForm() {
   const clerk = useClerk();
   const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const { signUp } = useSignUp();
   const signUpLoaded = !!signUp;
   const [, setLocation] = useLocation();
@@ -753,12 +816,10 @@ function CustomSignUpForm() {
   const [code, setCode] = useState("");
   const [resendInfo, setResendInfo] = useState<string | null>(null);
   const [oauthLoading, setOauthLoading] = useState<"oauth_google" | "oauth_apple" | null>(null);
-
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      setLocation("/dashboard", { replace: true });
-    }
-  }, [isLoaded, isSignedIn, setLocation]);
+  const activeEmail =
+    user?.primaryEmailAddress?.emailAddress ??
+    user?.emailAddresses?.[0]?.emailAddress ??
+    "";
 
   // Generate a strong, random password under the hood. The user never sees or
   // uses it — sign-in is via email code or Google. Clerk requires a password
@@ -794,13 +855,13 @@ function CustomSignUpForm() {
     return chars.join("");
   }
 
+  function matchesActiveEmail(candidate: string): boolean {
+    return !!activeEmail && activeEmail.toLowerCase() === candidate.trim().toLowerCase();
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (isSignedIn) {
-      setLocation("/dashboard", { replace: true });
-      return;
-    }
     // Clear any stale OAuth-intent flags from a previously abandoned Google
     // flow so they can't trigger the "no-account" detector on this signup.
     try {
@@ -812,6 +873,20 @@ function CustomSignUpForm() {
       return;
     }
     setSubmitting(true);
+    if (isLoaded && isSignedIn) {
+      if (matchesActiveEmail(email)) {
+        setSubmitting(false);
+        setError("You are already signed in with this email. Continue to your dashboard, or choose Google to pick another account first.");
+        return;
+      }
+      try {
+        await clerk.signOut();
+      } catch (err) {
+        setSubmitting(false);
+        setError((err as Error)?.message || "Could not switch accounts. Please try again.");
+        return;
+      }
+    }
     // Wait for Clerk's live instance to finish loading. We poll `clerk.loaded`
     // (a stable instance property) rather than the React hook value, because
     // hook values are captured by closure and won't update inside this loop.
@@ -916,10 +991,6 @@ function CustomSignUpForm() {
 
   async function handleOAuth(strategy: "oauth_google" | "oauth_apple") {
     setError(null);
-    if (isSignedIn) {
-      setLocation("/dashboard", { replace: true });
-      return;
-    }
     // Mark this OAuth flow as a sign-UP attempt. After the OAuth callback
     // the ExistingAccountFromSignUpDetector uses this flag to detect the
     // case where Clerk silently "transferred" the sign-up into a sign-in
@@ -930,12 +1001,15 @@ function CustomSignUpForm() {
     // by THIS flow" (success — keep) from "existing account reused by
     // transfer" (must sign out + bounce to /sign-in with a clear message).
     try {
-      sessionStorage.setItem("aido_oauth_intent", "signup");
-      sessionStorage.setItem("aido_oauth_intent_at", String(Date.now()));
-      sessionStorage.setItem("aido_signup_account_type", accountType);
-    } catch {}
-    try {
       setOauthLoading(strategy);
+      if (isLoaded && isSignedIn) {
+        await clerk.signOut();
+      }
+      try {
+        sessionStorage.setItem("aido_oauth_intent", "signup");
+        sessionStorage.setItem("aido_oauth_intent_at", String(Date.now()));
+        sessionStorage.setItem("aido_signup_account_type", accountType);
+      } catch {}
       const start = Date.now();
       while (!clerk.loaded && Date.now() - start < 8000) {
         await new Promise((res) => setTimeout(res, 50));
@@ -959,6 +1033,7 @@ function CustomSignUpForm() {
         oidcPrompt: "select_account",
       });
     } catch (err: unknown) {
+      setOauthLoading(null);
       const msg =
         (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0]?.longMessage ||
         (err as Error)?.message ||
@@ -1153,6 +1228,14 @@ function CustomSignUpForm() {
 
       <TestAccountCallout />
 
+      {isLoaded && isSignedIn && (
+        <ActiveAccountNotice
+          email={activeEmail}
+          context="sign-up"
+          onContinue={() => setLocation("/dashboard", { replace: true })}
+        />
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
         <button
           type="button"
@@ -1160,7 +1243,7 @@ function CustomSignUpForm() {
           disabled={oauthLoading !== null}
           style={{ ...oauthBtn, opacity: oauthLoading ? 0.7 : 1, cursor: oauthLoading ? "wait" : "pointer" }}
         >
-          {oauthLoading === "oauth_google" ? "Redirecting to Google…" : "Continue with Google"}
+          {oauthLoading === "oauth_google" ? "Redirecting to Google…" : isSignedIn ? "Choose a Google account" : "Continue with Google"}
         </button>
       </div>
 
