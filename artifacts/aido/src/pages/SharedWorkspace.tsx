@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@clerk/react";
+import { useAuth, useClerk } from "@clerk/react";
 import { useRoute } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import {
   MapPin, Hotel, Building2, LayoutGrid,
   Armchair, Phone,
   ExternalLink, FileDown, Loader2,
+  LogOut,
 } from "lucide-react";
 
 const ROLE_LABELS: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -71,6 +72,7 @@ export default function SharedWorkspacePage() {
   const [, params] = useRoute("/workspace/:profileId");
   const urlProfileId = params?.profileId ? parseInt(params.profileId, 10) : null;
   const { activeWorkspace, setActiveWorkspace } = useWorkspace();
+  const { signOut } = useClerk();
   const { getToken } = useAuth();
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
@@ -268,10 +270,12 @@ export default function SharedWorkspacePage() {
               </div>
             </div>
             <button
-              onClick={() => setActiveWorkspace(null)}
-              className="text-xs text-muted-foreground underline hover:text-foreground sm:pt-1"
+              type="button"
+              onClick={() => signOut({ redirectUrl: "/" })}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground shadow-sm transition-colors hover:border-primary/40 hover:text-foreground"
             >
-              Back to my workspace
+              <LogOut className="h-3.5 w-3.5" />
+              Sign out
             </button>
           </div>
 
