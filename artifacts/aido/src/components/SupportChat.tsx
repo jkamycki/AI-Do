@@ -27,10 +27,11 @@ const WELCOME_MESSAGE: Message = {
 
 const BETA_FEEDBACK_MESSAGE_ID = "beta-feedback-checkin";
 const BETA_FEEDBACK_ACTIVE_MS = 5 * 60 * 1000;
+const BETA_FEEDBACK_ACTIVITY_WINDOW_MS = 60 * 1000;
 const BETA_FEEDBACK_DISMISS_MS = 3 * 24 * 60 * 60 * 1000;
 const BETA_FEEDBACK_SUBMITTED_KEY = "aido-beta-feedback-submitted";
 const BETA_FEEDBACK_DISMISSED_UNTIL_KEY = "aido-beta-feedback-dismissed-until";
-const BETA_FEEDBACK_ACTIVE_MS_KEY = "aido-beta-feedback-active-ms";
+const BETA_FEEDBACK_ACTIVE_MS_KEY = "aido-beta-feedback-engaged-ms-v2";
 
 export function SupportChat() {
   const { t } = useTranslation();
@@ -69,6 +70,8 @@ export function SupportChat() {
 
     let activeMs = Number(window.localStorage.getItem(BETA_FEEDBACK_ACTIVE_MS_KEY) ?? "0");
     let lastTick = Date.now();
+    let lastActivityAt = document.visibilityState === "visible" ? Date.now() : 0;
+    let hasActivityThisSession = document.visibilityState === "visible";
     let intervalId: number | undefined;
 
     const showPrompt = () => {
@@ -89,9 +92,25 @@ export function SupportChat() {
       setHidden(false);
     };
 
+    const markActivity = () => {
+      if (document.visibilityState !== "visible") return;
+      hasActivityThisSession = true;
+      lastActivityAt = Date.now();
+    };
+
+    const onVisibilityChange = () => {
+      lastTick = Date.now();
+      if (document.visibilityState === "visible") markActivity();
+    };
+
     const tick = () => {
       const now = Date.now();
-      if (document.visibilityState === "visible") {
+      const recentlyActive =
+        hasActivityThisSession &&
+        lastActivityAt > 0 &&
+        now - lastActivityAt <= BETA_FEEDBACK_ACTIVITY_WINDOW_MS;
+
+      if (document.visibilityState === "visible" && recentlyActive) {
         activeMs += now - lastTick;
         window.localStorage.setItem(BETA_FEEDBACK_ACTIVE_MS_KEY, String(activeMs));
         if (activeMs >= BETA_FEEDBACK_ACTIVE_MS) {
@@ -102,10 +121,20 @@ export function SupportChat() {
       lastTick = now;
     };
 
-    intervalId = window.setInterval(tick, 15_000);
-    if (activeMs >= BETA_FEEDBACK_ACTIVE_MS) showPrompt();
+    const activityEvents = ["pointerdown", "pointermove", "keydown", "wheel", "scroll", "touchstart"] as const;
+    activityEvents.forEach(eventName => {
+      window.addEventListener(eventName, markActivity, { passive: true });
+    });
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    intervalId = window.setInterval(tick, 5_000);
+    if (activeMs >= BETA_FEEDBACK_ACTIVE_MS && hasActivityThisSession) showPrompt();
     return () => {
       if (intervalId !== undefined) window.clearInterval(intervalId);
+      activityEvents.forEach(eventName => {
+        window.removeEventListener(eventName, markActivity);
+      });
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 
