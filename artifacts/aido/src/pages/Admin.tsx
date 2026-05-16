@@ -19,7 +19,7 @@ import {
   MailOpen, Circle, CheckCircle2, Search, Calendar, Clock, ExternalLink,
   ChevronDown as ChevronDownIcon, ChevronUp as ChevronUpIcon, Trash2, Loader2,
   UserX, TrendingDown, ArrowRight, SortAsc, Globe, Eye, UserCheck, UserMinus,
-  Megaphone, Send, X, CheckCircle, XCircle, Sparkles,
+  Megaphone, Send, X, CheckCircle, XCircle, Sparkles, FlaskConical,
 } from "lucide-react";
 import MessagesSection from "@/components/admin/MessagesSection";
 
@@ -80,6 +80,24 @@ interface AdminEvent {
   metadata: Record<string, unknown> | null;
 }
 
+interface TestSessionRow {
+  sessionId: string;
+  testMode: boolean;
+  createdAt: string;
+  lastActiveAt: string;
+  totalEvents: number;
+  workflowProgress: {
+    pageViews: number;
+    profileVisits: number;
+    guestListVisits: number;
+    invitationStudioVisits: number;
+    websiteEditorVisits: number;
+  };
+  pagesVisited: string[];
+  wizardsUsed: string[];
+  errorsEncountered: number;
+}
+
 const BRAND = "#7C3F5E";
 const TABS = [
   { key: "overview", label: "Overview", icon: BarChart2 },
@@ -89,6 +107,7 @@ const TABS = [
   { key: "archive", label: "Archive", icon: Shield },
   { key: "events", label: "Event Log", icon: Activity },
   { key: "messages", label: "Messages", icon: Inbox },
+  { key: "testActivity", label: "Free Test Account", icon: FlaskConical },
 ];
 
 const EVENT_LABELS: Record<string, string> = {
@@ -157,6 +176,114 @@ function SectionHeader({ title, description }: { title: string; description: str
     <div className="mb-6">
       <h2 className="text-2xl font-serif text-primary">{title}</h2>
       <p className="text-muted-foreground mt-1">{description}</p>
+    </div>
+  );
+}
+
+function TestActivitySection({
+  sessions,
+  isLoading,
+  filter,
+  onFilterChange,
+}: {
+  sessions: TestSessionRow[];
+  isLoading: boolean;
+  filter: "test" | "all" | "real";
+  onFilterChange: (filter: "test" | "all" | "real") => void;
+}) {
+  return (
+    <div className="space-y-5">
+      <SectionHeader
+        title="Free Test Account Activity"
+        description="Anonymous test account sessions are separated from real user analytics."
+      />
+
+      <div className="flex flex-wrap gap-2">
+        {[
+          { value: "test", label: "Show only test sessions" },
+          { value: "all", label: "Show all sessions" },
+          { value: "real", label: "Show real users only" },
+        ].map((option) => (
+          <Button
+            key={option.value}
+            size="sm"
+            variant={filter === option.value ? "default" : "outline"}
+            onClick={() => onFilterChange(option.value as "test" | "all" | "real")}
+          >
+            {option.label}
+          </Button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
+        </div>
+      ) : sessions.length === 0 ? (
+        <Card className="border-none shadow-sm">
+          <CardContent className="py-14 text-center">
+            <FlaskConical className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+            <p className="font-medium text-foreground">No sessions found for this filter.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              New test account visits will show here as `test_anon_...` sessions.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {sessions.map((session) => (
+            <Card key={session.sessionId} className="border-none shadow-sm">
+              <CardContent className="p-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      <h3 className="font-mono text-sm font-semibold text-foreground break-all">
+                        {session.sessionId}
+                      </h3>
+                      <Badge className={session.testMode ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
+                        testMode = {String(session.testMode)}
+                      </Badge>
+                      {session.errorsEncountered > 0 && (
+                        <Badge className="bg-red-100 text-red-800">{session.errorsEncountered} errors</Badge>
+                      )}
+                    </div>
+
+                    <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+                      <span>Created: {new Date(session.createdAt).toLocaleString()}</span>
+                      <span>Last active: {new Date(session.lastActiveAt).toLocaleString()}</span>
+                      <span>Total events: {session.totalEvents}</span>
+                      <span>Pages visited: {session.pagesVisited.length}</span>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-5">
+                      <span className="rounded-md bg-muted px-2 py-1">Page views: {session.workflowProgress.pageViews}</span>
+                      <span className="rounded-md bg-muted px-2 py-1">Profile: {session.workflowProgress.profileVisits}</span>
+                      <span className="rounded-md bg-muted px-2 py-1">Guests: {session.workflowProgress.guestListVisits}</span>
+                      <span className="rounded-md bg-muted px-2 py-1">Invites: {session.workflowProgress.invitationStudioVisits}</span>
+                      <span className="rounded-md bg-muted px-2 py-1">Website: {session.workflowProgress.websiteEditorVisits}</span>
+                    </div>
+
+                    {session.pagesVisited.length > 0 && (
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Pages:</span>{" "}
+                        {session.pagesVisited.slice(0, 10).join(", ")}
+                        {session.pagesVisited.length > 10 ? ` +${session.pagesVisited.length - 10} more` : ""}
+                      </p>
+                    )}
+
+                    {session.wizardsUsed.length > 0 && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Wizards used:</span>{" "}
+                        {session.wizardsUsed.join(", ")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1977,6 +2104,7 @@ function DeletedArchiveSection() {
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [testSessionFilter, setTestSessionFilter] = useState<"test" | "all" | "real">("test");
   const { getToken, isSignedIn } = useAuth();
 
   const adminFetch = async (url: string) => {
@@ -2017,6 +2145,18 @@ export default function AdminPage() {
     },
     enabled: adminCheck?.isAdmin === true,
     staleTime: 15000,
+  });
+
+  const { data: testSessionsData, isLoading: testSessionsLoading } = useQuery({
+    queryKey: ["admin-test-sessions", testSessionFilter],
+    queryFn: async () => {
+      const r = await adminFetch(`/api/admin/test-sessions?mode=${testSessionFilter}`);
+      if (!r.ok) throw new Error("Failed to fetch test sessions");
+      return r.json() as Promise<{ sessions: TestSessionRow[] }>;
+    },
+    enabled: adminCheck?.isAdmin === true && activeTab === "testActivity",
+    staleTime: 15000,
+    refetchInterval: activeTab === "testActivity" ? 30000 : false,
   });
 
   if (checkLoading) {
@@ -2115,7 +2255,7 @@ export default function AdminPage() {
 
       {/* Tab content */}
       <div>
-        {metricsLoading && activeTab !== "events" && activeTab !== "messages" && (
+        {metricsLoading && activeTab !== "events" && activeTab !== "messages" && activeTab !== "testActivity" && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-24" />)}
@@ -2144,6 +2284,14 @@ export default function AdminPage() {
         )}
 
         {activeTab === "messages" && <MessagesSection />}
+        {activeTab === "testActivity" && (
+          <TestActivitySection
+            sessions={testSessionsData?.sessions ?? []}
+            isLoading={testSessionsLoading}
+            filter={testSessionFilter}
+            onFilterChange={setTestSessionFilter}
+          />
+        )}
       </div>
     </div>
   );
