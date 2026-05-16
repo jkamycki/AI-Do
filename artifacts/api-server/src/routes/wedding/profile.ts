@@ -41,6 +41,7 @@ router.post("/profile", requireAuth, async (req, res) => {
     const {
       partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
       venue, location, venueCity, venueState, venueZip, venueCountry,
+      venueStatus, venueDiscovery, venueBrainstorm,
       guestCount, totalBudget, weddingVibe, accountType,
       preferredLanguage, vendorBccEmail,
       ceremonyAtVenue, ceremonyVenueName, ceremonyAddress, ceremonyCity, ceremonyState, ceremonyZip,
@@ -69,6 +70,16 @@ router.post("/profile", requireAuth, async (req, res) => {
     const normalizedAccountType =
       accountType === "wedding_planner" ? "wedding_planner" : "couple_individual";
     const hasAccountType = Object.prototype.hasOwnProperty.call(req.body, "accountType");
+    const normalizedVenueStatus =
+      venueStatus === "not_yet" || venueStatus === "deciding" ? venueStatus : "booked";
+    const normalizedVenueDiscovery =
+      venueDiscovery && typeof venueDiscovery === "object" && !Array.isArray(venueDiscovery)
+        ? venueDiscovery
+        : null;
+    const normalizedVenueBrainstorm =
+      venueBrainstorm && typeof venueBrainstorm === "object" && !Array.isArray(venueBrainstorm)
+        ? venueBrainstorm
+        : null;
 
     // Workspace-aware: if a workspaceId/header is set, edit that shared workspace
     // (requires partner+ role). Otherwise, edit the user's own profile.
@@ -84,8 +95,11 @@ router.post("/profile", requireAuth, async (req, res) => {
         .update(weddingProfiles)
         .set({
           partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
-          venue, location, venueCity: venueCity ?? null, venueState: venueState ?? null,
+          venue: venue ?? "", location: location ?? "", venueCity: venueCity ?? null, venueState: venueState ?? null,
           venueZip: venueZip ?? null, venueCountry: venueCountry ?? null,
+          venueStatus: normalizedVenueStatus,
+          venueDiscovery: normalizedVenueDiscovery,
+          venueBrainstorm: normalizedVenueBrainstorm,
           ...ceremonyFields,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           ...(hasAccountType ? { accountType: normalizedAccountType } : {}),
@@ -114,8 +128,11 @@ router.post("/profile", requireAuth, async (req, res) => {
         .values({
           userId: req.userId,
           partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
-          venue, location, venueCity: venueCity ?? null, venueState: venueState ?? null,
+          venue: venue ?? "", location: location ?? "", venueCity: venueCity ?? null, venueState: venueState ?? null,
           venueZip: venueZip ?? null, venueCountry: venueCountry ?? null,
+          venueStatus: normalizedVenueStatus,
+          venueDiscovery: normalizedVenueDiscovery,
+          venueBrainstorm: normalizedVenueBrainstorm,
           ...ceremonyFields,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           accountType: normalizedAccountType,

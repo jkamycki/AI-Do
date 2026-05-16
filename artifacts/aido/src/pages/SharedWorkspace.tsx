@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
 import { useRoute } from "wouter";
@@ -11,8 +11,8 @@ import {
   Calendar, DollarSign, CheckSquare, Clock,
   Crown, Briefcase, Eye, Heart, Users,
   MapPin, Hotel, Building2, LayoutGrid,
-  Armchair, UserCheck, ChevronRight, Phone,
-  ExternalLink,
+  Armchair, Phone,
+  ExternalLink, FileDown, Loader2,
 } from "lucide-react";
 
 const ROLE_LABELS: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -32,12 +32,34 @@ const CATEGORY_COLORS: Record<string, string> = {
   other: "#808080",
 };
 
+type SharedTimelineEvent = {
+  time?: string;
+  startTime?: string;
+  endTime?: string;
+  title: string;
+  category?: string;
+  description?: string;
+  location?: string;
+  status?: string;
+};
+
 function formatTime(timeStr: string | null | undefined) {
   if (!timeStr) return null;
   const [h, m] = timeStr.split(":").map(Number);
   const ampm = h >= 12 ? "PM" : "AM";
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+function eventTime(event: SharedTimelineEvent) {
+  return event.startTime || event.time || "";
+}
+
+function eventStatusLabel(status: string | undefined) {
+  if (status === "completed") return "Completed";
+  if (status === "pending") return "Pending";
+  if (status === "not_started") return "Not started";
+  return "";
 }
 
 function formatDate(dateStr: string) {
@@ -50,12 +72,16 @@ export default function SharedWorkspacePage() {
   const urlProfileId = params?.profileId ? parseInt(params.profileId, 10) : null;
   const { activeWorkspace, setActiveWorkspace } = useWorkspace();
   const { getToken } = useAuth();
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
-  const authedFetch = async (url: string) => {
+  const authedFetch = async (url: string, init?: RequestInit) => {
     const token = await getToken();
+    const headers = new Headers(init?.headers);
+    if (token) headers.set("Authorization", `Bearer ${token}`);
     return fetch(url, {
+      ...init,
       credentials: "include",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers,
     });
   };
 
@@ -152,7 +178,7 @@ export default function SharedWorkspacePage() {
   } : null);
 
   const profile = workspaceData?.profile as Record<string, unknown> | undefined;
-  const events = timelineData?.events ?? [];
+  const events: SharedTimelineEvent[] = timelineData?.events ?? [];
   const items = checklistData?.items ?? [];
   const completedItems = items.filter((i: { isCompleted: boolean }) => i.isCompleted).length;
   const budget = budgetData?.budget;
@@ -175,6 +201,173 @@ export default function SharedWorkspacePage() {
       <div className="space-y-6 max-w-5xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 rounded-2xl" />)}
+        </div>
+      </div>
+    );
+  }
+
+  const downloadTimelinePdf = async () => {
+    if (!events.length || !workspace) return;
+    setIsDownloadingPdf(true);
+    try {
+      const eventsForPdf = events.map((event) => ({
+        time: formatTime(eventTime(event)) ?? eventTime(event),
+        title: event.title,
+        description: event.description ?? "",
+        category: event.category ?? "other",
+        status: eventStatusLabel(event.status),
+        location: event.location ?? "",
+        endTime: event.endTime ? formatTime(event.endTime) : "",
+      }));
+      const response = await authedFetch("/api/pdf/timeline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          events: eventsForPdf,
+          coupleName: `${workspace.partner1Name} & ${workspace.partner2Name}`,
+          weddingDate: workspace.weddingDate,
+          venue: profile?.venue,
+        }),
+      });
+      if (!response.ok) throw new Error("PDF failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "aido-wedding-timeline.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
+  if (role === "vendor") {
+    return (
+      <div className="min-h-screen bg-background px-4 py-6 md:px-10 md:py-8">
+        <div className="mx-auto max-w-4xl space-y-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <Heart className="h-5 w-5 fill-primary text-primary" />
+                <h1 className="font-serif text-3xl text-primary md:text-4xl">
+                  {workspace.partner1Name} & {workspace.partner2Name}
+                </h1>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${roleCfg.color}`}>
+                  <RoleIcon className="h-3.5 w-3.5" />
+                  Vendor view
+                </span>
+                <span className="text-sm text-muted-foreground">{workspace.weddingDate}</span>
+                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
+                  Live updates
+                </Badge>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveWorkspace(null)}
+              className="text-xs text-muted-foreground underline hover:text-foreground sm:pt-1"
+            >
+              Back to my workspace
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-border/60 bg-card shadow-sm">
+            <div className="h-1 rounded-t-2xl bg-gradient-to-r from-primary/20 via-primary to-primary/20" />
+            <div className="grid gap-4 p-5 md:grid-cols-3">
+              <div className="rounded-xl border border-border/40 bg-muted/30 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Date & Time</p>
+                <div className="mt-3 flex items-start gap-2">
+                  <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{formatDate(workspace.weddingDate)}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {[
+                        profile?.ceremonyTime && `Ceremony ${formatTime(String(profile.ceremonyTime))}`,
+                        profile?.receptionTime && `Reception ${formatTime(String(profile.receptionTime))}`,
+                      ].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl border border-border/40 bg-muted/30 p-4 md:col-span-2">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Venue & Location</p>
+                <div className="mt-3 flex items-start gap-2">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    {!!profile?.venue && <p className="text-sm font-medium text-foreground">{String(profile.venue)}</p>}
+                    {[profile?.location, profile?.venueCity, profile?.venueState, profile?.venueZip].filter(Boolean).length > 0 && (
+                      <p className="mt-0.5 break-words text-xs text-muted-foreground">
+                        {[profile?.location, profile?.venueCity, profile?.venueState, profile?.venueZip].filter(Boolean).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Card className="border-none shadow-sm">
+            <CardHeader className="gap-3 pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 font-serif text-2xl">
+                  <Clock className="h-5 w-5 text-primary" />
+                  Day-Of Timeline
+                </CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {events.length ? `${events.length} events shared with vendors.` : "No timeline has been shared yet."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={downloadTimelinePdf}
+                disabled={isDownloadingPdf || !events.length}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isDownloadingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                Download Timeline PDF
+              </button>
+            </CardHeader>
+            <CardContent>
+              {!timelineData ? (
+                <div className="space-y-3">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
+              ) : events.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                  The couple has not generated a day-of timeline yet.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {events.map((event, i) => {
+                    const color = CATEGORY_COLORS[event.category ?? "other"] ?? CATEGORY_COLORS.other;
+                    const start = eventTime(event);
+                    return (
+                      <div key={`${event.title}-${start}-${i}`} className="flex gap-4 rounded-xl border border-border/50 bg-background p-4">
+                        <div className="w-20 shrink-0 text-sm font-semibold text-primary">
+                          {formatTime(start) ?? start}
+                        </div>
+                        <div className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium text-foreground">{event.title}</p>
+                            {event.endTime && (
+                              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                                ends {formatTime(event.endTime)}
+                              </span>
+                            )}
+                          </div>
+                          {event.description && <p className="mt-1 text-sm text-muted-foreground">{event.description}</p>}
+                          {event.location && <p className="mt-1 text-xs text-muted-foreground">Location: {event.location}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     );

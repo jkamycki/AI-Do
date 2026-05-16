@@ -64,6 +64,9 @@ export interface WeddingProfile {
   venueState?: string | null;
   venueZip?: string | null;
   venueCountry?: string | null;
+  venueStatus?: 'booked' | 'not_yet' | 'deciding';
+  venueDiscovery?: Record<string, unknown> | null;
+  venueBrainstorm?: Record<string, unknown> | null;
   ceremonyAtVenue: boolean;
   ceremonyVenueName?: string | null;
   ceremonyAddress?: string | null;
@@ -94,6 +97,9 @@ export interface SaveProfileBody {
   venueState?: string | null;
   venueZip?: string | null;
   venueCountry?: string | null;
+  venueStatus?: 'booked' | 'not_yet' | 'deciding';
+  venueDiscovery?: Record<string, unknown> | null;
+  venueBrainstorm?: Record<string, unknown> | null;
   ceremonyAtVenue?: boolean;
   ceremonyVenueName?: string | null;
   ceremonyAddress?: string | null;

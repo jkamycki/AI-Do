@@ -266,17 +266,27 @@ router.get("/workspace/:profileId", requireAuth, async (req, res) => {
     }
 
     const isVendor = result.role === "vendor";
-    const profileData: Record<string, unknown> = {
-      ...result.profile,
-      totalBudget: parseFloat(result.profile.totalBudget as string),
-      updatedAt: result.profile.updatedAt.toISOString(),
-    };
-    if (isVendor) {
-      delete profileData["guestCollectionToken"];
-      delete profileData["vendorBccEmail"];
-      delete profileData["totalBudget"];
-      delete profileData["guestCount"];
-    }
+    const profileData: Record<string, unknown> = isVendor
+      ? {
+          id: result.profile.id,
+          partner1Name: result.profile.partner1Name,
+          partner2Name: result.profile.partner2Name,
+          weddingDate: result.profile.weddingDate,
+          ceremonyTime: result.profile.ceremonyTime,
+          receptionTime: result.profile.receptionTime,
+          venue: result.profile.venue,
+          location: result.profile.location,
+          venueCity: result.profile.venueCity,
+          venueState: result.profile.venueState,
+          venueZip: result.profile.venueZip,
+          venueCountry: result.profile.venueCountry,
+          updatedAt: result.profile.updatedAt.toISOString(),
+        }
+      : {
+          ...result.profile,
+          totalBudget: parseFloat(result.profile.totalBudget as string),
+          updatedAt: result.profile.updatedAt.toISOString(),
+        };
     res.json({ profile: profileData, role: result.role });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });

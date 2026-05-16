@@ -20,6 +20,9 @@ import { useTranslation } from "react-i18next";
 import { COUNTRIES } from "@/lib/countries";
 import { getAddressFormat } from "@/lib/addressFormat";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { VenueQuestion, type VenueStatus } from "@/components/Profile/VenueQuestion";
+import { VenueWizard, emptyVenueDiscoveryData, type VenueDiscoveryData } from "@/components/Profile/VenueWizard";
+import { VenueBrainstorm, emptyVenueBrainstormData, type VenueBrainstormData } from "@/components/Profile/VenueBrainstorm";
 
 const NO_COUNTRY = "__none__";
 
@@ -36,7 +39,10 @@ const profileSchema = z.object({
   weddingDate: z.string().min(1, "Date is required"),
   ceremonyTime: z.string().min(1, "Time is required"),
   receptionTime: z.string().min(1, "Time is required"),
-  venue: z.string().min(1, "Venue is required"),
+  venueStatus: z.enum(["booked", "not_yet", "deciding"]).default("booked"),
+  venueDiscovery: z.custom<VenueDiscoveryData>().default(emptyVenueDiscoveryData),
+  venueBrainstorm: z.custom<VenueBrainstormData>().default(emptyVenueBrainstormData),
+  venue: z.string().optional().default(""),
   location: z.string().optional().default(""),
   venueCity: z.string().optional().default(""),
   venueState: z.string().optional().default(""),
@@ -52,9 +58,40 @@ const profileSchema = z.object({
   totalBudget: z.coerce.number().min(1, "Must be at least 1"),
   weddingVibe: z.string().optional().default(""),
   preferredLanguage: z.string().default("English"),
+}).superRefine((data, ctx) => {
+  if (data.venueStatus === "booked" && !data.venue.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["venue"],
+      message: "Venue is required when your venue is booked",
+    });
+  }
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
+
+function normalizeVenueDiscovery(value?: VenueDiscoveryData | null): VenueDiscoveryData {
+  const source = value ?? emptyVenueDiscoveryData;
+  return {
+    ...emptyVenueDiscoveryData,
+    ...source,
+    style: Array.isArray(source.style) ? source.style : [],
+    shortlist: Array.isArray(source.shortlist) ? source.shortlist : [],
+    screenshots: Array.isArray(source.screenshots) ? source.screenshots : [],
+  };
+}
+
+function normalizeVenueBrainstorm(value?: VenueBrainstormData | null): VenueBrainstormData {
+  const source = value ?? emptyVenueBrainstormData;
+  return {
+    ...emptyVenueBrainstormData,
+    ...source,
+    ideas: Array.isArray(source.ideas) ? source.ideas : [],
+    inspiration: Array.isArray(source.inspiration) ? source.inspiration : [],
+    conversations: Array.isArray(source.conversations) ? source.conversations : [],
+    suggestions: Array.isArray(source.suggestions) ? source.suggestions : [],
+  };
+}
 
 export default function Profile() {
   const { t } = useTranslation();
@@ -87,6 +124,9 @@ export default function Profile() {
       weddingDate: "",
       ceremonyTime: "16:00",
       receptionTime: "18:00",
+      venueStatus: "booked",
+      venueDiscovery: emptyVenueDiscoveryData,
+      venueBrainstorm: emptyVenueBrainstormData,
       venue: "",
       location: "",
       venueCity: "",
@@ -107,6 +147,11 @@ export default function Profile() {
 
   useEffect(() => {
     if (profile) {
+      const profileWithVenueFlow = profile as typeof profile & {
+        venueStatus?: VenueStatus | null;
+        venueDiscovery?: VenueDiscoveryData | null;
+        venueBrainstorm?: VenueBrainstormData | null;
+      };
       form.reset({
         partner1Name: profile.partner1Name,
         accountType: ((profile as { accountType?: "couple_individual" | "wedding_planner" }).accountType ?? "couple_individual"),
@@ -114,6 +159,9 @@ export default function Profile() {
         weddingDate: (profile.weddingDate ?? "").split('T')[0],
         ceremonyTime: profile.ceremonyTime,
         receptionTime: profile.receptionTime,
+        venueStatus: profileWithVenueFlow.venueStatus ?? "booked",
+        venueDiscovery: normalizeVenueDiscovery(profileWithVenueFlow.venueDiscovery),
+        venueBrainstorm: normalizeVenueBrainstorm(profileWithVenueFlow.venueBrainstorm),
         venue: profile.venue,
         location: profile.location,
         venueCity: profile.venueCity ?? "",
@@ -153,6 +201,9 @@ export default function Profile() {
       }
     });
   };
+
+  const venueStatus = form.watch("venueStatus");
+  const coupleNames = [form.watch("partner1Name"), form.watch("partner2Name")].filter(Boolean).join(" & ");
 
   // Only show the error screen for real errors (network/500). A 404 is the
   // expected "first-time user" state — fall through to render the empty form.
@@ -297,6 +348,33 @@ export default function Profile() {
                 />
               </div>
 
+              <VenueQuestion
+                value={venueStatus}
+                onChange={(value) => form.setValue("venueStatus", value, { shouldDirty: true, shouldValidate: true })}
+              />
+
+              {venueStatus === "not_yet" && (
+                <VenueWizard
+                  value={form.watch("venueDiscovery")}
+                  onChange={(value) => form.setValue("venueDiscovery", value, { shouldDirty: true })}
+                  coupleNames={coupleNames || undefined}
+                />
+              )}
+
+              {venueStatus === "deciding" && (
+                <VenueBrainstorm
+                  value={form.watch("venueBrainstorm")}
+                  onChange={(value) => form.setValue("venueBrainstorm", value, { shouldDirty: true })}
+                />
+              )}
+
+              {venueStatus !== "booked" && (
+                <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+                  You can leave the venue fields blank for now. Once you choose a venue, switch the answer above to
+                  <span className="font-medium text-primary"> Yes</span> and fill in the final details.
+                </div>
+              )}
+
               <FormField
                 control={form.control}
                 name="venue"
@@ -304,7 +382,7 @@ export default function Profile() {
                   <FormItem>
                     <FormLabel>{t("profile.venue_name")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="The Historic Magnolia Estate" {...field} data-testid="input-venue" className="bg-background" />
+                      <Input placeholder={venueStatus === "booked" ? "The Historic Magnolia Estate" : "Optional until booked"} {...field} data-testid="input-venue" className="bg-background" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -584,6 +662,9 @@ export default function Profile() {
                     weddingDate: "",
                     ceremonyTime: "",
                     receptionTime: "",
+                    venueStatus: "booked",
+                    venueDiscovery: emptyVenueDiscoveryData,
+                    venueBrainstorm: emptyVenueBrainstormData,
                     venue: "",
                     location: "",
                     venueCity: "",

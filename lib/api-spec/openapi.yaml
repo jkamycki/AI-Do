@@ -1042,6 +1042,17 @@ components:
         venueCountry:
           type: string
           nullable: true
+        venueStatus:
+          type: string
+          enum: [booked, not_yet, deciding]
+        venueDiscovery:
+          type: object
+          nullable: true
+          additionalProperties: true
+        venueBrainstorm:
+          type: object
+          nullable: true
+          additionalProperties: true
         ceremonyAtVenue:
           type: boolean
         ceremonyVenueName:
@@ -1128,6 +1139,17 @@ components:
         venueCountry:
           type: string
           nullable: true
+        venueStatus:
+          type: string
+          enum: [booked, not_yet, deciding]
+        venueDiscovery:
+          type: object
+          nullable: true
+          additionalProperties: true
+        venueBrainstorm:
+          type: object
+          nullable: true
+          additionalProperties: true
         ceremonyAtVenue:
           type: boolean
         ceremonyVenueName:

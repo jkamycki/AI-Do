@@ -9,7 +9,7 @@ import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 import { setFetchTokenGetter, setAuthFetchBaseUrl, authFetch } from "@/lib/authFetch";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ApiHealthBanner } from "@/components/ApiHealthBanner";
-import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
+import { WorkspaceProvider, useWorkspace } from "@/contexts/WorkspaceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useGetProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
@@ -1203,6 +1203,8 @@ function HomeRedirect() {
 
 function ProtectedRoute({ component: Component, fullWidth = false }: { component: React.ComponentType; fullWidth?: boolean }) {
   const { isLoaded, isSignedIn } = useAuth();
+  const { activeWorkspace } = useWorkspace();
+  const [location] = useLocation();
 
   if (!isLoaded) {
     return (
@@ -1214,6 +1216,10 @@ function ProtectedRoute({ component: Component, fullWidth = false }: { component
 
   if (!isSignedIn) {
     return <Redirect to="/" />;
+  }
+
+  if (activeWorkspace?.role === "vendor" && !location.startsWith(`/workspace/${activeWorkspace.profileId}`)) {
+    return <Redirect to={`/workspace/${activeWorkspace.profileId}`} />;
   }
 
   return (
@@ -1516,7 +1522,7 @@ function Router() {
       <Route path="/mood-board" component={() => <ProtectedRoute component={MoodBoard} />} />
       <Route path="/aria" component={() => <ProtectedRoute component={Aria} />} />
       <Route path="/website-editor" component={() => <ProtectedRoute component={WebsiteEditor} fullWidth />} />
-      <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} />} />
+      <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} fullWidth />} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/beta" component={BetaDisclaimer} />

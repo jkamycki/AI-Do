@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/authFetch";
 import { useGetProfile } from "@workspace/api-client-react";
-import { X, Send, Sparkles, ChevronDown, RotateCcw, MessageCircle } from "lucide-react";
+import { X, Send, Sparkles, ChevronDown, RotateCcw, MessageCircle, Star } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 interface Message {
@@ -25,6 +25,13 @@ const WELCOME_MESSAGE: Message = {
   content: "Hi! I'm **Aria**, your A.IDO planning assistant 💐\n\nI can help you use any feature in A.IDO or answer general wedding planning questions. What's on your mind?",
 };
 
+const BETA_FEEDBACK_MESSAGE_ID = "beta-feedback-checkin";
+const BETA_FEEDBACK_ACTIVE_MS = 5 * 60 * 1000;
+const BETA_FEEDBACK_DISMISS_MS = 3 * 24 * 60 * 60 * 1000;
+const BETA_FEEDBACK_SUBMITTED_KEY = "aido-beta-feedback-submitted";
+const BETA_FEEDBACK_DISMISSED_UNTIL_KEY = "aido-beta-feedback-dismissed-until";
+const BETA_FEEDBACK_ACTIVE_MS_KEY = "aido-beta-feedback-active-ms";
+
 export function SupportChat() {
   const { t } = useTranslation();
   const { data: profile } = useGetProfile();
@@ -34,6 +41,11 @@ export function SupportChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
+  const [betaFeedbackOpen, setBetaFeedbackOpen] = useState(false);
+  const [betaFeedbackSubmitting, setBetaFeedbackSubmitting] = useState(false);
+  const [betaFeedbackRating, setBetaFeedbackRating] = useState(0);
+  const [betaFeedbackCategory, setBetaFeedbackCategory] = useState("overall");
+  const [betaFeedbackText, setBetaFeedbackText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -48,6 +60,54 @@ export function SupportChat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem(BETA_FEEDBACK_SUBMITTED_KEY) === "true") return;
+    const dismissedUntil = Number(window.localStorage.getItem(BETA_FEEDBACK_DISMISSED_UNTIL_KEY) ?? "0");
+    if (dismissedUntil > Date.now()) return;
+
+    let activeMs = Number(window.localStorage.getItem(BETA_FEEDBACK_ACTIVE_MS_KEY) ?? "0");
+    let lastTick = Date.now();
+    let intervalId: number | undefined;
+
+    const showPrompt = () => {
+      if (window.localStorage.getItem(BETA_FEEDBACK_SUBMITTED_KEY) === "true") return;
+      const currentDismissedUntil = Number(window.localStorage.getItem(BETA_FEEDBACK_DISMISSED_UNTIL_KEY) ?? "0");
+      if (currentDismissedUntil > Date.now()) return;
+      setMessages(prev => prev.some(m => m.id === BETA_FEEDBACK_MESSAGE_ID)
+        ? prev
+        : [
+            ...prev,
+            {
+              id: BETA_FEEDBACK_MESSAGE_ID,
+              role: "assistant",
+              content: "Quick beta check-in: how is A.IDO working for you so far? Your feedback helps us improve the planner.",
+            },
+          ]);
+      setOpen(true);
+      setHidden(false);
+    };
+
+    const tick = () => {
+      const now = Date.now();
+      if (document.visibilityState === "visible") {
+        activeMs += now - lastTick;
+        window.localStorage.setItem(BETA_FEEDBACK_ACTIVE_MS_KEY, String(activeMs));
+        if (activeMs >= BETA_FEEDBACK_ACTIVE_MS) {
+          showPrompt();
+          if (intervalId !== undefined) window.clearInterval(intervalId);
+        }
+      }
+      lastTick = now;
+    };
+
+    intervalId = window.setInterval(tick, 15_000);
+    if (activeMs >= BETA_FEEDBACK_ACTIVE_MS) showPrompt();
+    return () => {
+      if (intervalId !== undefined) window.clearInterval(intervalId);
+    };
+  }, []);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || loading) return;
@@ -174,6 +234,67 @@ export function SupportChat() {
     abortRef.current?.abort();
     setMessages([WELCOME_MESSAGE]);
     setLoading(false);
+    setBetaFeedbackOpen(false);
+  };
+
+  const dismissBetaFeedback = () => {
+    window.localStorage.setItem(BETA_FEEDBACK_DISMISSED_UNTIL_KEY, String(Date.now() + BETA_FEEDBACK_DISMISS_MS));
+    setBetaFeedbackOpen(false);
+    setMessages(prev => prev.filter(m => m.id !== BETA_FEEDBACK_MESSAGE_ID));
+  };
+
+  const submitBetaFeedback = async () => {
+    if (betaFeedbackSubmitting || !betaFeedbackText.trim()) return;
+    setBetaFeedbackSubmitting(true);
+    try {
+      const categoryLabel = betaFeedbackCategory === "overall"
+        ? "Overall beta experience"
+        : betaFeedbackCategory === "confusing"
+          ? "Confusing or hard to use"
+          : betaFeedbackCategory === "broken"
+            ? "Something broken"
+            : "Feature request";
+      const res = await authFetch("/api/help/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating: betaFeedbackRating || null,
+          category: `beta-${betaFeedbackCategory}`,
+          message: [
+            "Beta check-in feedback from Support Assistant",
+            `Rating: ${betaFeedbackRating || "Not provided"}/5`,
+            `Category: ${categoryLabel}`,
+            "",
+            betaFeedbackText.trim(),
+          ].join("\n"),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to submit feedback");
+      window.localStorage.setItem(BETA_FEEDBACK_SUBMITTED_KEY, "true");
+      setBetaFeedbackOpen(false);
+      setMessages(prev => [
+        ...prev.filter(m => m.id !== BETA_FEEDBACK_MESSAGE_ID),
+        {
+          id: `beta-feedback-thanks-${Date.now()}`,
+          role: "assistant",
+          content: "Thank you. Your beta feedback was sent to the A.IDO team and will show in Operations Center Messages & Feedback.",
+        },
+      ]);
+      setBetaFeedbackText("");
+      setBetaFeedbackRating(0);
+      setBetaFeedbackCategory("overall");
+    } catch {
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `beta-feedback-error-${Date.now()}`,
+          role: "assistant",
+          content: "Sorry, I couldn't send that feedback. Please try again in a moment.",
+        },
+      ]);
+    } finally {
+      setBetaFeedbackSubmitting(false);
+    }
   };
 
   const handleHide = () => {
@@ -302,6 +423,80 @@ export function SupportChat() {
                   </div>
                 ) : (
                   msg.content
+                )}
+                {msg.id === BETA_FEEDBACK_MESSAGE_ID && !betaFeedbackOpen && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBetaFeedbackOpen(true)}
+                      className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      Give feedback
+                    </button>
+                    <button
+                      type="button"
+                      onClick={dismissBetaFeedback}
+                      className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      Not now
+                    </button>
+                  </div>
+                )}
+                {msg.id === BETA_FEEDBACK_MESSAGE_ID && betaFeedbackOpen && (
+                  <div className="mt-3 space-y-3 rounded-xl border border-border/70 bg-background/70 p-3">
+                    <div>
+                      <p className="mb-1.5 text-xs font-medium text-foreground">How is A.IDO so far?</p>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map(n => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setBetaFeedbackRating(n)}
+                            className="p-0.5 transition-transform hover:scale-110"
+                            aria-label={`${n} star${n === 1 ? "" : "s"}`}
+                          >
+                            <Star
+                              className={`h-4 w-4 ${n <= betaFeedbackRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/35"}`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <select
+                      value={betaFeedbackCategory}
+                      onChange={e => setBetaFeedbackCategory(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-card px-2.5 py-2 text-xs text-foreground outline-none focus:border-primary"
+                    >
+                      <option value="overall">Overall experience</option>
+                      <option value="confusing">Something was confusing</option>
+                      <option value="broken">Something felt broken</option>
+                      <option value="feature">Feature request</option>
+                    </select>
+                    <textarea
+                      value={betaFeedbackText}
+                      onChange={e => setBetaFeedbackText(e.target.value)}
+                      rows={3}
+                      placeholder="What should we improve, simplify, or fix?"
+                      className="w-full resize-none rounded-lg border border-border bg-card px-2.5 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={submitBetaFeedback}
+                        disabled={betaFeedbackSubmitting || !betaFeedbackText.trim()}
+                        className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-45"
+                      >
+                        {betaFeedbackSubmitting ? "Sending..." : "Send feedback"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={dismissBetaFeedback}
+                        className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        Not now
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

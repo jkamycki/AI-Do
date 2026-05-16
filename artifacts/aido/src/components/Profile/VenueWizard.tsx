@@ -1,0 +1,325 @@
+import { ChangeEvent, useMemo, useState } from "react";
+import { Mail, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
+export type VenueShortlistItem = {
+  id: string;
+  name: string;
+  link: string;
+  notes: string;
+};
+
+export type VenueScreenshot = {
+  id: string;
+  name: string;
+  dataUrl: string;
+};
+
+export type VenueDiscoveryData = {
+  guestCount: string;
+  indoorOutdoor: string;
+  budgetRange: string;
+  location: string;
+  style: string[];
+  notes: string;
+  shortlist: VenueShortlistItem[];
+  screenshots: VenueScreenshot[];
+  emailDraftType: string;
+  emailDraft: string;
+};
+
+type VenueWizardProps = {
+  value: VenueDiscoveryData;
+  onChange: (value: VenueDiscoveryData) => void;
+  coupleNames?: string;
+};
+
+const STYLE_OPTIONS = ["Rustic", "Modern", "Ballroom", "Garden", "Coastal", "Industrial", "Boho", "Classic"];
+
+const DRAFT_LABELS = {
+  inquiry: "Inquiry email",
+  tour: "Tour request email",
+  pricing: "Pricing request email",
+  availability: "Availability check email",
+} as const;
+
+export const emptyVenueDiscoveryData: VenueDiscoveryData = {
+  guestCount: "",
+  indoorOutdoor: "",
+  budgetRange: "",
+  location: "",
+  style: [],
+  notes: "",
+  shortlist: [],
+  screenshots: [],
+  emailDraftType: "",
+  emailDraft: "",
+};
+
+function createId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: VenueWizardProps) {
+  const [uploadError, setUploadError] = useState("");
+
+  const styleText = value.style.length ? value.style.join(", ").toLowerCase() : "warm and elegant";
+
+  const draftBase = useMemo(() => ({
+    names: coupleNames,
+    guestCount: value.guestCount || "[guest count]",
+    location: value.location || "[location]",
+    budgetRange: value.budgetRange || "[budget range]",
+    style: styleText,
+    preference: value.indoorOutdoor || "indoor or outdoor",
+  }), [coupleNames, styleText, value.budgetRange, value.guestCount, value.indoorOutdoor, value.location]);
+
+  const update = (patch: Partial<VenueDiscoveryData>) => onChange({ ...value, ...patch });
+
+  const addShortlistItem = () => {
+    update({
+      shortlist: [
+        ...value.shortlist,
+        { id: createId(), name: "", link: "", notes: "" },
+      ],
+    });
+  };
+
+  const updateShortlistItem = (id: string, patch: Partial<VenueShortlistItem>) => {
+    update({
+      shortlist: value.shortlist.map((item) => item.id === id ? { ...item, ...patch } : item),
+    });
+  };
+
+  const removeShortlistItem = (id: string) => {
+    update({ shortlist: value.shortlist.filter((item) => item.id !== id) });
+  };
+
+  const onScreenshotUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (!files.length) return;
+    setUploadError("");
+
+    const validFiles = files.filter((file) => {
+      if (!file.type.startsWith("image/")) {
+        setUploadError("Only image screenshots can be saved here.");
+        return false;
+      }
+      if (file.size > 1_500_000) {
+        setUploadError("Please upload screenshots smaller than 1.5 MB so the profile stays quick to load.");
+        return false;
+      }
+      return true;
+    });
+
+    Promise.all(
+      validFiles.map((file) => new Promise<VenueScreenshot>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ id: createId(), name: file.name, dataUrl: String(reader.result ?? "") });
+        reader.readAsDataURL(file);
+      })),
+    ).then((screenshots) => {
+      if (screenshots.length) {
+        update({ screenshots: [...value.screenshots, ...screenshots] });
+      }
+    }).catch(() => setUploadError("We could not read that screenshot. Please try a different image."));
+
+    event.target.value = "";
+  };
+
+  const removeScreenshot = (id: string) => {
+    update({ screenshots: value.screenshots.filter((screenshot) => screenshot.id !== id) });
+  };
+
+  const generateDraft = (type: keyof typeof DRAFT_LABELS) => {
+    const opener = `Hi,\n\nMy name is ${draftBase.names}. We are looking for a wedding venue in ${draftBase.location} for about ${draftBase.guestCount} guests.`;
+    const preference = `We are hoping for a ${draftBase.style} feel, prefer ${draftBase.preference} options, and are working with a venue budget around ${draftBase.budgetRange}.`;
+    const notes = value.notes ? `\n\nA few notes from us: ${value.notes}` : "";
+    const closers: Record<keyof typeof DRAFT_LABELS, string> = {
+      inquiry: "Could you please send your wedding package information and next steps?",
+      tour: "Do you have any available tour times over the next couple of weeks?",
+      pricing: "Could you please share pricing, package inclusions, minimums, and any required fees?",
+      availability: "Could you please let us know if you have availability around our wedding date and what dates are currently open?",
+    };
+
+    update({
+      emailDraftType: DRAFT_LABELS[type],
+      emailDraft: `${opener}\n\n${preference}${notes}\n\n${closers[type]}\n\nThank you,\n${draftBase.names}`,
+    });
+  };
+
+  return (
+    <section className="space-y-6 rounded-lg border border-primary/15 bg-background p-4 shadow-sm sm:p-5">
+      <div>
+        <h3 className="font-serif text-xl text-primary">Venue Discovery Wizard</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Use this as a planning helper while you search. Everything here saves with your wedding profile.
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="space-y-2 text-sm font-medium">
+          Guest count
+          <Input
+            value={value.guestCount}
+            onChange={(event) => update({ guestCount: event.target.value })}
+            placeholder="Approx. 120"
+            inputMode="numeric"
+          />
+        </label>
+        <label className="space-y-2 text-sm font-medium">
+          Indoor / outdoor preference
+          <Input
+            value={value.indoorOutdoor}
+            onChange={(event) => update({ indoorOutdoor: event.target.value })}
+            placeholder="Indoor, outdoor, or flexible"
+          />
+        </label>
+        <label className="space-y-2 text-sm font-medium">
+          Budget range
+          <Input
+            value={value.budgetRange}
+            onChange={(event) => update({ budgetRange: event.target.value })}
+            placeholder="$8,000 - $15,000"
+          />
+        </label>
+        <label className="space-y-2 text-sm font-medium">
+          Location
+          <Input
+            value={value.location}
+            onChange={(event) => update({ location: event.target.value })}
+            placeholder="City, state, or preferred area"
+          />
+        </label>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Style</p>
+        <div className="flex flex-wrap gap-2">
+          {STYLE_OPTIONS.map((style) => {
+            const selected = value.style.includes(style);
+            return (
+              <Button
+                key={style}
+                type="button"
+                size="sm"
+                variant={selected ? "default" : "outline"}
+                onClick={() => {
+                  update({
+                    style: selected ? value.style.filter((item) => item !== style) : [...value.style, style],
+                  });
+                }}
+              >
+                {style}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+      <label className="block space-y-2 text-sm font-medium">
+        Notes
+        <Textarea
+          value={value.notes}
+          onChange={(event) => update({ notes: event.target.value })}
+          placeholder="Must-haves, questions, accessibility needs, parking, catering rules..."
+          rows={4}
+        />
+      </label>
+
+      <div className="space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium">Shortlist</p>
+            <p className="text-xs text-muted-foreground">Save venue names, links, and quick notes.</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={addShortlistItem} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add venue
+          </Button>
+        </div>
+
+        <div className="space-y-3">
+          {value.shortlist.map((item) => (
+            <div key={item.id} className="grid gap-2 rounded-lg border border-border p-3 md:grid-cols-[1fr_1fr_auto]">
+              <Input
+                value={item.name}
+                onChange={(event) => updateShortlistItem(item.id, { name: event.target.value })}
+                placeholder="Venue name"
+              />
+              <Input
+                value={item.link}
+                onChange={(event) => updateShortlistItem(item.id, { link: event.target.value })}
+                placeholder="Website or saved link"
+              />
+              <Button type="button" variant="ghost" size="icon" onClick={() => removeShortlistItem(item.id)} aria-label="Remove venue">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <Textarea
+                value={item.notes}
+                onChange={(event) => updateShortlistItem(item.id, { notes: event.target.value })}
+                placeholder="Notes"
+                rows={2}
+                className="md:col-span-3"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <p className="text-sm font-medium">Screenshots</p>
+          <p className="text-xs text-muted-foreground">Upload small screenshots from venue sites or social posts.</p>
+        </div>
+        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-primary/30 bg-primary/5 px-4 py-5 text-sm font-medium text-primary">
+          <Upload className="h-4 w-4" />
+          Upload screenshots
+          <input type="file" accept="image/*" multiple className="sr-only" onChange={onScreenshotUpload} />
+        </label>
+        {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
+        {value.screenshots.length > 0 && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {value.screenshots.map((screenshot) => (
+              <div key={screenshot.id} className="overflow-hidden rounded-lg border border-border">
+                <img src={screenshot.dataUrl} alt={screenshot.name} className="h-32 w-full object-cover" />
+                <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
+                  <span className="truncate">{screenshot.name}</span>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removeScreenshot(screenshot.id)} aria-label="Remove screenshot">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-3 rounded-lg border border-primary/10 bg-primary/5 p-4">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <Sparkles className="h-4 w-4 text-primary" />
+            Outreach email drafts
+          </p>
+          <p className="text-xs text-muted-foreground">Generate a starter message, then edit it before sending.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(DRAFT_LABELS).map(([type, label]) => (
+            <Button key={type} type="button" variant="outline" size="sm" onClick={() => generateDraft(type as keyof typeof DRAFT_LABELS)} className="gap-2">
+              <Mail className="h-4 w-4" />
+              {label}
+            </Button>
+          ))}
+        </div>
+        <Textarea
+          value={value.emailDraft}
+          onChange={(event) => update({ emailDraft: event.target.value })}
+          placeholder="Your generated outreach draft will appear here."
+          rows={8}
+        />
+      </div>
+    </section>
+  );
+}
