@@ -1,12 +1,13 @@
 import { motion } from "framer-motion";
-import { DollarSign, TrendingDown, PieChart } from "lucide-react";
+import { DollarSign, PieChart, TrendingDown } from "lucide-react";
+import { burgundyGradientText, videoBadgeStyle, videoCardStyle, VIDEO_PALETTE } from "../videoPalette";
 
 const CATEGORIES = [
-  { name: "Venue", spent: 18500, total: 22000, color: "#E91E8C" },
-  { name: "Catering", spent: 12400, total: 15000, color: "#7B2FBE" },
-  { name: "Photography", spent: 5200, total: 6000, color: "#D4A017" },
-  { name: "Florals", spent: 2800, total: 4500, color: "#4F8EF7" },
-  { name: "Music & DJ", spent: 1900, total: 3000, color: "#22C55E" },
+  { name: "Venue", spent: 18500, total: 22000, color: "#8D294D" },
+  { name: "Catering", spent: 12400, total: 15000, color: "#B16C8E" },
+  { name: "Photography", spent: 5200, total: 6000, color: "#E6A6B7" },
+  { name: "Florals", spent: 2800, total: 4500, color: "#C39B70" },
+  { name: "Music & DJ", spent: 1900, total: 3000, color: "#F2B8C6" },
 ];
 
 const TOTAL_BUDGET = CATEGORIES.reduce((s, c) => s + c.total, 0);
@@ -21,61 +22,50 @@ export function Scene2() {
       exit={{ opacity: 0, scale: 0.96, filter: "blur(10px)" }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
     >
-      {/* Heading */}
       <motion.div
-        className="text-center mb-6"
+        className="mb-6 text-center"
         initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.1 }}
       >
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400/10 border border-amber-400/30 mb-3">
-          <PieChart className="h-4 w-4 text-amber-300" />
-          <span className="text-xs uppercase tracking-[0.25em] text-amber-200">Budget Tracker</span>
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full px-4 py-1.5" style={videoBadgeStyle}>
+          <PieChart className="h-4 w-4 text-[#B16C8E]" />
+          <span className="text-xs font-bold uppercase tracking-[0.25em]">Budget Tracker</span>
         </div>
-        <h2 className="text-[3.2vw] font-serif font-bold leading-tight"
-          style={{ background: "linear-gradient(135deg, #fff 0%, #F5C842 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
-        >
-          Every dollar, perfectly tracked
+        <h2 className="font-serif text-[3.2vw] font-bold leading-tight" style={burgundyGradientText}>
+          Every dollar, beautifully tracked
         </h2>
       </motion.div>
 
-      {/* Budget Card */}
       <motion.div
         className="w-full max-w-3xl rounded-3xl p-7 backdrop-blur-xl"
-        style={{
-          background: "linear-gradient(145deg, rgba(40,18,72,0.85) 0%, rgba(20,8,40,0.85) 100%)",
-          border: "1.5px solid",
-          borderImage: "linear-gradient(135deg, #B8860B 0%, #D4A017 50%, #F5C842 100%) 1",
-          boxShadow: "0 20px 60px -10px rgba(212,160,23,0.25)",
-        }}
+        style={videoCardStyle}
         initial={{ opacity: 0, y: 30, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.9, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
       >
-        {/* Total summary */}
-        <div className="flex items-end justify-between mb-6 pb-5 border-b border-white/10">
+        <div className="mb-6 flex items-end justify-between border-b border-[#E6A6B7]/40 pb-5">
           <div>
-            <div className="text-xs uppercase tracking-widest text-white/50 mb-1">Total spent</div>
+            <div className="mb-1 text-xs uppercase tracking-widest text-[#B16C8E]">Total spent</div>
             <div className="flex items-baseline gap-2">
-              <DollarSign className="h-6 w-6 text-amber-300" />
+              <DollarSign className="h-6 w-6 text-[#C39B70]" />
               <motion.span
-                className="text-4xl font-bold text-white"
+                className="text-4xl font-bold text-[#8D294D]"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7, duration: 0.5 }}
               >
                 {TOTAL_SPENT.toLocaleString()}
               </motion.span>
-              <span className="text-base text-white/50">/ ${TOTAL_BUDGET.toLocaleString()}</span>
+              <span className="text-base text-[#6F3E54]/70">/ ${TOTAL_BUDGET.toLocaleString()}</span>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-400/10 border border-emerald-400/30">
-            <TrendingDown className="h-4 w-4 text-emerald-300" />
-            <span className="text-sm text-emerald-200 font-medium">${(TOTAL_BUDGET - TOTAL_SPENT).toLocaleString()} under</span>
+          <div className="flex items-center gap-1.5 rounded-full border border-[#C39B70]/[0.45] bg-[#F2E2C6]/60 px-3 py-1.5">
+            <TrendingDown className="h-4 w-4 text-[#8D294D]" />
+            <span className="text-sm font-semibold text-[#8D294D]">${(TOTAL_BUDGET - TOTAL_SPENT).toLocaleString()} under</span>
           </div>
         </div>
 
-        {/* Category bars */}
         <div className="space-y-3.5">
           {CATEGORIES.map((cat, i) => {
             const pct = (cat.spent / cat.total) * 100;
@@ -86,18 +76,18 @@ export function Scene2() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.5 + i * 0.12, duration: 0.5 }}
               >
-                <div className="flex items-center justify-between text-sm mb-1.5">
-                  <span className="font-medium text-white/90">{cat.name}</span>
-                  <span className="text-white/60 tabular-nums">
-                    ${cat.spent.toLocaleString()} <span className="text-white/30">/ ${cat.total.toLocaleString()}</span>
+                <div className="mb-1.5 flex items-center justify-between text-sm">
+                  <span className="font-semibold text-[#3B1C2B]">{cat.name}</span>
+                  <span className="tabular-nums text-[#6F3E54]">
+                    ${cat.spent.toLocaleString()} <span className="text-[#B16C8E]/70">/ ${cat.total.toLocaleString()}</span>
                   </span>
                 </div>
-                <div className="h-2.5 w-full rounded-full bg-white/5 overflow-hidden">
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#F2E2C6]/[0.65]">
                   <motion.div
                     className="h-full rounded-full"
                     style={{
                       background: `linear-gradient(90deg, ${cat.color}, ${cat.color}cc)`,
-                      boxShadow: `0 0 12px ${cat.color}80`,
+                      boxShadow: `0 0 12px ${cat.color}55`,
                     }}
                     initial={{ width: 0 }}
                     animate={{ width: `${pct}%` }}
@@ -110,14 +100,14 @@ export function Scene2() {
         </div>
       </motion.div>
 
-      {/* Caption */}
       <motion.p
-        className="mt-5 text-white/65 text-base text-center max-w-xl"
+        className="mt-5 max-w-xl text-center text-base"
+        style={{ color: VIDEO_PALETTE.softText }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.6, duration: 0.7 }}
       >
-        Smart categories, instant alerts, real-time totals — never wonder where the money went.
+        Smart categories, instant alerts, and clear totals for every wedding decision.
       </motion.p>
     </motion.div>
   );

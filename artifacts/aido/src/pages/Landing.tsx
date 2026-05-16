@@ -1,103 +1,28 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { apiFetch } from "@/lib/authFetch";
 import { Link } from "wouter";
-import { Sparkles, Calendar, DollarSign, CheckSquare, Mail, FileText, Armchair, Link2, Bot, Star, Quote } from "lucide-react";
+import { Calendar, CheckSquare, ChevronDown, Heart, Mail, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LanguagePicker } from "@/components/LanguagePicker";
-import { useTranslation } from "react-i18next";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
-import { AnimatePresence, motion } from "framer-motion";
-
-const HEADER_TAGLINES = [
-  "Wedding planning, made easy.",
-  "Your AI wedding planner — always on call.",
-  "From timeline to seating chart, all in one place.",
-  "Plan together. Stress less. Celebrate more.",
-  "Smart vendors. Smart budget. Smart you.",
-];
-
-function RotatingTagline() {
-  const [index, setIndex] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => {
-      setIndex(i => (i + 1) % HEADER_TAGLINES.length);
-    }, 8000);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <div className="relative h-12 flex items-center justify-start overflow-hidden w-full">
-      <AnimatePresence mode="wait">
-        <motion.span
-          key={index}
-          initial={{ clipPath: "inset(0 100% 0 0)" }}
-          animate={{ clipPath: "inset(0 0% 0 0)" }}
-          exit={{ clipPath: "inset(0 0 0 100%)" }}
-          transition={{ duration: 2.2, ease: [0.65, 0, 0.35, 1] }}
-          className="font-serif italic text-2xl sm:text-3xl md:text-4xl font-semibold tracking-wide whitespace-nowrap text-left"
-          style={{
-            background: "linear-gradient(135deg, #FFFFFF 0%, #F8E1F0 50%, #E91E8C 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}
-        >
-          {HEADER_TAGLINES[index]}
-        </motion.span>
-      </AnimatePresence>
-    </div>
-  );
-}
 
 const LANG_CODE_TO_NAME: Record<string, string> = Object.fromEntries(
   Object.entries(LANG_NAME_TO_CODE).map(([name, code]) => [code, name])
 );
 
-const featureIcons = [Calendar, DollarSign, CheckSquare, Mail, FileText, Sparkles, Armchair, Link2, Bot];
-
-const testimonials = [
-  {
-    name: "Priya & Marcus",
-    location: "Austin, TX",
-    date: "Married June 2025",
-    avatar: "PM",
-    rating: 5,
-    text: "A.IDO genuinely felt like having a wedding planner in my pocket 24/7. The AI timeline saved us hours of back-and-forth with our venue coordinator, and the vendor email drafts were so professional I got compliments on them. We stayed under budget for the first time in our family's wedding history!",
-  },
-  {
-    name: "Camille & Jordan",
-    location: "Charleston, SC",
-    date: "Married September 2025",
-    avatar: "CJ",
-    rating: 5,
-    text: "We were planning from two different cities and the collaboration features were a lifesaver. Aria answered my panicked 2am questions like a champ, and the day-of coordinator kept everything on track when our photographer was 45 minutes late. Absolute game changer.",
-  },
-  {
-    name: "Diana & Alexei",
-    location: "Portland, OR",
-    date: "Married March 2026",
-    avatar: "DA",
-    rating: 5,
-    text: "The contract analyzer caught a clause in our catering agreement that would have cost us an extra $2,000 for overtime. A.IDO literally paid for itself in the first week. I recommended it to every engaged person I know.",
-  },
-  {
-    name: "Sofia & Kwame",
-    location: "Atlanta, GA",
-    date: "Married January 2026",
-    avatar: "SK",
-    rating: 5,
-    text: "I was overwhelmed with 230 guests and no idea where to start. Within 10 minutes of signing up, I had a full vendor checklist, a draft budget, and my first vendor email sent. I cried happy tears. This app is everything.",
-  },
+const HERO_FEATURES = [
+  { icon: Calendar, label: "Smart Planning" },
+  { icon: Mail, label: "Vendor Emails" },
+  { icon: CheckSquare, label: "Timeline Builder" },
+  { icon: Heart, label: "Stress Free" },
 ];
 
-function Stars({ count = 5 }: { count?: number }) {
-  return (
-    <div className="flex items-center gap-0.5">
-      {Array.from({ length: count }).map((_, i) => (
-        <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
-      ))}
-    </div>
-  );
-}
+const SPARKLES = Array.from({ length: 16 }, (_, i) => ({
+  id: i,
+  left: `${8 + ((i * 17) % 86)}%`,
+  top: `${14 + ((i * 23) % 72)}%`,
+  delay: `${(i % 6) * 0.45}s`,
+}));
 
 function LandingLanguagePicker() {
   const currentName = LANG_CODE_TO_NAME[i18n.language] ?? "English";
@@ -108,12 +33,34 @@ function LandingLanguagePicker() {
     localStorage.setItem("aido_language", code);
   }
 
-  return <LanguagePicker value={currentName} onChange={handleChange} variant="header" />;
+  return (
+    <div className="relative flex items-center">
+      <LanguagePicker
+        value={currentName}
+        onChange={handleChange}
+        variant="header"
+        className="h-11 px-0 text-[#B16C8E] hover:bg-transparent hover:text-[#8D294D] [&>span]:hidden [&>svg]:h-7 [&>svg]:w-7"
+      />
+      <ChevronDown className="pointer-events-none -ml-1 h-5 w-5 text-[#B16C8E]" />
+    </div>
+  );
+}
+
+function HeroSparkles() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      {SPARKLES.map((sparkle) => (
+        <span
+          key={sparkle.id}
+          className="landing-sparkle"
+          style={{ left: sparkle.left, top: sparkle.top, animationDelay: sparkle.delay }}
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function Landing() {
-  const { t } = useTranslation();
-
   useEffect(() => {
     let vid = localStorage.getItem("aido_vid");
     if (!vid) {
@@ -127,217 +74,118 @@ export default function Landing() {
     }).catch(() => {});
   }, []);
 
-  const featureKeys = [
-    "timeline", "budget", "checklist", "emails", "contracts", "profile", "seating", "collector", "assistant",
-  ];
-
-  const features = featureKeys.map((key, i) => ({
-    icon: featureIcons[i],
-    title: t(`features.${key}_title`),
-    desc: t(`features.${key}_desc`),
-  }));
-
   return (
-    <div className="dark min-h-screen bg-background flex flex-col">
-      <header
-        className="px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between bg-background/80 backdrop-blur-md relative"
-        style={{
-          borderBottom: "4px solid transparent",
-          borderImage: "linear-gradient(90deg, #B8860B 0%, #D4A017 35%, #F5C842 50%, #D4A017 65%, #B8860B 100%) 1",
-        }}
-      >
-        <div className="flex-1 min-w-0 pr-2 sm:pr-6 hidden sm:block">
-          <RotatingTagline />
-        </div>
-        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-end">
-          <LandingLanguagePicker />
-          <div className="flex items-center gap-1 sm:gap-2">
-            <Link href="/sign-in">
-              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/5 font-medium text-sm px-3">{t("landing.cta_signin")}</Button>
-            </Link>
-            <Link href="/sign-up">
-              <Button size="sm" className="btn-gradient rounded-full px-4 sm:px-6 shadow-sm text-sm">
-                {t("landing.get_started")}
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 flex flex-col items-center">
-        {/* Hero */}
-        <section className="text-center px-4 sm:px-6 pt-8 sm:pt-16 pb-10 sm:pb-16 max-w-3xl mx-auto">
-          <div className="flex flex-col items-center mb-6 sm:mb-8 gap-3">
-            <img src="/logo.png" alt="A.I Do — AI Wedding Planner Assistant" className="h-48 sm:h-80 w-auto object-contain drop-shadow-xl" />
-            <span
-              className="text-[11px] font-bold tracking-[0.22em] uppercase px-3 py-1 rounded-full border border-primary/50 text-primary bg-primary/10"
-              style={{ letterSpacing: "0.22em" }}
-            >
-              BETA
-            </span>
-          </div>
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-sm font-semibold px-4 py-2 rounded-full mb-6">
-            <Sparkles className="h-4 w-4" />
-            <span>{t("landing.badge")}</span>
-          </div>
-          <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl leading-tight mb-4 sm:mb-6">
-            <span className="brand-gradient-text">{t("landing.hero_line1")}</span><br />
-            <span className="gold-gradient-text italic">{t("landing.hero_line2")}</span>
-          </h1>
-          <p className="text-base sm:text-xl text-white/75 mb-7 sm:mb-10 max-w-2xl mx-auto leading-relaxed">
-            {t("landing.hero_desc")}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-            <Link href="/sign-up">
-              <Button size="lg" className="btn-gradient rounded-full px-8 sm:px-10 text-base sm:text-lg h-12 sm:h-14 shadow-lg w-full sm:w-auto">
-                {t("landing.cta_start")}
-              </Button>
-            </Link>
-            <Link href="/sign-in">
-              <Button size="lg" variant="outline" className="border-primary/30 text-primary hover:bg-primary/5 rounded-full px-8 sm:px-10 text-base sm:text-lg h-12 sm:h-14 w-full sm:w-auto">
-                {t("landing.cta_signin")}
-              </Button>
-            </Link>
-          </div>
-          <div className="mt-10 flex items-center justify-center gap-2 text-sm text-white/65">
-            <div className="flex -space-x-2">
-              {["PM","CJ","DA","SK"].map(initials => (
-                <div key={initials} className="w-8 h-8 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center text-[10px] font-bold text-primary">
-                  {initials}
-                </div>
-              ))}
-            </div>
-            <Stars count={5} />
-            <span className="font-medium text-foreground">5.0</span>
-          </div>
-        </section>
-
-        {/* Promo Video */}
-        <section className="w-full max-w-7xl px-4 sm:px-6 pb-10 sm:pb-20">
-          <div className="text-center mb-6 sm:mb-8">
-            <h2 className="font-serif text-2xl sm:text-3xl text-primary mb-3">{t("landing.video_title")}</h2>
-            <p className="text-white/65">{t("landing.video_desc")}</p>
-          </div>
-          <div className="relative w-full aspect-[9/16] overflow-hidden rounded-2xl shadow-2xl border border-primary/10 sm:aspect-video">
-            <iframe
-              src="/promo"
-              title="A.IDO Feature Preview"
-              className="absolute inset-0 w-full h-full border-0"
-              allow="autoplay"
-            />
-          </div>
-        </section>
-
-        {/* Features */}
-        <section className="w-full max-w-5xl px-4 sm:px-6 pb-10 sm:pb-20">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="font-serif text-2xl sm:text-3xl text-primary mb-3">{t("landing.features_title")}</h2>
-            <p className="text-white/65 text-lg">{t("landing.features_desc")}</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="bg-card rounded-2xl p-6 border border-primary/10 hover:border-primary/20 hover:shadow-md transition-all duration-300">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                  <Icon className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="font-serif text-lg text-primary mb-2">{title}</h3>
-                <p className="text-white/65 text-sm leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-10 flex justify-center">
-            <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 border border-primary/20">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span className="brand-gradient-text font-serif text-lg font-semibold">
-                {t("landing.features_more", "…and so much more")}
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* Testimonials */}
-        <section className="w-full bg-background border-t border-b border-primary/10 py-12 sm:py-20 px-4 sm:px-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-8 sm:mb-14">
-              <div className="inline-flex items-center gap-2 bg-amber-900/40 text-amber-300 text-sm font-medium px-4 py-1.5 rounded-full mb-4">
-                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                <span>{t("landing.testimonials_badge")}</span>
-              </div>
-              <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl text-primary mb-3">{t("landing.testimonials_title")}</h2>
-              <div className="flex items-center justify-center gap-2 text-white/65">
-                <Stars />
-                <span className="font-semibold text-foreground text-lg">5.0</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-              {testimonials.map((item) => (
-                <div
-                  key={item.name}
-                  className="rounded-2xl p-6 bg-background shadow-lg hover:shadow-xl transition-shadow flex flex-col gap-4"
-                  style={{
-                    border: "2px solid",
-                    borderImage: "linear-gradient(135deg, #B8860B 0%, #D4A017 50%, #F5C842 100%) 1",
-                  }}
-                >
-                  <Quote className="h-8 w-8 text-primary/20 fill-primary/10 -mb-1" />
-                  <p className="text-sm leading-relaxed text-white/75 flex-1">"{item.text}"</p>
-                  <Stars count={item.rating} />
-                  <div className="flex items-center gap-3 pt-2 border-t border-border/40">
-                    <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                      {item.avatar}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{item.name}</p>
-                      <p className="text-xs text-white/50">{item.date} · {item.location}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="w-full py-12 sm:py-20 px-4 sm:px-6 text-center">
-          <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl text-primary mb-4">{t("landing.final_title")}</h2>
-          <p className="text-white/70 mb-6 sm:mb-8 max-w-lg mx-auto text-base sm:text-lg">{t("landing.final_desc")}</p>
-          <Link href="/sign-up">
-            <Button size="lg" className="btn-gradient rounded-full px-10 sm:px-14 text-base sm:text-lg h-12 sm:h-14 shadow-lg">
-              {t("landing.final_cta")}
+    <div className="min-h-screen bg-[#FFF7F2] text-[#8D294D]">
+      <header className="sticky top-0 z-40 flex h-[72px] items-center justify-between border-b border-[#E6A6B7]/70 bg-[#FFF7F2]/[0.92] px-5 shadow-[0_1px_0_rgba(141,41,77,0.06)] backdrop-blur-md sm:h-[106px] sm:px-12">
+        <LandingLanguagePicker />
+        <nav className="flex items-center gap-3 sm:gap-10">
+          <Link href="/sign-in">
+            <Button variant="ghost" className="h-10 px-1 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E] sm:h-12 sm:px-2 sm:text-2xl">
+              Sign In
             </Button>
           </Link>
-          <p className="mt-4 text-xs text-white/50">{t("landing.no_cc")}</p>
+          <Link href="/sign-up">
+            <Button className="h-12 rounded-full bg-[linear-gradient(110deg,#E6A6B7_0%,#F2CFC6_52%,#E9A6A0_100%)] px-5 text-base font-semibold text-[#8D294D] shadow-[0_14px_24px_rgba(141,41,77,0.2)] hover:opacity-95 sm:h-16 sm:px-11 sm:text-2xl">
+              Get Started Free
+            </Button>
+          </Link>
+        </nav>
+      </header>
+
+      <main>
+        <section className="relative isolate overflow-hidden border-b border-[#F2E2C6] bg-[#FFF7F2]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_34%,rgba(255,255,255,0.98)_0%,rgba(255,247,242,0.9)_38%,rgba(242,226,198,0.38)_100%)]" />
+          <div className="absolute inset-x-0 top-0 h-[520px] bg-[url('/images/floral-bg.png')] bg-cover bg-center opacity-[0.32] mix-blend-multiply" />
+          <div className="absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,#8D294D,#E6A6B7,#F2E2C6,#B16C8E)]" />
+          <HeroSparkles />
+          <div className="relative z-10 mx-auto flex min-h-[calc(100vh-210px)] max-w-5xl flex-col items-center px-5 pb-6 pt-6 text-center sm:min-h-[calc(100vh-250px)] sm:px-8 sm:pb-10 sm:pt-10">
+            <img
+              src="/logo.png"
+              alt="A.I Do - AI Wedding Planner Assistant"
+              className="h-28 w-auto object-contain drop-shadow-[0_22px_38px_rgba(141,41,77,0.16)] sm:h-40"
+            />
+            <div className="mt-3 rounded-full border border-[#B16C8E] bg-white/[0.55] px-6 py-1.5 text-base font-bold uppercase tracking-[0.18em] text-[#B16C8E] shadow-sm sm:text-lg">
+              Beta
+            </div>
+
+            <div className="mt-4 inline-flex items-center gap-3 rounded-full bg-[#F2E2C6]/[0.55] px-5 py-3 text-base font-medium text-[#B16C8E] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_12px_28px_rgba(141,41,77,0.08)] sm:mt-5 sm:px-10 sm:text-xl">
+              <Sparkles className="h-5 w-5 text-[#E6A6B7]" />
+              <span>AI Wedding Planner Assistant</span>
+            </div>
+
+            <h1 className="mt-5 max-w-4xl font-serif text-[2.65rem] leading-[0.98] tracking-normal text-[#8D294D] sm:mt-6 sm:text-[4rem] md:text-[4.8rem]">
+              Plan your perfect day,
+              <br />
+              <span className="italic text-[#C39B70]">effortlessly.</span>
+            </h1>
+            <div className="mt-4 flex items-center gap-2 text-[#C39B70]" aria-hidden="true">
+              <span className="h-px w-20 bg-[linear-gradient(90deg,transparent,#C39B70)]" />
+              <Heart className="h-4 w-4 fill-[#E6A6B7] text-[#E6A6B7]" />
+              <span className="h-px w-20 bg-[linear-gradient(90deg,#C39B70,transparent)]" />
+            </div>
+            <p className="mt-3 max-w-3xl text-base leading-7 text-[#6F3E54] sm:mt-4 sm:text-xl sm:leading-8">
+              A.I Do is your AI wedding planning partner - from setting a budget and building a timeline to drafting vendor emails and coordinating the big day itself.
+            </p>
+
+            <div className="mt-5 flex w-full max-w-2xl flex-col gap-4 sm:mt-6">
+              <Link href="/sign-up">
+                <Button className="h-14 w-full rounded-full bg-[linear-gradient(110deg,#E6A6B7_0%,#D88A96_42%,#F4C9C2_100%)] text-lg font-semibold text-white shadow-[0_20px_36px_rgba(141,41,77,0.22)] hover:opacity-95 sm:h-16 sm:text-xl">
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  Start Planning Free
+                  <Sparkles className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="relative z-10 border-t border-[#E6A6B7]/30 bg-white/[0.45] px-4 py-8 backdrop-blur-sm">
+            <div className="mx-auto grid max-w-4xl grid-cols-2 gap-y-7 sm:grid-cols-4">
+              {HERO_FEATURES.map(({ icon: Icon, label }, index) => (
+                <div key={label} className="flex min-h-24 flex-col items-center justify-center gap-3 border-[#E6A6B7]/40 text-[#8D294D] sm:border-l sm:first:border-l-0">
+                  <Icon className="h-11 w-11 stroke-[1.4] text-[#C85F82]" />
+                  <span className="text-sm font-medium sm:text-base">{label}</span>
+                  {index === 1 && <span className="sr-only">Vendor email drafting</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[linear-gradient(180deg,#FFF7F2_0%,#F9ECE8_100%)] px-5 py-16 sm:px-8 sm:py-20">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-8 text-center">
+              <p className="text-sm font-bold uppercase tracking-[0.3em] text-[#B16C8E]">Feature Preview</p>
+              <h2 className="mt-3 font-serif text-4xl text-[#8D294D] sm:text-5xl">See A.I Do in motion</h2>
+              <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-[#6F3E54]">
+                Watch how A.I Do keeps your budget, timeline, guests, vendor notes, and planning conversations moving together.
+              </p>
+            </div>
+            <div className="relative overflow-hidden rounded-[32px] border border-[#E6A6B7]/55 bg-white/[0.72] p-3 shadow-[0_28px_80px_rgba(141,41,77,0.18)]">
+              <div className="relative aspect-[9/16] overflow-hidden rounded-[24px] bg-[#FFF7F2] sm:aspect-video">
+                <iframe
+                  src="/promo"
+                  title="A.IDO feature preview"
+                  className="absolute inset-0 h-full w-full border-0"
+                  allow="autoplay"
+                />
+              </div>
+            </div>
+          </div>
         </section>
       </main>
 
-      <footer className="px-8 py-8 border-t border-primary/10 text-center text-sm text-white/60">
-        <div className="flex items-center justify-center gap-2 mb-3">
+      <footer className="border-t border-[#E6A6B7]/35 bg-[#FFF7F2] px-8 py-8 text-center text-sm text-[#8D294D]/70">
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-3">
           <img src="/logo.png" alt="A.I Do" className="h-20 w-auto object-contain" />
-          <span className="brand-gradient-text font-semibold">{t("landing.footer_brand")}</span>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-white/45">
-          <span>© {new Date().getFullYear()} A.IDO. {t("landing.footer_rights")}</span>
-          <span className="w-px h-3 bg-border inline-block hidden sm:inline-block" />
-          <Link href="/terms" className="hover:text-primary transition-colors underline underline-offset-2">
-            Terms of Service
-          </Link>
-          <span className="w-px h-3 bg-border inline-block hidden sm:inline-block" />
-          <Link href="/privacy" className="hover:text-primary transition-colors underline underline-offset-2">
-            Privacy Policy
-          </Link>
-          <span className="w-px h-3 bg-border inline-block hidden sm:inline-block" />
-          <Link href="/beta" className="hover:text-primary transition-colors underline underline-offset-2">
-            Beta Disclaimer
-          </Link>
-          <span className="w-px h-3 bg-border inline-block hidden sm:inline-block" />
-          <Link href="/security" className="hover:text-primary transition-colors underline underline-offset-2">
-            Security
-          </Link>
-          <span className="w-px h-3 bg-border inline-block hidden sm:inline-block" />
-          <Link href="/data-handling" className="hover:text-primary transition-colors underline underline-offset-2">
-            Data Handling
-          </Link>
+          <p>A.IDO - AI Wedding Planner Assistant</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs">
+            <span>&copy; {new Date().getFullYear()} A.IDO. All rights reserved.</span>
+            <Link href="/terms" className="underline-offset-4 hover:underline">Terms of Service</Link>
+            <Link href="/privacy" className="underline-offset-4 hover:underline">Privacy Policy</Link>
+            <Link href="/beta" className="underline-offset-4 hover:underline">Beta Disclaimer</Link>
+            <Link href="/security" className="underline-offset-4 hover:underline">Security</Link>
+            <Link href="/data-handling" className="underline-offset-4 hover:underline">Data Handling</Link>
+          </div>
         </div>
       </footer>
     </div>

@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { Heart, Sparkles } from "lucide-react";
+import { burgundyGradientText, VIDEO_PALETTE } from "../videoPalette";
 
 export function Scene1() {
   const [phase, setPhase] = useState(0);
@@ -8,70 +10,72 @@ export function Scene1() {
     const timers = [
       setTimeout(() => setPhase(1), 200),
       setTimeout(() => setPhase(2), 900),
-      setTimeout(() => setPhase(3), 1800),
+      setTimeout(() => setPhase(3), 1700),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
 
   return (
     <motion.div
-      className="absolute inset-0 flex flex-col items-center justify-center"
+      className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 0.95, filter: "blur(12px)" }}
+      exit={{ opacity: 0, scale: 0.96, filter: "blur(10px)" }}
       transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
     >
-      {/* Glow ring behind logo */}
       <motion.div
-        className="absolute rounded-full"
-        style={{ width: "22vw", height: "22vw", background: "radial-gradient(circle, rgba(212,160,23,0.25) 0%, transparent 70%)" }}
-        initial={{ scale: 0.6, opacity: 0 }}
-        animate={phase >= 1 ? { scale: 1.4, opacity: 1 } : { scale: 0.6, opacity: 0 }}
-        transition={{ duration: 2.5, ease: "easeOut" }}
-      />
+        className="relative"
+        initial={{ scale: 0.84, opacity: 0, y: 20 }}
+        animate={phase >= 1 ? { scale: 1, opacity: 1, y: 0 } : { scale: 0.84, opacity: 0, y: 20 }}
+        transition={{ duration: 1.15, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <motion.div
+          className="absolute -inset-8 rounded-full border border-[#E6A6B7]/40"
+          animate={{ opacity: [0.35, 0.75, 0.35], scale: [0.96, 1.03, 0.96] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <img
+          src={`${import.meta.env.BASE_URL}logo.png`}
+          alt="A.IDO"
+          className="relative z-10 h-[27vw] max-h-72 min-h-36 w-auto object-contain drop-shadow-[0_22px_38px_rgba(141,41,77,0.16)]"
+        />
+      </motion.div>
 
-      {/* Logo */}
-      <motion.img
-        src={`${import.meta.env.BASE_URL}logo.png`}
-        alt="A.IDO"
-        className="relative z-10"
-        style={{ width: "16vw", height: "16vw", objectFit: "contain", filter: "drop-shadow(0 0 40px rgba(212,160,23,0.5))" }}
-        initial={{ scale: 0.5, opacity: 0, y: 20 }}
-        animate={phase >= 1 ? { scale: 1, opacity: 1, y: 0 } : { scale: 0.5, opacity: 0, y: 20 }}
-        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-      />
-
-      {/* Brand name */}
       <motion.div
-        className="mt-6 z-10"
+        className="mt-7"
         initial={{ opacity: 0, y: 24 }}
         animate={phase >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
-        transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.95, ease: [0.16, 1, 0.3, 1] }}
       >
-        <h1
-          className="font-serif text-[7vw] font-bold leading-none"
-          style={{ background: "linear-gradient(135deg, #D4A017 0%, #F5C842 50%, #D4A017 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
-        >
+        <h1 className="font-serif text-[7vw] font-bold leading-none" style={burgundyGradientText}>
           A.IDO
         </h1>
       </motion.div>
 
-      {/* Tagline */}
       <motion.div
-        className="mt-4 flex items-center gap-4 z-10"
+        className="mt-5 flex items-center gap-4"
         initial={{ opacity: 0, y: 16 }}
         animate={phase >= 3 ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
-        transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="h-px w-14" style={{ background: "linear-gradient(90deg, transparent, #D4A017)" }} />
-        <p
-          className="text-[1.6vw] font-medium tracking-[0.25em] uppercase"
-          style={{ background: "linear-gradient(135deg, #E91E8C 0%, #7B2FBE 55%, #4F8EF7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
-        >
-          AI Wedding Planning OS
+        <div className="h-px w-16 bg-[linear-gradient(90deg,transparent,#C39B70)]" />
+        <p className="flex items-center gap-2 text-[1.5vw] font-semibold uppercase tracking-[0.25em] text-[#8D294D]">
+          <Sparkles className="h-[1.4vw] w-[1.4vw] min-h-4 min-w-4 text-[#E6A6B7]" />
+          AI Wedding Planner Assistant
+          <Heart className="h-[1.4vw] w-[1.4vw] min-h-4 min-w-4 fill-[#E6A6B7] text-[#E6A6B7]" />
         </p>
-        <div className="h-px w-14" style={{ background: "linear-gradient(90deg, #D4A017, transparent)" }} />
+        <div className="h-px w-16 bg-[linear-gradient(90deg,#C39B70,transparent)]" />
       </motion.div>
+
+      <motion.p
+        className="mt-7 max-w-2xl text-[1.6vw] leading-relaxed"
+        style={{ color: VIDEO_PALETTE.softText }}
+        initial={{ opacity: 0 }}
+        animate={phase >= 3 ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ delay: 0.35, duration: 0.9 }}
+      >
+        Plan your perfect day, effortlessly.
+      </motion.p>
     </motion.div>
   );
 }

@@ -11,13 +11,13 @@ import { Scene7 } from "./video_scenes/Scene7";
 const SCENE_COUNT = 7;
 const SCENE_DURATIONS = [5500, 9000, 9500, 9300, 9300, 9200, 11000];
 
-const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
+const PARTICLES = Array.from({ length: 30 }, (_, i) => ({
   id: i,
-  x: `${Math.random() * 100}%`,
-  y: `${Math.random() * 100}%`,
-  size: Math.random() * 3 + 1,
-  delay: Math.random() * 4,
-  duration: Math.random() * 3 + 2,
+  x: `${6 + ((i * 19) % 88)}%`,
+  y: `${8 + ((i * 29) % 84)}%`,
+  size: (i % 3) + 2,
+  delay: (i % 8) * 0.35,
+  duration: 3.4 + (i % 5) * 0.3,
 }));
 
 function useTimerPlayer() {
@@ -36,58 +36,39 @@ export default function VideoTemplate() {
   const currentScene = useTimerPlayer();
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#07030d] text-white">
-
-      {/* Deep space gradient background */}
+    <div className="relative h-screen w-full overflow-hidden bg-[#FFF7F2] text-[#3B1C2B]">
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_60%_-20%,rgba(180,80,200,0.18)_0%,transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_20%_100%,rgba(212,160,23,0.12)_0%,transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_80%_80%,rgba(233,30,140,0.08)_0%,transparent_60%)]" />
+        <motion.div
+          className="absolute inset-0 bg-[url('/images/bokeh-bg.png')] bg-cover bg-center opacity-35"
+          animate={{ scale: [1.02, 1.06, 1.02] }}
+          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,247,242,0.84)_0%,rgba(255,247,242,0.72)_48%,rgba(242,226,198,0.48)_100%)]" />
+        <div className="absolute inset-x-0 top-0 h-[46%] bg-[url('/images/floral-bg.png')] bg-cover bg-center opacity-20 mix-blend-multiply" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_62%_at_50%_43%,rgba(255,255,255,0.74)_0%,rgba(255,247,242,0.32)_48%,rgba(230,166,183,0.18)_100%)]" />
       </div>
 
-      {/* Floating particles */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         {PARTICLES.map((p) => (
           <motion.div
             key={p.id}
-            className="absolute rounded-full bg-amber-300/60"
+            className="absolute rounded-full bg-[#E6A6B7]"
             style={{ left: p.x, top: p.y, width: p.size, height: p.size }}
-            animate={{ opacity: [0, 1, 0], y: [0, -18, 0] }}
+            animate={{ opacity: [0, 0.75, 0], y: [0, -16, 0], scale: [0.7, 1.15, 0.7] }}
             transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: "easeInOut" }}
           />
         ))}
       </div>
 
-      {/* Animated slow orbs */}
-      <motion.div
-        className="absolute rounded-full blur-[100px] w-[700px] h-[700px] bg-purple-600/10 pointer-events-none"
-        animate={{
-          x: ["-20%", "30%", "-10%", "20%", "-20%"][currentScene] ?? "-20%",
-          y: ["-10%", "-30%", "25%", "-5%", "-10%"][currentScene] ?? "-10%",
-          scale: [1, 1.15, 0.9, 1.1, 1][currentScene] ?? 1,
-        }}
-        transition={{ duration: 3.5, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute rounded-full blur-[80px] w-[500px] h-[500px] bg-amber-400/8 pointer-events-none"
-        animate={{
-          x: ["70%", "20%", "75%", "15%", "70%"][currentScene] ?? "70%",
-          y: ["50%", "65%", "15%", "60%", "50%"][currentScene] ?? "50%",
-          scale: [1.1, 0.85, 1.25, 0.9, 1.1][currentScene] ?? 1.1,
-        }}
-        transition={{ duration: 4, ease: "easeInOut" }}
-      />
-
-      {/* Scene Content */}
-      <div className="relative z-10 w-full h-full">
+      <div className="relative z-10 h-full w-full">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentScene}
             className="absolute inset-0"
-            initial={{ opacity: 0, scale: 1.04, filter: "blur(14px)" }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, scale: 0.97, filter: "blur(10px)" }}
-            transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, y: 18, filter: "blur(10px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -16, filter: "blur(8px)" }}
+            transition={{ duration: 0.82, ease: [0.16, 1, 0.3, 1] }}
           >
             {currentScene === 0 && <Scene1 />}
             {currentScene === 1 && <Scene2 />}
@@ -100,42 +81,28 @@ export default function VideoTemplate() {
         </AnimatePresence>
       </div>
 
-      {/* Cinematic transition sweep — fires on every scene change */}
       <AnimatePresence>
         <motion.div
           key={`sweep-${currentScene}`}
-          className="absolute inset-0 z-20 pointer-events-none"
+          className="pointer-events-none absolute inset-0 z-20"
           initial={{ opacity: 0 }}
           animate={{ opacity: [0, 1, 0] }}
-          transition={{ duration: 1.1, times: [0, 0.45, 1], ease: "easeOut" }}
+          transition={{ duration: 1, times: [0, 0.45, 1], ease: "easeOut" }}
         >
-          {/* Diagonal shimmer bar */}
           <motion.div
-            className="absolute top-0 bottom-0 w-[60%]"
+            className="absolute top-0 bottom-0 w-[58%]"
             style={{
               background:
-                "linear-gradient(115deg, transparent 0%, rgba(245,200,66,0.08) 35%, rgba(233,30,140,0.18) 50%, rgba(123,47,190,0.10) 65%, transparent 100%)",
-              filter: "blur(24px)",
-              mixBlendMode: "screen",
+                "linear-gradient(115deg, transparent 0%, rgba(242,226,198,0.1) 35%, rgba(230,166,183,0.22) 50%, rgba(177,108,142,0.12) 65%, transparent 100%)",
+              filter: "blur(22px)",
+              mixBlendMode: "multiply",
             }}
             initial={{ x: "-80%", skewX: -12 }}
             animate={{ x: "180%", skewX: -12 }}
-            transition={{ duration: 1.1, ease: [0.65, 0, 0.35, 1] }}
-          />
-          {/* Soft vignette pulse */}
-          <motion.div
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(ellipse 80% 60% at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%)",
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.7, 0] }}
-            transition={{ duration: 0.9, times: [0, 0.4, 1], ease: "easeOut" }}
+            transition={{ duration: 1, ease: [0.65, 0, 0.35, 1] }}
           />
         </motion.div>
       </AnimatePresence>
-
     </div>
   );
 }
