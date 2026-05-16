@@ -46,7 +46,7 @@ export function useAnonymousSession() {
     const isTestAccount = !!isSignedIn && email === testAccountEmail;
 
     try {
-      if (isSignedIn && email && !isTestAccount) {
+      if (!isTestAccount) {
         window.localStorage.removeItem(TEST_MODE_KEY);
       }
 

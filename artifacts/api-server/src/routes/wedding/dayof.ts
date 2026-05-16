@@ -2,12 +2,14 @@ import { Router } from "express";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
-import { resolveProfile } from "../../lib/workspaceAccess";
+import { hasMinRole, resolveCallerRole, resolveProfile } from "../../lib/workspaceAccess";
 
 const router = Router();
 
 router.post("/dayof/emergency", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
     const { situation } = req.body;
     const profile = await resolveProfile(req);
     const lang = profile?.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;

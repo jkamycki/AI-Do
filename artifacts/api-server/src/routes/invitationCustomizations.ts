@@ -73,7 +73,7 @@ router.get("/invitation-customizations", requireAuth, async (req, res) => {
     // customization (colors, photo URLs, text overrides) by guessing or
     // enumerating profileId values.
     const role = await resolveWorkspaceRole(req.userId!, profileId);
-    if (!role || !hasMinRole(role, "vendor")) {
+    if (!role || !hasMinRole(role, "planner")) {
       return res.status(404).json({ error: "Profile not found" });
     }
 

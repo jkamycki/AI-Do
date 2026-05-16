@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { clerkClient } from "@clerk/express";
 import { db } from "@workspace/db";
 import { vendors, vendorConversations, vendorMessages, weddingProfiles } from "@workspace/db/schema";
@@ -13,9 +13,18 @@ import {
   randomToken,
   sendEmail,
 } from "../../lib/resend";
-import { resolveProfile, resolveScopeUserId } from "../../lib/workspaceAccess";
+import { hasMinRole, resolveCallerRole, resolveProfile, resolveScopeUserId } from "../../lib/workspaceAccess";
 
 const router = Router();
+
+async function ensurePlannerAccess(req: Request, res: Response): Promise<boolean> {
+  const callerRole = await resolveCallerRole(req);
+  if (!hasMinRole(callerRole, "planner")) {
+    res.status(403).json({ error: "Insufficient permissions." });
+    return false;
+  }
+  return true;
+}
 
 async function getPrimaryAccountEmail(userId: string): Promise<string | null> {
   try {
@@ -53,6 +62,7 @@ async function getOrCreateConversation(userId: string, vendorId: number, profile
 
 router.get("/messaging/conversations", requireAuth, async (req, res) => {
   try {
+    if (!(await ensurePlannerAccess(req, res))) return;
     const userId = await resolveScopeUserId(req);
     const profile = await resolveProfile(req);
     if (!profile) return res.json([]);
@@ -80,6 +90,7 @@ router.get("/messaging/conversations", requireAuth, async (req, res) => {
 
 router.get("/messaging/conversations/by-vendor/:vendorId", requireAuth, async (req, res) => {
   try {
+    if (!(await ensurePlannerAccess(req, res))) return;
     const userId = await resolveScopeUserId(req);
     const vendorId = Number(req.params.vendorId);
     const profile = await resolveProfile(req);
@@ -115,6 +126,7 @@ async function ownConversation(userId: string, conversationId: number, profileId
 
 router.get("/messaging/conversations/:id/messages", requireAuth, async (req, res) => {
   try {
+    if (!(await ensurePlannerAccess(req, res))) return;
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
     const profile = await resolveProfile(req);
@@ -146,6 +158,7 @@ router.get("/messaging/conversations/:id/messages", requireAuth, async (req, res
 
 router.post("/messaging/conversations/:id/messages", requireAuth, async (req, res) => {
   try {
+    if (!(await ensurePlannerAccess(req, res))) return;
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
     const profile = await resolveProfile(req);
@@ -301,6 +314,7 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
 
 router.post("/messaging/conversations/:id/suggest-reply", requireAuth, async (req, res) => {
   try {
+    if (!(await ensurePlannerAccess(req, res))) return;
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
     const profile = await resolveProfile(req);
@@ -351,6 +365,7 @@ Write a friendly, professional reply the couple can send. Keep it concise (2-4 s
 
 router.delete("/messaging/conversations/:id/messages", requireAuth, async (req, res) => {
   try {
+    if (!(await ensurePlannerAccess(req, res))) return;
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
     const profile = await resolveProfile(req);
@@ -372,6 +387,7 @@ router.delete("/messaging/conversations/:id/messages", requireAuth, async (req, 
 
 router.post("/messaging/conversations/:id/read", requireAuth, async (req, res) => {
   try {
+    if (!(await ensurePlannerAccess(req, res))) return;
     const userId = await resolveScopeUserId(req);
     const id = Number(req.params.id);
     const profile = await resolveProfile(req);

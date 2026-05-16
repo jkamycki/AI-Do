@@ -135,10 +135,13 @@ export function hasMinRole(
 
 /**
  * Returns the CollaboratorRole of the authenticated caller in the current
- * workspace context.  If no workspace header is present (i.e. the caller is
- * operating in their own workspace), "owner" is returned.  If the header is
- * present but the caller is not an active member, the most-restricted role
- * "vendor" is returned so downstream hasMinRole checks fail safely.
+ * workspace context. If no workspace header is present and the caller has an
+ * own profile, "owner" is returned. If the caller has no profile but exactly
+ * one active shared workspace, return that collaborator role so the
+ * collaboration-first fallback in resolveProfile cannot accidentally elevate a
+ * vendor/planner into an owner. If the header is present but the caller is not
+ * an active member, the most-restricted role "vendor" is returned so downstream
+ * hasMinRole checks fail safely.
  */
 export async function resolveCallerRole(req: Request): Promise<CollaboratorRole> {
   const headerVal = req.headers["x-workspace-profile-id"];
@@ -149,6 +152,24 @@ export async function resolveCallerRole(req: Request): Promise<CollaboratorRole>
       : null;
 
   if (!workspaceId || isNaN(workspaceId)) {
+    const ownProfile = await getProfileByUserId(req.userId!);
+    if (ownProfile) return "owner";
+
+    const shared = await db
+      .select({ role: workspaceCollaborators.role })
+      .from(workspaceCollaborators)
+      .where(
+        and(
+          eq(workspaceCollaborators.inviteeUserId, req.userId!),
+          eq(workspaceCollaborators.status, "active")
+        )
+      )
+      .limit(2);
+
+    if (shared.length === 1) {
+      return shared[0].role as CollaboratorRole;
+    }
+
     return "owner";
   }
 

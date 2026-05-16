@@ -133,6 +133,8 @@ export function VendorMessagesTab({ vendorId }: Props) {
   });
 
   const { data: profile } = useGetProfile();
+  const profileId = typeof profile?.id === "number" ? profile.id : null;
+  const vendorDraftStorageKey = profileId ? `aido_vendor_message_draft_v2_${profileId}_${vendorId}` : null;
   const savedCcRaw = (profile as { vendorBccEmail?: string | null } | undefined)?.vendorBccEmail ?? "";
 
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -261,14 +263,16 @@ export function VendorMessagesTab({ vendorId }: Props) {
   };
 
   useEffect(() => {
-    const key = `aido_vendor_message_draft_v1_${vendorId}`;
-    const storedDraft = localStorage.getItem(key);
+    if (!vendorDraftStorageKey) return;
+    const legacyKey = `aido_vendor_message_draft_v1_${vendorId}`;
+    const storedDraft = localStorage.getItem(vendorDraftStorageKey);
     if (storedDraft?.trim()) {
       setDraft((current) => (current.trim() ? `${current}\n\n${storedDraft}` : storedDraft));
-      localStorage.removeItem(key);
+      localStorage.removeItem(vendorDraftStorageKey);
       toast({ title: t("vendors.msg_draft_loaded", { defaultValue: "Draft loaded. Review it before sending." }) });
     }
-  }, [vendorId, t, toast]);
+    localStorage.removeItem(legacyKey);
+  }, [vendorDraftStorageKey, vendorId, t, toast]);
 
   useEffect(() => {
     if (!conversationId) return;

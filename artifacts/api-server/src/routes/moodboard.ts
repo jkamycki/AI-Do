@@ -4,7 +4,8 @@ import { and, eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { openai, getModel, getVisionModel } from "@workspace/integrations-openai-ai-server";
 import { ObjectStorageService } from "../lib/objectStorage";
-import { resolveProfile, resolveScopeUserId } from "../lib/workspaceAccess";
+import { ObjectPermission } from "../lib/objectAcl";
+import { hasMinRole, resolveCallerRole, resolveProfile, resolveScopeUserId } from "../lib/workspaceAccess";
 
 const router = Router();
 const storage = new ObjectStorageService();
@@ -25,6 +26,8 @@ type MoodBoardImage = {
 type ColorSwatch = { hex: string; name: string };
 
 async function resolveMoodBoardScope(req: Parameters<typeof resolveProfile>[0]) {
+  const callerRole = await resolveCallerRole(req);
+  if (!hasMinRole(callerRole, "planner")) return null;
   const profile = await resolveProfile(req);
   if (!profile) return null;
   return {
@@ -114,12 +117,20 @@ router.put("/mood-board", requireAuth, async (req, res) => {
 router.post("/mood-board/analyze-image", requireAuth, async (req, res) => {
   try {
     if (!req.userId) return res.status(401).json({ error: "Unauthorized" });
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
 
     const { objectPath } = req.body as { objectPath: string };
     if (!objectPath) return res.status(400).json({ error: "objectPath is required" });
 
     // Download image from storage
     const file = await storage.getObjectEntityFile(objectPath);
+    const canAccess = await storage.canAccessObjectEntity({
+      userId: req.userId,
+      objectFile: file,
+      requestedPermission: ObjectPermission.READ,
+    });
+    if (!canAccess) return res.status(403).json({ error: "Access denied" });
     const [content] = await file.download();
     const base64 = content.toString("base64");
     const [metadata] = await file.getMetadata();
@@ -173,6 +184,8 @@ Return ONLY valid JSON, no markdown or explanation.`,
 router.post("/mood-board/generate-summary", requireAuth, async (req, res) => {
   try {
     if (!req.userId) return res.status(401).json({ error: "Unauthorized" });
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
 
     const { styleTags, images, colorPalette } = req.body as {
       styleTags: string[];

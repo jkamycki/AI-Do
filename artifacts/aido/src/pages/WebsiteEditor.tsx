@@ -77,11 +77,14 @@ const sanitizeWebsiteSlug = (value: string) =>
     .replace(/-{2,}/g, "-")
     .slice(0, 60);
 
+const LEGACY_PENDING_SAVE_KEY = "aido_website_pending_save_v1";
+const PENDING_SAVE_KEY_PREFIX = "aido_website_pending_save_v2";
+
 // ---------- main ----------
 
 export default function WebsiteEditor() {
   const { t } = useTranslation();
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
   const { toast } = useToast();
   const [record, setRecord] = useState<WebsiteRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -486,8 +489,6 @@ export default function WebsiteEditor() {
 
   // localStorage backup — every dirty save snapshot is mirrored here so a
   // failed POST + closed tab still recovers on next mount.
-  const PENDING_SAVE_KEY = "aido_website_pending_save_v1";
-
   const buildSaveBody = (rec: WebsiteRecord) => ({
     theme: rec.theme,
     layoutStyle: rec.layoutStyle,
@@ -503,13 +504,22 @@ export default function WebsiteEditor() {
     heroImage: rec.heroImage,
   });
 
+  const getPendingSaveKey = useCallback((websiteId: number) => {
+    const owner = userId ?? "unknown";
+    return `${PENDING_SAVE_KEY_PREFIX}:${owner}:${websiteId}`;
+  }, [userId]);
+
   const writePendingBackup = (body: ReturnType<typeof buildSaveBody>, websiteId: number) => {
+    if (!userId) return;
     try {
-      localStorage.setItem(PENDING_SAVE_KEY, JSON.stringify({ websiteId, savedAt: Date.now(), body }));
+      localStorage.setItem(getPendingSaveKey(websiteId), JSON.stringify({ websiteId, savedAt: Date.now(), body }));
     } catch { /* quota exceeded — ignore, retry will still run */ }
   };
-  const clearPendingBackup = () => {
-    try { localStorage.removeItem(PENDING_SAVE_KEY); } catch { /* ignore */ }
+  const clearPendingBackup = (websiteId?: number) => {
+    try {
+      if (websiteId) localStorage.removeItem(getPendingSaveKey(websiteId));
+      localStorage.removeItem(LEGACY_PENDING_SAVE_KEY);
+    } catch { /* ignore */ }
   };
 
   // Posts a save body. Retries 5xx + network errors with exponential backoff
@@ -611,7 +621,7 @@ export default function WebsiteEditor() {
         // local state is still ahead of the server and another save needs to run.
         if (editSeqRef.current === seqAtSend) setDirty(false);
         setSaveError(false);
-        clearPendingBackup();
+        clearPendingBackup(rec.id);
         return true;
       }
 
@@ -638,7 +648,8 @@ export default function WebsiteEditor() {
     (async () => {
       let pending: { websiteId: number; savedAt: number; body: ReturnType<typeof buildSaveBody> } | null = null;
       try {
-        const raw = localStorage.getItem(PENDING_SAVE_KEY);
+        localStorage.removeItem(LEGACY_PENDING_SAVE_KEY);
+        const raw = userId ? localStorage.getItem(getPendingSaveKey(record.id)) : null;
         if (raw) pending = JSON.parse(raw);
       } catch { return; }
       if (!pending || pending.websiteId !== record.id) return;
@@ -646,7 +657,7 @@ export default function WebsiteEditor() {
       // assume someone else (or another tab) saved it and drop the backup.
       const serverTs = record.lastUpdated ? Date.parse(record.lastUpdated) : 0;
       if (Number.isFinite(serverTs) && serverTs >= pending.savedAt) {
-        clearPendingBackup();
+        clearPendingBackup(record.id);
         return;
       }
       const result = await postSave(pending.body);
@@ -656,14 +667,14 @@ export default function WebsiteEditor() {
           ...result.record,
           portalParty: result.record.portalParty ?? prev?.portalParty,
         }));
-        clearPendingBackup();
+        clearPendingBackup(record.id);
       }
       // If it failed, leave the backup in place — autosave will pick it up
       // on the next dirty cycle, and the user sees the "Save failed" hint.
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [record?.id]);
+  }, [getPendingSaveKey, record?.id, userId]);
 
   // Fire a best-effort save whenever the user leaves the editor with unsaved
   // changes — closing the tab, navigating away in the SPA, switching tabs, or

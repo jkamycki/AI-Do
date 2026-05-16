@@ -36,7 +36,7 @@ function getActiveWorkspaceProfileId(): number | null {
 function getInternalTrackingHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
-    const isTestMode = window.localStorage.getItem("aido_test_account_mode") === "true";
+    const isTestMode = window.__AIDO_TEST_MODE__ === true;
     const sessionId = window.localStorage.getItem(isTestMode ? "aido_test_anonymous_session_id" : "aido_anonymous_session_id");
     return {
       ...(isTestMode ? { "x-aido-test-mode": "true" } : {}),

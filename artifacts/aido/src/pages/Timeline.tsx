@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useAuth } from "@clerk/react";
 import {
   DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor,
   useSensor, useSensors, DragEndEvent,
@@ -11,6 +12,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useGetTimeline, useGenerateTimeline, useGetProfile, getGetTimelineQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -176,7 +178,8 @@ const STATUS_CONFIG: Record<TimelineStatus, { label: string; badgeClass: string;
   },
 };
 const ALL_STATUSES = Object.keys(STATUS_CONFIG) as TimelineStatus[];
-const VISION_STORAGE_KEY = "aido_timeline_day_vision";
+const LEGACY_VISION_STORAGE_KEY = "aido_timeline_day_vision";
+const VISION_STORAGE_KEY_PREFIX = "aido_timeline_day_vision_v2";
 
 function parseMinutes(time: string): number {
   if (!time) return -1;
@@ -526,16 +529,24 @@ function SortableEventCard({
 
 export default function Timeline() {
   const { t } = useTranslation();
+  const { userId } = useAuth();
+  const { activeWorkspace } = useWorkspace();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: timeline, isLoading: isLoadingTimeline } = useGetTimeline();
   const { data: profile, isLoading: isLoadingProfile } = useGetProfile();
   const generateTimeline = useGenerateTimeline();
+  const visionStorageScope = activeWorkspace?.profileId
+    ? `workspace:${activeWorkspace.profileId}`
+    : profile?.id
+      ? `profile:${profile.id}`
+      : userId
+        ? `user:${userId}`
+        : null;
+  const visionStorageKey = visionStorageScope ? `${VISION_STORAGE_KEY_PREFIX}:${visionStorageScope}` : null;
 
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-  const [dayVision, setDayVision] = useState<string>(
-    () => localStorage.getItem(VISION_STORAGE_KEY) ?? ""
-  );
+  const [dayVision, setDayVision] = useState<string>("");
   const [localEvents, setLocalEvents] = useState<TimelineEvent[]>([]);
   const [isDirty, setIsDirty] = useState(false);
 
@@ -551,6 +562,26 @@ export default function Timeline() {
       setIsDirty(false);
     }
   }, [timeline]);
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem(LEGACY_VISION_STORAGE_KEY);
+    } catch {
+      // best-effort cleanup only
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!visionStorageKey) {
+      setDayVision("");
+      return;
+    }
+    try {
+      setDayVision(localStorage.getItem(visionStorageKey) ?? "");
+    } catch {
+      setDayVision("");
+    }
+  }, [visionStorageKey]);
 
   const saveTimeline = useMutation({
     mutationFn: (events: TimelineEvent[]) => {
@@ -652,6 +683,20 @@ export default function Timeline() {
 
   function updateStatus(id: string, status: TimelineStatus) {
     updateLocal(localEvents.map(event => event.id === id ? { ...event, status } : event));
+  }
+
+  function updateDayVision(value: string) {
+    setDayVision(value);
+    if (!visionStorageKey) return;
+    try {
+      if (value.trim()) {
+        localStorage.setItem(visionStorageKey, value);
+      } else {
+        localStorage.removeItem(visionStorageKey);
+      }
+    } catch {
+      // ignore storage quota/security errors
+    }
   }
 
   function openAdd() {
@@ -824,7 +869,7 @@ export default function Timeline() {
             <Textarea
               placeholder={t("timeline.vision_placeholder")}
               value={dayVision}
-              onChange={e => { setDayVision(e.target.value); localStorage.setItem(VISION_STORAGE_KEY, e.target.value); }}
+              onChange={e => updateDayVision(e.target.value)}
               onKeyDown={e => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();

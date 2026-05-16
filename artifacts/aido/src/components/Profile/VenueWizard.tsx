@@ -1,5 +1,7 @@
-import { ChangeEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import type { ChangeEvent, KeyboardEvent } from "react";
 import { Mail, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import { authFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +29,7 @@ export type VenueDiscoveryData = {
   shortlist: VenueShortlistItem[];
   screenshots: VenueScreenshot[];
   emailDraftType: string;
+  emailPrompt: string;
   emailDraft: string;
 };
 
@@ -55,6 +58,7 @@ export const emptyVenueDiscoveryData: VenueDiscoveryData = {
   shortlist: [],
   screenshots: [],
   emailDraftType: "",
+  emailPrompt: "",
   emailDraft: "",
 };
 
@@ -64,6 +68,7 @@ function createId() {
 
 export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: VenueWizardProps) {
   const [uploadError, setUploadError] = useState("");
+  const [generatingPromptDraft, setGeneratingPromptDraft] = useState(false);
 
   const styleText = value.style.length ? value.style.join(", ").toLowerCase() : "warm and elegant";
 
@@ -77,6 +82,35 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
   }), [coupleNames, styleText, value.budgetRange, value.guestCount, value.indoorOutdoor, value.location]);
 
   const update = (patch: Partial<VenueDiscoveryData>) => onChange({ ...value, ...patch });
+
+  const bulletLines = (text: string) => text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*(?:[-*]|\u2022|\d+[.)])\s*/, "").trim())
+    .filter(Boolean);
+
+  const formatBulletNotes = (text: string) => {
+    const lines = bulletLines(text);
+    return lines.length ? lines.map((line) => `- ${line}`).join("\n") : "";
+  };
+
+  const formatNotesForEmail = (text: string) => {
+    const lines = bulletLines(text);
+    return lines.length ? `\n\nA few notes from us:\n${lines.map((line) => `- ${line}`).join("\n")}` : "";
+  };
+
+  const insertBulletLine = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const target = event.currentTarget;
+    const start = target.selectionStart;
+    const end = target.selectionEnd;
+    const next = `${value.notes.slice(0, start)}\n- ${value.notes.slice(end)}`;
+    update({ notes: next });
+    requestAnimationFrame(() => {
+      target.selectionStart = start + 3;
+      target.selectionEnd = start + 3;
+    });
+  };
 
   const addShortlistItem = () => {
     update({
@@ -136,7 +170,7 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
   const generateDraft = (type: keyof typeof DRAFT_LABELS) => {
     const opener = `Hi,\n\nMy name is ${draftBase.names}. We are looking for a wedding venue in ${draftBase.location} for about ${draftBase.guestCount} guests.`;
     const preference = `We are hoping for a ${draftBase.style} feel, prefer ${draftBase.preference} options, and are working with a venue budget around ${draftBase.budgetRange}.`;
-    const notes = value.notes ? `\n\nA few notes from us: ${value.notes}` : "";
+    const notes = formatNotesForEmail(value.notes);
     const closers: Record<keyof typeof DRAFT_LABELS, string> = {
       inquiry: "Could you please send your wedding package information and next steps?",
       tour: "Do you have any available tour times over the next couple of weeks?",
@@ -148,6 +182,61 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
       emailDraftType: DRAFT_LABELS[type],
       emailDraft: `${opener}\n\n${preference}${notes}\n\n${closers[type]}\n\nThank you,\n${draftBase.names}`,
     });
+  };
+
+  const fallbackPromptDraft = (prompt: string) => {
+    const notes = formatNotesForEmail(value.notes);
+    return `Hi,\n\nMy name is ${draftBase.names}. We are looking for a wedding venue in ${draftBase.location} for about ${draftBase.guestCount} guests.\n\nCould you please help us with the following request: ${prompt}\n\nFor context, we are hoping for a ${draftBase.style} feel, prefer ${draftBase.preference} options, and are working with a venue budget around ${draftBase.budgetRange}.${notes}\n\nCould you please let us know the best next step?\n\nThank you,\n${draftBase.names}`;
+  };
+
+  const generatePromptDraft = async () => {
+    const prompt = (value.emailPrompt ?? "").trim();
+    if (!prompt || generatingPromptDraft) return;
+
+    setGeneratingPromptDraft(true);
+    const context = [
+      `User prompt: ${prompt}`,
+      `Couple / names: ${draftBase.names}`,
+      `Guest count: ${draftBase.guestCount}`,
+      `Location: ${draftBase.location}`,
+      `Budget range: ${draftBase.budgetRange}`,
+      `Style: ${draftBase.style}`,
+      `Indoor/outdoor preference: ${draftBase.preference}`,
+      value.notes ? `Notes:\n${formatBulletNotes(value.notes)}` : "",
+    ].filter(Boolean).join("\n");
+
+    try {
+      const response = await authFetch("/api/vendor/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vendorType: "wedding venue",
+          emailType: "custom venue outreach email based on the user's prompt",
+          vendorName: "",
+          weddingDate: "TBD",
+          venue: "Venue search in progress",
+          guestCount: draftBase.guestCount,
+          additionalNotes: context,
+        }),
+      });
+
+      if (!response.ok) throw new Error("AI draft failed");
+      const data = await response.json() as { subject?: string; body?: string };
+      const subject = data.subject?.trim();
+      const body = data.body?.trim();
+
+      update({
+        emailDraftType: "Custom AI email",
+        emailDraft: `${subject ? `Subject: ${subject}\n\n` : ""}${body || fallbackPromptDraft(prompt)}`,
+      });
+    } catch {
+      update({
+        emailDraftType: "Custom prompt email",
+        emailDraft: fallbackPromptDraft(prompt),
+      });
+    } finally {
+      setGeneratingPromptDraft(false);
+    }
   };
 
   return (
@@ -224,7 +313,12 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
         <Textarea
           value={value.notes}
           onChange={(event) => update({ notes: event.target.value })}
-          placeholder="Must-haves, questions, accessibility needs, parking, catering rules..."
+          onFocus={() => {
+            if (!value.notes.trim()) update({ notes: "- " });
+          }}
+          onBlur={() => update({ notes: formatBulletNotes(value.notes) })}
+          onKeyDown={insertBulletLine}
+          placeholder={"- Must-haves\n- Questions\n- Accessibility needs\n- Parking or catering rules"}
           rows={4}
         />
       </label>
@@ -304,6 +398,29 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
             Outreach email drafts
           </p>
           <p className="text-xs text-muted-foreground">Generate a starter message, then edit it before sending.</p>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium" htmlFor="venue-email-prompt">
+            Custom AI prompt
+          </label>
+          <Textarea
+            id="venue-email-prompt"
+            value={value.emailPrompt ?? ""}
+            onChange={(event) => update({ emailPrompt: event.target.value })}
+            placeholder="Example: Write a friendly email asking if they allow outside catering and if there are Saturday dates available next fall."
+            rows={3}
+          />
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={generatePromptDraft}
+            disabled={generatingPromptDraft || !(value.emailPrompt ?? "").trim()}
+            className="gap-2"
+          >
+            <Sparkles className="h-4 w-4" />
+            {generatingPromptDraft ? "Generating..." : "Generate from prompt"}
+          </Button>
         </div>
         <div className="flex flex-wrap gap-2">
           {Object.entries(DRAFT_LABELS).map(([type, label]) => (

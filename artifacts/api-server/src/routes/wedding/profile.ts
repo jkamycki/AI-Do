@@ -18,17 +18,28 @@ router.get("/profile", requireAuth, async (req, res) => {
     }
 
     const callerRole = await resolveCallerRole(req);
+    if (callerRole === "vendor") {
+      return res.json({
+        id: p.id,
+        partner1Name: p.partner1Name,
+        partner2Name: p.partner2Name,
+        weddingDate: p.weddingDate,
+        ceremonyTime: p.ceremonyTime,
+        receptionTime: p.receptionTime,
+        venue: p.venue,
+        location: p.location,
+        venueCity: p.venueCity,
+        venueState: p.venueState,
+        venueZip: p.venueZip,
+        venueCountry: p.venueCountry,
+        updatedAt: p.updatedAt.toISOString(),
+      });
+    }
     const profileData: Record<string, unknown> = {
       ...p,
       totalBudget: parseFloat(p.totalBudget as string),
       updatedAt: p.updatedAt.toISOString(),
     };
-    if (callerRole === "vendor") {
-      delete profileData["guestCollectionToken"];
-      delete profileData["vendorBccEmail"];
-      delete profileData["totalBudget"];
-      delete profileData["guestCount"];
-    }
     res.json(profileData);
   } catch (err) {
     req.log.error(err, "Failed to get profile");

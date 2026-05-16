@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, guests, weddingProfiles } from "@workspace/db";
 import { eq, and, or, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { resolveProfile } from "../lib/workspaceAccess";
+import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
 import crypto from "crypto";
 
 const router = Router();
@@ -18,6 +18,8 @@ function escapeHtml(value: string): string {
 
 router.post("/guest-collect/generate", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
     const profile = await resolveProfile(req);
     if (!profile) {
       return res.status(400).json({ error: "No wedding profile found." });
@@ -43,6 +45,8 @@ router.post("/guest-collect/generate", requireAuth, async (req, res) => {
 
 router.post("/guest-collect/regenerate", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
     const profile = await resolveProfile(req);
     if (!profile) {
       return res.status(400).json({ error: "No wedding profile found." });

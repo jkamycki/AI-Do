@@ -6,7 +6,7 @@ import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingPart
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteHeroImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
 import { and, eq, ilike, desc, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { resolveProfile } from "../lib/workspaceAccess";
+import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
 
 const scryptAsync = promisify(scrypt);
 
@@ -201,6 +201,8 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
 
 router.post("/website/create", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Wedding profile not found. Complete onboarding first." });
 
@@ -235,6 +237,8 @@ router.post("/website/create", requireAuth, async (req, res) => {
 
 router.get("/website/me", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
 
@@ -262,6 +266,8 @@ router.get("/website/me", requireAuth, async (req, res) => {
 
 router.put("/website/update", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
 
@@ -311,7 +317,7 @@ router.put("/website/update", requireAuth, async (req, res) => {
     const [updated] = await db
       .update(weddingWebsites)
       .set(updates)
-      .where(eq(weddingWebsites.id, existing.id))
+      .where(and(eq(weddingWebsites.id, existing.id), eq(weddingWebsites.profileId, profile.id)))
       .returning();
     res.json(serialize(updated));
   } catch (err) {
@@ -324,6 +330,8 @@ router.put("/website/update", requireAuth, async (req, res) => {
 
 router.put("/website/publish", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
 
@@ -343,7 +351,7 @@ router.put("/website/publish", requireAuth, async (req, res) => {
         publishedAt: desired ? (existing.publishedAt ?? new Date()) : existing.publishedAt,
         lastUpdated: new Date(),
       })
-      .where(eq(weddingWebsites.id, existing.id))
+      .where(and(eq(weddingWebsites.id, existing.id), eq(weddingWebsites.profileId, profile.id)))
       .returning();
     res.json(serialize(updated));
   } catch (err) {
@@ -356,6 +364,8 @@ router.put("/website/publish", requireAuth, async (req, res) => {
 
 router.put("/website/slug", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
 
@@ -388,7 +398,7 @@ router.put("/website/slug", requireAuth, async (req, res) => {
     const [updated] = await db
       .update(weddingWebsites)
       .set({ slug: raw, lastUpdated: new Date() })
-      .where(eq(weddingWebsites.id, existing.id))
+      .where(and(eq(weddingWebsites.id, existing.id), eq(weddingWebsites.profileId, profile.id)))
       .returning();
     res.json(serialize(updated));
   } catch (err) {
@@ -627,6 +637,8 @@ router.get("/website/public/:slug/guests/:guestId", async (req, res) => {
 // published. Searches the owner's guest list directly; no published check.
 router.get("/website/preview/guests/search", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
     const q = String(req.query.q ?? "").trim();
@@ -654,6 +666,8 @@ router.get("/website/preview/guests/search", requireAuth, async (req, res) => {
 // of a single guest, for the preview RSVP flow.
 router.get("/website/preview/guests/:guestId", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
     const guestId = parseInt(String(req.params.guestId), 10);
@@ -871,7 +885,7 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
       updateData.bookedHotelBlockId = null;
     }
 
-    await db.update(guests).set(updateData).where(eq(guests.id, guest.id));
+    await db.update(guests).set(updateData).where(and(eq(guests.id, guest.id), eq(guests.profileId, r.site.profileId)));
 
     res.json({ success: true, status: attendance });
   } catch (err) {
@@ -931,6 +945,8 @@ router.post("/website/rsvp/:slug", async (req, res) => {
 
 router.get("/website/rsvps", requireAuth, async (req, res) => {
   try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
 

@@ -9,7 +9,7 @@ import { eq, desc, and, asc, ilike, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { isAllowedOrigin } from "../lib/allowedOrigins";
 import { aiLimiter, incrementDailyAria } from "../middlewares/rateLimiter";
-import { resolveProfile, resolveScopeUserId, resolveWorkspaceRole, hasMinRole, logActivity } from "../lib/workspaceAccess";
+import { resolveProfile, resolveScopeUserId, resolveWorkspaceRole, resolveCallerRole, hasMinRole, logActivity } from "../lib/workspaceAccess";
 import { getAuth } from "@clerk/express";
 import type { Request } from "express";
 
@@ -2745,6 +2745,8 @@ const AI_CONFIGURED_FOR_PROD =
  * Returns a sanitized status without exposing model, base URL, or provider errors.
  */
 router.get("/aria/test", requireAuth, async (req, res) => {
+  const callerRole = await resolveCallerRole(req);
+  if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
   const configured = !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY);
   if (!configured) {
     return res.json({
@@ -2776,6 +2778,8 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
   try {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
 
     req.log.info({ model: getModel(), userId }, "aria/chat request received");
 
