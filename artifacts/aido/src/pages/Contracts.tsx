@@ -50,7 +50,7 @@ interface KeyTerm {
 }
 
 interface ContractAnalysis {
-  overallRiskLevel: "low" | "medium" | "high";
+  overallRiskLevel: "low" | "medium" | "high" | null;
   vendorType: string;
   summary: string;
   redFlags: RedFlag[];
@@ -69,7 +69,7 @@ interface Contract {
   vendorName?: string | null;
   fileName: string;
   fileSize: number | null;
-  analysis: ContractAnalysis | null;
+  analysis: unknown;
   createdAt: string;
 }
 
@@ -90,6 +90,58 @@ function formatSize(bytes: number | null) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function getObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(asString).filter(Boolean) : [];
+}
+
+function normalizeRiskLevel(value: unknown): ContractAnalysis["overallRiskLevel"] {
+  return value === "low" || value === "medium" || value === "high" ? value : null;
+}
+
+function normalizeAnalysis(value: unknown): ContractAnalysis | null {
+  if (!value) return null;
+  const raw = getObject(value);
+  const redFlags = Array.isArray(raw.redFlags)
+    ? raw.redFlags.map((item) => {
+        const flag = getObject(item);
+        return {
+          severity: normalizeRiskLevel(flag.severity) ?? "low",
+          title: asString(flag.title) || "Contract concern",
+          detail: asString(flag.detail),
+          recommendation: asString(flag.recommendation),
+        };
+      }).filter((flag) => flag.title || flag.detail || flag.recommendation)
+    : [];
+  const keyTerms = Array.isArray(raw.keyTerms)
+    ? raw.keyTerms.map((item) => {
+        const term = getObject(item);
+        return { label: asString(term.label), value: asString(term.value) };
+      }).filter((term) => term.label || term.value)
+    : [];
+  const errorText = asString(raw.error);
+  return {
+    overallRiskLevel: normalizeRiskLevel(raw.overallRiskLevel),
+    vendorType: asString(raw.vendorType),
+    summary: asString(raw.summary) || errorText || "This saved analysis is incomplete. Try uploading the contract again to generate a fresh review.",
+    redFlags,
+    keyTerms,
+    cancellationPolicy: asString(raw.cancellationPolicy),
+    paymentTerms: asString(raw.paymentTerms),
+    liabilityNotes: asString(raw.liabilityNotes),
+    positives: asStringArray(raw.positives),
+    missingClauses: asStringArray(raw.missingClauses),
+    negotiationTips: asStringArray(raw.negotiationTips),
+  };
 }
 
 function NegotiationPanel({ contractId, redFlagCount, vendorId }: { contractId: number; redFlagCount: number; vendorId?: number | null }) {
@@ -209,9 +261,15 @@ function AnalysisPanel({ analysis, contractId, vendorId }: { analysis: ContractA
             {analysis.vendorType}
           </span>
         )}
-        <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${riskColor(analysis.overallRiskLevel)}`}>
-          {t("contracts.risk_level", { level: analysis.overallRiskLevel.toUpperCase() })}
-        </span>
+        {analysis.overallRiskLevel ? (
+          <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${riskColor(analysis.overallRiskLevel)}`}>
+            {t("contracts.risk_level", { level: analysis.overallRiskLevel.toUpperCase() })}
+          </span>
+        ) : (
+          <span className="text-xs font-semibold px-3 py-1 rounded-full border bg-muted text-muted-foreground border-border">
+            {t("contracts.analysis_incomplete", { defaultValue: "Analysis incomplete" })}
+          </span>
+        )}
       </div>
 
       {/* Red Flags */}
@@ -348,7 +406,7 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
   const [expanded, setExpanded] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState(contract.fileName);
-  const analysis = contract.analysis as ContractAnalysis | null;
+  const analysis = normalizeAnalysis(contract.analysis);
   const riskLevel = analysis?.overallRiskLevel ?? null;
 
   function submitRename() {
@@ -557,8 +615,9 @@ export default function Contracts() {
     if (file) stageFile(file);
   }
 
-  const highRiskCount = contracts.filter(c => (c.analysis as ContractAnalysis | null)?.overallRiskLevel === "high").length;
-  const totalFlags = contracts.reduce((sum, c) => sum + ((c.analysis as ContractAnalysis | null)?.redFlags?.length ?? 0), 0);
+  const normalizedAnalyses = contracts.map(c => normalizeAnalysis(c.analysis));
+  const highRiskCount = normalizedAnalyses.filter(a => a?.overallRiskLevel === "high").length;
+  const totalFlags = normalizedAnalyses.reduce((sum, a) => sum + (a?.redFlags.length ?? 0), 0);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
