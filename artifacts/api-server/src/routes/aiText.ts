@@ -12,6 +12,19 @@ function officialVenueSearchUrl(query: string) {
   return `https://www.google.com/search?q=${encodeURIComponent(`${query} official wedding venue website`)}`;
 }
 
+function extractResponseText(response: unknown) {
+  const maybeResponse = response as {
+    output_text?: string;
+    output?: Array<{ content?: Array<{ text?: string; type?: string }> }>;
+  };
+  if (typeof maybeResponse.output_text === "string") return maybeResponse.output_text.trim();
+  return maybeResponse.output
+    ?.flatMap((item) => item.content ?? [])
+    .map((content) => content.text ?? "")
+    .join("")
+    .trim() ?? "";
+}
+
 function parsePreferredLocations(value: unknown) {
   if (typeof value !== "string") return [];
   return value
@@ -28,6 +41,34 @@ function parsePreferredLocations(value: unknown) {
     })
     .map((location) => location.trim())
     .filter(Boolean);
+}
+
+async function generateVenueOptionsWithWebSearch(prompt: string) {
+  const responses = (openai as unknown as {
+    responses?: {
+      create: (params: Record<string, unknown>) => Promise<unknown>;
+    };
+  }).responses;
+  if (!responses?.create) return "";
+
+  const params = {
+    model: process.env.AI_VENUE_SEARCH_MODEL || "gpt-4o-mini",
+    input: prompt,
+    max_output_tokens: 1400,
+  };
+  let response: unknown;
+  try {
+    response = await responses.create({
+      ...params,
+      tools: [{ type: "web_search" }],
+    });
+  } catch {
+    response = await responses.create({
+      ...params,
+      tools: [{ type: "web_search_preview" }],
+    });
+  }
+  return extractResponseText(response);
 }
 
 function buildVenueOptionsFallback(input: {
@@ -81,6 +122,21 @@ function buildVenueOptionsFallback(input: {
     "",
     "Score each venue from 1-5 for budget fit, guest fit, style fit, logistics, and rule flexibility. Keep the highest total scores for tours.",
   ].join("\n");
+}
+
+function hasVerifiedVenueLinks(text: string) {
+  const markdownLinks = [...text.matchAll(/\[[^\]]+\]\((https?:\/\/[^)\s]+)\)/g)];
+  return markdownLinks.some((match) => {
+    const url = match[1].toLowerCase();
+    return !url.includes("google.com/search")
+      && !url.includes("bing.com/search")
+      && !url.includes("yahoo.com/search")
+      && !url.includes("maps.google")
+      && !url.includes("facebook.com")
+      && !url.includes("instagram.com")
+      && !url.includes("theknot.com")
+      && !url.includes("weddingwire.com");
+  });
 }
 
 // Small AI-rewrite endpoint used by the inline TextStyleToolbar's
@@ -164,57 +220,48 @@ router.post("/ai/venue-options", requireAuth, async (req, res) => {
       coupleNames?: string;
     };
 
+    const preferredLocations = parsePreferredLocations(location);
     const detailLines = [
       `Couple / event: ${coupleNames?.trim() || "Wedding couple"}`,
       `Guest count: ${guestCount?.trim() || "Not provided"}`,
       `Indoor / outdoor preference: ${indoorOutdoor?.trim() || "Flexible / not provided"}`,
       `Budget range: ${budgetRange?.trim() || "Not provided"}`,
-      `Preferred location(s): ${location?.trim() || "Not provided"}`,
+      `Preferred location(s): ${preferredLocations.length ? preferredLocations.join(" | ") : location?.trim() || "Not provided"}`,
       `Style preferences: ${Array.isArray(style) && style.length ? style.join(", ") : "Not provided"}`,
       notes?.trim() ? `Notes:\n${notes.trim()}` : "",
     ].filter(Boolean).join("\n");
 
-    const model = getModel();
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: [
-        {
-          role: "system",
-          content: [
-            "You are an expert wedding venue strategist inside A.IDO.",
-            "Use the couple's venue discovery details to suggest named wedding venues that may fit their request.",
-            "Provide 5-8 venue options. When the preferred location or locations are specific enough, make them real named venues in or near those areas.",
-            "If the user provided multiple cities or states, spread the suggestions across those locations with a few venues for each rather than concentrating on only one place.",
-            "Every suggested venue must start with the venue name as a markdown hyperlink, like - [Venue Name](https://official-venue-site.example) - why it may fit.",
-            "Choose venues whose official homepages are likely well-known. If you cannot provide a likely website URL for a venue, choose a different venue.",
-            "Do not use generic directory links, social media links, map links, or made-up URLs.",
-            "Never claim exact addresses, prices, availability, package details, or capacity unless the user provided them.",
-            "If the locations are too vague for real named venues, still provide practical venue option types tailored to the details, then mention what location detail would make the names more specific.",
-            "Return concise markdown only.",
-            "Do not return unlinked venue bullets.",
-            "Include: Suggested venues, questions to ask these venues, possible red flags, and a simple shortlist scoring method.",
-            "Do not include generic search terms or tell the user to search for venue types. The main value is named venue suggestions.",
-            "Keep it helpful, specific, and under 600 words.",
-          ].join(" "),
-        },
-        {
-          role: "user",
-          content: `Generate venue suggestions, venue options, and shortlist guidance from these details:\n\n${detailLines}`,
-        },
-      ],
-      max_completion_tokens: 950,
-      ...(supportsCustomTemperature(model) ? { temperature: 0.75 } : {}),
-    });
+    const systemPrompt = [
+      "You are an expert wedding venue researcher inside A.IDO.",
+      "Use live web search to find real wedding venues near the user's preferred city/state locations.",
+      "Group results by location using a markdown heading for each city/state, for example: ### Garfield, NJ.",
+      "For each location, provide 2-3 real named wedding venues near that city/state. If there is only one location, provide 5-8 real named venues near it.",
+      "Each venue bullet must begin with the venue name as a markdown hyperlink to the venue's official website, like - [Venue Name](https://official-venue-site.example) - why it may fit.",
+      "Do not title bullets with generic venue types. The linked text must be the actual venue/business name.",
+      "Do not use directory links, social media links, map links, search links, or made-up URLs.",
+      "If you cannot verify an official website for a real venue, omit that venue.",
+      "Balance results across all provided cities/states instead of concentrating on one area.",
+      "Never claim exact pricing, availability, package details, or capacity unless the source clearly supports it or the user provided it.",
+      "After the grouped venues, include short sections for Questions to ask and Red flags.",
+      "Return concise markdown only.",
+    ].join(" ");
+    const userPrompt = `Generate real wedding venue suggestions from these details:\n\n${detailLines}`;
 
-    const text = completion.choices[0]?.message?.content?.trim() ?? "";
-    if (!text) {
-      res.json({ text: buildVenueOptionsFallback({ guestCount, indoorOutdoor, budgetRange, location, style, notes }) });
+    let text = "";
+    try {
+      text = await generateVenueOptionsWithWebSearch(`${systemPrompt}\n\n${userPrompt}`);
+    } catch (err) {
+      req.log.warn(err, "AI venue web search failed");
+    }
+
+    if (!text || !hasVerifiedVenueLinks(text)) {
+      res.status(502).json({ error: "Could not verify real venues with official website links for those locations. Please try again." });
       return;
     }
     res.json({ text });
   } catch (err) {
     req.log.error(err, "AI venue options failed");
-    res.json({ text: buildVenueOptionsFallback(req.body as Record<string, unknown>) });
+    res.status(500).json({ error: "Failed to verify real venue options. Please try again." });
   }
 });
 

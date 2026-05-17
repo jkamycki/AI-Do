@@ -225,6 +225,7 @@ interface AiDigitalInviteOpts {
   invitationMessage: string | null;
   // Couple-set RSVP deadline, already formatted for display ("October 15, 2026").
   rsvpByDateStr?: string | null;
+  hotelRsvpText?: string | null;
   rsvpUrl: string;
   photoImgSrc: string | null;
   photoObjectPos: string;
@@ -369,6 +370,15 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 28px 0;text-align:center;">
             <p style="margin:0;font-family:${SERIF};font-size:${Math.round(15*sc)}px;font-style:italic;color:${TEXT_COL};line-height:1.7;">&ldquo;${escapeHtml(opts.invitationMessage)}&rdquo;</p>
+          </td>
+        </tr>` : ""}
+
+        ${opts.hotelRsvpText ? `
+        <tr>
+          <td bgcolor="${BG}" style="background:${BG};padding:12px 28px 0;text-align:center;">
+            <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;color:${MUTED};line-height:1.6;">
+              ${escapeHtml(opts.hotelRsvpText)}
+            </p>
           </td>
         </tr>` : ""}
 
@@ -838,6 +848,22 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
             });
           })()
         : null;
+      const rsvpAskHotel = !!customization?.customColors?.rsvpAskHotel;
+      const preferredHotelBlockId = customization?.customColors?.rsvpHotelBlockId ?? null;
+      const emailHotelRows = rsvpAskHotel
+        ? await db
+            .select({ id: hotelBlocks.id, hotelName: hotelBlocks.hotelName })
+            .from(hotelBlocks)
+            .where(eq(hotelBlocks.profileId, profile.id))
+        : [];
+      const preferredEmailHotel = preferredHotelBlockId
+        ? emailHotelRows.find((hotel) => hotel.id === preferredHotelBlockId)
+        : null;
+      const hotelRsvpText = emailHotelRows.length
+        ? preferredEmailHotel
+          ? `The RSVP form will also ask if you plan to use the ${preferredEmailHotel.hotelName || "selected"} hotel block.`
+          : "The RSVP form will also ask if you need a hotel room through the couple's hotel blocks."
+        : null;
 
       const monthDayYear = profile.weddingDate
         ? (() => {
@@ -931,6 +957,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           receptionTimeStr,
           invitationMessage: profile.invitationMessage,
           rsvpByDateStr,
+          hotelRsvpText,
           rsvpUrl,
           photoImgSrc,
           photoObjectPos: digPhotoObjectPos,
@@ -949,6 +976,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           receptionTimeStr,
           invitationMessage: digOverrides["dig:message"]?.text || profile.invitationMessage || null,
           rsvpByDateStr,
+          hotelRsvpText,
           rsvpUrl,
           photoImgSrc,
           photoObjectPos: digPhotoObjectPos,
@@ -1105,6 +1133,22 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
           });
         })()
       : null;
+    const rsvpAskHotel = !!customization?.customColors?.rsvpAskHotel;
+    const preferredHotelBlockId = customization?.customColors?.rsvpHotelBlockId ?? null;
+    const emailHotelRows = rsvpAskHotel
+      ? await db
+          .select({ id: hotelBlocks.id, hotelName: hotelBlocks.hotelName })
+          .from(hotelBlocks)
+          .where(eq(hotelBlocks.profileId, profile.id))
+      : [];
+    const preferredEmailHotel = preferredHotelBlockId
+      ? emailHotelRows.find((hotel) => hotel.id === preferredHotelBlockId)
+      : null;
+    const hotelRsvpText = emailHotelRows.length
+      ? preferredEmailHotel
+        ? `The RSVP form will also ask if you plan to use the ${preferredEmailHotel.hotelName || "selected"} hotel block.`
+        : "The RSVP form will also ask if you need a hotel room through the couple's hotel blocks."
+      : null;
 
     const photoPublicUrl: string | null = (() => {
       if (!digitalInvitationPhotoUrl || digitalInvitationPhotoUrl.startsWith("blob:")) return null;
@@ -1134,6 +1178,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         receptionTimeStr,
         invitationMessage: profile.invitationMessage,
         rsvpByDateStr,
+        hotelRsvpText,
         rsvpUrl,
         photoImgSrc,
         photoObjectPos: digPhotoObjectPos,
@@ -1152,6 +1197,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         receptionTimeStr,
         invitationMessage: digOverrides["dig:message"]?.text || profile.invitationMessage || null,
         rsvpByDateStr,
+        hotelRsvpText,
         rsvpUrl,
         photoImgSrc,
         photoObjectPos: digPhotoObjectPos,
@@ -1387,8 +1433,11 @@ router.get("/rsvp/:token", async (req, res) => {
           .from(hotelBlocks)
           .where(eq(hotelBlocks.profileId, profile.id))
       : [];
-    const sortedHotelRows = preferredHotelBlockId
-      ? [...hotelRows].sort((a, b) => (a.id === preferredHotelBlockId ? -1 : b.id === preferredHotelBlockId ? 1 : 0))
+    const preferredHotelExists = preferredHotelBlockId
+      ? hotelRows.some((hotel) => hotel.id === preferredHotelBlockId)
+      : false;
+    const sortedHotelRows = preferredHotelBlockId && preferredHotelExists
+      ? hotelRows.filter((hotel) => hotel.id === preferredHotelBlockId)
       : hotelRows;
     const rsvpAskHotel = rsvpAskHotelSetting && sortedHotelRows.length > 0;
 

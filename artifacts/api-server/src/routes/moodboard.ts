@@ -25,6 +25,44 @@ type MoodBoardImage = {
 
 type ColorSwatch = { hex: string; name: string };
 
+async function analyzeMoodBoardImage(contentType: string, base64: string) {
+  const messages = [{
+    role: "user" as const,
+    content: [
+      {
+        type: "image_url" as const,
+        image_url: { url: `data:${contentType};base64,${base64}`, detail: "low" as const },
+      },
+      {
+        type: "text" as const,
+        text: `Analyze this wedding inspiration image and return a JSON object with exactly these fields:
+- styleKeywords: array of 3-6 style words (e.g. "romantic", "rustic", "modern", "glam", "boho", "minimalist", "vintage", "garden", "coastal", "industrial", "ethereal", "whimsical")
+- dominantColors: array of 4-6 hex color codes (e.g. "#f5e6d3") extracted from the image
+- decorThemes: array of 2-4 decor theme strings (e.g. "candlelit", "floral arches", "greenery walls", "geometric shapes")
+- floralStyle: single string describing florals, or null if no florals visible
+- venueVibe: single string describing the venue/space vibe, or null if unclear
+
+Return ONLY valid JSON, no markdown or explanation.`,
+      },
+    ],
+  }];
+
+  const request = {
+    model: getVisionModel(),
+    messages,
+    max_completion_tokens: 400,
+  };
+
+  try {
+    return await openai.chat.completions.create({
+      ...request,
+      response_format: { type: "json_object" },
+    });
+  } catch {
+    return openai.chat.completions.create(request);
+  }
+}
+
 async function resolveMoodBoardScope(req: Parameters<typeof resolveProfile>[0]) {
   const callerRole = await resolveCallerRole(req);
   if (!hasMinRole(callerRole, "planner")) return null;
@@ -136,31 +174,7 @@ router.post("/mood-board/analyze-image", requireAuth, async (req, res) => {
     const [metadata] = await file.getMetadata();
     const contentType = (metadata.contentType as string) || "image/jpeg";
 
-    const response = await openai.chat.completions.create({
-      model: getVisionModel(),
-      messages: [{
-        role: "user",
-        content: [
-          {
-            type: "image_url",
-            image_url: { url: `data:${contentType};base64,${base64}`, detail: "low" },
-          },
-          {
-            type: "text",
-            text: `Analyze this wedding inspiration image and return a JSON object with exactly these fields:
-- styleKeywords: array of 3-6 style words (e.g. "romantic", "rustic", "modern", "glam", "boho", "minimalist", "vintage", "garden", "coastal", "industrial", "ethereal", "whimsical")
-- dominantColors: array of 4-6 hex color codes (e.g. "#f5e6d3") extracted from the image
-- decorThemes: array of 2-4 decor theme strings (e.g. "candlelit", "floral arches", "greenery walls", "geometric shapes")
-- floralStyle: single string describing florals, or null if no florals visible
-- venueVibe: single string describing the venue/space vibe, or null if unclear
-
-Return ONLY valid JSON, no markdown or explanation.`,
-          },
-        ],
-      }],
-      max_completion_tokens: 400,
-      response_format: { type: "json_object" },
-    });
+    const response = await analyzeMoodBoardImage(contentType, base64);
 
     const raw = response.choices[0]?.message?.content ?? "{}";
     let analysis: MoodBoardImage["analysis"];

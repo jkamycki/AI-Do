@@ -294,6 +294,8 @@ export default function MoodBoard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [analyzingPath, setAnalyzingPath] = useState<string | null>(null);
+  const [analyzingAll, setAnalyzingAll] = useState(false);
+  const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
   const [newTag, setNewTag] = useState("");
   const [savePending, setSavePending] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -517,6 +519,7 @@ export default function MoodBoard() {
 
   // ─── Analyze all unanalyzed ───────────────────────────────────────────────
   const analyzeAll = async () => {
+    if (analyzingAll) return;
     const needsAnalysis = board.images.filter((img) => {
       const hasKeywords = (img.analysis?.styleKeywords?.length ?? 0) > 0;
       const hasColors = (img.analysis?.dominantColors?.length ?? 0) > 0;
@@ -527,13 +530,29 @@ export default function MoodBoard() {
       await generateSummaryMutation.mutateAsync();
       return;
     }
-    let latestBoard: MoodBoardData = board;
-    for (const img of needsAnalysis) {
-      const analyzedBoard = await analyzeImage(img.objectPath, { generateSummary: false, sourceBoard: latestBoard });
-      if (analyzedBoard) latestBoard = analyzedBoard;
+    setAnalyzingAll(true);
+    setAnalyzeProgress({ done: 0, total: needsAnalysis.length });
+    let successCount = 0;
+    try {
+      let latestBoard: MoodBoardData = board;
+      for (const [index, img] of needsAnalysis.entries()) {
+        const analyzedBoard = await analyzeImage(img.objectPath, { generateSummary: false, sourceBoard: latestBoard });
+        if (analyzedBoard) {
+          latestBoard = analyzedBoard;
+          successCount += 1;
+        }
+        setAnalyzeProgress({ done: index + 1, total: needsAnalysis.length });
+      }
+      if (successCount > 0) {
+        await generateSummaryMutation.mutateAsync(latestBoard);
+        toast({ title: "Analysis complete", description: `${successCount} image${successCount === 1 ? "" : "s"} analyzed.` });
+      } else {
+        toast({ title: "Analysis failed", description: "Could not analyze any images. Please try again.", variant: "destructive" });
+      }
+    } finally {
+      setAnalyzeProgress(null);
+      setAnalyzingAll(false);
     }
-    await generateSummaryMutation.mutateAsync(latestBoard);
-    toast({ title: "Analysis complete" });
   };
 
   // ─── Generate AI summary ──────────────────────────────────────────────────
@@ -1118,11 +1137,11 @@ export default function MoodBoard() {
                 variant="ghost"
                 size="sm"
                 onClick={analyzeAll}
-                disabled={!!analyzingPath}
+                disabled={analyzingAll || !!analyzingPath}
                 className="text-xs"
               >
-                {analyzingPath
-                  ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> {t("moodboard.analyzing_all", { defaultValue: "Analyzing…" })}</>
+                {analyzingAll || analyzingPath
+                  ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> {analyzeProgress ? `Analyzing ${analyzeProgress.done}/${analyzeProgress.total}` : t("moodboard.analyzing_all", { defaultValue: "Analyzing..." })}</>
                   : <><RefreshCw className="h-3.5 w-3.5 mr-1" /> {t("moodboard.analyze_all", { defaultValue: "Analyze All" })}</>
                 }
               </Button>
