@@ -217,6 +217,7 @@ router.get("/collaborators/my-workspaces", requireAuth, async (req, res) => {
 router.post("/collaborators/invite", requireAuth, async (req, res) => {
   try {
     const { email, role, workspaceId: bodyWorkspaceId } = req.body as { email: string; role: string; workspaceId?: number };
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
     let profile: Awaited<ReturnType<typeof getProfileByUserId>> | null = null;
 
@@ -235,11 +236,18 @@ router.post("/collaborators/invite", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Create your wedding profile first before inviting collaborators." });
     }
 
-    if (!email || !role) {
+    if (!normalizedEmail || !role) {
       return res.status(400).json({ error: "Email and role are required." });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return res.status(400).json({ error: "Enter a valid email address." });
     }
     if (!["partner", "planner", "vendor"].includes(role)) {
       return res.status(400).json({ error: "Invalid role." });
+    }
+    const myEmail = await getUserPrimaryEmail(req.userId!);
+    if (myEmail && normalizedEmail === myEmail) {
+      return res.status(400).json({ error: "You cannot invite yourself to your own workspace." });
     }
 
     const existing = await db
@@ -248,7 +256,7 @@ router.post("/collaborators/invite", requireAuth, async (req, res) => {
       .where(
         and(
           eq(workspaceCollaborators.profileId, profile.id),
-          eq(workspaceCollaborators.inviteeEmail, email.toLowerCase()),
+          eq(workspaceCollaborators.inviteeEmail, normalizedEmail),
           or(
             eq(workspaceCollaborators.status, "pending"),
             eq(workspaceCollaborators.status, "active")
@@ -268,7 +276,7 @@ router.post("/collaborators/invite", requireAuth, async (req, res) => {
       .values({
         profileId: profile.id,
         inviterUserId: req.userId!,
-        inviteeEmail: email.toLowerCase(),
+        inviteeEmail: normalizedEmail,
         role,
         status: "pending",
         inviteToken: token,
@@ -278,9 +286,9 @@ router.post("/collaborators/invite", requireAuth, async (req, res) => {
     await logActivity(
       profile.id,
       req.userId!,
-      `Invited ${email} as ${role}`,
+      `Invited ${normalizedEmail} as ${role}`,
       "collaborator",
-      { email, role, collaboratorId: collab.id }
+      { email: normalizedEmail, role, collaboratorId: collab.id }
     );
 
     res.json({
@@ -363,8 +371,11 @@ router.post("/invite/:token/accept", requireAuth, async (req, res) => {
         inviteeUserId: req.userId!,
         acceptedAt: new Date(),
       })
-      .where(eq(workspaceCollaborators.id, collab.id))
+      .where(and(eq(workspaceCollaborators.id, collab.id), eq(workspaceCollaborators.status, "pending")))
       .returning();
+    if (!updated) {
+      return res.status(409).json({ error: "Invite was already accepted or is no longer pending." });
+    }
 
     // Fetch the profile info so the frontend can set activeWorkspace immediately
     const [profile] = await db
@@ -421,6 +432,9 @@ router.post("/invite/:token/decline", requireAuth, async (req, res) => {
       .limit(1);
 
     if (!collab) return res.status(404).json({ error: "Invite not found." });
+    if (collab.status !== "pending") {
+      return res.status(400).json({ error: `Invite is already ${collab.status}.` });
+    }
 
     const userEmail = await getUserPrimaryEmail(req.userId!);
     if (!userEmail || userEmail !== collab.inviteeEmail.toLowerCase()) {
@@ -528,13 +542,21 @@ router.post("/collaborators/:id/resend", requireAuth, async (req, res) => {
       .limit(1);
 
     if (!collab) return res.status(404).json({ error: "Collaborator not found." });
+    if (collab.status === "active") {
+      return res.status(400).json({ error: "This collaborator is already active." });
+    }
 
     const myRole = await resolveWorkspaceRole(req.userId!, collab.profileId);
     if (!hasMinRole(myRole, "partner")) return res.status(403).json({ error: "Only owners and partners can resend invites." });
 
     const [updated] = await db
       .update(workspaceCollaborators)
-      .set({ status: "pending", invitedAt: new Date() })
+      .set({
+        status: "pending",
+        invitedAt: new Date(),
+        inviteeUserId: null,
+        acceptedAt: null,
+      })
       .where(eq(workspaceCollaborators.id, id))
       .returning();
 

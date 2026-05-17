@@ -2203,6 +2203,7 @@ export default function InvitationCustomizationPage({
                         onPhotoPositionChange={setDigitalInvitationPhotoPosition}
                         hotelOptions={hotelBlocks}
                         selectedHotelBlockId={rsvpHotelBlockId}
+                        askHotel={rsvpAskHotel}
                         scale={flowScale}
                       />
                     </div>

@@ -473,15 +473,24 @@ router.get("/admin/dropoffs", requireAuth, requireAdmin, async (req, res) => {
     const days = parseInt(String(req.query.days ?? "0"), 10);
     const since = days > 0 ? new Date(Date.now() - days * 86400000) : null;
 
-    const [profileRows, clerkResponse] = await Promise.all([
+    const [profileRows, collaboratorRows, clerkResponse] = await Promise.all([
       db.select({ userId: weddingProfiles.userId }).from(weddingProfiles),
+      db.select({ userId: workspaceCollaborators.inviteeUserId })
+        .from(workspaceCollaborators)
+        .where(and(
+          eq(workspaceCollaborators.status, "active"),
+          sql`${workspaceCollaborators.inviteeUserId} IS NOT NULL`
+        )),
       clerkClient.users.getUserList({
         limit: 500,
         ...(since ? { createdAtAfter: since.getTime() } : {}),
       }),
     ]);
 
-    const onboardedIds = new Set(profileRows.map(r => r.userId).filter(Boolean));
+    const onboardedIds = new Set([
+      ...profileRows.map(r => r.userId).filter(Boolean),
+      ...collaboratorRows.map(r => r.userId).filter(Boolean),
+    ]);
     const dropoffUsers = clerkResponse.data.filter(u => !onboardedIds.has(u.id));
 
     const dropoffIds = dropoffUsers.map(u => u.id);

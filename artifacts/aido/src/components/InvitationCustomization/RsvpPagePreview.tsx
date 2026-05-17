@@ -40,6 +40,7 @@ interface RsvpPagePreviewProps {
     zip?: string | null;
   }>;
   selectedHotelBlockId?: string;
+  askHotel?: boolean;
 }
 
 function isLightColor(hex: string): boolean {
@@ -129,10 +130,11 @@ export function RsvpPagePreview({
   invitationMessage,
   hotelOptions = [],
   selectedHotelBlockId = "all",
+  askHotel = false,
 }: RsvpPagePreviewProps) {
   const [attendance, setAttendance] = useState<"attending" | "declined">("attending");
   const [mealChoice, setMealChoice] = useState("");
-  const [hotelNeeded, setHotelNeeded] = useState(hotelOptions.length > 0);
+  const [hotelNeeded, setHotelNeeded] = useState(askHotel && hotelOptions.length > 0);
   const [selectedHotelId, setSelectedHotelId] = useState(
     selectedHotelBlockId && selectedHotelBlockId !== "all"
       ? selectedHotelBlockId
@@ -173,10 +175,10 @@ export function RsvpPagePreview({
 
   const ceremonyTimeStr = formatTime(ceremonyTime);
   const receptionTimeStr = formatTime(receptionTime);
-  const preferredHotelId = selectedHotelBlockId && selectedHotelBlockId !== "all" ? selectedHotelBlockId : "";
+  const preferredHotelId = askHotel && selectedHotelBlockId && selectedHotelBlockId !== "all" ? selectedHotelBlockId : "";
   const sortedHotelOptions = preferredHotelId
     ? [...hotelOptions].sort((a, b) => (String(a.id) === preferredHotelId ? -1 : String(b.id) === preferredHotelId ? 1 : 0))
-    : hotelOptions;
+    : askHotel ? hotelOptions : [];
   const selectedHotel = sortedHotelOptions.find((hotel) => String(hotel.id) === selectedHotelId) ?? sortedHotelOptions[0] ?? null;
   const timesLine = [
     ceremonyTimeStr && `Ceremony ${ceremonyTimeStr}`,
@@ -186,6 +188,12 @@ export function RsvpPagePreview({
   const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
 
   useEffect(() => {
+    if (!askHotel || hotelOptions.length === 0) {
+      setHotelNeeded(false);
+      setSelectedHotelId("");
+      return;
+    }
+    setHotelNeeded(true);
     if (selectedHotelBlockId && selectedHotelBlockId !== "all") {
       setSelectedHotelId(selectedHotelBlockId);
       return;
@@ -193,7 +201,7 @@ export function RsvpPagePreview({
     if (!selectedHotelId && hotelOptions[0]?.id) {
       setSelectedHotelId(String(hotelOptions[0].id));
     }
-  }, [hotelOptions, selectedHotelBlockId, selectedHotelId]);
+  }, [askHotel, hotelOptions, selectedHotelBlockId, selectedHotelId]);
 
   const handlePhotoPanDown = (e: React.PointerEvent) => {
     if (!onPhotoPositionChange) return;

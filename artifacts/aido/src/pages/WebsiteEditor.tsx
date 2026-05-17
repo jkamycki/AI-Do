@@ -1348,7 +1348,7 @@ export default function WebsiteEditor() {
                     // state update lands in recordRef before saveNow reads it.
                     e.preventDefault();
                     flushPendingEditableCommits();
-                    requestAnimationFrame(() => saveNow(true).then(() => window.open(publicUrl, "_blank")));
+                    requestAnimationFrame(() => saveNow(true).then(() => window.open(publicUrl, "_blank", "noopener,noreferrer")));
                   }}
                 >
                   {publicUrl}
@@ -2836,7 +2836,7 @@ export default function WebsiteEditor() {
                   className="text-xs text-primary hover:underline"
                   onClick={() => {
                     flushPendingEditableCommits();
-                    requestAnimationFrame(() => saveNow(true).then(() => window.open(publicUrl, "_blank")));
+                    requestAnimationFrame(() => saveNow(true).then(() => window.open(publicUrl, "_blank", "noopener,noreferrer")));
                   }}
                 >
                   Open live site ↗
