@@ -2665,6 +2665,54 @@ function firstContractPaymentDetail(contract: Record<string, unknown>): string |
   return keyTermValue && keyTermValue !== "Not specified" ? keyTermValue : paymentTerms;
 }
 
+function formatAriaMoney(value: unknown): string {
+  const amount = typeof value === "number" ? value : Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
+  if (!Number.isFinite(amount)) return "an unspecified amount";
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+}
+
+function formatAriaPaymentDate(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "an unspecified date";
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+async function nextContractVendorPaymentReply(req: Request, contract: Record<string, unknown>, label: string): Promise<string | null> {
+  const vendorId = Number(contract.vendorId);
+  if (!Number.isFinite(vendorId)) return null;
+  const profile = await resolveProfile(req);
+  if (!profile) return null;
+
+  const rows = await db
+    .select({
+      id: vendorPayments.id,
+      label: vendorPayments.label,
+      amount: vendorPayments.amount,
+      dueDate: vendorPayments.dueDate,
+      isPaid: vendorPayments.isPaid,
+      vendorName: vendors.name,
+      totalCost: vendors.totalCost,
+      depositAmount: vendors.depositAmount,
+      nextPaymentDue: vendors.nextPaymentDue,
+    })
+    .from(vendorPayments)
+    .innerJoin(vendors, eq(vendorPayments.vendorId, vendors.id))
+    .where(and(eq(vendorPayments.vendorId, vendorId), eq(vendors.profileId, profile.id), eq(vendorPayments.isPaid, false)))
+    .orderBy(asc(vendorPayments.dueDate), asc(vendorPayments.id))
+    .limit(1);
+
+  const payment = rows[0];
+  if (!payment) return null;
+  const vendorLabel = payment.vendorName || label;
+  return [
+    `For **${vendorLabel}**, your next unpaid payment is **${formatAriaMoney(payment.amount)}** due **${formatAriaPaymentDate(payment.dueDate)}**.`,
+    "",
+    `Payment label: ${payment.label || "Next payment"}.`,
+    `This is pulled from your saved vendor payment schedule connected to **${label}**.`,
+  ].join("\n");
+}
+
 function buildContractToolReply(lastUserText: string, actions: ActionRecord[]): string | null {
   const contractAction = [...actions].reverse().find((action) => action.name === "get_contract" && action.result.ok);
   if (!contractAction) return null;
@@ -2691,7 +2739,7 @@ function buildContractToolReply(lastUserText: string, actions: ActionRecord[]): 
         ? paymentDetail
         : "I don't see a clear next payment, due date, deposit, or balance in the saved contract analysis.",
       "",
-      "If you want, upload/re-analyze the contract again after the latest contract parser update so I can pull more precise payment dates and amounts from the text.",
+      "Check the Vendor Tracking payment schedule for the most reliable next-payment amount and date if this contract is tied to a vendor.",
     ].join("\n");
   }
 
@@ -2769,6 +2817,14 @@ async function buildDirectContractReply(req: Request, lastUserText: string): Pro
         : `I couldn't read the saved contract yet: ${result.error ?? "Contract not found."}`,
     };
   }
+  const contract = contractToolData(result);
+  const fileName = contract ? contractText(contract.fileName, "your contract") : "your contract";
+  const vendorName = contract ? contractText(contract.vendorName) : null;
+  const label = vendorName ? `${vendorName} (${fileName})` : fileName;
+  const asksPayment = /\b(next|upcoming|due|payment|pay|deposit|balance|owed|owe|how much)\b/i.test(lastUserText);
+  const paymentReply = contract && asksPayment ? await nextContractVendorPaymentReply(req, contract, label) : null;
+  if (paymentReply) return { reply: paymentReply, action };
+
   const reply = buildContractToolReply(lastUserText, [action]);
   if (!reply) return null;
   return { reply, action };
