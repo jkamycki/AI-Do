@@ -59,18 +59,13 @@ function fallbackImageAnalysis(fileNameOrPath: string): NonNullable<MoodBoardIma
 function fallbackStyleSummary({
   keywords,
   themes,
-  colors,
 }: {
   keywords: string[];
   themes: string[];
-  colors: string[];
 }) {
   const style = [...new Set(keywords)].slice(0, 3).join(", ") || "romantic and personal";
   const themeText = [...new Set(themes)].slice(0, 2).join(" with ");
-  const paletteText = colors.length
-    ? ` The palette centers on ${colors.slice(0, 3).join(", ")}.`
-    : "";
-  return `Your wedding style is ${style}${themeText ? `, with ${themeText}` : ""}.${paletteText}`;
+  return `Your wedding style is ${style}${themeText ? `, with ${themeText}` : ""}.`;
 }
 
 async function analyzeMoodBoardImage(contentType: string, base64: string) {
@@ -283,7 +278,9 @@ router.post("/mood-board/generate-summary", requireAuth, async (req, res) => {
     const allThemes = images.flatMap(img => img.analysis?.decorThemes ?? []);
     const allFloralStyles = images.map(img => img.analysis?.floralStyle).filter(Boolean);
     const allVenueVibes = images.map(img => img.analysis?.venueVibe).filter(Boolean);
-    const colors = colorPalette.map(c => c.hex);
+    const colors = colorPalette
+      .map(c => c.name)
+      .filter(name => name && !/^#[0-9a-f]{3,8}$/i.test(name));
 
     if (allKeywords.length === 0 && images.length === 0) {
       return res.json({ summary: "Add some images to your mood board to generate your style summary." });
@@ -299,9 +296,9 @@ Style keywords: ${[...new Set(allKeywords)].slice(0, 10).join(", ") || "none yet
 Decor themes: ${[...new Set(allThemes)].slice(0, 6).join(", ") || "none yet"}
 Floral styles: ${[...new Set(allFloralStyles)].slice(0, 3).join(", ") || "not specified"}
 Venue vibes: ${[...new Set(allVenueVibes)].slice(0, 3).join(", ") || "not specified"}
-Color palette: ${colors.slice(0, 6).join(", ") || "not specified"}
+Color palette mood: ${colors.slice(0, 6).join(", ") || "not specified"}
 
-Write in second person ("Your wedding style is..."). Be specific, evocative, and positive. Under 50 words.${langInstruction}`;
+Write in second person ("Your wedding style is..."). Be specific, evocative, and positive. Under 50 words. Do not include hex codes, color numbers, or raw palette values.${langInstruction}`;
 
     try {
       const response = await openai.chat.completions.create({
@@ -312,11 +309,11 @@ Write in second person ("Your wedding style is..."). Be specific, evocative, and
 
       const summary = response.choices[0]?.message?.content?.trim();
       res.json({
-        summary: summary || fallbackStyleSummary({ keywords: allKeywords, themes: allThemes, colors }),
+        summary: summary || fallbackStyleSummary({ keywords: allKeywords, themes: allThemes }),
       });
     } catch (err) {
       req.log.warn({ err }, "mood-board summary provider failed; using fallback summary");
-      res.json({ summary: fallbackStyleSummary({ keywords: allKeywords, themes: allThemes, colors }) });
+      res.json({ summary: fallbackStyleSummary({ keywords: allKeywords, themes: allThemes }) });
     }
   } catch (err) {
     req.log.error(err, "mood-board generate-summary");
