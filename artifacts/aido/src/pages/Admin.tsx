@@ -239,6 +239,7 @@ const EVENT_LABELS: Record<string, string> = {
   page_view: "Page View",
   feature_accessed: "Feature Accessed",
   tool_used: "Tool Used",
+  tab_bar_feature_used: "Tab Bar Feature Used",
   workflow_step_reached: "Workflow Step Reached",
   test_session_active: "Test Session Active",
   marketing_email_sent: "Marketing Email Sent",
@@ -259,6 +260,7 @@ const EVENT_COLORS: Record<string, string> = {
   page_view: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300",
   feature_accessed: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
   tool_used: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
+  tab_bar_feature_used: "bg-fuchsia-100 dark:bg-fuchsia-900/30 text-fuchsia-700 dark:text-fuchsia-300",
   workflow_step_reached: "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300",
   test_session_active: "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300",
 };

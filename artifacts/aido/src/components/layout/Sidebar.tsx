@@ -47,6 +47,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 import { authFetch } from "@/lib/authFetch";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useTracking } from "@/hooks/useTracking";
 
 const navSections = [
   {
@@ -508,6 +509,7 @@ export function Sidebar() {
   const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
+  const { track } = useTracking();
   const picInputRef = useRef<HTMLInputElement>(null);
   const [uploadingPic, setUploadingPic] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
@@ -597,12 +599,14 @@ export function Sidebar() {
     icon: Icon,
     special = false,
     dot = false,
+    sectionLabel = "Workspace",
   }: {
     href: string;
     label: string;
     icon: React.ElementType;
     special?: boolean;
     dot?: boolean;
+    sectionLabel?: string;
   }) => {
     const isActive =
       location === href || (href !== "/dashboard" && location.startsWith(href));
@@ -621,7 +625,25 @@ export function Sidebar() {
               : "hover:bg-primary/10 text-card-foreground hover:text-primary dark:text-card-foreground dark:hover:bg-primary/10 dark:hover:text-primary"
           }
         `}
-        onClick={closeMenu}
+        onClick={() => {
+          void track("tab_bar_feature_used", {
+            feature: label,
+            tool: label,
+            section: sectionLabel,
+            path: href,
+            fromPath: location,
+            source: "sidebar_tab_bar",
+          });
+          void track("feature_accessed", {
+            feature: label,
+            tool: label,
+            section: sectionLabel,
+            path: href,
+            fromPath: location,
+            source: "sidebar_tab_bar",
+          });
+          closeMenu();
+        }}
         data-testid={`nav-link-${label.toLowerCase().replace(/\s+/g, "-")}`}
       >
         <Icon
@@ -778,7 +800,14 @@ export function Sidebar() {
               </p>
               <div className="space-y-0.5">
                 {section.items.map((item) => (
-                  <NavLink key={item.href} href={item.href} label={t(item.labelKey)} icon={item.icon} dot={"dot" in item ? item.dot as boolean : undefined} />
+                  <NavLink
+                    key={item.href}
+                    href={item.href}
+                    label={t(item.labelKey)}
+                    icon={item.icon}
+                    dot={"dot" in item ? item.dot as boolean : undefined}
+                    sectionLabel={t(section.labelKey, { defaultValue: section.labelKey })}
+                  />
                 ))}
               </div>
             </div>
@@ -793,6 +822,7 @@ export function Sidebar() {
                 href="/website-editor"
                 label={t("nav.website_editor", { defaultValue: "Website Editor" })}
                 icon={Globe}
+                sectionLabel={t("sidebar.guest_website_builder", { defaultValue: "Guest Website Builder" })}
               />
             </div>
           </div>
@@ -802,12 +832,13 @@ export function Sidebar() {
               {t("sidebar.workspace_section")}
             </p>
             <div className="space-y-0.5">
-              <NavLink href="/settings" label={t("nav.settings")} icon={Settings} />
-              <NavLink href="/help" label={t("nav.help")} icon={HelpCircle} />
+              <NavLink href="/settings" label={t("nav.settings")} icon={Settings} sectionLabel={t("sidebar.workspace_section")} />
+              <NavLink href="/help" label={t("nav.help")} icon={HelpCircle} sectionLabel={t("sidebar.workspace_section")} />
               <NavLink
                 href="/help/updates-improvements"
                 label={t("nav.updates_improvements", { defaultValue: "Updates & Improvements" })}
                 icon={Sparkles}
+                sectionLabel={t("sidebar.workspace_section")}
               />
             </div>
           </div>
@@ -818,7 +849,7 @@ export function Sidebar() {
                 {t("sidebar.admin_section")}
               </p>
               <div className="space-y-0.5">
-                <NavLink href="/admin" label={t("nav.admin")} icon={Shield} special />
+                <NavLink href="/admin" label={t("nav.admin")} icon={Shield} special sectionLabel={t("sidebar.admin_section")} />
               </div>
             </div>
           )}
