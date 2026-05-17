@@ -395,6 +395,74 @@ router.post("/vendors/:id/payments", requireAuth, async (req, res) => {
   }
 });
 
+router.post("/vendors/:id/payments/mark-next-paid", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
+    const vendorId = parseInt(String(req.params.id), 10);
+    const [vendor] = await db
+      .select()
+      .from(vendors)
+      .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)))
+      .limit(1);
+    if (!vendor) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
+
+    const payments = await db
+      .select()
+      .from(vendorPayments)
+      .where(eq(vendorPayments.vendorId, vendorId));
+    const nextPayment = payments
+      .filter((p) => !p.isPaid)
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+    if (nextPayment) {
+      const [updated] = await db
+        .update(vendorPayments)
+        .set({ isPaid: true, paidAt: new Date() })
+        .where(and(eq(vendorPayments.id, nextPayment.id), eq(vendorPayments.vendorId, vendorId)))
+        .returning();
+      await syncNextPaymentDue(vendorId);
+      res.json(formatPayment(updated));
+      return;
+    }
+
+    const hasDepositMilestone = payments.some((p) => p.label.toLowerCase() === "deposit");
+    const paidFromPayments = payments.filter((p) => p.isPaid).reduce((sum, p) => sum + Number(p.amount), 0);
+    const paidTotal = (hasDepositMilestone ? 0 : Number(vendor.depositAmount)) + paidFromPayments;
+    const remaining = Math.max(0, Number(vendor.totalCost) - paidTotal);
+    if (!vendor.nextPaymentDue || remaining <= 0) {
+      await syncNextPaymentDue(vendorId);
+      res.status(400).json({ error: "No unpaid vendor payment to mark paid" });
+      return;
+    }
+
+    const [created] = await db
+      .insert(vendorPayments)
+      .values({
+        vendorId,
+        label: "Payment",
+        amount: String(remaining),
+        dueDate: vendor.nextPaymentDue,
+        isPaid: true,
+        paidAt: new Date(),
+      })
+      .returning();
+    await syncNextPaymentDue(vendorId);
+    res.status(201).json(formatPayment(created));
+  } catch (err) {
+    req.log.error(err, "Failed to mark next vendor payment paid");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => {
   try {
     const callerRole = await resolveCallerRole(req);
