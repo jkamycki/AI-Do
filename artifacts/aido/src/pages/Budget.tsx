@@ -12,6 +12,8 @@ import {
   useDeleteManualExpense,
   getListManualExpensesQueryKey,
   getGetDashboardSummaryQueryKey,
+  getListVendorsQueryKey,
+  getGetVendorQueryKey,
 } from "@workspace/api-client-react";
 import { authFetch } from "@/lib/authFetch";
 import { useToast } from "@/hooks/use-toast";
@@ -521,8 +523,12 @@ export default function Budget() {
         return;
       }
       toast({ title: t("budget.toast_payment_recorded", { defaultValue: "Payment recorded" }) });
-      queryClient.invalidateQueries({ queryKey: ["vendor-financials"] });
-      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["vendor-financials"] }),
+        queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
+      ]);
     } catch {
       toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
     }
