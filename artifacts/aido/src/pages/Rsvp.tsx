@@ -420,6 +420,29 @@ export default function Rsvp() {
               {accepted && weddingDateStr && (
                 <p style={{ fontFamily: jakarta, color: MUTED, fontSize: "0.75rem", marginTop: "0.75rem" }}>{weddingDateStr}{info.venue ? ` · ${info.venue}` : ""}</p>
               )}
+              {info.websiteUrl && (
+                <a
+                  href={info.websiteUrl}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginTop: "1.25rem",
+                    padding: "0.75rem 1rem",
+                    borderRadius: 8,
+                    background: GOLD,
+                    color: isLightHex(GOLD) ? "#1a1a1a" : "#ffffff",
+                    fontFamily: jakarta,
+                    fontSize: "0.75rem",
+                    fontWeight: 800,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    textDecoration: "none",
+                  }}
+                >
+                  View Wedding Website
+                </a>
+              )}
             </div>
           </div>
         </div>
