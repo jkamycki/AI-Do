@@ -129,6 +129,7 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
     const vendorIds = userVendors.map((v) => v.id);
 
     const paidByVendor: Record<number, number> = {};
+    const nextPaymentByVendor: Record<number, typeof vendorPayments.$inferSelect> = {};
     const vendorsWithDepositMilestone = new Set<number>();
     if (vendorIds.length > 0) {
       const allPayments = await db
@@ -141,6 +142,12 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
         }
         if (p.isPaid) {
           paidByVendor[p.vendorId] = (paidByVendor[p.vendorId] ?? 0) + Number(p.amount);
+        } else if (
+          !nextPaymentByVendor[p.vendorId] ||
+          (!nextPaymentByVendor[p.vendorId].dueDate && p.dueDate) ||
+          (nextPaymentByVendor[p.vendorId].dueDate && p.dueDate && p.dueDate < nextPaymentByVendor[p.vendorId].dueDate)
+        ) {
+          nextPaymentByVendor[p.vendorId] = p;
         }
       }
     }
@@ -150,6 +157,7 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
       const milestones = paidByVendor[v.id] ?? 0;
       const totalPaid = (vendorsWithDepositMilestone.has(v.id) ? 0 : deposit) + milestones;
       const totalCost = Number(v.totalCost);
+      const nextPayment = nextPaymentByVendor[v.id];
       return {
         id: v.id,
         name: v.name,
@@ -158,7 +166,12 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
         depositAmount: deposit,
         totalPaid,
         isPaidOff: totalCost > 0 && totalPaid >= totalCost,
-        nextPaymentDue: v.nextPaymentDue
+        nextPaymentId: nextPayment?.id ?? null,
+        nextPaymentLabel: nextPayment?.label ?? null,
+        nextPaymentAmount: nextPayment ? Number(nextPayment.amount) : null,
+        nextPaymentDue: nextPayment?.dueDate
+          ? String(nextPayment.dueDate).slice(0, 10)
+          : v.nextPaymentDue
           ? String(v.nextPaymentDue).slice(0, 10)
           : null,
       };

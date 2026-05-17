@@ -54,6 +54,9 @@ interface VendorRow {
   totalPaid: number;
   isPaidOff: boolean;
   nextPaymentDue: string | null;
+  nextPaymentId: number | null;
+  nextPaymentAmount: number | null;
+  nextPaymentLabel: string | null;
 }
 interface VendorFinancials {
   vendorCount: number;
@@ -323,16 +326,22 @@ export default function Budget() {
       amount: number;
       source: "manual" | "vendor";
       manualId?: number;
+      vendorId?: number;
+      paymentId?: number;
     }> = [];
     vendorFinancials?.vendors.forEach((v) => {
-      if (v.nextPaymentDue && Math.max(0, v.totalCost - v.totalPaid) > 0) {
+      const remaining = Math.max(0, v.totalCost - v.totalPaid);
+      const nextAmount = Math.max(0, v.nextPaymentAmount ?? 0);
+      if (v.nextPaymentDue && remaining > 0) {
         payments.push({
-          id: `vendor-${v.id}`,
+          id: `vendor-${v.id}-${v.nextPaymentId ?? "due"}`,
           label: v.name,
           category: v.category,
           date: v.nextPaymentDue,
-          amount: 0,
+          amount: nextAmount,
           source: "vendor",
+          vendorId: v.id,
+          paymentId: v.nextPaymentId ?? undefined,
         });
       }
     });
@@ -484,6 +493,27 @@ export default function Budget() {
       }
       toast({ title: t("budget.toast_payment_recorded", { defaultValue: "Payment recorded" }) });
       queryClient.invalidateQueries({ queryKey: getListManualExpensesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    } catch {
+      toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
+    }
+  };
+
+  const handleVendorPaymentPaid = async (vendorId: number, paymentId: number) => {
+    if (!confirm(t("budget.confirm_mark_paid", { defaultValue: "Mark this payment as paid? The amount will be added to the running paid total." }))) return;
+    try {
+      const r = await authFetch(`/api/vendors/${vendorId}/payments/${paymentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPaid: true }),
+      });
+      if (!r.ok) {
+        toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
+        return;
+      }
+      toast({ title: t("budget.toast_payment_recorded", { defaultValue: "Payment recorded" }) });
+      queryClient.invalidateQueries({ queryKey: ["vendor-financials"] });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
     } catch {
       toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
     }
@@ -624,7 +654,12 @@ export default function Budget() {
                         <TableCell className="text-right tabular-nums">{formatMoney(v.totalPaid)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(remaining)}</TableCell>
                         <TableCell className="text-sm">
-                          <NextPaymentDisplay date={v.nextPaymentDue} t={t} />
+                          <NextPaymentDisplay
+                            date={v.nextPaymentDue}
+                            amount={v.nextPaymentAmount ?? 0}
+                            onMarkPaid={v.nextPaymentId ? () => handleVendorPaymentPaid(v.id, v.nextPaymentId!) : undefined}
+                            t={t}
+                          />
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
@@ -885,7 +920,13 @@ export default function Budget() {
                     <NextPaymentDisplay
                       date={nextPayment.date}
                       amount={nextPayment.amount}
-                      onMarkPaid={nextPayment.source === "manual" && nextPayment.manualId && nextPayment.amount > 0 ? () => handleMarkPaid(nextPayment.manualId!) : undefined}
+                      onMarkPaid={
+                        nextPayment.source === "manual" && nextPayment.manualId && nextPayment.amount > 0
+                          ? () => handleMarkPaid(nextPayment.manualId!)
+                          : nextPayment.source === "vendor" && nextPayment.vendorId && nextPayment.paymentId && nextPayment.amount > 0
+                            ? () => handleVendorPaymentPaid(nextPayment.vendorId!, nextPayment.paymentId!)
+                            : undefined
+                      }
                       t={t}
                     />
                   </div>
