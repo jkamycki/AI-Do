@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 export default function BetaDisclaimer() {
   return (
@@ -16,21 +16,6 @@ export default function BetaDisclaimer() {
             Back to Home
           </Button>
         </Link>
-
-        <div className="rounded-xl border border-[#E6A6B7]/60 bg-[#F2E2C6]/45 p-4 mb-8 flex items-start gap-3 text-[#6F3E54]">
-          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-[#8D294D]" />
-          <div className="space-y-1 text-sm leading-relaxed">
-            <p className="font-semibold text-[#8D294D]">
-              Draft — review with legal counsel before publishing.
-            </p>
-            <p>
-              This page and parts of the Service may include AI-generated
-              content. A.IDO is not a lawyer or law firm, and this page is not
-              legal advice. Have a qualified attorney finalize the wording.
-            </p>
-          </div>
-        </div>
-
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Beta Disclaimer</h1>
           <p className="text-sm text-[#6F3E54]">Last updated: May 13, 2026</p>
