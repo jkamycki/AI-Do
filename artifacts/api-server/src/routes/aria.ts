@@ -1484,7 +1484,7 @@ function siteTaskGuide(text: string): string | null {
   }
 
   if (/\b(excel|spreadsheet|csv|import guests?|bulk import|template)\b/i.test(trimmed)) {
-    return "Guest imports happen in Guest List with Import Excel. The template only requires full name and address; the other fields are optional. After upload, the page shows a green success message or a red error message above the import count.";
+    return "Guest imports happen in Guest List with Import Excel. The template asks for full name, street address, plus-one yes/no, optional plus-one name, and a category dropdown. When guests RSVP digitally, their RSVP status and details update automatically on the guest list.";
   }
 
   return null;

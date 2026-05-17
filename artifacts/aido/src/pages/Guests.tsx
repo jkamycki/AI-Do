@@ -1049,35 +1049,24 @@ function exportCSV(guestList: Guest[], hotels: HotelOption[] = []) {
 
 const GUEST_IMPORT_TEMPLATE_HEADERS = [
   "Full Name",
-  "Email",
-  "Phone",
-  "Guest Group",
+  "Street Address",
   "Plus One",
   "Plus One Name",
-  "Needs Hotel",
-  "Street Address",
-  "Apt/Unit",
-  "City",
-  "State",
-  "ZIP",
-  "Country",
+  "Category",
 ];
 
 const GUEST_IMPORT_SAMPLE_ROW = [
   "Jane Doe",
-  "jane@example.com",
-  "631-555-1234",
-  "Bride's Friends",
-  "yes",
+  "123 Rose Garden Lane, Clayton, NC 27520",
+  "Yes",
   "John Doe",
-  "no",
-  "123 Ses Drive",
-  "Apt 2B",
-  "Clayton",
-  "NC",
-  "27520",
-  "United States",
+  "Bride's Family",
 ];
+
+const GUEST_IMPORT_PLUS_ONE_OPTIONS = ["Yes", "No"] as const;
+const GUEST_IMPORT_CATEGORY_OPTIONS = GROUP_OPTIONS
+  .filter((option) => option.value !== "none" && option.value !== "Other")
+  .map((option) => option.value);
 
 function normalizeImportHeader(value: unknown) {
   return String(value ?? "")
@@ -1140,7 +1129,7 @@ async function downloadGuestImportTemplate() {
   sheet.addRow(GUEST_IMPORT_TEMPLATE_HEADERS);
   sheet.addRow(GUEST_IMPORT_SAMPLE_ROW);
   sheet.addRow([
-    "Save this file as an Excel workbook (.xlsx) before uploading. Required fields: Full Name and Street Address. All other columns are optional. Plus One and Needs Hotel can be yes or no.",
+    "Note: Save this file as an Excel workbook (.xlsx) before uploading. Required fields are Full Name and Street Address. Plus One must be Yes or No. Plus One Name is optional. When guests RSVP digitally, their RSVP status and details will update automatically on your guest list.",
   ]);
   sheet.getRow(1).font = { bold: true };
   sheet.getRow(1).fill = {
@@ -1149,10 +1138,34 @@ async function downloadGuestImportTemplate() {
     fgColor: { argb: "FFF3E6B1" },
   };
   sheet.columns.forEach((column) => {
-    column.width = 18;
+    column.width = 26;
   });
   sheet.getCell("A3").font = { italic: true, bold: true, color: { argb: "FF666666" } };
   sheet.mergeCells(3, 1, 3, GUEST_IMPORT_TEMPLATE_HEADERS.length);
+  for (let rowNumber = 2; rowNumber <= 250; rowNumber += 1) {
+    if (rowNumber === 3) continue;
+    const cell = sheet.getCell(rowNumber, 3);
+    cell.dataValidation = {
+      type: "list",
+      allowBlank: false,
+      formulae: [`"${GUEST_IMPORT_PLUS_ONE_OPTIONS.join(",")}"`],
+      showErrorMessage: true,
+      errorTitle: "Choose Yes or No",
+      error: "Plus One must be Yes or No.",
+    };
+  }
+  for (let rowNumber = 2; rowNumber <= 250; rowNumber += 1) {
+    if (rowNumber === 3) continue;
+    const cell = sheet.getCell(rowNumber, 5);
+    cell.dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: [`"${GUEST_IMPORT_CATEGORY_OPTIONS.join(",")}"`],
+      showErrorMessage: true,
+      errorTitle: "Choose a category",
+      error: "Choose one of the guest categories from the dropdown.",
+    };
+  }
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
@@ -1184,7 +1197,11 @@ async function parseGuestImportWorkbook(file: File) {
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
     const name = getImportCell(row, headerMap, ["Full Name", "Name", "Guest Name"]);
-    const isInstructionRow = name.toLowerCase().startsWith("required:");
+    const normalizedName = name.toLowerCase();
+    const isInstructionRow =
+      normalizedName.startsWith("required:") ||
+      normalizedName.startsWith("note:") ||
+      normalizedName.startsWith("save this file");
     const hasAnyValue = importRowHasAnyValue(row);
     if (!hasAnyValue || isInstructionRow) return;
     if (!name) {
@@ -1214,7 +1231,7 @@ async function parseGuestImportWorkbook(file: File) {
       ) as GuestFormValues["invitationStatus"],
       mealChoice: getImportCell(row, headerMap, ["Meal Choice", "Meal"]),
       dietaryNotes: getImportCell(row, headerMap, ["Dietary Notes", "Dietary Restrictions", "Allergies"]),
-      guestGroup: getImportCell(row, headerMap, ["Guest Group", "Group", "Category"]),
+      guestGroup: getImportCell(row, headerMap, ["Category", "Guest Group", "Group"]),
       plusOne: parseImportBoolean(getImportCell(row, headerMap, ["Plus One", "Plus 1", "PlusOne"])),
       plusOneFirstName: "",
       plusOneLastName: "",
@@ -2665,12 +2682,13 @@ export default function Guests({
                   <p className="text-muted-foreground">
                     Save the completed template as an Excel workbook (.xlsx) before uploading.
                     Required fields: <span className="font-medium text-foreground">Full Name</span> and{" "}
-                    <span className="font-medium text-foreground">Street Address</span>. All other
-                    columns are optional: Email, Phone, Guest Group, Plus One, Plus One Name,
-                    Needs Hotel, Apt/Unit, City, State, ZIP, and Country.
+                    <span className="font-medium text-foreground">Street Address</span>. Use the
+                    dropdowns for <span className="font-medium text-foreground">Plus One</span>{" "}
+                    and <span className="font-medium text-foreground">Category</span>.
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Plus One and Needs Hotel can be yes or no.
+                    Plus One Name is optional. When guests RSVP digitally, their RSVP status and
+                    details will update automatically on this guest list.
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
