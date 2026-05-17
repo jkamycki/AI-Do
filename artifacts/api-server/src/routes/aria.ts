@@ -29,7 +29,7 @@ const router = Router();
 // Anything else falls through to the normal tools-enabled path so we
 // never accidentally drop tools for a real planning request.
 const ACTION_KEYWORDS = /\b(add|create|delete|remove|update|edit|change|set|save|book|schedule|invite|cancel|pay|paid|owe|cost|spend|budget|guest|vendor|venue|timeline|checklist|todo|task|event|payment|contract|hotel|party|reception|ceremony|honeymoon|email|message|reminder|date|when|where|how much|how many)\b/i;
-const CANCEL_INTENT = /^\s*(?:cancel(?:\s+(?:that|it|this|the\s+(?:guest|vendor|add|save|request)|add(?:ing)?\b.*|save\b.*|guest\b.*|vendor\b.*))?|never\s?mind|nevermind|stop(?:\s+(?:that|it|this|adding|saving|the\s+(?:guest|vendor)))?|forget\s+it|don'?t\s+(?:do|save|add|create|update|delete)\s+(?:that|it|this|the\s+(?:guest|vendor))|abort)\b[\s.!?]*$/i;
+const CANCEL_INTENT = /^\s*(?:(?:no[, ]+)?cancel(?:\b.*)?|never\s?mind(?:\b.*)?|nevermind(?:\b.*)?|stop(?:\b.*)?|forget\s+it(?:\b.*)?|abort(?:\b.*)?|don'?t\s+(?:do|save|add|create|update|delete)\s+(?:that|it|this|the\s+(?:guest|vendor))(?:\b.*)?)\s*[.!?]*$/i;
 const CONVERSATIONAL_PATTERNS: RegExp[] = [
   /^(hi|hey|hello|yo|sup|hola|aloha|howdy)\b/i,
   /^how (are|r) (you|u|ya|things)/i,
@@ -754,6 +754,39 @@ function parsePendingGuestConfirmation(text: string): { name: string } | null {
     const match = text.match(pattern);
     const name = match?.[1]?.trim().replace(/[.!,;:]$/, "");
     if (name) return { name };
+  }
+  return null;
+}
+
+function cleanInlineName(value: string): string {
+  return value
+    .trim()
+    .replace(/^(?:the\s+)?(?:name\s+of\s+)?(?:my\s+)?vendors?\s+/i, "")
+    .replace(/^["'`“”‘’]+|["'`“”‘’.,!?]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseVendorRenameRequest(text: string): { vendorName: string; name: string } | null {
+  const trimmed = text.trim();
+  if (!/\b(vendor|photographer|videographer|florist|caterer|catering|dj|band|officiant|planner|venue)\b/i.test(trimmed)) {
+    return null;
+  }
+
+  const patterns = [
+    /\b(?:change|rename|update|edit)\s+(?:the\s+)?(?:vendor\s+)?name\s+from\s+["'“”‘’]?(.+?)["'“”‘’]?\s+(?:to|as)\s+["'“”‘’]?(.+?)["'“”‘’]?\s*$/i,
+    /\b(?:change|rename|update|edit)\s+(?:the\s+)?(?:vendor\s+)?(?:name\s+)?(?:of\s+)?["'“”‘’]?(.+?)["'“”‘’]?\s+(?:to|as)\s+["'“”‘’]?(.+?)["'“”‘’]?\s*$/i,
+    /\b(?:change|rename|update|edit)\s+["'“”‘’]?(.+?)["'“”‘’]?\s+(?:vendor\s+)?(?:name\s+)?(?:to|as)\s+["'“”‘’]?(.+?)["'“”‘’]?\s*$/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    if (!match) continue;
+    const vendorName = cleanInlineName(match[1] ?? "");
+    const name = cleanInlineName(match[2] ?? "");
+    if (!vendorName || !name) continue;
+    if (/^(one|a|the|my|this|that)\s+(of\s+)?(my\s+)?vendors?$/i.test(vendorName)) continue;
+    return { vendorName, name };
   }
   return null;
 }
@@ -2944,6 +2977,32 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         content: "Got it — canceled. I won’t make any changes. If you want, tell me what you’d like to do instead.",
       });
       send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
+    // Deterministic fast-path for the common edit request:
+    // "change/rename vendor X to Y". This avoids the model picking a read tool
+    // or asking for confirmation even though update_vendor does not need one.
+    const vendorRename = parseVendorRenameRequest(lastUserText);
+    if (vendorRename) {
+      const result = await executeTool("update_vendor", vendorRename, req, { recentUserText: lastUserText });
+      send({ type: "action_start", name: "update_vendor", args: vendorRename });
+      send({
+        type: "action_result",
+        name: "update_vendor",
+        ok: result.ok,
+        data: result.ok ? result.data : undefined,
+        error: result.ok ? undefined : result.error,
+      });
+      send({
+        type: "content",
+        content: result.ok
+          ? buildConfirmation([{ name: "update_vendor", args: vendorRename, result }])
+          : `I couldn't rename that vendor yet: ${result.error}`,
+      });
+      send({ type: "done", actions: [{ name: "update_vendor", ok: result.ok, error: result.ok ? undefined : result.error }] });
       res.write("data: [DONE]\n\n");
       res.end();
       return;

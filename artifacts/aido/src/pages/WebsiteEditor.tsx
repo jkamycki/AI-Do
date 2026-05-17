@@ -1290,7 +1290,7 @@ export default function WebsiteEditor() {
                 setPreviewOpen(true);
               }}
               className="border-0 font-bold"
-              style={{ background: "#D4A017", color: "#2A1745" }}
+              style={{ background: "#8D294D", color: "#FFF7F2" }}
             >
               <Eye className="h-3.5 w-3.5 mr-1.5" />
               {t("website_editor.preview", { defaultValue: "Preview" })}
@@ -1306,8 +1306,8 @@ export default function WebsiteEditor() {
               }
               style={
                 record.published
-                  ? { color: "#2A1745" }
-                  : { background: "#D4A017", color: "#2A1745" }
+                  ? { color: "#FFF7F2" }
+                  : { background: "#8D294D", color: "#FFF7F2" }
               }
             >
               {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Globe className="h-3.5 w-3.5 mr-1.5" />}
@@ -1326,7 +1326,7 @@ export default function WebsiteEditor() {
               disabled={historyLen === 0 && !hasPending}
               title="Undo last change (Cmd/Ctrl+Z)"
               className="bg-red-600 hover:bg-red-700 border-0 disabled:opacity-50 font-bold"
-              style={{ color: "#2A1745" }}
+              style={{ color: "#FFF7F2" }}
             >
               <Undo2 className="h-3.5 w-3.5 mr-1.5" />
               {t("website_editor.undo", { defaultValue: "Undo" })}
@@ -2467,7 +2467,7 @@ export default function WebsiteEditor() {
         onClick={() => { if (ctxMenu) setCtxMenu(null); }}
       >
         <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs flex items-center justify-between gap-3 flex-wrap">
-          <span style={{ color: "#D4A017" }}>
+          <span style={{ color: "#8D294D" }}>
             {t("website_editor.live_preview_label", { defaultValue: "Live preview" })}
           </span>
           {record.published && (
@@ -2475,7 +2475,7 @@ export default function WebsiteEditor() {
               type="button"
               onClick={() => setUrlModalOpen(true)}
               className="inline-flex items-center gap-1.5 font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity whitespace-nowrap"
-              style={{ color: "#D4A017" }}
+              style={{ color: "#8D294D" }}
             >
               <Link2 className="h-3 w-3" />
               {t("website_editor.custom_url_cta", { defaultValue: "Click here to get your custom website URL" })}
@@ -2680,7 +2680,7 @@ export default function WebsiteEditor() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-semibold flex items-center gap-2" style={{ color: "#D4A017" }}>
+              <h3 className="text-base font-semibold flex items-center gap-2" style={{ color: "#8D294D" }}>
                 <Link2 className="h-4 w-4" />
                 {t("website_editor.custom_url_modal_title", { defaultValue: "Your custom website URL" })}
               </h3>

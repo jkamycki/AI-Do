@@ -317,35 +317,35 @@
 }
 
 .dark {
-  --background: 335 48% 14%;
-  --foreground: 30 100% 94%;
+  --background: 220 14% 10%;
+  --foreground: 40 30% 94%;
 
-  --card: 334 44% 20%;
-  --card-foreground: 30 100% 94%;
-  --card-border: 335 26% 36%;
+  --card: 220 12% 16%;
+  --card-foreground: 40 30% 94%;
+  --card-border: 220 9% 28%;
 
-  --popover: 334 44% 20%;
-  --popover-foreground: 30 100% 94%;
-  --popover-border: 335 26% 36%;
+  --popover: 40 28% 96%;
+  --popover-foreground: 222 18% 16%;
+  --popover-border: 34 22% 82%;
 
-  --primary: 344 62% 67%;
-  --primary-foreground: 335 48% 14%;
+  --primary: 34 34% 76%;
+  --primary-foreground: 222 18% 16%;
 
-  --secondary: 330 34% 48%;
-  --secondary-foreground: 30 100% 94%;
+  --secondary: 218 10% 34%;
+  --secondary-foreground: 40 30% 94%;
 
-  --muted: 335 35% 24%;
-  --muted-foreground: 26 72% 84%;
+  --muted: 220 10% 22%;
+  --muted-foreground: 40 20% 78%;
 
-  --accent: 344 60% 57%;
-  --accent-foreground: 30 100% 94%;
+  --accent: 34 26% 72%;
+  --accent-foreground: 222 18% 16%;
 
-  --destructive: 350 52% 47%;
+  --destructive: 0 63% 48%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 335 26% 36%;
-  --input: 335 26% 36%;
-  --ring: 344 62% 67%;
+  --border: 220 9% 28%;
+  --input: 220 9% 28%;
+  --ring: 34 34% 76%;
 
   --shadow-sm: 0 1px 2px 0 rgb(10 2 8 / 0.3);
   --shadow:
@@ -375,10 +375,9 @@
 
   .dark body {
     background:
-      radial-gradient(circle at 22% 12%, rgba(216, 138, 168, 0.24), transparent 26rem),
-      radial-gradient(circle at 82% 2%, rgba(246, 177, 166, 0.2), transparent 30rem),
-      radial-gradient(circle at 50% 88%, rgba(122, 74, 106, 0.34), transparent 34rem),
-      linear-gradient(145deg, #2a0b1d 0%, #4a1730 48%, #2d0d20 100%);
+      radial-gradient(circle at 18% 8%, rgba(247, 231, 214, 0.08), transparent 28rem),
+      radial-gradient(circle at 82% 4%, rgba(186, 172, 154, 0.1), transparent 30rem),
+      linear-gradient(145deg, #111318 0%, #1a1d23 52%, #0f1115 100%);
   }
 
   h1,
@@ -471,10 +470,10 @@
   height: 100%;
 }
 
-/* Brand scrollbar — purple thumb with gold hover */
+/* Brand scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #7b2fbe transparent;
+  scrollbar-color: #8d294d transparent;
 }
 
 *::-webkit-scrollbar {
@@ -487,14 +486,14 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #7b2fbe 0%, #5a1f90 100%);
+  background: linear-gradient(180deg, #8d294d 0%, #5b0f2a 100%);
   border-radius: 8px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #d4a017 0%, #b8860b 100%);
+  background: linear-gradient(180deg, #7a1d3d 0%, #5b0f2a 100%);
   background-clip: padding-box;
   border: 2px solid transparent;
 }

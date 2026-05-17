@@ -241,11 +241,10 @@ export default function Rsvp() {
   // are derived from background lightness so contrast is correct on light or dark.
   const isCustomMode = !!(info?.backgroundColor);
   const BG = info?.backgroundColor || DEFAULT_BG;
-  // Use the invitation's own accent color when set; fall back to palette primary,
-  // then the A.IDO burgundy brand accent. This mirrors AiDigitalInvitationPreview which uses
-  // customColors.accent = digitalInvitationAccentColor.
+  // Use the invitation's own accent color when set; fall back to palette accent,
+  // then the A.IDO burgundy brand accent. This mirrors the send modal preview.
   const GOLD = isCustomMode
-    ? (info?.accentColor || info?.colorPalette?.primary || DEFAULT_GOLD)
+    ? (info?.accentColor || info?.colorPalette?.accent || DEFAULT_GOLD)
     : DEFAULT_GOLD;
   const COUPLE_COLOR = GOLD;
   const _bgIsLight = isLightHex(BG);

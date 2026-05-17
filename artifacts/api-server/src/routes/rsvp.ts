@@ -879,11 +879,12 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       // accent in the design, and body text is plain black/white that
       // contrasts the chosen background.
       // Prefer the per-invitation dedicated column, then the JSONB backup key,
-      // then the shared palette primary as last resort.
+      // then the shared palette accent as last resort. This mirrors the send
+      // modal preview's digAccent fallback.
       const ACCENT = !useGenerated
         ? ((customization?.digitalInvitationAccentColor
             ?? (customization?.customColors as Record<string, string> | null)?.digitalInvitationAccent
-            ?? colors.primary)
+            ?? colors.accent)
             || AI_GOLD)
         : AI_GOLD;
       const TEXT = !useGenerated
@@ -1400,11 +1401,14 @@ router.get("/rsvp/:token", async (req, res) => {
       : hotelRows;
     const rsvpAskHotel = rsvpAskHotelSetting && sortedHotelRows.length > 0;
 
-    // Merge customColors on top of the palette (same logic as the frontend)
+    const useGenerated = c?.useGeneratedInvitation !== false;
+    // Merge customColors on top of the palette only in custom-design mode.
+    // AI-generated mode must stay on the A.IDO palette so the public guest
+    // link matches the send-modal preview and the email HTML.
     const basePalette = c?.colorPalette ?? DEFAULT_COLORS;
-    const mergedPalette = c?.customColors
+    const mergedPalette = !useGenerated && c?.customColors
       ? { ...basePalette, ...c.customColors }
-      : basePalette;
+      : DEFAULT_COLORS;
 
     // Resolve the best available photo URL — prefer the digital invitation
     // customization photo, then fall back to the profile's invitation photo.
@@ -1458,9 +1462,9 @@ router.get("/rsvp/:token", async (req, res) => {
       font: c?.digitalInvitationFont ?? null,
       layout: c?.digitalInvitationLayout ?? null,
       // Independent accent / font color for the RSVP invitation (may differ from STD).
-      // null = not in custom mode, fall back to colorPalette.primary.
-      accentColor: (c?.useGeneratedInvitation === false) ? (c?.digitalInvitationAccentColor ?? null) : null,
-      fontColor: (c?.useGeneratedInvitation === false) ? (c?.digitalInvitationFontColor ?? null) : null,
+      // null = not in custom mode, fall back to the A.IDO AI palette.
+      accentColor: !useGenerated ? (c?.digitalInvitationAccentColor ?? null) : null,
+      fontColor: !useGenerated ? (c?.digitalInvitationFontColor ?? null) : null,
       askHotelOnRsvp: rsvpAskHotel,
       preferredHotelBlockId,
       hotelOptions: sortedHotelRows,
@@ -1671,7 +1675,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         .limit(1);
       customization = customizationRows.length > 0 ? customizationRows[0] : null;
     } catch (custErr) {
-      console.error("[send-save-the-date] customization SELECT failed:", custErr);
+      req.log.warn({ err: custErr }, "send-save-the-date customization SELECT failed");
     }
 
     // When useGeneratedInvitation is true (or we couldn't load customization),
@@ -1988,7 +1992,7 @@ router.get("/save-the-date/:token", async (req, res) => {
         const mergedPalette: Record<string, string> = {
           primary: customColors.primary ?? palette.primary ?? "#1f2937",
           secondary: customColors.secondary ?? palette.secondary ?? "#9ca3af",
-          accent: customColors.accent ?? palette.accent ?? "#d4a017",
+          accent: customColors.accent ?? palette.accent ?? "#8D294D",
           neutral: customColors.neutral ?? palette.neutral ?? "#f3f4f6",
         };
         customizationData = {

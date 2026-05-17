@@ -238,7 +238,7 @@ export default function PublicWebsite() {
   if (needsPassword) {
     return (
       <PasswordGate
-        accent="#D4A017"
+        accent="#8D294D"
         font="Playfair Display"
         error={pwError}
         loading={unlocking}

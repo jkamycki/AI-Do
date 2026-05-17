@@ -26,7 +26,7 @@ const ROLE_LABELS: Record<string, { label: string; icon: React.ElementType; colo
 const CATEGORY_COLORS: Record<string, string> = {
   ceremony: "#9B4D6C",
   reception: "#5B8E7D",
-  photography: "#D4A017",
+  photography: "#D88AA8",
   preparation: "#7C6C8A",
   catering: "#C05746",
   transport: "#4A7CA5",

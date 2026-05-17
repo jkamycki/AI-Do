@@ -63,7 +63,7 @@ function ToolbarDropdown({
           minWidth,
           fontFamily: fontPreview && value ? `'${value}', serif` : undefined,
         }}
-        className="h-7 text-xs rounded border border-border bg-background px-2 flex items-center gap-1 cursor-pointer hover:bg-muted"
+        className="h-7 text-xs rounded border border-[#D6C8B8] bg-[#FFFDF8] px-2 flex items-center gap-1 cursor-pointer text-[#1F242C] hover:bg-[#F3E8DC]"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => { setOpen((o) => !o); onKeepOpen?.(); }}
       >
@@ -73,7 +73,7 @@ function ToolbarDropdown({
 
       {open && (
         <div
-          className="absolute top-full left-0 mt-0.5 bg-background border border-border rounded-md shadow-lg overflow-auto"
+          className="absolute top-full left-0 mt-0.5 bg-[#FFFDF8] border border-[#D6C8B8] rounded-md shadow-lg overflow-auto text-[#1F242C]"
           style={{ minWidth, maxHeight: 200, zIndex: 10001 }}
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -81,7 +81,7 @@ function ToolbarDropdown({
             <button
               key={opt.value}
               type="button"
-              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors whitespace-nowrap ${opt.value === value ? "text-primary font-semibold" : ""}`}
+              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#F3E8DC] transition-colors whitespace-nowrap ${opt.value === value ? "text-[#1F242C] font-semibold bg-[#F3E8DC]" : "text-[#1F242C]"}`}
               style={{ fontFamily: fontPreview && opt.value ? `'${opt.value}', serif` : undefined }}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
@@ -163,14 +163,14 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
     const btnClass = (active: boolean) =>
       `px-2 py-1 rounded text-xs font-medium transition-colors ${
         active
-          ? "bg-primary text-primary-foreground"
-          : "bg-background border border-border hover:bg-muted text-foreground"
+          ? "bg-[#1F242C] text-[#FFFDF8]"
+          : "bg-[#FFFDF8] border border-[#D6C8B8] hover:bg-[#F3E8DC] text-[#1F242C]"
       }`;
 
     return createPortal(
       <div
         ref={ref}
-        className="fixed z-[9999] flex items-center gap-1 flex-wrap px-2 py-1.5 rounded-lg shadow-xl border border-border bg-background"
+        className="fixed z-[9999] flex items-center gap-1 flex-wrap px-2 py-1.5 rounded-lg shadow-xl border border-[#D6C8B8] bg-[#FFFDF8] text-[#1F242C]"
         style={{ top, left, maxWidth: "min(640px, 94vw)" }}
         onMouseDown={(e) => {
           // Keep the contenteditable focused when the user clicks toolbar
@@ -202,7 +202,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
 
         {/* Font size */}
         <label className="flex items-center gap-1" title={t("text_toolbar.font-size", { defaultValue: "Font size" })}>
-          <span className="text-[10px] text-muted-foreground">px</span>
+          <span className="text-[10px] text-[#4A5563]">px</span>
           <input
             type="number"
             min={8}
@@ -222,7 +222,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
               const clamped = Math.max(8, Math.min(120, n));
               patch({ fontSize: `${clamped}px` });
             }}
-            className="h-7 w-[64px] rounded border border-border bg-background px-1.5 text-xs"
+            className="h-7 w-[64px] rounded border border-[#D6C8B8] bg-[#FFFDF8] px-1.5 text-xs text-[#1F242C]"
             aria-label={t("text_toolbar.font-size", { defaultValue: "Font size" })}
           />
         </label>
@@ -251,7 +251,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
           title={t("text_toolbar.text-color", { defaultValue: "Text color" })}
           onMouseDown={(e) => e.preventDefault()}
         >
-          <span className="text-xs text-muted-foreground">A</span>
+          <span className="text-xs text-[#4A5563]">A</span>
           <div className="relative w-5 h-5 rounded overflow-hidden border border-border flex-shrink-0">
             <div className="absolute inset-0" style={{ background: style.color ?? "#000" }} />
             <input
@@ -292,7 +292,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
             <div className="w-px h-5 bg-border mx-0.5" />
             <button
               className="flex items-center gap-1 text-xs px-1.5 rounded transition-colors"
-              style={{ color: "#D4A017" }}
+              style={{ color: "#8D294D" }}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => { setAiOpen((v) => !v); onKeepOpen?.(); }}
               title={t("text_toolbar.ai_generate", { defaultValue: "AI: write this for me" })}
@@ -400,7 +400,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
                 if (e.key === "Escape") { e.preventDefault(); setAiOpen(false); }
               }}
               placeholder={t("text_toolbar.ai_prompt_placeholder", { defaultValue: "Describe what you'd like…" })}
-              className="flex-1 h-7 px-2 text-xs rounded border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+              className="flex-1 h-7 px-2 text-xs rounded border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-rose-300/50"
             />
             <button
               type="button"
@@ -408,7 +408,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => void handleAiGenerate()}
               className="h-7 px-2.5 rounded text-xs font-semibold text-white border-0 disabled:opacity-50"
-              style={{ background: "#D4A017" }}
+              style={{ background: "#8D294D" }}
             >
               {aiBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : t("text_toolbar.ai_generate_btn", { defaultValue: "Generate" })}
             </button>

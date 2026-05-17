@@ -819,23 +819,24 @@ export function Sidebar() {
           )}
         </nav>
 
-        <div className="p-4 border-t border-primary/10 space-y-3">
-          <div className="rounded-lg border border-primary/15 bg-card/75 p-3 shadow-sm">
+        <div className="p-3 border-t border-primary/10 space-y-2">
+          <div className="rounded-md border border-primary/15 bg-card/75 px-2.5 py-2 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-widest text-primary">Theme</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {theme === "dark" ? "Dark floral mode" : "Light palette mode"}
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">Theme</p>
+                <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
+                  {theme === "dark" ? "Dark mode" : "Light palette mode"}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Sun className={`h-4 w-4 ${theme === "light" ? "text-primary" : "text-muted-foreground"}`} />
+              <div className="flex items-center gap-1.5">
+                <Sun className={`h-3.5 w-3.5 ${theme === "light" ? "text-primary" : "text-muted-foreground"}`} />
                 <Switch
                   checked={theme === "dark"}
                   onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
                   aria-label="Toggle dark mode"
+                  className="h-4 w-8"
                 />
-                <Moon className={`h-4 w-4 ${theme === "dark" ? "text-primary" : "text-muted-foreground"}`} />
+                <Moon className={`h-3.5 w-3.5 ${theme === "dark" ? "text-primary" : "text-muted-foreground"}`} />
               </div>
             </div>
           </div>

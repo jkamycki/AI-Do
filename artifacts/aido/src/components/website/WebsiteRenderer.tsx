@@ -3345,7 +3345,7 @@ function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 function BrandingFooter() {
   const year = new Date().getFullYear();
   return (
-    <div className="py-8 px-6 text-center bg-[#1E1A2E] text-white/80 space-y-4">
+    <div className="py-8 px-6 text-center bg-[#5B0F2A] text-[#F7E7D6]/85 space-y-4">
       <a
         href="https://aidowedding.net?utm_source=wedding_website&utm_medium=footer"
         target="_blank"
@@ -3356,7 +3356,7 @@ function BrandingFooter() {
         <img src="/logo.png" alt="A.IDO" className="h-9 w-9 rounded-full" />
         <span
           className="font-semibold tracking-wide text-base"
-          style={{ color: "#D4A017" }}
+          style={{ color: "#F3C6D3" }}
         >
           A.IDO
         </span>

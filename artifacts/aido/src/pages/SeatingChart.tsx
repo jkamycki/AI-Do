@@ -159,9 +159,9 @@ function GuestCard({
             </select>
             {(preferCount > 0 || avoidCount > 0) && (
               <span className="text-xs text-muted-foreground">
-                {preferCount > 0 && <span className="text-emerald-600 dark:text-emerald-400">♥ {preferCount}</span>}
-                {preferCount > 0 && avoidCount > 0 && " · "}
-                {avoidCount > 0 && <span className="text-red-500 dark:text-red-400">⚡ {avoidCount}</span>}
+                {preferCount > 0 && <span className="text-emerald-600 dark:text-emerald-400">â™¥ {preferCount}</span>}
+                {preferCount > 0 && avoidCount > 0 && " Â· "}
+                {avoidCount > 0 && <span className="text-red-500 dark:text-red-400">âš¡ {avoidCount}</span>}
               </span>
             )}
           </div>
@@ -207,14 +207,14 @@ function GuestCard({
                         title={t("seating.seat_together")}
                         className={`px-1.5 py-0.5 text-xs transition-colors ${rel?.type === "prefer" ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300" : "hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-muted-foreground"}`}
                       >
-                        ♥
+                        â™¥
                       </button>
                       <button
                         onClick={() => toggleRelation(other.id, "avoid")}
                         title={t("seating.keep_apart")}
                         className={`px-1.5 py-0.5 text-xs transition-colors ${rel?.type === "avoid" ? "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300" : "hover:bg-red-50 dark:hover:bg-red-900/30 text-muted-foreground"}`}
                       >
-                        ⚡
+                        âš¡
                       </button>
                     </div>
                   );
@@ -299,7 +299,7 @@ function TableCard({
               if (e.key === "Enter") { e.preventDefault(); commitTheme(); }
               if (e.key === "Escape") { setThemeDraft(table.theme ?? ""); setEditingTheme(false); }
             }}
-            placeholder="Add a description…"
+            placeholder="Add a descriptionâ€¦"
             className="h-7 text-xs mt-1"
             data-testid={`input-table-theme-${table.tableNumber}`}
           />
@@ -312,7 +312,7 @@ function TableCard({
             data-testid={`btn-edit-table-theme-${table.tableNumber}`}
           >
             <span className="truncate">
-              {table.theme || <span className="italic opacity-70">Add a description…</span>}
+              {table.theme || <span className="italic opacity-70">Add a descriptionâ€¦</span>}
             </span>
             <Pencil className="h-3 w-3 opacity-50 md:opacity-30 group-hover/t:opacity-100 transition-opacity flex-shrink-0" />
           </button>
@@ -356,7 +356,7 @@ function TableCard({
                   .filter(t => t.tableNumber !== table.tableNumber)
                   .map(t => (
                     <option key={t.tableNumber} value={t.tableNumber}>
-                      → Table {t.tableNumber}
+                      â†’ Table {t.tableNumber}
                     </option>
                   ))}
               </select>
@@ -544,7 +544,7 @@ export default function SeatingChartPage() {
       return;
     }
 
-    // Only seat guests who are attending or pending — skip declined.
+    // Only seat guests who are attending or pending â€” skip declined.
     const eligible = guestListGuests.filter(g => g.rsvpStatus !== "declined");
 
     // Build a name set of guests already on the seating chart (case-insensitive, trimmed).
@@ -576,7 +576,7 @@ export default function SeatingChartPage() {
         name: cleanName,
         group: mapGuestGroup(src.guestGroup),
         plusOne: !!src.plusOne,
-        notes: noteParts.join(" · "),
+        notes: noteParts.join(" Â· "),
         relations: [],
       });
     });
@@ -665,7 +665,7 @@ export default function SeatingChartPage() {
       if (saved && typeof saved.id === "number") {
         setActiveChartId(saved.id);
         // Generate auto-saves a new chart, so apply that fresh chart's
-        // assignments to the guest list right away — same behavior as
+        // assignments to the guest list right away â€” same behavior as
         // explicitly clicking Load.
         applyChartMutation.mutate(saved.id);
       }
@@ -863,16 +863,16 @@ export default function SeatingChartPage() {
       const colW = (pageW - margin * 2 - colGap) / 2;
       let col = 0;
 
-      // ── Brand palette ────────────────────────────────────────────────
+      // â”€â”€ Brand palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // Deeper purple background, gold for headings/accents, white for body.
-      const PURPLE: [number, number, number] = [22, 11, 38];   // #160B26 — deep brand purple
-      const PURPLE_2: [number, number, number] = [40, 22, 66]; // table-card fill, slightly lifted
-      const GOLD: [number, number, number] = [212, 160, 23];   // #D4A017 — primary brand gold
-      const GOLD_SOFT: [number, number, number] = [245, 200, 66]; // accent highlights / dividers
+      const PURPLE: [number, number, number] = [91, 15, 42];   // #5B0F2A
+      const PURPLE_2: [number, number, number] = [122, 74, 106]; // #7A4A6A
+      const GOLD: [number, number, number] = [230, 177, 166];   // #E6B1A6
+      const GOLD_SOFT: [number, number, number] = [243, 198, 211]; // #F3C6D3
       const WHITE: [number, number, number] = [255, 255, 255];
-      const WHITE_DIM: [number, number, number] = [225, 215, 245]; // for secondary lines
+      const WHITE_DIM: [number, number, number] = [247, 231, 214]; // #F7E7D6
 
-      // Paint the entire page background — this fn is called for the first
+      // Paint the entire page background â€” this fn is called for the first
       // page now and again every time we addPage().
       const paintBackground = () => {
         doc.setFillColor(...PURPLE);
@@ -880,7 +880,7 @@ export default function SeatingChartPage() {
       };
       paintBackground();
 
-      // ── Logo (right corner) ──────────────────────────────────────────
+      // â”€â”€ Logo (right corner) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // Fetch /logo.png as a data URL so jsPDF's addImage() can embed it.
       let logoDataUrl: string | null = null;
       try {
@@ -896,7 +896,7 @@ export default function SeatingChartPage() {
         }
       } catch { /* logo failure is non-fatal */ }
 
-      // Sized to look balanced at letter scale — not too small, not too big.
+      // Sized to look balanced at letter scale â€” not too small, not too big.
       const LOGO_SIZE = 48;
       const placeLogo = () => {
         if (!logoDataUrl) return;
@@ -918,7 +918,7 @@ export default function SeatingChartPage() {
           })()
         : "";
 
-      // ── Header ───────────────────────────────────────────────────────
+      // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       let cursorY = margin + 6;
       placeLogo();
 
@@ -957,7 +957,7 @@ export default function SeatingChartPage() {
       let leftY = headerBottomY;
       let rightY = headerBottomY;
 
-      // ── Tables (2-column flow) ───────────────────────────────────────
+      // â”€â”€ Tables (2-column flow) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       for (const table of pdfResult.tables) {
         const lineHeight = 14;
         const headerH = 18 + 8;
@@ -1046,7 +1046,7 @@ export default function SeatingChartPage() {
         else rightY = y;
       }
 
-      // ── Footer (page numbers + brand) on every page ──────────────────
+      // â”€â”€ Footer (page numbers + brand) on every page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const totalPages = (doc.internal.pages.length - 1) | 0;
       for (let p = 1; p <= totalPages; p++) {
         doc.setPage(p);
@@ -1113,7 +1113,7 @@ export default function SeatingChartPage() {
                       <p className="text-sm font-medium text-foreground truncate">{chart.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {tables > 0 ? t("seating.tables_guests_summary", { tables, seated }) : t("seating.no_layout")}
-                        {" · "}{new Date(chart.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        {" Â· "}{new Date(chart.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </p>
                     </div>
                     <Button size="sm" variant="outline" onClick={() => loadChart(chart)} className="text-xs h-7 px-3">
@@ -1140,7 +1140,7 @@ export default function SeatingChartPage() {
               {t("seating.number_of_tables")}
             </label>
             <div className="flex items-center gap-2">
-              <button onClick={() => setTableCount(t => Math.max(1, t - 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors">−</button>
+              <button onClick={() => setTableCount(t => Math.max(1, t - 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors">âˆ’</button>
               <span className="w-10 text-center font-bold text-xl">{tableCount}</span>
               <button onClick={() => setTableCount(t => Math.min(30, t + 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors">+</button>
             </div>
@@ -1153,7 +1153,7 @@ export default function SeatingChartPage() {
               {t("seating.seats_per_table")}
             </label>
             <div className="flex items-center gap-2">
-              <button onClick={() => setSeatsPerTable(s => Math.max(2, s - 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors">−</button>
+              <button onClick={() => setSeatsPerTable(s => Math.max(2, s - 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors">âˆ’</button>
               <span className="w-10 text-center font-bold text-xl">{seatsPerTable}</span>
               <button onClick={() => setSeatsPerTable(s => Math.min(20, s + 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors">+</button>
             </div>
@@ -1166,7 +1166,7 @@ export default function SeatingChartPage() {
             <p className="text-2xl font-bold text-primary mt-1">{filledCount} / {totalCapacity}</p>
             <p className="text-xs text-muted-foreground">{t("seating.guests_seats")}</p>
             {filledCount > totalCapacity && (
-              <p className="text-xs text-red-500 mt-1 font-medium">⚠ {t("seating.over_capacity")}</p>
+              <p className="text-xs text-red-500 mt-1 font-medium">âš  {t("seating.over_capacity")}</p>
             )}
           </CardContent>
         </Card>
@@ -1339,7 +1339,7 @@ export default function SeatingChartPage() {
               >
                 <FileDown className="h-3.5 w-3.5" />
                 {exportingPdf
-                  ? t("seating.exporting_pdf", { defaultValue: "Exporting…" })
+                  ? t("seating.exporting_pdf", { defaultValue: "Exportingâ€¦" })
                   : t("seating.export_pdf", { defaultValue: "Export PDF" })}
               </Button>
               <Button
@@ -1352,7 +1352,7 @@ export default function SeatingChartPage() {
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 {resetting
-                  ? t("seating.resetting", { defaultValue: "Resetting…" })
+                  ? t("seating.resetting", { defaultValue: "Resettingâ€¦" })
                   : t("seating.reset", { defaultValue: "Reset" })}
               </Button>
             </div>
@@ -1417,13 +1417,13 @@ export default function SeatingChartPage() {
 
           <div className="flex items-center justify-center gap-6 pt-2 text-sm text-muted-foreground border-t border-border/50">
             <span>{t("seating.guests_seated", { n: result.totalSeated })}</span>
-            <span>·</span>
+            <span>Â·</span>
             <span>{t("seating.tables_count", { n: result.tables.length })}</span>
-            <span>·</span>
+            <span>Â·</span>
             <span>{t("seating.generated_by")}</span>
             {saveChartMutation.isSuccess && (
               <>
-                <span>·</span>
+                <span>Â·</span>
                 <span className="text-emerald-600 dark:text-emerald-400 font-medium">{t("seating.auto_saved")}</span>
               </>
             )}

@@ -105,7 +105,7 @@ export default function Landing() {
             <img
               src="/logo.png"
               alt="A.I Do - AI Wedding Planner Assistant"
-              className="h-28 w-auto object-contain drop-shadow-[0_22px_38px_rgba(141,41,77,0.16)] sm:h-40"
+              className="h-32 w-auto object-contain drop-shadow-[0_22px_38px_rgba(141,41,77,0.16)] sm:h-48"
             />
             <div className="mt-3 rounded-full border border-[#B16C8E] bg-white/[0.55] px-6 py-1.5 text-base font-bold uppercase tracking-[0.18em] text-[#B16C8E] shadow-sm sm:text-lg">
               {t("landing.beta", { defaultValue: "Beta" })}

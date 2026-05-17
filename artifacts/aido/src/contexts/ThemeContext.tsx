@@ -13,10 +13,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<"light" | "dark">(() => {
-    if (typeof window === "undefined") return "light";
-    return localStorage.getItem("aido-theme") === "dark" ? "dark" : "light";
-  });
+  const [theme, setThemeState] = useState<"light" | "dark">("light");
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");

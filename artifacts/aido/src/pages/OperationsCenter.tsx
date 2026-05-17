@@ -214,17 +214,17 @@ export default function OperationsCenterPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto text-[#24171D]">
       <div>
-        <h1 className="text-3xl font-serif font-bold text-foreground">Operations Center</h1>
-        <p className="text-muted-foreground mt-1">Support tickets, contact messages, and feedback in one place</p>
+        <h1 className="text-3xl font-serif font-bold text-[#24171D]">Operations Center</h1>
+        <p className="mt-1 text-sm font-medium text-[#4A3941]">Support tickets, contact messages, and feedback in one place</p>
       </div>
 
       <div className="flex gap-2 border-b border-border">
         <button
           onClick={() => setActiveTab("tickets")}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
-            ${activeTab === "tickets" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            ${activeTab === "tickets" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
         >
           <Ticket className="h-4 w-4" />
           Support Tickets
@@ -232,7 +232,7 @@ export default function OperationsCenterPage() {
         <button
           onClick={() => setActiveTab("messages")}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
-            ${activeTab === "messages" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            ${activeTab === "messages" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
         >
           <Inbox className="h-4 w-4" />
           Messages & Feedback
@@ -245,7 +245,7 @@ export default function OperationsCenterPage() {
         <button
           onClick={() => setActiveTab("testActivity")}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
-            ${activeTab === "testActivity" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            ${activeTab === "testActivity" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
         >
           <FlaskConical className="h-4 w-4" />
           Free Test Account Activity
@@ -263,8 +263,8 @@ export default function OperationsCenterPage() {
         <div className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-xl font-serif font-semibold text-foreground">Free Test Account Activity</h2>
-              <p className="text-sm text-muted-foreground">
+              <h2 className="text-xl font-serif font-semibold text-[#24171D]">Free Test Account Activity</h2>
+              <p className="text-sm font-medium text-[#4A3941]">
                 Anonymous test sessions are separated from real user analytics.
               </p>
             </div>
@@ -294,7 +294,7 @@ export default function OperationsCenterPage() {
             <Card>
               <CardContent className="py-12 text-center">
                 <FlaskConical className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-                <p className="text-muted-foreground">No sessions found for this filter.</p>
+                <p className="font-medium text-[#4A3941]">No sessions found for this filter.</p>
               </CardContent>
             </Card>
           ) : (
@@ -305,7 +305,7 @@ export default function OperationsCenterPage() {
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <h3 className="font-mono text-sm font-semibold text-foreground break-all">{session.sessionId}</h3>
+                          <h3 className="font-mono text-sm font-semibold text-[#24171D] break-all">{session.sessionId}</h3>
                           <Badge className={session.testMode ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
                             testMode = {String(session.testMode)}
                           </Badge>
@@ -313,7 +313,7 @@ export default function OperationsCenterPage() {
                             <Badge className="bg-red-100 text-red-800">{session.errorsEncountered} errors</Badge>
                           )}
                         </div>
-                        <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="grid gap-2 text-xs font-medium text-[#4A3941] sm:grid-cols-2 lg:grid-cols-4">
                           <span>Created: {new Date(session.createdAt).toLocaleString()}</span>
                           <span>Last active: {new Date(session.lastActiveAt).toLocaleString()}</span>
                           <span>Total events: {session.totalEvents}</span>
@@ -327,15 +327,15 @@ export default function OperationsCenterPage() {
                           <span className="rounded-md bg-muted px-2 py-1">Website: {session.workflowProgress.websiteEditorVisits}</span>
                         </div>
                         {session.pagesVisited.length > 0 && (
-                          <p className="mt-3 text-xs text-muted-foreground">
-                            <span className="font-medium text-foreground">Pages:</span>{" "}
+                          <p className="mt-3 text-xs font-medium text-[#4A3941]">
+                            <span className="font-semibold text-[#24171D]">Pages:</span>{" "}
                             {session.pagesVisited.slice(0, 10).join(", ")}
                             {session.pagesVisited.length > 10 ? ` +${session.pagesVisited.length - 10} more` : ""}
                           </p>
                         )}
                         {session.wizardsUsed.length > 0 && (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            <span className="font-medium text-foreground">Wizards used:</span>{" "}
+                          <p className="mt-1 text-xs font-medium text-[#4A3941]">
+                            <span className="font-semibold text-[#24171D]">Wizards used:</span>{" "}
                             {session.wizardsUsed.join(", ")}
                           </p>
                         )}
@@ -355,7 +355,7 @@ export default function OperationsCenterPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Tickets</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#4A3941]">Total Tickets</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
@@ -363,26 +363,26 @@ export default function OperationsCenterPage() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Open</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#4A3941]">Open</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.open}</div>
+            <div className="text-2xl font-bold text-[#1D4E89]">{stats.open}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">In Progress</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#4A3941]">In Progress</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{stats.inProgress}</div>
+            <div className="text-2xl font-bold text-[#8A5200]">{stats.inProgress}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Resolved</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#4A3941]">Resolved</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.resolved}</div>
+            <div className="text-2xl font-bold text-[#217244]">{stats.resolved}</div>
           </CardContent>
         </Card>
       </div>
@@ -411,14 +411,14 @@ export default function OperationsCenterPage() {
           <CardContent className="py-12 text-center">
             <AlertCircle className="h-12 w-12 text-destructive/60 mx-auto mb-4" />
             <p className="text-destructive font-medium mb-1">Couldn't load tickets</p>
-            <p className="text-muted-foreground text-sm">{ticketsError.message}</p>
+            <p className="text-sm font-medium text-[#4A3941]">{ticketsError.message}</p>
           </CardContent>
         </Card>
       ) : filteredTickets.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <AlertCircle className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-            <p className="text-muted-foreground">No tickets found</p>
+            <p className="font-medium text-[#4A3941]">No tickets found</p>
           </CardContent>
         </Card>
       ) : (
@@ -430,17 +430,17 @@ export default function OperationsCenterPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
                       {getStatusIcon(ticket.status)}
-                      <h3 className="font-semibold text-foreground truncate">{ticket.subject}</h3>
+                      <h3 className="font-semibold text-[#24171D] truncate">{ticket.subject}</h3>
                       <Badge variant="outline">{ticket.ticketNumber}</Badge>
                       <Badge className={getPriorityColor(ticket.priority)}>
                         {ticket.priority}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">
+                    <p className="mb-2 text-sm font-medium text-[#4A3941]">
                       From: {ticket.name} ({ticket.email})
                     </p>
-                    <p className="text-sm text-foreground line-clamp-2">{ticket.message}</p>
-                    <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
+                    <p className="text-sm font-medium text-[#24171D] line-clamp-2">{ticket.message}</p>
+                    <div className="flex gap-4 mt-3 text-xs font-medium text-[#4A3941]">
                       <span>Category: {ticket.category}</span>
                       <span>
                         {new Date(ticket.createdAt).toLocaleDateString()}

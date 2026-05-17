@@ -156,10 +156,10 @@ export default function MessagesSection({
   const resolvedCount = allContacts.filter(c => c.isResolved).length + allFeedback.filter(f => f.isResolved).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-[#24171D]">
       <div className="mb-6">
-        <h2 className="text-2xl font-serif text-primary">{title}</h2>
-        <p className="text-muted-foreground mt-1">{description}</p>
+        <h2 className="text-2xl font-serif font-semibold text-[#24171D]">{title}</h2>
+        <p className="mt-1 text-sm font-medium text-[#4A3941]">{description}</p>
       </div>
 
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -167,7 +167,7 @@ export default function MessagesSection({
           <button
             onClick={() => setSubTab("contact")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border
-              ${subTab === "contact" ? "bg-primary text-white border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
+              ${subTab === "contact" ? "bg-primary text-white border-primary" : "bg-card border-border text-[#4A3941] hover:text-[#24171D]"}`}
           >
             <Mail className="h-4 w-4" />
             Contact Messages
@@ -181,7 +181,7 @@ export default function MessagesSection({
           <button
             onClick={() => setSubTab("feedback")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border
-              ${subTab === "feedback" ? "bg-primary text-white border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
+              ${subTab === "feedback" ? "bg-primary text-white border-primary" : "bg-card border-border text-[#4A3941] hover:text-[#24171D]"}`}
           >
             <MessageSquare className="h-4 w-4" />
             Feedback
@@ -198,7 +198,7 @@ export default function MessagesSection({
           <button
             onClick={() => setShowResolved(s => !s)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
-              ${showResolved ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted/50 text-muted-foreground border-border hover:border-primary/30"}`}
+              ${showResolved ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted/50 text-[#4A3941] border-border hover:border-primary/30"}`}
           >
             <CheckCircle2 className="h-3.5 w-3.5" />
             {showResolved ? "Hiding resolved" : `Show resolved (${resolvedCount})`}
@@ -210,7 +210,7 @@ export default function MessagesSection({
         <div className="space-y-2">
           {contacts.length === 0 ? (
             <Card className="border-none shadow-sm">
-              <CardContent className="py-12 text-center text-muted-foreground">
+              <CardContent className="py-12 text-center font-medium text-[#4A3941]">
                 <Inbox className="h-10 w-10 mx-auto mb-3 opacity-30" />
                 {allContacts.length === 0 ? "No contact messages yet." : "All messages are resolved."}
               </CardContent>
@@ -233,7 +233,7 @@ export default function MessagesSection({
                       )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className={`font-medium text-sm truncate ${!msg.isRead && !msg.isResolved ? "text-foreground" : "text-muted-foreground"}`}>
+                          <p className={`font-semibold text-sm truncate ${!msg.isRead && !msg.isResolved ? "text-[#24171D]" : "text-[#4A3941]"}`}>
                             {msg.subject}
                           </p>
                           {msg.isResolved && (
@@ -242,29 +242,29 @@ export default function MessagesSection({
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="text-xs font-medium text-[#4A3941] truncate">
                           {msg.name} &lt;{msg.email}&gt;
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                    <span className="text-xs font-medium text-[#4A3941] whitespace-nowrap flex-shrink-0">
                       {new Date(msg.createdAt).toLocaleDateString()}
                     </span>
                   </div>
                 </button>
                 {expanded === msg.id && (
                   <div className="px-5 pb-4 pt-0 border-t border-border/30 bg-muted/5">
-                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-3 mt-3">
+                    <div className="grid grid-cols-2 gap-2 text-xs font-medium text-[#4A3941] mb-3 mt-3">
                       <span><strong>From:</strong> {msg.name}</span>
                       <span><strong>Email:</strong> {msg.email}</span>
                       <span><strong>Submitted:</strong> {new Date(msg.createdAt).toLocaleString()}</span>
                     </div>
-                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3">
+                    <p className="text-sm font-medium text-[#24171D] leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3">
                       {msg.message}
                     </p>
                     {msg.replies && msg.replies.length > 0 && (
                       <div className="mt-3 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        <p className="text-xs font-semibold text-[#4A3941] uppercase tracking-wide">
                           Conversation ({msg.replies.length})
                         </p>
                         {msg.replies.map(reply => {
@@ -274,7 +274,7 @@ export default function MessagesSection({
                               key={reply.id}
                               className={`rounded-lg p-3 border ${isOutbound ? "bg-primary/5 border-primary/20 ml-6" : "bg-muted/30 border-border/40 mr-6"}`}
                             >
-                              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                              <div className="flex items-center justify-between text-xs font-medium text-[#4A3941] mb-1.5">
                                 <span className="font-medium">
                                   {isOutbound
                                     ? `You replied${reply.senderEmail ? ` (as ${reply.senderEmail})` : ""}`
@@ -282,7 +282,7 @@ export default function MessagesSection({
                                 </span>
                                 <span>{new Date(reply.createdAt).toLocaleString()}</span>
                               </div>
-                              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                              <p className="text-sm font-medium text-[#24171D] whitespace-pre-wrap leading-relaxed">
                                 {reply.body}
                               </p>
                             </div>
@@ -335,7 +335,7 @@ export default function MessagesSection({
                         className="mt-3 border border-border/40 rounded-lg p-3 bg-background"
                         onClick={e => e.stopPropagation()}
                       >
-                        <div className="text-xs text-muted-foreground mb-2">
+                        <div className="text-xs font-medium text-[#4A3941] mb-2">
                           Replying to <strong>{msg.email}</strong> · subject: <strong>Re: {msg.subject}</strong>
                         </div>
                         <textarea
@@ -383,7 +383,7 @@ export default function MessagesSection({
         <div className="space-y-2">
           {feedback.length === 0 ? (
             <Card className="border-none shadow-sm">
-              <CardContent className="py-12 text-center text-muted-foreground">
+              <CardContent className="py-12 text-center font-medium text-[#4A3941]">
                 <Star className="h-10 w-10 mx-auto mb-3 opacity-30" />
                 {allFeedback.length === 0 ? "No feedback submissions yet." : "All feedback is resolved."}
               </CardContent>
@@ -426,21 +426,21 @@ export default function MessagesSection({
                           )}
                         </div>
                       </div>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                      <span className="text-xs font-medium text-[#4A3941] whitespace-nowrap flex-shrink-0">
                         {new Date(item.createdAt).toLocaleDateString()}
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1 truncate px-5 -mx-5">
+                    <p className="mt-1 truncate px-5 -mx-5 text-sm font-medium text-[#4A3941]">
                       {item.message.slice(0, 80)}{item.message.length > 80 ? "…" : ""}
                     </p>
                   </button>
                   {expanded === item.id && (
                     <div className="px-5 pb-4 pt-0 border-t border-border/30 bg-muted/5">
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3 mt-3">
+                      <p className="text-sm font-medium text-[#24171D] leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3 mt-3">
                         {item.message}
                       </p>
                       <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs font-medium text-[#4A3941]">
                           Submitted: {new Date(item.createdAt).toLocaleString()}
                         </p>
                         <div className="flex gap-2">

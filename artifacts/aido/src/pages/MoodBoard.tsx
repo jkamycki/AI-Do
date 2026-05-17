@@ -209,6 +209,7 @@ function SortableImageCard({
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200 pointer-events-none" />
 
       <button
+        type="button"
         {...attributes}
         {...listeners}
         className="absolute top-2 left-2 p-1.5 rounded-lg bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-10"
@@ -218,9 +219,18 @@ function SortableImageCard({
       </button>
 
       <button
-        onClick={onDelete}
-        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/70 z-10"
+        type="button"
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onDelete();
+        }}
+        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/55 text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-red-500/70 z-20"
         title="Remove image"
+        aria-label="Remove image"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>
@@ -453,7 +463,15 @@ export default function MoodBoard() {
     const updated = board.images
       .filter(img => img.objectPath !== objectPath)
       .map((img, i) => ({ ...img, order: i }));
+    setBlobUrls(prev => {
+      const blobUrl = prev.get(objectPath);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      const next = new Map(prev);
+      next.delete(objectPath);
+      return next;
+    });
     update({ images: updated });
+    toast({ title: "Image removed from your mood board" });
   };
 
   // ─── Analyze single image ─────────────────────────────────────────────────
