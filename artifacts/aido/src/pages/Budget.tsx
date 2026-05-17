@@ -27,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Lock, Paperclip, X, AlertTriangle } from "lucide-react";
+import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Lock, Paperclip, X, AlertTriangle, Bell } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const MANUAL_CATEGORIES = [
@@ -210,26 +210,20 @@ function NextPaymentDisplay({
   if (!date) return <span className="text-muted-foreground text-xs">-</span>;
   const daysUntil = daysUntilDate(date);
   const isOverdue = daysUntil < 0;
-  const isSoon = daysUntil >= 0 && daysUntil <= 7;
-  const tone = toneClass ?? (isOverdue
-    ? "border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-200 dark:bg-red-500/15"
-    : isSoon
-      ? "border-amber-500/35 bg-amber-500/12 text-amber-800 dark:text-amber-100 dark:bg-amber-400/12"
-      : "border-burgundy/20 bg-burgundy/8 text-foreground dark:border-champagne/20 dark:bg-champagne/8");
+  const tone = toneClass ?? "border-red-200 bg-red-50 text-red-700 dark:border-red-800/50 dark:bg-red-950/30 dark:text-red-300";
   const dueLabel = isOverdue
-    ? t("budget.due_overdue", { n: Math.abs(daysUntil), defaultValue: `${Math.abs(daysUntil)} day(s) overdue` })
+    ? `${t("vendors.payment_overdue_banner", { n: Math.abs(daysUntil), defaultValue: `Payment overdue by ${Math.abs(daysUntil)} day(s)` })} - ${formatDate(date)}`
     : daysUntil === 0
-      ? t("budget.due_today", { defaultValue: "Due today" })
-      : isSoon
-        ? t("budget.due_in_days", { n: daysUntil, defaultValue: `Due in ${daysUntil} day(s)` })
-        : formatDate(date);
-  const formattedDate = formatDate(date);
-  const showDateDetail = dueLabel !== formattedDate;
-
+      ? `${t("vendors.payment_due_today_banner", { defaultValue: "Payment due today" })} - ${formatDate(date)}`
+      : `${t("vendors.payment_due_in_banner", { n: daysUntil, defaultValue: `Payment in ${daysUntil} day(s)` })} - ${formatDate(date)}`;
   return (
-    <div className={`inline-flex max-w-[220px] flex-col gap-1 rounded-lg border px-2.5 py-1.5 text-xs ${tone}`}>
-      <span className="font-semibold">{dueLabel}</span>
-      {showDateDetail && <span className="text-[11px] opacity-85">{formattedDate}</span>}
+    <div className={`inline-flex max-w-[260px] flex-col gap-1 rounded-lg border px-2.5 py-1.5 text-xs ${tone}`}>
+      <div className="flex items-center gap-1.5">
+        {isOverdue
+          ? <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+          : <Bell className="h-3.5 w-3.5 flex-shrink-0" />}
+        <span className="font-semibold">{dueLabel}</span>
+      </div>
       {amount > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="tabular-nums font-medium">{formatMoney(amount)}</span>
@@ -891,7 +885,6 @@ export default function Budget() {
                     <NextPaymentDisplay
                       date={nextPayment.date}
                       amount={nextPayment.amount}
-                      toneClass={categoryBadgeClass(nextPayment.category)}
                       onMarkPaid={nextPayment.source === "manual" && nextPayment.manualId && nextPayment.amount > 0 ? () => handleMarkPaid(nextPayment.manualId!) : undefined}
                       t={t}
                     />
