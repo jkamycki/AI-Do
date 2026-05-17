@@ -870,7 +870,7 @@ function DashboardContent() {
           </DropdownMenu>
           <h1 className="text-3xl md:text-4xl font-serif text-foreground capitalize">
             {summary?.profile?.partner1Name && summary?.profile?.partner2Name
-              ? `${summary.profile.partner1Name} & ${summary.profile.partner2Name}`
+              ? `${summary.profile.partner2Name} & ${summary.profile.partner1Name}`
               : firstName} 🤍
           </h1>
         </div>
@@ -936,7 +936,7 @@ function DashboardContent() {
                   <span className="text-xs font-semibold uppercase tracking-widest">{t("dashboard.your_wedding")}</span>
                 </div>
                 <h2 className="text-2xl md:text-3xl font-serif text-foreground">
-                  {summary.profile.partner1Name} &amp; {summary.profile.partner2Name}
+                  {summary.profile.partner2Name} &amp; {summary.profile.partner1Name}
                 </h2>
               </div>
               <Link href="/profile" className="shrink-0">

@@ -260,7 +260,7 @@ function DayOfInner() {
         <p className="text-sm text-muted-foreground font-medium">{dateStr}</p>
         {activeWorkspace && activeWorkspace.role !== "owner" && (
           <p className="text-xs text-muted-foreground mt-0.5">
-            {activeWorkspace.partner1Name} &amp; {activeWorkspace.partner2Name}'s wedding
+            {activeWorkspace.partner2Name} &amp; {activeWorkspace.partner1Name}'s wedding
           </p>
         )}
         {hasUnsavedChanges && (

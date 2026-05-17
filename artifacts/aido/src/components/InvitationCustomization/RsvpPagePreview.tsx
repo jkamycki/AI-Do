@@ -155,7 +155,7 @@ export function RsvpPagePreview({
   const cardBg = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
   const cardBorder = isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)";
   const accentText = isLightColor(accent) ? "#1a1a1a" : "#ffffff";
-  const couple = [partner1Name, partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple = [partner2Name, partner1Name].filter(Boolean).join(" & ") || "The Couple";
   const dateStr = weddingDate ? formatDate(weddingDate) : "Wedding Day";
   // Apply custom font family to all text when set; falls back to defaults.
   const serifStack = font

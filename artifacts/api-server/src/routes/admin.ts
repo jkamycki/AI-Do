@@ -448,7 +448,7 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
       return name || related?.email || fallbackEmail || "Unknown";
     };
     const workspaceName = (row: typeof collaboratorRows[number]) =>
-      row.workstationName || [row.partner1Name, row.partner2Name].filter(Boolean).join(" & ") || "Shared workspace";
+      row.workstationName || [row.partner2Name, row.partner1Name].filter(Boolean).join(" & ") || "Shared workspace";
 
     const users = clerkUsers.data.map(cu => {
       const primaryEmail = cu.emailAddresses.find(e => e.id === cu.primaryEmailAddressId)?.emailAddress

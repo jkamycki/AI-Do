@@ -411,7 +411,7 @@ export default function SettingsPage() {
   const myRole = data?.myRole ?? (sharedProfileId ? activeWorkspace?.role ?? "viewer" : "owner");
   const canManage = myRole === "owner" || myRole === "partner";
   const activeWorkspaceName = data?.workspaceName
-    ?? (activeWorkspace ? `${activeWorkspace.partner1Name} & ${activeWorkspace.partner2Name}` : null)
+    ?? (activeWorkspace ? `${activeWorkspace.partner2Name} & ${activeWorkspace.partner1Name}` : null)
     ?? "My Workspace";
 
   useEffect(() => {

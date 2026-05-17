@@ -214,20 +214,41 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                       : t("onboarding.who_getting_married", { defaultValue: "Who's getting married?" })}
                   </p>
                 </div>
-                <FormField control={form.control} name="partner1Name" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{accountType === "wedding_planner" ? "Client / Partner 1 Name" : t("onboarding.partner1_name", { defaultValue: "Partner 1 Name" })}</FormLabel>
-                    <FormControl><Input placeholder={t("onboarding.partner1_placeholder", { defaultValue: "e.g. Emma" })} {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="partner2Name" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{accountType === "wedding_planner" ? "Partner 2 / Event Name" : t("onboarding.partner2_name", { defaultValue: "Partner 2 Name" })}</FormLabel>
-                    <FormControl><Input placeholder={t("onboarding.partner2_placeholder", { defaultValue: "e.g. James" })} {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                {accountType === "wedding_planner" ? (
+                  <>
+                    <FormField control={form.control} name="partner1Name" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client / Partner 1 Name</FormLabel>
+                        <FormControl><Input placeholder={t("onboarding.partner1_placeholder", { defaultValue: "e.g. Emma" })} {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="partner2Name" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Partner 2 / Event Name</FormLabel>
+                        <FormControl><Input placeholder={t("onboarding.partner2_placeholder", { defaultValue: "e.g. James" })} {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </>
+                ) : (
+                  <>
+                    <FormField control={form.control} name="partner2Name" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bride's Name</FormLabel>
+                        <FormControl><Input placeholder="e.g. Sophia" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="partner1Name" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Groom's Name</FormLabel>
+                        <FormControl><Input placeholder="e.g. James" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </>
+                )}
                 <Button type="button" className="w-full mt-2" onClick={handleNext}>
                   {t("onboarding.next", { defaultValue: "Next" })} <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>

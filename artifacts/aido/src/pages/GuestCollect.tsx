@@ -131,7 +131,7 @@ export default function GuestCollect() {
                 Got it, thank you!
               </h2>
               <p className="text-white/60 text-sm leading-relaxed">
-                <span className="font-semibold text-white">{wedding.partner1Name} & {wedding.partner2Name}</span>{" "}
+                <span className="font-semibold text-white">{wedding.partner2Name} & {wedding.partner1Name}</span>{" "}
                 now have your info and will be in touch!
               </p>
             </div>
@@ -166,7 +166,7 @@ export default function GuestCollect() {
                 Contact Info Request
               </p>
               <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight" style={{ fontFamily: "Georgia, serif" }}>
-                {wedding.partner1Name} & {wedding.partner2Name}
+                {wedding.partner2Name} & {wedding.partner1Name}
               </h1>
               <p className="text-base text-white/60 mt-1">
                 are collecting addresses for their wedding invitations
@@ -180,7 +180,7 @@ export default function GuestCollect() {
             <CardContent className="pt-7 pb-8 px-6 sm:px-8 space-y-5">
               <p className="text-sm text-white/60">
                 Please share your mailing address and contact details so{" "}
-                <span className="text-white font-medium">{wedding.partner1Name} & {wedding.partner2Name}</span>{" "}
+                <span className="text-white font-medium">{wedding.partner2Name} & {wedding.partner1Name}</span>{" "}
                 can send you an invitation.
               </p>
 

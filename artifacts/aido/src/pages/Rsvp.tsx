@@ -284,7 +284,7 @@ export default function Rsvp() {
   const photoZoom = Math.max(1, Math.min(2.5, Number(info?.photoZoom ?? 1) || 1));
   const photoObjectPosition = info?.photoObjectPosition ?? "50% 50%";
 
-  const couple = [info?.partner1Name, info?.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple = [info?.partner2Name, info?.partner1Name].filter(Boolean).join(" & ") || "The Couple";
   const partner1First = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";
   const partner2First = String(info?.partner2Name || "").trim().split(/\s+/)[0] || "Partner";
 
@@ -462,7 +462,7 @@ export default function Rsvp() {
           accent={GOLD}
           paper={isCustomMode ? BG : undefined}
           darkPanel={isCustomMode ? GOLD : undefined}
-          monogram={`${info.partner1Name || ""} ${info.partner2Name || ""}`}
+          monogram={`${info.partner2Name || ""} ${info.partner1Name || ""}`}
         >
         {isFullPhotoLayout ? (
         <div

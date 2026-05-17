@@ -322,7 +322,7 @@ export function AiSaveDatePreview({
   // In custom mode apply the user's font everywhere, including labels.
   const labelFont = customColors ? displayFont : jakarta;
 
-  const couple    = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple    = [profile.partner2Name, profile.partner1Name].filter(Boolean).join(" & ") || "The Couple";
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine  = [profile.venueCity, profile.venueState].filter(Boolean).join(", ");
 
@@ -593,7 +593,7 @@ export function AiDigitalInvitationPreview({
   // In custom mode apply the user's font everywhere, including labels.
   const labelFont = customColors ? displayFont : jakarta;
 
-  const couple    = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple    = [profile.partner2Name, profile.partner1Name].filter(Boolean).join(" & ") || "The Couple";
   const guestName = profile.guestName || "Guest";
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine  = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");

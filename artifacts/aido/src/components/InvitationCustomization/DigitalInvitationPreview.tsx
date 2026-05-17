@@ -99,8 +99,8 @@ export const DigitalInvitationPreview = forwardRef<
   })();
   const couple =
     partner1Name && partner2Name
-      ? `${partner1Name} & ${partner2Name}`
-      : partner1Name || partner2Name || "Couple Names";
+      ? `${partner2Name} & ${partner1Name}`
+      : partner2Name || partner1Name || "Couple Names";
 
   const updateOverride = (id: string, patch: ElementOverride) => {
     const cur = textOverrides[id] || {};

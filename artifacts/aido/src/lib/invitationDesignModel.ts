@@ -69,7 +69,7 @@ export function buildInvitationDesignDocument({
   customStyle,
   rsvpByDate,
 }: BuildInvitationDesignDocumentInput): InvitationDesignDocument {
-  const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple = [profile.partner2Name, profile.partner1Name].filter(Boolean).join(" & ") || "The Couple";
   const isSaveTheDate = kind === "saveTheDate";
   const accentColor = isSaveTheDate
     ? customization?.saveTheDateAccentColor

@@ -710,7 +710,7 @@ export default function InvitationCustomizationPage({
   // ── Load messages from wedding profile ────────────────────────────────────
   useEffect(() => {
     if (weddingProfile) {
-      const couple = [weddingProfile.partner1Name, weddingProfile.partner2Name]
+      const couple = [weddingProfile.partner2Name, weddingProfile.partner1Name]
         .filter(Boolean)
         .join(" & ");
       setSaveTheDateMessage(
@@ -2220,7 +2220,7 @@ export default function InvitationCustomizationPage({
                     paper={isCustom ? cd.backgroundColor : undefined}
                     darkPanel={isCustom ? cd.accentColor : undefined}
                     replayKey={previewRefreshKey}
-                    monogram={`${displayWeddingProfile.partner1Name || ""} ${displayWeddingProfile.partner2Name || ""}`}
+                    monogram={`${displayWeddingProfile.partner2Name || ""} ${displayWeddingProfile.partner1Name || ""}`}
                   >
                     {isSTD ? (
                       <AiSaveDatePreview

@@ -68,7 +68,7 @@ function randomSuffix(len = 5): string {
 function baseSlug(profile: WeddingProfile): string {
   const a = (profile.partner1Name || "").trim().split(/\s+/)[0]?.toLowerCase() ?? "";
   const b = (profile.partner2Name || "").trim().split(/\s+/)[0]?.toLowerCase() ?? "";
-  const cleaned = [a, b].filter(Boolean).join("-").replace(/[^a-z0-9-]/g, "");
+  const cleaned = [b, a].filter(Boolean).join("-").replace(/[^a-z0-9-]/g, "");
   return cleaned || "wedding";
 }
 
@@ -89,7 +89,7 @@ async function generateUniqueSlug(profile: WeddingProfile): Promise<string> {
 }
 
 function autoGenerateText(profile: WeddingProfile): WebsiteCustomText {
-  const couple = `${profile.partner1Name} & ${profile.partner2Name}`;
+  const couple = `${profile.partner2Name} & ${profile.partner1Name}`;
   const venueLine = profile.venue ? `${profile.venue}${profile.location ? `, ${profile.location}` : ""}` : "";
   return {
     welcome: `Welcome to our wedding website! We can't wait to celebrate with you on ${profile.weddingDate}${venueLine ? ` at ${venueLine}` : ""}. Browse the site for everything you need to know.`,

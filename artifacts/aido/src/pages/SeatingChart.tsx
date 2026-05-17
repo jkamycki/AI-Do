@@ -906,7 +906,7 @@ export default function SeatingChartPage() {
       };
 
       const couple = profile
-        ? `${profile.partner1Name ?? ""} & ${profile.partner2Name ?? ""}`.trim()
+        ? `${profile.partner2Name ?? ""} & ${profile.partner1Name ?? ""}`.trim()
         : "";
       const weddingDate = profile?.weddingDate
         ? (() => {

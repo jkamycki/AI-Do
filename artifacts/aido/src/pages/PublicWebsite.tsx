@@ -206,7 +206,7 @@ export default function PublicWebsite() {
 
   useEffect(() => {
     if (data) {
-      const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
+      const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
       const description = (data.customText.welcome || data.customText.story || `Join us as we celebrate our wedding.`).slice(0, 160);
       const heroAbsolute = data.heroImage
         ? (data.heroImage.startsWith("/objects/") ? `${window.location.origin}/api/storage${data.heroImage}` : data.heroImage)

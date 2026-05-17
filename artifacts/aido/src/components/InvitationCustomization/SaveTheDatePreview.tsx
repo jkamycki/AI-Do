@@ -71,8 +71,8 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
     })();
     const couple =
       partner1Name && partner2Name
-        ? `${partner1Name} & ${partner2Name}`
-        : partner1Name || partner2Name || "Couple Names";
+        ? `${partner2Name} & ${partner1Name}`
+        : partner2Name || partner1Name || "Couple Names";
     const cityState = [venueCity, venueState].filter(Boolean).join(", ");
 
     const updateOverride = (id: string, patch: ElementOverride) => {

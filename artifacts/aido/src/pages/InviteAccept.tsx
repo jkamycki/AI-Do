@@ -397,7 +397,7 @@ export default function InviteAcceptPage() {
           {/* Wedding info */}
           <div className="text-center space-y-1">
             <h2 className="text-2xl font-serif text-primary">
-              {invite.partner1Name} & {invite.partner2Name}
+              {invite.partner2Name} & {invite.partner1Name}
             </h2>
             {(invite.weddingDate || invite.venue) && (
               <p className="text-muted-foreground text-sm">

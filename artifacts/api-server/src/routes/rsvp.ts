@@ -57,6 +57,10 @@ function escapeHtml(value: string | null | undefined): string {
     .replace(/'/g, "&#39;");
 }
 
+function coupleDisplayName(profile: { partner1Name?: string | null; partner2Name?: string | null }, separator = " & ") {
+  return [profile.partner2Name, profile.partner1Name].filter(Boolean).join(separator) || "The Couple";
+}
+
 function isLightColor(hex: string): boolean {
   const h = (hex || "").replace("#", "");
   if (h.length !== 6) return true;
@@ -835,7 +839,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
 
     let emailSent = false;
     if (guest.email) {
-      const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+      const couple = coupleDisplayName(profile);
       const weddingDateStr = profile.weddingDate
         ? (() => {
             const [y, m, d] = profile.weddingDate.split("-").map(Number);
@@ -1108,7 +1112,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
       return res.json({ rsvpUrl, previewUrl: rsvpUrl, emailSent: false });
     }
 
-    const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+    const couple = coupleDisplayName(profile);
     const weddingDateStr = profile.weddingDate
       ? (() => {
           const [y, m, d] = profile.weddingDate!.split("-").map(Number);
@@ -1364,7 +1368,7 @@ router.get("/preview/rsvp/:token", async (req, res) => {
 
     const frontendOrigin = buildFrontendOrigin(req);
     const apiOrigin = buildOrigin(req);
-    const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+    const couple = coupleDisplayName(profile);
     const guestName = [firstName, lastName].filter(Boolean).join(" ") || "Guest";
     const dateStr = profile.weddingDate
       ? (() => { const [y, m, d] = profile.weddingDate!.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }); })()
@@ -1402,7 +1406,7 @@ router.get("/preview/save-the-date/:token", async (req, res) => {
 
     const frontendOrigin = buildFrontendOrigin(req);
     const apiOrigin = buildOrigin(req);
-    const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+    const couple = coupleDisplayName(profile);
     const guestName = [firstName, lastName].filter(Boolean).join(" ") || "Guest";
     const dateStr = profile.weddingDate
       ? (() => { const [y, m, d] = profile.weddingDate!.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }); })()
@@ -1690,7 +1694,7 @@ router.post("/rsvp/:token", async (req, res) => {
           ?? owner.emailAddresses[0]?.emailAddress
           ?? null;
         if (primaryEmail) {
-          const couple = [profileRow.partner1Name, profileRow.partner2Name].filter(Boolean).join(" & ") || "Your wedding";
+          const couple = coupleDisplayName(profileRow) || "Your wedding";
           const lines = [
             `RSVP backup copy for ${couple}`,
             "",
@@ -1848,7 +1852,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       const ceremonyTimeStr = formatTime12h(profile.ceremonyTime);
       const receptionTimeStr = formatTime12h(profile.receptionTime);
 
-      const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+      const couple = coupleDisplayName(profile);
       const weddingDateStr = profile.weddingDate
         ? (() => {
             const [y, m, d] = profile.weddingDate.split("-").map(Number);
@@ -2126,7 +2130,7 @@ router.get("/save-the-date/:token", async (req, res) => {
       ceremonyCity: profile.ceremonyCity,
       ceremonyState: profile.ceremonyState,
       ceremonyZip: profile.ceremonyZip,
-      saveTheDateMessage: (profile as any).saveTheDateMessage || (`Mark your calendar! ${[profile.partner1Name, profile.partner2Name].filter(Boolean).join(' & ')}` + " are getting married and we'd love to celebrate with you.") || null,
+      saveTheDateMessage: (profile as any).saveTheDateMessage || (`Mark your calendar! ${coupleDisplayName(profile)}` + " are getting married and we'd love to celebrate with you.") || null,
       hasPhoto: !!(customizationData.saveTheDatePhotoUrl || (profile as any).saveTheDatePhotoUrl),
       photoVersion: crypto.createHash("md5")
         .update(customizationData.saveTheDatePhotoUrl || (profile as any).saveTheDatePhotoUrl || "")
@@ -2225,7 +2229,7 @@ router.post("/profile/generate-invitation-message", requireAuth, async (req, res
 
     const { details = "" } = req.body;
 
-    const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" and ");
+    const couple = coupleDisplayName(profile, " and ");
     const dateStr = profile.weddingDate
       ? new Date(profile.weddingDate).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
       : null;

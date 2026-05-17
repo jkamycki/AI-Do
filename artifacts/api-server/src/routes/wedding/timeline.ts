@@ -151,7 +151,7 @@ router.post("/timeline", requireAuth, async (req, res) => {
       : "";
 
     const prompt = `Create a detailed wedding day timeline for the following wedding:
-- Couple: ${profile.partner1Name} & ${profile.partner2Name}
+- Couple: ${profile.partner2Name} & ${profile.partner1Name}
 - Date: ${profile.weddingDate}
 - Ceremony Time: ${profile.ceremonyTime}
 - Reception Time: ${profile.receptionTime}

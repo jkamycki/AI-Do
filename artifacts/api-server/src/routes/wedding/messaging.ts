@@ -177,7 +177,7 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
     const [vendor] = await db.select().from(vendors).where(eq(vendors.id, conv.vendorId)).limit(1);
     if (!vendor) return res.status(404).json({ error: "Vendor not found" });
 
-    const coupleNames = profile ? `${profile.partner1Name} & ${profile.partner2Name}` : "";
+    const coupleNames = profile ? `${profile.partner2Name} & ${profile.partner1Name}` : "";
     const finalSubject = subject?.trim() || conv.subject || `Wedding planning — ${vendor.name}`;
     const replyTo = buildInboundAddress(conv.id, conv.inboundToken);
     // Optional: use the routing address as From so vendor replies to either
@@ -333,7 +333,7 @@ router.post("/messaging/conversations/:id/suggest-reply", requireAuth, async (re
     }).join("\n\n");
 
     const ctx = profile
-      ? `Couple: ${profile.partner1Name} & ${profile.partner2Name}\nWedding date: ${profile.weddingDate}\nVenue: ${profile.venue}, ${profile.location}\nGuest count: ${profile.guestCount}`
+      ? `Couple: ${profile.partner2Name} & ${profile.partner1Name}\nWedding date: ${profile.weddingDate}\nVenue: ${profile.venue}, ${profile.location}\nGuest count: ${profile.guestCount}`
       : "";
 
     const lang = profile?.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;

@@ -150,7 +150,7 @@ function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) 
   const attendance = form.watch("attendance");
   const plusOne = form.watch("plusOne");
 
-  const couple = [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple = [profile.partner2Name, profile.partner1Name].filter(Boolean).join(" & ") || "The Couple";
   const weddingDateStr = formatWeddingDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const ceremonyTimeStr = formatTime(profile.ceremonyTime);
   const receptionTimeStr = formatTime(profile.receptionTime);
@@ -790,7 +790,7 @@ export function InvitationSendModal({
                         accent={stdAccent}
                         paper={stdPreviewColors.bg}
                         darkPanel={stdPreviewColors.accent}
-                        monogram={`${profile.partner1Name || ""} ${profile.partner2Name || ""}`}
+                        monogram={`${profile.partner2Name || ""} ${profile.partner1Name || ""}`}
                       >
                       <AiSaveDatePreview
                         profile={profile}
@@ -831,7 +831,7 @@ export function InvitationSendModal({
                         accent={digAccent}
                         paper={digPreviewColors.bg}
                         darkPanel={digPreviewColors.accent}
-                        monogram={`${profile.partner1Name || ""} ${profile.partner2Name || ""}`}
+                        monogram={`${profile.partner2Name || ""} ${profile.partner1Name || ""}`}
                       >
                       <AiDigitalInvitationPreview
                         profile={{

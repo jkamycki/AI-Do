@@ -1433,7 +1433,7 @@ export default function WebsiteEditor() {
               </div>
               <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
                 {[
-                  { label: "Couple", value: [previewExtra?.couple.partner1Name, previewExtra?.couple.partner2Name].filter(Boolean).join(" & ") || "Not set" },
+                  { label: "Couple", value: [previewExtra?.couple.partner2Name, previewExtra?.couple.partner1Name].filter(Boolean).join(" & ") || "Not set" },
                   { label: "Date", value: previewExtra?.couple.weddingDate || "Not set" },
                   { label: "Ceremony", value: formatProfileTime(previewExtra?.couple.ceremonyTime) },
                   { label: "Reception", value: formatProfileTime(previewExtra?.couple.receptionTime) },

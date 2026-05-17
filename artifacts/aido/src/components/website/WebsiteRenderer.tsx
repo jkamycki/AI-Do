@@ -884,7 +884,7 @@ function buildIcs(
 function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
   const [open, setOpen] = useState(false);
   if (!data.couple.weddingDate) return null;
-  const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
+  const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
 
   function downloadIcs() {
     const ics = buildIcs(
@@ -1760,7 +1760,7 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
 }
 
 function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
-  const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
+  const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
   const dateStr = formatWeddingDate(data.couple.weddingDate);
   return (
     <section
@@ -3419,7 +3419,7 @@ function WeddingParty({
 }
 
 function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
-  const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
+  const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
   const dateStr = formatWeddingDate(data.couple.weddingDate);
   return (
     <>
@@ -3593,7 +3593,7 @@ function TopNav({
   // through React state without changing the actual URL.
   onSectionChange?: (id: string) => void;
 }) {
-  const couple = `${data.couple.partner1Name} & ${data.couple.partner2Name}`;
+  const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
   const [scrollActive, setScrollActive] = useState<string>("home");
 
   // Build the ordered list of nav items only for sections that are enabled.

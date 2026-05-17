@@ -749,7 +749,7 @@ export default function Timeline() {
     if (!localEvents.length) return;
     setIsDownloadingPdf(true);
     try {
-      const coupleName = profile ? `${profile.partner1Name} & ${profile.partner2Name}` : undefined;
+      const coupleName = profile ? `${profile.partner2Name} & ${profile.partner1Name}` : undefined;
       const eventsForPdf = visibleEvents.map(e => ({
         time: e.startTime ? formatTime(e.startTime) : "",
         title: e.title,

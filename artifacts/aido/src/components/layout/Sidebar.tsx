@@ -154,7 +154,7 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
   const isPlannerAccount = data?.accountType === "wedding_planner";
 
   const workspaceLabel = (ws: { workstationName?: string | null; partner1Name: string; partner2Name: string }) =>
-    ws.workstationName?.trim() || `${ws.partner1Name} & ${ws.partner2Name}`;
+    ws.workstationName?.trim() || `${ws.partner2Name} & ${ws.partner1Name}`;
 
   const createWorkspace = useMutation({
     mutationFn: async () => {
@@ -382,7 +382,7 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
             >
               <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="truncate">{ws.partner1Name} & {ws.partner2Name}</div>
+                <div className="truncate">{ws.partner2Name} & {ws.partner1Name}</div>
                 <div className="text-[10px] text-muted-foreground capitalize">{ws.role}</div>
               </div>
               {activeWorkspace?.profileId === ws.profileId && (
@@ -704,7 +704,7 @@ export function Sidebar() {
           <div className="mx-4 mb-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
             <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">{t("sidebar.viewing_shared")}</p>
             <p className="text-xs text-amber-800 font-medium truncate mt-0.5">
-              {activeWorkspace.workstationName || `${activeWorkspace.partner1Name} & ${activeWorkspace.partner2Name}`}
+              {activeWorkspace.workstationName || `${activeWorkspace.partner2Name} & ${activeWorkspace.partner1Name}`}
             </p>
           </div>
         )}

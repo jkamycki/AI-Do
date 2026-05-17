@@ -1251,7 +1251,7 @@ function GuestCollectorCard() {
     : null;
 
   const coupleNames = profile
-    ? `${profile.partner1Name ?? "Partner 1"} & ${profile.partner2Name ?? "Partner 2"}`
+    ? `${profile.partner2Name ?? "Bride"} & ${profile.partner1Name ?? "Groom"}`
     : "Your names";
 
   const generate = useMutation({
@@ -1973,7 +1973,7 @@ export default function Guests({
       | { partner1Name?: string | null; partner2Name?: string | null }
       | null
       | undefined;
-    return [profile?.partner1Name, profile?.partner2Name]
+    return [profile?.partner2Name, profile?.partner1Name]
       .filter(Boolean)
       .join(" & ");
   }

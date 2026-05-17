@@ -143,7 +143,7 @@ router.get("/collaborators", requireAuth, async (req, res) => {
           inviterUserId: c.inviterUserId,
         };
       }),
-      workspaceName: profile.workstationName || `${profile.partner1Name} & ${profile.partner2Name}`,
+      workspaceName: profile.workstationName || `${profile.partner2Name} & ${profile.partner1Name}`,
       workstationName: profile.workstationName,
       profileId: profile.id,
       myRole,

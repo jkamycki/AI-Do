@@ -45,7 +45,7 @@ router.post("/workspaces", requireAuth, async (req, res) => {
       .insert(weddingProfiles)
       .values({
         userId: req.userId!,
-        workstationName: body.workstationName?.trim() || `${partner1Name} & ${partner2Name}`,
+        workstationName: body.workstationName?.trim() || `${partner2Name} & ${partner1Name}`,
         partner1Name,
         partner2Name,
         weddingDate,

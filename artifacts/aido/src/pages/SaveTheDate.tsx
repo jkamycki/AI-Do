@@ -94,7 +94,7 @@ export default function SaveTheDate() {
     retry: false,
   });
 
-  const couple = [info?.partner1Name, info?.partner2Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple = [info?.partner2Name, info?.partner1Name].filter(Boolean).join(" & ") || "The Couple";
 
   const weddingDateStr = info?.weddingDate
     ? (() => {
@@ -217,7 +217,7 @@ export default function SaveTheDate() {
         accent={GOLD}
         paper={useCustom ? BG : undefined}
         darkPanel={useCustom ? GOLD : undefined}
-        monogram={`${info.partner1Name || ""} ${info.partner2Name || ""}`}
+        monogram={`${info.partner2Name || ""} ${info.partner1Name || ""}`}
       >
       {isFullPhotoLayout ? (
       <div

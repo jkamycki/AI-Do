@@ -190,7 +190,7 @@ export default function Profile() {
   };
 
   const venueStatus = form.watch("venueStatus");
-  const coupleNames = [form.watch("partner1Name"), form.watch("partner2Name")].filter(Boolean).join(" & ");
+  const coupleNames = [form.watch("partner2Name"), form.watch("partner1Name")].filter(Boolean).join(" & ");
 
   // Only show the error screen for real errors (network/500). A 404 is the
   // expected "first-time user" state — fall through to render the empty form.
@@ -315,12 +315,12 @@ export default function Profile() {
               <div className="grid md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
-                  name="partner1Name"
+                  name="partner2Name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("profile.groom_name")}</FormLabel>
+                      <FormLabel>{t("profile.bride_name")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="James" {...field} data-testid="input-partner1" className="bg-background" />
+                        <Input placeholder="Sophia" {...field} data-testid="input-partner2" className="bg-background" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -328,12 +328,12 @@ export default function Profile() {
                 />
                 <FormField
                   control={form.control}
-                  name="partner2Name"
+                  name="partner1Name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("profile.bride_name")}</FormLabel>
+                      <FormLabel>{t("profile.groom_name")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Sophia" {...field} data-testid="input-partner2" className="bg-background" />
+                        <Input placeholder="James" {...field} data-testid="input-partner1" className="bg-background" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
