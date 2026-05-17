@@ -244,13 +244,9 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
   };
 
   const fallbackVenueOptions = () => [
-    "### Venue options to explore",
+    "### Venue suggestions unavailable",
     "",
-    `- **Best-fit direction:** Look for ${draftBase.preference} venues around ${draftBase.location} that comfortably handle ${draftBase.guestCount} guests and can work near ${draftBase.budgetRange}.`,
-    `- **Style match:** Prioritize venues that already lean ${draftBase.style}; decor costs usually stay lower when the venue naturally matches the look.`,
-    "- **Search terms:** Try combinations like `wedding venue`, your location, your preferred style, `all-inclusive`, `BYO catering`, `garden`, `industrial`, or `private estate`.",
-    "- **Ask first:** capacity, ceremony/reception spaces, catering rules, minimum spend, included rentals, parking, accessibility, weather backup, and required vendor lists.",
-    "- **Shortlist score:** Give each venue a 1-5 rating for budget fit, guest fit, style fit, convenience, and rule flexibility.",
+    "I couldn't generate named venue suggestions right now. Check that you entered a specific city/state or preferred area, then try **Generate options** again.",
   ].join("\n");
 
   const generateVenueOptions = async () => {
@@ -372,7 +368,7 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
               AI venue options
             </p>
             <p className="text-xs text-muted-foreground">
-              Generate search directions, venue types, and shortlist guidance from the details above.
+              Generate named venue suggestions and shortlist guidance from the details above.
             </p>
           </div>
           <Button

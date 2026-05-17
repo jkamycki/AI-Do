@@ -280,7 +280,7 @@ export function SupportChat() {
       const categoryLabel = betaFeedbackCategory === "overall"
         ? "Overall beta experience"
         : betaFeedbackCategory === "love"
-          ? "I love it / positive feedback"
+          ? "I love it!"
         : betaFeedbackCategory === "confusing"
           ? "Confusing or hard to use"
           : betaFeedbackCategory === "broken"
@@ -506,7 +506,7 @@ export function SupportChat() {
                       className="w-full rounded-lg border border-border bg-card px-2.5 py-2 text-xs text-foreground outline-none focus:border-primary"
                     >
                       <option value="overall">Overall experience</option>
-                      <option value="love">I love it / positive feedback</option>
+                      <option value="love">I love it!</option>
                       <option value="confusing">Something was confusing</option>
                       <option value="broken">Something felt broken</option>
                       <option value="feature">Feature request</option>
@@ -518,6 +518,7 @@ export function SupportChat() {
                         onChange={e => setBetaFeedbackOther(e.target.value)}
                         placeholder="What kind of feedback is this?"
                         className="w-full rounded-lg border border-border bg-card px-2.5 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                        autoFocus
                       />
                     )}
                     <textarea
@@ -531,7 +532,7 @@ export function SupportChat() {
                       <button
                         type="button"
                         onClick={submitBetaFeedback}
-                        disabled={betaFeedbackSubmitting || !betaFeedbackText.trim()}
+                        disabled={betaFeedbackSubmitting || !betaFeedbackText.trim() || (betaFeedbackCategory === "other" && !betaFeedbackOther.trim())}
                         className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-45"
                       >
                         {betaFeedbackSubmitting ? "Sending..." : "Send feedback"}
