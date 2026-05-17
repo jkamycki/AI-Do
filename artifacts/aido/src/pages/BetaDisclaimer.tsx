@@ -24,8 +24,9 @@ export default function BetaDisclaimer() {
               Draft — review with legal counsel before publishing.
             </p>
             <p>
-              This page is an AI-assisted draft. Have a New York-licensed
-              attorney finalize the wording.
+              This page and parts of the Service may include AI-generated
+              content. A.IDO is not a lawyer or law firm, and this page is not
+              legal advice. Have a qualified attorney finalize the wording.
             </p>
           </div>
         </div>
@@ -102,8 +103,9 @@ export default function BetaDisclaimer() {
             </h2>
             <p>
               Many features rely on AI providers (OpenAI and Groq) and produce
-              probabilistic output. Always review before relying on it for real
-              decisions. Specifically:
+              probabilistic, AI-generated output. A.IDO is not a lawyer or law
+              firm, and AI output is not legal advice. Always review before
+              relying on it for real decisions. Specifically:
             </p>
             <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
@@ -114,9 +116,9 @@ export default function BetaDisclaimer() {
                 added.
               </li>
               <li>
-                <strong>The contract analyzer</strong> is informational; it is{" "}
-                <em>not</em> a substitute for a real attorney reviewing your
-                vendor contracts.
+                <strong>The contract analyzer</strong> is AI-generated and
+                informational only; it is <em>not</em> legal advice and is not a
+                substitute for a real attorney reviewing your vendor contracts.
               </li>
               <li>
                 <strong>Vendor email drafts</strong> never auto-send — you

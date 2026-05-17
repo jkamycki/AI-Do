@@ -206,15 +206,18 @@ export default function Terms() {
               The Service uses third-party AI providers (currently OpenAI and
               Groq) to generate text, suggestions, drafts, summaries, and
               structured data. AI output is generated probabilistically and may
-              be inaccurate, incomplete, biased, or unsafe. You are responsible
+              be inaccurate, incomplete, biased, or unsafe. A.IDO is not a
+              lawyer or law firm, and AI-generated output is not legal advice.
+              You are responsible
               for reviewing all AI-generated content (timelines, emails,
               contract summaries, RSVP messages, etc.) before sending, signing,
               sharing, or relying on it. In particular:
             </p>
             <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
-                The AI <em>contract analyzer</em> is informational only and is
-                not a substitute for a lawyer.
+                The AI <em>contract analyzer</em> is AI-generated and
+                informational only; it is not legal advice and is not a
+                substitute for a lawyer.
               </li>
               <li>
                 The AI <em>vendor email assistant</em> drafts emails — you
