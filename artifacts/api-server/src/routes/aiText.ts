@@ -65,4 +65,70 @@ router.post("/ai/generate-text", requireAuth, async (req, res) => {
   }
 });
 
+router.post("/ai/venue-options", requireAuth, async (req, res) => {
+  try {
+    const {
+      guestCount,
+      indoorOutdoor,
+      budgetRange,
+      location,
+      style,
+      notes,
+      coupleNames,
+    } = req.body as {
+      guestCount?: string;
+      indoorOutdoor?: string;
+      budgetRange?: string;
+      location?: string;
+      style?: string[];
+      notes?: string;
+      coupleNames?: string;
+    };
+
+    const detailLines = [
+      `Couple / event: ${coupleNames?.trim() || "Wedding couple"}`,
+      `Guest count: ${guestCount?.trim() || "Not provided"}`,
+      `Indoor / outdoor preference: ${indoorOutdoor?.trim() || "Flexible / not provided"}`,
+      `Budget range: ${budgetRange?.trim() || "Not provided"}`,
+      `Location: ${location?.trim() || "Not provided"}`,
+      `Style preferences: ${Array.isArray(style) && style.length ? style.join(", ") : "Not provided"}`,
+      notes?.trim() ? `Notes:\n${notes.trim()}` : "",
+    ].filter(Boolean).join("\n");
+
+    const model = getModel();
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: "system",
+          content: [
+            "You are an expert wedding venue strategist inside A.IDO.",
+            "Use the couple's venue discovery details to generate practical venue search options.",
+            "Do not invent real venue names, addresses, prices, or availability.",
+            "Return concise markdown only.",
+            "Include: 3-5 best-fit venue directions, what to search for, questions to ask venues, possible red flags, and how to score shortlist options.",
+            "Keep it helpful, specific, and under 450 words.",
+          ].join(" "),
+        },
+        {
+          role: "user",
+          content: `Generate venue options and shortlist guidance from these details:\n\n${detailLines}`,
+        },
+      ],
+      max_completion_tokens: 750,
+      ...(supportsCustomTemperature(model) ? { temperature: 0.75 } : {}),
+    });
+
+    const text = completion.choices[0]?.message?.content?.trim() ?? "";
+    if (!text) {
+      res.status(500).json({ error: "AI returned an empty response. Please try again." });
+      return;
+    }
+    res.json({ text });
+  } catch (err) {
+    req.log.error(err, "AI venue options failed");
+    res.status(500).json({ error: "Failed to generate venue options. Please try again." });
+  }
+});
+
 export default router;

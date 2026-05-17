@@ -612,9 +612,9 @@ function CustomSignInForm() {
         <div
           role="status"
           style={{
-            color: "#fde68a",
-            background: "rgba(245, 158, 11, 0.10)",
-            border: "1px solid rgba(245, 158, 11, 0.35)",
+            color: "#7A4A12",
+            background: "rgba(245, 158, 11, 0.14)",
+            border: "1px solid rgba(180, 83, 9, 0.35)",
             borderRadius: "0.5rem",
             padding: "0.55rem 0.75rem",
             fontSize: "0.82rem",
@@ -628,9 +628,9 @@ function CustomSignInForm() {
       {error && (
         <div
           style={{
-            color: "#ff8a8a",
-            background: "rgba(255,80,80,0.08)",
-            border: "1px solid rgba(255,80,80,0.25)",
+            color: "#8D294D",
+            background: "rgba(220, 38, 38, 0.08)",
+            border: "1px solid rgba(185, 28, 28, 0.28)",
             borderRadius: "0.5rem",
             padding: "0.55rem 0.75rem",
             fontSize: "0.82rem",
@@ -1114,9 +1114,9 @@ function CustomSignUpForm() {
             {error && (
               <div
                 style={{
-                  color: "#ff8a8a",
-                  background: "rgba(255,80,80,0.08)",
-                  border: "1px solid rgba(255,80,80,0.25)",
+                  color: "#8D294D",
+                  background: "rgba(220, 38, 38, 0.08)",
+                  border: "1px solid rgba(185, 28, 28, 0.28)",
                   borderRadius: "0.5rem",
                   padding: "0.55rem 0.75rem",
                   fontSize: "0.82rem",
@@ -1128,9 +1128,9 @@ function CustomSignUpForm() {
             {resendInfo && (
               <div
                 style={{
-                  color: "#9ee69e",
-                  background: "rgba(80,255,120,0.06)",
-                  border: "1px solid rgba(80,255,120,0.2)",
+                  color: "#166534",
+                  background: "rgba(22, 163, 74, 0.10)",
+                  border: "1px solid rgba(22, 101, 52, 0.22)",
                   borderRadius: "0.5rem",
                   padding: "0.55rem 0.75rem",
                   fontSize: "0.82rem",
@@ -1272,9 +1272,9 @@ function CustomSignUpForm() {
         {error && (
           <div
             style={{
-              color: "#ff8a8a",
-              background: "rgba(255,80,80,0.08)",
-              border: "1px solid rgba(255,80,80,0.25)",
+              color: "#8D294D",
+              background: "rgba(220, 38, 38, 0.08)",
+              border: "1px solid rgba(185, 28, 28, 0.28)",
               borderRadius: "0.5rem",
               padding: "0.55rem 0.75rem",
               fontSize: "0.82rem",

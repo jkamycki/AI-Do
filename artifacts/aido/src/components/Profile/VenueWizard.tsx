@@ -5,6 +5,7 @@ import { authFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import ReactMarkdown from "react-markdown";
 
 export type VenueShortlistItem = {
   id: string;
@@ -26,6 +27,7 @@ export type VenueDiscoveryData = {
   location: string;
   style: string[];
   notes: string;
+  aiVenueOptions: string;
   shortlist: VenueShortlistItem[];
   screenshots: VenueScreenshot[];
   emailDraftType: string;
@@ -55,6 +57,7 @@ export const emptyVenueDiscoveryData: VenueDiscoveryData = {
   location: "",
   style: [],
   notes: "",
+  aiVenueOptions: "",
   shortlist: [],
   screenshots: [],
   emailDraftType: "",
@@ -69,6 +72,7 @@ function createId() {
 export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: VenueWizardProps) {
   const [uploadError, setUploadError] = useState("");
   const [generatingPromptDraft, setGeneratingPromptDraft] = useState(false);
+  const [generatingVenueOptions, setGeneratingVenueOptions] = useState(false);
 
   const styleText = value.style.length ? value.style.join(", ").toLowerCase() : "warm and elegant";
 
@@ -239,6 +243,43 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
     }
   };
 
+  const fallbackVenueOptions = () => [
+    "### Venue options to explore",
+    "",
+    `- **Best-fit direction:** Look for ${draftBase.preference} venues around ${draftBase.location} that comfortably handle ${draftBase.guestCount} guests and can work near ${draftBase.budgetRange}.`,
+    `- **Style match:** Prioritize venues that already lean ${draftBase.style}; decor costs usually stay lower when the venue naturally matches the look.`,
+    "- **Search terms:** Try combinations like `wedding venue`, your location, your preferred style, `all-inclusive`, `BYO catering`, `garden`, `industrial`, or `private estate`.",
+    "- **Ask first:** capacity, ceremony/reception spaces, catering rules, minimum spend, included rentals, parking, accessibility, weather backup, and required vendor lists.",
+    "- **Shortlist score:** Give each venue a 1-5 rating for budget fit, guest fit, style fit, convenience, and rule flexibility.",
+  ].join("\n");
+
+  const generateVenueOptions = async () => {
+    if (generatingVenueOptions) return;
+    setGeneratingVenueOptions(true);
+    try {
+      const response = await authFetch("/api/ai/venue-options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          coupleNames,
+          guestCount: value.guestCount,
+          indoorOutdoor: value.indoorOutdoor,
+          budgetRange: value.budgetRange,
+          location: value.location,
+          style: value.style,
+          notes: formatBulletNotes(value.notes),
+        }),
+      });
+      if (!response.ok) throw new Error("AI venue options failed");
+      const data = await response.json() as { text?: string };
+      update({ aiVenueOptions: data.text?.trim() || fallbackVenueOptions() });
+    } catch {
+      update({ aiVenueOptions: fallbackVenueOptions() });
+    } finally {
+      setGeneratingVenueOptions(false);
+    }
+  };
+
   return (
     <section className="space-y-6 rounded-lg border border-primary/15 bg-background p-4 shadow-sm sm:p-5">
       <div>
@@ -322,6 +363,37 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
           rows={4}
         />
       </label>
+
+      <div className="space-y-3 rounded-lg border border-primary/15 bg-primary/5 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <Sparkles className="h-4 w-4 text-primary" />
+              AI venue options
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Generate search directions, venue types, and shortlist guidance from the details above.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={generateVenueOptions}
+            disabled={generatingVenueOptions}
+            className="gap-2"
+          >
+            <Sparkles className="h-4 w-4" />
+            {generatingVenueOptions ? "Generating..." : "Generate options"}
+          </Button>
+        </div>
+        {value.aiVenueOptions && (
+          <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm leading-relaxed">
+            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 prose-headings:font-serif prose-headings:text-primary">
+              <ReactMarkdown>{value.aiVenueOptions}</ReactMarkdown>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

@@ -46,6 +46,7 @@ export function SupportChat() {
   const [betaFeedbackSubmitting, setBetaFeedbackSubmitting] = useState(false);
   const [betaFeedbackRating, setBetaFeedbackRating] = useState(0);
   const [betaFeedbackCategory, setBetaFeedbackCategory] = useState("overall");
+  const [betaFeedbackOther, setBetaFeedbackOther] = useState("");
   const [betaFeedbackText, setBetaFeedbackText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -278,11 +279,15 @@ export function SupportChat() {
     try {
       const categoryLabel = betaFeedbackCategory === "overall"
         ? "Overall beta experience"
+        : betaFeedbackCategory === "love"
+          ? "I love it / positive feedback"
         : betaFeedbackCategory === "confusing"
           ? "Confusing or hard to use"
           : betaFeedbackCategory === "broken"
             ? "Something broken"
-            : "Feature request";
+            : betaFeedbackCategory === "feature"
+              ? "Feature request"
+              : `Other${betaFeedbackOther.trim() ? `: ${betaFeedbackOther.trim()}` : ""}`;
       const res = await authFetch("/api/help/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -310,6 +315,7 @@ export function SupportChat() {
         },
       ]);
       setBetaFeedbackText("");
+      setBetaFeedbackOther("");
       setBetaFeedbackRating(0);
       setBetaFeedbackCategory("overall");
     } catch {
@@ -493,14 +499,27 @@ export function SupportChat() {
                     </div>
                     <select
                       value={betaFeedbackCategory}
-                      onChange={e => setBetaFeedbackCategory(e.target.value)}
+                      onChange={e => {
+                        setBetaFeedbackCategory(e.target.value);
+                        if (e.target.value !== "other") setBetaFeedbackOther("");
+                      }}
                       className="w-full rounded-lg border border-border bg-card px-2.5 py-2 text-xs text-foreground outline-none focus:border-primary"
                     >
                       <option value="overall">Overall experience</option>
+                      <option value="love">I love it / positive feedback</option>
                       <option value="confusing">Something was confusing</option>
                       <option value="broken">Something felt broken</option>
                       <option value="feature">Feature request</option>
+                      <option value="other">Other</option>
                     </select>
+                    {betaFeedbackCategory === "other" && (
+                      <input
+                        value={betaFeedbackOther}
+                        onChange={e => setBetaFeedbackOther(e.target.value)}
+                        placeholder="What kind of feedback is this?"
+                        className="w-full rounded-lg border border-border bg-card px-2.5 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                      />
+                    )}
                     <textarea
                       value={betaFeedbackText}
                       onChange={e => setBetaFeedbackText(e.target.value)}
