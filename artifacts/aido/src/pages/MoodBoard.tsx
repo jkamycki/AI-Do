@@ -748,16 +748,11 @@ export default function MoodBoard() {
       const MARGIN = 40;
       const CW = PAGE_W - 2 * MARGIN;
 
-      // ── Portal brand colors (dark theme) ────────────────────────────────────
-      // background: hsl(270 20% 10%) ≈ #1a141f
+      // A.IDO blush, champagne, and burgundy palette.
       const [BG_R, BG_G, BG_B] = [255, 247, 242];
-      // primary gold: hsl(40 82% 52%) ≈ #e7a620
       const [GD_R, GD_G, GD_B] = [141, 41, 77];
-      // foreground near-white: hsl(330 30% 95%) ≈ #f6eef2
       const [WH_R, WH_G, WH_B] = [36, 23, 29];
-      // muted text: hsl(330 15% 62%) ≈ #ad909e
       const [MT_R, MT_G, MT_B] = [111, 62, 84];
-      // border: hsl(270 15% 20%) ≈ #332b3b
       const [BR_R, BR_G, BR_B] = [230, 166, 183];
 
       // Fill page background

@@ -9,23 +9,22 @@ import { fileURLToPath } from "node:url";
 
 const router = Router();
 
-// A.IDO brand palette â€” matches the warm-gold logged-in portal theme
-// (artifacts/aido/src/index.css: --primary: 40 82% 42% + brand gradients)
+// A.IDO brand palette: blush, champagne, soft rose, mauve, and burgundy.
 const BRAND_PRIMARY = "#8D294D";
-const BRAND_GOLD = "#E6B1A6";
-const BRAND_GOLD_LIGHT = "#F3C6D3";
-const BRAND_DARK = "#5B0F2A";
-const BRAND_DARK_ALT = "#7A4A6A";
-const BRAND_PURPLE = "#7A4A6A";
-const BRAND_PINK = "#D88AA8";
-const BRAND_BLUE = "#F3C6D3";
+const BRAND_GOLD = "#8D294D";
+const BRAND_GOLD_LIGHT = "#E6A6B7";
+const BRAND_DARK = "#24171D";
+const BRAND_DARK_ALT = "#FFF7F2";
+const BRAND_PURPLE = "#B16C8E";
+const BRAND_PINK = "#E6A6B7";
+const BRAND_BLUE = "#F2E2C6";
 const BRAND_LIGHT = "#FFF7F2";
-const BRAND_RULE = "#E6B1A6";
-const BRAND_MUTED = "#7A4A6A";
+const BRAND_RULE = "#E6A6B7";
+const BRAND_MUTED = "#6F3E54";
 
-const TEXT_DARK = "#1A1A1A";
-const TEXT_MEDIUM = "#555555";
-const TEXT_LIGHT = "#888888";
+const TEXT_DARK = "#24171D";
+const TEXT_MEDIUM = "#4A3941";
+const TEXT_LIGHT = "#8D7480";
 const TIMELINE_STATUS_COLORS: Record<string, { fill: string; text: string }> = {
   completed: { fill: "#D1FAE5", text: "#047857" },
   pending: { fill: "#FEF3C7", text: "#B45309" },
@@ -80,9 +79,9 @@ function drawHeader(doc: InstanceType<typeof PDFDocument>, subtitle: string) {
   const pageW = doc.page.width;
   const headerH = 76;
 
-  // A.IDO header band: dark plum canvas with warm gold accents.
-  doc.rect(0, 0, pageW, headerH).fill(BRAND_DARK);
-  doc.rect(0, headerH - 16, pageW, 16).fill(BRAND_DARK_ALT);
+  // A.IDO header band in the current blush and burgundy brand palette.
+  doc.rect(0, 0, pageW, headerH).fill(BRAND_LIGHT);
+  doc.rect(0, headerH - 16, pageW, 16).fill("#F9ECE8");
 
   // Thin accent rule along the bottom of the header.
   doc.rect(0, headerH, pageW, 2).fill(BRAND_GOLD);
@@ -101,11 +100,11 @@ function drawHeader(doc: InstanceType<typeof PDFDocument>, subtitle: string) {
     }
   }
 
-  doc.fillColor(BRAND_GOLD_LIGHT).font("Helvetica-Bold").fontSize(20).text("A.IDO", textX, 18);
-  doc.fillColor("#E8DCC0").font("Helvetica").fontSize(8.5)
+  doc.fillColor(BRAND_PRIMARY).font("Helvetica-Bold").fontSize(20).text("A.IDO", textX, 18);
+  doc.fillColor(BRAND_MUTED).font("Helvetica").fontSize(8.5)
     .text("AI WEDDING PLANNING OS", textX, 44, { characterSpacing: 1.2 });
 
-  doc.fillColor(BRAND_LIGHT).font("Helvetica").fontSize(11)
+  doc.fillColor(BRAND_MUTED).font("Helvetica").fontSize(11)
     .text(subtitle, 0, 28, { align: "right", width: pageW - 36 });
 
   doc.moveDown(0);
@@ -174,17 +173,17 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
 
     doc.moveDown(0.5);
 
-    // Brand-aligned category palette (warm gold + magenta/purple/blue system)
+    // Brand-aligned category palette.
     const categoryColors: Record<string, string> = {
       preparation: BRAND_GOLD_LIGHT,
       ceremony: BRAND_PRIMARY,
-      cocktail: "#E6B1A6",
+      cocktail: "#F2E2C6",
       reception: BRAND_PURPLE,
       dancing: BRAND_PINK,
       photos: BRAND_BLUE,
-      vendors: "#A6687F",
-      travel: "#7A4A6A",
-      other: "#B78B98",
+      vendors: "#B16C8E",
+      travel: "#6F3E54",
+      other: "#C99CAF",
     };
 
     // subtle timeline rail for visual continuity
@@ -207,10 +206,10 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
 
       const rowY = doc.y;
 
-      // Event card - warm cream and gold to match the A.IDO vendor portal.
+      // Event card using the same light brand surface as the portal.
       const cardX = margin + 18;
       const cardW = contentW - 18;
-      doc.roundedRect(cardX, rowY - 2, cardW, estimatedHeight - 10, 10).fillAndStroke("#FFF9EF", BRAND_RULE);
+      doc.roundedRect(cardX, rowY - 2, cardW, estimatedHeight - 10, 10).fillAndStroke("#FFFFFF", BRAND_RULE);
       doc.rect(cardX, rowY - 2, 3, estimatedHeight - 10).fill(BRAND_GOLD);
 
       doc.circle(margin + 8, rowY + 10, 5).fill(dotColor);
@@ -242,7 +241,7 @@ router.post("/pdf/timeline", requireAuth, async (req, res) => {
       });
 
       const catLabel = (event.category ?? "").charAt(0).toUpperCase() + (event.category ?? "").slice(1);
-      doc.roundedRect(pageW - margin - 56, rowY + 8, 56, 16, 8).fill("#F8EAC3");
+      doc.roundedRect(pageW - margin - 56, rowY + 8, 56, 16, 8).fill("#F9ECE8");
       doc.fillColor(BRAND_MUTED).font("Helvetica-Bold").fontSize(7.5)
         .text(catLabel, pageW - margin - 56, rowY + 11, { width: 56, align: "center" });
 

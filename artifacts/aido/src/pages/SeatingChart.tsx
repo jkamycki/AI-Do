@@ -864,13 +864,12 @@ export default function SeatingChartPage() {
       let col = 0;
 
       // â”€â”€ Brand palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-      // Deeper purple background, gold for headings/accents, white for body.
-      const PURPLE: [number, number, number] = [91, 15, 42];   // #5B0F2A
-      const PURPLE_2: [number, number, number] = [122, 74, 106]; // #7A4A6A
-      const GOLD: [number, number, number] = [230, 177, 166];   // #E6B1A6
-      const GOLD_SOFT: [number, number, number] = [243, 198, 211]; // #F3C6D3
-      const WHITE: [number, number, number] = [255, 255, 255];
-      const WHITE_DIM: [number, number, number] = [247, 231, 214]; // #F7E7D6
+      const PURPLE: [number, number, number] = [255, 247, 242];   // #FFF7F2
+      const PURPLE_2: [number, number, number] = [255, 255, 255]; // #FFFFFF
+      const GOLD: [number, number, number] = [141, 41, 77];   // #8D294D
+      const GOLD_SOFT: [number, number, number] = [177, 108, 142]; // #B16C8E
+      const WHITE: [number, number, number] = [36, 23, 29]; // #24171D
+      const WHITE_DIM: [number, number, number] = [111, 62, 84]; // #6F3E54
 
       // Paint the entire page background â€” this fn is called for the first
       // page now and again every time we addPage().
@@ -991,8 +990,7 @@ export default function SeatingChartPage() {
         const x = margin + col * (colW + colGap);
         let y = col === 0 ? leftY : rightY;
 
-        // Subtle card behind each table block for separation against the
-        // purple background. Rounded corners; soft purple fill.
+        // Subtle card behind each table block for separation.
         const cardPad = 12;
         const cardX = x - cardPad;
         const cardY = y - 12;
@@ -1000,6 +998,8 @@ export default function SeatingChartPage() {
         const cardH = blockH;
         doc.setFillColor(...PURPLE_2);
         doc.roundedRect(cardX, cardY, cardW, cardH, 8, 8, "F");
+        doc.setDrawColor(230, 166, 183);
+        doc.roundedRect(cardX, cardY, cardW, cardH, 8, 8, "S");
 
         // Card center used for the title/theme so the heading reads
         // symmetrically inside its rounded card.
