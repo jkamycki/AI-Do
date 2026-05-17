@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { ChangeEvent, KeyboardEvent } from "react";
+import type { ChangeEvent } from "react";
 import { Mail, Plus, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
@@ -127,20 +127,6 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
   const formatNotesForEmail = (text: string) => {
     const lines = bulletLines(text);
     return lines.length ? `\n\nA few notes from us:\n${lines.map((line) => `- ${line}`).join("\n")}` : "";
-  };
-
-  const insertBulletLine = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    const target = event.currentTarget;
-    const start = target.selectionStart;
-    const end = target.selectionEnd;
-    const next = `${value.notes.slice(0, start)}\n- ${value.notes.slice(end)}`;
-    update({ notes: next });
-    requestAnimationFrame(() => {
-      target.selectionStart = start + 3;
-      target.selectionEnd = start + 3;
-    });
   };
 
   const addShortlistItem = () => {
@@ -463,21 +449,6 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
         value={requirements}
         onChange={(nextRequirements) => update({ requirements: nextRequirements })}
       />
-
-      <label className="block space-y-2 text-sm font-medium">
-        Notes
-        <Textarea
-          value={value.notes}
-          onChange={(event) => update({ notes: event.target.value })}
-          onFocus={() => {
-            if (!value.notes.trim()) update({ notes: "- " });
-          }}
-          onBlur={() => update({ notes: formatBulletNotes(value.notes) })}
-          onKeyDown={insertBulletLine}
-          placeholder={"- Must-haves\n- Questions\n- Accessibility needs\n- Parking or catering rules"}
-          rows={4}
-        />
-      </label>
 
       <div className="space-y-3 rounded-lg border border-primary/15 bg-primary/5 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
