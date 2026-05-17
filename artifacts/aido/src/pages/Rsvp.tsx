@@ -80,6 +80,7 @@ interface RsvpInfo {
   photoZoom?: number | null;
   photoEffect?: string | null;
   invitationMessage: string | null;
+  websiteUrl?: string | null;
   // Couple-set RSVP deadline (YYYY-MM-DD); rendered as "RSVP By: (Date)" on
   // the invitation card so guests know when they need to respond by.
   rsvpByDate: string | null;
@@ -543,6 +544,25 @@ export default function Rsvp() {
                   RSVP Now
                 </span>
               </div>
+              {info.websiteUrl && (
+                <a
+                  href={info.websiteUrl}
+                  style={{
+                    display: "block",
+                    marginTop: 10,
+                    fontFamily: LABEL_FONT,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: GOLD,
+                    textDecoration: "underline",
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  Wedding Website
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -670,6 +690,25 @@ export default function Rsvp() {
               <p style={{ fontFamily: cormorant, fontSize: "1rem", fontStyle: "italic", color: WHITE, lineHeight: 1.7, margin: "16px 0 0" }}>
                 &ldquo;{info.invitationMessage}&rdquo;
               </p>
+            )}
+            {info.websiteUrl && (
+              <a
+                href={info.websiteUrl}
+                style={{
+                  display: "block",
+                  margin: "14px 0 0",
+                  fontFamily: jakarta,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: GOLD,
+                  textDecoration: "underline",
+                  overflowWrap: "anywhere",
+                }}
+              >
+                Wedding Website
+              </a>
             )}
 
           </div>

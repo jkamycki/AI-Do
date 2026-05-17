@@ -549,6 +549,16 @@ export function InvitationSendModal({
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
+  const { data: websiteRecord } = useQuery({
+    queryKey: ["wedding-website", profile?.id],
+    queryFn: async () => {
+      const r = await authFetch("/api/website/me");
+      if (!r.ok) return null;
+      return r.json() as Promise<{ slug?: string; published?: boolean }>;
+    },
+    enabled: !!guest && !!profile?.id,
+    retry: 1,
+  });
 
   const customization: Customization | null = rawCustomization
     ? {
@@ -680,6 +690,13 @@ export function InvitationSendModal({
   const digPalette = digPreviewColors
     ? { ...palette, primary: digAccent, secondary: digAccent, accent: digAccent }
     : palette;
+  const websiteUrl =
+    typeof window !== "undefined" && websiteRecord?.slug && websiteRecord?.published
+      ? `${window.location.origin}/w/${websiteRecord.slug}#rsvp`
+      : null;
+  const websiteLinkPendingMessage = !websiteUrl
+    ? "Your wedding website link will be added here automatically once your website is published."
+    : null;
 
   const completeness = evaluateCustomDesignCompleteness({
     customization: customization
@@ -831,6 +848,8 @@ export function InvitationSendModal({
                           invitationMessage: profile.invitationMessage,
                           guestName: guest?.name ?? "Guest",
                           rsvpByDate: customization.rsvpByDate ?? null,
+                          websiteUrl,
+                          websiteLinkPendingMessage,
                         }}
                         palette={digPalette}
                         photoUrl={customization.digitalInvitationPhotoUrl || null}
@@ -942,6 +961,8 @@ export function InvitationSendModal({
                         invitationMessage: profile.invitationMessage,
                         guestName: guest?.name ?? "Guest",
                         rsvpByDate: customization.rsvpByDate ?? null,
+                        websiteUrl,
+                        websiteLinkPendingMessage,
                       }}
                       palette={{ ...palette, accent: "#8D294D", primary: "#8D294D" }}
                       photoUrl={customization.digitalInvitationPhotoUrl || null}

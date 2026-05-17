@@ -1168,6 +1168,9 @@ export default function InvitationCustomizationPage({
     typeof window !== "undefined" && websiteRecord?.slug && websiteRecord?.published
       ? `${window.location.origin}/w/${websiteRecord.slug}#rsvp`
       : null;
+  const websiteLinkPendingMessage = !websiteUrl
+    ? "Your wedding website link will be added here automatically once your website is published."
+    : null;
   const canUsePrintBack = !isSTD;
   const effectivePrintSide: PrintInvitationSide = canUsePrintBack ? printSide : "front";
 
@@ -2257,6 +2260,8 @@ export default function InvitationCustomizationPage({
                           receptionTime: displayWeddingProfile.receptionTime,
                           invitationMessage: invitationMessage || weddingProfile?.invitationMessage,
                           rsvpByDate,
+                          websiteUrl,
+                          websiteLinkPendingMessage,
                         }}
                         palette={isCustom ? customPalette : { ...displayPalette, accent: AIDO_BRAND_COLORS.burgundy, primary: AIDO_BRAND_COLORS.burgundy }}
                         photoUrl={digitalInvitationPhotoUrl}

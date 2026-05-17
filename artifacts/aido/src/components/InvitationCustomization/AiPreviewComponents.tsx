@@ -17,6 +17,8 @@ export interface WeddingInfo {
   receptionTime?: string | null;
   saveTheDateMessage?: string | null;
   invitationMessage?: string | null;
+  websiteUrl?: string | null;
+  websiteLinkPendingMessage?: string | null;
   guestName?: string | null;
   // Couple-set RSVP deadline as YYYY-MM-DD; rendered as "RSVP By: <date>" on
   // the digital invitation preview (and matching email + public RSVP page).
@@ -745,6 +747,20 @@ export function AiDigitalInvitationPreview({
           RSVP Now
         </span>
       </button>
+      {profile.websiteUrl ? (
+        <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, border: `1px solid ${cardBdr}`, background: customColors ? `${accent}12` : "rgba(255,255,255,0.035)" }}>
+          <p style={{ fontFamily: labelFont, fontSize: 9 * sc, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: accent, margin: 0 }}>
+            Wedding Website
+          </p>
+          <p style={{ fontFamily: labelFont, fontSize: 10.5 * sc, color: text, margin: "5px 0 0", lineHeight: 1.45, overflowWrap: "anywhere" }}>
+            {profile.websiteUrl}
+          </p>
+        </div>
+      ) : profile.websiteLinkPendingMessage ? (
+        <p style={{ fontFamily: labelFont, fontSize: 10 * sc, color: muted, margin: "11px 0 0", lineHeight: 1.45 }}>
+          {profile.websiteLinkPendingMessage}
+        </p>
+      ) : null}
     </CardShell>
   );
 }
@@ -937,6 +953,20 @@ function FullPhotoRsvpPreview({
                 RSVP Now
               </span>
             </button>
+            {profile.websiteUrl ? (
+              <div style={{ marginTop: 10, padding: "9px 10px", borderRadius: 8, border: `1px solid ${accent}66`, background: "rgba(0,0,0,.24)" }}>
+                <p style={{ fontFamily: labelFont, fontSize: 8.5 * sc, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: accent, margin: 0 }}>
+                  Wedding Website
+                </p>
+                <p style={{ fontFamily: labelFont, fontSize: 9.5 * sc, color: textColor, margin: "4px 0 0", lineHeight: 1.35, overflowWrap: "anywhere" }}>
+                  {profile.websiteUrl}
+                </p>
+              </div>
+            ) : profile.websiteLinkPendingMessage ? (
+              <p style={{ fontFamily: labelFont, fontSize: 9.5 * sc, color: textColor, margin: "10px 0 0", opacity: 0.78, lineHeight: 1.4 }}>
+                {profile.websiteLinkPendingMessage}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>

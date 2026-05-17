@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { clerkClient } from "@clerk/express";
-import { db, guests, weddingProfiles, invitationCustomizations, hotelBlocks } from "@workspace/db";
+import { db, guests, weddingProfiles, invitationCustomizations, hotelBlocks, weddingWebsites } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
@@ -134,6 +134,16 @@ async function buildGuestRsvpUrl(req: import("express").Request, profileId: numb
   return `${origin}/rsvp/${token}`;
 }
 
+async function buildPublishedWebsiteUrl(req: import("express").Request, profileId: number): Promise<string | null> {
+  const [site] = await db
+    .select({ slug: weddingWebsites.slug, published: weddingWebsites.published })
+    .from(weddingWebsites)
+    .where(eq(weddingWebsites.profileId, profileId))
+    .limit(1);
+  if (!site?.published || !site.slug) return null;
+  return `${buildFrontendOrigin(req)}/w/${site.slug}#rsvp`;
+}
+
 /**
  * Resolves a stored photo URL to an R2File regardless of whether the URL is in the
  * legacy private `/objects/...` format or the newer public
@@ -262,6 +272,7 @@ interface AiDigitalInviteOpts {
   // Couple-set RSVP deadline, already formatted for display ("October 15, 2026").
   rsvpByDateStr?: string | null;
   hotelRsvpText?: string | null;
+  websiteUrl?: string | null;
   rsvpUrl: string;
   photoImgSrc: string | null;
   photoObjectPos: string;
@@ -437,6 +448,11 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 24px 28px;text-align:center;">
             <a href="${opts.rsvpUrl}" style="display:block;background:${ACCENT};color:${BTN_TXT};font-family:${LABEL_FONT};font-size:${Math.round(12*sc)}px;font-weight:700;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;padding:12px;border-radius:8px;">RSVP NOW</a>
+            ${opts.websiteUrl ? `
+            <p style="margin:14px 0 0;font-family:${LABEL_FONT};font-size:${Math.round(10*sc)}px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${ACCENT};">Wedding Website</p>
+            <p style="margin:5px 0 0;font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;line-height:1.45;color:${TEXT_COL};word-break:break-word;">
+              <a href="${escapeHtml(opts.websiteUrl)}" style="color:${TEXT_COL};text-decoration:underline;">${escapeHtml(opts.websiteUrl)}</a>
+            </p>` : ""}
           </td>
         </tr>
 
@@ -814,6 +830,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
 
     const apiOrigin = buildOrigin(req);
     const rsvpUrl = await buildGuestRsvpUrl(req, profile.id, token);
+    const websiteUrl = await buildPublishedWebsiteUrl(req, profile.id);
     const previewUrl = rsvpUrl;
 
     let emailSent = false;
@@ -990,6 +1007,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           invitationMessage: profile.invitationMessage,
           rsvpByDateStr,
           hotelRsvpText,
+          websiteUrl,
           rsvpUrl,
           photoImgSrc,
           photoObjectPos: digPhotoObjectPos,
@@ -1009,6 +1027,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           invitationMessage: digOverrides["dig:message"]?.text || profile.invitationMessage || null,
           rsvpByDateStr,
           hotelRsvpText,
+          websiteUrl,
           rsvpUrl,
           photoImgSrc,
           photoObjectPos: digPhotoObjectPos,
@@ -1035,8 +1054,8 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           ? `Reminder: Please RSVP — ${couple}'s Wedding`
           : `You're invited — ${couple}'s Wedding`,
         text: isReminder
-          ? `Dear ${guest.name},\n\nThis is a friendly reminder that we haven't received your RSVP yet for ${couple}'s Wedding${weddingDateStr ? ` on ${weddingDateStr}` : ""}${profile.venue ? ` at ${profile.venue}` : ""}.\n\nPlease RSVP using the link below:\n\n${rsvpUrl}\n\nWith love,\n${couple}`
-          : `Dear ${guest.name},\n\nYou are cordially invited to ${couple}'s Wedding${weddingDateStr ? ` on ${weddingDateStr}` : ""}${profile.venue ? ` at ${profile.venue}` : ""}.\n\n${profile.invitationMessage ? `"${profile.invitationMessage}"\n\n` : ""}Please RSVP using the link below:\n\n${rsvpUrl}\n\nWith love,\n${couple}`,
+          ? `Dear ${guest.name},\n\nThis is a friendly reminder that we haven't received your RSVP yet for ${couple}'s Wedding${weddingDateStr ? ` on ${weddingDateStr}` : ""}${profile.venue ? ` at ${profile.venue}` : ""}.\n\nPlease RSVP using the link below:\n\n${rsvpUrl}${websiteUrl ? `\n\nWedding website:\n${websiteUrl}` : ""}\n\nWith love,\n${couple}`
+          : `Dear ${guest.name},\n\nYou are cordially invited to ${couple}'s Wedding${weddingDateStr ? ` on ${weddingDateStr}` : ""}${profile.venue ? ` at ${profile.venue}` : ""}.\n\n${profile.invitationMessage ? `"${profile.invitationMessage}"\n\n` : ""}Please RSVP using the link below:\n\n${rsvpUrl}${websiteUrl ? `\n\nWedding website:\n${websiteUrl}` : ""}\n\nWith love,\n${couple}`,
         html,
       });
       emailSent = result.ok;
@@ -1489,6 +1508,7 @@ router.get("/rsvp/:token", async (req, res) => {
               .digest("hex")
               .substring(0, 8)}`)
       : null;
+    const websiteUrl = profile ? await buildPublishedWebsiteUrl(req, profile.id) : null;
 
     res.json({
       guestName: guest.name,
@@ -1521,6 +1541,7 @@ router.get("/rsvp/:token", async (req, res) => {
         return pos ? `${pos.x ?? 50}% ${pos.y ?? 50}%` : "50% 50%";
       })(),
       invitationMessage: profile?.invitationMessage ?? null,
+      websiteUrl,
       // Couple-set RSVP deadline shown on the public invitation card.
       rsvpByDate: c?.rsvpByDate ?? null,
       // Custom design theming — used to style the RSVP page
