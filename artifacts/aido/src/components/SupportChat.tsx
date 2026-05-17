@@ -333,6 +333,9 @@ export function SupportChat() {
   };
 
   const handleHide = () => {
+    const hasBetaFeedbackPrompt =
+      betaFeedbackOpen || messages.some(message => message.id === BETA_FEEDBACK_MESSAGE_ID);
+    if (hasBetaFeedbackPrompt) dismissBetaFeedback();
     setOpen(false);
     setHidden(true);
   };
