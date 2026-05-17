@@ -527,7 +527,7 @@ export default function MoodBoard() {
     });
     if (!needsAnalysis.length) {
       toast({ title: "All images already analyzed" });
-      await generateSummaryMutation.mutateAsync();
+      await generateSummaryMutation.mutateAsync(board);
       return;
     }
     setAnalyzingAll(true);
@@ -569,10 +569,13 @@ export default function MoodBoard() {
         }),
       });
       if (!r.ok) throw new Error("Failed");
-      return (await r.json() as { summary: string }).summary;
+      const { summary } = await r.json() as { summary: string };
+      return { summary, boardForSummary };
     },
-    onSuccess: (summary) => {
-      update({ aiSummary: summary });
+    onSuccess: ({ summary, boardForSummary }) => {
+      const nextBoard = { ...boardForSummary, aiSummary: summary };
+      setLocalBoard(nextBoard);
+      save(nextBoard);
       toast({ title: "Style summary generated" });
     },
     onError: () => toast({ title: "Could not generate summary", variant: "destructive" }),
@@ -747,15 +750,15 @@ export default function MoodBoard() {
 
       // ── Portal brand colors (dark theme) ────────────────────────────────────
       // background: hsl(270 20% 10%) ≈ #1a141f
-      const [BG_R, BG_G, BG_B] = [26, 20, 31];
+      const [BG_R, BG_G, BG_B] = [255, 247, 242];
       // primary gold: hsl(40 82% 52%) ≈ #e7a620
-      const [GD_R, GD_G, GD_B] = [231, 166, 32];
+      const [GD_R, GD_G, GD_B] = [141, 41, 77];
       // foreground near-white: hsl(330 30% 95%) ≈ #f6eef2
-      const [WH_R, WH_G, WH_B] = [246, 238, 242];
+      const [WH_R, WH_G, WH_B] = [36, 23, 29];
       // muted text: hsl(330 15% 62%) ≈ #ad909e
-      const [MT_R, MT_G, MT_B] = [173, 144, 158];
+      const [MT_R, MT_G, MT_B] = [111, 62, 84];
       // border: hsl(270 15% 20%) ≈ #332b3b
-      const [BR_R, BR_G, BR_B] = [51, 43, 59];
+      const [BR_R, BR_G, BR_B] = [230, 166, 183];
 
       // Fill page background
       const fillBg = () => {
@@ -897,7 +900,7 @@ export default function MoodBoard() {
               fit.drawH,
             );
           } catch {
-            doc.setFillColor(38, 30, 46);
+            doc.setFillColor(249, 236, 232);
             doc.roundedRect(x, y, IMG_W, IMG_H, 3, 3, "F");
           }
           // Per-photo tags — render as small gold pill chips centered under

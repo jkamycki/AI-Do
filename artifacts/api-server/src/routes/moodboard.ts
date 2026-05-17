@@ -56,6 +56,23 @@ function fallbackImageAnalysis(fileNameOrPath: string): NonNullable<MoodBoardIma
   };
 }
 
+function fallbackStyleSummary({
+  keywords,
+  themes,
+  colors,
+}: {
+  keywords: string[];
+  themes: string[];
+  colors: string[];
+}) {
+  const style = [...new Set(keywords)].slice(0, 3).join(", ") || "romantic and personal";
+  const themeText = [...new Set(themes)].slice(0, 2).join(" with ");
+  const paletteText = colors.length
+    ? ` The palette centers on ${colors.slice(0, 3).join(", ")}.`
+    : "";
+  return `Your wedding style is ${style}${themeText ? `, with ${themeText}` : ""}.${paletteText}`;
+}
+
 async function analyzeMoodBoardImage(contentType: string, base64: string) {
   const messages = [{
     role: "user" as const,
@@ -286,14 +303,21 @@ Color palette: ${colors.slice(0, 6).join(", ") || "not specified"}
 
 Write in second person ("Your wedding style is..."). Be specific, evocative, and positive. Under 50 words.${langInstruction}`;
 
-    const response = await openai.chat.completions.create({
-      model: getModel(),
-      messages: [{ role: "user", content: prompt }],
-      max_completion_tokens: 150,
-    });
+    try {
+      const response = await openai.chat.completions.create({
+        model: getModel(),
+        messages: [{ role: "user", content: prompt }],
+        max_completion_tokens: 150,
+      });
 
-    const summary = response.choices[0]?.message?.content?.trim() ?? "";
-    res.json({ summary });
+      const summary = response.choices[0]?.message?.content?.trim();
+      res.json({
+        summary: summary || fallbackStyleSummary({ keywords: allKeywords, themes: allThemes, colors }),
+      });
+    } catch (err) {
+      req.log.warn({ err }, "mood-board summary provider failed; using fallback summary");
+      res.json({ summary: fallbackStyleSummary({ keywords: allKeywords, themes: allThemes, colors }) });
+    }
   } catch (err) {
     req.log.error(err, "mood-board generate-summary");
     res.status(500).json({ error: "Failed to generate summary" });
