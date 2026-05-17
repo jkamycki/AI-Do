@@ -109,26 +109,42 @@ function formatDate(d: string | null) {
   }
 }
 
-const CATEGORY_BADGE_STYLES = [
-  "border-burgundy/25 bg-burgundy/10 text-burgundy dark:border-champagne/30 dark:bg-champagne/10 dark:text-champagne",
-  "border-rose-gold/35 bg-rose-gold/15 text-[#7c2d39] dark:border-rose-gold/30 dark:bg-rose-gold/12 dark:text-champagne",
-  "border-mauve/30 bg-mauve/12 text-[#553044] dark:border-mauve/35 dark:bg-mauve/18 dark:text-[#f1dce6]",
-  "border-amber-500/30 bg-amber-500/12 text-amber-800 dark:border-amber-300/30 dark:bg-amber-300/10 dark:text-amber-100",
-  "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:border-emerald-300/30 dark:bg-emerald-300/10 dark:text-emerald-100",
-  "border-sky-500/30 bg-sky-500/10 text-sky-800 dark:border-sky-300/30 dark:bg-sky-300/10 dark:text-sky-100",
-  "border-violet-500/30 bg-violet-500/10 text-violet-800 dark:border-violet-300/30 dark:bg-violet-300/10 dark:text-violet-100",
-];
+const VENDOR_CATEGORY_BADGE_STYLES: Record<string, string> = {
+  "Venue": "border-purple-200 bg-purple-100 text-purple-800 dark:border-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+  "Caterer": "border-orange-200 bg-orange-100 text-orange-800 dark:border-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+  "Photographer": "border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  "Videographer": "border-indigo-200 bg-indigo-100 text-indigo-800 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+  "Florist": "border-green-200 bg-green-100 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300",
+  "DJ / Band": "border-pink-200 bg-pink-100 text-pink-800 dark:border-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
+  "Officiant": "border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  "Hair & Makeup": "border-rose-200 bg-rose-100 text-rose-800 dark:border-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+  "Transportation": "border-cyan-200 bg-cyan-100 text-cyan-800 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+  "Cake & Desserts": "border-yellow-200 bg-yellow-100 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+  "Invitations": "border-lime-200 bg-lime-100 text-lime-800 dark:border-lime-700 dark:bg-lime-900/30 dark:text-lime-300",
+  "Lighting & AV": "border-violet-200 bg-violet-100 text-violet-800 dark:border-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
+  "Photo Booth": "border-fuchsia-200 bg-fuchsia-100 text-fuchsia-800 dark:border-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-300",
+  "Wedding Planner": "border-teal-200 bg-teal-100 text-teal-800 dark:border-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
+  "Other": "border-gray-200 bg-gray-100 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300",
+};
 
-function categoryHash(category: string) {
-  return [...category.toLowerCase()].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+function normalizeCategoryLabel(category: string | null | undefined) {
+  const raw = String(category ?? "").trim();
+  if (/^dj\s*\/?\s*(band)?$/i.test(raw) || /^dj\s*\/\s*band$/i.test(raw)) return "DJ / Band";
+  const found = Object.keys(VENDOR_CATEGORY_BADGE_STYLES).find((cat) => cat.toLowerCase() === raw.toLowerCase());
+  return found ?? (raw || "Other");
+}
+
+function displayCategoryLabel(category: string | null | undefined) {
+  const normalized = normalizeCategoryLabel(category);
+  return normalized === "DJ / Band" ? "DJ/Band" : normalized;
 }
 
 function categoryBadgeClass(category: string) {
-  return CATEGORY_BADGE_STYLES[categoryHash(category || "other") % CATEGORY_BADGE_STYLES.length];
+  return VENDOR_CATEGORY_BADGE_STYLES[normalizeCategoryLabel(category)] ?? VENDOR_CATEGORY_BADGE_STYLES.Other;
 }
 
 function CategoryBadge({ category }: { category: string }) {
-  const label = category?.trim() || "Other";
+  const label = displayCategoryLabel(category);
   return (
     <Badge variant="outline" className={`rounded-full border px-2.5 py-0.5 font-medium ${categoryBadgeClass(label)}`}>
       {label}

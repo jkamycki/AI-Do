@@ -117,6 +117,22 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Other": "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
 };
 
+function normalizeVendorCategory(category: string | null | undefined) {
+  const raw = String(category ?? "").trim();
+  if (/^dj\s*\/?\s*(band)?$/i.test(raw) || /^dj\s*\/\s*band$/i.test(raw)) return "DJ / Band";
+  return VENDOR_CATEGORIES.find((cat) => cat.toLowerCase() === raw.toLowerCase()) ?? raw;
+}
+
+function vendorCategoryLabel(category: string | null | undefined) {
+  const normalized = normalizeVendorCategory(category);
+  return normalized === "DJ / Band" ? "DJ/Band" : normalized || "Other";
+}
+
+function vendorCategoryBadgeClass(category: string | null | undefined) {
+  const normalized = normalizeVendorCategory(category);
+  return CATEGORY_COLORS[normalized] ?? CATEGORY_COLORS.Other;
+}
+
 function formatCurrency(n: number | null | undefined) {
   return `$${(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
@@ -371,7 +387,11 @@ function AddEditVendorDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {VENDOR_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    <SelectItem key={cat} value={cat}>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${vendorCategoryBadgeClass(cat)}`}>
+                        {vendorCategoryLabel(cat)}
+                      </span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -994,8 +1014,8 @@ function VendorDetailDialog({
               <div>
                 <DialogTitle className="font-serif text-2xl">{vendor.name}</DialogTitle>
                 <div className="flex items-center gap-2 mt-1.5">
-                  <Badge className={`text-xs ${CATEGORY_COLORS[vendor.category] ?? "bg-gray-100 text-gray-800"}`} variant="secondary">
-                    {vendor.category}
+                  <Badge className={`text-xs ${vendorCategoryBadgeClass(vendor.category)}`} variant="secondary">
+                    {vendorCategoryLabel(vendor.category)}
                   </Badge>
                   {vendor.contractSigned && (
                     <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
@@ -1310,8 +1330,8 @@ function VendorCard({
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">{vendor.name}</h3>
-          <Badge className={`text-xs mt-1 ${CATEGORY_COLORS[vendor.category] ?? "bg-gray-100 text-gray-800"}`} variant="secondary">
-            {vendor.category}
+          <Badge className={`text-xs mt-1 ${vendorCategoryBadgeClass(vendor.category)}`} variant="secondary">
+            {vendorCategoryLabel(vendor.category)}
           </Badge>
         </div>
         <div className="flex gap-1 opacity-100 md:opacity-60 md:group-hover:opacity-100 transition-opacity">
