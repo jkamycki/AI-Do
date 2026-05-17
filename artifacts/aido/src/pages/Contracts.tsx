@@ -108,6 +108,15 @@ function normalizeRiskLevel(value: unknown): ContractAnalysis["overallRiskLevel"
   return value === "low" || value === "medium" || value === "high" ? value : null;
 }
 
+function isUsefulKeyTerm(term: KeyTerm): boolean {
+  const label = term.label.toLowerCase();
+  const value = term.value.toLowerCase();
+  if (!term.label || !term.value) return false;
+  if (label === "label" || value === "value") return false;
+  if (label.includes("document text") || label.includes("review status")) return false;
+  return true;
+}
+
 function normalizeAnalysis(value: unknown): ContractAnalysis | null {
   if (!value) return null;
   const raw = getObject(value);
@@ -128,7 +137,7 @@ function normalizeAnalysis(value: unknown): ContractAnalysis | null {
     ? raw.keyTerms.map((item) => {
         const term = getObject(item);
         return { label: asString(term.label), value: asString(term.value) };
-      }).filter((term) => term.label || term.value)
+      }).filter(isUsefulKeyTerm)
     : [];
   const incompleteSummary = "This saved analysis is incomplete. Please upload the contract again to generate a fresh review.";
   return {

@@ -102,6 +102,15 @@ function normalizeRisk(value: unknown): "low" | "medium" | "high" {
   return value === "low" || value === "medium" || value === "high" ? value : "medium";
 }
 
+function isUsefulKeyTerm(term: { label: string; value: string }): boolean {
+  const label = term.label.toLowerCase();
+  const value = term.value.toLowerCase();
+  if (!term.label || !term.value) return false;
+  if (label === "label" || value === "value") return false;
+  if (label.includes("document text") || label.includes("review status")) return false;
+  return true;
+}
+
 function normalizeAnalysis(raw: Record<string, unknown>): Record<string, unknown> {
   const redFlags = Array.isArray(raw.redFlags)
     ? raw.redFlags.map((item) => {
@@ -118,7 +127,7 @@ function normalizeAnalysis(raw: Record<string, unknown>): Record<string, unknown
     ? raw.keyTerms.map((item) => {
         const term = asObject(item);
         return { label: asText(term.label), value: asText(term.value) };
-      }).filter((term) => term.label || term.value)
+      }).filter(isUsefulKeyTerm)
     : [];
 
   return {
@@ -215,8 +224,9 @@ function buildFallbackAnalysis(contractText: string): Record<string, unknown> {
       },
     ],
     keyTerms: [
-      { label: "Document text", value: `${Math.round(contractText.length / 1000)}k characters extracted` },
-      { label: "Review status", value: "Needs manual review" },
+      { label: "Payment terms", value: lower.includes("deposit") || lower.includes("payment") ? "Mentioned in contract text; review exact amounts and due dates." : "Not specified" },
+      { label: "Cancellation", value: lower.includes("cancel") ? "Mentioned in contract text; review refund and deadline language." : "Not specified" },
+      { label: "Liability", value: lower.includes("liabil") || lower.includes("indemn") ? "Mentioned in contract text; review who is responsible for losses or damages." : "Not specified" },
     ],
     cancellationPolicy: lower.includes("cancel") ? "Mentioned in contract text; review original wording." : "Not specified",
     paymentTerms: lower.includes("deposit") || lower.includes("payment") ? "Mentioned in contract text; review original wording." : "Not specified",
@@ -377,12 +387,16 @@ PAYMENT_TERMS: exact practical summary or Not specified
 LIABILITY_NOTES: exact practical summary or Not specified
 RED_FLAG: severity | title | detail | recommendation
 RED_FLAG: severity | title | detail | recommendation
-KEY_TERM: label | value
-KEY_TERM: label | value
+KEY_TERM: Payment schedule | exact deposits, due dates, balances, and late fees or Not specified
+KEY_TERM: Cancellation/refund | refund deadlines, forfeited amounts, and cancellation notice rules or Not specified
+KEY_TERM: Services included | concrete deliverables, hours, staffing, package inclusions, or Not specified
+KEY_TERM: Rescheduling/force majeure | weather, emergency, postponement, and availability terms or Not specified
+KEY_TERM: Liability/insurance | liability caps, indemnity, damage responsibility, insurance requirements, or Not specified
 POSITIVE: one thing that looks favorable
 MISSING_CLAUSE: clause or protection missing
 NEGOTIATION_TIP: specific suggested ask
 
+For KEY_TERM rows, do not use generic labels like "Important clause" or "Contract term". Use the exact labels above when applicable and put the practical contract detail in the value.
 Focus on clauses that could financially harm the couple or cause day-of issues.`;
 
     const completion = await openai.chat.completions.create({
@@ -405,7 +419,11 @@ CANCELLATION_POLICY: exact practical summary or Not specified
 PAYMENT_TERMS: exact practical summary or Not specified
 LIABILITY_NOTES: exact practical summary or Not specified
 RED_FLAG: severity | title | detail | recommendation
-KEY_TERM: label | value
+KEY_TERM: Payment schedule | exact deposits, due dates, balances, and late fees or Not specified
+KEY_TERM: Cancellation/refund | refund deadlines, forfeited amounts, and cancellation notice rules or Not specified
+KEY_TERM: Services included | concrete deliverables, hours, staffing, package inclusions, or Not specified
+KEY_TERM: Rescheduling/force majeure | weather, emergency, postponement, and availability terms or Not specified
+KEY_TERM: Liability/insurance | liability caps, indemnity, damage responsibility, insurance requirements, or Not specified
 POSITIVE: one thing that looks favorable
 MISSING_CLAUSE: clause or protection missing
 NEGOTIATION_TIP: specific suggested ask
