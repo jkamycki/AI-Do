@@ -71,6 +71,39 @@ router.post("/help/feedback", requireAuth, async (req, res) => {
   }
 });
 
+router.post("/help/suggestion", async (req, res) => {
+  try {
+    const { name, email, message, source } = req.body as {
+      name?: string;
+      email?: string;
+      message?: string;
+      source?: string;
+    };
+
+    if (!name?.trim() || !email?.trim() || !message?.trim()) {
+      return res.status(400).json({ error: "Name, email, and suggestion are required." });
+    }
+
+    const [saved] = await db
+      .insert(contactMessages)
+      .values({
+        userId: null,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        subject: source?.trim() || "Updates & Improvements suggestion",
+        message: message.trim(),
+        isRead: false,
+        isResolved: false,
+      })
+      .returning();
+
+    res.json({ success: true, id: saved.id });
+  } catch (err) {
+    req.log.error(err, "Failed to save public suggestion");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 async function isAdmin(userId: string): Promise<boolean> {
   try {
     const user = await clerkClient.users.getUser(userId);

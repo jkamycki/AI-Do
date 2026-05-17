@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "wouter";
-import { CheckCircle2, Clock3, Lightbulb, Send, ShieldCheck, Sparkles, Wrench, Zap } from "lucide-react";
+import { CheckCircle2, Clock3, Lightbulb, Send, Sparkles, Wrench, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -83,14 +83,13 @@ export default function UpdatesImprovements() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${API}/api/help/support-ticket`, {
+      const response = await fetch(`${API}/api/help/suggestion`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim(),
-          category: "User Suggestion",
-          subject: "Updates & Improvements suggestion",
+          source: "Updates & Improvements suggestion",
           message: suggestion.trim(),
         }),
       });
@@ -99,10 +98,12 @@ export default function UpdatesImprovements() {
         throw new Error(body.error || "Could not send your suggestion.");
       }
       setSubmitted(true);
+      setName("");
+      setEmail("");
       setSuggestion("");
       toast({
         title: "Suggestion sent",
-        description: "Thank you. This goes directly to the A.IDO Operations Center.",
+        description: "Suggestions go straight to the A.IDO Team. We Appreciate your feedback!",
       });
     } catch (error) {
       toast({
@@ -176,7 +177,7 @@ export default function UpdatesImprovements() {
               {submitted ? (
                 <div className="space-y-4">
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-800">
-                    Your suggestion was sent to the Messages tab in Operations Center.
+                    Suggestions go straight to the A.IDO Team. We Appreciate your feedback!
                   </div>
                   <Button variant="outline" className="w-full" onClick={() => setSubmitted(false)}>
                     Send another suggestion
@@ -222,9 +223,8 @@ export default function UpdatesImprovements() {
                     <Send className="h-4 w-4" />
                     {isSubmitting ? "Sending..." : "Send Suggestion"}
                   </Button>
-                  <p className="flex items-start gap-2 text-xs leading-5 text-[#6F5A65]">
-                    <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8D294D]" />
-                    Suggestions go straight to the A.IDO team in Operations Center.
+                  <p className="text-xs leading-5 text-[#6F5A65]">
+                    Suggestions go straight to the A.IDO Team. We Appreciate your feedback!
                   </p>
                 </form>
               )}
