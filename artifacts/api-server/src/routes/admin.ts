@@ -348,6 +348,121 @@ router.get("/admin/test-sessions", requireAuth, requireAdmin, async (req, res) =
   }
 });
 
+const defaultLaunchPlanItems = [
+  {
+    title: "Confirm A.IDO launch promise and audience",
+    category: "Brand",
+    notes: "Lock the short positioning statement, who launch is for, and the main conversion CTA.",
+  },
+  {
+    title: "Run full signup and onboarding QA",
+    category: "Product",
+    notes: "Test a fresh account on mobile and desktop from signup through wedding profile, budget, vendors, contracts, guests, website, and Aria.",
+  },
+  {
+    title: "Verify published website and share previews",
+    category: "Product",
+    notes: "Check social preview images, QR codes, published website links, and invitation link behavior before public launch.",
+  },
+  {
+    title: "Prepare first-user support workflow",
+    category: "Operations",
+    notes: "Make sure feedback prompts, support tickets, and Operations Center messages are monitored daily.",
+  },
+  {
+    title: "Review privacy, security, and AI disclaimer copy",
+    category: "Trust",
+    notes: "Confirm contract analyzer and Aria disclaimers clearly say AI-generated guidance is not legal advice.",
+  },
+  {
+    title: "Create launch outreach list",
+    category: "Marketing",
+    notes: "Prepare warm contacts, wedding vendors, planners, social posts, and launch announcement copy.",
+  },
+  {
+    title: "Set launch metrics to watch",
+    category: "Analytics",
+    notes: "Track signups, onboarding completion, feature usage, support issues, and conversion from landing page to account.",
+  },
+];
+
+function normalizeLaunchPlanItems(items: unknown) {
+  if (!Array.isArray(items)) return defaultLaunchPlanItems;
+
+  const normalized = items
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const row = item as Record<string, unknown>;
+      const title = String(row.title ?? "").trim();
+      if (!title) return null;
+      return {
+        title: title.slice(0, 140),
+        category: String(row.category ?? "Launch").trim().slice(0, 40) || "Launch",
+        notes: String(row.notes ?? "").trim().slice(0, 500),
+      };
+    })
+    .filter((item): item is { title: string; category: string; notes: string } => item !== null);
+
+  return normalized.length > 0 ? normalized.slice(0, 20) : defaultLaunchPlanItems;
+}
+
+router.post("/admin/launch-plan/generate", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const focus = String((req.body as { focus?: unknown })?.focus ?? "").trim().slice(0, 800);
+    const currentItems = Array.isArray((req.body as { currentItems?: unknown })?.currentItems)
+      ? ((req.body as { currentItems: unknown[] }).currentItems)
+        .slice(0, 25)
+        .map(item => {
+          if (!item || typeof item !== "object") return null;
+          const row = item as Record<string, unknown>;
+          return {
+            title: String(row.title ?? "").slice(0, 140),
+            category: String(row.category ?? "").slice(0, 40),
+            completed: Boolean(row.completed),
+          };
+        })
+        .filter(Boolean)
+      : [];
+
+    const model = getModel();
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: "system",
+          content: `You are the A.IDO Operations Center launch-planning assistant. Generate practical launch checklist items for A.IDO, an AI wedding planner assistant. Keep tasks specific, founder/operator friendly, and focused on product QA, conversion, trust, support, marketing, analytics, and launch operations. Return valid JSON only.`,
+        },
+        {
+          role: "user",
+          content: `Create a launch checklist for A.IDO.
+
+Focus from the admin:
+${focus || "A complete public launch plan for the AI wedding planning assistant."}
+
+Existing checklist summary:
+${JSON.stringify(currentItems)}
+
+Return ONLY this JSON shape:
+{"items":[{"title":"short checklist task","category":"Brand|Product|Operations|Marketing|Trust|Analytics|Support","notes":"editable note with next action"}]}
+
+Generate 10 to 16 items. Do not include markdown.`,
+        },
+      ],
+      ...(supportsCustomTemperature(model) ? { temperature: 0.7 } : {}),
+      max_completion_tokens: 1400,
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "";
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON in launch plan response");
+    const parsed = JSON.parse(jsonMatch[0]) as { items?: unknown };
+    res.json({ items: normalizeLaunchPlanItems(parsed.items), source: "ai" });
+  } catch (err) {
+    req.log.error({ err }, "Launch plan generate error");
+    res.json({ items: defaultLaunchPlanItems, source: "fallback" });
+  }
+});
+
 router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
   try {
     const search = String(req.query.search ?? "").trim().toLowerCase();

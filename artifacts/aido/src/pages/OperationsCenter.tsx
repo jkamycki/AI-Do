@@ -22,7 +22,20 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Clock, AlertCircle, CheckCircle2, Eye, Trash2, Inbox, Ticket, FlaskConical } from "lucide-react";
+import {
+  Mail,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+  Eye,
+  Trash2,
+  Inbox,
+  Ticket,
+  FlaskConical,
+  ListChecks,
+  Plus,
+  Sparkles,
+} from "lucide-react";
 import MessagesSection from "@/components/admin/MessagesSection";
 
 type TestSessionRow = {
@@ -43,6 +56,45 @@ type TestSessionRow = {
   errorsEncountered: number;
 };
 
+type LaunchPlanItem = {
+  id: string;
+  title: string;
+  category: string;
+  notes: string;
+  completed: boolean;
+};
+
+const LAUNCH_PLAN_STORAGE_KEY = "aido_operations_launch_plan_v1";
+
+const fallbackLaunchPlanItems: LaunchPlanItem[] = [
+  {
+    id: "launch-positioning",
+    title: "Finalize A.IDO launch positioning",
+    category: "Brand",
+    notes: "Confirm the primary promise, launch audience, and short description used across the website, previews, and outreach.",
+    completed: false,
+  },
+  {
+    id: "launch-onboarding",
+    title: "Test signup and onboarding from a fresh account",
+    category: "Product",
+    notes: "Walk through profile setup, guest list, budget, vendors, contracts, website editor, and Aria from mobile and desktop.",
+    completed: false,
+  },
+  {
+    id: "launch-support",
+    title: "Prepare support and feedback workflow",
+    category: "Operations",
+    notes: "Make sure support messages, feedback prompts, and Operations Center tickets are being received and reviewed daily.",
+    completed: false,
+  },
+];
+
+const makeLaunchPlanId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `launch-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
 export default function OperationsCenterPage() {
   const { getToken } = useAuth();
   const { toast } = useToast();
@@ -50,8 +102,27 @@ export default function OperationsCenterPage() {
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "testActivity">("tickets");
+  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "testActivity" | "launchPlan">("tickets");
   const [testSessionFilter, setTestSessionFilter] = useState<"test" | "all" | "real">("test");
+  const [launchPlanPrompt, setLaunchPlanPrompt] = useState("");
+  const [launchPlanItems, setLaunchPlanItems] = useState<LaunchPlanItem[]>(() => {
+    if (typeof window === "undefined") return fallbackLaunchPlanItems;
+    try {
+      const stored = window.localStorage.getItem(LAUNCH_PLAN_STORAGE_KEY);
+      if (!stored) return fallbackLaunchPlanItems;
+      const parsed = JSON.parse(stored) as LaunchPlanItem[];
+      if (!Array.isArray(parsed) || parsed.length === 0) return fallbackLaunchPlanItems;
+      return parsed.map((item) => ({
+        id: item.id || makeLaunchPlanId(),
+        title: String(item.title ?? ""),
+        category: String(item.category ?? "Launch"),
+        notes: String(item.notes ?? ""),
+        completed: Boolean(item.completed),
+      }));
+    } catch {
+      return fallbackLaunchPlanItems;
+    }
+  });
   const [followUpForm, setFollowUpForm] = useState({
     followUpEmail: "",
     followUpNotes: "",
@@ -111,6 +182,76 @@ export default function OperationsCenterPage() {
     refetchInterval: activeTab === "testActivity" ? 30000 : false,
   });
   const testSessions = testSessionsData?.sessions ?? [];
+
+  useEffect(() => {
+    window.localStorage.setItem(LAUNCH_PLAN_STORAGE_KEY, JSON.stringify(launchPlanItems));
+  }, [launchPlanItems]);
+
+  const launchPlanCompletedCount = launchPlanItems.filter(item => item.completed).length;
+  const launchPlanProgress = launchPlanItems.length > 0
+    ? Math.round((launchPlanCompletedCount / launchPlanItems.length) * 100)
+    : 0;
+
+  const updateLaunchPlanItem = (id: string, patch: Partial<LaunchPlanItem>) => {
+    setLaunchPlanItems(items => items.map(item => item.id === id ? { ...item, ...patch } : item));
+  };
+
+  const addLaunchPlanItem = () => {
+    setLaunchPlanItems(items => [
+      ...items,
+      {
+        id: makeLaunchPlanId(),
+        title: "New launch task",
+        category: "Launch",
+        notes: "",
+        completed: false,
+      },
+    ]);
+  };
+
+  const generateLaunchPlanMutation = useMutation({
+    mutationFn: async () => {
+      const r = await authedFetch("/api/admin/launch-plan/generate", {
+        method: "POST",
+        body: JSON.stringify({
+          focus: launchPlanPrompt,
+          currentItems: launchPlanItems.map(({ title, category, notes, completed }) => ({
+            title,
+            category,
+            notes,
+            completed,
+          })),
+        }),
+      });
+      if (!r.ok) throw new Error("Failed to generate launch plan");
+      return r.json() as Promise<{ items: Array<Partial<LaunchPlanItem>>; source?: string }>;
+    },
+    onSuccess: (data) => {
+      const generatedItems = (data.items ?? [])
+        .filter(item => String(item.title ?? "").trim().length > 0)
+        .map(item => ({
+          id: makeLaunchPlanId(),
+          title: String(item.title ?? "").trim(),
+          category: String(item.category ?? "Launch").trim() || "Launch",
+          notes: String(item.notes ?? "").trim(),
+          completed: Boolean(item.completed),
+        }));
+
+      if (generatedItems.length === 0) {
+        toast({ title: "No checklist items generated", variant: "destructive" });
+        return;
+      }
+
+      setLaunchPlanItems(generatedItems);
+      toast({
+        title: data.source === "fallback" ? "Launch plan starter added" : "Launch plan generated",
+        description: "You can edit every item, add notes, and check tasks off as you finish them.",
+      });
+    },
+    onError: () => {
+      toast({ title: "Could not generate launch plan", variant: "destructive" });
+    },
+  });
 
   const lastSeenUnread = useRef<number | null>(null);
   useEffect(() => {
@@ -220,7 +361,7 @@ export default function OperationsCenterPage() {
         <p className="mt-1 text-sm font-medium text-[#4A3941]">Support tickets, contact messages, and feedback in one place</p>
       </div>
 
-      <div className="flex gap-2 border-b border-border">
+      <div className="flex flex-wrap gap-2 border-b border-border">
         <button
           onClick={() => setActiveTab("tickets")}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
@@ -249,6 +390,14 @@ export default function OperationsCenterPage() {
         >
           <FlaskConical className="h-4 w-4" />
           Free Test Account Activity
+        </button>
+        <button
+          onClick={() => setActiveTab("launchPlan")}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+            ${activeTab === "launchPlan" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
+        >
+          <ListChecks className="h-4 w-4" />
+          A.IDO Launch Plan
         </button>
       </div>
 
@@ -345,6 +494,138 @@ export default function OperationsCenterPage() {
                 </Card>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "launchPlan" && (
+        <div className="space-y-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="text-xl font-serif font-semibold text-[#24171D]">A.IDO Launch Plan</h2>
+              <p className="text-sm font-medium text-[#4A3941]">
+                Generate a launch checklist, edit each task, add working notes, and check off what is finished.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addLaunchPlanItem}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Item
+              </Button>
+              <Button
+                type="button"
+                onClick={() => generateLaunchPlanMutation.mutate()}
+                disabled={generateLaunchPlanMutation.isPending}
+                className="gap-2 bg-[#9A2E5C] hover:bg-[#7B2148]"
+              >
+                <Sparkles className="h-4 w-4" />
+                {generateLaunchPlanMutation.isPending ? "Generating..." : "Generate Checklist"}
+              </Button>
+            </div>
+          </div>
+
+          <Card>
+            <CardContent className="py-5">
+              <div className="grid gap-4 lg:grid-cols-[1fr_220px] lg:items-end">
+                <div>
+                  <label className="text-sm font-semibold text-[#24171D]">AI focus</label>
+                  <Textarea
+                    value={launchPlanPrompt}
+                    onChange={(event) => setLaunchPlanPrompt(event.target.value)}
+                    placeholder="Example: launch public beta, prep social posts, test payments, confirm privacy/security, and plan first users."
+                    className="mt-2 min-h-[86px]"
+                  />
+                </div>
+                <div className="rounded-lg border border-[#F0D7E0] bg-[#FFF8FA] p-4">
+                  <p className="text-sm font-semibold text-[#4A3941]">Progress</p>
+                  <p className="mt-1 text-3xl font-bold text-[#9A2E5C]">{launchPlanProgress}%</p>
+                  <p className="mt-1 text-xs font-medium text-[#4A3941]">
+                    {launchPlanCompletedCount} of {launchPlanItems.length} complete
+                  </p>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#F4DDE5]">
+                    <div
+                      className="h-full rounded-full bg-[#9A2E5C] transition-all"
+                      style={{ width: `${launchPlanProgress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-3">
+            {launchPlanItems.map((item) => (
+              <Card key={item.id} className={item.completed ? "border-emerald-200 bg-emerald-50/40" : ""}>
+                <CardContent className="py-4">
+                  <div className="grid gap-4 lg:grid-cols-[auto_1fr_auto] lg:items-start">
+                    <button
+                      type="button"
+                      onClick={() => updateLaunchPlanItem(item.id, { completed: !item.completed })}
+                      className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full border transition-colors ${
+                        item.completed
+                          ? "border-emerald-500 bg-emerald-500 text-white"
+                          : "border-[#E7C7D3] bg-white text-[#9A2E5C] hover:border-[#9A2E5C]"
+                      }`}
+                      aria-label={item.completed ? "Mark launch task incomplete" : "Mark launch task complete"}
+                    >
+                      <CheckCircle2 className="h-5 w-5" />
+                    </button>
+
+                    <div className="grid gap-3 md:grid-cols-[180px_1fr]">
+                      <div>
+                        <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Category</label>
+                        <Input
+                          value={item.category}
+                          onChange={(event) => updateLaunchPlanItem(item.id, { category: event.target.value })}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Task</label>
+                        <Input
+                          value={item.title}
+                          onChange={(event) => updateLaunchPlanItem(item.id, { title: event.target.value })}
+                          className={`mt-1 font-semibold ${item.completed ? "line-through decoration-2" : ""}`}
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Notes</label>
+                        <Textarea
+                          value={item.notes}
+                          onChange={(event) => updateLaunchPlanItem(item.id, { notes: event.target.value })}
+                          placeholder="Add launch notes, owner, blockers, links, or next action."
+                          className="mt-1 min-h-[82px]"
+                        />
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setLaunchPlanItems(items => items.filter(current => current.id !== item.id))}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {launchPlanItems.length === 0 && (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <ListChecks className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
+                <p className="font-medium text-[#4A3941]">No launch tasks yet. Generate a checklist or add an item.</p>
+              </CardContent>
+            </Card>
           )}
         </div>
       )}
