@@ -12,6 +12,7 @@ import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { purgeUserData, snapshotUserData } from "../lib/userCleanup";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
+import { trackEvent } from "../lib/trackEvent";
 import { openai, getModel, supportsCustomTemperature } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
@@ -263,19 +264,40 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
 
 router.get("/admin/events", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const page = parseInt(String(req.query.page ?? "1"), 10);
-    const requestedLimit = parseInt(String(req.query.limit ?? "50"), 10);
-    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 50), 10000) : 50;
-    const offset = (page - 1) * limit;
+    const perUserLimit = 20;
+    const eventsResult = await db.execute(sql`
+      WITH ranked_events AS (
+        SELECT
+          id,
+          user_id,
+          event_type,
+          timestamp,
+          metadata,
+          row_number() OVER (
+            PARTITION BY user_id
+            ORDER BY timestamp DESC, id DESC
+          ) AS event_rank
+        FROM analytics_events
+      )
+      SELECT
+        id,
+        user_id AS "userId",
+        event_type AS "eventType",
+        timestamp,
+        metadata
+      FROM ranked_events
+      WHERE event_rank <= ${perUserLimit}
+      ORDER BY timestamp DESC, id DESC
+    `);
 
-    const [events, [{ total }]] = await Promise.all([
-      db.select()
-        .from(analyticsEvents)
-        .orderBy(desc(analyticsEvents.timestamp))
-        .limit(limit)
-        .offset(offset),
-      db.select({ total: sql<number>`count(*)::int` }).from(analyticsEvents),
-    ]);
+    const events = (eventsResult.rows as Array<{
+      id: number;
+      userId: string;
+      eventType: string;
+      timestamp: Date | string;
+      metadata: Record<string, unknown> | null;
+    }>);
+    const total = events.length;
 
     const clerkUserIds = Array.from(new Set(
       events
@@ -322,12 +344,13 @@ router.get("/admin/events", requireAuth, requireAdmin, async (req, res) => {
           userEmail,
           userDisplayName,
           userLogin: userEmail ?? e.userId,
-          timestamp: e.timestamp.toISOString(),
+          timestamp: e.timestamp instanceof Date ? e.timestamp.toISOString() : new Date(e.timestamp).toISOString(),
         };
       }),
       total,
-      page,
-      pages: Math.ceil(total / limit),
+      page: 1,
+      pages: 1,
+      perUserLimit,
     });
   } catch (err) {
     req.log.error(err, "Admin events error");
@@ -1579,11 +1602,12 @@ router.post("/admin/marketing/send", requireAuth, requireAdmin, async (req, res)
         },
       });
 
-      await db.insert(analyticsEvents).values({
-        userId: req.userId ?? "admin",
-        eventType: "marketing_email_sent",
-        metadata: { to: trimmed, subject: normalizedSubject, ok: r.ok, error: r.error ?? null },
-      }).catch(() => {});
+      trackEvent(req.userId ?? "admin", "marketing_email_sent", {
+        to: trimmed,
+        subject: normalizedSubject,
+        ok: r.ok,
+        error: r.error ?? null,
+      });
 
       results.push({ email: trimmed, ok: r.ok, error: r.error });
     }

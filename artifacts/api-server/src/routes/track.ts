@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db, anonymousSessions, analyticsEvents } from "@workspace/db";
+import { pruneAnalyticsEvents } from "../lib/trackEvent";
 
 const router = Router();
 
@@ -68,6 +69,7 @@ router.post("/track", async (req, res) => {
         source: "portal_tracker",
       },
     });
+    await pruneAnalyticsEvents(userId);
 
     res.json({ ok: true });
   } catch (err) {

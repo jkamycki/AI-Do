@@ -8,6 +8,7 @@ import { generalLimiter } from "./middlewares/rateLimiter";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { isAllowedOrigin } from "./lib/allowedOrigins";
+import { pruneAnalyticsEvents } from "./lib/trackEvent";
 
 const app: Express = express();
 app.set("etag", false);
@@ -414,6 +415,7 @@ app.post("/api/analytics/pageview", async (req, res) => {
         eventType: "page_view",
         metadata: { path: typeof pagePath === "string" ? pagePath : "/", device },
       });
+      await pruneAnalyticsEvents(`visitor_${visitorId.slice(0, 36)}`);
     }
     res.json({ ok: true });
   } catch {
