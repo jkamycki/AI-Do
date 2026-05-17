@@ -5,7 +5,6 @@ import { useUpload } from "@workspace/object-storage-web";
 import { authFetch } from "@/lib/authFetch";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 import { WEBSITE_THEMES as THEMES } from "@/lib/websiteThemes";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -1281,12 +1280,15 @@ export default function WebsiteEditor() {
                   Save failed — retrying…
                 </span>
               )}
-              <Badge
-                variant={record.published ? "default" : "destructive"}
-                className={record.published ? undefined : "bg-red-600 hover:bg-red-600 text-white"}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled
+                className="h-7 rounded-full border-[#D8B7C7] bg-[#FFF7F2] px-3 text-xs font-semibold text-[#8D294D] opacity-100 disabled:opacity-100"
               >
-                {record.published ? t("website_editor.live", { defaultValue: "Live" }) : t("website_editor.draft", { defaultValue: "Draft" })}
-              </Badge>
+                {t("website_editor.editing", { defaultValue: "Editing" })}
+              </Button>
             </div>
           </div>
           {/* Action toolbar — 2x2 grid. Brand gold backgrounds for the
