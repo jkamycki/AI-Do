@@ -136,6 +136,64 @@ function normalizeAnalysis(raw: Record<string, unknown>): Record<string, unknown
   };
 }
 
+function splitFields(line: string, count: number): string[] {
+  const parts = line.split("|").map((part) => part.trim());
+  while (parts.length < count) parts.push("");
+  return parts.slice(0, count);
+}
+
+function parseTaggedAnalysis(raw: string): Record<string, unknown> | null {
+  const analysis: Record<string, unknown> = {
+    redFlags: [],
+    keyTerms: [],
+    positives: [],
+    missingClauses: [],
+    negotiationTips: [],
+  };
+  const lines = raw
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => line.trim().replace(/^[-*]\s*/, ""))
+    .filter(Boolean);
+
+  for (const line of lines) {
+    const match = line.match(/^([A-Z_ ]+):\s*(.*)$/);
+    if (!match) continue;
+    const key = match[1].trim().replace(/\s+/g, "_");
+    const value = match[2].trim();
+    if (!value) continue;
+
+    if (key === "OVERALL_RISK") analysis.overallRiskLevel = value.toLowerCase();
+    if (key === "VENDOR_TYPE") analysis.vendorType = value;
+    if (key === "SUMMARY") analysis.summary = value;
+    if (key === "CANCELLATION_POLICY") analysis.cancellationPolicy = value;
+    if (key === "PAYMENT_TERMS") analysis.paymentTerms = value;
+    if (key === "LIABILITY_NOTES") analysis.liabilityNotes = value;
+    if (key === "RED_FLAG") {
+      const [severity, title, detail, recommendation] = splitFields(value, 4);
+      (analysis.redFlags as unknown[]).push({ severity, title, detail, recommendation });
+    }
+    if (key === "KEY_TERM") {
+      const [label, termValue] = splitFields(value, 2);
+      (analysis.keyTerms as unknown[]).push({ label, value: termValue });
+    }
+    if (key === "POSITIVE") (analysis.positives as string[]).push(value);
+    if (key === "MISSING_CLAUSE") (analysis.missingClauses as string[]).push(value);
+    if (key === "NEGOTIATION_TIP") (analysis.negotiationTips as string[]).push(value);
+  }
+
+  const hasRealAnalysis = Boolean(
+    analysis.summary ||
+    (analysis.redFlags as unknown[]).length ||
+    (analysis.keyTerms as unknown[]).length
+  );
+  return hasRealAnalysis ? analysis : null;
+}
+
+function parseAnalysisResponse(raw: string): Record<string, unknown> | null {
+  return parseJsonObject(raw) ?? parseTaggedAnalysis(raw);
+}
+
 function buildFallbackAnalysis(contractText: string): Record<string, unknown> {
   const lower = contractText.toLowerCase();
   const missingClauses = [
@@ -147,13 +205,13 @@ function buildFallbackAnalysis(contractText: string): Record<string, unknown> {
   return normalizeAnalysis({
     overallRiskLevel: "medium",
     vendorType: "Vendor",
-    summary: "The contract text was extracted, but the AI response could not be converted into a full structured review. Please review the contract carefully and consider re-uploading it for another analysis.",
+    summary: "A.IDO extracted the contract text and prepared a basic review checklist. Review the original document carefully, especially payment, cancellation, liability, rescheduling, and force majeure terms.",
     redFlags: [
       {
         severity: "medium",
-        title: "Full AI review unavailable",
-        detail: "A.IDO could read the contract text, but the AI provider returned an unreadable structured response.",
-        recommendation: "Re-upload the file to retry the AI review, and have a qualified attorney review the original contract before signing.",
+        title: "Manual review recommended",
+        detail: "This contract should be reviewed for financial risk, cancellation rules, liability allocation, and day-of service obligations before signing.",
+        recommendation: "Ask the vendor for written clarification on any unclear terms and have a qualified attorney review the final contract.",
       },
     ],
     keyTerms: [
@@ -304,42 +362,62 @@ router.post(
       ? `${extractedText.slice(0, HEAD_CHARS)}\n\n[…middle of contract omitted for length; full text kept on file…]\n\n${extractedText.slice(-TAIL_CHARS)}`
       : extractedText;
 
-    const prompt = `You are a wedding contract attorney. Analyze this vendor contract and return a JSON risk assessment.
+    const prompt = `You are a wedding contract attorney. Analyze this vendor contract for a couple planning their wedding.
 
 CONTRACT:
 ${trimmedContractText}
 
-Return ONLY this JSON shape:
-{"overallRiskLevel":"low|medium|high","vendorType":"string","summary":"2-3 sentences","redFlags":[{"severity":"high|medium|low","title":"string","detail":"string","recommendation":"string"}],"keyTerms":[{"label":"string","value":"string"}],"cancellationPolicy":"string or 'Not specified'","paymentTerms":"string or 'Not specified'","liabilityNotes":"string or 'Not specified'","positives":["string"],"missingClauses":["string"],"negotiationTips":["string"]}
+Return ONLY this tagged report format. Do not use markdown, bullets, numbering, or JSON.
+
+OVERALL_RISK: low OR medium OR high
+VENDOR_TYPE: short vendor type
+SUMMARY: 2-3 sentences for the couple
+CANCELLATION_POLICY: exact practical summary or Not specified
+PAYMENT_TERMS: exact practical summary or Not specified
+LIABILITY_NOTES: exact practical summary or Not specified
+RED_FLAG: severity | title | detail | recommendation
+RED_FLAG: severity | title | detail | recommendation
+KEY_TERM: label | value
+KEY_TERM: label | value
+POSITIVE: one thing that looks favorable
+MISSING_CLAUSE: clause or protection missing
+NEGOTIATION_TIP: specific suggested ask
 
 Focus on clauses that could financially harm the couple or cause day-of issues.`;
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
       messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      // 2048 tokens for comprehensive risk analyses with full clause coverage.
       max_completion_tokens: 2048,
     }, { signal: AbortSignal.timeout(90_000) });
 
     const analysisRaw = completion.choices[0]?.message?.content ?? "{}";
-    let parsedAnalysis = parseJsonObject(analysisRaw);
+    let parsedAnalysis = parseAnalysisResponse(analysisRaw);
     if (!parsedAnalysis) {
-      req.log.warn({ preview: analysisRaw.slice(0, 500) }, "Contract AI returned invalid JSON");
+      req.log.warn({ preview: analysisRaw.slice(0, 500) }, "Contract AI returned unstructured analysis");
       try {
-        const repairPrompt = `Convert the following contract analysis response into ONLY valid JSON matching the requested schema. If a field is missing, infer a concise safe value. Do not include markdown.
+        const repairPrompt = `Convert the following contract analysis response into ONLY the tagged report format below. Do not use markdown, bullets, numbering, or JSON.
 
-REQUESTED JSON SHAPE:
-{"overallRiskLevel":"low|medium|high","vendorType":"string","summary":"2-3 sentences","redFlags":[{"severity":"high|medium|low","title":"string","detail":"string","recommendation":"string"}],"keyTerms":[{"label":"string","value":"string"}],"cancellationPolicy":"string or 'Not specified'","paymentTerms":"string or 'Not specified'","liabilityNotes":"string or 'Not specified'","positives":["string"],"missingClauses":["string"],"negotiationTips":["string"]}
+OVERALL_RISK: low OR medium OR high
+VENDOR_TYPE: short vendor type
+SUMMARY: 2-3 sentences for the couple
+CANCELLATION_POLICY: exact practical summary or Not specified
+PAYMENT_TERMS: exact practical summary or Not specified
+LIABILITY_NOTES: exact practical summary or Not specified
+RED_FLAG: severity | title | detail | recommendation
+KEY_TERM: label | value
+POSITIVE: one thing that looks favorable
+MISSING_CLAUSE: clause or protection missing
+NEGOTIATION_TIP: specific suggested ask
 
-UNREADABLE RESPONSE:
+SOURCE RESPONSE:
 ${analysisRaw.slice(0, 12000)}`;
         const repairCompletion = await openai.chat.completions.create({
           model: getModel(),
           messages: [{ role: "user", content: repairPrompt }],
           max_completion_tokens: 1600,
         }, { signal: AbortSignal.timeout(45_000) });
-        parsedAnalysis = parseJsonObject(repairCompletion.choices[0]?.message?.content ?? "{}");
+        parsedAnalysis = parseAnalysisResponse(repairCompletion.choices[0]?.message?.content ?? "{}");
       } catch (err) {
         req.log.warn({ err }, "Contract AI repair attempt failed");
       }
