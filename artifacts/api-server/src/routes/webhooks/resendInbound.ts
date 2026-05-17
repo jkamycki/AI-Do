@@ -7,8 +7,23 @@ import { isSupportInboxRecipient, saveSupportInboxMessage, parseSupportThreadAdd
 import { logger } from "../../lib/logger";
 import { Webhook } from "svix";
 import { requireAuth } from "../../middlewares/requireAuth";
+import { clerkClient } from "@clerk/express";
 
 const router = Router();
+const OWNER_EMAILS = [
+  process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com",
+  "michaelgang31@gmail.com",
+];
+
+async function isAdmin(userId: string): Promise<boolean> {
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    const userEmails = user.emailAddresses.map(e => e.emailAddress.toLowerCase());
+    return OWNER_EMAILS.some(email => userEmails.includes(email));
+  } catch {
+    return false;
+  }
+}
 
 // In-memory ring buffer of the last 20 inbound webhook attempts (resets on restart)
 const recentHits: Array<{ ts: string; result: string; conversationId?: number; senderEmail?: string; recipient?: string; reason?: string }> = [];
@@ -21,7 +36,10 @@ function logHit(result: string, extra: { conversationId?: number; senderEmail?: 
 let lastPayload: { ts: string; recipients?: string[]; from?: string; subject?: string; bodyPreview?: string } | null = null;
 
 // GET /api/webhooks/resend/status — authenticated config check + recent hit log.
-router.get("/webhooks/resend/status", requireAuth, (_req, res) => {
+router.get("/webhooks/resend/status", requireAuth, async (req, res) => {
+  if (!req.userId || !(await isAdmin(req.userId))) {
+    return res.status(403).json({ error: "Forbidden: admin only" });
+  }
   res.json({
     secretConfigured: !!process.env.RESEND_WEBHOOK_SECRET,
     inboundDomain: process.env.INBOUND_EMAIL_DOMAIN ?? "mail.aidowedding.net (default)",
@@ -98,8 +116,6 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
     } catch {
       return res.status(400).json({ error: "Invalid JSON" });
     }
-
-    logger.info({ payload: rawBody.slice(0, 4000) }, "inbound raw payload");
 
     const data = event.data ?? {};
     const recipients = extractRecipient(data.to);

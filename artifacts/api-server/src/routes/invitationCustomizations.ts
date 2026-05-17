@@ -20,7 +20,33 @@ import multer from "multer";
 
 const router = Router();
 const storage = new ObjectStorageService();
-const upload = multer({ storage: multer.memoryStorage() });
+const ALLOWED_INVITATION_IMAGE_MIMES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_INVITATION_IMAGE_MIMES.has(file.mimetype)) {
+      cb(new Error("Invalid file type. Only PNG, JPG, and WebP are supported."));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
+const handleInvitationUpload: Parameters<typeof router.post>[1] = (req, res, next) => {
+  upload.single("file")(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({ error: "File is too large. Maximum size is 5MB." });
+      }
+      return res.status(400).json({ error: "Could not upload invitation image." });
+    }
+    if (err instanceof Error) {
+      return res.status(400).json({ error: err.message });
+    }
+    next();
+  });
+};
 
 type StoredElementOverride = {
   x?: number;
@@ -354,7 +380,7 @@ router.post("/invitation-customizations", requireAuth, async (req, res) => {
 router.post(
   "/invitation-customizations/upload",
   requireAuth,
-  upload.single("file"),
+  handleInvitationUpload,
   async (req, res) => {
     try {
       const { userId } = getAuth(req);
@@ -376,24 +402,6 @@ router.post(
         : undefined;
       if (req.query.profileId && (!profileId || Number.isNaN(profileId))) {
         return res.status(400).json({ error: "Invalid profileId parameter" });
-      }
-
-      // Validate file type
-      const allowedMimes = ["image/png", "image/jpeg", "image/webp"];
-      if (!allowedMimes.includes(req.file.mimetype)) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "Invalid file type. Only PNG, JPG, and WebP are supported.",
-          });
-      }
-
-      // Validate file size (5MB max)
-      if (req.file.size > 5 * 1024 * 1024) {
-        return res
-          .status(413)
-          .json({ error: "File is too large. Maximum size is 5MB." });
       }
 
       if (profileId) {

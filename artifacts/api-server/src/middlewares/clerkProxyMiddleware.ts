@@ -73,14 +73,7 @@ export function clerkProxyMiddleware(): RequestHandler {
       proxyRes: (proxyRes: IncomingMessage, req: IncomingMessage) => {
         const url = (req as any).url || "";
         if (proxyRes.statusCode === 422 && url.includes("sign_up")) {
-          const chunks: Buffer[] = [];
-          proxyRes.on("data", (chunk: Buffer) => chunks.push(chunk));
-          proxyRes.on("end", () => {
-            try {
-              const body = Buffer.concat(chunks).toString("utf8");
-              logger.error({ body: body.substring(0, 1200) }, "[Clerk 422 sign_up BODY]");
-            } catch {}
-          });
+          logger.warn({ statusCode: proxyRes.statusCode }, "[Clerk Proxy] sign_up validation failed");
         }
       },
     },

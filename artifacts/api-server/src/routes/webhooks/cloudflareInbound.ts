@@ -7,8 +7,23 @@ import { cleanInboundText, findRoutingAddressInText, htmlToText, parseInboundAdd
 import { isSupportInboxRecipient, saveSupportInboxMessage, parseSupportThreadAddress, appendInboundReply } from "../../lib/supportInbox";
 import { logger } from "../../lib/logger";
 import { requireAuth } from "../../middlewares/requireAuth";
+import { clerkClient } from "@clerk/express";
 
 const router = Router();
+const OWNER_EMAILS = [
+  process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com",
+  "michaelgang31@gmail.com",
+];
+
+async function isAdmin(userId: string): Promise<boolean> {
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    const userEmails = user.emailAddresses.map(e => e.emailAddress.toLowerCase());
+    return OWNER_EMAILS.some(email => userEmails.includes(email));
+  } catch {
+    return false;
+  }
+}
 
 // Ring buffer of the last 20 Cloudflare inbound webhook attempts.
 const cfRecentHits: Array<{
@@ -28,7 +43,10 @@ function logCfHit(result: string, extra: { conversationId?: number; senderEmail?
 // what an inbound vendor reply actually looks like.
 let lastCfPayload: { ts: string; to?: string; from?: string; subject?: string; bodyPreview?: string } | null = null;
 
-router.get("/webhooks/cloudflare/status", requireAuth, (_req, res) => {
+router.get("/webhooks/cloudflare/status", requireAuth, async (req, res) => {
+  if (!req.userId || !(await isAdmin(req.userId))) {
+    return res.status(403).json({ error: "Forbidden: admin only" });
+  }
   res.json({
     secretConfigured: !!process.env.CLOUDFLARE_INBOUND_SECRET,
     recentHits: cfRecentHits,

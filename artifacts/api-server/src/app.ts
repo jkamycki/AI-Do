@@ -13,6 +13,22 @@ const app: Express = express();
 app.set("etag", false);
 app.set("trust proxy", 1);
 
+function isDevelopmentOrigin(origin: string) {
+  try {
+    const { hostname } = new URL(origin);
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname.endsWith(".replit.dev") ||
+      hostname.endsWith(".worf.replit.dev") ||
+      hostname.endsWith(".repl.co")
+    );
+  } catch {
+    return false;
+  }
+}
+
 // ─── Security headers ─────────────────────────────────────────────────────────
 // Helmet adds standard hardening headers (X-Content-Type-Options, X-Frame-Options
 // SAMEORIGIN, Strict-Transport-Security, Referrer-Policy, etc.). CSP is disabled
@@ -346,14 +362,8 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (server-to-server, curl, Render health checks)
       if (!origin) return callback(null, true);
-      // Allow any localhost / replit dev origin in development
-      if (
-        process.env.NODE_ENV !== "production" ||
-        origin.includes("localhost") ||
-        origin.includes(".replit.dev") ||
-        origin.includes(".worf.replit.dev") ||
-        origin.includes(".repl.co")
-      ) {
+      // Allow localhost / Replit preview origins only outside production.
+      if (process.env.NODE_ENV !== "production" && isDevelopmentOrigin(origin)) {
         return callback(null, true);
       }
       if (isAllowedOrigin(origin)) return callback(null, true);
@@ -386,7 +396,7 @@ app.use((err: unknown, _req: express.Request, res: express.Response, next: expre
     err && typeof err === "object" &&
     (err as { type?: string }).type === "entity.too.large"
   ) {
-    res.status(413).json({ error: "Request body too large. Maximum is 1 MB." });
+    res.status(413).json({ error: "Request body too large. Maximum is 4 MB." });
     return;
   }
   next(err);
