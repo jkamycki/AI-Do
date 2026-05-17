@@ -263,11 +263,54 @@ router.get("/admin/events", requireAuth, requireAdmin, async (req, res) => {
       db.select({ total: sql<number>`count(*)::int` }).from(analyticsEvents),
     ]);
 
+    const clerkUserIds = Array.from(new Set(
+      events
+        .map(event => event.userId)
+        .filter(userId => userId && !userId.startsWith("anonymous:") && !userId.startsWith("visitor_")),
+    )).slice(0, 100);
+
+    const clerkUserMap = new Map<string, { email: string | null; displayName: string | null }>();
+    if (clerkUserIds.length > 0) {
+      try {
+        const clerkUsers = await clerkClient.users.getUserList({
+          userId: clerkUserIds,
+          limit: clerkUserIds.length,
+        });
+        for (const user of clerkUsers.data) {
+          const primaryEmail =
+            user.emailAddresses.find(email => email.id === user.primaryEmailAddressId)?.emailAddress ??
+            user.emailAddresses[0]?.emailAddress ??
+            null;
+          const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || null;
+          clerkUserMap.set(user.id, {
+            email: primaryEmail,
+            displayName,
+          });
+        }
+      } catch (clerkErr) {
+        req.log.warn({ err: clerkErr }, "Could not resolve Clerk users for event log");
+      }
+    }
+
     res.json({
-      events: events.map(e => ({
-        ...e,
-        timestamp: e.timestamp.toISOString(),
-      })),
+      events: events.map(e => {
+        const user = clerkUserMap.get(e.userId);
+        const metadataEmail = typeof e.metadata?.email === "string" ? e.metadata.email : null;
+        const userEmail =
+          user?.email ??
+          metadataEmail ??
+          (e.userId.startsWith("anonymous:") ? "Anonymous / guest session" : null);
+        const userDisplayName =
+          user?.displayName ??
+          (e.userId.startsWith("anonymous:") ? "Anonymous / guest session" : null);
+        return {
+          ...e,
+          userEmail,
+          userDisplayName,
+          userLogin: userEmail ?? e.userId,
+          timestamp: e.timestamp.toISOString(),
+        };
+      }),
       total,
       page,
       pages: Math.ceil(total / limit),

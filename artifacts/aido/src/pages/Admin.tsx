@@ -77,6 +77,9 @@ interface AdminMetrics {
 interface AdminEvent {
   id: number;
   userId: string;
+  userEmail?: string | null;
+  userDisplayName?: string | null;
+  userLogin?: string | null;
   eventType: string;
   timestamp: string;
   metadata: Record<string, unknown> | null;
@@ -1940,6 +1943,16 @@ function SystemSection({ metrics }: { metrics: AdminMetrics }) {
 }
 
 function EventLogSection({ events, isLoading }: { events: AdminEvent[]; isLoading: boolean }) {
+  const sortedEvents = useMemo(
+    () => [...events].sort((a, b) => {
+      const loginA = a.userLogin || a.userEmail || a.userId || "";
+      const loginB = b.userLogin || b.userEmail || b.userId || "";
+      if (loginA !== loginB) return loginA.localeCompare(loginB);
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    }),
+    [events],
+  );
+
   if (isLoading) {
     return <div className="space-y-3">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>;
   }
@@ -1953,7 +1966,7 @@ function EventLogSection({ events, isLoading }: { events: AdminEvent[]; isLoadin
               <tr className="bg-primary/5 border-b border-primary/10">
                 <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Time</th>
                 <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
-                <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">User ID</th>
+                <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">User Login</th>
                 <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Metadata</th>
               </tr>
             </thead>
@@ -1965,8 +1978,27 @@ function EventLogSection({ events, isLoading }: { events: AdminEvent[]; isLoadin
                   </td>
                 </tr>
               ) : (
-                events.map(event => (
-                  <tr key={event.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                sortedEvents.map((event, index) => {
+                  const login = event.userLogin || event.userEmail || event.userId;
+                  const previous = sortedEvents[index - 1];
+                  const previousLogin = previous ? previous.userLogin || previous.userEmail || previous.userId : null;
+                  const showLoginHeader = login !== previousLogin;
+                  return (
+                  <React.Fragment key={event.id}>
+                    {showLoginHeader && (
+                      <tr className="bg-muted/40 border-b border-border/60">
+                        <td colSpan={4} className="p-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Login</span>
+                            <span className="font-semibold text-foreground">{event.userDisplayName || login}</span>
+                            {event.userDisplayName && event.userDisplayName !== login ? (
+                              <span className="text-xs text-muted-foreground">{login}</span>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  <tr className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                     <td className="p-3 text-xs text-muted-foreground whitespace-nowrap font-mono">
                       {new Date(event.timestamp).toLocaleString()}
                     </td>
@@ -1975,14 +2007,16 @@ function EventLogSection({ events, isLoading }: { events: AdminEvent[]; isLoadin
                         {EVENT_LABELS[event.eventType] ?? event.eventType}
                       </span>
                     </td>
-                    <td className="p-3 text-xs font-mono text-muted-foreground max-w-[140px] truncate">
-                      {event.userId.slice(0, 20)}…
+                    <td className="p-3 text-xs font-mono text-muted-foreground max-w-[180px] truncate">
+                      {login}
                     </td>
                     <td className="p-3 text-xs text-muted-foreground font-mono max-w-[200px] truncate">
                       {event.metadata ? JSON.stringify(event.metadata) : "—"}
                     </td>
                   </tr>
-                ))
+                  </React.Fragment>
+                );
+                })
               )}
             </tbody>
           </table>
