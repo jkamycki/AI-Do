@@ -58,11 +58,11 @@ export function photoEffectToFilter(effect?: string | null): string {
 }
 
 // ── A.IDO brand palette — matches the RSVP Page preview exactly ───────────────
-const BG       = "#1E1A2E";
-const GOLD     = "#D4A017";
-const WHITE    = "#ffffff";
-const MUTED    = "rgba(255,255,255,0.58)";
-const CARD_BDR = "rgba(255,255,255,0.12)";
+const BG       = "#FFF7F2";
+const GOLD     = "#8D294D";
+const WHITE    = "#3B1C2B";
+const MUTED    = "#6F3E54";
+const CARD_BDR = "rgba(230,166,183,0.55)";
 const DOT_PAT  = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
 
 const cormorant = "'Cormorant Garamond', 'Playfair Display', Georgia, serif";

@@ -628,10 +628,10 @@ export function InvitationSendModal({
 
   const palette: ColorPalette = {
     ...(customization?.colorPalette ?? {
-      primary: "#D4A017",
-      secondary: "#F5C842",
-      accent: "#D4A017",
-      neutral: "#E8E0D0",
+      primary: "#8D294D",
+      secondary: "#E6A6B7",
+      accent: "#B16C8E",
+      neutral: "#F2E2C6",
     }),
     ...(customization?.customColors ?? {}),
   };
@@ -641,7 +641,7 @@ export function InvitationSendModal({
   // Build previewCustomColors using the exact same formula as InvitationCustomization's
   // previewCustomColors — this guarantees both previews are pixel-for-pixel identical.
   // Each invitation type uses its own saved accent color so STD and RSVP are independent.
-  const fallbackAccent = palette.accent || "#D4A017";
+  const fallbackAccent = palette.accent || "#8D294D";
   // Prefer the dedicated per-invitation column, then the JSONB backup key
   // stored inside customColors (written by buildPayload as a migration safety net).
   const stdAccent =
@@ -902,7 +902,7 @@ export function InvitationSendModal({
                   {profile && (
                     <AiSaveDatePreview
                       profile={profile}
-                      palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
+                      palette={{ ...palette, accent: "#8D294D", primary: "#8D294D" }}
                       photoUrl={customization.saveTheDatePhotoUrl || null}
                       photoPosition={customization.saveTheDatePhotoPosition ?? undefined}
                       photoZoom={customization.customColors?.saveTheDatePhotoZoom ?? 1}
@@ -943,7 +943,7 @@ export function InvitationSendModal({
                         guestName: guest?.name ?? "Guest",
                         rsvpByDate: customization.rsvpByDate ?? null,
                       }}
-                      palette={{ ...palette, accent: "#D4A017", primary: "#D4A017" }}
+                      palette={{ ...palette, accent: "#8D294D", primary: "#8D294D" }}
                       photoUrl={customization.digitalInvitationPhotoUrl || null}
                       photoPosition={customization.digitalInvitationPhotoPosition ?? undefined}
                       photoZoom={customization.customColors?.digitalInvitationPhotoZoom ?? 1}

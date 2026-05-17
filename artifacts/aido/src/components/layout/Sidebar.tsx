@@ -35,14 +35,18 @@ import {
   Pencil,
   Globe,
   Plus,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 import { authFetch } from "@/lib/authFetch";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const navSections = [
   {
@@ -502,6 +506,7 @@ export function Sidebar() {
   const { isSignedIn } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const { t } = useTranslation();
+  const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const picInputRef = useRef<HTMLInputElement>(null);
   const [uploadingPic, setUploadingPic] = useState(false);
@@ -814,7 +819,26 @@ export function Sidebar() {
           )}
         </nav>
 
-        <div className="p-4 border-t border-primary/10">
+        <div className="p-4 border-t border-primary/10 space-y-3">
+          <div className="rounded-lg border border-primary/15 bg-card/75 p-3 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-widest text-primary">Theme</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  {theme === "dark" ? "Dark floral mode" : "Light palette mode"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Sun className={`h-4 w-4 ${theme === "light" ? "text-primary" : "text-muted-foreground"}`} />
+                <Switch
+                  checked={theme === "dark"}
+                  onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+                  aria-label="Toggle dark mode"
+                />
+                <Moon className={`h-4 w-4 ${theme === "dark" ? "text-primary" : "text-muted-foreground"}`} />
+              </div>
+            </div>
+          </div>
           <Button
             variant="ghost"
             size="sm"

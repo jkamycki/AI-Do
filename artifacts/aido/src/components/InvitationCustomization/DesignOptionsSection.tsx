@@ -22,10 +22,10 @@ interface DesignOptionsSectionProps {
 }
 
 const DEFAULT_COLORS: ColorPalette = {
-  primary: "#D4A017",
-  secondary: "#F5C842",
-  accent: "#D4A017",
-  neutral: "#E8E0D0",
+  primary: "#8D294D",
+  secondary: "#E6A6B7",
+  accent: "#B16C8E",
+  neutral: "#F2E2C6",
 };
 
 export function DesignOptionsSection({
@@ -87,11 +87,11 @@ export function DesignOptionsSection({
           <div className="flex gap-2 items-center">
             <div
               className="w-10 h-10 rounded border-2 border-border cursor-pointer flex-shrink-0 transition-transform hover:scale-105"
-              style={{ backgroundColor: backgroundColor || "#2D1B5E" }}
+              style={{ backgroundColor: backgroundColor || "#FFF7F2" }}
               onClick={() => {
                 const input = document.createElement("input");
                 input.type = "color";
-                input.value = backgroundColor || "#2D1B5E";
+                input.value = backgroundColor || "#FFF7F2";
                 input.onchange = (e) => {
                   if (e.target instanceof HTMLInputElement) {
                     onBackgroundColorChange(e.target.value);
@@ -102,7 +102,7 @@ export function DesignOptionsSection({
               title="Click to pick a color"
             />
             <div className="flex flex-wrap gap-1.5 flex-1">
-              {["#2D1B5E", "#1E1A2E", "#FBEFEF", "#F4F1EA", "#FAF7F2", "#F8E8D5"].map((hex) => (
+              {["#FFF7F2", "#F2E2C6", "#E6A6B7", "#B16C8E", "#8D294D", "#3B1C2B"].map((hex) => (
                 <button
                   key={hex}
                   type="button"
@@ -120,7 +120,7 @@ export function DesignOptionsSection({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Current: <span className="font-mono">{backgroundColor || "#2D1B5E"}</span>
+            Current: <span className="font-mono">{backgroundColor || "#FFF7F2"}</span>
           </p>
         </div>
 

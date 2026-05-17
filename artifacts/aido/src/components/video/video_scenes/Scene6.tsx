@@ -21,34 +21,34 @@ const STATS = [
 export function Scene6() {
   return (
     <motion.div
-      className="absolute inset-0 flex flex-col items-center justify-center px-12"
+      className="absolute inset-0 flex flex-col items-center justify-center px-5 py-5 sm:px-12 sm:py-0"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 0.96, filter: "blur(10px)" }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
     >
-      <motion.div className="mb-5 text-center" initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }}>
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full px-4 py-1.5" style={videoBadgeStyle}>
-          <Users className="h-4 w-4 text-[#B16C8E]" />
-          <span className="text-xs font-bold uppercase tracking-[0.25em]">Guest List</span>
+      <motion.div className="mb-4 text-center sm:mb-5" initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }}>
+        <div className="mb-2 inline-flex items-center gap-2 rounded-full px-3 py-1.5 sm:mb-3 sm:px-4" style={videoBadgeStyle}>
+          <Users className="h-3.5 w-3.5 text-[#B16C8E] sm:h-4 sm:w-4" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] sm:text-xs sm:tracking-[0.25em]">Guest List</span>
         </div>
-        <h2 className="font-serif text-[3vw] font-bold leading-tight" style={burgundyGradientText}>
+        <h2 className="mx-auto max-w-xs font-serif text-[2rem] font-bold leading-[1.02] sm:max-w-none sm:text-[3vw] sm:leading-tight" style={burgundyGradientText}>
           Every RSVP, meal, and plus-one handled
         </h2>
       </motion.div>
 
       <motion.div
-        className="w-full max-w-4xl rounded-3xl p-6 backdrop-blur-xl"
+        className="w-full max-w-[340px] rounded-3xl p-4 backdrop-blur-xl sm:max-w-4xl sm:p-6"
         style={videoCardStyle}
         initial={{ opacity: 0, y: 30, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.9, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="mb-4 grid grid-cols-4 gap-3 border-b border-[#E6A6B7]/40 pb-4">
+        <div className="mb-3 grid grid-cols-4 gap-2 border-b border-[#E6A6B7]/40 pb-3 sm:mb-4 sm:gap-3 sm:pb-4">
           {STATS.map((stat, i) => (
             <motion.div key={stat.label} className="text-center" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 + i * 0.1, duration: 0.5 }}>
-              <div className="text-2xl font-bold tabular-nums" style={{ color: stat.color }}>{stat.value}</div>
-              <div className="mt-0.5 text-[10px] uppercase tracking-widest text-[#B16C8E]">{stat.label}</div>
+              <div className="text-xl font-bold tabular-nums sm:text-2xl" style={{ color: stat.color }}>{stat.value}</div>
+              <div className="mt-0.5 text-[8px] uppercase tracking-[0.12em] text-[#B16C8E] sm:text-[10px] sm:tracking-widest">{stat.label}</div>
             </motion.div>
           ))}
         </div>
@@ -65,19 +65,19 @@ export function Scene6() {
             return (
               <motion.div
                 key={g.name}
-                className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 rounded-xl bg-white/55 px-3 py-2"
+                className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl bg-white/55 px-3 py-2 sm:grid-cols-[1fr_auto_auto_auto_auto] sm:gap-3"
                 initial={{ opacity: 0, x: -16 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 1.0 + i * 0.13, duration: 0.4 }}
               >
-                <span className="truncate text-sm font-semibold text-[#3B1C2B]">{g.name}</span>
-                <span className="rounded-full bg-[#F2E2C6]/55 px-2 py-0.5 text-xs text-[#6F3E54]">{g.side}</span>
-                <span className="w-5 text-center text-xs tabular-nums text-[#6F3E54]">x{g.count}</span>
-                <div className="flex min-w-[110px] items-center gap-1 text-xs text-[#6F3E54]">
+                <span className="truncate text-xs font-semibold text-[#3B1C2B] sm:text-sm">{g.name}</span>
+                <span className="hidden rounded-full bg-[#F2E2C6]/55 px-2 py-0.5 text-xs text-[#6F3E54] sm:inline">{g.side}</span>
+                <span className="hidden w-5 text-center text-xs tabular-nums text-[#6F3E54] sm:inline">x{g.count}</span>
+                <div className="hidden min-w-[110px] items-center gap-1 text-xs text-[#6F3E54] sm:flex">
                   <UtensilsCrossed className="h-3 w-3 text-[#B16C8E]" />
                   <span className="truncate">{g.meal}</span>
                 </div>
-                <span className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${rsvpStyle.bg} ${rsvpStyle.border} ${rsvpStyle.text}`}>
+                <span className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider sm:text-[11px] ${rsvpStyle.bg} ${rsvpStyle.border} ${rsvpStyle.text}`}>
                   <Icon className="h-3 w-3" />
                   {g.rsvp}
                 </span>
@@ -87,7 +87,7 @@ export function Scene6() {
         </div>
       </motion.div>
 
-      <motion.p className="mt-5 max-w-2xl text-center text-base text-[#6F3E54]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2, duration: 0.7 }}>
+      <motion.p className="mt-4 max-w-[320px] text-center text-sm leading-relaxed text-[#6F3E54] sm:mt-5 sm:max-w-2xl sm:text-base" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2, duration: 0.7 }}>
         Track invites, meals, and dietary needs, then send digital RSVPs in seconds.
       </motion.p>
     </motion.div>

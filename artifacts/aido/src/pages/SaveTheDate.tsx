@@ -41,11 +41,11 @@ interface SaveTheDateInfo {
   customLayout: string | null;
 }
 
-const AI_BG    = "#1E1A2E";
-const AI_GOLD  = "#D4A017";
-const AI_WHITE = "#ffffff";
-const AI_MUTED = "rgba(255,255,255,0.58)";
-const AI_CARD_BDR = "rgba(255,255,255,0.12)";
+const AI_BG    = "#FFF7F2";
+const AI_GOLD  = "#8D294D";
+const AI_WHITE = "#3B1C2B";
+const AI_MUTED = "#6F3E54";
+const AI_CARD_BDR = "rgba(230,166,183,0.55)";
 const AI_DOT_PAT = `radial-gradient(${AI_GOLD}22 1px, transparent 1px)`;
 const cormorant = "'Cormorant Garamond', 'Playfair Display', Georgia, serif";
 const jakarta   = "'Plus Jakarta Sans', system-ui, sans-serif";
@@ -110,11 +110,11 @@ export default function SaveTheDate() {
     info?.venueState,
   ].filter(Boolean).join(", ");
 
-  // Derive theme from custom design or fall back to AI dark theme
+  // Derive theme from custom design or fall back to the AI brand theme
   const useCustom = info && !info.useGeneratedInvitation && !!info.customBackgroundColor;
   const BG       = useCustom ? (info.customBackgroundColor!) : AI_BG;
   const GOLD     = useCustom ? (info.customAccentColor ?? AI_GOLD) : AI_GOLD;
-  const isLight  = useCustom ? isLightHex(BG) : false;
+  const isLight  = isLightHex(BG);
   // In custom mode use the saved font color if available; otherwise derive from bg.
   const WHITE    = (useCustom && info?.customFontColor)
     ? info.customFontColor
@@ -126,7 +126,7 @@ export default function SaveTheDate() {
   // The page sits *behind* the card in every mode. Always paint it light
   // grey so the card colour stops at the rounded edge — no bleed past the
   // card outline.
-  const PAGE_BG  = "#f3f4f6";
+  const PAGE_BG  = "#FFF7F2";
   const DOT_PAT  = `radial-gradient(${GOLD}22 1px, transparent 1px)`;
   // Dot pattern was an AI-theme decoration on the dark page — drop it now
   // that the page is light, since gold dots on light grey read as noise.

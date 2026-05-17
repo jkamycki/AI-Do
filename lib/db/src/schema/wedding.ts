@@ -504,17 +504,17 @@ export const invitationCustomizations = pgTable("invitation_customizations", {
   profileId: integer("profile_id").notNull().unique(),
 
   // Color System
-  primaryColor: text("primary_color").notNull().default("#D4A017"),
+  primaryColor: text("primary_color").notNull().default("#8D294D"),
   colorPalette: jsonb("color_palette").notNull().$type<{
     primary: string;
     secondary: string;
     accent: string;
     neutral: string;
   }>().default({
-    primary: "#D4A017",
-    secondary: "#F5C842",
-    accent: "#D4A017",
-    neutral: "#E8E0D0",
+    primary: "#8D294D",
+    secondary: "#E6A6B7",
+    accent: "#B16C8E",
+    neutral: "#F2E2C6",
   }),
   customColors: jsonb("custom_colors").$type<{
     primary?: string;
@@ -640,7 +640,7 @@ export const weddingWebsites = pgTable("wedding_websites", {
   theme: text("theme").notNull().default("classic"),
   layoutStyle: text("layout_style").notNull().default("standard"),
   font: text("font").notNull().default("Playfair Display"),
-  accentColor: text("accent_color").notNull().default("#D4A017"),
+  accentColor: text("accent_color").notNull().default("#8D294D"),
   colorPalette: jsonb("color_palette").notNull().$type<{
     primary: string;
     secondary: string;
@@ -649,12 +649,12 @@ export const weddingWebsites = pgTable("wedding_websites", {
     background: string;
     text: string;
   }>().default({
-    primary: "#D4A017",
-    secondary: "#F5C842",
-    accent: "#D4A017",
-    neutral: "#E8E0D0",
-    background: "#FFFFFF",
-    text: "#222222",
+    primary: "#8D294D",
+    secondary: "#E6A6B7",
+    accent: "#B16C8E",
+    neutral: "#F2E2C6",
+    background: "#FFF7F2",
+    text: "#3B1C2B",
   }),
   sectionsEnabled: jsonb("sections_enabled").notNull().$type<WebsiteSectionsEnabled>().default({
     welcome: true,

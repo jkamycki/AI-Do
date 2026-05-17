@@ -453,7 +453,7 @@ export function EditableToolbar({
           <Select value={font} onValueChange={(v) => onChange({ font: v })}>
             <SelectTrigger
               className="h-8 w-[170px] text-xs"
-              style={{ background: "#1E1A2E", color: "#E8E0D0", borderColor: "rgba(212,160,23,0.3)" }}
+              style={{ background: "#FFF7F2", color: "#3B1C2B", borderColor: "rgba(177,108,142,0.35)" }}
             >
               <SelectValue>
                 <span style={{ fontFamily: `"${font}", serif` }}>{font}</span>
@@ -482,7 +482,7 @@ export function EditableToolbar({
             onChange={(e) => onChange({ color: e.target.value })}
             onFocus={(e) => e.target.blur()}
             className="h-8 w-10 rounded cursor-pointer"
-            style={{ border: "1px solid rgba(212,160,23,0.4)" }}
+            style={{ border: "1px solid rgba(177,108,142,0.4)" }}
             tabIndex={-1}
             aria-label="Text color"
           />
@@ -494,19 +494,19 @@ export function EditableToolbar({
               size="sm"
               variant="outline"
               className="h-8 w-8 p-0"
-              style={{ background: "#1E1A2E", color: "#E8E0D0", borderColor: "rgba(212,160,23,0.3)" }}
+              style={{ background: "#FFF7F2", color: "#3B1C2B", borderColor: "rgba(177,108,142,0.35)" }}
               onClick={() => onChange({ fontSize: Math.max(8, fontSize - 2) })}
               aria-label="Decrease font size"
             >
               −
             </Button>
-            <span className="text-xs w-8 text-center tabular-nums" style={{ color: "#E8E0D0" }}>{fontSize}</span>
+            <span className="text-xs w-8 text-center tabular-nums" style={{ color: "#3B1C2B" }}>{fontSize}</span>
             <Button
               type="button"
               size="sm"
               variant="outline"
               className="h-8 w-8 p-0"
-              style={{ background: "#1E1A2E", color: "#E8E0D0", borderColor: "rgba(212,160,23,0.3)" }}
+              style={{ background: "#FFF7F2", color: "#3B1C2B", borderColor: "rgba(177,108,142,0.35)" }}
               onClick={() => onChange({ fontSize: fontSize + 2 })}
               aria-label="Increase font size"
             >
@@ -540,9 +540,9 @@ export function EditableToolbar({
         <textarea
           className="w-full rounded px-2 py-1 text-xs resize-none outline-none"
           style={{
-            background: "#1E1A2E",
-            color: "#E8E0D0",
-            border: "1px solid rgba(212,160,23,0.3)",
+            background: "#FFF7F2",
+            color: "#3B1C2B",
+            border: "1px solid rgba(177,108,142,0.35)",
             minHeight: 52,
             fontFamily: `"${font}", serif`,
           }}

@@ -4,23 +4,23 @@ import { ArrowLeft, AlertTriangle } from "lucide-react";
 
 export default function Privacy() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-[#FFF7F2] text-[#3B1C2B]">
       <div className="max-w-3xl mx-auto px-6 py-12">
         <Link href="/">
           <Button
             variant="ghost"
             size="sm"
-            className="mb-8 -ml-2 text-zinc-300 hover:text-white hover:bg-white/10 gap-1.5"
+            className="mb-8 -ml-2 text-[#6F3E54] hover:text-[#8D294D] hover:bg-[#E6A6B7]/15 gap-1.5"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Home
           </Button>
         </Link>
 
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 mb-8 flex items-start gap-3 text-amber-100">
-          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-amber-300" />
+        <div className="rounded-xl border border-[#E6A6B7]/60 bg-[#F2E2C6]/45 p-4 mb-8 flex items-start gap-3 text-[#6F3E54]">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-[#8D294D]" />
           <div className="space-y-1 text-sm leading-relaxed">
-            <p className="font-semibold text-amber-200">
+            <p className="font-semibold text-[#8D294D]">
               Draft — review with legal counsel before publishing.
             </p>
             <p>
@@ -34,7 +34,7 @@ export default function Privacy() {
 
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Privacy Policy</h1>
-          <p className="text-sm text-zinc-300">Last updated: May 13, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 13, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed">
@@ -55,7 +55,7 @@ export default function Privacy() {
             <p>
               <strong>From you, when you create an account:</strong>
             </p>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 Identity and contact data (name, email, optional phone, profile
                 photo) handled by our authentication provider, Clerk.
@@ -69,7 +69,7 @@ export default function Privacy() {
             <p>
               <strong>From you, when you use the planner:</strong>
             </p>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 Vendor records (contact info, contracts you upload, deposit
                 amounts, payment milestones, notes).
@@ -96,7 +96,7 @@ export default function Privacy() {
             <p>
               <strong>From your guests, on the public wedding website:</strong>
             </p>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 Name, email, attendance, dietary notes, plus-one details, and
                 any free-text message they include with their RSVP. Off-list
@@ -107,7 +107,7 @@ export default function Privacy() {
             <p>
               <strong>Automatically:</strong>
             </p>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 Standard server logs (IP address, user-agent, timestamps,
                 request paths) for security and debugging.
@@ -128,7 +128,7 @@ export default function Privacy() {
             <h2 className="font-serif text-xl font-semibold">
               3. How We Use Your Information
             </h2>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 To operate the Service — display your data, sync changes across
                 collaborators, generate AI output, send transactional email
@@ -175,7 +175,7 @@ export default function Privacy() {
               5. Sharing Your Information
             </h2>
             <p>We share information only with:</p>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 <strong>Workspace collaborators</strong> you invite (partner,
                 planner, vendor) under role-based permissions.
@@ -220,7 +220,7 @@ export default function Privacy() {
               7. Your Rights &amp; Choices
             </h2>
             <p>Depending on where you live, you may have the right to:</p>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>Access, correct, or export your personal data.</li>
               <li>
                 Delete your account and the associated wedding workspace from
@@ -235,7 +235,7 @@ export default function Privacy() {
             <p>
               To exercise any of these rights, contact{" "}
               <a
-                className="text-amber-300 underline"
+                className="text-[#8D294D] underline underline-offset-4"
                 href="mailto:support@aidowedding.net"
               >
                 support@aidowedding.net
@@ -312,7 +312,7 @@ export default function Privacy() {
             <p>
               Privacy questions or data-rights requests:{" "}
               <a
-                className="text-amber-300 underline"
+                className="text-[#8D294D] underline underline-offset-4"
                 href="mailto:support@aidowedding.net"
               >
                 support@aidowedding.net
@@ -322,12 +322,12 @@ export default function Privacy() {
           </section>
         </div>
 
-        <div className="border-t border-white/10 pt-6 mt-12 flex items-center justify-between text-xs text-zinc-400">
+        <div className="border-t border-[#E6A6B7]/45 pt-6 mt-12 flex items-center justify-between text-xs text-[#6F3E54]">
           <p>
             © {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All
             rights reserved.
           </p>
-          <Link href="/" className="hover:text-white">
+          <Link href="/" className="hover:text-[#3B1C2B]">
             Home
           </Link>
         </div>

@@ -4,23 +4,23 @@ import { ArrowLeft, AlertTriangle } from "lucide-react";
 
 export default function BetaDisclaimer() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-[#FFF7F2] text-[#3B1C2B]">
       <div className="max-w-3xl mx-auto px-6 py-12">
         <Link href="/">
           <Button
             variant="ghost"
             size="sm"
-            className="mb-8 -ml-2 text-zinc-300 hover:text-white hover:bg-white/10 gap-1.5"
+            className="mb-8 -ml-2 text-[#6F3E54] hover:text-[#8D294D] hover:bg-[#E6A6B7]/15 gap-1.5"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Home
           </Button>
         </Link>
 
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 mb-8 flex items-start gap-3 text-amber-100">
-          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-amber-300" />
+        <div className="rounded-xl border border-[#E6A6B7]/60 bg-[#F2E2C6]/45 p-4 mb-8 flex items-start gap-3 text-[#6F3E54]">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-[#8D294D]" />
           <div className="space-y-1 text-sm leading-relaxed">
-            <p className="font-semibold text-amber-200">
+            <p className="font-semibold text-[#8D294D]">
               Draft — review with legal counsel before publishing.
             </p>
             <p>
@@ -32,7 +32,7 @@ export default function BetaDisclaimer() {
 
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Beta Disclaimer</h1>
-          <p className="text-sm text-zinc-300">Last updated: May 13, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 13, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed">
@@ -47,7 +47,7 @@ export default function BetaDisclaimer() {
 
           <section className="space-y-3">
             <h2 className="font-serif text-xl font-semibold">Service Status</h2>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 The Service is provided <em>as-is</em> and <em>as-available</em>{" "}
                 with no uptime guarantee.
@@ -65,7 +65,7 @@ export default function BetaDisclaimer() {
                 You may experience bugs, downtime, or unexpected behavior.
                 Please report issues via the in-app support widget or email{" "}
                 <a
-                  className="text-amber-300 underline"
+                  className="text-[#8D294D] underline underline-offset-4"
                   href="mailto:support@aidowedding.net"
                 >
                   support@aidowedding.net
@@ -79,7 +79,7 @@ export default function BetaDisclaimer() {
             <h2 className="font-serif text-xl font-semibold">
               Data &amp; Backups
             </h2>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 While we take reasonable care to back up the database, you
                 should keep your own independent copy of critical wedding
@@ -105,7 +105,7 @@ export default function BetaDisclaimer() {
               probabilistic output. Always review before relying on it for real
               decisions. Specifically:
             </p>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 <strong>Aria, the planning assistant,</strong> can take actions
                 in your workspace via tool calls (add a vendor, schedule a
@@ -139,7 +139,7 @@ export default function BetaDisclaimer() {
               immediately via the in-app support chat (Aria can file a ticket on
               your behalf) or email{" "}
               <a
-                className="text-amber-300 underline"
+                className="text-[#8D294D] underline underline-offset-4"
                 href="mailto:support@aidowedding.net"
               >
                 support@aidowedding.net
@@ -152,7 +152,7 @@ export default function BetaDisclaimer() {
             <h2 className="font-serif text-xl font-semibold">
               Limitation of Liability
             </h2>
-            <p className="uppercase text-zinc-200 text-xs tracking-wide">
+            <p className="uppercase text-[#3B1C2B]/80 text-xs tracking-wide">
               By using the beta you accept that A.IDO and its operators are not
               liable for indirect, incidental, or consequential damages, lost
               profits, lost data, or wedding-day disruptions arising from your
@@ -175,12 +175,12 @@ export default function BetaDisclaimer() {
           </section>
         </div>
 
-        <div className="border-t border-white/10 pt-6 mt-12 flex items-center justify-between text-xs text-zinc-400">
+        <div className="border-t border-[#E6A6B7]/45 pt-6 mt-12 flex items-center justify-between text-xs text-[#6F3E54]">
           <p>
             © {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All
             rights reserved.
           </p>
-          <Link href="/" className="hover:text-white">
+          <Link href="/" className="hover:text-[#3B1C2B]">
             Home
           </Link>
         </div>

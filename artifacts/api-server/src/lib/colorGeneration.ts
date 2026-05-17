@@ -179,7 +179,7 @@ export const PRESET_PALETTES: Record<string, ColorPalette> = {
   romantic: {
     primary: "#E8A4C4",
     secondary: "#F5D5E3",
-    accent: "#D4A017",
+    accent: "#8D294D",
     neutral: "#8B7B8F",
   },
   modern: {

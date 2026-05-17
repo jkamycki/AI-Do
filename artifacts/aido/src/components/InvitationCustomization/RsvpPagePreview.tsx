@@ -99,9 +99,9 @@ export function RsvpPagePreview({
   receptionTime,
   invitationMessage,
 }: RsvpPagePreviewProps) {
-  const bg = backgroundColor || "#1E1A2E";
-  const accent = colors.accent || colors.primary || "#D4A017";
-  // coupleColor is explicitly passed as #D4A017 in AI mode and omitted in
+  const bg = backgroundColor || "#FFF7F2";
+  const accent = colors.accent || colors.primary || "#8D294D";
+  // coupleColor is explicitly passed as A.IDO burgundy in AI mode and omitted in
   // custom mode so it falls back to the user's accent.
   const coupleNameColor = coupleColor ?? accent;
   const isLight = isLightColor(bg);
@@ -246,7 +246,7 @@ export function RsvpPagePreview({
             color: accent, marginBottom: 10,
           }}>Wedding RSVP</p>
 
-          {/* Couple names — gold */}
+          {/* Couple names */}
           <h1 style={{
             fontFamily: coupleFont,
             fontSize: 34 * sc, fontWeight: 400, fontStyle: "italic",
@@ -260,7 +260,7 @@ export function RsvpPagePreview({
             textTransform: "uppercase", color: textColor, marginBottom: 8,
           }}>{dateStr}</p>
 
-          {/* Venue — gold; address — text; times — gold */}
+          {/* Venue and times use the invitation accent; address uses body text. */}
           {(venue || venueAddress || cityStateZip || timesLine) && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
               {venue && (

@@ -288,7 +288,7 @@ function ModernDec({ w, h, colors }: DecProps) {
 
 // ── Thumbnail wrapper (viewBox scales to fill card) ────────────────────────
 
-export function LayoutThumbnail({ layout, colors, backgroundColor = "#1E1A2E" }: { layout: string; colors: ColorPalette; backgroundColor?: string }) {
+export function LayoutThumbnail({ layout, colors, backgroundColor = "#FFF7F2" }: { layout: string; colors: ColorPalette; backgroundColor?: string }) {
   const W = 500;
   const H = 680;
   const dec = getDecoration(layout, W, H, colors);

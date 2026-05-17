@@ -119,8 +119,8 @@ function hotelAddressLine(hotel: NonNullable<RsvpInfo["hotelOptions"]>[number]) 
   ].filter(Boolean).join(" ");
 }
 
-const DEFAULT_BG   = "#1E1A2E";
-const DEFAULT_GOLD = "#D4A017";
+const DEFAULT_BG   = "#FFF7F2";
+const DEFAULT_GOLD = "#8D294D";
 const cormorant = "'Cormorant Garamond', 'Playfair Display', Georgia, serif";
 const jakarta   = "'Plus Jakarta Sans', system-ui, sans-serif";
 
@@ -242,7 +242,7 @@ export default function Rsvp() {
   const isCustomMode = !!(info?.backgroundColor);
   const BG = info?.backgroundColor || DEFAULT_BG;
   // Use the invitation's own accent color when set; fall back to palette primary,
-  // then brand gold. This mirrors AiDigitalInvitationPreview which uses
+  // then the A.IDO burgundy brand accent. This mirrors AiDigitalInvitationPreview which uses
   // customColors.accent = digitalInvitationAccentColor.
   const GOLD = isCustomMode
     ? (info?.accentColor || info?.colorPalette?.primary || DEFAULT_GOLD)
@@ -264,7 +264,7 @@ export default function Rsvp() {
   const LABEL_FONT = isCustomMode && info?.font ? SERIF : jakarta;
   // Page sits *behind* the card. Always light grey so the card colour
   // stops at the rounded edge — no bleed into the surrounding viewport.
-  const PAGE_BG = "#f3f4f6";
+  const PAGE_BG = "#FFF7F2";
   const PAGE_BG_PATTERN: string | undefined = undefined;
   const photoZoom = Math.max(1, Math.min(2.5, Number(info?.photoZoom ?? 1) || 1));
   const photoObjectPosition = info?.photoObjectPosition ?? "50% 50%";

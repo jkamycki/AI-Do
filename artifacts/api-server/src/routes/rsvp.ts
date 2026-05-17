@@ -16,10 +16,10 @@ const router = Router();
 
 // Default colors (fallback)
 const DEFAULT_COLORS = {
-  primary: "#D4A017",
-  secondary: "#F5C842",
-  accent: "#D4A017",
-  neutral: "#E8E0D0",
+  primary: "#8D294D",
+  secondary: "#E6A6B7",
+  accent: "#B16C8E",
+  neutral: "#F2E2C6",
 };
 
 // Allow only known/safe font families in email HTML to avoid injection.
@@ -177,20 +177,20 @@ async function getImageAsBase64(photoUrl: string | null | undefined): Promise<st
 // ─────────────────────────────────────────────────────────────────────────────
 // AI-generated email templates — mirror the AiDigitalInvitationPreview /
 // AiSaveDatePreview components so what the planner sees in the modal is what
-// the guest receives in their inbox: navy #1E1A2E card + gold #D4A017 accents,
-// A.IDO logo, optional photo with rounded corners, badge icon, italic gold
-// couple line, and a prominent gold call-to-action.
+// the guest receives in their inbox: ivory card, burgundy accents, A.IDO logo,
+// optional photo with rounded corners, badge icon, italic couple line, and a
+// prominent burgundy call-to-action.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const AI_BG = "#1E1A2E";
+const AI_BG = "#FFF7F2";
 // Page sits behind the card. Always light grey so the card colour stops
 // at the rounded edge — applies to every email path (custom + AI) and
 // every public link. No bleed past the card outline.
-const AI_PAGE_BG = "#f3f4f6";
-const AI_GOLD = "#D4A017";
-const AI_WHITE = "#ffffff";
-const AI_MUTED = "rgba(255,255,255,0.58)";
-const AI_CARD_BDR = "rgba(255,255,255,0.12)";
+const AI_PAGE_BG = "#FFF7F2";
+const AI_GOLD = "#8D294D";
+const AI_WHITE = "#3B1C2B";
+const AI_MUTED = "#6F3E54";
+const AI_CARD_BDR = "rgba(230,166,183,0.55)";
 const AI_CORMORANT = "'Cormorant Garamond','Playfair Display',Georgia,serif";
 const AI_JAKARTA = "'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif";
 const INVITATION_EMAIL_PHOTO_WIDTH = 380;
@@ -239,7 +239,7 @@ interface AiDigitalInviteOpts {
   photoObjectPos: string;
   photoZoom?: number;
   logoBase64: string | null;
-  // Optional color overrides for custom design mode; omit to use default navy/gold brand palette
+  // Optional color overrides for custom design mode; omit to use the default A.IDO brand palette.
   overrideBg?: string;
   overridePageBg?: string;
   overrideAccent?: string;
@@ -425,7 +425,7 @@ interface AiSaveTheDateOpts {
   photoObjectPos: string;
   photoZoom?: number;
   logoBase64: string | null;
-  // Optional color overrides for custom design mode; omit to use default navy/gold brand palette
+  // Optional color overrides for custom design mode; omit to use the default A.IDO brand palette.
   overrideBg?: string;
   overridePageBg?: string;
   overrideAccent?: string;
@@ -583,25 +583,25 @@ function aiRsvpReminderHtml(opts: AiRsvpReminderOpts): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="color-scheme" content="dark" />
+  <meta name="color-scheme" content="light" />
   <title>RSVP Reminder — ${couple}</title>
 </head>
-<body style="margin:0;padding:0;background:#1E1A2E;color:#ffffff;font-family:'Plus Jakarta Sans',Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#1E1A2E;padding:40px 16px;">
+<body style="margin:0;padding:0;background:#FFF7F2;color:#3B1C2B;font-family:'Plus Jakarta Sans',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFF7F2;padding:40px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;background:#26213a;border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:36px 32px;">
+        <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid rgba(230,166,183,0.55);border-radius:16px;padding:36px 32px;">
           <tr>
             <td align="center">
               ${logo}
-              <p style="font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;letter-spacing:0.3em;color:#D4A017;text-transform:uppercase;margin:0 0 12px;">A friendly reminder</p>
-              <h1 style="font-family:'Cormorant Garamond',Georgia,serif;font-size:32px;line-height:1.2;margin:0 0 18px;color:#ffffff;font-weight:600;">Hi ${guestName},</h1>
-              <p style="font-size:15px;line-height:1.65;color:rgba(255,255,255,0.80);margin:0 0 22px;">
+              <p style="font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;letter-spacing:0.3em;color:#8D294D;text-transform:uppercase;margin:0 0 12px;">A friendly reminder</p>
+              <h1 style="font-family:'Cormorant Garamond',Georgia,serif;font-size:32px;line-height:1.2;margin:0 0 18px;color:#8D294D;font-weight:600;">Hi ${guestName},</h1>
+              <p style="font-size:15px;line-height:1.65;color:#6F3E54;margin:0 0 22px;">
                 We noticed you haven't RSVP'd yet for ${couple}'s wedding${datePart}.
                 Your response helps us finalize the plans — please take a moment to let us know.
               </p>
-              <a href="${opts.rsvpUrl}" style="display:inline-block;background:#D4A017;color:#1E1A2E;font-weight:700;text-decoration:none;font-size:13px;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;border-radius:8px;margin-top:6px;">RSVP Now</a>
-              <p style="font-size:12px;color:rgba(255,255,255,0.55);margin:28px 0 0;">With love,<br />${couple}</p>
+              <a href="${opts.rsvpUrl}" style="display:inline-block;background:#8D294D;color:#ffffff;font-weight:700;text-decoration:none;font-size:13px;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;border-radius:8px;margin-top:6px;">RSVP Now</a>
+              <p style="font-size:12px;color:#6F3E54;margin:28px 0 0;">With love,<br />${couple}</p>
             </td>
           </tr>
         </table>
@@ -868,16 +868,15 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
 
       // Colors: custom design palette in custom mode, brand defaults in AI mode.
       const rawBg = !useGenerated && customization?.digitalInvitationBackground
-        ? customization.digitalInvitationBackground : "#1E1A2E";
+        ? customization.digitalInvitationBackground : AI_BG;
       const bgIsLight = isLightColor(rawBg);
       // Page sits behind the card. In custom mode keep it neutral so the
-      // chosen card colour doesn't repaint the entire email body. AI mode
-      // keeps the existing dark theme.
-      const PAGE_BG = !useGenerated ? (bgIsLight ? "#f3f4f6" : "#1a1a1a") : "#1a1614";
+      // chosen card colour doesn't repaint the entire email body.
+      const PAGE_BG = !useGenerated ? (bgIsLight ? "#f3f4f6" : "#1a1a1a") : AI_PAGE_BG;
       const BG = rawBg;
       // Use the digital invitation's own accent color when available (may differ from STD).
-      // Mirror RsvpPagePreview: the user's primary colour drives the gold
-      // "accent" in the design, and body text is plain black/white that
+      // Mirror RsvpPagePreview: the user's primary color drives the invitation
+      // accent in the design, and body text is plain black/white that
       // contrasts the chosen background.
       // Prefer the per-invitation dedicated column, then the JSONB backup key,
       // then the shared palette primary as last resort.
@@ -885,14 +884,14 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         ? ((customization?.digitalInvitationAccentColor
             ?? (customization?.customColors as Record<string, string> | null)?.digitalInvitationAccent
             ?? colors.primary)
-            || "#D4A017")
-        : "#c9a97e";
+            || AI_GOLD)
+        : AI_GOLD;
       const TEXT = !useGenerated
         ? (customization?.digitalInvitationFontColor ?? (bgIsLight ? "#1a1a1a" : "#ffffff"))
-        : "#e8dcc7";
+        : AI_WHITE;
       const MUTED = !useGenerated
         ? (bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)")
-        : "#b6a890";
+        : AI_MUTED;
       const BTN_TXT = isLightColor(ACCENT) ? "#000000" : "#ffffff";
       // Text overrides — honour the canvas edits for the headline, couple,
       // date, location and message so the email reads exactly like the preview.
@@ -1126,8 +1125,8 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
     })();
     const photoImgSrc: string | null = photoPublicUrl ?? await getImageAsBase64(digitalInvitationPhotoUrl);
 
-    const rawBg = !useGenerated && customization?.digitalInvitationBackground
-      ? customization.digitalInvitationBackground : "#1E1A2E";
+      const rawBg = !useGenerated && customization?.digitalInvitationBackground
+        ? customization.digitalInvitationBackground : AI_BG;
     const bgIsLight = isLightColor(rawBg);
 
     let html: string;
@@ -1174,7 +1173,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         overrideAccent: (customization?.digitalInvitationAccentColor
           ?? (customization?.customColors as Record<string, string> | null)?.digitalInvitationAccent
           ?? colors.primary)
-          || "#D4A017",
+          || AI_GOLD,
         overrideText: customization?.digitalInvitationFontColor ?? (bgIsLight ? "#1a1a1a" : "#ffffff"),
         overrideMuted: bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
         overrideCardBdr: bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
@@ -1798,7 +1797,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       ].filter(Boolean).join(", ");
 
       const STD_EMAIL_BG = !useGenerated && customization?.saveTheDateBackground
-        ? customization.saveTheDateBackground : "#ffffff";
+        ? customization.saveTheDateBackground : AI_BG;
       const stdBgIsLight = isLightColor(STD_EMAIL_BG);
       const STD_MUTED = !useGenerated ? (stdBgIsLight ? "#666666" : "#bbbbbb") : "#9a8a7e";
       const STD_TIMES = !useGenerated ? (stdBgIsLight ? "#888888" : "#aaaaaa") : "#b0a09a";
@@ -1827,7 +1826,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       );
 
       // ── AI-generated mode ─────────────────────────────────────────────
-      // Render the navy + gold layout that mirrors AiSaveDatePreview so what
+      // Render the branded layout that mirrors AiSaveDatePreview so what
       // the planner sees in the modal is what the guest receives.
       // ── Render the email — both AI and custom modes use the same A.IDO template
       // structure; custom mode swaps in the user's color palette.
@@ -2152,7 +2151,10 @@ router.post("/profile/generate-invitation-message", requireAuth, async (req, res
         },
         {
           role: "user",
-          content: context,
+          content: [
+            "Use the current A.IDO brand voice: ivory, burgundy, mauve, dusty rose, and champagne; elegant, warm, modern-romantic, calm, polished, intimate, and effortless.",
+            context,
+          ].filter(Boolean).join("\n\n"),
         },
       ],
       max_completion_tokens: 150,

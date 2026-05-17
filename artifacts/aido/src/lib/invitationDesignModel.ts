@@ -100,9 +100,9 @@ export function buildInvitationDesignDocument({
       zoom: photoZoom,
     },
     style: {
-      backgroundColor: designMode === "custom" ? customStyle.backgroundColor : backgroundColor || "#1E1A2E",
-      accentColor: designMode === "custom" ? customStyle.accentColor : accentColor || "#D4A017",
-      textColor: designMode === "custom" ? customStyle.fontColor : textColor || "#ffffff",
+      backgroundColor: designMode === "custom" ? customStyle.backgroundColor : backgroundColor || "#FFF7F2",
+      accentColor: designMode === "custom" ? customStyle.accentColor : accentColor || "#8D294D",
+      textColor: designMode === "custom" ? customStyle.fontColor : textColor || "#3B1C2B",
       fontFamily: designMode === "custom" ? customStyle.fontFamily : fontFamily || "Playfair Display",
       fontSize: designMode === "custom" ? customStyle.fontSize : fontSize || "16",
     },

@@ -4,23 +4,23 @@ import { ArrowLeft, AlertTriangle } from "lucide-react";
 
 export default function Terms() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-[#FFF7F2] text-[#3B1C2B]">
       <div className="max-w-3xl mx-auto px-6 py-12">
         <Link href="/">
           <Button
             variant="ghost"
             size="sm"
-            className="mb-8 -ml-2 text-zinc-300 hover:text-white hover:bg-white/10 gap-1.5"
+            className="mb-8 -ml-2 text-[#6F3E54] hover:text-[#8D294D] hover:bg-[#E6A6B7]/15 gap-1.5"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Home
           </Button>
         </Link>
 
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 mb-8 flex items-start gap-3 text-amber-100">
-          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-amber-300" />
+        <div className="rounded-xl border border-[#E6A6B7]/60 bg-[#F2E2C6]/45 p-4 mb-8 flex items-start gap-3 text-[#6F3E54]">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-[#8D294D]" />
           <div className="space-y-1 text-sm leading-relaxed">
-            <p className="font-semibold text-amber-200">
+            <p className="font-semibold text-[#8D294D]">
               Draft — review with legal counsel before publishing.
             </p>
             <p>
@@ -33,11 +33,11 @@ export default function Terms() {
         </div>
 
         <div className="space-y-2 mb-10">
-          <h1 className="font-serif text-4xl text-white">Terms of Service</h1>
-          <p className="text-sm text-zinc-300">Last updated: May 13, 2026</p>
+          <h1 className="font-serif text-4xl text-[#3B1C2B]">Terms of Service</h1>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 13, 2026</p>
         </div>
 
-        <div className="space-y-8 leading-relaxed text-white">
+        <div className="space-y-8 leading-relaxed text-[#3B1C2B]">
           <section className="space-y-3">
             <h2 className="font-serif text-xl font-semibold">
               1. Acceptance of Terms
@@ -61,7 +61,7 @@ export default function Terms() {
               A.IDO is an AI-assisted wedding-planning platform. The Service
               currently provides:
             </p>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 <strong>Wedding profile</strong> — couple names, wedding date,
                 venue, guest count, budget, theme, and related details.
@@ -211,7 +211,7 @@ export default function Terms() {
               contract summaries, RSVP messages, etc.) before sending, signing,
               sharing, or relying on it. In particular:
             </p>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 The AI <em>contract analyzer</em> is informational only and is
                 not a substitute for a lawyer.
@@ -243,7 +243,7 @@ export default function Terms() {
             <p>
               When you publish a wedding website, content you mark as published
               becomes publicly accessible at the URL you choose (e.g.{" "}
-              <span className="font-mono text-zinc-300">
+              <span className="font-mono text-[#6F3E54]">
                 aidowedding.net/w/your-slug
               </span>
               ) and may be indexed by search engines unless you set a password.
@@ -260,7 +260,7 @@ export default function Terms() {
               9. Acceptable Use
             </h2>
             <p>You agree not to:</p>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 Upload content that is unlawful, defamatory, obscene, harassing,
                 or infringes any third-party rights.
@@ -301,7 +301,7 @@ export default function Terms() {
             <h2 className="font-serif text-xl font-semibold">
               11. Disclaimer of Warranties
             </h2>
-            <p className="uppercase text-zinc-200 text-xs tracking-wide">
+            <p className="uppercase text-[#3B1C2B]/80 text-xs tracking-wide">
               The Service is provided "as is" and "as available" without
               warranty of any kind, express or implied, including but not
               limited to merchantability, fitness for a particular purpose, and
@@ -314,7 +314,7 @@ export default function Terms() {
             <h2 className="font-serif text-xl font-semibold">
               12. Limitation of Liability
             </h2>
-            <p className="uppercase text-zinc-200 text-xs tracking-wide">
+            <p className="uppercase text-[#3B1C2B]/80 text-xs tracking-wide">
               To the maximum extent permitted by law, A.IDO and its affiliates
               shall not be liable for indirect, incidental, special,
               consequential, or punitive damages, or for loss of profits,
@@ -323,7 +323,7 @@ export default function Terms() {
               shall not exceed the amount you paid us in the twelve months
               preceding the claim — which during the beta period is $0.
             </p>
-            <p className="uppercase text-zinc-200 text-xs tracking-wide">
+            <p className="uppercase text-[#3B1C2B]/80 text-xs tracking-wide">
               You are responsible for maintaining your own copies and backups of
               any information you enter, upload, import, generate, or store in
               the Service. To the maximum extent permitted by law, A.IDO is not
@@ -416,7 +416,7 @@ export default function Terms() {
             <p>
               Questions about these Terms? Reach us at{" "}
               <a
-                className="text-amber-300 underline"
+                className="text-[#8D294D] underline underline-offset-4"
                 href="mailto:support@aidowedding.net"
               >
                 support@aidowedding.net
@@ -426,12 +426,12 @@ export default function Terms() {
           </section>
         </div>
 
-        <div className="border-t border-white/10 pt-6 mt-12 flex items-center justify-between text-xs text-zinc-400">
+        <div className="border-t border-[#E6A6B7]/45 pt-6 mt-12 flex items-center justify-between text-xs text-[#6F3E54]">
           <p>
             © {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All
             rights reserved.
           </p>
-          <Link href="/" className="hover:text-white">
+          <Link href="/" className="hover:text-[#3B1C2B]">
             Home
           </Link>
         </div>

@@ -95,7 +95,7 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
     const isSaveTheDate = design.kind === "saveTheDate";
     const saveTheDateLocation = [design.fields.venueCity, design.fields.venueState].filter(Boolean).join(", ");
     const bg = design.style.backgroundColor || "#f8f4ef";
-    const accent = design.style.accentColor || "#D4A017";
+    const accent = design.style.accentColor || "#8D294D";
     const text = design.style.textColor || "#1f2933";
     const font = `'${design.style.fontFamily || "Playfair Display"}', Georgia, serif`;
     const sans = "'Plus Jakarta Sans', Arial, sans-serif";

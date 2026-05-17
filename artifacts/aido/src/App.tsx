@@ -102,13 +102,13 @@ const clerkAppearance = {
     socialButtonsPlacement: "top" as const,
   },
   variables: {
-    colorPrimary: "#D4A017",
-    colorBackground: "#120c1e",
-    colorInput: "#1e1530",
-    colorForeground: "#ffffff",
-    colorMutedForeground: "#b8a9cc",
-    colorInputForeground: "#ffffff",
-    colorNeutral: "#7c6a9a",
+    colorPrimary: "#8D294D",
+    colorBackground: "#FFF7F2",
+    colorInput: "#FFFFFF",
+    colorForeground: "#3B1C2B",
+    colorMutedForeground: "#6F3E54",
+    colorInputForeground: "#3B1C2B",
+    colorNeutral: "#B16C8E",
     colorDanger: "#f87171",
     borderRadius: "0.75rem",
     fontFamily: "Georgia, 'Times New Roman', serif",
@@ -117,27 +117,27 @@ const clerkAppearance = {
   },
   elements: {
     rootBox: "w-full",
-    cardBox: "shadow-2xl rounded-2xl w-full overflow-hidden border border-amber-500/20",
+    cardBox: "shadow-2xl rounded-2xl w-full overflow-hidden border border-rose-200/70",
     card: "!shadow-none !border-0 !bg-transparent !rounded-none",
     footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    headerTitle: { color: "#ffffff", fontFamily: "Georgia, serif" },
-    headerSubtitle: { color: "#b8a9cc" },
-    socialButtonsBlockButtonText: { color: "#ffffff" },
-    socialButtonsBlockButtonArrow: { color: "#ffffff" },
-    formFieldLabel: { color: "#e2d9f3" },
-    footerActionLink: { color: "#D4A017" },
-    footerActionText: { color: "#b8a9cc" },
-    dividerText: { color: "#9c8ab8" },
-    identityPreviewEditButton: { color: "#D4A017" },
+    headerTitle: { color: "#3B1C2B", fontFamily: "Georgia, serif" },
+    headerSubtitle: { color: "#6F3E54" },
+    socialButtonsBlockButtonText: { color: "#3B1C2B" },
+    socialButtonsBlockButtonArrow: { color: "#3B1C2B" },
+    formFieldLabel: { color: "#6F3E54" },
+    footerActionLink: { color: "#8D294D" },
+    footerActionText: { color: "#6F3E54" },
+    dividerText: { color: "#6F3E54" },
+    identityPreviewEditButton: { color: "#8D294D" },
     formFieldSuccessText: { color: "#86efac" },
-    alertText: { color: "#ffffff" },
+    alertText: { color: "#3B1C2B" },
     logoBox: "flex justify-center py-4",
     logoImage: "h-16 w-16",
-    socialButtonsBlockButton: { border: "1px solid rgba(255,255,255,0.15)", color: "#ffffff" },
-    formButtonPrimary: { background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)", color: "#ffffff", borderRadius: "0.5rem" },
-    formFieldInput: { border: "1px solid rgba(255,255,255,0.15)", borderRadius: "0.5rem", background: "rgba(255,255,255,0.05)", color: "#ffffff" },
-    footerAction: { borderTop: "1px solid rgba(255,255,255,0.1)" },
-    dividerLine: { background: "rgba(255,255,255,0.12)" },
+    socialButtonsBlockButton: { border: "1px solid rgba(177,108,142,0.35)", color: "#3B1C2B", background: "#FFFFFF" },
+    formButtonPrimary: { background: "linear-gradient(135deg,#8D294D,#B16C8E,#E6A6B7)", color: "#ffffff", borderRadius: "0.5rem" },
+    formFieldInput: { border: "1px solid rgba(177,108,142,0.35)", borderRadius: "0.5rem", background: "#FFFFFF", color: "#3B1C2B" },
+    footerAction: { borderTop: "1px solid rgba(177,108,142,0.25)" },
+    dividerLine: { background: "rgba(177,108,142,0.25)" },
     main: "px-6 pb-6",
   },
 };
@@ -146,15 +146,15 @@ function AuthPageWrapper({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="flex min-h-[100dvh] flex-col items-center justify-center px-4 py-10 gap-6"
-      style={{ background: "linear-gradient(135deg, #09060f 0%, #130b22 50%, #09060f 100%)" }}
+      style={{ background: "linear-gradient(135deg, #FFF7F2 0%, #F2E2C6 48%, #E6A6B7 100%)" }}
     >
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(212,160,23,0.12) 0%, transparent 60%)" }}
+        style={{ background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(141,41,77,0.16) 0%, transparent 60%)" }}
       />
       <div className="relative flex flex-col items-center gap-2">
-        <img src="/logo.png" alt="A.IDO" className="h-24 w-auto object-contain" style={{ filter: "drop-shadow(0 0 20px rgba(212,160,23,0.4))" }} />
-        <p className="text-sm font-medium tracking-widest uppercase" style={{ color: "#b8a9cc" }}>AI Wedding Planning OS</p>
+        <img src="/logo.png" alt="A.IDO" className="h-24 w-auto object-contain" style={{ filter: "drop-shadow(0 16px 28px rgba(141,41,77,0.25))" }} />
+        <p className="text-sm font-medium tracking-widest uppercase" style={{ color: "#6F3E54" }}>AI Wedding Planning OS</p>
       </div>
       <div className="relative w-full max-w-md">
         {children}
@@ -245,11 +245,11 @@ function TestAccountCallout() {
   return (
     <div
       style={{
-        border: "1px solid rgba(245, 200, 66, 0.5)",
+        border: "1px solid rgba(141, 41, 77, 0.28)",
         borderRadius: "0.75rem",
         background:
-          "linear-gradient(135deg, rgba(245,200,66,0.22), rgba(20,184,166,0.16) 52%, rgba(255,255,255,0.08))",
-        boxShadow: "0 18px 40px rgba(245, 200, 66, 0.16)",
+          "linear-gradient(135deg, rgba(255,247,242,0.92), rgba(230,166,183,0.34) 52%, rgba(242,226,198,0.78))",
+        boxShadow: "0 18px 40px rgba(141, 41, 77, 0.14)",
         padding: "0.85rem",
         marginBottom: "1rem",
       }}
@@ -258,7 +258,7 @@ function TestAccountCallout() {
         <div>
           <p
             style={{
-              color: "#fff7d6",
+              color: "#3B1C2B",
               fontSize: "0.92rem",
               fontWeight: 700,
               margin: 0,
@@ -268,7 +268,7 @@ function TestAccountCallout() {
           </p>
           <p
             style={{
-              color: "#d9f7ef",
+              color: "#6F3E54",
               fontSize: "0.78rem",
               lineHeight: 1.45,
               margin: "0.2rem 0 0",
@@ -283,10 +283,10 @@ function TestAccountCallout() {
           disabled={submitting}
           style={{
             width: "100%",
-            border: "1px solid rgba(255,255,255,0.38)",
+            border: "1px solid rgba(141,41,77,0.28)",
             borderRadius: "0.6rem",
-            background: "linear-gradient(135deg,#F5C842,#14B8A6)",
-            color: "#160f21",
+            background: "linear-gradient(135deg,#8D294D,#B16C8E,#E6A6B7)",
+            color: "#ffffff",
             cursor: submitting ? "wait" : "pointer",
             fontSize: "0.9rem",
             fontWeight: 800,
@@ -332,14 +332,14 @@ function ActiveAccountNotice({
     <div
       role="status"
       style={{
-        border: "1px solid rgba(20,184,166,0.45)",
+        border: "1px solid rgba(141,41,77,0.28)",
         borderRadius: "0.75rem",
-        background: "rgba(20,184,166,0.12)",
+        background: "rgba(255,247,242,0.86)",
         padding: "0.75rem",
         marginBottom: "0.85rem",
       }}
     >
-      <p style={{ color: "#d9f7ef", fontSize: "0.82rem", lineHeight: 1.45, margin: 0 }}>
+      <p style={{ color: "#6F3E54", fontSize: "0.82rem", lineHeight: 1.45, margin: 0 }}>
         You are currently signed in as <strong>{accountLabel}</strong>. Continue with this account, or use Google below to choose a different account first.
       </p>
       <button
@@ -347,10 +347,10 @@ function ActiveAccountNotice({
         onClick={onContinue}
         style={{
           width: "100%",
-          border: "1px solid rgba(20,184,166,0.5)",
+          border: "1px solid rgba(141,41,77,0.32)",
           borderRadius: "0.55rem",
-          background: "rgba(20,184,166,0.2)",
-          color: "#ffffff",
+          background: "rgba(141,41,77,0.12)",
+          color: "#8D294D",
           cursor: "pointer",
           fontSize: "0.84rem",
           fontWeight: 700,
@@ -553,14 +553,14 @@ function CustomSignInForm() {
     width: "100%",
     padding: "0.65rem 0.85rem",
     borderRadius: "0.5rem",
-    border: "1px solid rgba(255,255,255,0.15)",
-    background: "rgba(255,255,255,0.05)",
-    color: "#ffffff",
+    border: "1px solid rgba(177,108,142,0.35)",
+    background: "#FFFFFF",
+    color: "#3B1C2B",
     fontSize: "0.9rem",
     outline: "none",
   };
   const labelStyle: React.CSSProperties = {
-    color: "#b8a9cc",
+    color: "#6F3E54",
     fontSize: "0.78rem",
     fontWeight: 500,
     marginBottom: "0.35rem",
@@ -570,9 +570,9 @@ function CustomSignInForm() {
     width: "100%",
     padding: "0.65rem",
     borderRadius: "0.5rem",
-    border: "1px solid rgba(255,255,255,0.15)",
-    background: "rgba(255,255,255,0.05)",
-    color: "#ffffff",
+    border: "1px solid rgba(177,108,142,0.35)",
+    background: "#FFFFFF",
+    color: "#3B1C2B",
     fontSize: "0.9rem",
     cursor: "pointer",
     display: "flex",
@@ -584,17 +584,17 @@ function CustomSignInForm() {
   return (
     <div
       style={{
-        background: "rgba(20,12,35,0.7)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "rgba(255,247,242,0.88)",
+        border: "1px solid rgba(177,108,142,0.28)",
         borderRadius: "0.85rem",
         padding: "1.5rem",
         backdropFilter: "blur(10px)",
       }}
     >
-      <h2 style={{ color: "#ffffff", fontSize: "1.4rem", fontWeight: 600, marginBottom: "0.35rem" }}>
+      <h2 style={{ color: "#3B1C2B", fontSize: "1.4rem", fontWeight: 600, marginBottom: "0.35rem" }}>
         Sign in
       </h2>
-      <p style={{ color: "#b8a9cc", fontSize: "0.85rem", marginBottom: "1.25rem" }}>
+      <p style={{ color: "#6F3E54", fontSize: "0.85rem", marginBottom: "1.25rem" }}>
         Welcome back to A.IDO.
       </p>
 
@@ -653,14 +653,14 @@ function CustomSignInForm() {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", margin: "1rem 0" }}>
-        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
-        <span style={{ color: "#b8a9cc", fontSize: "0.75rem" }}>or</span>
-        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
+        <div style={{ flex: 1, height: 1, background: "rgba(177,108,142,0.25)" }} />
+        <span style={{ color: "#6F3E54", fontSize: "0.75rem" }}>or</span>
+        <div style={{ flex: 1, height: 1, background: "rgba(177,108,142,0.25)" }} />
       </div>
 
       {mode === "code_request" && (
         <form onSubmit={handleSendLoginCode} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-          <p style={{ color: "#b8a9cc", fontSize: "0.85rem", margin: 0 }}>
+          <p style={{ color: "#6F3E54", fontSize: "0.85rem", margin: 0 }}>
             Enter the email address for your A.IDO account. We'll send you a 6-digit code to sign in.
           </p>
           <div>
@@ -682,7 +682,7 @@ function CustomSignInForm() {
               padding: "0.7rem",
               borderRadius: "0.5rem",
               border: "none",
-              background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
+              background: "linear-gradient(135deg,#8D294D,#B16C8E,#E6A6B7)",
               color: "#ffffff",
               fontSize: "0.95rem",
               fontWeight: 600,
@@ -693,9 +693,9 @@ function CustomSignInForm() {
             {submitting ? "Sending code..." : "Send sign-in code"}
           </button>
 
-          <p style={{ color: "#b8a9cc", fontSize: "0.82rem", marginTop: "0.5rem", textAlign: "center" }}>
+          <p style={{ color: "#6F3E54", fontSize: "0.82rem", marginTop: "0.5rem", textAlign: "center" }}>
             Don't have an account?{" "}
-            <a href={`${basePath}/sign-up`} style={{ color: "#F5C842", fontWeight: 500 }}>
+            <a href={`${basePath}/sign-up`} style={{ color: "#8D294D", fontWeight: 500 }}>
               Sign up
             </a>
           </p>
@@ -704,7 +704,7 @@ function CustomSignInForm() {
 
       {mode === "code_verify" && (
         <form onSubmit={handleVerifyLoginCode} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-          <p style={{ color: "#F5C842", fontSize: "0.78rem", margin: 0, fontWeight: 500 }}>
+          <p style={{ color: "#8D294D", fontSize: "0.78rem", margin: 0, fontWeight: 500 }}>
             Don't see it? Please check your spam or junk folder.
           </p>
           <div>
@@ -729,7 +729,7 @@ function CustomSignInForm() {
               padding: "0.7rem",
               borderRadius: "0.5rem",
               border: "none",
-              background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
+              background: "linear-gradient(135deg,#8D294D,#B16C8E,#E6A6B7)",
               color: "#ffffff",
               fontSize: "0.95rem",
               fontWeight: 600,
@@ -750,7 +750,7 @@ function CustomSignInForm() {
             style={{
               background: "transparent",
               border: "none",
-              color: "#b8a9cc",
+              color: "#6F3E54",
               fontSize: "0.82rem",
               cursor: "pointer",
               textAlign: "center",
@@ -778,16 +778,16 @@ function SsoCallbackPage() {
     <AuthPageWrapper>
       <div
         style={{
-          background: "rgba(20,12,35,0.7)",
-          border: "1px solid rgba(255,255,255,0.08)",
+          background: "rgba(255,247,242,0.88)",
+          border: "1px solid rgba(177,108,142,0.28)",
           borderRadius: "0.85rem",
           padding: "1.5rem",
           textAlign: "center",
-          color: "#ffffff",
+          color: "#3B1C2B",
         }}
       >
         <p style={{ marginBottom: "0.5rem", fontSize: "1rem", fontWeight: 500 }}>Finishing sign in...</p>
-        <p style={{ color: "#b8a9cc", fontSize: "0.85rem" }}>One moment while we get you into A.IDO.</p>
+        <p style={{ color: "#6F3E54", fontSize: "0.85rem" }}>One moment while we get you into A.IDO.</p>
         <AuthenticateWithRedirectCallback
           transferable={false}
           signInUrl={`${basePath}/sign-in`}
@@ -1046,14 +1046,14 @@ function CustomSignUpForm() {
     width: "100%",
     padding: "0.65rem 0.85rem",
     borderRadius: "0.5rem",
-    border: "1px solid rgba(255,255,255,0.15)",
-    background: "rgba(255,255,255,0.05)",
-    color: "#ffffff",
+    border: "1px solid rgba(177,108,142,0.35)",
+    background: "#FFFFFF",
+    color: "#3B1C2B",
     fontSize: "0.9rem",
     outline: "none",
   };
   const labelStyle: React.CSSProperties = {
-    color: "#b8a9cc",
+    color: "#6F3E54",
     fontSize: "0.78rem",
     fontWeight: 500,
     marginBottom: "0.35rem",
@@ -1063,9 +1063,9 @@ function CustomSignUpForm() {
     width: "100%",
     padding: "0.65rem",
     borderRadius: "0.5rem",
-    border: "1px solid rgba(255,255,255,0.15)",
-    background: "rgba(255,255,255,0.05)",
-    color: "#ffffff",
+    border: "1px solid rgba(177,108,142,0.35)",
+    background: "#FFFFFF",
+    color: "#3B1C2B",
     fontSize: "0.9rem",
     cursor: "pointer",
     display: "flex",
@@ -1077,8 +1077,8 @@ function CustomSignUpForm() {
   return (
     <div
       style={{
-        background: "rgba(20,12,35,0.7)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "rgba(255,247,242,0.88)",
+        border: "1px solid rgba(177,108,142,0.28)",
         borderRadius: "0.85rem",
         padding: "1.5rem",
         backdropFilter: "blur(10px)",
@@ -1086,13 +1086,13 @@ function CustomSignUpForm() {
     >
       {step === "verify" ? (
         <>
-          <h2 style={{ color: "#ffffff", fontSize: "1.4rem", fontWeight: 600, marginBottom: "0.35rem" }}>
+          <h2 style={{ color: "#3B1C2B", fontSize: "1.4rem", fontWeight: 600, marginBottom: "0.35rem" }}>
             Check your email
           </h2>
-          <p style={{ color: "#b8a9cc", fontSize: "0.85rem", marginBottom: "0.5rem" }}>
-            We sent a 6-digit verification code to <strong style={{ color: "#ffffff" }}>{email}</strong>.
+          <p style={{ color: "#6F3E54", fontSize: "0.85rem", marginBottom: "0.5rem" }}>
+            We sent a 6-digit verification code to <strong style={{ color: "#3B1C2B" }}>{email}</strong>.
           </p>
-          <p style={{ color: "#F5C842", fontSize: "0.78rem", marginBottom: "1.25rem", fontWeight: 500 }}>
+          <p style={{ color: "#8D294D", fontSize: "0.78rem", marginBottom: "1.25rem", fontWeight: 500 }}>
             Don't see it? Please check your spam or junk folder.
           </p>
 
@@ -1148,7 +1148,7 @@ function CustomSignUpForm() {
                 padding: "0.7rem",
                 borderRadius: "0.5rem",
                 border: "none",
-                background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
+                background: "linear-gradient(135deg,#8D294D,#B16C8E,#E6A6B7)",
                 color: "#ffffff",
                 fontSize: "0.95rem",
                 fontWeight: 600,
@@ -1165,14 +1165,14 @@ function CustomSignUpForm() {
             <button
               type="button"
               onClick={() => { setStep("form"); setError(null); setResendInfo(null); setCode(""); }}
-              style={{ background: "none", border: "none", color: "#b8a9cc", cursor: "pointer", padding: 0 }}
+              style={{ background: "none", border: "none", color: "#6F3E54", cursor: "pointer", padding: 0 }}
             >
               ← Use a different email
             </button>
             <button
               type="button"
               onClick={handleResend}
-              style={{ background: "none", border: "none", color: "#F5C842", cursor: "pointer", padding: 0, fontWeight: 500 }}
+              style={{ background: "none", border: "none", color: "#8D294D", cursor: "pointer", padding: 0, fontWeight: 500 }}
             >
               Resend code
             </button>
@@ -1180,10 +1180,10 @@ function CustomSignUpForm() {
         </>
       ) : (
         <>
-      <h2 style={{ color: "#ffffff", fontSize: "1.4rem", fontWeight: 600, marginBottom: "0.35rem" }}>
+      <h2 style={{ color: "#3B1C2B", fontSize: "1.4rem", fontWeight: 600, marginBottom: "0.35rem" }}>
         Create your account
       </h2>
-      <p style={{ color: "#b8a9cc", fontSize: "0.85rem", marginBottom: "1.25rem" }}>
+      <p style={{ color: "#6F3E54", fontSize: "0.85rem", marginBottom: "1.25rem" }}>
         Welcome! Let's get your wedding planning started.
       </p>
 
@@ -1209,17 +1209,17 @@ function CustomSignUpForm() {
                 type="button"
                 onClick={() => setAccountType(option.value)}
                 style={{
-                  border: selected ? "1px solid #F5C842" : "1px solid rgba(255,255,255,0.15)",
+                  border: selected ? "1px solid #8D294D" : "1px solid rgba(177,108,142,0.35)",
                   borderRadius: "0.65rem",
-                  background: selected ? "rgba(245,200,66,0.16)" : "rgba(255,255,255,0.05)",
-                  color: "#ffffff",
+                  background: selected ? "rgba(230,166,183,0.28)" : "#FFFFFF",
+                  color: "#3B1C2B",
                   cursor: "pointer",
                   padding: "0.75rem 0.7rem",
                   textAlign: "left",
                 }}
               >
                 <span style={{ display: "block", fontWeight: 700, fontSize: "0.9rem" }}>{option.title}</span>
-                <span style={{ display: "block", color: "#b8a9cc", fontSize: "0.72rem", marginTop: "0.15rem" }}>{option.desc}</span>
+                <span style={{ display: "block", color: "#6F3E54", fontSize: "0.72rem", marginTop: "0.15rem" }}>{option.desc}</span>
               </button>
             );
           })}
@@ -1248,9 +1248,9 @@ function CustomSignUpForm() {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", margin: "1rem 0" }}>
-        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
-        <span style={{ color: "#b8a9cc", fontSize: "0.75rem" }}>or</span>
-        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
+        <div style={{ flex: 1, height: 1, background: "rgba(177,108,142,0.25)" }} />
+        <span style={{ color: "#6F3E54", fontSize: "0.75rem" }}>or</span>
+        <div style={{ flex: 1, height: 1, background: "rgba(177,108,142,0.25)" }} />
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
@@ -1264,7 +1264,7 @@ function CustomSignUpForm() {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
           />
-          <p style={{ color: "#8a7ba8", fontSize: "0.72rem", marginTop: "0.4rem", lineHeight: 1.4 }}>
+          <p style={{ color: "#6F3E54", fontSize: "0.72rem", marginTop: "0.4rem", lineHeight: 1.4 }}>
             We'll email you a 6-digit code to verify your account. No password needed — you'll sign in with a code each time, or use Google.
           </p>
         </div>
@@ -1292,7 +1292,7 @@ function CustomSignUpForm() {
             padding: "0.7rem",
             borderRadius: "0.5rem",
             border: "none",
-            background: "linear-gradient(135deg,#B8860B,#D4A017,#F5C842)",
+            background: "linear-gradient(135deg,#8D294D,#B16C8E,#E6A6B7)",
             color: "#ffffff",
             fontSize: "0.95rem",
             fontWeight: 600,
@@ -1305,9 +1305,9 @@ function CustomSignUpForm() {
         </button>
       </form>
 
-      <p style={{ color: "#b8a9cc", fontSize: "0.82rem", marginTop: "1rem", textAlign: "center" }}>
+      <p style={{ color: "#6F3E54", fontSize: "0.82rem", marginTop: "1rem", textAlign: "center" }}>
         Already have an account?{" "}
-        <a href={`${basePath}/sign-in`} style={{ color: "#F5C842", fontWeight: 500 }}>
+        <a href={`${basePath}/sign-in`} style={{ color: "#8D294D", fontWeight: 500 }}>
           Sign in
         </a>
       </p>

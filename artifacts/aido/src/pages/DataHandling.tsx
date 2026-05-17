@@ -4,23 +4,23 @@ import { ArrowLeft, AlertTriangle } from "lucide-react";
 
 export default function DataHandling() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-[#FFF7F2] text-[#3B1C2B]">
       <div className="max-w-3xl mx-auto px-6 py-12">
         <Link href="/">
           <Button
             variant="ghost"
             size="sm"
-            className="mb-8 -ml-2 text-zinc-300 hover:text-white hover:bg-white/10 gap-1.5"
+            className="mb-8 -ml-2 text-[#6F3E54] hover:text-[#8D294D] hover:bg-[#E6A6B7]/15 gap-1.5"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Home
           </Button>
         </Link>
 
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 mb-8 flex items-start gap-3 text-amber-100">
-          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-amber-300" />
+        <div className="rounded-xl border border-[#E6A6B7]/60 bg-[#F2E2C6]/45 p-4 mb-8 flex items-start gap-3 text-[#6F3E54]">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-[#8D294D]" />
           <div className="space-y-1 text-sm leading-relaxed">
-            <p className="font-semibold text-amber-200">
+            <p className="font-semibold text-[#8D294D]">
               Draft — review with legal counsel before publishing.
             </p>
             <p>
@@ -33,14 +33,14 @@ export default function DataHandling() {
 
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Data Handling</h1>
-          <p className="text-sm text-zinc-300">Last updated: May 13, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 13, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed">
           <section className="space-y-3">
             <h2 className="font-serif text-xl font-semibold">What We Store</h2>
             <p>For each wedding workspace, we store:</p>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 <strong>Profile</strong> — couple names, wedding date, venue,
                 location (city/state/zip), ceremony &amp; reception times, guest
@@ -114,16 +114,16 @@ export default function DataHandling() {
           <section className="space-y-3">
             <h2 className="font-serif text-xl font-semibold">Subprocessors</h2>
             <p>To run the Service we share data with these vendors:</p>
-            <div className="overflow-x-auto rounded-lg border border-white/10">
+            <div className="overflow-x-auto rounded-lg border border-[#E6A6B7]/45">
               <table className="w-full text-sm">
-                <thead className="bg-white/5 text-zinc-300 text-left">
+                <thead className="bg-[#F2E2C6]/45 text-[#6F3E54] text-left">
                   <tr>
                     <th className="px-4 py-2.5 font-semibold">Subprocessor</th>
                     <th className="px-4 py-2.5 font-semibold">Purpose</th>
                     <th className="px-4 py-2.5 font-semibold">Data shared</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/10">
+                <tbody className="divide-y divide-[#E6A6B7]/35">
                   <tr>
                     <td className="px-4 py-2.5 align-top">
                       <strong>Clerk</strong>
@@ -131,7 +131,7 @@ export default function DataHandling() {
                     <td className="px-4 py-2.5 align-top">
                       Authentication, sessions, password breach checks
                     </td>
-                    <td className="px-4 py-2.5 align-top text-zinc-200">
+                    <td className="px-4 py-2.5 align-top text-[#3B1C2B]/80">
                       Email, password hash, profile photo, login events
                     </td>
                   </tr>
@@ -143,7 +143,7 @@ export default function DataHandling() {
                       Transactional email (RSVP confirmations, invite links,
                       support replies, vendor emails)
                     </td>
-                    <td className="px-4 py-2.5 align-top text-zinc-200">
+                    <td className="px-4 py-2.5 align-top text-[#3B1C2B]/80">
                       Sender, recipient, subject, body
                     </td>
                   </tr>
@@ -155,7 +155,7 @@ export default function DataHandling() {
                       AI inference (Aria, contract analyzer, mood board
                       suggestions, etc.)
                     </td>
-                    <td className="px-4 py-2.5 align-top text-zinc-200">
+                    <td className="px-4 py-2.5 align-top text-[#3B1C2B]/80">
                       Prompt + context for the requested feature
                     </td>
                   </tr>
@@ -164,7 +164,7 @@ export default function DataHandling() {
                       <strong>Render</strong>
                     </td>
                     <td className="px-4 py-2.5 align-top">API hosting</td>
-                    <td className="px-4 py-2.5 align-top text-zinc-200">
+                    <td className="px-4 py-2.5 align-top text-[#3B1C2B]/80">
                       All API traffic, server logs
                     </td>
                   </tr>
@@ -175,7 +175,7 @@ export default function DataHandling() {
                     <td className="px-4 py-2.5 align-top">
                       Frontend hosting and CDN
                     </td>
-                    <td className="px-4 py-2.5 align-top text-zinc-200">
+                    <td className="px-4 py-2.5 align-top text-[#3B1C2B]/80">
                       Static assets, request metadata
                     </td>
                   </tr>
@@ -186,14 +186,14 @@ export default function DataHandling() {
                     <td className="px-4 py-2.5 align-top">
                       Serverless Postgres database with encryption at rest
                     </td>
-                    <td className="px-4 py-2.5 align-top text-zinc-200">
+                    <td className="px-4 py-2.5 align-top text-[#3B1C2B]/80">
                       All workspace data described above
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <p className="text-zinc-300 text-sm">
+            <p className="text-[#6F3E54] text-sm">
               We don't use third-party advertising networks, retargeting pixels,
               or session-replay tooling.
             </p>
@@ -201,7 +201,7 @@ export default function DataHandling() {
 
           <section className="space-y-3">
             <h2 className="font-serif text-xl font-semibold">Retention</h2>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>Workspace data is retained while your account is active.</li>
               <li>
                 When you delete your account from Settings → Account, all
@@ -223,7 +223,7 @@ export default function DataHandling() {
                 product improvement.
               </li>
             </ul>
-            <p className="text-sm text-zinc-300">
+            <p className="text-sm text-[#6F3E54]">
               We may retain limited records longer when necessary to comply with
               legal obligations, resolve disputes, enforce our agreements,
               detect abuse, or complete tax/accounting requirements.
@@ -235,7 +235,7 @@ export default function DataHandling() {
               Export &amp; Portability
             </h2>
             <p>Many surfaces of the Service support export:</p>
-            <ul className="list-disc pl-6 space-y-1.5 text-zinc-100">
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>The seating chart exports to PDF.</li>
               <li>The day-of timeline exports to PDF.</li>
               <li>The mood board exports to PDF.</li>
@@ -243,7 +243,7 @@ export default function DataHandling() {
               <li>
                 For a full account-data export, email{" "}
                 <a
-                  className="text-amber-300 underline"
+                  className="text-[#8D294D] underline underline-offset-4"
                   href="mailto:support@aidowedding.net"
                 >
                   support@aidowedding.net
@@ -261,7 +261,7 @@ export default function DataHandling() {
               When a guest RSVPs through your public wedding website, their
               submission is stored in your private workspace. Off-list guests
               who use "RSVP anyway" are stored with the source flag{" "}
-              <span className="font-mono text-zinc-300">rsvp_self_add</span> and
+              <span className="font-mono text-[#6F3E54]">rsvp_self_add</span> and
               a notes line indicating they should be verified. As the workspace
               owner, you are the controller of your guests' data — please honor
               any deletion or correction requests they make to you directly.
@@ -279,7 +279,7 @@ export default function DataHandling() {
             <p>
               Questions about data handling, exports, or deletion:{" "}
               <a
-                className="text-amber-300 underline"
+                className="text-[#8D294D] underline underline-offset-4"
                 href="mailto:support@aidowedding.net"
               >
                 support@aidowedding.net
@@ -289,12 +289,12 @@ export default function DataHandling() {
           </section>
         </div>
 
-        <div className="border-t border-white/10 pt-6 mt-12 flex items-center justify-between text-xs text-zinc-400">
+        <div className="border-t border-[#E6A6B7]/45 pt-6 mt-12 flex items-center justify-between text-xs text-[#6F3E54]">
           <p>
             © {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All
             rights reserved.
           </p>
-          <Link href="/" className="hover:text-white">
+          <Link href="/" className="hover:text-[#3B1C2B]">
             Home
           </Link>
         </div>

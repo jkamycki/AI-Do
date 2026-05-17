@@ -28,13 +28,15 @@ export function AppLayout({ children, fullWidth = false }: AppLayoutProps) {
   const isVendorWorkspace = activeWorkspace?.role === "vendor";
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="relative flex min-h-screen overflow-hidden bg-background">
+      <div className="pointer-events-none fixed inset-0 z-0 bg-[url('/images/floral-bg.png')] bg-cover bg-center opacity-[0.14] mix-blend-multiply dark:opacity-[0.28] dark:mix-blend-soft-light" />
+      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_48%_0%,rgba(255,255,255,0.72)_0%,rgba(255,247,242,0.42)_34%,rgba(242,226,198,0.22)_100%)] dark:bg-[radial-gradient(circle_at_48%_0%,rgba(255,214,206,0.16)_0%,rgba(91,15,42,0.2)_38%,rgba(42,11,29,0.58)_100%)]" />
       {!isVendorWorkspace && (
         <SilentErrorBoundary>
           <Sidebar />
         </SilentErrorBoundary>
       )}
-      <main className={`flex-1 ${isVendorWorkspace ? "" : "md:ml-64 pt-16 md:pt-0"} overflow-hidden`}>
+      <main className={`relative z-10 flex-1 ${isVendorWorkspace ? "" : "md:ml-64 pt-16 md:pt-0"} overflow-hidden`}>
         {fullWidth ? children : (
           <div className="max-w-6xl mx-auto p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {children}
