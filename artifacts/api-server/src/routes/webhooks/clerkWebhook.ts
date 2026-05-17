@@ -1,6 +1,7 @@
 import { Router, raw } from "express";
 import crypto from "node:crypto";
 import { purgeUserData } from "../../lib/userCleanup";
+import { trackEvent } from "../../lib/trackEvent";
 
 const router = Router();
 
@@ -59,6 +60,16 @@ interface ClerkUserEvent {
   };
 }
 
+function primaryEmailForClerkUser(data: ClerkUserEvent["data"]): string | null {
+  const primaryId = data.primary_email_address_id;
+  const emails = data.email_addresses ?? [];
+  return (
+    emails.find(email => email.id === primaryId)?.email_address ??
+    emails[0]?.email_address ??
+    null
+  );
+}
+
 router.post("/webhooks/clerk", raw({ type: "*/*", limit: "1mb" }), async (req, res) => {
   const rawBody = (req.body as Buffer).toString("utf8");
 
@@ -97,6 +108,19 @@ router.post("/webhooks/clerk", raw({ type: "*/*", limit: "1mb" }), async (req, r
       res.status(500).json({ error: "purge failed" });
       return;
     }
+  }
+
+  if (event.type === "user.created") {
+    const userId = event.data.id;
+    if (!userId) {
+      res.status(400).json({ error: "missing user id" });
+      return;
+    }
+    trackEvent(userId, "user_signup", {
+      email: primaryEmailForClerkUser(event.data),
+      source: "clerk_webhook",
+    });
+    req.log.info({ userId }, "Clerk user.created: logged signup event");
   }
 
   res.json({ received: true });

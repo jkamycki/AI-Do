@@ -157,7 +157,6 @@ router.post("/profile", requireAuth, async (req, res) => {
           target: budgets.profileId,
           set: { totalBudget: String(totalBudget), updatedAt: new Date() },
         });
-      trackEvent(req.userId!, "user_signup");
       trackEvent(req.userId!, "onboarding_completed", { firstTime: true });
       res.json({
         ...created,
