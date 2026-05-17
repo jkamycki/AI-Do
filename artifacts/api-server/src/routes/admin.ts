@@ -768,7 +768,13 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
           max(timestamp) as last_active,
           bool_or(event_type = 'user_signup') as signed_up,
           bool_or(event_type = 'onboarding_completed') as onboarded,
-          min(timestamp) as first_seen
+          min(timestamp) as first_seen,
+          lower(coalesce(
+            max(nullif(metadata->>'email', '')),
+            max(nullif(metadata->>'userEmail', '')),
+            max(nullif(metadata->>'userLogin', '')),
+            max(nullif(metadata->>'login', ''))
+          )) as email
         FROM analytics_events
         GROUP BY user_id
       `),
@@ -781,11 +787,14 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
       signed_up: boolean;
       onboarded: boolean;
       first_seen: string;
+      email: string | null;
     };
 
     const eventMap = new Map<string, EventRow>();
+    const eventEmailMap = new Map<string, EventRow>();
     for (const row of eventRows.rows as EventRow[]) {
       eventMap.set(row.user_id, row);
+      if (row.email && !eventEmailMap.has(row.email)) eventEmailMap.set(row.email, row);
     }
     const profileMap = new Map<string, typeof profileRows[number]>();
     for (const p of profileRows) {
@@ -801,17 +810,31 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
       ...Array.from(profileMap.keys()),
       ...Array.from(collaboratorMap.keys()),
       ...collaboratorRows.map(c => c.ownerUserId).filter(Boolean),
-    ].filter((id): id is string => typeof id === "string" && id.length > 0))).slice(0, 200);
+    ].filter((id): id is string => typeof id === "string" && id.length > 0 && id.startsWith("user_")))).slice(0, 500);
 
-    if (allUserIds.length === 0) {
-      return res.json({ users: [], total: 0 });
+    const recentClerkUsers = await clerkClient.users.getUserList({
+      limit: 500,
+      orderBy: "-created_at",
+    });
+
+    const clerkUsersById = new Map<string, typeof recentClerkUsers.data[number]>();
+    for (const cu of recentClerkUsers.data) {
+      clerkUsersById.set(cu.id, cu);
     }
 
-    const clerkUsers = await clerkClient.users.getUserList({
-      userId: allUserIds,
-      limit: 200,
-    });
-    const clerkUserMap = new Map(clerkUsers.data.map(cu => {
+    const missingUserIds = allUserIds.filter(userId => !clerkUsersById.has(userId));
+    if (missingUserIds.length > 0) {
+      const resolvedClerkUsers = await clerkClient.users.getUserList({
+        userId: missingUserIds,
+        limit: missingUserIds.length,
+      });
+      for (const cu of resolvedClerkUsers.data) {
+        clerkUsersById.set(cu.id, cu);
+      }
+    }
+
+    const clerkUsers = Array.from(clerkUsersById.values());
+    const clerkUserMap = new Map(clerkUsers.map(cu => {
       const primaryEmail = cu.emailAddresses.find(e => e.id === cu.primaryEmailAddressId)?.emailAddress
         ?? cu.emailAddresses[0]?.emailAddress ?? null;
       return [cu.id, {
@@ -830,12 +853,12 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
     const workspaceName = (row: typeof collaboratorRows[number]) =>
       row.workstationName || [row.partner2Name, row.partner1Name].filter(Boolean).join(" & ") || "Shared workspace";
 
-    const users = clerkUsers.data.map(cu => {
+    const users = clerkUsers.map(cu => {
       const primaryEmail = cu.emailAddresses.find(e => e.id === cu.primaryEmailAddressId)?.emailAddress
         ?? cu.emailAddresses[0]?.emailAddress ?? null;
       const profile = profileMap.get(cu.id);
       const collaborator = collaboratorMap.get(cu.id);
-      const events = eventMap.get(cu.id);
+      const events = eventMap.get(cu.id) ?? (primaryEmail ? eventEmailMap.get(primaryEmail.toLowerCase()) : undefined);
       const onboarded = Boolean(events?.onboarded || profile || collaborator);
       const sharedWith = collaboratorRows
         .filter(c => c.userId === cu.id || c.ownerUserId === cu.id)
