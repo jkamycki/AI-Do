@@ -174,9 +174,434 @@ function deterministicBasicReply(text: string, timezone?: string): string | null
   return null;
 }
 
+function lines(...items: string[]): string {
+  return items.join("\n");
+}
+
+const ARIA_WEDDING_ADVICE_BANK: Array<{ pattern: RegExp; answer: string }> = [
+  {
+    pattern: /\bhow do i choose\b[\s\S]*\bwedding priorities\b|\bwhat should our wedding priorities be\b/i,
+    answer: lines(
+      "Choose wedding priorities by picking the 3 things guests and you will remember most.",
+      "",
+      "Common top priorities are venue, food/bar, photo/video, music, guest comfort, and design. Rank them together, then protect money and time for the top 3 before spending on extras.",
+    ),
+  },
+  {
+    pattern: /\bhow do i start\b[\s\S]*\bguest list\b|\bstart my guest list\b/i,
+    answer: lines(
+      "Start the guest list in layers:",
+      "",
+      "1. Must-invite family and closest friends.",
+      "2. Wedding party and partners.",
+      "3. Extended family.",
+      "4. Friends, work, parents' friends, and maybes.",
+      "",
+      "Keep a maybe list separate so the first draft does not quietly grow past the venue and budget.",
+    ),
+  },
+  {
+    pattern: /\bwhat should i book first\b|\bwhich vendors should i book first\b/i,
+    answer: lines(
+      "Book the vendors that affect availability and the rest of the plan first:",
+      "",
+      "1. Venue.",
+      "2. Planner or coordinator, if using one.",
+      "3. Photographer/video.",
+      "4. Caterer/bar if not included with venue.",
+      "5. Entertainment.",
+      "6. Hair/makeup and florist.",
+    ),
+  },
+  {
+    pattern: /\bhow much buffer\b[\s\S]*\btimeline\b|\btimeline buffer\b/i,
+    answer: lines(
+      "Build 10-15 minute buffers between major wedding-day moments.",
+      "",
+      "Use bigger buffers for travel, large families, outfit changes, elevators, city traffic, and older guests. A timeline that looks slightly roomy on paper usually feels calm in real life.",
+    ),
+  },
+  {
+    pattern: /\bwhen should i send save the dates\b|\bsend save[- ]the[- ]dates\b/i,
+    answer: lines(
+      "Send save-the-dates 6-8 months before the wedding.",
+      "",
+      "For destination weddings or heavy travel, send them 8-12 months ahead. Make sure the date, city, and website are stable first.",
+    ),
+  },
+  {
+    pattern: /\bwhen should i send invitations\b|\bsend wedding invitations\b/i,
+    answer: lines(
+      "Send wedding invitations 8-12 weeks before the wedding.",
+      "",
+      "For destination or holiday-weekend weddings, lean closer to 12 weeks. Set the RSVP deadline about 3-5 weeks before the wedding.",
+    ),
+  },
+  {
+    pattern: /\bwhat should my rsvp deadline be\b|\brsvp deadline\b/i,
+    answer: lines(
+      "Set the RSVP deadline 3-5 weeks before the wedding.",
+      "",
+      "Choose a date at least 1 week before your caterer or venue needs final numbers, so you have time to chase late replies.",
+    ),
+  },
+  {
+    pattern: /\bhow do i pick a venue\b|\bchoose a venue\b/i,
+    answer: lines(
+      "Choose a venue by comparing guest fit, true total cost, style, logistics, weather backup, vendor rules, and contract flexibility.",
+      "",
+      "Do not compare rental fee alone. Ask for a full estimate with tax, service charge, food/bar minimums, rentals, staffing, and overtime.",
+    ),
+  },
+  {
+    pattern: /\bwhat should i ask on a venue tour\b|\bvenue tour questions\b/i,
+    answer: lines(
+      "Ask venue tours about capacity, rain plan, included rentals, catering rules, alcohol rules, service charges, vendor restrictions, setup time, cleanup time, parking, accessibility, noise limits, and payment/cancellation terms.",
+      "",
+      "Also ask to see a sample floor plan for your guest count.",
+    ),
+  },
+  {
+    pattern: /\bhow many hours of photography\b|\bphotography coverage\b/i,
+    answer: lines(
+      "Most weddings need 8-10 hours of photography coverage.",
+      "",
+      "Choose 6 hours for a small/simple day, 8 hours for standard coverage, and 10+ hours if you want getting-ready through late dance floor or multiple locations.",
+    ),
+  },
+  {
+    pattern: /\bshould i hire a videographer\b|\bdo i need video\b/i,
+    answer: lines(
+      "Hire a videographer if hearing vows, speeches, and movement matters to you.",
+      "",
+      "Photography captures moments; video captures voices and pacing. If budget is tight, ask about ceremony/speech coverage or a shorter highlight package.",
+    ),
+  },
+  {
+    pattern: /\bhow much alcohol\b[\s\S]*\bwedding\b|\bhow much beer wine liquor\b/i,
+    answer: lines(
+      "A rough bar estimate is 1 drink per guest per hour, plus a little extra for cocktail hour.",
+      "",
+      "For a 5-hour event with 100 drinking-age guests, estimate around 500 drinks. Your caterer or bar provider should refine this by crowd, season, and service style.",
+    ),
+  },
+  {
+    pattern: /\bopen bar\b[\s\S]*\bcash bar\b|\bcash bar\b[\s\S]*\bopen bar\b/i,
+    answer: lines(
+      "If budget allows, hosted beer/wine plus one or two signature cocktails is a guest-friendly middle ground.",
+      "",
+      "Cash bars can frustrate guests if unexpected. If you choose one, communicate it clearly and make sure card payments are accepted.",
+    ),
+  },
+  {
+    pattern: /\bbuffet or plated\b|\bplated or buffet\b/i,
+    answer: lines(
+      "Plated dinners feel more formal and control portions, but need accurate meal counts and more service coordination.",
+      "",
+      "Buffets offer choice and can feel abundant, but lines and room layout matter. For tight timelines, ask the caterer how they prevent bottlenecks.",
+    ),
+  },
+  {
+    pattern: /\bhow many desserts\b|\bdessert servings\b|\bwedding cake servings\b/i,
+    answer: lines(
+      "Plan dessert for about 80-90% of guests if you have wedding cake only, or smaller cake servings plus mini desserts if offering a dessert table.",
+      "",
+      "If dessert is served late after a full meal, not every guest will eat a full slice.",
+    ),
+  },
+  {
+    pattern: /\bwhat should be in emergency kit\b|\bwedding emergency kit\b/i,
+    answer: lines(
+      "A wedding emergency kit should include safety pins, fashion tape, stain remover, sewing kit, scissors, pain reliever, bandages, tissues, mints, snacks, water, phone charger, lint roller, deodorant, and copies of key contacts/timeline.",
+    ),
+  },
+  {
+    pattern: /\bhow do i choose wedding colors\b|\bchoose.*color palette\b/i,
+    answer: lines(
+      "Choose wedding colors by starting with the venue, season, and mood.",
+      "",
+      "Pick one anchor color, one or two supporting colors, and one neutral/metallic. Repeat them across invitations, website, florals, linens, and signage.",
+    ),
+  },
+  {
+    pattern: /\bwhat should bridesmaids pay for\b|\bbridesmaid costs\b/i,
+    answer: lines(
+      "Bridesmaids commonly pay for their attire, alterations, travel, and sometimes hair/makeup if optional.",
+      "",
+      "Be upfront early. If a cost is required by you, it is kind to cover it or offer a lower-cost option.",
+    ),
+  },
+  {
+    pattern: /\bwho pays for what\b[\s\S]*\bwedding\b|\bwedding costs who pays\b/i,
+    answer: lines(
+      "There is no single rule anymore. Start with a private conversation about who is contributing, how much, and whether the contribution comes with decision expectations.",
+      "",
+      "Then build the budget from confirmed numbers, not assumptions.",
+    ),
+  },
+  {
+    pattern: /\bhow do i handle family opinions\b|\bfamily opinions\b[\s\S]*\bwedding\b/i,
+    answer: lines(
+      "Handle family opinions by deciding what is open for input and what is already decided.",
+      "",
+      "A useful phrase: \"We are still deciding on that, but we will keep your thoughts in mind.\" For firm decisions: \"We have decided this is what works best for us.\"",
+    ),
+  },
+  {
+    pattern: /\bhow do i make a rain plan\b|\brain plan\b|\bweather backup\b/i,
+    answer: lines(
+      "A rain plan should cover ceremony location, cocktail hour, photo locations, guest path, umbrellas, flooring, tenting, vendor load-in, and the decision deadline.",
+      "",
+      "Ask the venue who makes the weather call and by what time.",
+    ),
+  },
+  {
+    pattern: /\bwhat should officiant say\b|\bofficiant script\b/i,
+    answer: lines(
+      "A strong officiant script usually includes welcome, a short couple story, a reflection on marriage, vows, ring exchange, pronouncement, kiss, and recessional cue.",
+      "",
+      "Keep it personal and around 15-25 minutes unless your ceremony is religious or formal.",
+    ),
+  },
+  {
+    pattern: /\bhow long should ceremony be\b|\bceremony length\b/i,
+    answer: lines(
+      "Most non-religious ceremonies are 15-25 minutes.",
+      "",
+      "Religious ceremonies may be 30-60+ minutes. The right length is long enough to feel meaningful and short enough that guests stay comfortable.",
+    ),
+  },
+  {
+    pattern: /\bdo i need programs\b|\bwedding programs\b/i,
+    answer: lines(
+      "Programs are optional. They help if you have a religious ceremony, many traditions/readings, a large wedding party, or want to honor loved ones.",
+      "",
+      "Skip them if the ceremony is short and straightforward.",
+    ),
+  },
+  {
+    pattern: /\bwhat goes on invitation\b|\bwedding invitation wording\b/i,
+    answer: lines(
+      "A wedding invitation should include hosts or couple names, request line, date, ceremony time, venue name, city/state, reception note if applicable, RSVP instructions, and website if needed.",
+      "",
+      "Keep travel, registry, and long FAQs on the website instead of crowding the invitation.",
+    ),
+  },
+  {
+    pattern: /\bregistry wording\b|\bhow do i word registry\b/i,
+    answer: lines(
+      "Simple registry wording: \"Your presence is the greatest gift. If you would like to celebrate with a gift, our registry can be found on our wedding website.\"",
+      "",
+      "Keep registry language on the website or shower details, not the formal invitation.",
+    ),
+  },
+  {
+    pattern: /\bdress code wording\b|\bhow do i word dress code\b/i,
+    answer: lines(
+      "Dress code wording should be clear and friendly.",
+      "",
+      "Examples: \"Formal attire requested,\" \"Cocktail attire,\" \"Garden party attire,\" or \"Black tie optional.\" Add a short website note if the venue surface or weather matters.",
+    ),
+  },
+  {
+    pattern: /\bwhat is cocktail attire\b|\bcocktail attire\b/i,
+    answer: lines(
+      "Cocktail attire means polished but not black-tie: suits, dress shirts, ties optional depending on style, midi/tea-length dresses, jumpsuits, or dressy separates.",
+      "",
+      "Guests should avoid jeans, sneakers, and very casual sundresses.",
+    ),
+  },
+  {
+    pattern: /\bhow do i write thank you notes\b|\bthank you notes\b/i,
+    answer: lines(
+      "Use a simple thank-you note formula: thank them by name, mention the specific gift or support, say how you will use/enjoy it, and close warmly.",
+      "",
+      "Try to send shower notes within 2-3 weeks and wedding gift notes within 2-3 months.",
+    ),
+  },
+  {
+    pattern: /\bvendor meal\b|\bfeed vendors\b|\bvendor meals\b/i,
+    answer: lines(
+      "Plan vendor meals for photographers, videographers, planners, DJs/bands, and any vendor working through dinner.",
+      "",
+      "Ask the caterer for vendor meal pricing and time meals so vendors eat when you eat, not during key moments.",
+    ),
+  },
+  {
+    pattern: /\btipping vendors\b|\bhow much should i tip\b|\bvendor tips\b/i,
+    answer: lines(
+      "Vendor tipping depends on service and contracts.",
+      "",
+      "Common tips include hair/makeup 15-20%, delivery/setup staff $10-$25 each, catering staff per contract or captain guidance, DJ $50-$200, transportation 15-20% if not included. Check whether gratuity is already built in.",
+    ),
+  },
+  {
+    pattern: /\bmarriage license\b|\bwhen do i get.*license\b/i,
+    answer: lines(
+      "Check your local marriage license rules early because timing varies by state/county.",
+      "",
+      "Confirm waiting period, expiration window, required IDs, appointment needs, officiant rules, witness rules, and where/how it gets filed after the ceremony.",
+    ),
+  },
+  {
+    pattern: /\bchange my name\b|\bname change\b[\s\S]*\bwedding\b/i,
+    answer: lines(
+      "Name change is optional and usually happens after the marriage certificate is returned.",
+      "",
+      "Typical order: Social Security, driver's license/state ID, passport, bank/payroll, insurance, utilities, travel accounts, and professional records.",
+    ),
+  },
+  {
+    pattern: /\bhow do i assign tables\b|\bassign guests to tables\b/i,
+    answer: lines(
+      "Assign tables by grouping guests who know each other first, then filling gaps with people who share age, interests, or family connection.",
+      "",
+      "Seat VIPs close to the couple, older guests away from speakers, and guests with mobility needs near easy paths.",
+    ),
+  },
+  {
+    pattern: /\bescort cards\b|\bplace cards\b|\bseating chart display\b/i,
+    answer: lines(
+      "Use escort cards or a seating chart to tell guests their table. Use place cards only if you need assigned seats at each table.",
+      "",
+      "For plated meals, place cards with meal indicators can help catering serve correctly.",
+    ),
+  },
+  {
+    pattern: /\bchildren at wedding\b|\binvite kids\b|\bkids at wedding\b/i,
+    answer: lines(
+      "Decide early whether children are invited, then apply the rule consistently.",
+      "",
+      "Options include adults-only, immediate-family children only, all children welcome, or kids invited to reception only if venue and timing support it.",
+    ),
+  },
+  {
+    pattern: /\bhow do i handle dietary restrictions\b|\bdietary restrictions\b/i,
+    answer: lines(
+      "Collect dietary restrictions through RSVPs, separate allergies from preferences, send the final list to catering, and confirm how special meals will be labeled and served.",
+      "",
+      "For serious allergies, ask about cross-contamination procedures.",
+    ),
+  },
+  {
+    pattern: /\bwhat should be on wedding website\b|\bwedding website include\b/i,
+    answer: lines(
+      "A wedding website should include schedule, venue addresses, RSVP, hotel blocks, travel, parking, dress code, registry, FAQs, contact info, and any accessibility or weather notes.",
+    ),
+  },
+  {
+    pattern: /\bhow do i write our story\b|\bour story wording\b/i,
+    answer: lines(
+      "Write your story in 3 short parts: how you met, what made the relationship feel real, and what you are excited for next.",
+      "",
+      "Keep it warm and specific rather than a full biography.",
+    ),
+  },
+  {
+    pattern: /\bwelcome speech\b|\breception welcome\b/i,
+    answer: lines(
+      "A welcome speech should thank guests, acknowledge anyone who helped, welcome families, and set the tone for the celebration.",
+      "",
+      "Keep it under 2 minutes unless it is a formal toast.",
+    ),
+  },
+  {
+    pattern: /\brehearsal dinner\b|\bwho comes to rehearsal\b/i,
+    answer: lines(
+      "Rehearsal dinner usually includes immediate family, wedding party, partners of wedding party, officiant if close, and sometimes out-of-town VIPs.",
+      "",
+      "Keep it as formal or casual as your budget and energy allow.",
+    ),
+  },
+  {
+    pattern: /\bday after brunch\b|\bpost wedding brunch\b/i,
+    answer: lines(
+      "A day-after brunch is optional. It is helpful for destination weddings or many out-of-town guests, but it can be casual and drop-in.",
+      "",
+      "If hosting, share time, location, and whether guests need to RSVP.",
+    ),
+  },
+  {
+    pattern: /\bwedding favors\b|\bdo i need favors\b/i,
+    answer: lines(
+      "Wedding favors are optional. Guests remember food, music, comfort, and the couple more than small favors.",
+      "",
+      "If you do favors, choose something edible, useful, local, or personal.",
+    ),
+  },
+  {
+    pattern: /\bhow do i choose music\b|\bwedding music\b/i,
+    answer: lines(
+      "Choose music by moment: ceremony processional, recessional, cocktail hour mood, reception entrances, first dance, parent dances, dinner, dance floor, and last song.",
+      "",
+      "Give the DJ must-play, do-not-play, and pronunciation notes.",
+    ),
+  },
+  {
+    pattern: /\bfirst dance song\b|\bchoose first dance\b/i,
+    answer: lines(
+      "Choose a first dance song that feels like your relationship, not just a popular wedding song.",
+      "",
+      "Consider lyrics, length, tempo, and whether you feel comfortable dancing to it. You can ask the DJ to fade it after 90 seconds.",
+    ),
+  },
+  {
+    pattern: /\bparent dance\b|\bfather daughter\b|\bmother son\b/i,
+    answer: lines(
+      "Parent dances can be traditional, shortened, combined, or skipped.",
+      "",
+      "Pick a song with comfortable lyrics and keep the dance around 60-90 seconds if you do not want too much spotlight.",
+    ),
+  },
+  {
+    pattern: /\bhow do i make guests comfortable\b|\bguest comfort\b/i,
+    answer: lines(
+      "Guest comfort comes from clear information, enough seating, easy parking/transportation, temperature planning, food timing, accessible paths, and not making people wait without drinks or shade.",
+    ),
+  },
+  {
+    pattern: /\bwhat if vendor cancels\b|\bvendor cancels\b|\bbackup vendor\b/i,
+    answer: lines(
+      "If a vendor cancels, check the contract first, ask for their replacement plan in writing, contact your planner/venue for referrals, and preserve all payment records.",
+      "",
+      "For key vendors, ask before booking what happens if they are unavailable.",
+    ),
+  },
+  {
+    pattern: /\bfinal walkthrough\b|\bvenue walkthrough\b/i,
+    answer: lines(
+      "At the final walkthrough, confirm floor plan, rain plan, vendor load-in, power, restrooms, ceremony setup, cocktail flow, bar placement, timeline, signage, parking, accessibility, and cleanup responsibilities.",
+    ),
+  },
+  {
+    pattern: /\bweek of wedding\b|\bwedding week checklist\b/i,
+    answer: lines(
+      "Wedding week priorities: confirm vendors, print timeline/contact list, pack details and emergency kit, finalize payments/tips, steam outfits, drop off decor, confirm transportation, hydrate, and delegate questions away from you.",
+    ),
+  },
+  {
+    pattern: /\bday of coordinator\b|\bdo i need a coordinator\b/i,
+    answer: lines(
+      "A day-of or month-of coordinator is helpful if you have multiple vendors, separate ceremony/reception spaces, DIY decor, family logistics, or no venue manager handling the timeline.",
+      "",
+      "They protect you from being the point person on the wedding day.",
+    ),
+  },
+  {
+    pattern: /\bhow do i stay organized\b|\bwedding planning organized\b/i,
+    answer: lines(
+      "Stay organized with one source of truth for budget, guest list, checklist, vendor contracts, payments, timeline, and RSVPs.",
+      "",
+      "Review it weekly, keep decisions documented, and avoid saving key details only in text messages.",
+    ),
+  },
+];
+
 function deterministicStarterPromptReply(text: string): string | null {
   const trimmed = text.trim();
   if (!trimmed || trimmed.length > 180) return null;
+  const bankMatch = ARIA_WEDDING_ADVICE_BANK.find((entry) => entry.pattern.test(trimmed));
+  if (bankMatch) return bankMatch.answer;
 
   if (/\bwhat should i prioritize\b[\s\S]*\bwedding day timeline\b/i.test(trimmed)) {
     return [
