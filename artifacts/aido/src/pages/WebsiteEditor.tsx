@@ -1285,9 +1285,17 @@ export default function WebsiteEditor() {
                 size="sm"
                 variant="outline"
                 disabled
-                className="h-7 rounded-full border-[#D8B7C7] bg-[#FFF7F2] px-3 text-xs font-semibold text-[#8D294D] opacity-100 disabled:opacity-100"
+                className={
+                  previewOpen || record.published
+                    ? "h-7 rounded-full border-[#8D294D] bg-[#8D294D] px-3 text-xs font-semibold text-[#FFF7F2] opacity-100 shadow-sm disabled:opacity-100"
+                    : "h-7 rounded-full border-emerald-600 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 opacity-100 shadow-sm disabled:opacity-100"
+                }
               >
-                {t("website_editor.editing", { defaultValue: "Editing" })}
+                {previewOpen
+                  ? t("website_editor.preview", { defaultValue: "Preview" })
+                  : record.published
+                    ? t("website_editor.published", { defaultValue: "Published" })
+                    : t("website_editor.editing", { defaultValue: "Editing" })}
               </Button>
             </div>
           </div>
