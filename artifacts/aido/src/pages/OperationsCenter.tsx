@@ -77,6 +77,29 @@ const LAUNCH_PLAN_ASSIGNEE_EMAILS = LAUNCH_PLAN_ASSIGNEES.map(assignee => assign
 const getLaunchPlanAssigneeName = (email: string) =>
   LAUNCH_PLAN_ASSIGNEES.find(assignee => assignee.email === email)?.name ?? "Unassigned";
 
+const buildLaunchPlanTaskEmail = (item: LaunchPlanItem) => {
+  const assigneeName = getLaunchPlanAssigneeName(item.assigneeEmail);
+  const priority = item.priority.charAt(0).toUpperCase() + item.priority.slice(1);
+  return {
+    subject: `A.IDO Launch Task: ${item.title || "Launch task"}`,
+    body: [
+      "A.IDO Launch Plan Task",
+      "",
+      `Task: ${item.title || "Untitled task"}`,
+      `Category: ${item.category || "Launch"}`,
+      `Assigned to: ${assigneeName}`,
+      `Priority: ${priority}`,
+      `Due date: ${item.dueDate || "Not set"}`,
+      `Status: ${item.completed ? "Completed" : "Open"}`,
+      "",
+      "Notes:",
+      item.notes || "No notes added.",
+      "",
+      "Open the A.IDO Operations Center to update this task.",
+    ].join("\n"),
+  };
+};
+
 const fallbackLaunchPlanItems: LaunchPlanItem[] = [
   {
     id: "launch-positioning",
@@ -345,12 +368,30 @@ export default function OperationsCenterPage() {
 
   const sendLaunchPlanTaskMutation = useMutation({
     mutationFn: async ({ item, recipientEmail }: { item: LaunchPlanItem; recipientEmail: string }) => {
+      const taskEmail = buildLaunchPlanTaskEmail(item);
       const r = await authedFetch("/api/admin/launch-plan/send-task", {
         method: "POST",
         body: JSON.stringify({ task: item, recipientEmail }),
       });
       const body = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(body?.error ?? "Failed to email launch task");
+      if (!r.ok) {
+        const fallback = await authedFetch("/api/admin/marketing/send", {
+          method: "POST",
+          body: JSON.stringify({
+            emails: [recipientEmail],
+            subject: taskEmail.subject,
+            body: taskEmail.body,
+          }),
+        });
+        const fallbackBody = await fallback.json().catch(() => ({}));
+        if (!fallback.ok || fallbackBody?.failed > 0) {
+          const firstError = Array.isArray(fallbackBody?.results)
+            ? fallbackBody.results.find((result: { ok?: boolean; error?: string }) => !result.ok)?.error
+            : undefined;
+          throw new Error(firstError ?? fallbackBody?.error ?? body?.error ?? "Failed to email launch task");
+        }
+        return fallbackBody;
+      }
       return body;
     },
     onSuccess: (_data, variables) => {
