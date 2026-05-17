@@ -198,6 +198,17 @@ const normalizeLaunchPlanItem = (item: Partial<LaunchPlanItem>, index = 0): Laun
   };
 };
 
+const appendNewLaunchPlanItems = (currentItems: LaunchPlanItem[], generatedItems: LaunchPlanItem[]) => {
+  const existingTitles = new Set(currentItems.map(item => item.title.trim().toLowerCase()).filter(Boolean));
+  const uniqueGenerated = generatedItems.filter(item => {
+    const title = item.title.trim().toLowerCase();
+    if (!title || existingTitles.has(title)) return false;
+    existingTitles.add(title);
+    return true;
+  });
+  return [...currentItems, ...uniqueGenerated];
+};
+
 const TABS = [
   { key: "overview", label: "Overview", icon: BarChart2 },
   { key: "users", label: "Users", icon: Users },
@@ -469,7 +480,7 @@ function LaunchPlanSection() {
         .map((item, index) => normalizeLaunchPlanItem({ ...item, id: makeLaunchPlanId() }, index));
       if (nextItems.length > 0) {
         setHasLoaded(true);
-        setItems(nextItems);
+        setItems(current => appendNewLaunchPlanItems(current, nextItems));
       }
     },
   });

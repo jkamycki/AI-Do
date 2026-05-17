@@ -148,6 +148,17 @@ const normalizeLaunchPlanItem = (item: Partial<LaunchPlanItem>, index = 0): Laun
   };
 };
 
+const appendNewLaunchPlanItems = (currentItems: LaunchPlanItem[], generatedItems: LaunchPlanItem[]) => {
+  const existingTitles = new Set(currentItems.map(item => item.title.trim().toLowerCase()).filter(Boolean));
+  const uniqueGenerated = generatedItems.filter(item => {
+    const title = item.title.trim().toLowerCase();
+    if (!title || existingTitles.has(title)) return false;
+    existingTitles.add(title);
+    return true;
+  });
+  return [...currentItems, ...uniqueGenerated];
+};
+
 const makeLaunchPlanId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `launch-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -355,10 +366,10 @@ export default function OperationsCenterPage() {
       }
 
       setHasLoadedLaunchPlan(true);
-      setLaunchPlanItems(generatedItems);
+      setLaunchPlanItems(current => appendNewLaunchPlanItems(current, generatedItems));
       toast({
-        title: data.source === "fallback" ? "Launch plan starter added" : "Launch plan generated",
-        description: "You can edit every item, add notes, and check tasks off as you finish them.",
+        title: data.source === "fallback" ? "Launch plan starter added" : "Launch plan items added",
+        description: "Existing tasks and completed items were kept in place.",
       });
     },
     onError: () => {
