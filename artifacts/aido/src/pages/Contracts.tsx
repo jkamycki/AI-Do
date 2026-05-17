@@ -111,6 +111,8 @@ function normalizeRiskLevel(value: unknown): ContractAnalysis["overallRiskLevel"
 function normalizeAnalysis(value: unknown): ContractAnalysis | null {
   if (!value) return null;
   const raw = getObject(value);
+  const errorText = asString(raw.error);
+  const isParseFailure = errorText.toLowerCase().includes("failed to parse ai response");
   const redFlags = Array.isArray(raw.redFlags)
     ? raw.redFlags.map((item) => {
         const flag = getObject(item);
@@ -128,11 +130,11 @@ function normalizeAnalysis(value: unknown): ContractAnalysis | null {
         return { label: asString(term.label), value: asString(term.value) };
       }).filter((term) => term.label || term.value)
     : [];
-  const errorText = asString(raw.error);
+  const incompleteSummary = "This saved analysis is incomplete. Please upload the contract again to generate a fresh review.";
   return {
-    overallRiskLevel: normalizeRiskLevel(raw.overallRiskLevel),
+    overallRiskLevel: isParseFailure ? null : normalizeRiskLevel(raw.overallRiskLevel),
     vendorType: asString(raw.vendorType),
-    summary: asString(raw.summary) || errorText || "This saved analysis is incomplete. Try uploading the contract again to generate a fresh review.",
+    summary: isParseFailure ? incompleteSummary : asString(raw.summary) || incompleteSummary,
     redFlags,
     keyTerms,
     cancellationPolicy: asString(raw.cancellationPolicy),
