@@ -4,6 +4,63 @@ import { requireAuth } from "../middlewares/requireAuth";
 
 const router = Router();
 
+function cleanVenueValue(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function buildVenueOptionsFallback(input: {
+  guestCount?: string;
+  indoorOutdoor?: string;
+  budgetRange?: string;
+  location?: string;
+  style?: string[];
+  notes?: string;
+}) {
+  const location = cleanVenueValue(input.location, "your preferred area");
+  const guestCount = cleanVenueValue(input.guestCount, "your guest count");
+  const budgetRange = cleanVenueValue(input.budgetRange, "your budget");
+  const preference = cleanVenueValue(input.indoorOutdoor, "flexible indoor/outdoor needs").toLowerCase();
+  const styles = Array.isArray(input.style) && input.style.length ? input.style.map((item) => item.toLowerCase()) : [];
+  const notes = cleanVenueValue(input.notes, "your must-haves");
+  const wantsGarden = styles.some((style) => ["garden", "boho", "rustic", "coastal"].includes(style));
+  const wantsModern = styles.some((style) => ["modern", "industrial"].includes(style));
+  const wantsClassic = styles.some((style) => ["ballroom", "classic"].includes(style));
+
+  const venueOptions = [
+    wantsGarden
+      ? `- Garden estate or conservatory near ${location} - strong fit for floral, outdoor, or romantic styling; ask for rain backup, ceremony lawn rules, and included rentals.`
+      : `- Estate venue near ${location} - flexible choice for a polished wedding look; ask about guest flow, ceremony/reception transitions, and rental inclusions.`,
+    wantsModern
+      ? `- Modern loft or industrial event space near ${location} - good fit for clean decor, dramatic lighting, and flexible layouts; confirm catering rules and sound limits.`
+      : `- Boutique hotel or restaurant event room near ${location} - useful for built-in service, guest convenience, and fewer outside rentals; confirm minimum spend and menu flexibility.`,
+    wantsClassic
+      ? `- Ballroom or country club near ${location} - likely fit for ${guestCount} guests and a classic reception; compare package minimums, service fees, and payment dates.`
+      : `- Country club or banquet venue near ${location} - practical option for ${guestCount} guests; compare package minimums, service fees, and payment dates.`,
+    `- Historic mansion, museum, or gallery near ${location} - strong option if you want character without heavy decor; ask about vendor restrictions, load-in rules, and accessibility.`,
+    `- Winery, brewery, or private estate near ${location} - can work well for a distinctive guest experience; confirm transportation, parking, noise limits, and weather backup.`,
+  ];
+
+  return [
+    "### Venue options to explore",
+    "",
+    `These options are based on ${guestCount} guests, ${preference}, ${budgetRange}, and notes like ${notes}. Add each promising match to your shortlist, then attach the venue's official website once confirmed.`,
+    "",
+    ...venueOptions,
+    "",
+    "### Questions to ask first",
+    "",
+    "- What dates are available in your preferred season?",
+    "- What is included in the venue fee, and what rentals are extra?",
+    "- Are catering, bar, decor, music, or vendor choices restricted?",
+    "- What deposit amount, payment schedule, and cancellation terms apply?",
+    "- What is the rain plan, parking plan, and accessibility setup?",
+    "",
+    "### Simple shortlist score",
+    "",
+    "Score each venue from 1-5 for budget fit, guest fit, style fit, logistics, and rule flexibility. Keep the highest total scores for tours.",
+  ].join("\n");
+}
+
 // Small AI-rewrite endpoint used by the inline TextStyleToolbar's
 // "AI generate" button on the wedding website editor (and any other
 // EditableText in the app). Takes a short user prompt + the current
@@ -104,12 +161,12 @@ router.post("/ai/venue-options", requireAuth, async (req, res) => {
           content: [
             "You are an expert wedding venue strategist inside A.IDO.",
             "Use the couple's venue discovery details to suggest named wedding venues that may fit their request.",
-            "When the location is specific enough, provide 5-8 real venue names in or near that area.",
+            "Provide 5-8 venue options. When the location is specific enough, make them real named venues in or near that area.",
             "Prioritize venues whose official websites are likely well-known and include website links in markdown when you know a likely official homepage.",
             "If you are not confident about a venue's official website, still include the named venue and write '(website link needs verification)' after the name instead of inventing a URL.",
             "Do not use generic directory links, social media links, map links, or made-up URLs.",
             "Never claim exact addresses, prices, availability, package details, or capacity unless the user provided them.",
-            "If the location is too vague to suggest named venues, say exactly what location detail is needed, such as city/state or preferred radius.",
+            "If the location is too vague for real named venues, still provide practical venue option types tailored to the details, then mention what location detail would make the names more specific.",
             "Return concise markdown only.",
             "Format linked venues as: - [Venue Name](official website URL) - why it may fit.",
             "Format unlinked venues as: - Venue Name (website link needs verification) - why it may fit.",
@@ -129,13 +186,13 @@ router.post("/ai/venue-options", requireAuth, async (req, res) => {
 
     const text = completion.choices[0]?.message?.content?.trim() ?? "";
     if (!text) {
-      res.status(500).json({ error: "AI returned an empty response. Please try again." });
+      res.json({ text: buildVenueOptionsFallback({ guestCount, indoorOutdoor, budgetRange, location, style, notes }) });
       return;
     }
     res.json({ text });
   } catch (err) {
     req.log.error(err, "AI venue options failed");
-    res.status(500).json({ error: "Failed to generate venue options. Please try again." });
+    res.json({ text: buildVenueOptionsFallback(req.body as Record<string, unknown>) });
   }
 });
 

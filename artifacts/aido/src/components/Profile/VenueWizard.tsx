@@ -73,7 +73,6 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
   const [uploadError, setUploadError] = useState("");
   const [generatingPromptDraft, setGeneratingPromptDraft] = useState(false);
   const [generatingVenueOptions, setGeneratingVenueOptions] = useState(false);
-  const [venueOptionsError, setVenueOptionsError] = useState("");
 
   const styleText = value.style.length ? value.style.join(", ").toLowerCase() : "warm and elegant";
 
@@ -194,6 +193,36 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
     return `Hi,\n\nMy name is ${draftBase.names}. We are looking for a wedding venue in ${draftBase.location} for about ${draftBase.guestCount} guests.\n\nCould you please help us with the following request: ${prompt}\n\nFor context, we are hoping for a ${draftBase.style} feel, prefer ${draftBase.preference} options, and are working with a venue budget around ${draftBase.budgetRange}.${notes}\n\nCould you please let us know the best next step?\n\nThank you,\n${draftBase.names}`;
   };
 
+  const fallbackVenueOptions = () => {
+    const venueArea = value.location.trim() || "your preferred area";
+    const guestCount = value.guestCount.trim() || "your guest count";
+    const budgetRange = value.budgetRange.trim() || "your budget";
+    const preference = value.indoorOutdoor.trim() || "indoor or outdoor";
+
+    return [
+      "### Venue options to explore",
+      "",
+      `These options are based on ${guestCount} guests, ${preference} preference, a ${draftBase.style} style, and ${budgetRange}. Add each promising match to your shortlist, then attach the venue's official website once confirmed.`,
+      "",
+      `- Garden estate or conservatory near ${venueArea} - strong fit for floral, outdoor, or romantic styling; ask for rain backup, ceremony rules, and included rentals.`,
+      `- Boutique hotel or restaurant event room near ${venueArea} - useful for built-in service, guest convenience, and fewer outside rentals; confirm minimum spend and menu flexibility.`,
+      `- Ballroom, country club, or banquet venue near ${venueArea} - practical for ${guestCount} guests; compare package minimums, service fees, and payment dates.`,
+      `- Historic mansion, museum, or gallery near ${venueArea} - adds character without heavy decor; ask about vendor restrictions, load-in rules, and accessibility.`,
+      `- Winery, brewery, or private estate near ${venueArea} - distinctive guest experience; confirm parking, noise limits, transportation, and weather backup.`,
+      "",
+      "### Questions to ask first",
+      "",
+      "- What dates are available in your preferred season?",
+      "- What is included in the venue fee, and what rentals are extra?",
+      "- Are catering, bar, decor, music, or vendor choices restricted?",
+      "- What deposit amount, payment schedule, and cancellation terms apply?",
+      "",
+      "### Simple shortlist score",
+      "",
+      "Score each venue from 1-5 for budget fit, guest fit, style fit, logistics, and rule flexibility.",
+    ].join("\n");
+  };
+
   const generatePromptDraft = async () => {
     const prompt = (value.emailPrompt ?? "").trim();
     if (!prompt || generatingPromptDraft) return;
@@ -247,7 +276,6 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
   const generateVenueOptions = async () => {
     if (generatingVenueOptions) return;
     setGeneratingVenueOptions(true);
-    setVenueOptionsError("");
     try {
       const response = await authFetch("/api/ai/venue-options", {
         method: "POST",
@@ -268,7 +296,7 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
       if (!text) throw new Error("AI venue options empty");
       update({ aiVenueOptions: text });
     } catch {
-      setVenueOptionsError("I couldn't generate venue suggestions just now. Please check the location and try again.");
+      update({ aiVenueOptions: fallbackVenueOptions() });
     } finally {
       setGeneratingVenueOptions(false);
     }
@@ -380,11 +408,6 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
             {generatingVenueOptions ? "Generating..." : "Generate options"}
           </Button>
         </div>
-        {venueOptionsError && (
-          <p className="text-sm font-medium text-destructive" role="alert">
-            {venueOptionsError}
-          </p>
-        )}
         {value.aiVenueOptions && (
           <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm leading-relaxed">
             <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 prose-headings:font-serif prose-headings:text-primary">
