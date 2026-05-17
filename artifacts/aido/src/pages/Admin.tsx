@@ -20,6 +20,7 @@ import {
   ChevronDown as ChevronDownIcon, ChevronUp as ChevronUpIcon, Trash2, Loader2,
   UserX, TrendingDown, ArrowRight, SortAsc, Globe, Eye, UserCheck, UserMinus,
   Megaphone, Send, X, CheckCircle, XCircle, Sparkles, FlaskConical,
+  ListChecks, Plus,
 } from "lucide-react";
 import MessagesSection from "@/components/admin/MessagesSection";
 
@@ -98,7 +99,74 @@ interface TestSessionRow {
   errorsEncountered: number;
 }
 
+type LaunchPlanItem = {
+  id: string;
+  title: string;
+  category: string;
+  notes: string;
+  assigneeEmail: string;
+  priority: "low" | "medium" | "high";
+  dueDate: string;
+  completed: boolean;
+};
+
 const BRAND = "#7C3F5E";
+const LAUNCH_PLAN_STORAGE_KEY = "aido_admin_launch_plan_v1";
+const LAUNCH_PLAN_ASSIGNEES = ["kamyckijoseph@gmail.com", "michaelgang31@gmail.com"] as const;
+
+const fallbackLaunchPlanItems: LaunchPlanItem[] = [
+  {
+    id: "launch-positioning",
+    title: "Finalize A.IDO launch positioning",
+    category: "Brand",
+    notes: "Confirm the primary promise, launch audience, and short description used across the website, previews, and outreach.",
+    assigneeEmail: "kamyckijoseph@gmail.com",
+    priority: "high",
+    dueDate: "",
+    completed: false,
+  },
+  {
+    id: "launch-onboarding",
+    title: "Test signup and onboarding from a fresh account",
+    category: "Product",
+    notes: "Walk through profile setup, guest list, budget, vendors, contracts, website editor, and Aria from mobile and desktop.",
+    assigneeEmail: "michaelgang31@gmail.com",
+    priority: "high",
+    dueDate: "",
+    completed: false,
+  },
+  {
+    id: "launch-support",
+    title: "Prepare support and feedback workflow",
+    category: "Operations",
+    notes: "Make sure support messages, feedback prompts, and Operations Center tickets are being received and reviewed daily.",
+    assigneeEmail: "kamyckijoseph@gmail.com",
+    priority: "medium",
+    dueDate: "",
+    completed: false,
+  },
+];
+
+const makeLaunchPlanId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `launch-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const normalizeLaunchPlanItem = (item: Partial<LaunchPlanItem>, index = 0): LaunchPlanItem => {
+  const priority = String(item.priority ?? "medium").toLowerCase();
+  const assigneeEmail = String(item.assigneeEmail ?? "").toLowerCase();
+  return {
+    id: String(item.id ?? makeLaunchPlanId()),
+    title: String(item.title ?? `Launch task ${index + 1}`),
+    category: String(item.category ?? "Launch"),
+    notes: String(item.notes ?? ""),
+    assigneeEmail: LAUNCH_PLAN_ASSIGNEES.includes(assigneeEmail as typeof LAUNCH_PLAN_ASSIGNEES[number]) ? assigneeEmail : "",
+    priority: priority === "low" || priority === "high" ? priority : "medium",
+    dueDate: String(item.dueDate ?? ""),
+    completed: Boolean(item.completed),
+  };
+};
+
 const TABS = [
   { key: "overview", label: "Overview", icon: BarChart2 },
   { key: "users", label: "Users", icon: Users },
@@ -107,6 +175,7 @@ const TABS = [
   { key: "archive", label: "Archive", icon: Shield },
   { key: "events", label: "Event Log", icon: Activity },
   { key: "messages", label: "Messages", icon: Inbox },
+  { key: "launchPlan", label: "A.IDO Launch Plan", icon: ListChecks },
   { key: "testActivity", label: "Free Test Account", icon: FlaskConical },
 ];
 
@@ -278,6 +347,226 @@ function TestActivitySection({
                       </p>
                     )}
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LaunchPlanSection() {
+  const [prompt, setPrompt] = useState("");
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [items, setItems] = useState<LaunchPlanItem[]>(() => {
+    if (typeof window === "undefined") return fallbackLaunchPlanItems;
+    try {
+      const stored = window.localStorage.getItem(LAUNCH_PLAN_STORAGE_KEY);
+      if (!stored) return fallbackLaunchPlanItems;
+      const parsed = JSON.parse(stored) as LaunchPlanItem[];
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed.map(normalizeLaunchPlanItem) : fallbackLaunchPlanItems;
+    } catch {
+      return fallbackLaunchPlanItems;
+    }
+  });
+
+  const { data, isLoading } = useQuery<{ items: Array<Partial<LaunchPlanItem>>; assignees: string[] }>({
+    queryKey: ["admin-launch-plan"],
+    queryFn: async () => {
+      const r = await authFetch("/api/admin/launch-plan");
+      if (!r.ok) throw new Error("Failed to load launch plan");
+      return r.json();
+    },
+  });
+
+  React.useEffect(() => {
+    window.localStorage.setItem(LAUNCH_PLAN_STORAGE_KEY, JSON.stringify(items));
+  }, [items]);
+
+  React.useEffect(() => {
+    if (!data?.items) return;
+    setItems(data.items.map(normalizeLaunchPlanItem));
+    setHasLoaded(true);
+  }, [data]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (nextItems: LaunchPlanItem[]) => {
+      const r = await authFetch("/api/admin/launch-plan", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: nextItems }),
+      });
+      if (!r.ok) throw new Error("Failed to save launch plan");
+      return r.json();
+    },
+  });
+
+  React.useEffect(() => {
+    if (!hasLoaded) return;
+    const timeout = window.setTimeout(() => saveMutation.mutate(items), 700);
+    return () => window.clearTimeout(timeout);
+  }, [hasLoaded, items]);
+
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      const r = await authFetch("/api/admin/launch-plan/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          focus: prompt,
+          currentItems: items.map(({ title, category, notes, assigneeEmail, priority, dueDate, completed }) => ({
+            title,
+            category,
+            notes,
+            assigneeEmail,
+            priority,
+            dueDate,
+            completed,
+          })),
+        }),
+      });
+      if (!r.ok) throw new Error("Failed to generate launch plan");
+      return r.json() as Promise<{ items: Array<Partial<LaunchPlanItem>>; source?: string }>;
+    },
+    onSuccess: (generated) => {
+      const nextItems = (generated.items ?? [])
+        .filter(item => String(item.title ?? "").trim().length > 0)
+        .map((item, index) => normalizeLaunchPlanItem({ ...item, id: makeLaunchPlanId() }, index));
+      if (nextItems.length > 0) {
+        setHasLoaded(true);
+        setItems(nextItems);
+      }
+    },
+  });
+
+  const completedCount = items.filter(item => item.completed).length;
+  const openCount = items.length - completedCount;
+  const progress = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
+  const assigneeStats = LAUNCH_PLAN_ASSIGNEES.map(email => ({
+    email,
+    total: items.filter(item => item.assigneeEmail === email).length,
+    open: items.filter(item => item.assigneeEmail === email && !item.completed).length,
+  }));
+
+  const updateItem = (id: string, patch: Partial<LaunchPlanItem>) => {
+    setItems(current => current.map(item => item.id === id ? { ...item, ...patch } : item));
+  };
+
+  const addItem = () => {
+    setHasLoaded(true);
+    setItems(current => [
+      ...current,
+      {
+        id: makeLaunchPlanId(),
+        title: "New launch task",
+        category: "Launch",
+        notes: "",
+        assigneeEmail: "",
+        priority: "medium",
+        dueDate: "",
+        completed: false,
+      },
+    ]);
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <SectionHeader
+          title="A.IDO Launch Plan"
+          description="Shared checklist for Kamycki and Michael to organize the portal launch."
+        />
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={addItem} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Task
+          </Button>
+          <Button size="sm" onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} className="gap-2">
+            {generateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {generateMutation.isPending ? "Generating..." : "Generate Checklist"}
+          </Button>
+        </div>
+      </div>
+
+      <Card className="border-none shadow-sm">
+        <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_280px]">
+          <div>
+            <label className="text-sm font-semibold text-foreground">AI checklist focus</label>
+            <textarea
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              placeholder="Example: launch before June, verify payments, polish website previews, prep support workflow..."
+              className="mt-2 min-h-24 w-full rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+            />
+          </div>
+          <div className="rounded-xl border border-primary/15 bg-primary/5 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Progress</p>
+            <p className="mt-1 text-3xl font-bold text-primary">{progress}%</p>
+            <p className="mt-1 text-sm text-muted-foreground">{completedCount} complete, {openCount} open</p>
+            <div className="mt-3 h-2 rounded-full bg-white">
+              <div className="h-2 rounded-full bg-primary" style={{ width: `${progress}%` }} />
+            </div>
+            <div className="mt-4 space-y-2 text-xs">
+              {assigneeStats.map(stat => (
+                <div key={stat.email} className="flex items-center justify-between gap-2">
+                  <span className="truncate text-muted-foreground">{stat.email}</span>
+                  <span className="font-semibold text-foreground">{stat.open}/{stat.total} open</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              {saveMutation.isPending ? "Saving..." : hasLoaded ? "Shared plan saves automatically" : "Loading shared plan"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {items.map(item => (
+            <Card key={item.id} className={`border-none shadow-sm ${item.completed ? "bg-emerald-50/70" : "bg-card"}`}>
+              <CardContent className="p-4">
+                <div className="grid gap-3 lg:grid-cols-[auto_1fr_auto] lg:items-start">
+                  <button
+                    type="button"
+                    onClick={() => updateItem(item.id, { completed: !item.completed })}
+                    className={`mt-1 flex h-9 w-9 items-center justify-center rounded-full border ${item.completed ? "border-emerald-500 bg-emerald-500 text-white" : "border-primary/25 text-primary"}`}
+                    aria-label={item.completed ? "Mark task incomplete" : "Mark task complete"}
+                  >
+                    <CheckCircle2 className="h-5 w-5" />
+                  </button>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <input value={item.category} onChange={(event) => updateItem(item.id, { category: event.target.value })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm font-semibold outline-none focus:border-primary" placeholder="Category" />
+                    <input value={item.title} onChange={(event) => updateItem(item.id, { title: event.target.value })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm font-semibold outline-none focus:border-primary md:col-span-2" placeholder="Task title" />
+                    <select value={item.assigneeEmail || "unassigned"} onChange={(event) => updateItem(item.id, { assigneeEmail: event.target.value === "unassigned" ? "" : event.target.value })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary">
+                      <option value="unassigned">Unassigned</option>
+                      {LAUNCH_PLAN_ASSIGNEES.map(email => <option key={email} value={email}>{email}</option>)}
+                    </select>
+                    <select value={item.priority} onChange={(event) => updateItem(item.id, { priority: event.target.value as LaunchPlanItem["priority"] })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary">
+                      <option value="low">Low priority</option>
+                      <option value="medium">Medium priority</option>
+                      <option value="high">High priority</option>
+                    </select>
+                    <input type="date" value={item.dueDate} onChange={(event) => updateItem(item.id, { dueDate: event.target.value })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+                    <textarea value={item.notes} onChange={(event) => updateItem(item.id, { notes: event.target.value })} className="min-h-20 rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary md:col-span-2" placeholder="Notes" />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setHasLoaded(true);
+                      setItems(current => current.filter(existing => existing.id !== item.id));
+                    }}
+                    title="Delete task"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -2331,7 +2620,7 @@ export default function AdminPage() {
 
       {/* Tab content */}
       <div>
-        {metricsLoading && activeTab !== "events" && activeTab !== "messages" && activeTab !== "testActivity" && (
+        {metricsLoading && activeTab !== "events" && activeTab !== "messages" && activeTab !== "testActivity" && activeTab !== "launchPlan" && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-24" />)}
@@ -2360,6 +2649,7 @@ export default function AdminPage() {
         )}
 
         {activeTab === "messages" && <MessagesSection />}
+        {activeTab === "launchPlan" && <LaunchPlanSection />}
         {activeTab === "testActivity" && (
           <TestActivitySection
             sessions={testSessionsData?.sessions ?? []}
