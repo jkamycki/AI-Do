@@ -308,7 +308,13 @@ interface AdminUser {
 }
 
 function UserAvatar({ user }: { user: AdminUser }) {
-  const initials = `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() || "?";
+  const displayName = getAdminUserDisplayName(user);
+  const initials = displayName
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "?";
   if (user.imageUrl) {
     return <img src={user.imageUrl} alt={initials} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />;
   }
@@ -317,6 +323,26 @@ function UserAvatar({ user }: { user: AdminUser }) {
       {initials}
     </div>
   );
+}
+
+function nameFromEmail(email: string | null): string {
+  const local = (email ?? "").split("@")[0] ?? "";
+  return local
+    .replace(/[._-]+/g, " ")
+    .replace(/\d+/g, "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function getAdminUserDisplayName(user: AdminUser): string {
+  const clerkName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+  if (clerkName) return clerkName;
+  const emailName = nameFromEmail(user.email);
+  if (emailName) return emailName;
+  return user.email ?? "Unknown";
 }
 
 function timeAgo(dateStr: string | null): string {
@@ -360,7 +386,7 @@ function UserDetailModal({ user, onClose, onDeleted }: { user: AdminUser; onClos
     }
   };
 
-  const fullName = `${user.firstName} ${user.lastName}`.trim() || "Unknown";
+  const fullName = getAdminUserDisplayName(user);
   const sections = [
     {
       title: "Account",
@@ -1027,7 +1053,7 @@ function UserDirectory() {
           ) : (
             <div className="divide-y divide-border/50">
               {users.map(user => {
-                const fullName = `${user.firstName} ${user.lastName}`.trim() || "Unknown";
+                const fullName = getAdminUserDisplayName(user);
                 return (
                   <div
                     key={user.id}
