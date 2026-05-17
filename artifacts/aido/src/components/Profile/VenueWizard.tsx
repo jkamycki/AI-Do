@@ -73,6 +73,7 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
   const [uploadError, setUploadError] = useState("");
   const [generatingPromptDraft, setGeneratingPromptDraft] = useState(false);
   const [generatingVenueOptions, setGeneratingVenueOptions] = useState(false);
+  const [venueOptionsError, setVenueOptionsError] = useState("");
 
   const styleText = value.style.length ? value.style.join(", ").toLowerCase() : "warm and elegant";
 
@@ -243,15 +244,10 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
     }
   };
 
-  const fallbackVenueOptions = () => [
-    "### Venue suggestions unavailable",
-    "",
-    "I couldn't generate named venue suggestions right now. Check that you entered a specific city/state or preferred area, then try **Generate options** again.",
-  ].join("\n");
-
   const generateVenueOptions = async () => {
     if (generatingVenueOptions) return;
     setGeneratingVenueOptions(true);
+    setVenueOptionsError("");
     try {
       const response = await authFetch("/api/ai/venue-options", {
         method: "POST",
@@ -268,9 +264,11 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
       });
       if (!response.ok) throw new Error("AI venue options failed");
       const data = await response.json() as { text?: string };
-      update({ aiVenueOptions: data.text?.trim() || fallbackVenueOptions() });
+      const text = data.text?.trim();
+      if (!text) throw new Error("AI venue options empty");
+      update({ aiVenueOptions: text });
     } catch {
-      update({ aiVenueOptions: fallbackVenueOptions() });
+      setVenueOptionsError("I couldn't generate venue suggestions just now. Please check the location and try again.");
     } finally {
       setGeneratingVenueOptions(false);
     }
@@ -368,7 +366,7 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
               AI venue options
             </p>
             <p className="text-xs text-muted-foreground">
-              Generate named venue suggestions and shortlist guidance from the details above.
+              Generate named venue suggestions with website links and shortlist guidance from the details above.
             </p>
           </div>
           <Button
@@ -382,6 +380,11 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
             {generatingVenueOptions ? "Generating..." : "Generate options"}
           </Button>
         </div>
+        {venueOptionsError && (
+          <p className="text-sm font-medium text-destructive" role="alert">
+            {venueOptionsError}
+          </p>
+        )}
         {value.aiVenueOptions && (
           <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm leading-relaxed">
             <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 prose-headings:font-serif prose-headings:text-primary">
