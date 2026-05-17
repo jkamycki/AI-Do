@@ -65,6 +65,70 @@ function sanitizeText(text: string): string {
   return text.replace(/\u0000/g, "").replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ").trim();
 }
 
+function asObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function asText(value: unknown, fallback = ""): string {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function asTextArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => asText(item)).filter(Boolean) : [];
+}
+
+function parseJsonObject(raw: string): Record<string, unknown> | null {
+  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  const candidates = [cleaned];
+  const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (objectMatch?.[0] && objectMatch[0] !== cleaned) candidates.push(objectMatch[0]);
+
+  for (const candidate of candidates) {
+    try {
+      return asObject(JSON.parse(candidate));
+    } catch {}
+  }
+  return null;
+}
+
+function normalizeRisk(value: unknown): "low" | "medium" | "high" {
+  return value === "low" || value === "medium" || value === "high" ? value : "medium";
+}
+
+function normalizeAnalysis(raw: Record<string, unknown>): Record<string, unknown> {
+  const redFlags = Array.isArray(raw.redFlags)
+    ? raw.redFlags.map((item) => {
+        const flag = asObject(item);
+        return {
+          severity: normalizeRisk(flag.severity),
+          title: asText(flag.title, "Contract concern"),
+          detail: asText(flag.detail),
+          recommendation: asText(flag.recommendation),
+        };
+      }).filter((flag) => flag.detail || flag.recommendation || flag.title !== "Contract concern")
+    : [];
+  const keyTerms = Array.isArray(raw.keyTerms)
+    ? raw.keyTerms.map((item) => {
+        const term = asObject(item);
+        return { label: asText(term.label), value: asText(term.value) };
+      }).filter((term) => term.label || term.value)
+    : [];
+
+  return {
+    overallRiskLevel: normalizeRisk(raw.overallRiskLevel),
+    vendorType: asText(raw.vendorType, "Vendor"),
+    summary: asText(raw.summary, "AI reviewed this contract, but returned a brief response. Review the extracted key terms and consider having an attorney review the original document."),
+    redFlags,
+    keyTerms,
+    cancellationPolicy: asText(raw.cancellationPolicy, "Not specified"),
+    paymentTerms: asText(raw.paymentTerms, "Not specified"),
+    liabilityNotes: asText(raw.liabilityNotes, "Not specified"),
+    positives: asTextArray(raw.positives),
+    missingClauses: asTextArray(raw.missingClauses),
+    negotiationTips: asTextArray(raw.negotiationTips),
+  };
+}
+
 function xmlTextToPlainText(xml: string): string {
   return sanitizeText(
     he.decode(
@@ -219,12 +283,14 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
     }, { signal: AbortSignal.timeout(90_000) });
 
     const analysisRaw = completion.choices[0]?.message?.content ?? "{}";
-    let analysis: Record<string, unknown> = {};
-    try {
-      analysis = JSON.parse(analysisRaw);
-    } catch {
-      analysis = { error: "Failed to parse AI response", raw: analysisRaw };
+    const parsedAnalysis = parseJsonObject(analysisRaw);
+    if (!parsedAnalysis) {
+      req.log.warn({ preview: analysisRaw.slice(0, 500) }, "Contract AI returned invalid JSON");
+      return res.status(502).json({
+        error: "The AI returned an unreadable analysis. Please try again.",
+      });
     }
+    const analysis = normalizeAnalysis(parsedAnalysis);
 
     const displayName = (req.body?.displayName as string | undefined)?.trim() || originalname;
     const rawVendorId = (req.body?.vendorId as string | undefined)?.trim();
