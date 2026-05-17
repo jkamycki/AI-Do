@@ -355,6 +355,7 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
     const [profileRows, collaboratorRows, eventRows] = await Promise.all([
       db.select({
         userId: weddingProfiles.userId,
+        profileId: weddingProfiles.id,
         partner1Name: weddingProfiles.partner1Name,
         partner2Name: weddingProfiles.partner2Name,
         weddingDate: weddingProfiles.weddingDate,
@@ -364,11 +365,17 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
 
       db.select({
         userId: workspaceCollaborators.inviteeUserId,
+        inviteeEmail: workspaceCollaborators.inviteeEmail,
         role: workspaceCollaborators.role,
         acceptedAt: workspaceCollaborators.acceptedAt,
         profileId: workspaceCollaborators.profileId,
+        ownerUserId: weddingProfiles.userId,
+        workstationName: weddingProfiles.workstationName,
+        partner1Name: weddingProfiles.partner1Name,
+        partner2Name: weddingProfiles.partner2Name,
       })
         .from(workspaceCollaborators)
+        .innerJoin(weddingProfiles, eq(workspaceCollaborators.profileId, weddingProfiles.id))
         .where(and(
           eq(workspaceCollaborators.status, "active"),
           sql`${workspaceCollaborators.inviteeUserId} IS NOT NULL`
@@ -413,7 +420,8 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
       ...Array.from(eventMap.keys()),
       ...Array.from(profileMap.keys()),
       ...Array.from(collaboratorMap.keys()),
-    ])).filter(Boolean).slice(0, 200);
+      ...collaboratorRows.map(c => c.ownerUserId).filter(Boolean),
+    ].filter((id): id is string => typeof id === "string" && id.length > 0))).slice(0, 200);
 
     if (allUserIds.length === 0) {
       return res.json({ users: [], total: 0 });
@@ -423,6 +431,24 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
       userId: allUserIds,
       limit: 200,
     });
+    const clerkUserMap = new Map(clerkUsers.data.map(cu => {
+      const primaryEmail = cu.emailAddresses.find(e => e.id === cu.primaryEmailAddressId)?.emailAddress
+        ?? cu.emailAddresses[0]?.emailAddress ?? null;
+      return [cu.id, {
+        id: cu.id,
+        firstName: cu.firstName ?? "",
+        lastName: cu.lastName ?? "",
+        email: primaryEmail,
+      }];
+    }));
+
+    const displayFromClerk = (userId: string | null | undefined, fallbackEmail?: string | null) => {
+      const related = userId ? clerkUserMap.get(userId) : null;
+      const name = `${related?.firstName ?? ""} ${related?.lastName ?? ""}`.trim();
+      return name || related?.email || fallbackEmail || "Unknown";
+    };
+    const workspaceName = (row: typeof collaboratorRows[number]) =>
+      row.workstationName || [row.partner1Name, row.partner2Name].filter(Boolean).join(" & ") || "Shared workspace";
 
     const users = clerkUsers.data.map(cu => {
       const primaryEmail = cu.emailAddresses.find(e => e.id === cu.primaryEmailAddressId)?.emailAddress
@@ -431,6 +457,22 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
       const collaborator = collaboratorMap.get(cu.id);
       const events = eventMap.get(cu.id);
       const onboarded = Boolean(events?.onboarded || profile || collaborator);
+      const sharedWith = collaboratorRows
+        .filter(c => c.userId === cu.id || c.ownerUserId === cu.id)
+        .map(c => {
+          const isCollaborator = c.userId === cu.id;
+          const relatedUserId = isCollaborator ? c.ownerUserId : c.userId;
+          return {
+            profileId: c.profileId,
+            userId: relatedUserId ?? null,
+            email: isCollaborator ? clerkUserMap.get(c.ownerUserId ?? "")?.email ?? null : c.inviteeEmail,
+            displayName: displayFromClerk(relatedUserId, isCollaborator ? null : c.inviteeEmail),
+            role: c.role,
+            direction: isCollaborator ? "joined" : "shared_to",
+            workspaceName: workspaceName(c),
+            acceptedAt: c.acceptedAt?.toISOString() ?? null,
+          };
+        });
 
       return {
         id: cu.id,
@@ -449,12 +491,13 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
         partner2Name: profile?.partner2Name ?? null,
         weddingDate: profile?.weddingDate ?? null,
         venue: profile?.venue ?? null,
+        sharedWith,
       };
     });
 
     const filtered = search
       ? users.filter(u =>
-          `${u.firstName} ${u.lastName} ${u.email} ${u.partner1Name} ${u.partner2Name}`
+          `${u.firstName} ${u.lastName} ${u.email} ${u.partner1Name} ${u.partner2Name} ${u.sharedWith.map(s => `${s.displayName} ${s.email} ${s.workspaceName}`).join(" ")}`
             .toLowerCase().includes(search)
         )
       : users;

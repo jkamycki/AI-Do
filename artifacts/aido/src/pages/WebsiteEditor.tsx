@@ -77,6 +77,22 @@ const sanitizeWebsiteSlug = (value: string) =>
     .replace(/-{2,}/g, "-")
     .slice(0, 60);
 
+function formatProfileTime(time: string | null | undefined): string {
+  if (!time) return "Not set";
+  const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+  if (!match) return time;
+  const hour = Number(match[1]);
+  const minute = match[2];
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return time;
+  const period = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return minute === "00" ? `${hour12} ${period}` : `${hour12}:${minute} ${period}`;
+}
+
+function editableTextFieldValue(value: string | undefined): string {
+  return isEditableHiddenMarker(value) ? "" : value ?? "";
+}
+
 const LEGACY_PENDING_SAVE_KEY = "aido_website_pending_save_v1";
 const PENDING_SAVE_KEY_PREFIX = "aido_website_pending_save_v2";
 
@@ -1218,11 +1234,11 @@ export default function WebsiteEditor() {
     "all";
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] md:h-screen relative">
+    <div className="flex min-h-[100dvh] flex-col overflow-x-hidden lg:h-screen lg:min-h-0 lg:flex-row relative">
       {/* Mobile: live preview pinned to the top half so the user can see
           the page they're editing without flipping panels. lg+ shows it on
           the right via the sibling <main> below. */}
-      <div className="lg:hidden flex-shrink-0 border-b bg-muted/20 overflow-hidden" style={{ height: "45vh" }}>
+      <div className="h-[42dvh] min-h-[280px] max-h-[420px] lg:hidden flex-shrink-0 border-b bg-muted/20 overflow-hidden">
         <div ref={(el) => { if (el && !previewRef.current) previewRef.current = el; mobilePreviewRef.current = el; }} className="h-full overflow-y-auto">
           {livePreview && (
             <WebsiteRenderer
@@ -1253,7 +1269,7 @@ export default function WebsiteEditor() {
 
       {/* Sidebar */}
       <aside
-        className="w-full lg:flex-shrink-0 border-r bg-background overflow-y-auto block"
+        className="w-full min-w-0 lg:flex-shrink-0 border-r bg-background overflow-y-auto block"
         style={{ width: typeof window !== "undefined" && window.innerWidth >= 1024 ? sidebarWidth : undefined }}
       >
         <div className="p-5 border-b sticky top-0 bg-background z-10">
@@ -1419,8 +1435,8 @@ export default function WebsiteEditor() {
                 {[
                   { label: "Couple", value: [previewExtra?.couple.partner1Name, previewExtra?.couple.partner2Name].filter(Boolean).join(" & ") || "Not set" },
                   { label: "Date", value: previewExtra?.couple.weddingDate || "Not set" },
-                  { label: "Ceremony", value: previewExtra?.couple.ceremonyTime || "Not set" },
-                  { label: "Reception", value: previewExtra?.couple.receptionTime || "Not set" },
+                  { label: "Ceremony", value: formatProfileTime(previewExtra?.couple.ceremonyTime) },
+                  { label: "Reception", value: formatProfileTime(previewExtra?.couple.receptionTime) },
                   { label: "Venue", value: previewExtra?.couple.venue || "Not set" },
                   { label: "Location", value: previewExtra?.couple.location || "Not set" },
                 ].map((item) => (
@@ -1488,7 +1504,7 @@ export default function WebsiteEditor() {
                   { key: "_heroDate",     label: t("website_editor.content_hero_date", { defaultValue: "Hero date" }), placeholder: "Saturday, June 15, 2025" },
                   { key: "_announcement", label: t("website_editor.content_announcement", { defaultValue: "Announcement banner" }), placeholder: "" },
                 ] as const).map(({ key, label, placeholder }) => {
-                  const currentValue = record.customText[key] ?? "";
+                  const currentValue = editableTextFieldValue(record.customText[key]);
                   const onChange = (v: string) => update({ customText: { ...record.customText, [key]: v } });
                   return (
                     <div key={key}>
@@ -1519,7 +1535,7 @@ export default function WebsiteEditor() {
                   { key: "rsvp_subtitle",  label: t("website_editor.content_rsvp_subtitle", { defaultValue: "RSVP subtitle" }) },
                   { key: "rsvp_thankyou",  label: t("website_editor.content_rsvp_thankyou", { defaultValue: "RSVP thank-you message" }) },
                 ] as const).map(({ key, label }) => {
-                  const currentValue = record.customText[key] ?? "";
+                  const currentValue = editableTextFieldValue(record.customText[key]);
                   const onChange = (v: string) => update({ customText: { ...record.customText, [key]: v } });
                   return (
                     <div key={key}>

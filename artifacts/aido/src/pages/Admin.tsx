@@ -305,6 +305,16 @@ interface AdminUser {
   partner2Name: string | null;
   weddingDate: string | null;
   venue: string | null;
+  sharedWith?: Array<{
+    profileId: number;
+    userId: string | null;
+    email: string | null;
+    displayName: string;
+    role: string;
+    direction: "joined" | "shared_to";
+    workspaceName: string;
+    acceptedAt: string | null;
+  }>;
 }
 
 function UserAvatar({ user }: { user: AdminUser }) {
@@ -343,6 +353,13 @@ function getAdminUserDisplayName(user: AdminUser): string {
   const emailName = nameFromEmail(user.email);
   if (emailName) return emailName;
   return user.email ?? "Unknown";
+}
+
+function sharedRelationshipText(share: NonNullable<AdminUser["sharedWith"]>[number]): string {
+  const name = share.displayName || share.email || "Unknown";
+  return share.direction === "joined"
+    ? `Joined ${name}'s workspace as ${share.role}`
+    : `Shared with ${name} as ${share.role}`;
 }
 
 function timeAgo(dateStr: string | null): string {
@@ -411,6 +428,13 @@ function UserDetailModal({ user, onClose, onDeleted }: { user: AdminUser; onClos
         { label: "Venue", value: user.venue ?? "—" },
       ],
     },
+    {
+      title: "Workspace Sharing",
+      items: (user.sharedWith?.length ? user.sharedWith : []).map(share => ({
+        label: share.workspaceName,
+        value: `${sharedRelationshipText(share)}${share.email ? ` (${share.email})` : ""}`,
+      })),
+    },
   ];
 
   return (
@@ -461,7 +485,8 @@ function UserDetailModal({ user, onClose, onDeleted }: { user: AdminUser; onClos
               <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
                 {section.title}
               </h3>
-              <div className="grid grid-cols-2 gap-2">
+              {section.items.length > 0 ? (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {section.items.map(item => (
                   <div key={item.label} className="bg-muted/30 rounded-xl p-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</p>
@@ -469,6 +494,9 @@ function UserDetailModal({ user, onClose, onDeleted }: { user: AdminUser; onClos
                   </div>
                 ))}
               </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No shared workspaces connected to this account.</p>
+              )}
             </div>
           ))}
 
@@ -915,6 +943,7 @@ function UserDirectory() {
         "Events Fired": u.eventCount,
         "Has Profile": u.hasProfile ? "Yes" : "No",
         "Shared Workspace": u.hasSharedWorkspace ? "Yes" : "No",
+        "Shared With": (u.sharedWith ?? []).map(sharedRelationshipText).join("; "),
         "Collaborator Role": u.collaboratorRole ?? "",
         "Onboarded": u.onboarded ? "Yes" : "No",
         "Partner 1": u.partner1Name ?? "",
@@ -1081,6 +1110,12 @@ function UserDirectory() {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground truncate">{user.email ?? "—"}</p>
+                      {user.sharedWith && user.sharedWith.length > 0 && (
+                        <p className="text-[11px] text-blue-700 dark:text-blue-300 truncate mt-0.5">
+                          {user.sharedWith.slice(0, 2).map(sharedRelationshipText).join(" | ")}
+                          {user.sharedWith.length > 2 ? ` +${user.sharedWith.length - 2} more` : ""}
+                        </p>
+                      )}
                     </div>
                     <div className="hidden sm:flex items-center gap-5 text-xs text-muted-foreground flex-shrink-0">
                       <span className="flex items-center gap-1">

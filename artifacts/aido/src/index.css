@@ -390,6 +390,7 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    overflow-x: hidden;
     background:
       radial-gradient(circle at 18% 8%, rgba(230, 166, 183, 0.28), transparent 34rem),
       radial-gradient(circle at 82% 0%, rgba(242, 226, 198, 0.48), transparent 30rem),
