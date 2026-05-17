@@ -77,6 +77,48 @@ function asTextArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => asText(item)).filter(Boolean) : [];
 }
 
+function normalizeContractRedFlags(value: unknown): Array<{ severity: string; title: string; detail: string; recommendation: string }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const flag = asObject(item);
+      return {
+        severity: asText(flag.severity, "medium").toLowerCase(),
+        title: asText(flag.title, "Contract concern"),
+        detail: asText(flag.detail),
+        recommendation: asText(flag.recommendation),
+      };
+    })
+    .filter((flag) => flag.title || flag.detail || flag.recommendation);
+}
+
+function buildFallbackNegotiationEmail({
+  vendorType,
+  redFlags,
+}: {
+  vendorType: string;
+  redFlags: Array<{ severity: string; title: string; detail: string; recommendation: string }>;
+}) {
+  const requests = redFlags.map((flag, index) => {
+    const recommendation = flag.recommendation || "Could you please clarify this section in writing and update the contract language so both sides understand the expectation?";
+    const detail = flag.detail ? ` I noticed that ${flag.detail.charAt(0).toLowerCase()}${flag.detail.slice(1)}` : "";
+    return `${index + 1}. ${flag.title}:${detail} ${recommendation}`;
+  }).join("\n\n");
+
+  return `Hi [Vendor Name],
+
+Thank you again for sending over the ${vendorType} agreement. We are excited about working together and want to make sure we fully understand the contract before signing.
+
+After reviewing it, we had a few items we would like to clarify or adjust:
+
+${requests}
+
+Could you please let us know whether these updates can be made in the agreement, or send written clarification for each point?
+
+Thank you,
+[Your Names]`;
+}
+
 function parseJsonObject(raw: string): Record<string, unknown> | null {
   const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
   const candidates = [cleaned];
@@ -697,8 +739,8 @@ router.post("/contracts/:id/negotiate", requireAuth, async (req, res) => {
       return res.status(404).json({ error: "Contract not found." });
     }
 
-    const analysis = contract.analysis as Record<string, unknown> | null;
-    const redFlags = (analysis?.redFlags ?? []) as Array<{ severity: string; title: string; detail: string; recommendation: string }>;
+    const analysis = asObject(contract.analysis);
+    const redFlags = normalizeContractRedFlags(analysis.redFlags);
 
     if (!redFlags.length) {
       return res.status(400).json({ error: "No red flags found — no negotiation needed." });
@@ -709,10 +751,11 @@ router.post("/contracts/:id/negotiate", requireAuth, async (req, res) => {
       ? `\n\nIMPORTANT: Write the entire email in ${preferredLanguage}.`
       : "";
 
-    const vendorType = (analysis?.vendorType as string) ?? "vendor";
+    const vendorType = asText(analysis.vendorType, "vendor");
     const flagsSummary = redFlags
       .map((f, i) => `${i + 1}. [${f.severity.toUpperCase()}] ${f.title}: ${f.detail}. Recommendation: ${f.recommendation}`)
       .join("\n");
+    const fallbackEmail = buildFallbackNegotiationEmail({ vendorType, redFlags });
 
     const prompt = `You're a wedding planner helping a couple negotiate with their ${vendorType}. Their contract review found these red flags:
 
@@ -720,6 +763,7 @@ ${flagsSummary}
 
 Write a polite, firm negotiation email from the couple. Open with appreciation, address each flag diplomatically requesting specific changes, sound like a real person not a lawyer, close warmly. Use [Your Names] and [Vendor Name] as placeholders. Return ONLY the email body — no subject line, no extras.${langInstruction}`;
 
+    try {
     const completion = await openai.chat.completions.create({
       model: getModel(),
       messages: [{ role: "user", content: prompt }],
@@ -728,7 +772,11 @@ Write a polite, firm negotiation email from the couple. Open with appreciation, 
     });
 
     const emailText = completion.choices[0]?.message?.content?.trim() ?? "";
-    res.json({ negotiationEmail: emailText });
+    res.json({ negotiationEmail: emailText || fallbackEmail });
+    } catch (err) {
+      req.log.warn({ err, contractId: id }, "Negotiation AI failed; using fallback draft");
+      res.json({ negotiationEmail: fallbackEmail, source: "fallback" });
+    }
   } catch (err) {
     req.log.error(err, "Failed to generate negotiation response");
     res.status(500).json({ error: "Failed to generate negotiation response. Please try again." });

@@ -174,9 +174,14 @@ function NegotiationPanel({ contractId, redFlagCount, vendorId }: { contractId: 
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to generate");
+      if (!data.negotiationEmail?.trim()) throw new Error("No negotiation draft was returned.");
       setEmail(data.negotiationEmail);
     } catch (err) {
-      toast({ title: t("contracts.couldnt_generate"), description: err instanceof Error ? err.message : "", variant: "destructive" });
+      toast({
+        title: t("contracts.couldnt_generate"),
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
