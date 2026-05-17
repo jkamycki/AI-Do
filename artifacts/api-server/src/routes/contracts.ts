@@ -87,6 +87,13 @@ function parseJsonObject(raw: string): Record<string, unknown> | null {
     try {
       return asObject(JSON.parse(candidate));
     } catch {}
+    try {
+      const repaired = candidate
+        .replace(/,\s*([}\]])/g, "$1")
+        .replace(/[“”]/g, "\"")
+        .replace(/[‘’]/g, "'");
+      return asObject(JSON.parse(repaired));
+    } catch {}
   }
   return null;
 }
@@ -127,6 +134,39 @@ function normalizeAnalysis(raw: Record<string, unknown>): Record<string, unknown
     missingClauses: asTextArray(raw.missingClauses),
     negotiationTips: asTextArray(raw.negotiationTips),
   };
+}
+
+function buildFallbackAnalysis(contractText: string): Record<string, unknown> {
+  const lower = contractText.toLowerCase();
+  const missingClauses = [
+    !lower.includes("cancel") && "Cancellation policy",
+    !lower.includes("liabil") && !lower.includes("indemn") && "Liability or indemnification terms",
+    !lower.includes("force majeure") && "Force majeure / emergency terms",
+  ].filter(Boolean) as string[];
+
+  return normalizeAnalysis({
+    overallRiskLevel: "medium",
+    vendorType: "Vendor",
+    summary: "The contract text was extracted, but the AI response could not be converted into a full structured review. Please review the contract carefully and consider re-uploading it for another analysis.",
+    redFlags: [
+      {
+        severity: "medium",
+        title: "Full AI review unavailable",
+        detail: "A.IDO could read the contract text, but the AI provider returned an unreadable structured response.",
+        recommendation: "Re-upload the file to retry the AI review, and have a qualified attorney review the original contract before signing.",
+      },
+    ],
+    keyTerms: [
+      { label: "Document text", value: `${Math.round(contractText.length / 1000)}k characters extracted` },
+      { label: "Review status", value: "Needs manual review" },
+    ],
+    cancellationPolicy: lower.includes("cancel") ? "Mentioned in contract text; review original wording." : "Not specified",
+    paymentTerms: lower.includes("deposit") || lower.includes("payment") ? "Mentioned in contract text; review original wording." : "Not specified",
+    liabilityNotes: lower.includes("liabil") || lower.includes("indemn") ? "Mentioned in contract text; review original wording." : "Not specified",
+    positives: ["Contract text was successfully extracted and saved."],
+    missingClauses,
+    negotiationTips: ["Ask the vendor to clarify cancellation, payment, liability, rescheduling, and force majeure terms in writing."],
+  });
 }
 
 function xmlTextToPlainText(xml: string): string {
@@ -283,14 +323,30 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
     }, { signal: AbortSignal.timeout(90_000) });
 
     const analysisRaw = completion.choices[0]?.message?.content ?? "{}";
-    const parsedAnalysis = parseJsonObject(analysisRaw);
+    let parsedAnalysis = parseJsonObject(analysisRaw);
     if (!parsedAnalysis) {
       req.log.warn({ preview: analysisRaw.slice(0, 500) }, "Contract AI returned invalid JSON");
-      return res.status(502).json({
-        error: "The AI returned an unreadable analysis. Please try again.",
-      });
+      try {
+        const repairPrompt = `Convert the following contract analysis response into ONLY valid JSON matching the requested schema. If a field is missing, infer a concise safe value. Do not include markdown.
+
+REQUESTED JSON SHAPE:
+{"overallRiskLevel":"low|medium|high","vendorType":"string","summary":"2-3 sentences","redFlags":[{"severity":"high|medium|low","title":"string","detail":"string","recommendation":"string"}],"keyTerms":[{"label":"string","value":"string"}],"cancellationPolicy":"string or 'Not specified'","paymentTerms":"string or 'Not specified'","liabilityNotes":"string or 'Not specified'","positives":["string"],"missingClauses":["string"],"negotiationTips":["string"]}
+
+UNREADABLE RESPONSE:
+${analysisRaw.slice(0, 12000)}`;
+        const repairCompletion = await openai.chat.completions.create({
+          model: getModel(),
+          messages: [{ role: "user", content: repairPrompt }],
+          max_completion_tokens: 1600,
+        }, { signal: AbortSignal.timeout(45_000) });
+        parsedAnalysis = parseJsonObject(repairCompletion.choices[0]?.message?.content ?? "{}");
+      } catch (err) {
+        req.log.warn({ err }, "Contract AI repair attempt failed");
+      }
     }
-    const analysis = normalizeAnalysis(parsedAnalysis);
+    const analysis = parsedAnalysis
+      ? normalizeAnalysis(parsedAnalysis)
+      : buildFallbackAnalysis(extractedText);
 
     const displayName = (req.body?.displayName as string | undefined)?.trim() || originalname;
     const rawVendorId = (req.body?.vendorId as string | undefined)?.trim();
