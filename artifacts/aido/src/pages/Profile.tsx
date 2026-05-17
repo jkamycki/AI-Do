@@ -22,6 +22,7 @@ import { getAddressFormat } from "@/lib/addressFormat";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { VenueQuestion, type VenueStatus } from "@/components/Profile/VenueQuestion";
 import { VenueWizard, emptyVenueDiscoveryData, type VenueDiscoveryData } from "@/components/Profile/VenueWizard";
+import { normalizeRequirementsSelectorValue } from "@/components/Profile/RequirementsSelector";
 
 const NO_COUNTRY = "__none__";
 
@@ -74,6 +75,7 @@ function normalizeVenueDiscovery(value?: VenueDiscoveryData | null): VenueDiscov
     ...emptyVenueDiscoveryData,
     ...source,
     style: Array.isArray(source.style) ? source.style : [],
+    requirements: normalizeRequirementsSelectorValue(source.requirements),
     shortlist: Array.isArray(source.shortlist) ? source.shortlist : [],
     screenshots: Array.isArray(source.screenshots) ? source.screenshots : [],
   };

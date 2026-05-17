@@ -6,6 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import RequirementsSelector, {
+  emptyRequirementsSelectorValue,
+  formatRequirementsForPrompt,
+  normalizeRequirementsSelectorValue,
+  type RequirementsSelectorValue,
+} from "@/components/Profile/RequirementsSelector";
 import ReactMarkdown from "react-markdown";
 
 export type VenueShortlistItem = {
@@ -27,6 +33,7 @@ export type VenueDiscoveryData = {
   budgetRange: string;
   location: string;
   style: string[];
+  requirements: RequirementsSelectorValue;
   notes: string;
   aiVenueOptions: string;
   shortlist: VenueShortlistItem[];
@@ -57,6 +64,7 @@ export const emptyVenueDiscoveryData: VenueDiscoveryData = {
   budgetRange: "",
   location: "",
   style: [],
+  requirements: emptyRequirementsSelectorValue,
   notes: "",
   aiVenueOptions: "",
   shortlist: [],
@@ -100,9 +108,11 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
     budgetRange: value.budgetRange || "[budget range]",
     style: styleText,
     preference: value.indoorOutdoor || "indoor or outdoor",
-  }), [coupleNames, styleText, value.budgetRange, value.guestCount, value.indoorOutdoor, value.location]);
+    requirements: formatRequirementsForPrompt(value.requirements),
+  }), [coupleNames, styleText, value.budgetRange, value.guestCount, value.indoorOutdoor, value.location, value.requirements]);
 
   const update = (patch: Partial<VenueDiscoveryData>) => onChange({ ...value, ...patch });
+  const requirements = normalizeRequirementsSelectorValue(value.requirements);
 
   const bulletLines = (text: string) => text
     .split(/\r?\n/)
@@ -235,7 +245,7 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
 
   const fallbackPromptDraft = (prompt: string) => {
     const notes = formatNotesForEmail(value.notes);
-    return `Hi,\n\nMy name is ${draftBase.names}. We are looking for a wedding venue in ${draftBase.location} for about ${draftBase.guestCount} guests.\n\nCould you please help us with the following request: ${prompt}\n\nFor context, we are hoping for a ${draftBase.style} feel, prefer ${draftBase.preference} options, and are working with a venue budget around ${draftBase.budgetRange}.${notes}\n\nCould you please let us know the best next step?\n\nThank you,\n${draftBase.names}`;
+    return `Hi,\n\nMy name is ${draftBase.names}. We are looking for a wedding venue in ${draftBase.location} for about ${draftBase.guestCount} guests.\n\nCould you please help us with the following request: ${prompt}\n\nFor context, we are hoping for a ${draftBase.style} feel, prefer ${draftBase.preference} options, and are working with a venue budget around ${draftBase.budgetRange}.\n\nOur venue requirements:\n${draftBase.requirements}${notes}\n\nCould you please let us know the best next step?\n\nThank you,\n${draftBase.names}`;
   };
 
   const generatePromptDraft = async () => {
@@ -251,6 +261,7 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
       `Budget range: ${draftBase.budgetRange}`,
       `Style: ${draftBase.style}`,
       `Indoor/outdoor preference: ${draftBase.preference}`,
+      `Requirements:\n${draftBase.requirements}`,
       value.notes ? `Notes:\n${formatBulletNotes(value.notes)}` : "",
     ].filter(Boolean).join("\n");
 
@@ -303,7 +314,10 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
           budgetRange: value.budgetRange,
           location: formatLocations(value.location, ""),
           style: value.style,
-          notes: formatBulletNotes(value.notes),
+          notes: [
+            formatRequirementsForPrompt(requirements),
+            formatBulletNotes(value.notes),
+          ].filter(Boolean).join("\n\n"),
         }),
       });
       if (!response.ok) throw new Error("AI venue options failed");
@@ -444,6 +458,11 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
           })}
         </div>
       </div>
+
+      <RequirementsSelector
+        value={requirements}
+        onChange={(nextRequirements) => update({ requirements: nextRequirements })}
+      />
 
       <label className="block space-y-2 text-sm font-medium">
         Notes
