@@ -221,11 +221,13 @@ function NextPaymentDisplay({
       : isSoon
         ? t("budget.due_in_days", { n: daysUntil, defaultValue: `Due in ${daysUntil} day(s)` })
         : formatDate(date);
+  const formattedDate = formatDate(date);
+  const showDateDetail = dueLabel !== formattedDate;
 
   return (
     <div className={`inline-flex max-w-[220px] flex-col gap-1 rounded-lg border px-2.5 py-1.5 text-xs ${tone}`}>
       <span className="font-semibold">{dueLabel}</span>
-      <span className="text-[11px] opacity-85">{formatDate(date)}</span>
+      {showDateDetail && <span className="text-[11px] opacity-85">{formattedDate}</span>}
       {amount > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="tabular-nums font-medium">{formatMoney(amount)}</span>
