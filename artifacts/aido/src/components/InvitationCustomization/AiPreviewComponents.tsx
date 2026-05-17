@@ -446,8 +446,8 @@ function FullPhotoSaveDatePreview({
   const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
   const zoom = clampPhotoZoom(photoZoom);
-  const partner1 = firstName(profile.partner1Name) || "Partner";
-  const partner2 = firstName(profile.partner2Name) || "Partner";
+  const groomFirst = firstName(profile.partner1Name) || "Partner";
+  const brideFirst = firstName(profile.partner2Name) || "Partner";
   const dateStr = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine = [profile.venueCity, profile.venueState].filter(Boolean).join(", ");
 
@@ -525,9 +525,9 @@ function FullPhotoSaveDatePreview({
 
           <div style={{ marginTop: "auto", marginBottom: 20 }}>
             <div style={{ fontFamily: displayFont, textTransform: "uppercase", letterSpacing: "0.18em", lineHeight: 1.15, color: accentColor }}>
-              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner1}</div>
+              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{brideFirst}</div>
               <div style={{ fontSize: `${1.8 * sc}rem`, fontStyle: "italic", textTransform: "none", letterSpacing: "0.08em", margin: "4px 0" }}>and</div>
-              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner2}</div>
+              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{groomFirst}</div>
             </div>
             {dateStr && (
               <p style={{ fontFamily: labelFont, fontSize: 11 * sc, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", margin: "20px 0 0" }}>
@@ -822,8 +822,8 @@ function FullPhotoRsvpPreview({
   const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
   const zoom = clampPhotoZoom(photoZoom);
-  const partner1 = firstName(profile.partner1Name) || "Partner";
-  const partner2 = firstName(profile.partner2Name) || "Partner";
+  const groomFirst = firstName(profile.partner1Name) || "Partner";
+  const brideFirst = firstName(profile.partner2Name) || "Partner";
   const guestName = profile.guestName || "Guest";
   const dateStr = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
@@ -908,9 +908,9 @@ function FullPhotoRsvpPreview({
 
           <div style={{ marginTop: "auto", marginBottom: 8 }}>
             <div style={{ fontFamily: displayFont, textTransform: "uppercase", letterSpacing: "0.18em", lineHeight: 1.15, color: accent }}>
-              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner1}</div>
+              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{brideFirst}</div>
               <div style={{ fontSize: `${1.8 * sc}rem`, fontStyle: "italic", textTransform: "none", letterSpacing: "0.08em", margin: "4px 0" }}>and</div>
-              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner2}</div>
+              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{groomFirst}</div>
             </div>
             {dateStr && (
               <p style={{ fontFamily: labelFont, fontSize: 11 * sc, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", margin: "18px 0 0", color: textColor }}>

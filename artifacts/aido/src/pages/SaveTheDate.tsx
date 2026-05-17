@@ -150,8 +150,8 @@ export default function SaveTheDate() {
   const photoBgSize = photoZoom === 1 ? "cover" : `${100 * photoZoom}%`;
   const photoFilter = photoEffectToFilter(info?.photoEffect);
   const isFullPhotoLayout = false;
-  const partner1First = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";
-  const partner2First = String(info?.partner2Name || "").trim().split(/\s+/)[0] || "Partner";
+  const groomFirst = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";
+  const brideFirst = String(info?.partner2Name || "").trim().split(/\s+/)[0] || "Partner";
 
   const downloadPdf = async () => {
     if (!info || !cardRef.current) return;
@@ -273,9 +273,9 @@ export default function SaveTheDate() {
 
           <div style={{ marginTop: "auto", marginBottom: 20 }}>
             <div style={{ fontFamily: SERIF, textTransform: "uppercase", letterSpacing: "0.18em", lineHeight: 1.15, color: GOLD }}>
-              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner1First}</div>
+              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{brideFirst}</div>
               <div style={{ fontSize: `${1.8 * sc}rem`, fontStyle: "italic", textTransform: "none", letterSpacing: "0.08em", margin: "4px 0" }}>and</div>
-              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{partner2First}</div>
+              <div style={{ fontSize: `${2.2 * sc}rem`, fontWeight: 500 }}>{groomFirst}</div>
             </div>
             {dateText && (
               <p style={{ fontFamily: LABEL_FONT, fontSize: 11 * sc, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", margin: "20px 0 0" }}>

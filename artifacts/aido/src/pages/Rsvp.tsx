@@ -285,8 +285,8 @@ export default function Rsvp() {
   const photoObjectPosition = info?.photoObjectPosition ?? "50% 50%";
 
   const couple = [info?.partner2Name, info?.partner1Name].filter(Boolean).join(" & ") || "The Couple";
-  const partner1First = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";
-  const partner2First = String(info?.partner2Name || "").trim().split(/\s+/)[0] || "Partner";
+  const groomFirst = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";
+  const brideFirst = String(info?.partner2Name || "").trim().split(/\s+/)[0] || "Partner";
 
   const weddingDateStr = info?.weddingDate
     ? (() => {
@@ -528,9 +528,9 @@ export default function Rsvp() {
 
             <div style={{ marginTop: "auto", marginBottom: 8 }}>
               <div style={{ fontFamily: SERIF, textTransform: "uppercase", letterSpacing: "0.18em", lineHeight: 1.15, color: GOLD }}>
-                <div style={{ fontSize: "2.2rem", fontWeight: 500 }}>{partner1First}</div>
+                <div style={{ fontSize: "2.2rem", fontWeight: 500 }}>{brideFirst}</div>
                 <div style={{ fontSize: "1.8rem", fontStyle: "italic", textTransform: "none", letterSpacing: "0.08em", margin: "4px 0" }}>and</div>
-                <div style={{ fontSize: "2.2rem", fontWeight: 500 }}>{partner2First}</div>
+                <div style={{ fontSize: "2.2rem", fontWeight: 500 }}>{groomFirst}</div>
               </div>
               {weddingDateStr && (
                 <p style={{ fontFamily: LABEL_FONT, fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: WHITE, margin: "18px 0 0" }}>

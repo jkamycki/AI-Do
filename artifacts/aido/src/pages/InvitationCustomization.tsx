@@ -1788,8 +1788,8 @@ export default function InvitationCustomizationPage({
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => {
                     const couple = [
-                      displayWeddingProfile.partner1Name,
                       displayWeddingProfile.partner2Name,
+                      displayWeddingProfile.partner1Name,
                     ]
                       .filter(Boolean)
                       .join(" & ");
