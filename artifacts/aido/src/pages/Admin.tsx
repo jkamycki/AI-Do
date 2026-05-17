@@ -1962,6 +1962,38 @@ function SystemSection({ metrics }: { metrics: AdminMetrics }) {
   );
 }
 
+const EVENT_PATH_FEATURES: Array<{ pattern: RegExp; feature: string }> = [
+  { pattern: /^\/dashboard\/?$/, feature: "Dashboard" },
+  { pattern: /^\/profile\/?$/, feature: "Wedding Profile" },
+  { pattern: /^\/mood-board\/?$/, feature: "Mood Board" },
+  { pattern: /^\/timeline\/?$/, feature: "Timeline" },
+  { pattern: /^\/checklist\/?$/, feature: "Checklist" },
+  { pattern: /^\/vendors\/?$/, feature: "Vendor Tracking" },
+  { pattern: /^\/budget\/?$/, feature: "Budget & Payments" },
+  { pattern: /^\/contracts\/?$/, feature: "Contracts" },
+  { pattern: /^\/guests(?:\/[^/]+)?\/?$/, feature: "Guest List & Invitations" },
+  { pattern: /^\/wedding-party\/?$/, feature: "Wedding Party" },
+  { pattern: /^\/seating-chart\/?$/, feature: "Seating Chart" },
+  { pattern: /^\/hotels\/?$/, feature: "Hotel Blocks" },
+  { pattern: /^\/aria\/?$/, feature: "Aria - Planner AI" },
+  { pattern: /^\/day-of\/?$/, feature: "Day-Of Coordinator" },
+  { pattern: /^\/website-editor\/?$/, feature: "Website Editor" },
+  { pattern: /^\/help\/updates-improvements\/?$/, feature: "Updates & Improvements" },
+  { pattern: /^\/help\/?$/, feature: "Help & Support" },
+  { pattern: /^\/admin\/?$/, feature: "Admin" },
+  { pattern: /^\/operations-center\/?$/, feature: "Operations Center" },
+];
+
+function getEventFeatureUsed(event: AdminEvent): string {
+  const metadata = event.metadata ?? {};
+  const directFeature = typeof metadata.feature === "string" ? metadata.feature.trim() : "";
+  if (directFeature) return directFeature;
+  const tool = typeof metadata.tool === "string" ? metadata.tool.trim() : "";
+  if (tool) return tool;
+  const path = typeof metadata.path === "string" ? metadata.path.split("?")[0] : "";
+  return EVENT_PATH_FEATURES.find(item => item.pattern.test(path))?.feature ?? "-";
+}
+
 function EventLogSection({ events, isLoading }: { events: AdminEvent[]; isLoading: boolean }) {
   const sortedEvents = useMemo(
     () => [...events].sort((a, b) => {
@@ -1987,13 +2019,14 @@ function EventLogSection({ events, isLoading }: { events: AdminEvent[]; isLoadin
                 <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Time</th>
                 <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
                 <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">User Login</th>
+                <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Feature Used</th>
                 <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Metadata</th>
               </tr>
             </thead>
             <tbody>
               {events.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
                     No events yet. Start using the app to generate tracking data.
                   </td>
                 </tr>
@@ -2007,7 +2040,7 @@ function EventLogSection({ events, isLoading }: { events: AdminEvent[]; isLoadin
                   <React.Fragment key={event.id}>
                     {showLoginHeader && (
                       <tr className="bg-muted/40 border-b border-border/60">
-                        <td colSpan={4} className="p-3">
+                        <td colSpan={5} className="p-3">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Login</span>
                             <span className="font-semibold text-foreground">{event.userDisplayName || login}</span>
@@ -2029,6 +2062,9 @@ function EventLogSection({ events, isLoading }: { events: AdminEvent[]; isLoadin
                     </td>
                     <td className="p-3 text-xs font-mono text-muted-foreground max-w-[180px] truncate">
                       {login}
+                    </td>
+                    <td className="p-3 text-xs font-semibold text-primary max-w-[180px] truncate">
+                      {getEventFeatureUsed(event)}
                     </td>
                     <td className="p-3 text-xs text-muted-foreground font-mono max-w-[200px] truncate">
                       {event.metadata ? JSON.stringify(event.metadata) : "—"}
