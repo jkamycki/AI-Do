@@ -235,6 +235,23 @@ export const adminUsers = pgTable("admin_users", {
 
 export type AdminUser = typeof adminUsers.$inferSelect;
 
+export const adminLaunchPlanItems = pgTable("admin_launch_plan_items", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  category: text("category").notNull().default("Launch"),
+  notes: text("notes").notNull().default(""),
+  assigneeEmail: text("assignee_email").notNull().default(""),
+  priority: text("priority").notNull().default("medium"),
+  dueDate: text("due_date"),
+  isCompleted: boolean("is_completed").notNull().default(false),
+  completedAt: timestamp("completed_at"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type AdminLaunchPlanItem = typeof adminLaunchPlanItems.$inferSelect;
+
 export const workspaceCollaborators = pgTable("workspace_collaborators", {
   id: serial("id").primaryKey(),
   profileId: integer("profile_id").notNull(),

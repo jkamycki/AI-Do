@@ -61,10 +61,14 @@ type LaunchPlanItem = {
   title: string;
   category: string;
   notes: string;
+  assigneeEmail: string;
+  priority: "low" | "medium" | "high";
+  dueDate: string;
   completed: boolean;
 };
 
 const LAUNCH_PLAN_STORAGE_KEY = "aido_operations_launch_plan_v1";
+const LAUNCH_PLAN_ASSIGNEES = ["kamyckijoseph@gmail.com", "michaelgang31@gmail.com"] as const;
 
 const fallbackLaunchPlanItems: LaunchPlanItem[] = [
   {
@@ -72,6 +76,9 @@ const fallbackLaunchPlanItems: LaunchPlanItem[] = [
     title: "Finalize A.IDO launch positioning",
     category: "Brand",
     notes: "Confirm the primary promise, launch audience, and short description used across the website, previews, and outreach.",
+    assigneeEmail: "kamyckijoseph@gmail.com",
+    priority: "high",
+    dueDate: "",
     completed: false,
   },
   {
@@ -79,6 +86,9 @@ const fallbackLaunchPlanItems: LaunchPlanItem[] = [
     title: "Test signup and onboarding from a fresh account",
     category: "Product",
     notes: "Walk through profile setup, guest list, budget, vendors, contracts, website editor, and Aria from mobile and desktop.",
+    assigneeEmail: "michaelgang31@gmail.com",
+    priority: "high",
+    dueDate: "",
     completed: false,
   },
   {
@@ -86,9 +96,27 @@ const fallbackLaunchPlanItems: LaunchPlanItem[] = [
     title: "Prepare support and feedback workflow",
     category: "Operations",
     notes: "Make sure support messages, feedback prompts, and Operations Center tickets are being received and reviewed daily.",
+    assigneeEmail: "kamyckijoseph@gmail.com",
+    priority: "medium",
+    dueDate: "",
     completed: false,
   },
 ];
+
+const normalizeLaunchPlanItem = (item: Partial<LaunchPlanItem>, index = 0): LaunchPlanItem => {
+  const priority = String(item.priority ?? "medium").toLowerCase();
+  const assigneeEmail = String(item.assigneeEmail ?? "").toLowerCase();
+  return {
+    id: String(item.id ?? makeLaunchPlanId()),
+    title: String(item.title ?? `Launch task ${index + 1}`),
+    category: String(item.category ?? "Launch"),
+    notes: String(item.notes ?? ""),
+    assigneeEmail: LAUNCH_PLAN_ASSIGNEES.includes(assigneeEmail as typeof LAUNCH_PLAN_ASSIGNEES[number]) ? assigneeEmail : "",
+    priority: priority === "low" || priority === "high" ? priority : "medium",
+    dueDate: String(item.dueDate ?? ""),
+    completed: Boolean(item.completed),
+  };
+};
 
 const makeLaunchPlanId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -105,6 +133,7 @@ export default function OperationsCenterPage() {
   const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "testActivity" | "launchPlan">("tickets");
   const [testSessionFilter, setTestSessionFilter] = useState<"test" | "all" | "real">("test");
   const [launchPlanPrompt, setLaunchPlanPrompt] = useState("");
+  const [hasLoadedLaunchPlan, setHasLoadedLaunchPlan] = useState(false);
   const [launchPlanItems, setLaunchPlanItems] = useState<LaunchPlanItem[]>(() => {
     if (typeof window === "undefined") return fallbackLaunchPlanItems;
     try {
@@ -112,13 +141,7 @@ export default function OperationsCenterPage() {
       if (!stored) return fallbackLaunchPlanItems;
       const parsed = JSON.parse(stored) as LaunchPlanItem[];
       if (!Array.isArray(parsed) || parsed.length === 0) return fallbackLaunchPlanItems;
-      return parsed.map((item) => ({
-        id: item.id || makeLaunchPlanId(),
-        title: String(item.title ?? ""),
-        category: String(item.category ?? "Launch"),
-        notes: String(item.notes ?? ""),
-        completed: Boolean(item.completed),
-      }));
+      return parsed.map(normalizeLaunchPlanItem);
     } catch {
       return fallbackLaunchPlanItems;
     }
@@ -183,14 +206,39 @@ export default function OperationsCenterPage() {
   });
   const testSessions = testSessionsData?.sessions ?? [];
 
+  const { data: launchPlanData, isLoading: isLoadingLaunchPlan } = useQuery<{
+    items: Array<Partial<LaunchPlanItem>>;
+    assignees: string[];
+  }>({
+    queryKey: ["admin-launch-plan"],
+    queryFn: async () => {
+      const r = await authedFetch("/api/admin/launch-plan");
+      if (!r.ok) throw new Error("Failed to load launch plan");
+      return r.json();
+    },
+    enabled: activeTab === "launchPlan",
+  });
+
   useEffect(() => {
     window.localStorage.setItem(LAUNCH_PLAN_STORAGE_KEY, JSON.stringify(launchPlanItems));
   }, [launchPlanItems]);
+
+  useEffect(() => {
+    if (!launchPlanData?.items) return;
+    setLaunchPlanItems(launchPlanData.items.map(normalizeLaunchPlanItem));
+    setHasLoadedLaunchPlan(true);
+  }, [launchPlanData]);
 
   const launchPlanCompletedCount = launchPlanItems.filter(item => item.completed).length;
   const launchPlanProgress = launchPlanItems.length > 0
     ? Math.round((launchPlanCompletedCount / launchPlanItems.length) * 100)
     : 0;
+  const launchPlanOpenCount = launchPlanItems.length - launchPlanCompletedCount;
+  const launchPlanAssigneeStats = LAUNCH_PLAN_ASSIGNEES.map(email => ({
+    email,
+    total: launchPlanItems.filter(item => item.assigneeEmail === email).length,
+    open: launchPlanItems.filter(item => item.assigneeEmail === email && !item.completed).length,
+  }));
 
   const updateLaunchPlanItem = (id: string, patch: Partial<LaunchPlanItem>) => {
     setLaunchPlanItems(items => items.map(item => item.id === id ? { ...item, ...patch } : item));
@@ -204,10 +252,35 @@ export default function OperationsCenterPage() {
         title: "New launch task",
         category: "Launch",
         notes: "",
+        assigneeEmail: "",
+        priority: "medium",
+        dueDate: "",
         completed: false,
       },
     ]);
   };
+
+  const saveLaunchPlanMutation = useMutation({
+    mutationFn: async (items: LaunchPlanItem[]) => {
+      const r = await authedFetch("/api/admin/launch-plan", {
+        method: "PUT",
+        body: JSON.stringify({ items }),
+      });
+      if (!r.ok) throw new Error("Failed to save launch plan");
+      return r.json();
+    },
+    onError: () => {
+      toast({ title: "Launch plan could not be saved", variant: "destructive" });
+    },
+  });
+
+  useEffect(() => {
+    if (!hasLoadedLaunchPlan) return;
+    const timeout = window.setTimeout(() => {
+      saveLaunchPlanMutation.mutate(launchPlanItems);
+    }, 700);
+    return () => window.clearTimeout(timeout);
+  }, [hasLoadedLaunchPlan, launchPlanItems]);
 
   const generateLaunchPlanMutation = useMutation({
     mutationFn: async () => {
@@ -215,10 +288,13 @@ export default function OperationsCenterPage() {
         method: "POST",
         body: JSON.stringify({
           focus: launchPlanPrompt,
-          currentItems: launchPlanItems.map(({ title, category, notes, completed }) => ({
+          currentItems: launchPlanItems.map(({ title, category, notes, assigneeEmail, priority, dueDate, completed }) => ({
             title,
             category,
             notes,
+            assigneeEmail,
+            priority,
+            dueDate,
             completed,
           })),
         }),
@@ -229,19 +305,23 @@ export default function OperationsCenterPage() {
     onSuccess: (data) => {
       const generatedItems = (data.items ?? [])
         .filter(item => String(item.title ?? "").trim().length > 0)
-        .map(item => ({
+        .map((item, index) => normalizeLaunchPlanItem({
           id: makeLaunchPlanId(),
           title: String(item.title ?? "").trim(),
           category: String(item.category ?? "Launch").trim() || "Launch",
           notes: String(item.notes ?? "").trim(),
+          assigneeEmail: String(item.assigneeEmail ?? ""),
+          priority: item.priority as LaunchPlanItem["priority"],
+          dueDate: String(item.dueDate ?? ""),
           completed: Boolean(item.completed),
-        }));
+        }, index));
 
       if (generatedItems.length === 0) {
         toast({ title: "No checklist items generated", variant: "destructive" });
         return;
       }
 
+      setHasLoadedLaunchPlan(true);
       setLaunchPlanItems(generatedItems);
       toast({
         title: data.source === "fallback" ? "Launch plan starter added" : "Launch plan generated",
@@ -531,7 +611,7 @@ export default function OperationsCenterPage() {
 
           <Card>
             <CardContent className="py-5">
-              <div className="grid gap-4 lg:grid-cols-[1fr_220px] lg:items-end">
+              <div className="grid gap-4 lg:grid-cols-[1fr_260px] lg:items-end">
                 <div>
                   <label className="text-sm font-semibold text-[#24171D]">AI focus</label>
                   <Textarea
@@ -545,7 +625,7 @@ export default function OperationsCenterPage() {
                   <p className="text-sm font-semibold text-[#4A3941]">Progress</p>
                   <p className="mt-1 text-3xl font-bold text-[#9A2E5C]">{launchPlanProgress}%</p>
                   <p className="mt-1 text-xs font-medium text-[#4A3941]">
-                    {launchPlanCompletedCount} of {launchPlanItems.length} complete
+                    {launchPlanCompletedCount} complete, {launchPlanOpenCount} open
                   </p>
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#F4DDE5]">
                     <div
@@ -553,11 +633,27 @@ export default function OperationsCenterPage() {
                       style={{ width: `${launchPlanProgress}%` }}
                     />
                   </div>
+                  <div className="mt-3 space-y-1 text-xs font-medium text-[#4A3941]">
+                    {launchPlanAssigneeStats.map(stat => (
+                      <div key={stat.email} className="flex justify-between gap-3">
+                        <span className="truncate">{stat.email}</span>
+                        <span className="shrink-0">{stat.open} open</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[11px] font-medium text-[#7A5062]">
+                    {saveLaunchPlanMutation.isPending ? "Saving..." : hasLoadedLaunchPlan ? "Shared plan saved automatically" : "Loading shared plan"}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          {isLoadingLaunchPlan ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-40 rounded-lg" />)}
+            </div>
+          ) : (
           <div className="space-y-3">
             {launchPlanItems.map((item) => (
               <Card key={item.id} className={item.completed ? "border-emerald-200 bg-emerald-50/40" : ""}>
@@ -576,7 +672,7 @@ export default function OperationsCenterPage() {
                       <CheckCircle2 className="h-5 w-5" />
                     </button>
 
-                    <div className="grid gap-3 md:grid-cols-[180px_1fr]">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[150px_1fr_220px_130px_150px]">
                       <div>
                         <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Category</label>
                         <Input
@@ -585,7 +681,7 @@ export default function OperationsCenterPage() {
                           className="mt-1"
                         />
                       </div>
-                      <div>
+                      <div className="md:col-span-1 xl:col-span-1">
                         <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Task</label>
                         <Input
                           value={item.title}
@@ -593,7 +689,51 @@ export default function OperationsCenterPage() {
                           className={`mt-1 font-semibold ${item.completed ? "line-through decoration-2" : ""}`}
                         />
                       </div>
-                      <div className="md:col-span-2">
+                      <div>
+                        <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Assigned To</label>
+                        <Select
+                          value={item.assigneeEmail || "unassigned"}
+                          onValueChange={assigneeEmail => updateLaunchPlanItem(item.id, {
+                            assigneeEmail: assigneeEmail === "unassigned" ? "" : assigneeEmail,
+                          })}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                            {LAUNCH_PLAN_ASSIGNEES.map(email => (
+                              <SelectItem key={email} value={email}>{email}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Priority</label>
+                        <Select
+                          value={item.priority}
+                          onValueChange={priority => updateLaunchPlanItem(item.id, { priority: priority as LaunchPlanItem["priority"] })}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="low">Low</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Due Date</label>
+                        <Input
+                          type="date"
+                          value={item.dueDate}
+                          onChange={(event) => updateLaunchPlanItem(item.id, { dueDate: event.target.value })}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div className="md:col-span-2 xl:col-span-5">
                         <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Notes</label>
                         <Textarea
                           value={item.notes}
@@ -618,6 +758,7 @@ export default function OperationsCenterPage() {
               </Card>
             ))}
           </div>
+          )}
 
           {launchPlanItems.length === 0 && (
             <Card>

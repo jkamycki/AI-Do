@@ -6,7 +6,7 @@ import {
   timelines, budgets, budgetItems, budgetPaymentLogs,
   checklistItems, vendors, guests, vendorContracts, seatingCharts,
   hotelBlocks, weddingParty, manualExpenses, vendorPayments,
-  workspaceCollaborators,
+  workspaceCollaborators, adminLaunchPlanItems,
 } from "@workspace/db";
 import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -20,6 +20,8 @@ const OWNER_EMAILS = [
   process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com",
   "michaelgang31@gmail.com",
 ];
+
+const LAUNCH_PLAN_ASSIGNEES = ["kamyckijoseph@gmail.com", "michaelgang31@gmail.com"] as const;
 
 async function isAdmin(userId: string): Promise<boolean> {
   try {
@@ -353,36 +355,64 @@ const defaultLaunchPlanItems = [
     title: "Confirm A.IDO launch promise and audience",
     category: "Brand",
     notes: "Lock the short positioning statement, who launch is for, and the main conversion CTA.",
+    assigneeEmail: "kamyckijoseph@gmail.com",
+    priority: "high",
+    dueDate: null,
+    completed: false,
   },
   {
     title: "Run full signup and onboarding QA",
     category: "Product",
     notes: "Test a fresh account on mobile and desktop from signup through wedding profile, budget, vendors, contracts, guests, website, and Aria.",
+    assigneeEmail: "michaelgang31@gmail.com",
+    priority: "high",
+    dueDate: null,
+    completed: false,
   },
   {
     title: "Verify published website and share previews",
     category: "Product",
     notes: "Check social preview images, QR codes, published website links, and invitation link behavior before public launch.",
+    assigneeEmail: "kamyckijoseph@gmail.com",
+    priority: "medium",
+    dueDate: null,
+    completed: false,
   },
   {
     title: "Prepare first-user support workflow",
     category: "Operations",
     notes: "Make sure feedback prompts, support tickets, and Operations Center messages are monitored daily.",
+    assigneeEmail: "michaelgang31@gmail.com",
+    priority: "medium",
+    dueDate: null,
+    completed: false,
   },
   {
     title: "Review privacy, security, and AI disclaimer copy",
     category: "Trust",
     notes: "Confirm contract analyzer and Aria disclaimers clearly say AI-generated guidance is not legal advice.",
+    assigneeEmail: "kamyckijoseph@gmail.com",
+    priority: "high",
+    dueDate: null,
+    completed: false,
   },
   {
     title: "Create launch outreach list",
     category: "Marketing",
     notes: "Prepare warm contacts, wedding vendors, planners, social posts, and launch announcement copy.",
+    assigneeEmail: "michaelgang31@gmail.com",
+    priority: "medium",
+    dueDate: null,
+    completed: false,
   },
   {
     title: "Set launch metrics to watch",
     category: "Analytics",
     notes: "Track signups, onboarding completion, feature usage, support issues, and conversion from landing page to account.",
+    assigneeEmail: "kamyckijoseph@gmail.com",
+    priority: "medium",
+    dueDate: null,
+    completed: false,
   },
 ];
 
@@ -395,16 +425,104 @@ function normalizeLaunchPlanItems(items: unknown) {
       const row = item as Record<string, unknown>;
       const title = String(row.title ?? "").trim();
       if (!title) return null;
+      const assigneeEmail = String(row.assigneeEmail ?? row.assignee_email ?? "").trim().toLowerCase();
+      const priority = String(row.priority ?? "medium").trim().toLowerCase();
+      const dueDate = String(row.dueDate ?? row.due_date ?? "").trim();
       return {
         title: title.slice(0, 140),
         category: String(row.category ?? "Launch").trim().slice(0, 40) || "Launch",
         notes: String(row.notes ?? "").trim().slice(0, 500),
+        assigneeEmail: LAUNCH_PLAN_ASSIGNEES.includes(assigneeEmail as typeof LAUNCH_PLAN_ASSIGNEES[number]) ? assigneeEmail : "",
+        priority: ["low", "medium", "high"].includes(priority) ? priority : "medium",
+        dueDate: /^\d{4}-\d{2}-\d{2}$/.test(dueDate) ? dueDate : null,
+        completed: Boolean(row.completed ?? row.isCompleted),
       };
     })
-    .filter((item): item is { title: string; category: string; notes: string } => item !== null);
+    .filter((item): item is {
+      title: string;
+      category: string;
+      notes: string;
+      assigneeEmail: string;
+      priority: string;
+      dueDate: string | null;
+      completed: boolean;
+    } => item !== null);
 
   return normalized.length > 0 ? normalized.slice(0, 20) : defaultLaunchPlanItems;
 }
+
+function serializeLaunchPlanItem(item: typeof adminLaunchPlanItems.$inferSelect) {
+  return {
+    id: String(item.id),
+    title: item.title,
+    category: item.category,
+    notes: item.notes,
+    assigneeEmail: item.assigneeEmail,
+    priority: item.priority,
+    dueDate: item.dueDate,
+    completed: item.isCompleted,
+    createdAt: item.createdAt.toISOString(),
+    updatedAt: item.updatedAt.toISOString(),
+  };
+}
+
+router.get("/admin/launch-plan", requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const rows = await db.select()
+      .from(adminLaunchPlanItems)
+      .orderBy(adminLaunchPlanItems.sortOrder, adminLaunchPlanItems.id);
+
+    res.json({
+      items: rows.length > 0
+        ? rows.map(serializeLaunchPlanItem)
+        : defaultLaunchPlanItems.map((item, index) => ({
+          id: `starter-${index + 1}`,
+          title: item.title,
+          category: item.category,
+          notes: item.notes,
+          assigneeEmail: item.assigneeEmail,
+          priority: item.priority,
+          dueDate: item.dueDate,
+          completed: false,
+        })),
+      assignees: LAUNCH_PLAN_ASSIGNEES,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load launch plan." });
+  }
+});
+
+router.put("/admin/launch-plan", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const rawItems = (req.body as { items?: unknown })?.items;
+    const normalized = Array.isArray(rawItems) && rawItems.length === 0 ? [] : normalizeLaunchPlanItems(rawItems ?? []);
+
+    await db.delete(adminLaunchPlanItems);
+    if (normalized.length > 0) {
+      await db.insert(adminLaunchPlanItems).values(normalized.map((item, index) => ({
+        title: item.title,
+        category: item.category,
+        notes: item.notes,
+        assigneeEmail: item.assigneeEmail,
+        priority: item.priority,
+        dueDate: item.dueDate,
+        isCompleted: item.completed,
+        completedAt: item.completed ? new Date() : null,
+        sortOrder: index,
+        updatedAt: new Date(),
+      })));
+    }
+
+    const rows = await db.select()
+      .from(adminLaunchPlanItems)
+      .orderBy(adminLaunchPlanItems.sortOrder, adminLaunchPlanItems.id);
+
+    res.json({ items: rows.map(serializeLaunchPlanItem), assignees: LAUNCH_PLAN_ASSIGNEES });
+  } catch (err) {
+    req.log.error({ err }, "Launch plan save error");
+    res.status(500).json({ error: "Failed to save launch plan." });
+  }
+});
 
 router.post("/admin/launch-plan/generate", requireAuth, requireAdmin, async (req, res) => {
   try {
@@ -443,9 +561,9 @@ Existing checklist summary:
 ${JSON.stringify(currentItems)}
 
 Return ONLY this JSON shape:
-{"items":[{"title":"short checklist task","category":"Brand|Product|Operations|Marketing|Trust|Analytics|Support","notes":"editable note with next action"}]}
+{"items":[{"title":"short checklist task","category":"Brand|Product|Operations|Marketing|Trust|Analytics|Support","notes":"editable note with next action","assigneeEmail":"kamyckijoseph@gmail.com|michaelgang31@gmail.com","priority":"low|medium|high","dueDate":null}]}
 
-Generate 10 to 16 items. Do not include markdown.`,
+Generate 10 to 16 items. Split ownership between the two allowed assignee emails. Do not include markdown.`,
         },
       ],
       ...(supportsCustomTemperature(model) ? { temperature: 0.7 } : {}),
