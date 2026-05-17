@@ -119,11 +119,22 @@ const LAUNCH_PLAN_STORAGE_KEY = "aido_admin_launch_plan_v1";
 const LAUNCH_PLAN_ASSIGNEES = [
   { name: "Joseph", email: "kamyckijoseph@gmail.com" },
   { name: "Michael", email: "michaelgang31@gmail.com" },
+  { name: "Michael & Joseph", email: "michaelgang31@gmail.com,kamyckijoseph@gmail.com" },
 ] as const;
 const LAUNCH_PLAN_ASSIGNEE_EMAILS = LAUNCH_PLAN_ASSIGNEES.map(assignee => assignee.email);
+const LAUNCH_PLAN_PERSON_EMAILS = ["kamyckijoseph@gmail.com", "michaelgang31@gmail.com"];
 
 const getLaunchPlanAssigneeName = (email: string) =>
   LAUNCH_PLAN_ASSIGNEES.find(assignee => assignee.email === email)?.name ?? "Unassigned";
+
+const getLaunchPlanRecipientEmails = (email: string) =>
+  email.split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+
+const getLaunchPlanPriorityClass = (priority: LaunchPlanItem["priority"]) => {
+  if (priority === "high") return "border-red-300 bg-red-50 text-red-700 focus:border-red-500";
+  if (priority === "low") return "border-emerald-300 bg-emerald-50 text-emerald-700 focus:border-emerald-500";
+  return "border-amber-300 bg-amber-50 text-amber-700 focus:border-amber-500";
+};
 
 const buildLaunchPlanTaskEmail = (item: LaunchPlanItem) => {
   const assigneeName = getLaunchPlanAssigneeName(item.assigneeEmail);
@@ -194,7 +205,11 @@ const normalizeLaunchPlanItem = (item: Partial<LaunchPlanItem>, index = 0): Laun
     title: String(item.title ?? `Launch task ${index + 1}`),
     category: String(item.category ?? "Launch"),
     notes: String(item.notes ?? ""),
-    assigneeEmail: LAUNCH_PLAN_ASSIGNEE_EMAILS.includes(assigneeEmail as typeof LAUNCH_PLAN_ASSIGNEE_EMAILS[number]) ? assigneeEmail : "",
+    assigneeEmail: LAUNCH_PLAN_ASSIGNEE_EMAILS.includes(assigneeEmail as typeof LAUNCH_PLAN_ASSIGNEE_EMAILS[number])
+      ? assigneeEmail
+      : LAUNCH_PLAN_PERSON_EMAILS.includes(assigneeEmail)
+        ? assigneeEmail
+        : "",
     priority: priority === "low" || priority === "high" ? priority : "medium",
     dueDate: String(item.dueDate ?? ""),
     completed: Boolean(item.completed),
@@ -506,10 +521,10 @@ function LaunchPlanSection() {
   const progress = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
   const openItems = items.filter(item => !item.completed);
   const completedItems = items.filter(item => item.completed);
-  const assigneeStats = LAUNCH_PLAN_ASSIGNEES.map(assignee => ({
+  const assigneeStats = LAUNCH_PLAN_ASSIGNEES.filter(assignee => !assignee.email.includes(",")).map(assignee => ({
     ...assignee,
-    total: items.filter(item => item.assigneeEmail === assignee.email).length,
-    open: items.filter(item => item.assigneeEmail === assignee.email && !item.completed).length,
+    total: items.filter(item => getLaunchPlanRecipientEmails(item.assigneeEmail).includes(assignee.email)).length,
+    open: items.filter(item => getLaunchPlanRecipientEmails(item.assigneeEmail).includes(assignee.email) && !item.completed).length,
   }));
 
   const updateItem = (id: string, patch: Partial<LaunchPlanItem>) => {
@@ -536,6 +551,7 @@ function LaunchPlanSection() {
   const sendTaskMutation = useMutation({
     mutationFn: async ({ item, recipientEmail }: { item: LaunchPlanItem; recipientEmail: string }) => {
       const taskEmail = buildLaunchPlanTaskEmail(item);
+      const recipientEmails = getLaunchPlanRecipientEmails(recipientEmail);
       const r = await authFetch("/api/admin/launch-plan/send-task", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -547,7 +563,7 @@ function LaunchPlanSection() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            emails: [recipientEmail],
+            emails: recipientEmails,
             subject: taskEmail.subject,
             body: taskEmail.body,
           }),
@@ -599,7 +615,7 @@ function LaunchPlanSection() {
                 <option value="unassigned">Unassigned</option>
                 {LAUNCH_PLAN_ASSIGNEES.map(assignee => <option key={assignee.email} value={assignee.email}>{assignee.name}</option>)}
               </select>
-              <select value={item.priority} onChange={(event) => updateItem(item.id, { priority: event.target.value as LaunchPlanItem["priority"] })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary">
+              <select value={item.priority} onChange={(event) => updateItem(item.id, { priority: event.target.value as LaunchPlanItem["priority"] })} className={`rounded-lg border px-3 py-2 text-sm font-semibold outline-none ${getLaunchPlanPriorityClass(item.priority)}`}>
                 <option value="low">Low priority</option>
                 <option value="medium">Medium priority</option>
                 <option value="high">High priority</option>
@@ -615,7 +631,9 @@ function LaunchPlanSection() {
                     className="min-h-10 flex-1 rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                   >
                     {LAUNCH_PLAN_ASSIGNEES.map(assignee => (
-                      <option key={assignee.email} value={assignee.email}>{assignee.name} ({assignee.email})</option>
+                      <option key={assignee.email} value={assignee.email}>
+                        {assignee.email.includes(",") ? `${assignee.name} (both emails)` : `${assignee.name} (${assignee.email})`}
+                      </option>
                     ))}
                   </select>
                   <Button

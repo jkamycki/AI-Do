@@ -22,13 +22,26 @@ const OWNER_EMAILS = [
 ];
 
 const LAUNCH_PLAN_ASSIGNEES = ["kamyckijoseph@gmail.com", "michaelgang31@gmail.com"] as const;
+const LAUNCH_PLAN_BOTH_ASSIGNEES = "michaelgang31@gmail.com,kamyckijoseph@gmail.com";
 const LAUNCH_PLAN_ASSIGNEE_NAMES: Record<typeof LAUNCH_PLAN_ASSIGNEES[number], string> = {
   "kamyckijoseph@gmail.com": "Joseph",
   "michaelgang31@gmail.com": "Michael",
 };
 
 function getLaunchPlanAssigneeName(email: string) {
+  if (email === LAUNCH_PLAN_BOTH_ASSIGNEES) return "Michael & Joseph";
   return LAUNCH_PLAN_ASSIGNEE_NAMES[email as typeof LAUNCH_PLAN_ASSIGNEES[number]] ?? email;
+}
+
+function getLaunchPlanRecipientEmails(email: string) {
+  return email.split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+}
+
+function isAllowedLaunchPlanRecipient(email: string) {
+  const recipients = getLaunchPlanRecipientEmails(email);
+  return recipients.length > 0 && recipients.every(recipient =>
+    LAUNCH_PLAN_ASSIGNEES.includes(recipient as typeof LAUNCH_PLAN_ASSIGNEES[number]),
+  );
 }
 
 async function isAdmin(userId: string): Promise<boolean> {
@@ -483,7 +496,7 @@ function normalizeLaunchPlanItems(items: unknown) {
         title: title.slice(0, 140),
         category: String(row.category ?? "Launch").trim().slice(0, 40) || "Launch",
         notes: String(row.notes ?? "").trim().slice(0, 500),
-        assigneeEmail: LAUNCH_PLAN_ASSIGNEES.includes(assigneeEmail as typeof LAUNCH_PLAN_ASSIGNEES[number]) ? assigneeEmail : "",
+        assigneeEmail: isAllowedLaunchPlanRecipient(assigneeEmail) ? assigneeEmail : "",
         priority: ["low", "medium", "high"].includes(priority) ? priority : "medium",
         dueDate: /^\d{4}-\d{2}-\d{2}$/.test(dueDate) ? dueDate : null,
         completed: Boolean(row.completed ?? row.isCompleted),
@@ -636,9 +649,10 @@ router.post("/admin/launch-plan/send-task", requireAuth, requireAdmin, async (re
   try {
     const body = req.body as { recipientEmail?: unknown; task?: Record<string, unknown> };
     const recipientEmail = String(body.recipientEmail ?? "").trim().toLowerCase();
-    if (!LAUNCH_PLAN_ASSIGNEES.includes(recipientEmail as typeof LAUNCH_PLAN_ASSIGNEES[number])) {
-      return res.status(400).json({ error: "Choose Joseph or Michael as the task email recipient." });
+    if (!isAllowedLaunchPlanRecipient(recipientEmail)) {
+      return res.status(400).json({ error: "Choose Joseph, Michael, or Michael & Joseph as the task email recipient." });
     }
+    const recipientEmails = getLaunchPlanRecipientEmails(recipientEmail);
 
     const task = body.task && typeof body.task === "object" ? body.task : {};
     const title = String(task.title ?? "").trim().slice(0, 140);
@@ -649,7 +663,7 @@ router.post("/admin/launch-plan/send-task", requireAuth, requireAdmin, async (re
     const dueDate = String(task.dueDate ?? "").trim();
     const priority = String(task.priority ?? "medium").trim().toLowerCase();
     const assigneeEmail = String(task.assigneeEmail ?? "").trim().toLowerCase();
-    const assigneeName = LAUNCH_PLAN_ASSIGNEES.includes(assigneeEmail as typeof LAUNCH_PLAN_ASSIGNEES[number])
+    const assigneeName = isAllowedLaunchPlanRecipient(assigneeEmail)
       ? getLaunchPlanAssigneeName(assigneeEmail)
       : "Unassigned";
     const completed = Boolean(task.completed);
@@ -671,7 +685,7 @@ router.post("/admin/launch-plan/send-task", requireAuth, requireAdmin, async (re
     ];
 
     const result = await sendEmail({
-      to: recipientEmail,
+      to: recipientEmails,
       from: FROM_EMAIL,
       fromName: "A.IDO Operations Center",
       subject: `A.IDO Launch Task: ${title}`,
