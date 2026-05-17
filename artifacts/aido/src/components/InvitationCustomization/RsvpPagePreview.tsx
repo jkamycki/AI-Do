@@ -27,6 +27,19 @@ interface RsvpPagePreviewProps {
   ceremonyTime?: string | null;
   receptionTime?: string | null;
   invitationMessage?: string | null;
+  hotelOptions?: Array<{
+    id: number;
+    hotelName: string;
+    bookingLink?: string | null;
+    discountCode?: string | null;
+    groupName?: string | null;
+    cutoffDate?: string | null;
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip?: string | null;
+  }>;
+  selectedHotelBlockId?: string;
 }
 
 function isLightColor(hex: string): boolean {
@@ -70,6 +83,22 @@ function formatTime(timeStr: string | null | undefined): string | null {
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
+function formatHotelCutoffDate(value: string | null | undefined) {
+  if (!value) return "";
+  const [yy, mm, dd] = value.split("-").map(Number);
+  const date = yy && mm && dd ? new Date(yy, mm - 1, dd) : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function hotelAddressLine(hotel: NonNullable<RsvpPagePreviewProps["hotelOptions"]>[number]) {
+  return [
+    hotel.address,
+    [hotel.city, hotel.state].filter(Boolean).join(", "),
+    hotel.zip,
+  ].filter(Boolean).join(" ");
+}
+
 const PREVIEW_W = 390;
 const PREVIEW_H = 820;
 
@@ -98,6 +127,8 @@ export function RsvpPagePreview({
   ceremonyTime,
   receptionTime,
   invitationMessage,
+  hotelOptions = [],
+  selectedHotelBlockId = "all",
 }: RsvpPagePreviewProps) {
   const bg = backgroundColor || "#FFF7F2";
   const accent = colors.accent || colors.primary || "#8D294D";
@@ -132,6 +163,11 @@ export function RsvpPagePreview({
 
   const ceremonyTimeStr = formatTime(ceremonyTime);
   const receptionTimeStr = formatTime(receptionTime);
+  const preferredHotelId = selectedHotelBlockId && selectedHotelBlockId !== "all" ? selectedHotelBlockId : "";
+  const sortedHotelOptions = preferredHotelId
+    ? [...hotelOptions].sort((a, b) => (String(a.id) === preferredHotelId ? -1 : String(b.id) === preferredHotelId ? 1 : 0))
+    : hotelOptions;
+  const selectedHotel = sortedHotelOptions[0] ?? null;
   const timesLine = [
     ceremonyTimeStr && `Ceremony ${ceremonyTimeStr}`,
     receptionTimeStr && `Reception ${receptionTimeStr}`,
@@ -362,6 +398,48 @@ export function RsvpPagePreview({
             <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: textFaint, marginBottom: 4 }}>Meal Preference</p>
             <p style={{ fontFamily: bodyFont, fontSize: 11 * sc, color: textMuted }}>Select an option…</p>
           </div>
+
+          {sortedHotelOptions.length > 0 && (
+            <div style={{
+              background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 8,
+              padding: "10px 14px", marginBottom: 10,
+            }}>
+              <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: textFaint, marginBottom: 4 }}>Hotel Room</p>
+              <p style={{ fontFamily: bodyFont, fontSize: 11 * sc, color: textColor, marginBottom: 6 }}>Yes, I need a hotel room</p>
+              <div style={{ border: `1px solid ${cardBorder}`, borderRadius: 7, padding: "8px 10px", background: isLight ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.16)" }}>
+                <p style={{ fontFamily: bodyFont, fontSize: 10 * sc, color: textMuted, marginBottom: 4 }}>Hotel block dropdown</p>
+                <p style={{ fontFamily: bodyFont, fontSize: 11 * sc, color: textColor, fontWeight: 700 }}>
+                  {selectedHotel?.hotelName || "Select a hotel block"}
+                </p>
+                {selectedHotel && hotelAddressLine(selectedHotel) && (
+                  <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, color: textMuted, marginTop: 3 }}>{hotelAddressLine(selectedHotel)}</p>
+                )}
+                {selectedHotel?.groupName && (
+                  <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, color: textMuted, marginTop: 5 }}>
+                    <strong style={{ color: textColor }}>Wedding block:</strong> {selectedHotel.groupName}
+                  </p>
+                )}
+                {selectedHotel?.discountCode && (
+                  <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, color: textMuted, marginTop: 2 }}>
+                    <strong style={{ color: textColor }}>Group code:</strong> {selectedHotel.discountCode}
+                  </p>
+                )}
+                {selectedHotel?.cutoffDate && (
+                  <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, color: textMuted, marginTop: 2 }}>
+                    <strong style={{ color: textColor }}>Book by:</strong> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
+                  </p>
+                )}
+                <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, color: textMuted, marginTop: 2 }}>
+                  <strong style={{ color: textColor }}>Rooms:</strong> 1 room
+                </p>
+                {selectedHotel?.bookingLink && (
+                  <div style={{ marginTop: 7, borderRadius: 6, background: accent, color: accentText, padding: "7px 9px", fontFamily: bodyFont, fontSize: 9 * sc, fontWeight: 700, textAlign: "center" }}>
+                    Open booking link
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Submit button */}
           <div style={{

@@ -350,6 +350,7 @@ export const guests = pgTable("guests", {
   tableAssignment: text("table_assignment"),
   needsHotel: boolean("needs_hotel").notNull().default(false),
   bookedHotelBlockId: integer("booked_hotel_block_id"),
+  bookedHotelRoomCount: integer("booked_hotel_room_count"),
   notes: text("notes"),
   rsvpMessage: text("rsvp_message"),
   phone: text("phone"),

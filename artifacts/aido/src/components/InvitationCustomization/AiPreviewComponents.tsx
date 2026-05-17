@@ -562,6 +562,7 @@ export function AiDigitalInvitationPreview({
   customColors,
   photoEffect = "none",
   fullPhoto = false,
+  onRsvpClick,
 }: {
   profile: WeddingInfo;
   palette: ColorPalette;
@@ -572,6 +573,7 @@ export function AiDigitalInvitationPreview({
   customColors?: CustomColors;
   photoEffect?: string | null;
   fullPhoto?: boolean;
+  onRsvpClick?: () => void;
 }) {
   const bg      = customColors?.bg      ?? BG;
   const accent  = customColors?.accent  ?? GOLD;
@@ -609,6 +611,7 @@ export function AiDigitalInvitationPreview({
         onPhotoPositionChange={onPhotoPositionChange}
         customColors={customColors}
         photoEffect={photoEffect}
+        onRsvpClick={onRsvpClick}
       />
     );
   }
@@ -732,12 +735,16 @@ export function AiDigitalInvitationPreview({
 
       <div style={{ height: 1, background: cardBdr, margin: "14px 8px" }} />
 
-      <div style={{ background: accent, borderRadius: 8, padding: "12px", textAlign: "center" }}>
+      <button
+        type="button"
+        onClick={onRsvpClick}
+        style={{ background: accent, border: 0, borderRadius: 8, padding: "12px", textAlign: "center", width: "100%", cursor: onRsvpClick ? "pointer" : "default" }}
+      >
         <span style={{ fontFamily: labelFont, fontSize: 12 * sc, fontWeight: 700,
                        letterSpacing: "0.12em", textTransform: "uppercase", color: btnText }}>
           RSVP Now
         </span>
-      </div>
+      </button>
     </CardShell>
   );
 }
@@ -750,6 +757,7 @@ function FullPhotoRsvpPreview({
   onPhotoPositionChange,
   customColors,
   photoEffect,
+  onRsvpClick,
 }: {
   profile: WeddingInfo;
   photoUrl?: string | null;
@@ -758,6 +766,7 @@ function FullPhotoRsvpPreview({
   onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
   photoEffect?: string | null;
+  onRsvpClick?: () => void;
 }) {
   const accent = customColors?.accent ?? GOLD;
   const textColor = customColors?.text ?? "#ffffff";
@@ -919,11 +928,15 @@ function FullPhotoRsvpPreview({
             <p style={{ fontFamily: labelFont, fontSize: 10.5 * sc, color: textColor, margin: "13px 0 0" }}>
               Dear <span style={{ fontWeight: 700 }}>{guestName}</span>, will you be joining us?
             </p>
-            <div style={{ marginTop: 13, background: accent, borderRadius: 8, padding: "11px 14px", textAlign: "center" }}>
+            <button
+              type="button"
+              onClick={onRsvpClick}
+              style={{ marginTop: 13, background: accent, border: 0, borderRadius: 8, padding: "11px 14px", textAlign: "center", width: "100%", cursor: onRsvpClick ? "pointer" : "default" }}
+            >
               <span style={{ fontFamily: labelFont, fontSize: 11.5 * sc, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: isLightHex(accent) ? "#1a1a1a" : "#ffffff" }}>
                 RSVP Now
               </span>
-            </div>
+            </button>
           </div>
         </div>
       </div>

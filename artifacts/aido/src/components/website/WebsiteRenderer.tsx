@@ -1004,6 +1004,22 @@ function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
 
 // ---------- rsvp ----------
 
+function websiteHotelAddressLine(hotel: NonNullable<WebsiteRendererPayload["hotelOptions"]>[number]) {
+  return [
+    hotel.address,
+    [hotel.city, hotel.state].filter(Boolean).join(", "),
+    hotel.zip,
+  ].filter(Boolean).join(" ");
+}
+
+function websiteHotelCutoffDate(value: string | null | undefined) {
+  if (!value) return "";
+  const [yy, mm, dd] = value.split("-").map(Number);
+  const date = yy && mm && dd ? new Date(yy, mm - 1, dd) : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
 function RsvpSection({
   data,
   ctx,
@@ -1017,13 +1033,27 @@ function RsvpSection({
   const [plusOne, setPlusOne] = useState(0);
   const [dietary, setDietary] = useState("");
   const [message, setMessage] = useState("");
+  const [hotelNeeded, setHotelNeeded] = useState(false);
+  const [hotelBlockId, setHotelBlockId] = useState("");
+  const [hotelRoomCount, setHotelRoomCount] = useState("1");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const labelColor = sectionTextColor(data, "rsvp");
+  const preferredHotelId = data.customText._rsvpHotelBlockId && data.customText._rsvpHotelBlockId !== "all"
+    ? data.customText._rsvpHotelBlockId
+    : "";
+  const hotelOptions = preferredHotelId
+    ? [...(data.hotelOptions ?? [])].sort((a, b) => (String(a.id) === preferredHotelId ? -1 : String(b.id) === preferredHotelId ? 1 : 0))
+    : (data.hotelOptions ?? []);
+  const showHotelQuestion = hotelOptions.length > 0;
+  const effectiveHotelNeeded = ctx.editable && showHotelQuestion ? true : hotelNeeded;
+  const selectedHotelId = hotelBlockId || preferredHotelId || (ctx.editable ? String(hotelOptions[0]?.id ?? "") : "");
+  const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === selectedHotelId) ?? null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (ctx.editable) return;
     if (!name.trim()) {
       setErr("Please enter your name.");
       return;
@@ -1112,14 +1142,7 @@ function RsvpSection({
           />
         </p>
       )}
-      {ctx.editable ? (
-        <p
-          className="text-center text-sm opacity-60 py-8"
-          style={{ color: labelColor }}
-        >
-          RSVP form will appear here for guests on the published site.
-        </p>
-      ) : done ? (
+      {done ? (
         <div className="flex flex-col items-center gap-4 py-10">
           <CheckCircle2
             className="h-12 w-12"
@@ -1151,6 +1174,11 @@ function RsvpSection({
         </div>
       ) : (
         <form onSubmit={submit} className="max-w-lg mx-auto space-y-4">
+          {ctx.editable && (
+            <p className="rounded-md border px-3 py-2 text-center text-xs opacity-70" style={{ color: labelColor, borderColor: `${data.colorPalette.primary}33` }}>
+              Editor preview only. Guests can use this form on the published site.
+            </p>
+          )}
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label
@@ -1256,6 +1284,88 @@ function RsvpSection({
             </div>
           )}
 
+          {attending !== "no" && showHotelQuestion && (
+            <div className="rounded-lg border p-4 space-y-3" style={{ borderColor: `${data.colorPalette.primary}44`, background: `${data.colorPalette.primary}0d` }}>
+              <div>
+                <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: labelColor }}>
+                  Will you need a hotel room?
+                </label>
+                <select
+                  style={inputStyle}
+                  value={effectiveHotelNeeded ? "yes" : "no"}
+                  onChange={(e) => {
+                    const needsHotel = e.target.value === "yes";
+                    setHotelNeeded(needsHotel);
+                    if (!needsHotel) setHotelBlockId("");
+                    else if (preferredHotelId && !hotelBlockId) setHotelBlockId(preferredHotelId);
+                  }}
+                  disabled={ctx.editable}
+                >
+                  <option value="no">No</option>
+                  <option value="yes">Yes</option>
+                </select>
+              </div>
+
+              {effectiveHotelNeeded && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: labelColor }}>
+                    Hotel block
+                  </label>
+                  <select
+                    style={inputStyle}
+                    value={selectedHotelId}
+                    onChange={(e) => setHotelBlockId(e.target.value)}
+                    disabled={ctx.editable}
+                  >
+                    <option value="">I will decide later</option>
+                    {hotelOptions.map((hotel) => (
+                      <option key={hotel.id} value={hotel.id}>
+                        {hotel.hotelName || "Hotel block"}
+                      </option>
+                    ))}
+                  </select>
+
+                  <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: labelColor }}>
+                    How many rooms?
+                  </label>
+                  <select
+                    style={inputStyle}
+                    value={hotelRoomCount}
+                    onChange={(e) => setHotelRoomCount(e.target.value)}
+                    disabled={ctx.editable}
+                  >
+                    <option value="1">1 room</option>
+                    <option value="2">2 rooms</option>
+                  </select>
+
+                  {selectedHotel && (
+                    <div className="rounded-lg border p-3 text-sm" style={{ color: labelColor, borderColor: `${data.colorPalette.primary}33`, background: `${data.colorPalette.background}cc` }}>
+                      <p className="font-semibold">{selectedHotel.hotelName || "Hotel block"}</p>
+                      {websiteHotelAddressLine(selectedHotel) && (
+                        <p className="mt-1 text-xs opacity-75">{websiteHotelAddressLine(selectedHotel)}</p>
+                      )}
+                      {selectedHotel.groupName && (
+                        <p className="mt-2 text-xs opacity-85"><span className="font-semibold">Wedding block:</span> {selectedHotel.groupName}</p>
+                      )}
+                      {selectedHotel.discountCode && (
+                        <p className="mt-1 text-xs opacity-85"><span className="font-semibold">Group code:</span> <span className="font-mono font-semibold">{selectedHotel.discountCode}</span></p>
+                      )}
+                      {selectedHotel.cutoffDate && (
+                        <p className="mt-1 text-xs opacity-85"><span className="font-semibold">Book by:</span> {websiteHotelCutoffDate(selectedHotel.cutoffDate)}</p>
+                      )}
+                      <p className="mt-1 text-xs opacity-85"><span className="font-semibold">Rooms:</span> {hotelRoomCount === "2" ? "2 rooms" : "1 room"}</p>
+                      {selectedHotel.bookingLink && (
+                        <div className="mt-3 rounded-md px-3 py-2 text-center text-xs font-semibold text-white" style={{ background: data.colorPalette.primary }}>
+                          Open booking link
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <label
               className="block text-xs font-medium mb-1.5 opacity-70"
@@ -1276,7 +1386,7 @@ function RsvpSection({
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || ctx.editable}
             className="w-full py-3 rounded-lg text-white font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
             style={{ background: data.colorPalette.primary }}
           >

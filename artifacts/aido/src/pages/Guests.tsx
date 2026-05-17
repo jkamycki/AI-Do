@@ -270,6 +270,7 @@ const guestSchema = z.object({
   tableAssignment: z.string().optional(),
   needsHotel: z.boolean().default(false),
   bookedHotelBlockId: z.number().nullable().optional(),
+  bookedHotelRoomCount: z.number().min(1).max(2).nullable().optional(),
   phone: z.string().optional().default(""),
   address: z.string().optional().default(""),
   aptUnit: z.string().optional().default(""),
@@ -339,6 +340,7 @@ function GuestForm({
       tableAssignment: "",
       needsHotel: false,
       bookedHotelBlockId: null,
+      bookedHotelRoomCount: null,
       phone: "",
       address: "",
       aptUnit: "",
@@ -357,6 +359,7 @@ function GuestForm({
   const plusOne = form.watch("plusOne");
   const meal = form.watch("mealChoice");
   const needsHotel = form.watch("needsHotel");
+  const bookedHotelBlockId = form.watch("bookedHotelBlockId");
   const isWeddingPartyMember = form.watch("isWeddingPartyMember");
 
   return (
@@ -570,15 +573,20 @@ function GuestForm({
                 onValueChange={(value) => {
                   if (value === "na") {
                     form.setValue("needsHotel", false, { shouldDirty: true });
+                    form.setValue("bookedHotelRoomCount", null, { shouldDirty: true });
                     field.onChange(null);
                     return;
                   }
                   if (value === "pending") {
                     form.setValue("needsHotel", true, { shouldDirty: true });
+                    form.setValue("bookedHotelRoomCount", null, { shouldDirty: true });
                     field.onChange(null);
                     return;
                   }
                   form.setValue("needsHotel", true, { shouldDirty: true });
+                  if (!form.getValues("bookedHotelRoomCount")) {
+                    form.setValue("bookedHotelRoomCount", 1, { shouldDirty: true });
+                  }
                   field.onChange(Number(value));
                 }}
               >
@@ -601,6 +609,33 @@ function GuestForm({
             </FormItem>
           )}
         />
+
+        {bookedHotelBlockId && (
+          <FormField
+            control={form.control}
+            name="bookedHotelRoomCount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Hotel rooms</FormLabel>
+                <Select
+                  value={field.value ? String(field.value) : "1"}
+                  onValueChange={(value) => field.onChange(Number(value))}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select room count" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="1">1 room</SelectItem>
+                    <SelectItem value="2">2 rooms</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}
@@ -932,6 +967,7 @@ function GuestForm({
                 tableAssignment: "",
                 needsHotel: false,
                 bookedHotelBlockId: null,
+                bookedHotelRoomCount: null,
                 phone: "",
                 address: "",
                 aptUnit: "",
@@ -969,6 +1005,7 @@ function exportCSV(guestList: Guest[], hotels: HotelOption[] = []) {
     "Plus One Name",
     "Table",
     "Booked Hotel",
+    "Hotel Rooms",
     "Street Address",
     "Apt/Unit",
     "City",
@@ -989,6 +1026,7 @@ function exportCSV(guestList: Guest[], hotels: HotelOption[] = []) {
     (g as any).bookedHotelBlockId
       ? hotelNames.get((g as any).bookedHotelBlockId) ?? "Booked"
       : (g as any).needsHotel ? "Pending" : "N/A",
+    (g as any).bookedHotelBlockId ? String((g as any).bookedHotelRoomCount || 1) : "",
     (g as any).address ?? "",
     (g as any).aptUnit ?? "",
     (g as any).guestCity ?? "",
@@ -2055,12 +2093,13 @@ export default function Guests({
   function handleBookedHotelChange(guest: Guest, raw: string) {
     const prevNeedsHotel = !!(guest as any).needsHotel;
     const prevHotelId = (guest as any).bookedHotelBlockId ?? null;
+    const prevRoomCount = (guest as any).bookedHotelRoomCount ?? null;
     const next =
       raw === "na"
-        ? { needsHotel: false, bookedHotelBlockId: null }
+        ? { needsHotel: false, bookedHotelBlockId: null, bookedHotelRoomCount: null }
         : raw === "pending"
-          ? { needsHotel: true, bookedHotelBlockId: null }
-          : { needsHotel: true, bookedHotelBlockId: Number(raw) };
+          ? { needsHotel: true, bookedHotelBlockId: null, bookedHotelRoomCount: null }
+          : { needsHotel: true, bookedHotelBlockId: Number(raw), bookedHotelRoomCount: (guest as any).bookedHotelRoomCount || 1 };
 
     optimisticUpdate(guest.id, next as Partial<Guest>);
     updateGuest.mutate(
@@ -2077,8 +2116,31 @@ export default function Guests({
           optimisticUpdate(guest.id, {
             needsHotel: prevNeedsHotel,
             bookedHotelBlockId: prevHotelId,
+            bookedHotelRoomCount: prevRoomCount,
           } as Partial<Guest>);
           toast({ title: "Failed to update booked hotel", variant: "destructive" });
+        },
+      },
+    );
+  }
+
+  function handleBookedHotelRoomCountChange(guest: Guest, raw: string) {
+    const nextRoomCount = raw === "2" ? 2 : 1;
+    const prevRoomCount = (guest as any).bookedHotelRoomCount ?? null;
+    optimisticUpdate(guest.id, { bookedHotelRoomCount: nextRoomCount } as Partial<Guest>);
+    updateGuest.mutate(
+      {
+        id: guest.id,
+        data: { bookedHotelRoomCount: nextRoomCount } as Parameters<typeof updateGuest.mutate>[0]["data"],
+      },
+      {
+        onSuccess: () => {
+          invalidate();
+          queryClient.invalidateQueries({ queryKey: ["hotels"] });
+        },
+        onError: () => {
+          optimisticUpdate(guest.id, { bookedHotelRoomCount: prevRoomCount } as Partial<Guest>);
+          toast({ title: "Failed to update hotel room count", variant: "destructive" });
         },
       },
     );
@@ -3232,6 +3294,23 @@ export default function Guests({
                           ))}
                         </SelectContent>
                       </Select>
+                      {(g as any).bookedHotelBlockId && (
+                        <div className="mt-2">
+                          <p className="text-xs text-muted-foreground mb-1">Rooms</p>
+                          <Select
+                            value={String((g as any).bookedHotelRoomCount || 1)}
+                            onValueChange={(value) => handleBookedHotelRoomCountChange(g, value)}
+                          >
+                            <SelectTrigger className="h-8 text-xs font-medium">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1 room</SelectItem>
+                              <SelectItem value="2">2 rooms</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 pt-1 border-t">
                       <Button
@@ -3632,6 +3711,20 @@ export default function Guests({
                               ))}
                             </SelectContent>
                           </Select>
+                          {(g as any).bookedHotelBlockId && (
+                            <Select
+                              value={String((g as any).bookedHotelRoomCount || 1)}
+                              onValueChange={(value) => handleBookedHotelRoomCountChange(g, value)}
+                            >
+                              <SelectTrigger className="mt-1 h-7 w-full px-2 text-xs font-medium">
+                                <SelectValue placeholder="Rooms" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">1 room</SelectItem>
+                                <SelectItem value="2">2 rooms</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
                         </TableCell>
                         <TableCell className="hidden md:table-cell align-top text-xs lg:text-sm">
                           <Select
@@ -3842,6 +3935,7 @@ export default function Guests({
                 tableAssignment: editGuest.tableAssignment ?? "",
                 needsHotel: !!(editGuest as any).needsHotel,
                 bookedHotelBlockId: (editGuest as any).bookedHotelBlockId ?? null,
+                bookedHotelRoomCount: (editGuest as any).bookedHotelRoomCount ?? null,
                 phone: (editGuest as any).phone ?? "",
                 address: (editGuest as any).address ?? "",
                 aptUnit: (editGuest as any).aptUnit ?? "",

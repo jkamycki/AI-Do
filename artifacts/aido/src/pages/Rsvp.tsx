@@ -33,6 +33,7 @@ const schema = z.object({
   dietaryRestrictions: z.string().optional(),
   hotelNeeded: z.boolean().default(false),
   bookedHotelBlockId: z.string().optional(),
+  bookedHotelRoomCount: z.string().default("1"),
 }).refine(
   (data) => {
     if (data.attendance !== "attending" || !data.plusOne) return true;
@@ -195,6 +196,7 @@ export default function Rsvp() {
       dietaryRestrictions: "",
       hotelNeeded: false,
       bookedHotelBlockId: "",
+      bookedHotelRoomCount: "1",
     },
   });
 
@@ -202,6 +204,7 @@ export default function Rsvp() {
   const plusOne = form.watch("plusOne");
   const hotelNeeded = form.watch("hotelNeeded");
   const selectedHotelBlockId = form.watch("bookedHotelBlockId");
+  const selectedHotelRoomCount = form.watch("bookedHotelRoomCount");
   const selectedHotel = info?.hotelOptions?.find((hotel) => String(hotel.id) === selectedHotelBlockId) ?? null;
   const showHotelQuestion = !!info?.askHotelOnRsvp && (info.hotelOptions?.length ?? 0) > 0;
 
@@ -228,6 +231,7 @@ export default function Rsvp() {
         dietaryRestrictions: data.dietaryRestrictions,
         hotelNeeded: data.hotelNeeded,
         bookedHotelBlockId: data.hotelNeeded && data.bookedHotelBlockId ? Number(data.bookedHotelBlockId) : null,
+        bookedHotelRoomCount: data.hotelNeeded ? Number(data.bookedHotelRoomCount || "1") : null,
       };
       const res = await apiFetch(`/api/rsvp/${token}`, {
         method: "POST",
@@ -965,6 +969,30 @@ export default function Rsvp() {
                               )}
                             />
 
+                            <FormField
+                              control={form.control}
+                              name="bookedHotelRoomCount"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel style={{ color: MUTED, fontFamily: jakarta }}>
+                                    How many rooms will you need?
+                                  </FormLabel>
+                                  <Select value={field.value || "1"} onValueChange={field.onChange}>
+                                    <FormControl>
+                                      <SelectTrigger style={{ background: "rgba(255,255,255,0.05)", borderColor: CARD_BDR, color: WHITE, fontFamily: jakarta }}>
+                                        <SelectValue placeholder="Select room count" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="1">1 room</SelectItem>
+                                      <SelectItem value="2">2 rooms</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
                             {selectedHotel && (
                               <div
                                 className="rounded-lg p-3 space-y-2 text-sm"
@@ -993,6 +1021,9 @@ export default function Rsvp() {
                                       <span className="font-semibold" style={{ color: WHITE }}>Book by:</span> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
                                     </p>
                                   )}
+                                  <p className="text-xs mt-1" style={{ color: MUTED }}>
+                                    <span className="font-semibold" style={{ color: WHITE }}>Rooms:</span> {selectedHotelRoomCount === "2" ? "2 rooms" : "1 room"}
+                                  </p>
                                 </div>
                                 {selectedHotel.bookingLink && (
                                   <a

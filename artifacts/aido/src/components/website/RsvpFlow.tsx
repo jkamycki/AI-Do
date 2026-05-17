@@ -20,6 +20,7 @@ interface GuestDetails {
   plusOneMealChoice: string | null;
   needsHotel?: boolean;
   bookedHotelBlockId?: number | null;
+  bookedHotelRoomCount?: number | null;
 }
 
 function fontStack(font: string): string {
@@ -74,6 +75,7 @@ export function RsvpFlow({
   const [plusOneMeal, setPlusOneMeal] = useState("");
   const [hotelNeeded, setHotelNeeded] = useState(false);
   const [hotelBlockId, setHotelBlockId] = useState("");
+  const [hotelRoomCount, setHotelRoomCount] = useState("1");
   // Self-add (guest not on the list) form
   const [selfName, setSelfName] = useState("");
   const [selfEmail, setSelfEmail] = useState("");
@@ -89,7 +91,7 @@ export function RsvpFlow({
   const hotelOptions = preferredHotelId
     ? [...allHotelOptions].sort((a, b) => (String(a.id) === preferredHotelId ? -1 : String(b.id) === preferredHotelId ? 1 : 0))
     : allHotelOptions;
-  const showHotelQuestion = data.customText._rsvpAskHotel === "true" && hotelOptions.length > 0;
+  const showHotelQuestion = hotelOptions.length > 0;
   const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === hotelBlockId) ?? null;
   const renderHotelDetails = () => selectedHotel ? (
     <div className="rounded-lg p-3 space-y-2 text-sm" style={{ border: `1px solid ${accent}33`, background: `${accent}10`, color: text }}>
@@ -114,6 +116,9 @@ export function RsvpFlow({
             <span className="font-semibold">{t("rsvp.hotel_cutoff_date", { defaultValue: "Book by" })}:</span> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
           </p>
         )}
+        <p className="text-xs mt-1 opacity-85">
+          <span className="font-semibold">{t("rsvp.hotel_rooms", { defaultValue: "Rooms" })}:</span> {hotelRoomCount === "2" ? "2 rooms" : "1 room"}
+        </p>
       </div>
       {selectedHotel.bookingLink && (
         <a
@@ -141,6 +146,7 @@ export function RsvpFlow({
     setPlusOneMeal(guest.plusOneMealChoice ?? "");
     setHotelNeeded(!!guest.needsHotel);
     setHotelBlockId(guest.bookedHotelBlockId ? String(guest.bookedHotelBlockId) : preferredHotelId);
+    setHotelRoomCount(guest.bookedHotelRoomCount === 2 ? "2" : "1");
   }, [guest, preferredHotelId]);
 
   useEffect(() => {
@@ -231,6 +237,7 @@ export function RsvpFlow({
           ...(showHotelQuestion ? {
             hotelNeeded: attendance === "attending" ? hotelNeeded : false,
             bookedHotelBlockId: hotelNeeded && hotelBlockId ? Number(hotelBlockId) : null,
+            bookedHotelRoomCount: hotelNeeded ? Number(hotelRoomCount) : null,
           } : {}),
           message: selfMessage.trim() || undefined,
           ...(password ? { password } : {}),
@@ -278,6 +285,7 @@ export function RsvpFlow({
           ...(showHotelQuestion ? {
             hotelNeeded: attendance === "attending" ? hotelNeeded : false,
             bookedHotelBlockId: hotelNeeded && hotelBlockId ? Number(hotelBlockId) : null,
+            bookedHotelRoomCount: hotelNeeded ? Number(hotelRoomCount) : null,
           } : {}),
           message: selfMessage.trim() || undefined,
           ...(password ? { password } : {}),
@@ -596,6 +604,18 @@ export function RsvpFlow({
                               </option>
                             ))}
                           </select>
+                          <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>
+                            {t("rsvp.hotel_room_count", { defaultValue: "How many rooms?" })}
+                          </label>
+                          <select
+                            value={hotelRoomCount}
+                            onChange={(e) => setHotelRoomCount(e.target.value)}
+                            className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                            style={inputBase}
+                          >
+                            <option value="1">1 room</option>
+                            <option value="2">2 rooms</option>
+                          </select>
                           {renderHotelDetails()}
                         </div>
                       )}
@@ -820,6 +840,18 @@ export function RsvpFlow({
                                 {hotel.hotelName || "Hotel block"}
                               </option>
                             ))}
+                          </select>
+                          <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>
+                            {t("rsvp.hotel_room_count", { defaultValue: "How many rooms?" })}
+                          </label>
+                          <select
+                            value={hotelRoomCount}
+                            onChange={(e) => setHotelRoomCount(e.target.value)}
+                            className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                            style={inputBase}
+                          >
+                            <option value="1">1 room</option>
+                            <option value="2">2 rooms</option>
                           </select>
                           {renderHotelDetails()}
                         </div>

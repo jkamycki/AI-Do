@@ -77,6 +77,42 @@ function photoZoomFromCustomColors(
     : 1;
 }
 
+function formatHotelEmailDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const [y, m, d] = value.split("-").map(Number);
+  const date = y && m && d ? new Date(y, m - 1, d) : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function buildHotelRsvpEmailText(hotels: Array<{
+  id: number;
+  hotelName: string | null;
+  groupName?: string | null;
+  discountCode?: string | null;
+  cutoffDate?: string | null;
+}>, preferredHotelBlockId?: number | string | null) {
+  if (!hotels.length) return null;
+  const preferredId = preferredHotelBlockId != null ? Number(preferredHotelBlockId) : null;
+  const sortedHotels = preferredId
+    ? [...hotels].sort((a, b) => (a.id === preferredId ? -1 : b.id === preferredId ? 1 : 0))
+    : hotels;
+  const hotelNames = sortedHotels
+    .slice(0, 3)
+    .map((hotel) => hotel.hotelName || "Hotel block")
+    .join(", ");
+  const primary = sortedHotels[0];
+  const details = [
+    primary?.groupName ? `Wedding block: ${primary.groupName}` : null,
+    primary?.discountCode ? `Group code: ${primary.discountCode}` : null,
+    primary?.cutoffDate ? `Book by: ${formatHotelEmailDate(primary.cutoffDate)}` : null,
+  ].filter(Boolean).join(" | ");
+  return [
+    `Hotel RSVP: choose whether you need a hotel room after clicking RSVP NOW. Hotel option${sortedHotels.length > 1 ? "s" : ""}: ${hotelNames}.`,
+    details,
+  ].filter(Boolean).join(" ");
+}
+
 function buildOrigin(req: import("express").Request): string {
   const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() || req.protocol;
   const host = (req.headers["x-forwarded-host"] as string)?.split(",")[0]?.trim() || req.get("host") || "";
@@ -848,22 +884,18 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
             });
           })()
         : null;
-      const rsvpAskHotel = !!customization?.customColors?.rsvpAskHotel;
       const preferredHotelBlockId = customization?.customColors?.rsvpHotelBlockId ?? null;
-      const emailHotelRows = rsvpAskHotel
-        ? await db
-            .select({ id: hotelBlocks.id, hotelName: hotelBlocks.hotelName })
-            .from(hotelBlocks)
-            .where(eq(hotelBlocks.profileId, profile.id))
-        : [];
-      const preferredEmailHotel = preferredHotelBlockId
-        ? emailHotelRows.find((hotel) => hotel.id === preferredHotelBlockId)
-        : null;
-      const hotelRsvpText = emailHotelRows.length
-        ? preferredEmailHotel
-          ? `The RSVP form will also ask if you plan to use the ${preferredEmailHotel.hotelName || "selected"} hotel block.`
-          : "The RSVP form will also ask if you need a hotel room through the couple's hotel blocks."
-        : null;
+      const emailHotelRows = await db
+        .select({
+          id: hotelBlocks.id,
+          hotelName: hotelBlocks.hotelName,
+          groupName: hotelBlocks.groupName,
+          discountCode: hotelBlocks.discountCode,
+          cutoffDate: hotelBlocks.cutoffDate,
+        })
+        .from(hotelBlocks)
+        .where(eq(hotelBlocks.profileId, profile.id));
+      const hotelRsvpText = buildHotelRsvpEmailText(emailHotelRows, preferredHotelBlockId);
 
       const monthDayYear = profile.weddingDate
         ? (() => {
@@ -1133,22 +1165,18 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
           });
         })()
       : null;
-    const rsvpAskHotel = !!customization?.customColors?.rsvpAskHotel;
     const preferredHotelBlockId = customization?.customColors?.rsvpHotelBlockId ?? null;
-    const emailHotelRows = rsvpAskHotel
-      ? await db
-          .select({ id: hotelBlocks.id, hotelName: hotelBlocks.hotelName })
-          .from(hotelBlocks)
-          .where(eq(hotelBlocks.profileId, profile.id))
-      : [];
-    const preferredEmailHotel = preferredHotelBlockId
-      ? emailHotelRows.find((hotel) => hotel.id === preferredHotelBlockId)
-      : null;
-    const hotelRsvpText = emailHotelRows.length
-      ? preferredEmailHotel
-        ? `The RSVP form will also ask if you plan to use the ${preferredEmailHotel.hotelName || "selected"} hotel block.`
-        : "The RSVP form will also ask if you need a hotel room through the couple's hotel blocks."
-      : null;
+    const emailHotelRows = await db
+      .select({
+        id: hotelBlocks.id,
+        hotelName: hotelBlocks.hotelName,
+        groupName: hotelBlocks.groupName,
+        discountCode: hotelBlocks.discountCode,
+        cutoffDate: hotelBlocks.cutoffDate,
+      })
+      .from(hotelBlocks)
+      .where(eq(hotelBlocks.profileId, profile.id));
+    const hotelRsvpText = buildHotelRsvpEmailText(emailHotelRows, preferredHotelBlockId);
 
     const photoPublicUrl: string | null = (() => {
       if (!digitalInvitationPhotoUrl || digitalInvitationPhotoUrl.startsWith("blob:")) return null;
@@ -1417,7 +1445,6 @@ router.get("/rsvp/:token", async (req, res) => {
       : [];
     const c = customizationRows[0] ?? null;
     const customizationPhoto = c?.digitalInvitationPhotoUrl ?? null;
-    const rsvpAskHotelSetting = !!c?.customColors?.rsvpAskHotel;
     const preferredHotelBlockId = c?.customColors?.rsvpHotelBlockId ?? null;
     const hotelRows = profile
       ? await db
@@ -1439,7 +1466,7 @@ router.get("/rsvp/:token", async (req, res) => {
     const sortedHotelRows = preferredHotelBlockId
       ? [...hotelRows].sort((a, b) => (a.id === preferredHotelBlockId ? -1 : b.id === preferredHotelBlockId ? 1 : 0))
       : hotelRows;
-    const rsvpAskHotel = rsvpAskHotelSetting && sortedHotelRows.length > 0;
+    const rsvpAskHotel = sortedHotelRows.length > 0;
 
     const useGenerated = c?.useGeneratedInvitation !== false;
     // Merge customColors on top of the palette only in custom-design mode.
@@ -1539,6 +1566,7 @@ router.post("/rsvp/:token", async (req, res) => {
       notes,
       hotelNeeded,
       bookedHotelBlockId,
+      bookedHotelRoomCount,
     } = req.body;
 
     if (attendance !== "attending" && attendance !== "declined") {
@@ -1573,8 +1601,10 @@ router.post("/rsvp/:token", async (req, res) => {
       updateData.mealChoice = normalizeMeal(mealChoice);
       if (hotelNeeded !== undefined) {
         const wantsHotel = hotelNeeded === true || hotelNeeded === "true";
+        const roomCount = Number(bookedHotelRoomCount);
         updateData.needsHotel = wantsHotel;
         updateData.bookedHotelBlockId = null;
+        updateData.bookedHotelRoomCount = wantsHotel && Number.isInteger(roomCount) && roomCount >= 1 && roomCount <= 2 ? roomCount : wantsHotel ? 1 : null;
         if (wantsHotel && bookedHotelBlockId !== undefined && bookedHotelBlockId !== null && bookedHotelBlockId !== "") {
           const hotelId = Number(bookedHotelBlockId);
           if (!Number.isInteger(hotelId) || hotelId <= 0) {
@@ -1610,6 +1640,7 @@ router.post("/rsvp/:token", async (req, res) => {
       updateData.mealChoice = null;
       updateData.needsHotel = false;
       updateData.bookedHotelBlockId = null;
+      updateData.bookedHotelRoomCount = null;
     }
 
     const [updated] = await db
@@ -1651,6 +1682,7 @@ router.post("/rsvp/:token", async (req, res) => {
             `Plus One Meal Choice: ${updated.plusOneMealChoice ?? "(none)"}`,
             `Needs Hotel: ${updated.needsHotel ? "Yes" : "No"}`,
             `Hotel Block ID: ${updated.bookedHotelBlockId ?? "(none)"}`,
+            `Hotel Rooms: ${updated.bookedHotelRoomCount ?? "(none)"}`,
             `Dietary Restrictions: ${updated.dietaryNotes ?? "(none)"}`,
             `RSVP Message: ${updated.rsvpMessage ?? "(none)"}`,
             `Notes: ${updated.notes ?? "(none)"}`,

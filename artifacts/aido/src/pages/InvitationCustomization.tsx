@@ -16,6 +16,7 @@ import {
   type PrintInvitationSide,
   type PrintInvitationSize,
 } from "@/components/InvitationCustomization/PrintInvitationPreview";
+import { RsvpPagePreview } from "@/components/InvitationCustomization/RsvpPagePreview";
 import { Card, CardContent } from "@/components/ui/card";
 import { WEBSITE_THEMES } from "@/lib/websiteThemes";
 import {
@@ -89,6 +90,13 @@ type HotelOption = {
   id: number;
   hotelName: string;
   bookingLink?: string | null;
+  discountCode?: string | null;
+  groupName?: string | null;
+  cutoffDate?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
 };
 
 function safePdfColor(color: string | null | undefined, fallback: string) {
@@ -248,6 +256,7 @@ export default function InvitationCustomizationPage({
     rsvpInvitation: { backgroundColor: AIDO_BRAND_COLORS.ivory, accentColor: AIDO_BRAND_COLORS.burgundy, fontFamily: "Playfair Display", fontSize: "16", fontColor: AIDO_BRAND_COLORS.ink },
   });
   const [previewRefreshNonce, setPreviewRefreshNonce] = useState(0);
+  const [showRsvpFlowPreview, setShowRsvpFlowPreview] = useState(false);
 
   // ── Shared brand-color state ──────────────────────────────────────────────
   const [primaryColor, setPrimaryColor] = useState(AIDO_BRAND_COLORS.burgundy);
@@ -1449,11 +1458,13 @@ export default function InvitationCustomizationPage({
 
   const selectPreviewTab = (tab: PreviewTab) => {
     setPreviewTab(tab);
+    setShowRsvpFlowPreview(false);
     setPreviewRefreshNonce((current) => current + 1);
   };
 
   const selectDeliveryMode = (mode: InvitationDeliveryMode) => {
     setDeliveryMode(mode);
+    setShowRsvpFlowPreview(false);
     setPreviewRefreshNonce((current) => current + 1);
   };
 
@@ -2151,6 +2162,52 @@ export default function InvitationCustomizationPage({
                   : undefined;
                 const activeInvitationLayout = "classic";
                 const previewRefreshKey = `${previewTab}-${deliveryMode}-${designMode}-${activeInvitationLayout}-${previewRefreshNonce}`;
+                if (!isSTD && showRsvpFlowPreview) {
+                  const flowScale = Math.min(1, Math.max(0.72, ((previewContainerWidth || 430) - 32) / 390));
+                  return (
+                    <div className="space-y-3">
+                      <div className="mx-auto flex max-w-[390px] items-center justify-between gap-3 rounded-lg border bg-card/95 px-3 py-2 text-sm shadow-sm">
+                        <div>
+                          <p className="font-medium">Guest RSVP flow preview</p>
+                          <p className="text-xs text-muted-foreground">This is what opens after a guest clicks RSVP Now.</p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowRsvpFlowPreview(false)}
+                        >
+                          Back
+                        </Button>
+                      </div>
+                      <RsvpPagePreview
+                        colors={isCustom ? customPalette : { ...displayPalette, accent: AIDO_BRAND_COLORS.burgundy, primary: AIDO_BRAND_COLORS.burgundy }}
+                        font={isCustom ? cd.fontFamily : null}
+                        backgroundColor={isCustom ? cd.backgroundColor : null}
+                        fontColor={isCustom ? cd.fontColor : null}
+                        fontSize={isCustom ? cd.fontSize : null}
+                        coupleColor={isCustom ? undefined : AIDO_BRAND_COLORS.burgundy}
+                        partner1Name={displayWeddingProfile.partner1Name}
+                        partner2Name={displayWeddingProfile.partner2Name}
+                        weddingDate={displayWeddingProfile.weddingDate}
+                        venue={displayWeddingProfile.venue}
+                        venueAddress={displayWeddingProfile.location}
+                        venueCity={displayWeddingProfile.venueCity}
+                        venueState={displayWeddingProfile.venueState}
+                        venueZip={displayWeddingProfile.venueZip}
+                        ceremonyTime={displayWeddingProfile.ceremonyTime}
+                        receptionTime={displayWeddingProfile.receptionTime}
+                        invitationMessage={invitationMessage || weddingProfile?.invitationMessage}
+                        photoUrl={digitalInvitationPhotoUrl}
+                        photoPosition={digitalInvitationPhotoPosition}
+                        onPhotoPositionChange={setDigitalInvitationPhotoPosition}
+                        hotelOptions={hotelBlocks}
+                        selectedHotelBlockId={rsvpHotelBlockId}
+                        scale={flowScale}
+                      />
+                    </div>
+                  );
+                }
                 return (
                   <AnimatedInvitationShell
                     key={previewRefreshKey}
@@ -2208,6 +2265,7 @@ export default function InvitationCustomizationPage({
                         customColors={isCustom ? previewCustomColors : undefined}
                         photoEffect={digitalInvitationPhotoEffect}
                         fullPhoto={false}
+                        onRsvpClick={() => setShowRsvpFlowPreview(true)}
                       />
                     )}
                   </AnimatedInvitationShell>

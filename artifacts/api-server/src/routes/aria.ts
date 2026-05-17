@@ -2256,13 +2256,14 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         .from(hotelBlocks).where(profile ? eq(hotelBlocks.profileId, profile.id) : eq(hotelBlocks.userId, await resolveScopeUserId(req)));
       if (!profile) return { ok: true, data: { hotels: rows } };
       const assignedGuests = await db
-        .select({ bookedHotelBlockId: guests.bookedHotelBlockId })
+        .select({ bookedHotelBlockId: guests.bookedHotelBlockId, bookedHotelRoomCount: guests.bookedHotelRoomCount })
         .from(guests)
         .where(eq(guests.profileId, profile.id));
       const bookedCounts = new Map<number, number>();
       for (const guest of assignedGuests) {
         if (!guest.bookedHotelBlockId) continue;
-        bookedCounts.set(guest.bookedHotelBlockId, (bookedCounts.get(guest.bookedHotelBlockId) ?? 0) + 1);
+        const roomCount = Math.max(1, Math.min(2, Number(guest.bookedHotelRoomCount) || 1));
+        bookedCounts.set(guest.bookedHotelBlockId, (bookedCounts.get(guest.bookedHotelBlockId) ?? 0) + roomCount);
       }
       return { ok: true, data: { hotels: rows.map((hotel) => ({ ...hotel, roomsBooked: bookedCounts.get(hotel.id) ?? 0 })) } };
     }

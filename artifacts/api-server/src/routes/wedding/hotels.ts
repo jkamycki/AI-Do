@@ -201,13 +201,14 @@ router.get("/hotels", requireAuth, async (req, res) => {
     }
 
     const assignedGuests = await db
-      .select({ bookedHotelBlockId: guests.bookedHotelBlockId })
+      .select({ bookedHotelBlockId: guests.bookedHotelBlockId, bookedHotelRoomCount: guests.bookedHotelRoomCount })
       .from(guests)
       .where(eq(guests.profileId, profile.id));
     const bookedCounts = new Map<number, number>();
     for (const guest of assignedGuests) {
       if (!guest.bookedHotelBlockId) continue;
-      bookedCounts.set(guest.bookedHotelBlockId, (bookedCounts.get(guest.bookedHotelBlockId) ?? 0) + 1);
+      const roomCount = Math.max(1, Math.min(2, Number(guest.bookedHotelRoomCount) || 1));
+      bookedCounts.set(guest.bookedHotelBlockId, (bookedCounts.get(guest.bookedHotelBlockId) ?? 0) + roomCount);
     }
 
     res.json(rows.map((row) => withSyncedRoomsBooked(row, bookedCounts.get(row.id) ?? 0)));
@@ -303,7 +304,7 @@ router.delete("/hotels/:id", requireAuth, async (req, res) => {
     if (profile) {
       await db
         .update(guests)
-        .set({ bookedHotelBlockId: null, needsHotel: true })
+        .set({ bookedHotelBlockId: null, bookedHotelRoomCount: null, needsHotel: true })
         .where(and(eq(guests.profileId, profile.id), eq(guests.bookedHotelBlockId, id)));
     }
 

@@ -48,6 +48,7 @@ interface HotelGuest {
   email?: string | null;
   needsHotel?: boolean | null;
   bookedHotelBlockId?: number | null;
+  bookedHotelRoomCount?: number | null;
 }
 
 const EMPTY: Partial<HotelBlock> = {
@@ -245,7 +246,10 @@ function HotelCard({
   const { copied, copy } = useCopy();
   const cutoff = hotel.cutoffDate ? new Date(hotel.cutoffDate + "T12:00:00") : null;
   const daysLeft = cutoff ? Math.ceil((cutoff.getTime() - Date.now()) / 86400000) : null;
-  const syncedRoomsBooked = bookedGuests.length;
+  const syncedRoomsBooked = bookedGuests.reduce(
+    (sum, guest) => sum + Math.max(1, Math.min(2, Number(guest.bookedHotelRoomCount) || 1)),
+    0,
+  );
 
   return (
     <Card className="border-border/60 shadow-sm hover:shadow-md transition-shadow">
@@ -360,7 +364,7 @@ function HotelCard({
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <Users className="h-3.5 w-3.5 text-primary" />
-              Booked Guests
+              Booked Rooms
             </p>
             <Badge variant="secondary" className="text-[10px]">
               {syncedRoomsBooked}
@@ -375,6 +379,7 @@ function HotelCard({
                   title={guest.email ?? guest.name}
                 >
                   <span className="truncate">{guest.name}</span>
+                  <span className="ml-1 opacity-70">({Math.max(1, Math.min(2, Number(guest.bookedHotelRoomCount) || 1))})</span>
                 </span>
               ))}
             </div>
@@ -443,7 +448,10 @@ export default function Hotels() {
   const hotelGuests = hotelGuestData?.guests ?? [];
   const pendingHotelGuests = hotelGuests.filter((guest) => guest.needsHotel && !guest.bookedHotelBlockId);
   const bookedHotelGuestCount = hotelGuests.filter((guest) => guest.bookedHotelBlockId).length;
-  const bookedRooms = bookedHotelGuestCount;
+  const bookedRooms = hotelGuests.reduce(
+    (sum, guest) => sum + (guest.bookedHotelBlockId ? Math.max(1, Math.min(2, Number(guest.bookedHotelRoomCount) || 1)) : 0),
+    0,
+  );
 
   if (isLoading) {
     return (

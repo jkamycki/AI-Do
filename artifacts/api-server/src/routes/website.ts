@@ -163,7 +163,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
     .limit(1);
   const invitationColors = (invitationCustomization?.customColors ?? {}) as Record<string, unknown>;
   const customText = { ...(row.customText as Record<string, string>) };
-  if (invitationColors.rsvpAskHotel === true && hotelOptions.length > 0) {
+  if (hotelOptions.length > 0) {
     customText._rsvpAskHotel = "true";
   }
   if (invitationColors.rsvpHotelBlockId !== undefined && invitationColors.rsvpHotelBlockId !== null) {
@@ -543,16 +543,20 @@ async function normalizeHotelRsvp(
   attendance: string | undefined,
   hotelNeeded: unknown,
   bookedHotelBlockId: unknown,
-): Promise<Pick<typeof guests.$inferInsert, "needsHotel" | "bookedHotelBlockId">> {
+  bookedHotelRoomCount: unknown,
+): Promise<Pick<typeof guests.$inferInsert, "needsHotel" | "bookedHotelBlockId" | "bookedHotelRoomCount">> {
   if (attendance !== "attending") {
-    return { needsHotel: false, bookedHotelBlockId: null };
+    return { needsHotel: false, bookedHotelBlockId: null, bookedHotelRoomCount: null };
   }
   const wantsHotel = hotelNeeded === true || hotelNeeded === "true";
-  if (!wantsHotel) return { needsHotel: false, bookedHotelBlockId: null };
+  if (!wantsHotel) return { needsHotel: false, bookedHotelBlockId: null, bookedHotelRoomCount: null };
 
-  const update: Pick<typeof guests.$inferInsert, "needsHotel" | "bookedHotelBlockId"> = {
+  const roomCount = Number(bookedHotelRoomCount);
+  const normalizedRoomCount = Number.isInteger(roomCount) && roomCount >= 1 && roomCount <= 2 ? roomCount : 1;
+  const update: Pick<typeof guests.$inferInsert, "needsHotel" | "bookedHotelBlockId" | "bookedHotelRoomCount"> = {
     needsHotel: true,
     bookedHotelBlockId: null,
+    bookedHotelRoomCount: normalizedRoomCount,
   };
   if (bookedHotelBlockId !== undefined && bookedHotelBlockId !== null && bookedHotelBlockId !== "") {
     const hotelId = Number(bookedHotelBlockId);
@@ -628,6 +632,7 @@ router.get("/website/public/:slug/guests/:guestId", async (req, res) => {
       plusOneMealChoice: guest.plusOneMealChoice,
       needsHotel: guest.needsHotel,
       bookedHotelBlockId: guest.bookedHotelBlockId,
+      bookedHotelRoomCount: guest.bookedHotelRoomCount,
     });
   } catch (err) {
     req.log.error(err, "websiteRsvpGetGuest failed");
@@ -694,6 +699,7 @@ router.get("/website/preview/guests/:guestId", requireAuth, async (req, res) => 
       plusOneMealChoice: guest.plusOneMealChoice,
       needsHotel: guest.needsHotel,
       bookedHotelBlockId: guest.bookedHotelBlockId,
+      bookedHotelRoomCount: guest.bookedHotelRoomCount,
     });
   } catch (err) {
     req.log.error(err, "websiteRsvpPreviewGetGuest failed");
@@ -722,6 +728,7 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
       dietaryRestrictions,
       hotelNeeded,
       bookedHotelBlockId,
+      bookedHotelRoomCount,
       message,
     } = (req.body ?? {}) as {
       name?: string;
@@ -734,6 +741,7 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
       dietaryRestrictions?: string;
       hotelNeeded?: boolean;
       bookedHotelBlockId?: number | null;
+      bookedHotelRoomCount?: number | null;
       message?: string;
     };
 
@@ -767,9 +775,9 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
     const isAttending = attendance === "attending";
     const wantsPlusOne = isAttending && plusOne === true;
     const cleanPlusOneName = typeof plusOneName === "string" ? plusOneName.trim() : "";
-    let hotelUpdate: Pick<typeof guests.$inferInsert, "needsHotel" | "bookedHotelBlockId">;
+    let hotelUpdate: Pick<typeof guests.$inferInsert, "needsHotel" | "bookedHotelBlockId" | "bookedHotelRoomCount">;
     try {
-      hotelUpdate = await normalizeHotelRsvp(r.site.profileId, attendance, hotelNeeded, bookedHotelBlockId);
+      hotelUpdate = await normalizeHotelRsvp(r.site.profileId, attendance, hotelNeeded, bookedHotelBlockId, bookedHotelRoomCount);
     } catch (err) {
       return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid hotel block selection." });
     }
@@ -791,6 +799,7 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
       rsvpMessage: messageClean || null,
       needsHotel: hotelUpdate.needsHotel,
       bookedHotelBlockId: hotelUpdate.bookedHotelBlockId,
+      bookedHotelRoomCount: hotelUpdate.bookedHotelRoomCount,
       source: "rsvp_self_add",
     }).returning();
 
@@ -820,6 +829,7 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
       dietaryRestrictions,
       hotelNeeded,
       bookedHotelBlockId,
+      bookedHotelRoomCount,
       message,
     } = (req.body ?? {}) as {
       guestId?: number;
@@ -831,6 +841,7 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
       dietaryRestrictions?: string;
       hotelNeeded?: boolean;
       bookedHotelBlockId?: number | null;
+      bookedHotelRoomCount?: number | null;
       message?: string;
     };
 
@@ -868,7 +879,7 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
       updateData.mealChoice = normalizeMeal(mealChoice);
       if (hotelNeeded !== undefined || bookedHotelBlockId !== undefined) {
         try {
-          Object.assign(updateData, await normalizeHotelRsvp(r.site.profileId, attendance, hotelNeeded, bookedHotelBlockId));
+          Object.assign(updateData, await normalizeHotelRsvp(r.site.profileId, attendance, hotelNeeded, bookedHotelBlockId, bookedHotelRoomCount));
         } catch (err) {
           return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid hotel block selection." });
         }
@@ -886,6 +897,7 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
       updateData.mealChoice = null;
       updateData.needsHotel = false;
       updateData.bookedHotelBlockId = null;
+      updateData.bookedHotelRoomCount = null;
     }
 
     await db.update(guests).set(updateData).where(and(eq(guests.id, guest.id), eq(guests.profileId, r.site.profileId)));

@@ -446,9 +446,9 @@ export default function WebsiteEditor() {
   const livePreview = useMemo<WebsiteRendererPayload | null>(() => {
     if (!record) return null;
     const previewCustomText = { ...record.customText };
-    if (invitationHotelSettings?.rsvpAskHotel && hotelBlocks.length > 0) {
+    if (hotelBlocks.length > 0) {
       previewCustomText._rsvpAskHotel = "true";
-      if (invitationHotelSettings.rsvpHotelBlockId !== "all") {
+      if (invitationHotelSettings?.rsvpHotelBlockId && invitationHotelSettings.rsvpHotelBlockId !== "all") {
         previewCustomText._rsvpHotelBlockId = invitationHotelSettings.rsvpHotelBlockId;
       }
     }
@@ -1210,8 +1210,8 @@ export default function WebsiteEditor() {
     );
   }
 
-  const inheritedHotelAsk = invitationHotelSettings?.rsvpAskHotel === true && hotelBlocks.length > 0;
-  const editorHotelAskEnabled = record.customText._rsvpAskHotel === "true" || inheritedHotelAsk;
+  const inheritedHotelAsk = hotelBlocks.length > 0;
+  const editorHotelAskEnabled = hotelBlocks.length > 0 || record.customText._rsvpAskHotel === "true" || inheritedHotelAsk;
   const editorHotelBlockId =
     record.customText._rsvpHotelBlockId ||
     (invitationHotelSettings?.rsvpHotelBlockId !== "all" ? invitationHotelSettings?.rsvpHotelBlockId : undefined) ||
