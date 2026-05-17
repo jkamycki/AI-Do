@@ -120,6 +120,60 @@ function deterministicSmallTalkReply(text: string): string | null {
   return null;
 }
 
+function deterministicBasicReply(text: string, timezone?: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length > 120) return null;
+  if (/\b(what(?:'s| is) the time|what time is it|current time|time now)\b/i.test(trimmed)) {
+    const tz = timezone || "America/New_York";
+    try {
+      const now = new Date();
+      const time = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short",
+      }).format(now);
+      const date = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }).format(now);
+      return `It's ${time} on ${date}.`;
+    } catch {
+      const fallback = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short",
+      }).format(new Date());
+      return `It's ${fallback}.`;
+    }
+  }
+  if (/\b(what(?:'s| is) today(?:'s date)?|what date is it|current date|date today)\b/i.test(trimmed)) {
+    const tz = timezone || "America/New_York";
+    try {
+      return new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }).format(new Date());
+    } catch {
+      return new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }).format(new Date());
+    }
+  }
+  return null;
+}
+
 function siteTaskGuide(text: string): string | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
@@ -791,6 +845,24 @@ function parseVendorRenameRequest(text: string): { vendorName: string; name: str
     return { vendorName, name };
   }
   return null;
+}
+
+function prevWasVendorRenameQuestion(text: string): boolean {
+  return /\bWhich vendor would you like renamed\b|\bexact current business name\b|\bnew business name\b|\bwhat(?:'s| is) the new (?:vendor |business )?name\b/i.test(text);
+}
+
+function parseRenamePiecesFromAssistant(text: string): { vendorName?: string; name?: string } {
+  const pieces: { vendorName?: string; name?: string } = {};
+  const currentMatch = text.match(/current (?:vendor |business )?name(?: is|:)?\s*(?:\*\*)?["'`]?([^"'`*\n.]+)["'`]?(?:\*\*)?/i);
+  const newMatch = text.match(/new (?:business )?name(?: is|:)?\s*["'`]?([^"'`\n.]+)["'`]?/i);
+  if (currentMatch?.[1]) pieces.vendorName = cleanInlineName(currentMatch[1]);
+  if (newMatch?.[1]) pieces.name = cleanInlineName(newMatch[1]);
+  const renameMatch = text.match(/rename\s+["'`]?([^"'`\n]+?)["'`]?\s+(?:to|as)\s+["'`]?([^"'`\n.]+)["'`]?/i);
+  if (renameMatch?.[1] && renameMatch?.[2]) {
+    pieces.vendorName = cleanInlineName(renameMatch[1]);
+    pieces.name = cleanInlineName(renameMatch[2]);
+  }
+  return pieces;
 }
 
 function parsePendingHotelConfirmation(text: string): { hotelName: string } | null {
@@ -2883,9 +2955,10 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       return;
     }
 
-    const { messages, preferredLanguage } = req.body as {
+    const { messages, preferredLanguage, timezone } = req.body as {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
       preferredLanguage?: string;
+      timezone?: string;
     };
 
     if (!messages || !Array.isArray(messages)) {
@@ -2987,7 +3060,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const userClarifiesGuestList =
       /\b(?:talking about|mean|meant|focus on)\s+(?:my\s+)?guest list\b/i.test(lastUserText);
 
-    const deterministicReply = capabilityReply(lastUserText) ?? deterministicSmallTalkReply(lastUserText);
+    const deterministicReply = capabilityReply(lastUserText) ?? deterministicBasicReply(lastUserText, timezone) ?? deterministicSmallTalkReply(lastUserText);
     if (deterministicReply) {
       send({ type: "content", content: deterministicReply });
       send({ type: "done", actions: [] });
@@ -3018,6 +3091,45 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       res.write("data: [DONE]\n\n");
       res.end();
       return;
+    }
+
+    if (prevWasVendorRenameQuestion(lastAssistantText) && lastUserText.trim().length > 0 && lastUserText.trim().length <= 120 && !YES_CONFIRM_INTENT.test(lastUserText.trim())) {
+      const priorRenamePieces = parseRenamePiecesFromAssistant(lastAssistantText);
+      const userPiece = cleanInlineName(lastUserText);
+      if (userPiece) {
+        if (priorRenamePieces.vendorName && !priorRenamePieces.name) {
+          const renameArgs = { vendorName: priorRenamePieces.vendorName, name: userPiece };
+          const result = await executeTool("update_vendor", renameArgs, req, { recentUserText: lastUserText });
+          send({ type: "action_start", name: "update_vendor", args: renameArgs });
+          send({
+            type: "action_result",
+            name: "update_vendor",
+            ok: result.ok,
+            data: result.ok ? result.data : undefined,
+            error: result.ok ? undefined : result.error,
+          });
+          send({
+            type: "content",
+            content: result.ok
+              ? buildConfirmation([{ name: "update_vendor", args: renameArgs, result }])
+              : `I couldn't rename that vendor yet: ${result.error}`,
+          });
+          send({ type: "done", actions: [{ name: "update_vendor", ok: result.ok, error: result.ok ? undefined : result.error }] });
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
+        if (!priorRenamePieces.vendorName) {
+          send({
+            type: "content",
+            content: `Got it - the current vendor name is **${userPiece}**. What should I rename it to?`,
+          });
+          send({ type: "done", actions: [] });
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
+      }
     }
 
     // Deterministic fast-path for the common edit request:

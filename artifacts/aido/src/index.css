@@ -317,44 +317,44 @@
 }
 
 .dark {
-  --background: 222 18% 8%;
-  --foreground: 40 30% 94%;
+  --background: 326 28% 9%;
+  --foreground: 38 34% 93%;
 
-  --card: 222 17% 11%;
-  --card-foreground: 40 30% 94%;
-  --card-border: 220 12% 24%;
+  --card: 326 24% 12%;
+  --card-foreground: 38 34% 93%;
+  --card-border: 329 18% 25%;
 
-  --popover: 40 28% 96%;
-  --popover-foreground: 222 18% 16%;
+  --popover: 38 30% 96%;
+  --popover-foreground: 326 24% 13%;
   --popover-border: 34 22% 82%;
 
-  --primary: 34 34% 76%;
-  --primary-foreground: 222 18% 16%;
+  --primary: 35 42% 78%;
+  --primary-foreground: 326 28% 12%;
 
-  --secondary: 220 14% 26%;
-  --secondary-foreground: 40 30% 94%;
+  --secondary: 323 18% 24%;
+  --secondary-foreground: 38 34% 93%;
 
-  --muted: 222 16% 15%;
-  --muted-foreground: 40 20% 78%;
+  --muted: 326 20% 17%;
+  --muted-foreground: 38 22% 78%;
 
-  --accent: 34 26% 72%;
-  --accent-foreground: 222 18% 16%;
+  --accent: 329 20% 32%;
+  --accent-foreground: 38 34% 93%;
 
-  --destructive: 0 63% 48%;
+  --destructive: 0 58% 48%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 220 12% 24%;
-  --input: 220 12% 24%;
-  --ring: 34 34% 76%;
+  --border: 329 18% 25%;
+  --input: 329 18% 25%;
+  --ring: 35 42% 78%;
 
-  --shadow-sm: 0 1px 2px 0 rgb(10 2 8 / 0.3);
+  --shadow-sm: 0 1px 2px 0 rgb(12 2 9 / 0.32);
   --shadow:
-    0 4px 6px -1px rgb(10 2 8 / 0.34), 0 2px 4px -2px rgb(10 2 8 / 0.28);
+    0 4px 6px -1px rgb(12 2 9 / 0.36), 0 2px 4px -2px rgb(12 2 9 / 0.3);
   --shadow-md:
-    0 10px 15px -3px rgb(10 2 8 / 0.34),
-    0 4px 6px -4px rgb(10 2 8 / 0.28);
+    0 10px 15px -3px rgb(12 2 9 / 0.38),
+    0 4px 6px -4px rgb(12 2 9 / 0.3);
   --shadow-lg:
-    0 24px 48px -12px rgb(10 2 8 / 0.45);
+    0 24px 48px -12px rgb(12 2 9 / 0.48);
 }
 
 .dark .dark\:text-pink-300,
@@ -373,14 +373,14 @@
 .dark .dark\:bg-rose-950\/40,
 .dark .dark\:bg-fuchsia-900\/30,
 .dark .dark\:bg-fuchsia-900\/40 {
-  background-color: hsl(222 16% 17%) !important;
+  background-color: hsl(326 20% 17%) !important;
 }
 
 .dark .dark\:border-pink-700,
 .dark .dark\:border-rose-700,
 .dark .dark\:border-rose-900\/50,
 .dark .dark\:border-fuchsia-700 {
-  border-color: hsl(34 22% 42% / 0.55) !important;
+  border-color: hsl(35 32% 55% / 0.5) !important;
 }
 
 @layer base {
@@ -401,9 +401,9 @@
 
   .dark body {
     background:
-      radial-gradient(circle at 18% 8%, rgba(247, 231, 214, 0.08), transparent 28rem),
-      radial-gradient(circle at 82% 4%, rgba(186, 172, 154, 0.1), transparent 30rem),
-      linear-gradient(145deg, #111318 0%, #1a1d23 52%, #0f1115 100%);
+      radial-gradient(circle at 18% 8%, rgba(247, 231, 214, 0.1), transparent 28rem),
+      radial-gradient(circle at 82% 4%, rgba(122, 74, 106, 0.18), transparent 30rem),
+      linear-gradient(145deg, #170812 0%, #24101e 52%, #10070e 100%);
   }
 
   h1,

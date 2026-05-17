@@ -456,6 +456,7 @@ export default function Aria() {
         body: JSON.stringify({
           messages: historyForApi,
           preferredLanguage: profile?.preferredLanguage ?? "English",
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
         signal: abortRef.current.signal,
       });
