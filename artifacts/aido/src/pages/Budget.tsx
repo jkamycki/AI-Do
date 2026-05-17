@@ -143,6 +143,10 @@ function categoryBadgeClass(category: string) {
   return VENDOR_CATEGORY_BADGE_STYLES[normalizeCategoryLabel(category)] ?? VENDOR_CATEGORY_BADGE_STYLES.Other;
 }
 
+function categoryHighlightClass(category: string | null | undefined) {
+  return `rounded-lg border p-4 ${categoryBadgeClass(normalizeCategoryLabel(category)).replace(/\bborder-transparent\b/g, "")}`;
+}
+
 function CategoryBadge({ category }: { category: string }) {
   const label = displayCategoryLabel(category);
   return (
@@ -853,8 +857,8 @@ export default function Budget() {
                 </div>
               )}
               {nextPayment && (
-                <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-4 dark:border-amber-300/30 dark:bg-amber-300/10">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-amber-800 dark:text-amber-100">
+                <div className={categoryHighlightClass(nextPayment.category)}>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest opacity-85">
                     {t("budget.next_payment_highlight", { defaultValue: "Next payment" })}
                   </p>
                   <div className="space-y-2">
