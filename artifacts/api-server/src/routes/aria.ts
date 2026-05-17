@@ -206,7 +206,792 @@ function deterministicStarterPromptReply(text: string): string | null {
     ].join("\n");
   }
 
+  if (/\bfirst steps\b[\s\S]*\bafter getting engaged\b|\bafter getting engaged\b[\s\S]*\bfirst steps\b/i.test(trimmed)) {
+    return [
+      "Start with the planning foundations before booking anything:",
+      "",
+      "1. Celebrate and talk through what kind of wedding you both want.",
+      "2. Set a rough guest count, because it drives venue size and budget.",
+      "3. Decide your comfort budget and who is contributing.",
+      "4. Pick a season or date range, not necessarily one exact date yet.",
+      "5. Choose your top priorities: venue, food, photos, music, guest experience, or design.",
+      "6. Start researching venues and major vendors once those basics are clear.",
+      "",
+      "The biggest early win is aligning guest count, budget, and location before deposits begin.",
+    ].join("\n");
+  }
+
+  if (/\bquestions should i ask myself\b[\s\S]*\bchoosing a wedding date\b|\bchoosing a wedding date\b[\s\S]*\bquestions should i ask myself\b/i.test(trimmed)) {
+    return [
+      "Before choosing a wedding date, ask yourself:",
+      "",
+      "1. What season feels right for the style and comfort we want?",
+      "2. Are must-have family members or wedding party people available?",
+      "3. Does the date work with our budget, travel, and venue pricing?",
+      "4. Are there holidays, school breaks, local events, or busy work seasons to avoid?",
+      "5. Will guests need hotel rooms or flights, and is the date realistic for them?",
+      "6. Do we want an indoor, outdoor, or flexible weather plan?",
+      "7. Does this date give us enough planning time without feeling rushed?",
+      "",
+      "A strong date usually balances meaning, availability, budget, weather, and guest logistics.",
+    ].join("\n");
+  }
+
+  if (/\bhow much should i budget\b[\s\S]*\b150 guests\b|\bwedding with 150 guests\b[\s\S]*\bbudget\b/i.test(trimmed)) {
+    return [
+      "For a 150-guest wedding, a practical starting budget range is often **$45,000-$90,000+**, depending heavily on location, venue type, food/bar level, and vendor choices.",
+      "",
+      "A simple planning split:",
+      "1. Venue, catering, and bar: 45-55%",
+      "2. Photo/video: 10-15%",
+      "3. Decor/florals/rentals: 10-15%",
+      "4. Music/entertainment: 5-10%",
+      "5. Attire, beauty, stationery, transportation, tips, and misc: 15-25%",
+      "",
+      "For 150 guests, guest count is the biggest cost driver, so catering/bar quotes will tell you the truth fastest.",
+    ].join("\n");
+  }
+
+  if (/\bwhat percentage\b[\s\S]*\bbudget\b[\s\S]*\bvenue\b|\bpercentage\b[\s\S]*\bvenue\b/i.test(trimmed)) {
+    return [
+      "A good benchmark is **40-50% of the total wedding budget** for venue, catering, and bar combined.",
+      "",
+      "If the venue fee is separate from food and beverage, the venue rental alone is often closer to **10-20%**. If it is an all-inclusive venue, it may look higher because catering, staff, rentals, and bar are bundled in.",
+      "",
+      "When comparing venues, always separate: rental fee, food minimum, bar, service charge, tax, rentals, ceremony fee, admin fee, and required vendors.",
+    ].join("\n");
+  }
+
+  if (/\bsave money\b[\s\S]*\bdecor\b|\bdécor\b[\s\S]*\bcheap\b|\bdecor\b[\s\S]*\bcheap\b/i.test(trimmed)) {
+    return [
+      "To save on decor without it looking cheap, concentrate the budget where guests notice most:",
+      "",
+      "1. Choose a venue that already matches your style.",
+      "2. Spend on a few high-impact areas: ceremony backdrop, sweetheart/head table, escort display, and bar.",
+      "3. Use candles, lighting, linens, and greenery for scale instead of huge florals everywhere.",
+      "4. Repurpose ceremony florals at the reception.",
+      "5. Keep the palette tight so simpler pieces look intentional.",
+      "6. Skip tiny decor that guests barely notice.",
+      "",
+      "The secret is fewer, stronger moments rather than decorating every surface.",
+    ].join("\n");
+  }
+
+  if (/\bvendor quote\b[\s\S]*\breasonable\b|\breasonable\b[\s\S]*\bvendor quote\b|\bquote\b[\s\S]*\bmy area\b/i.test(trimmed)) {
+    return [
+      "I can help judge it, but I need the details first.",
+      "",
+      "Send me:",
+      "1. Vendor type",
+      "2. City/state or region",
+      "3. Quote total",
+      "4. Guest count or hours of coverage/service",
+      "5. What is included",
+      "6. Any extra fees, tax, service charge, travel, or gratuity",
+      "",
+      "Then I can tell you if it feels low, normal, high, or missing important line items.",
+    ].join("\n");
+  }
+
+  if (/\bquestions should i ask\b[\s\S]*\bphotographer\b[\s\S]*\bbooking\b|\bphotographer\b[\s\S]*\bbefore booking\b/i.test(trimmed)) {
+    return [
+      "Ask a photographer these before booking:",
+      "",
+      "1. Are you available for our date, and will you personally shoot it?",
+      "2. How many hours are included, and what does overtime cost?",
+      "3. Do you include a second shooter?",
+      "4. How many edited images should we expect?",
+      "5. What is the turnaround time for sneak peeks and the full gallery?",
+      "6. Can we see full wedding galleries, not just highlights?",
+      "7. What happens if you are sick or unavailable?",
+      "8. What are the payment, cancellation, and rescheduling terms?",
+      "9. Do we get print rights, albums, or engagement photos?",
+      "",
+      "The biggest thing is seeing full galleries in lighting similar to your venue.",
+    ].join("\n");
+  }
+
+  if (/\bcompare (?:these|two|2)\s+venues\b|\bhow do i compare\b[\s\S]*\bvenues\b/i.test(trimmed)) {
+    return [
+      "Compare venues by total fit, not just the rental price:",
+      "",
+      "1. True total cost: rental, food/beverage minimum, tax, service charge, rentals, staffing, parking, and overtime.",
+      "2. Guest fit: comfortable capacity, flow, bathrooms, accessibility, and weather backup.",
+      "3. Logistics: ceremony/reception spaces, load-in rules, vendor restrictions, noise limits, and end time.",
+      "4. Style fit: how much decor you need to make it feel like your wedding.",
+      "5. Guest experience: travel, hotels, parking, transportation, and signage.",
+      "6. Contract risk: cancellation, postponement, payment schedule, insurance, and force majeure.",
+      "",
+      "Give each venue a 1-5 score in cost, guest fit, style, logistics, and contract flexibility.",
+    ].join("\n");
+  }
+
+  if (/\bwhat should i look for\b[\s\S]*\bcatering contract\b|\bcatering contract\b[\s\S]*\blook for\b/i.test(trimmed)) {
+    return [
+      "In a catering contract, look closely at:",
+      "",
+      "1. Final guest count deadline and minimum spend.",
+      "2. Menu details, substitutions, tastings, and dietary accommodations.",
+      "3. Staffing levels, service style, setup, cleanup, and breakdown.",
+      "4. Bar terms, corkage, alcohol liability, and bartender fees.",
+      "5. Rentals included or excluded: linens, china, glassware, flatware, tables.",
+      "6. Service charge, tax, gratuity, delivery, kitchen, travel, or admin fees.",
+      "7. Payment schedule, cancellation, postponement, and refund rules.",
+      "8. Leftover food policy and vendor meals.",
+      "",
+      "Make sure every verbal promise is written into the contract before paying the next deposit.",
+    ].join("\n");
+  }
+
+  if (/\bred flags\b[\s\S]*\bvendor agreements\b|\bvendor agreements\b[\s\S]*\bred flags\b|\bvendor contract\b[\s\S]*\bred flags\b/i.test(trimmed)) {
+    return [
+      "Watch for these red flags in vendor agreements:",
+      "",
+      "1. Vague scope: unclear hours, deliverables, quantities, or staffing.",
+      "2. Missing cancellation, postponement, or refund language.",
+      "3. No backup plan if the vendor is unavailable.",
+      "4. Broad extra-fee language without prices.",
+      "5. Payment schedule that is too front-loaded.",
+      "6. No deadline for final delivery, gallery, video, product, or service.",
+      "7. One-sided liability or force majeure terms.",
+      "8. Verbal promises not included in writing.",
+      "",
+      "If a clause affects money, timing, deliverables, or cancellation, get it specific in writing.",
+    ].join("\n");
+  }
+
+  if (/\bhow many guests\b[\s\S]*\bexpect\b[\s\S]*\battend\b|\bguest[s]?\b[\s\S]*\bactually attend\b/i.test(trimmed)) {
+    return [
+      "A common planning estimate is **75-85% attendance** for local weddings and **60-75%** for destination or heavy-travel weddings.",
+      "",
+      "For example, if you invite 150 guests, you might expect about 115-130 to attend for a mostly local wedding.",
+      "",
+      "Adjust upward if most guests are close family/local, and downward if many guests need flights, hotels, childcare, or time off work. Once RSVPs start coming in, use the actual RSVP count instead of the estimate.",
+    ].join("\n");
+  }
+
+  if (/\bhandle guests\b[\s\S]*\bplus[- ]ones\b|\bplus[- ]ones\b[\s\S]*\bguests asking\b/i.test(trimmed)) {
+    return [
+      "Handle plus-one requests with a clear rule before replying:",
+      "",
+      "1. Decide who gets one: married/engaged couples, long-term partners, wedding party, or guests who will not know anyone.",
+      "2. Keep the rule consistent so decisions feel fair.",
+      "3. Reply warmly but firmly if you cannot add one.",
+      "4. Track approved plus-ones in the guest list right away.",
+      "",
+      "Sample wording: “We wish we could include everyone, but due to venue capacity and budget, we can only accommodate the names listed on the invitation. Thank you for understanding.”",
+    ].join("\n");
+  }
+
+  if (/\bbest way\b[\s\S]*\btrack rsvps\b|\bhow do i track rsvps\b|\btracking rsvps\b/i.test(trimmed)) {
+    return [
+      "The best RSVP system is one source of truth:",
+      "",
+      "1. Keep every guest in the guest list with invitation status and RSVP status.",
+      "2. Track meal choice, plus-one, hotel needs, dietary notes, and table assignment in the same record.",
+      "3. Set an RSVP deadline 3-5 weeks before the wedding.",
+      "4. Follow up in batches: family first, then friends, then unknowns.",
+      "5. Export or review counts before giving final numbers to catering.",
+      "",
+      "Avoid tracking RSVPs in separate texts, notes, and spreadsheets unless you immediately update the main guest list.",
+    ].join("\n");
+  }
+
+  if (/\borganize\b[\s\S]*\bguest list\b[\s\S]*\bfamilies\b|\bguest list\b[\s\S]*\bfamilies and groups\b/i.test(trimmed)) {
+    return [
+      "Organize your guest list by groups that help with invitations, seating, and follow-up:",
+      "",
+      "1. Immediate family",
+      "2. Extended family",
+      "3. Wedding party",
+      "4. Close friends",
+      "5. Work friends",
+      "6. Parents' friends",
+      "7. Out-of-town guests",
+      "8. Kids",
+      "",
+      "Also tag household/family units together so invitations, plus-ones, hotel needs, and seating decisions are easier later.",
+    ].join("\n");
+  }
+
+  if (/\bseat divorced parents\b|\bdivorced parents\b[\s\S]*\bseat/i.test(trimmed)) {
+    return [
+      "Seat divorced parents based on comfort and ceremony/reception dynamics:",
+      "",
+      "1. Ask privately if there are sensitivities or partners who need space.",
+      "2. For the ceremony, seat each parent with their household/support person in honored rows, with a buffer if needed.",
+      "3. For reception, avoid forcing one “parents table” if the relationship is tense.",
+      "4. Give each parent a good seat with people they enjoy.",
+      "5. Tell ushers or planners the seating plan so no one improvises.",
+      "",
+      "The goal is equal respect without creating unnecessary proximity.",
+    ].join("\n");
+  }
+
+  if (/\bbest layout\b[\s\S]*\b120 guests\b[\s\S]*\bballroom\b|\b120 guests\b[\s\S]*\bballroom\b[\s\S]*\blayout\b/i.test(trimmed)) {
+    return [
+      "For 120 guests in a ballroom, a strong default is **12 round tables of 10** or **15 tables of 8**, depending on table size and room dimensions.",
+      "",
+      "A practical layout:",
+      "1. Dance floor centered or slightly in front of the couple.",
+      "2. Couple/sweetheart or head table facing the room.",
+      "3. DJ near the dance floor with clear speaker coverage.",
+      "4. Bar away from the entrance and not blocking dinner service.",
+      "5. Guest tables arranged with wide aisles for servers and accessibility.",
+      "6. Older guests seated farther from speakers.",
+      "",
+      "Confirm the venue's fire-code capacity and ask for a scaled floor plan before finalizing.",
+    ].join("\n");
+  }
+
+  if (/\bcreate a seating chart\b[\s\S]*\bavoid[s]? conflicts\b|\bseating chart\b[\s\S]*\bconflicts\b/i.test(trimmed)) {
+    return [
+      "To avoid conflicts in a seating chart:",
+      "",
+      "1. Mark guests who should not sit together before placing anyone.",
+      "2. Seat by relationship clusters first: family, friends, work, school, neighbors.",
+      "3. Put easygoing connectors between groups that do not know each other.",
+      "4. Keep tense relationships far enough apart that they do not share a table or direct sightline.",
+      "5. Seat older guests away from speakers and high-traffic zones.",
+      "6. Review with someone who knows the family dynamics.",
+      "",
+      "Start with problem relationships first, then fill in the easy tables.",
+    ].join("\n");
+  }
+
+  if (/\bwhere should\b[\s\S]*\bdj\b[\s\S]*\bbar\b[\s\S]*\bdance floor\b|\bdj,?\s+bar,?\s+and dance floor\b/i.test(trimmed)) {
+    return [
+      "For flow, place the dance floor, DJ, and bar so they support the party without causing bottlenecks:",
+      "",
+      "1. Dance floor: central, visible, and close to the couple/head table.",
+      "2. DJ: beside or behind the dance floor with access to power and a clear speaker path.",
+      "3. Bar: near the dance floor, but not directly in the main entrance, dinner-service path, or photo backdrop.",
+      "4. Keep enough space around the bar for a line that will not block tables.",
+      "5. Put older guests and families with kids farther from speakers.",
+      "",
+      "The bar should pull guests toward the party, while the DJ and dance floor keep the energy focused.",
+    ].join("\n");
+  }
+
+  if (/\bwhat time should\b[\s\S]*\bceremony start\b|\bceremony start time\b/i.test(trimmed)) {
+    return [
+      "A good ceremony start time depends on sunset, photos, and guest flow.",
+      "",
+      "For most weddings:",
+      "1. If you want daylight portraits after the ceremony, start 2.5-3 hours before sunset.",
+      "2. If you are doing a first look, you can start 1.5-2 hours before sunset.",
+      "3. For church ceremonies, check fixed service times and travel to reception.",
+      "4. Avoid making guests wait more than 60-90 minutes between ceremony and reception unless there is a clear plan.",
+      "",
+      "A common sweet spot is 4:00-5:30 PM for evening receptions, adjusted for season and sunset.",
+    ].join("\n");
+  }
+
+  if (/\bhair and makeup\b[\s\S]*\b6 people\b|\b6 people\b[\s\S]*\bhair and makeup\b/i.test(trimmed)) {
+    return [
+      "For 6 people, plan about **4-6 hours** total, depending on the team size.",
+      "",
+      "Typical timing:",
+      "1. Hair: 30-45 minutes per person.",
+      "2. Makeup: 30-45 minutes per person.",
+      "3. Bride: 60-90 minutes for hair and makeup combined, sometimes more.",
+      "4. Add 30 minutes of buffer before getting dressed.",
+      "",
+      "With one hair artist and one makeup artist working at the same time, 6 people usually fits into a 5-hour getting-ready window.",
+    ].join("\n");
+  }
+
+  if (/\bdo i need a first[- ]look\b|\bfirst[- ]look\b[\s\S]*\bstay on schedule\b/i.test(trimmed)) {
+    return [
+      "You do not need a first look, but it can make the schedule much easier.",
+      "",
+      "A first look helps if:",
+      "1. You want most portraits done before the ceremony.",
+      "2. Cocktail hour is short.",
+      "3. Sunset is soon after the ceremony.",
+      "4. You have a large family photo list.",
+      "5. You want a calmer private moment before guests arrive.",
+      "",
+      "Skip it if the aisle reveal matters more to you, but add more time between ceremony and reception for photos.",
+    ].join("\n");
+  }
+
+  if (/\bbuild a timeline\b[\s\S]*\bchurch ceremony\b[\s\S]*\bhotel reception\b|\bchurch ceremony\b[\s\S]*\bhotel reception\b[\s\S]*\btimeline\b/i.test(trimmed)) {
+    return [
+      "For a church ceremony and hotel reception, build the timeline around travel and the gap between locations:",
+      "",
+      "1. Getting ready at hotel or nearby: 4-6 hours before ceremony.",
+      "2. Detail photos and getting dressed: 60-90 minutes.",
+      "3. Travel to church: add actual drive time plus 15-20 minutes buffer.",
+      "4. Church ceremony: usually 30-60 minutes.",
+      "5. Family photos at church: 20-35 minutes.",
+      "6. Travel to hotel reception: drive time plus buffer.",
+      "7. Cocktail hour at hotel: 60 minutes.",
+      "8. Reception entrance, dinner, speeches, dances, party.",
+      "",
+      "The biggest risk is the ceremony-to-reception gap, so plan transportation and guest arrival carefully.",
+    ].join("\n");
+  }
+
+  if (/\bfaqs\b[\s\S]*\bwedding website\b|\bwedding website\b[\s\S]*\bfaqs\b/i.test(trimmed)) {
+    return [
+      "Useful wedding website FAQs include:",
+      "",
+      "1. What time should guests arrive?",
+      "2. What is the dress code?",
+      "3. Is the ceremony indoors or outdoors?",
+      "4. Can guests bring a plus-one or children?",
+      "5. Where should guests park?",
+      "6. Is transportation provided?",
+      "7. Are hotel blocks available?",
+      "8. What is the RSVP deadline?",
+      "9. Are there local recommendations for food, travel, or activities?",
+      "10. Who should guests contact with questions?",
+      "",
+      "Keep answers short and specific so guests do not need to text you for basics.",
+    ].join("\n");
+  }
+
+  if (/\bword\b[\s\S]*\brsvp meal options\b|\brsvp meal options\b[\s\S]*\bword/i.test(trimmed)) {
+    return [
+      "Use clear meal wording with enough detail for guests to choose confidently:",
+      "",
+      "Please select one entree:",
+      "1. Herb-roasted chicken with seasonal vegetables",
+      "2. Seared salmon with lemon butter",
+      "3. Vegetarian pasta primavera",
+      "",
+      "Add a note: “Please list any dietary restrictions or allergies with your RSVP.”",
+      "",
+      "If the venue needs counts only, avoid overly detailed menu descriptions that may change later.",
+    ].join("\n");
+  }
+
+  if (/\badults only\b|\bno kids\b|\bchildren\b[\s\S]*\bnot invited\b/i.test(trimmed)) {
+    return [
+      "Polite adults-only wording:",
+      "",
+      "“We love your little ones, but our wedding will be an adults-only celebration. Thank you for understanding.”",
+      "",
+      "More formal:",
+      "“Due to venue limitations, we are only able to accommodate adults at our wedding.”",
+      "",
+      "Put it on the website FAQ and address invitations only to the invited adults.",
+    ].join("\n");
+  }
+
+  if (/\btransportation or parking\b|\btell guests\b[\s\S]*\b(parking|transportation)\b|\bcommunicate\b[\s\S]*\b(parking|transportation)\b/i.test(trimmed)) {
+    return [
+      "For transportation or parking, be direct and practical:",
+      "",
+      "“Parking is available at the venue in the main lot. Please arrive 20 minutes early to allow time to park and find your seat.”",
+      "",
+      "For shuttle service:",
+      "“Shuttle transportation will run from the hotel to the venue beginning at 4:00 PM, with return shuttles starting at 10:00 PM.”",
+      "",
+      "Include pickup location, times, accessibility notes, rideshare guidance, and whether overnight parking is allowed.",
+    ].join("\n");
+  }
+
+  if (/\bcolor palette\b[\s\S]*\bfall wedding\b|\bfall wedding\b[\s\S]*\bcolor palette\b/i.test(trimmed)) {
+    return [
+      "Beautiful fall wedding palettes:",
+      "",
+      "1. Burgundy, champagne, blush, and antique gold.",
+      "2. Terracotta, cream, olive, and warm taupe.",
+      "3. Plum, mauve, ivory, and soft gold.",
+      "4. Forest green, black, ivory, and candlelit amber.",
+      "5. Rust, dusty rose, mocha, and linen.",
+      "",
+      "For an elegant look, pick one deep anchor color, one soft neutral, one metallic, and one accent.",
+    ].join("\n");
+  }
+
+  if (/\bdecor\b[\s\S]*\bmodern romantic\b|\bmodern romantic\b[\s\S]*\bdecor/i.test(trimmed)) {
+    return [
+      "Modern romantic decor usually works best with clean shapes plus soft texture:",
+      "",
+      "1. Minimal stationery with elegant serif or script accents.",
+      "2. Lush but controlled florals, not overly wild.",
+      "3. Candlelight, glass, and reflective surfaces.",
+      "4. Neutral linens with one rich accent color.",
+      "5. Sleek table numbers, simple menus, and intentional signage.",
+      "6. Soft draping or lighting instead of lots of small decorations.",
+      "",
+      "Think refined, warm, and uncluttered.",
+    ].join("\n");
+  }
+
+  if (/\bflowers\b[\s\S]*\bin season\b|\bin season\b[\s\S]*\bflowers\b|\bwedding month\b[\s\S]*\bflowers\b/i.test(trimmed)) {
+    return [
+      "Seasonal flowers depend on your month and region, but here is a quick guide:",
+      "",
+      "Spring: peonies, tulips, ranunculus, sweet peas, lilac.",
+      "Summer: garden roses, dahlias, zinnias, cosmos, hydrangea.",
+      "Fall: dahlias, chrysanthemums, roses, amaranthus, marigold.",
+      "Winter: amaryllis, anemones, ranunculus, roses, evergreens.",
+      "",
+      "Send me your wedding month and location and I can narrow this to better options.",
+    ].join("\n");
+  }
+
+  if (/\bwedding look cohesive\b|\bmake my wedding\b[\s\S]*\bcohesive\b|\blook cohesive\b/i.test(trimmed)) {
+    return [
+      "To make the wedding feel cohesive:",
+      "",
+      "1. Choose 3-5 core colors and repeat them everywhere.",
+      "2. Pick one design mood: modern romantic, garden, classic, coastal, etc.",
+      "3. Use consistent fonts across invitations, website, signage, and menus.",
+      "4. Repeat materials like gold, glass, linen, wood, or acrylic.",
+      "5. Keep florals, linens, candles, and stationery in the same visual family.",
+      "6. Edit out details that do not match the mood.",
+      "",
+      "Cohesion comes from repetition and restraint.",
+    ].join("\n");
+  }
+
+  if (/\bsignature cocktail\b|\bgood cocktail ideas\b/i.test(trimmed)) {
+    return [
+      "Good signature cocktail ideas:",
+      "",
+      "1. His and hers margaritas: classic lime and spicy mango.",
+      "2. French 75 with lemon and champagne.",
+      "3. Blackberry bourbon smash.",
+      "4. Aperol spritz for summer or outdoor weddings.",
+      "5. Espresso martini for a late-night moment.",
+      "6. Rosemary gin fizz for a garden feel.",
+      "",
+      "Choose drinks that are fast to batch, easy to garnish, and match the season.",
+    ].join("\n");
+  }
+
+  if (/\bhow many appetizers\b[\s\S]*\bcocktail hour\b|\bappetizers\b[\s\S]*\bcocktail hour\b/i.test(trimmed)) {
+    return [
+      "For cocktail hour, plan by pieces per guest:",
+      "",
+      "1. Light cocktail hour before a full dinner: 4-6 bites per guest.",
+      "2. Longer cocktail hour or lighter dinner: 6-8 bites per guest.",
+      "3. Cocktail-style reception: 10-14 bites per guest across the event.",
+      "",
+      "For 120 guests with a standard dinner afterward, aim for about 600-720 total appetizer pieces.",
+    ].join("\n");
+  }
+
+  if (/\baccommodate guests with allergies\b|\bguests with allergies\b|\ballergies\b[\s\S]*\bguests\b/i.test(trimmed)) {
+    return [
+      "Handle allergies with a clear process:",
+      "",
+      "1. Ask for allergies/dietary restrictions on the RSVP.",
+      "2. Share the final list with catering by the deadline.",
+      "3. Confirm how meals will be labeled and served.",
+      "4. Separate true allergies from preferences when communicating to the caterer.",
+      "5. Have servers or the catering captain know which guests need special meals.",
+      "",
+      "For severe allergies, ask the caterer about cross-contamination procedures in writing.",
+    ].join("\n");
+  }
+
+  if (/\bgood menu\b[\s\S]*\bsummer wedding\b|\bsummer wedding\b[\s\S]*\bmenu\b/i.test(trimmed)) {
+    return [
+      "A summer wedding menu should feel fresh and not too heavy:",
+      "",
+      "Cocktail hour: caprese skewers, shrimp cocktail, mini crab cakes, watermelon feta bites, crostini.",
+      "Salad: arugula with citrus, berries, goat cheese, or cucumber.",
+      "Entrees: lemon herb chicken, grilled fish, filet, seasonal pasta, or vegetarian risotto.",
+      "Sides: roasted summer vegetables, herbed potatoes, rice pilaf, or corn salad.",
+      "Dessert: wedding cake plus sorbet, mini tarts, or late-night ice cream.",
+      "",
+      "Keep sauces lighter and make sure outdoor food service has a heat plan.",
+    ].join("\n");
+  }
+
+  if (/\bphotos should i ask\b[\s\S]*\bphotographer\b|\bphotographer\b[\s\S]*\bcapture\b/i.test(trimmed)) {
+    return [
+      "Must-have wedding photo categories:",
+      "",
+      "1. Details: rings, invitation, dress, shoes, florals.",
+      "2. Getting ready with key people.",
+      "3. First look or aisle reaction.",
+      "4. Couple portraits.",
+      "5. Immediate family combinations.",
+      "6. Wedding party.",
+      "7. Ceremony moments: processional, vows, rings, kiss, recessional.",
+      "8. Reception details before guests enter.",
+      "9. Entrances, dances, speeches, cake, dance floor, candids.",
+      "",
+      "Give your photographer family groupings and any sensitive dynamics ahead of time.",
+    ].join("\n");
+  }
+
+  if (/\bdo i need a second shooter\b|\bsecond photographer\b|\bsecond shooter\b/i.test(trimmed)) {
+    return [
+      "A second shooter is worth considering if:",
+      "",
+      "1. You have over 100 guests.",
+      "2. Getting-ready locations are separate.",
+      "3. You want both partners' prep covered.",
+      "4. You want ceremony reactions and aisle moments from multiple angles.",
+      "5. The venue is large or has multiple locations.",
+      "6. You have a tight timeline.",
+      "",
+      "For small, simple weddings, one strong photographer can be enough. For 120+ guests, a second shooter often helps.",
+    ].join("\n");
+  }
+
+  if (/\bfamily photos\b[\s\S]*\bmust[- ]haves\b|\bmust[- ]have\b[\s\S]*\bfamily photos\b/i.test(trimmed)) {
+    return [
+      "Must-have family photo combinations usually include:",
+      "",
+      "1. Couple with each set of parents.",
+      "2. Couple with both immediate families.",
+      "3. Couple with siblings.",
+      "4. Couple with grandparents.",
+      "5. Each partner alone with parents.",
+      "6. Each partner alone with siblings.",
+      "7. Any blended family or step-parent combinations that matter.",
+      "",
+      "Keep the formal list tight: 10-15 groupings is ideal unless you have a large family and extra time.",
+    ].join("\n");
+  }
+
+  if (/\bcouple portraits\b[\s\S]*\bhow long\b|\bhow long\b[\s\S]*\bcouple portraits\b/i.test(trimmed)) {
+    return [
+      "Couple portraits usually take **20-45 minutes**.",
+      "",
+      "Plan:",
+      "1. 15-20 minutes for a quick portrait session.",
+      "2. 30 minutes for a comfortable standard session.",
+      "3. 45-60 minutes if you want multiple locations or sunset portraits.",
+      "",
+      "If you skip a first look, protect portrait time right after family photos or during golden hour.",
+    ].join("\n");
+  }
+
+  if (/\bhow many rooms\b[\s\S]*\bblock\b|\broom block\b|\brooms should i block\b/i.test(trimmed)) {
+    return [
+      "A good starting point is to block rooms for **40-60% of out-of-town guests**, then adjust as RSVPs come in.",
+      "",
+      "Example: if 80 guests are traveling, start with 25-35 rooms, depending on couples/families sharing rooms.",
+      "",
+      "Ask hotels for an attrition-free courtesy block when possible, a cutoff date, group code, booking link, and whether you can add rooms later.",
+    ].join("\n");
+  }
+
+  if (/\bwelcome bag\b|\bwelcome bags\b/i.test(trimmed)) {
+    return [
+      "Good welcome bag items:",
+      "",
+      "1. Water bottles or sparkling water.",
+      "2. Sweet and salty snacks.",
+      "3. Local treat or personal favorite.",
+      "4. Weekend itinerary.",
+      "5. Transportation details.",
+      "6. Pain reliever, mints, or electrolyte packets.",
+      "7. A short thank-you note.",
+      "",
+      "Keep it useful, easy to transport, and not too heavy.",
+    ].join("\n");
+  }
+
+  if (/\bplan transportation\b[\s\S]*\bguests\b|\bguest transportation\b/i.test(trimmed)) {
+    return [
+      "Plan guest transportation by mapping the real guest flow:",
+      "",
+      "1. Identify hotel, ceremony, reception, and after-party locations.",
+      "2. Estimate how many guests will need rides.",
+      "3. Decide shuttle loops or fixed pickup times.",
+      "4. Add buffer for traffic, loading, and older guests.",
+      "5. Share exact pickup spots and times on the website and welcome notes.",
+      "6. Assign someone besides you to manage transportation questions.",
+      "",
+      "If ceremony and reception are at different locations, transportation matters much more.",
+    ].join("\n");
+  }
+
+  if (/\bcommunicate travel info\b|\btravel info\b[\s\S]*\bcommunicate\b|\bbest way\b[\s\S]*\btravel info\b/i.test(trimmed)) {
+    return [
+      "The best way to communicate travel info is in layers:",
+      "",
+      "1. Wedding website: hotel block, booking link, airport, shuttle, parking, rideshare notes.",
+      "2. Invitation insert or email: short travel summary and website link.",
+      "3. Reminder email/text closer to the wedding.",
+      "4. Welcome note for hotel guests with shuttle times and addresses.",
+      "",
+      "Put the most current details on the website so there is one place to update.",
+    ].join("\n");
+  }
+
+  if (/\bwrite my vows\b|\bhow do i write vows\b|\bwedding vows\b/i.test(trimmed)) {
+    return [
+      "A simple vow structure:",
+      "",
+      "1. Start with what you love about them.",
+      "2. Share one short memory or turning point.",
+      "3. Name what your relationship feels like.",
+      "4. Make 3-5 real promises.",
+      "5. End with a future-facing line.",
+      "",
+      "Keep vows around 1-2 minutes unless your ceremony style calls for longer. Make them specific, honest, and easy to say out loud.",
+    ].join("\n");
+  }
+
+  if (/\btraditions\b[\s\S]*\b(skip|modernize)\b|\bskip or modernize\b/i.test(trimmed)) {
+    return [
+      "You can skip or modernize almost any tradition that does not feel like you:",
+      "",
+      "1. Bouquet/garter toss.",
+      "2. Formal cake cutting.",
+      "3. Wedding party gender rules.",
+      "4. Parent dances or make them shared/shorter.",
+      "5. Receiving line.",
+      "6. Separate sides at the ceremony.",
+      "7. Traditional vows.",
+      "",
+      "Keep traditions that feel meaningful, and replace the rest with something more personal.",
+    ].join("\n");
+  }
+
+  if (/\bunique ceremony ideas\b|\bceremony ideas\b[\s\S]*\bunique\b/i.test(trimmed)) {
+    return [
+      "Unique ceremony ideas:",
+      "",
+      "1. Private vows before the ceremony, public vows during.",
+      "2. Ring warming with close family.",
+      "3. A shared reading by friends or siblings.",
+      "4. Unity cocktail, wine box, tree planting, or handfasting.",
+      "5. A moment of gratitude for guests.",
+      "6. Music that reflects your relationship instead of only tradition.",
+      "7. A short story from your officiant about how you met.",
+      "",
+      "Choose one meaningful element rather than stacking too many rituals.",
+    ].join("\n");
+  }
+
+  if (/\bchoose readings\b[\s\S]*\bceremony\b|\bceremony readings\b/i.test(trimmed)) {
+    return [
+      "Choose ceremony readings by tone and length:",
+      "",
+      "1. Decide if you want romantic, spiritual, literary, funny, or family-centered.",
+      "2. Keep each reading under 1-2 minutes.",
+      "3. Pick someone who is comfortable speaking clearly.",
+      "4. Avoid readings that feel too generic or do not match your relationship.",
+      "5. Ask your officiant if religious or venue rules apply.",
+      "",
+      "A good reading should sound like something you would actually believe, not just something wedding-ish.",
+    ].join("\n");
+  }
+
+  if (/\bfollow up\b[\s\S]*\bvendor\b[\s\S]*\bhasn'?t replied\b|\bvendor\b[\s\S]*\bhasn'?t replied\b/i.test(trimmed)) {
+    return [
+      "Send a short, polite follow-up with a clear deadline:",
+      "",
+      "Hi [Name], I hope you're doing well. I wanted to follow up on my message about [topic]. Could you please send an update by [date]? We are trying to finalize this piece of planning this week. Thank you!",
+      "",
+      "If they still do not reply, call once, then decide whether the slow communication is a planning risk.",
+    ].join("\n");
+  }
+
+  if (/\bguests\b[\s\S]*\bnot post photos\b|\bnot to post photos\b|\bunplugged\b[\s\S]*\bphotos\b/i.test(trimmed)) {
+    return [
+      "Polite wording for no guest photo posting:",
+      "",
+      "“We kindly ask guests to keep our ceremony phone-free and to wait until we share photos before posting online. Thank you for helping us stay present.”",
+      "",
+      "For social posting later:",
+      "“Please avoid posting photos of the couple until we have had a chance to share our own.”",
+      "",
+      "Put it on signage, the website FAQ, and ask the officiant to announce it.",
+    ].join("\n");
+  }
+
+  if (/\bguests\b[\s\S]*\brsvp late\b|\blate rsvps\b|\brsvp late\b/i.test(trimmed)) {
+    return [
+      "Handle late RSVPs with a firm but kind deadline:",
+      "",
+      "Hi [Name], we're finalizing numbers with our venue and caterer. Could you please let us know by [date/time] whether you'll be able to attend? If we don't hear back by then, we'll mark you as unable to make it. Thank you!",
+      "",
+      "After the final deadline, stop chasing individually and protect your catering count.",
+    ].join("\n");
+  }
+
+  if (/\bask a vendor\b[\s\S]*\bdiscount\b|\bvendor\b[\s\S]*\bdiscount politely\b|\bdiscount politely\b/i.test(trimmed)) {
+    return [
+      "Ask for a discount by adjusting scope, not just asking them to lower their value:",
+      "",
+      "Hi [Name], we love your work and would really like to book with you. Our target budget is [amount]. Is there any flexibility in the package, or are there services we could adjust to better fit that range?",
+      "",
+      "You can ask about off-season pricing, shorter coverage, fewer add-ons, payment timing, or bundled services. Keep the tone respectful and collaborative.",
+    ].join("\n");
+  }
+
   return null;
+}
+
+function formatAriaDate(value: string | null | undefined): string {
+  if (!value) return "your wedding date";
+  const date = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+async function buildCurrentWeddingWorkReply(req: Request): Promise<string> {
+  const profile = await resolveProfile(req);
+  if (!profile) {
+    return "Start by completing your wedding profile: date range, guest count, location, budget, and overall style. Once that is saved, I can tell you what to work on based on your real timeline.";
+  }
+
+  const savedItems = await db
+    .select({ task: checklistItems.task, month: checklistItems.month, isCompleted: checklistItems.isCompleted })
+    .from(checklistItems)
+    .where(eq(checklistItems.profileId, profile.id))
+    .orderBy(asc(checklistItems.id));
+  const upcoming = savedItems.filter((item) => !item.isCompleted).slice(0, 4);
+  const fallback = buildAriaChecklist(profile).slice(0, 4).map((item) => ({ ...item, isCompleted: false }));
+  const focusItems = upcoming.length ? upcoming : fallback;
+  const dateText = formatAriaDate(profile.weddingDate);
+
+  return [
+    `Right now, focus on the next few planning items for ${dateText}:`,
+    "",
+    ...focusItems.map((item, index) => `${index + 1}. ${item.task}${item.month ? ` (${item.month})` : ""}`),
+    "",
+    savedItems.length
+      ? "I pulled this from your open checklist items, so finishing these will move your portal forward fastest."
+      : "You do not have checklist items saved yet, so this is based on your wedding profile. I can generate a checklist when you are ready.",
+  ].join("\n");
+}
+
+async function buildPlanningPaceReply(req: Request): Promise<string> {
+  const profile = await resolveProfile(req);
+  if (!profile) {
+    return "I need your wedding profile first before I can judge whether you are ahead or behind. Add your wedding date or rough date range, guest count, budget, and location, then I can compare your progress to the timeline.";
+  }
+
+  const savedItems = await db
+    .select({ task: checklistItems.task, isCompleted: checklistItems.isCompleted })
+    .from(checklistItems)
+    .where(eq(checklistItems.profileId, profile.id));
+  const expectedItems = buildAriaChecklist(profile);
+  const completed = savedItems.filter((item) => item.isCompleted).length;
+  const total = savedItems.length || expectedItems.length;
+  const completionRate = total ? completed / total : 0;
+  const months = monthsUntilWedding(profile.weddingDate);
+  const expectedRate = months >= 10 ? 0.2 : months >= 7 ? 0.35 : months >= 4 ? 0.55 : months >= 2 ? 0.7 : months >= 1 ? 0.85 : 0.95;
+  const gap = completionRate - expectedRate;
+  const status = gap >= 0.1 ? "ahead" : gap <= -0.15 ? "behind" : "roughly on track";
+  const nextItems = savedItems.filter((item) => !item.isCompleted).slice(0, 3).map((item) => item.task);
+  const fallbackItems = expectedItems.slice(0, 3).map((item) => item.task);
+
+  return [
+    `Based on your saved checklist and wedding date, you look **${status}**.`,
+    "",
+    `You have ${completed} of ${total} planning tasks marked complete, with about ${months} month${months === 1 ? "" : "s"} until ${formatAriaDate(profile.weddingDate)}.`,
+    "",
+    "Next best focus:",
+    ...(nextItems.length ? nextItems : fallbackItems).map((task, index) => `${index + 1}. ${task}`),
+    "",
+    savedItems.length ? "This is an estimate from your portal progress." : "You do not have a saved checklist yet, so this is an estimate from your profile.",
+  ].join("\n");
 }
 
 function siteTaskGuide(text: string): string | null {
@@ -3126,6 +3911,20 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       /^(?:guest|guests|guest list|the guest list|my guest list)$/i.test(lastUserText.trim());
     const userClarifiesGuestList =
       /\b(?:talking about|mean|meant|focus on)\s+(?:my\s+)?guest list\b/i.test(lastUserText);
+
+    const planningProgressReply =
+      /\bwhat should i be working on (?:right now|now)\b[\s\S]*\bwedding\b|\bwhat should (?:we|i) work on (?:right now|now)\b[\s\S]*\bwedding\b/i.test(lastUserText)
+        ? await buildCurrentWeddingWorkReply(req)
+        : /\bhow far\b[\s\S]*\b(behind|ahead)\b[\s\S]*\bplanning timeline\b|\b(behind|ahead)\b[\s\S]*\bplanning timeline\b/i.test(lastUserText)
+          ? await buildPlanningPaceReply(req)
+          : null;
+    if (planningProgressReply) {
+      send({ type: "content", content: planningProgressReply });
+      send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
 
     const deterministicReply = capabilityReply(lastUserText) ?? deterministicBasicReply(lastUserText, timezone) ?? deterministicStarterPromptReply(lastUserText) ?? deterministicSmallTalkReply(lastUserText);
     if (deterministicReply) {
