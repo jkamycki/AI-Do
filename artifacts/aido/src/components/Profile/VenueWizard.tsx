@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ChangeEvent, KeyboardEvent } from "react";
-import { Mail, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import { Mail, Plus, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,11 +71,15 @@ function createId() {
 }
 
 function formatLocations(text: string, fallback = "[location]") {
-  const locations = text
+  const locations = parseLocations(text);
+  return locations.length ? locations.join(", ") : fallback;
+}
+
+function parseLocations(text: string) {
+  return text
     .split(/\r?\n|;/)
     .map((location) => location.trim())
     .filter(Boolean);
-  return locations.length ? locations.join(", ") : fallback;
 }
 
 function officialVenueSearchUrl(query: string) {
@@ -86,6 +90,9 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
   const [uploadError, setUploadError] = useState("");
   const [generatingPromptDraft, setGeneratingPromptDraft] = useState(false);
   const [generatingVenueOptions, setGeneratingVenueOptions] = useState(false);
+  const [locationCity, setLocationCity] = useState("");
+  const [locationState, setLocationState] = useState("");
+  const [locationError, setLocationError] = useState("");
 
   const styleText = value.style.length ? value.style.join(", ").toLowerCase() : "warm and elegant";
 
@@ -146,6 +153,34 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
 
   const removeShortlistItem = (id: string) => {
     update({ shortlist: value.shortlist.filter((item) => item.id !== id) });
+  };
+
+  const addPreferredLocation = () => {
+    const city = locationCity.trim();
+    const state = locationState.trim();
+    if (!state) {
+      setLocationError("State is required.");
+      return;
+    }
+
+    const nextLocation = city ? `${city}, ${state}` : state;
+    const locations = parseLocations(value.location);
+    if (!locations.some((location) => location.toLowerCase() === nextLocation.toLowerCase())) {
+      update({ location: [...locations, nextLocation].join("\n") });
+    }
+    setLocationCity("");
+    setLocationState("");
+    setLocationError("");
+  };
+
+  const removePreferredLocation = (index: number) => {
+    update({ location: parseLocations(value.location).filter((_, locationIndex) => locationIndex !== index).join("\n") });
+  };
+
+  const addLocationOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    addPreferredLocation();
   };
 
   const onScreenshotUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -358,15 +393,51 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
             placeholder="$8,000 - $15,000"
           />
         </label>
-        <label className="space-y-2 text-sm font-medium md:col-span-2">
+        <div className="space-y-3 md:col-span-2">
           Preferred locations
-          <Textarea
-            value={value.location}
-            onChange={(event) => update({ location: event.target.value })}
-            placeholder={"City, state, or preferred area\nAdd another city or area on a new line"}
-            rows={2}
-          />
-        </label>
+          <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+            <Input
+              value={locationCity}
+              onChange={(event) => setLocationCity(event.target.value)}
+              onKeyDown={addLocationOnEnter}
+              placeholder="City (optional)"
+            />
+            <Input
+              value={locationState}
+              onChange={(event) => {
+                setLocationState(event.target.value);
+                if (locationError) setLocationError("");
+              }}
+              onKeyDown={addLocationOnEnter}
+              placeholder="State"
+            />
+            <Button type="button" variant="outline" onClick={addPreferredLocation} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add
+            </Button>
+          </div>
+          {locationError && <p className="text-xs font-medium text-destructive">{locationError}</p>}
+          {parseLocations(value.location).length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {parseLocations(value.location).map((location, index) => (
+                <span
+                  key={`${location}-${index}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-foreground"
+                >
+                  {location}
+                  <button
+                    type="button"
+                    onClick={() => removePreferredLocation(index)}
+                    className="rounded-full text-muted-foreground transition hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`Remove ${location}`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2">
