@@ -198,22 +198,24 @@ function NextPaymentDisplay({
   date,
   amount = 0,
   onMarkPaid,
+  toneClass,
   t,
 }: {
   date: string | null | undefined;
   amount?: number;
   onMarkPaid?: () => void;
+  toneClass?: string;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   if (!date) return <span className="text-muted-foreground text-xs">-</span>;
   const daysUntil = daysUntilDate(date);
   const isOverdue = daysUntil < 0;
   const isSoon = daysUntil >= 0 && daysUntil <= 7;
-  const tone = isOverdue
+  const tone = toneClass ?? (isOverdue
     ? "border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-200 dark:bg-red-500/15"
     : isSoon
       ? "border-amber-500/35 bg-amber-500/12 text-amber-800 dark:text-amber-100 dark:bg-amber-400/12"
-      : "border-burgundy/20 bg-burgundy/8 text-foreground dark:border-champagne/20 dark:bg-champagne/8";
+      : "border-burgundy/20 bg-burgundy/8 text-foreground dark:border-champagne/20 dark:bg-champagne/8");
   const dueLabel = isOverdue
     ? t("budget.due_overdue", { n: Math.abs(daysUntil), defaultValue: `${Math.abs(daysUntil)} day(s) overdue` })
     : daysUntil === 0
@@ -889,6 +891,7 @@ export default function Budget() {
                     <NextPaymentDisplay
                       date={nextPayment.date}
                       amount={nextPayment.amount}
+                      toneClass={categoryBadgeClass(nextPayment.category)}
                       onMarkPaid={nextPayment.source === "manual" && nextPayment.manualId && nextPayment.amount > 0 ? () => handleMarkPaid(nextPayment.manualId!) : undefined}
                       t={t}
                     />
