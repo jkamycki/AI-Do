@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { db, anonymousSessions } from "@workspace/db";
+import { getAuth } from "@clerk/express";
+import { db, anonymousSessions, analyticsEvents } from "@workspace/db";
 
 const router = Router();
 
@@ -10,15 +11,28 @@ function cleanSessionId(value: unknown): string | null {
   return trimmed;
 }
 
+function cleanMetadata(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  try {
+    const serialized = JSON.stringify(value);
+    if (serialized.length > 12000) {
+      return {
+        truncated: true,
+        originalSize: serialized.length,
+      };
+    }
+    return JSON.parse(serialized) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
 router.post("/track", async (req, res) => {
   try {
     const sessionId = cleanSessionId(req.body?.sessionId) ?? cleanSessionId(req.headers["x-aido-session-id"]);
     const event = typeof req.body?.event === "string" ? req.body.event.trim().slice(0, 120) : "";
     const testMode = req.body?.testMode === true || req.headers["x-aido-test-mode"] === "true";
-    const metadata =
-      req.body?.metadata && typeof req.body.metadata === "object" && !Array.isArray(req.body.metadata)
-        ? req.body.metadata
-        : {};
+    const metadata = cleanMetadata(req.body?.metadata);
     const timestamp = req.body?.timestamp ? new Date(String(req.body.timestamp)) : new Date();
     const safeTimestamp = Number.isNaN(timestamp.getTime()) ? new Date() : timestamp;
 
@@ -34,6 +48,25 @@ router.post("/track", async (req, res) => {
       timestamp: safeTimestamp,
       createdAt: safeTimestamp,
       lastActiveAt: safeTimestamp,
+    });
+
+    const auth = getAuth(req);
+    const userId =
+      (typeof req.userId === "string" && req.userId) ||
+      (typeof auth?.userId === "string" && auth.userId) ||
+      `anonymous:${sessionId}`;
+
+    await db.insert(analyticsEvents).values({
+      userId,
+      eventType: event,
+      timestamp: safeTimestamp,
+      metadata: {
+        ...metadata,
+        sessionId,
+        testMode,
+        clientTimestamp: safeTimestamp.toISOString(),
+        source: "portal_tracker",
+      },
     });
 
     res.json({ ok: true });

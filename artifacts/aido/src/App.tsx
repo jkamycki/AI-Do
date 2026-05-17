@@ -1390,15 +1390,71 @@ function PendingInviteRedirector() {
   return null;
 }
 
+type PortalTrackingContext = {
+  feature: string;
+  section: string;
+  tool?: string;
+  step: string;
+};
+
+const PORTAL_TRACKING_ROUTES: Array<{ pattern: RegExp } & PortalTrackingContext> = [
+  { pattern: /^\/dashboard\/?$/, feature: "Dashboard", section: "Planning", tool: "Dashboard", step: "Viewed dashboard" },
+  { pattern: /^\/profile\/?$/, feature: "Wedding Profile", section: "Planning", tool: "Profile Builder", step: "Viewed wedding profile" },
+  { pattern: /^\/timeline\/?$/, feature: "Timeline", section: "Planning", tool: "AI Timeline Generator", step: "Viewed timeline" },
+  { pattern: /^\/budget\/?$/, feature: "Budget Summary", section: "Planning", tool: "Budget Manager", step: "Viewed budget summary" },
+  { pattern: /^\/checklist\/?$/, feature: "Checklist", section: "Planning", tool: "Checklist Manager", step: "Viewed checklist" },
+  { pattern: /^\/vendors\/?$/, feature: "Vendors", section: "Planning", tool: "Vendor Manager", step: "Viewed vendor list" },
+  { pattern: /^\/contracts\/?$/, feature: "Contracts", section: "Planning", tool: "Contract Analyzer", step: "Viewed contract analyzer" },
+  { pattern: /^\/mood-board\/?$/, feature: "Mood Board", section: "Planning", tool: "Mood Board Builder", step: "Viewed mood board" },
+  { pattern: /^\/guests(?:\/[^/]+)?\/?$/, feature: "Guest List & Invitations", section: "Guests", tool: "Guest List Manager", step: "Viewed guest list" },
+  { pattern: /^\/seating-chart\/?$/, feature: "Seating Chart", section: "Guests", tool: "Seating Chart Builder", step: "Viewed seating chart" },
+  { pattern: /^\/wedding-party\/?$/, feature: "Wedding Party", section: "Guests", tool: "Wedding Party Manager", step: "Viewed wedding party" },
+  { pattern: /^\/hotels\/?$/, feature: "Hotels", section: "Guests", tool: "Hotel Block Manager", step: "Viewed hotels" },
+  { pattern: /^\/website-editor\/?$/, feature: "Website Editor", section: "Website", tool: "Website Builder", step: "Viewed website editor" },
+  { pattern: /^\/w\/[^/]+(?:\/[^/]+)?\/?$/, feature: "Public Website", section: "Website", tool: "Website Preview", step: "Viewed public website" },
+  { pattern: /^\/rsvp(?:\/[^/]+)?\/?$/, feature: "RSVP", section: "Invitations", tool: "RSVP Builder", step: "Viewed RSVP page" },
+  { pattern: /^\/save-the-date(?:\/[^/]+)?\/?$/, feature: "Save The Date", section: "Invitations", tool: "Save The Date Builder", step: "Viewed save the date" },
+  { pattern: /^\/day-of\/?$/, feature: "Day-Of", section: "Planning", tool: "Day-Of Mode", step: "Viewed day-of mode" },
+  { pattern: /^\/aria\/?$/, feature: "Aria", section: "AI Assistant", tool: "Aria Assistant", step: "Opened Aria" },
+  { pattern: /^\/settings\/?$/, feature: "Settings", section: "Account", step: "Viewed settings" },
+  { pattern: /^\/help\/?$/, feature: "Help & Support", section: "Support", step: "Viewed help center" },
+  { pattern: /^\/help\/updates-improvements\/?$/, feature: "Updates & Improvements", section: "Support", step: "Viewed updates and improvements" },
+  { pattern: /^\/operations-center\/?$/, feature: "Operations Center", section: "Admin", tool: "Operations Center", step: "Viewed operations center" },
+  { pattern: /^\/admin\/?$/, feature: "Admin", section: "Admin", tool: "Admin Dashboard", step: "Viewed admin dashboard" },
+  { pattern: /^\/workspace\/[^/]+\/?$/, feature: "Shared Workspace", section: "Planning", tool: "Shared Workspace", step: "Viewed shared workspace" },
+];
+
+function getPortalTrackingContext(path: string): PortalTrackingContext | null {
+  const routePath = path.split("?")[0] || "/";
+  return PORTAL_TRACKING_ROUTES.find(route => route.pattern.test(routePath)) ?? null;
+}
+
 function AppTracking() {
   const [location] = useLocation();
   const { track, testMode, sessionId } = useTracking();
 
   useEffect(() => {
     if (!sessionId) return;
+    const context = getPortalTrackingContext(location);
     void track("page_view", {
       path: location,
       title: typeof document !== "undefined" ? document.title : "",
+      ...(context ?? {}),
+    });
+    if (!context) return;
+    void track("feature_accessed", {
+      ...context,
+      path: location,
+    });
+    if (context.tool) {
+      void track("tool_used", {
+        ...context,
+        path: location,
+      });
+    }
+    void track("workflow_step_reached", {
+      ...context,
+      path: location,
     });
   }, [location, sessionId, track]);
 
