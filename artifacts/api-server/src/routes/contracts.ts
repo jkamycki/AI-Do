@@ -111,6 +111,157 @@ function isUsefulKeyTerm(term: { label: string; value: string }): boolean {
   return true;
 }
 
+function isNotSpecified(value: string): boolean {
+  const text = value.trim().toLowerCase();
+  return !text || text === "not specified" || text === "n/a" || text === "none";
+}
+
+function sentenceSnippets(text: string): string[] {
+  return sanitizeText(text)
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?;:])\s+|\n+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length >= 25 && sentence.length <= 700);
+}
+
+function contractSnippet(text: string, keywords: RegExp[], fallbackKeywords: string[] = []): string {
+  const sentences = sentenceSnippets(text);
+  const matches = sentences.filter((sentence) => keywords.some((keyword) => keyword.test(sentence)));
+  const selected = matches.slice(0, 3);
+  if (selected.length > 0) return selected.join(" ");
+
+  const lower = text.toLowerCase();
+  for (const keyword of fallbackKeywords) {
+    const index = lower.indexOf(keyword.toLowerCase());
+    if (index < 0) continue;
+    const start = Math.max(0, index - 140);
+    const end = Math.min(text.length, index + 520);
+    return sanitizeText(text.slice(start, end)).replace(/\s+/g, " ").trim();
+  }
+  return "Not specified";
+}
+
+function guessVendorType(contractText: string): string {
+  const lower = contractText.toLowerCase();
+  const matches: Array<[RegExp, string]> = [
+    [/\b(photo|photography|photographer)\b/, "Photographer"],
+    [/\b(video|videography|videographer)\b/, "Videographer"],
+    [/\b(cater|menu|meal|bar service|beverage)\b/, "Caterer"],
+    [/\b(venue|facility|premises|event space)\b/, "Venue"],
+    [/\b(dj|disc jockey|music|sound system)\b/, "DJ / Band"],
+    [/\b(floral|florist|flowers|bouquet)\b/, "Florist"],
+    [/\b(hair|makeup|beauty|stylist)\b/, "Hair & Makeup"],
+    [/\b(planner|coordination|coordinator)\b/, "Wedding Planner"],
+    [/\b(cake|bakery|dessert)\b/, "Cake & Desserts"],
+    [/\b(transport|shuttle|limousine|limo)\b/, "Transportation"],
+  ];
+  return matches.find(([pattern]) => pattern.test(lower))?.[1] ?? "Vendor";
+}
+
+function keyTermFromText(contractText: string, label: string): { label: string; value: string } {
+  const termConfig: Record<string, { patterns: RegExp[]; fallbacks: string[] }> = {
+    "Payment schedule": {
+      patterns: [/\b(payment|deposit|retainer|balance|installment|fee|total|amount due|due date|late fee|invoice)\b/i, /\$\s?\d|(?:\d+)%/i],
+      fallbacks: ["payment", "deposit", "retainer", "balance", "fee", "$"],
+    },
+    "Cancellation/refund": {
+      patterns: [/\b(cancel|cancellation|refund|non[-\s]?refundable|termination|forfeit|notice)\b/i],
+      fallbacks: ["cancel", "refund", "non-refundable", "termination"],
+    },
+    "Services included": {
+      patterns: [/\b(services?|package|deliverables?|included|provide|coverage|hours?|staff|setup|breakdown|menu|gallery|photos?|video|flowers?)\b/i],
+      fallbacks: ["services", "package", "included", "deliverables", "provide"],
+    },
+    "Rescheduling/force majeure": {
+      patterns: [/\b(reschedul|postpon|force majeure|weather|emergency|act of god|availability|substitute)\b/i],
+      fallbacks: ["reschedule", "postpone", "force majeure", "weather", "emergency"],
+    },
+    "Liability/insurance": {
+      patterns: [/\b(liabil|indemn|insurance|damage|loss|hold harmless|responsib|waiver)\b/i],
+      fallbacks: ["liability", "indemn", "insurance", "damage", "hold harmless"],
+    },
+  };
+  const config = termConfig[label];
+  return {
+    label,
+    value: config ? contractSnippet(contractText, config.patterns, config.fallbacks) : "Not specified",
+  };
+}
+
+function extractedContractTerms(contractText: string): {
+  keyTerms: Array<{ label: string; value: string }>;
+  paymentTerms: string;
+  cancellationPolicy: string;
+  liabilityNotes: string;
+} {
+  const labels = ["Payment schedule", "Cancellation/refund", "Services included", "Rescheduling/force majeure", "Liability/insurance"];
+  const keyTerms = labels.map((label) => keyTermFromText(contractText, label));
+  const find = (label: string) => keyTerms.find((term) => term.label === label)?.value ?? "Not specified";
+  return {
+    keyTerms,
+    paymentTerms: find("Payment schedule"),
+    cancellationPolicy: find("Cancellation/refund"),
+    liabilityNotes: find("Liability/insurance"),
+  };
+}
+
+function aiClaimsMissingContractText(analysis: Record<string, unknown>): boolean {
+  const combined = [
+    analysis.summary,
+    analysis.paymentTerms,
+    analysis.cancellationPolicy,
+    analysis.liabilityNotes,
+    ...(Array.isArray(analysis.redFlags) ? analysis.redFlags.flatMap((flag) => {
+      const obj = asObject(flag);
+      return [obj.title, obj.detail, obj.recommendation];
+    }) : []),
+    ...(Array.isArray(analysis.keyTerms) ? analysis.keyTerms.flatMap((term) => {
+      const obj = asObject(term);
+      return [obj.label, obj.value];
+    }) : []),
+  ].map((value) => asText(value).toLowerCase()).join(" ");
+  return /\b(no|missing|not provided|did not receive|without)\b.{0,80}\b(contract text|document text|contract|key terms)\b/i.test(combined);
+}
+
+function enrichAnalysisWithContractText(raw: Record<string, unknown>, contractText: string): Record<string, unknown> {
+  const normalized = normalizeAnalysis(raw);
+  const normalizedKeyTerms = Array.isArray(normalized.keyTerms)
+    ? normalized.keyTerms as Array<{ label: string; value: string }>
+    : [];
+  const normalizedRedFlags = Array.isArray(normalized.redFlags)
+    ? normalized.redFlags as Array<{ severity: "low" | "medium" | "high"; title: string; detail: string; recommendation: string }>
+    : [];
+  const normalizedPositives = asTextArray(normalized.positives);
+  const extracted = extractedContractTerms(contractText);
+  const existingByLabel = new Map(
+    normalizedKeyTerms.map((term) => [term.label.toLowerCase(), term])
+  );
+  const keyTerms = extracted.keyTerms.map((fallbackTerm) => {
+    const existing = existingByLabel.get(fallbackTerm.label.toLowerCase());
+    return existing && !isNotSpecified(existing.value) ? existing : fallbackTerm;
+  });
+  for (const term of normalizedKeyTerms) {
+    if (!keyTerms.some((existing) => existing.label.toLowerCase() === term.label.toLowerCase())) {
+      keyTerms.push(term);
+    }
+  }
+
+  const redFlags = normalizedRedFlags.filter((flag) =>
+    !/missing contract text|no contract text|contract text/i.test(`${flag.title} ${flag.detail}`)
+  );
+
+  return {
+    ...normalized,
+    vendorType: normalized.vendorType === "Vendor" ? guessVendorType(contractText) : normalized.vendorType,
+    keyTerms,
+    paymentTerms: isNotSpecified(String(normalized.paymentTerms ?? "")) ? extracted.paymentTerms : normalized.paymentTerms,
+    cancellationPolicy: isNotSpecified(String(normalized.cancellationPolicy ?? "")) ? extracted.cancellationPolicy : normalized.cancellationPolicy,
+    liabilityNotes: isNotSpecified(String(normalized.liabilityNotes ?? "")) ? extracted.liabilityNotes : normalized.liabilityNotes,
+    redFlags,
+    positives: normalizedPositives.length ? normalizedPositives : ["Contract text was successfully extracted and reviewed."],
+  };
+}
+
 function normalizeAnalysis(raw: Record<string, unknown>): Record<string, unknown> {
   const redFlags = Array.isArray(raw.redFlags)
     ? raw.redFlags.map((item) => {
@@ -205,6 +356,7 @@ function parseAnalysisResponse(raw: string): Record<string, unknown> | null {
 
 function buildFallbackAnalysis(contractText: string): Record<string, unknown> {
   const lower = contractText.toLowerCase();
+  const extracted = extractedContractTerms(contractText);
   const missingClauses = [
     !lower.includes("cancel") && "Cancellation policy",
     !lower.includes("liabil") && !lower.includes("indemn") && "Liability or indemnification terms",
@@ -213,8 +365,8 @@ function buildFallbackAnalysis(contractText: string): Record<string, unknown> {
 
   return normalizeAnalysis({
     overallRiskLevel: "medium",
-    vendorType: "Vendor",
-    summary: "A.IDO extracted the contract text and prepared a basic review checklist. Review the original document carefully, especially payment, cancellation, liability, rescheduling, and force majeure terms.",
+    vendorType: guessVendorType(contractText),
+    summary: "A.IDO extracted the contract text and prepared a contract review from the clauses it could identify. Review the original document carefully, especially payment, cancellation, liability, rescheduling, and force majeure terms.",
     redFlags: [
       {
         severity: "medium",
@@ -223,14 +375,10 @@ function buildFallbackAnalysis(contractText: string): Record<string, unknown> {
         recommendation: "Ask the vendor for written clarification on any unclear terms and have a qualified attorney review the final contract.",
       },
     ],
-    keyTerms: [
-      { label: "Payment terms", value: lower.includes("deposit") || lower.includes("payment") ? "Mentioned in contract text; review exact amounts and due dates." : "Not specified" },
-      { label: "Cancellation", value: lower.includes("cancel") ? "Mentioned in contract text; review refund and deadline language." : "Not specified" },
-      { label: "Liability", value: lower.includes("liabil") || lower.includes("indemn") ? "Mentioned in contract text; review who is responsible for losses or damages." : "Not specified" },
-    ],
-    cancellationPolicy: lower.includes("cancel") ? "Mentioned in contract text; review original wording." : "Not specified",
-    paymentTerms: lower.includes("deposit") || lower.includes("payment") ? "Mentioned in contract text; review original wording." : "Not specified",
-    liabilityNotes: lower.includes("liabil") || lower.includes("indemn") ? "Mentioned in contract text; review original wording." : "Not specified",
+    keyTerms: extracted.keyTerms,
+    cancellationPolicy: extracted.cancellationPolicy,
+    paymentTerms: extracted.paymentTerms,
+    liabilityNotes: extracted.liabilityNotes,
     positives: ["Contract text was successfully extracted and saved."],
     missingClauses,
     negotiationTips: ["Ask the vendor to clarify cancellation, payment, liability, rescheduling, and force majeure terms in writing."],
@@ -374,8 +522,11 @@ router.post(
 
     const prompt = `You are a wedding contract attorney. Analyze this vendor contract for a couple planning their wedding.
 
-CONTRACT:
+CONTRACT_TEXT_START
 ${trimmedContractText}
+CONTRACT_TEXT_END
+
+Important: if there is text between CONTRACT_TEXT_START and CONTRACT_TEXT_END, you received contract text. Do not say no contract text was provided.
 
 Return ONLY this tagged report format. Do not use markdown, bullets, numbering, or JSON.
 
@@ -440,8 +591,12 @@ ${analysisRaw.slice(0, 12000)}`;
         req.log.warn({ err }, "Contract AI repair attempt failed");
       }
     }
+    if (parsedAnalysis && aiClaimsMissingContractText(parsedAnalysis)) {
+      req.log.warn({ fileName: originalname, extractedLength: extractedText.length }, "Contract AI incorrectly claimed missing contract text");
+      parsedAnalysis = null;
+    }
     const analysis = parsedAnalysis
-      ? normalizeAnalysis(parsedAnalysis)
+      ? enrichAnalysisWithContractText(parsedAnalysis, extractedText)
       : buildFallbackAnalysis(extractedText);
 
     const displayName = (req.body?.displayName as string | undefined)?.trim() || originalname;
