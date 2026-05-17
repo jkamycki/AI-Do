@@ -45,6 +45,7 @@ import Privacy from "@/pages/Privacy";
 import BetaDisclaimer from "@/pages/BetaDisclaimer";
 import Security from "@/pages/Security";
 import DataHandling from "@/pages/DataHandling";
+import UpdatesImprovements from "@/pages/UpdatesImprovements";
 import NotFound from "@/pages/not-found";
 import VideoTemplate from "@/components/video/VideoTemplate";
 
@@ -1686,6 +1687,7 @@ function Router() {
       <Route path="/day-of" component={() => <ProtectedRoute component={DayOf} />} />
       <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
+      <Route path="/help/updates-improvements" component={UpdatesImprovements} />
       <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
       <Route path="/operations-center" component={() => <ProtectedRoute component={OperationsCenter} />} />
       <Route path="/seating-chart" component={() => <ProtectedRoute component={SeatingChart} />} />

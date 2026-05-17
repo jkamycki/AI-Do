@@ -414,7 +414,9 @@ export default function SaveTheDate() {
         <div style={{ backgroundColor: BG, padding: "16px 24px", textAlign: "center", borderTop: `1px solid ${CARD_BDR}` }}>
           <p style={{ margin: "0 0 4px", fontFamily: jakarta, fontSize: 10, color: MUTED, letterSpacing: "0.5px" }}>Planning your own wedding?</p>
           <p style={{ margin: 0, fontFamily: jakarta, fontSize: 10, color: MUTED }}>
-            <a href="https://aidowedding.net" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>Try A.IDO free</a> — AI-powered wedding planning
+            <a href="https://aidowedding.net" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>Try A.IDO free</a> - AI-powered wedding planning
+            {" "}|{" "}
+            <a href="/help/updates-improvements" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>Updates & Improvements</a>
           </p>
         </div>
 

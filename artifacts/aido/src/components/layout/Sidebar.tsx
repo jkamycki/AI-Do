@@ -804,6 +804,11 @@ export function Sidebar() {
             <div className="space-y-0.5">
               <NavLink href="/settings" label={t("nav.settings")} icon={Settings} />
               <NavLink href="/help" label={t("nav.help")} icon={HelpCircle} />
+              <NavLink
+                href="/help/updates-improvements"
+                label={t("nav.updates_improvements", { defaultValue: "Updates & Improvements" })}
+                icon={Sparkles}
+              />
             </div>
           </div>
 

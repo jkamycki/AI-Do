@@ -1161,6 +1161,10 @@ export default function Rsvp() {
         <a href="https://aidowedding.net" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>
           Try A.IDO free
         </a>
+        {" "}|{" "}
+        <a href="/help/updates-improvements" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>
+          Updates & Improvements
+        </a>
       </p>
 
       <AlertDialog open={!!pendingData} onOpenChange={(open) => { if (!open) setPendingData(null); }}>
