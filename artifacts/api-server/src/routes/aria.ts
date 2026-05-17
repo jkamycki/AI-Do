@@ -2645,6 +2645,78 @@ function contractInfo(fileName: string, vendorName: string | null | undefined, c
   };
 }
 
+function contractToolData(result: ActionResult): Record<string, unknown> | null {
+  if (!result.ok || !result.data || typeof result.data !== "object" || Array.isArray(result.data)) return null;
+  return result.data as Record<string, unknown>;
+}
+
+function firstContractPaymentDetail(contract: Record<string, unknown>): string | null {
+  const paymentTerms = contractText(contract.paymentTerms);
+  const keyTerms = Array.isArray(contract.keyTerms) ? contract.keyTerms as Array<Record<string, unknown>> : [];
+  const paymentKeyTerm = keyTerms.find((term) =>
+    /payment|deposit|retainer|balance|fee|installment|due/i.test(String(term.label ?? ""))
+  );
+  const keyTermValue = contractText(paymentKeyTerm?.value);
+  return keyTermValue && keyTermValue !== "Not specified" ? keyTermValue : paymentTerms;
+}
+
+function buildContractToolReply(lastUserText: string, actions: ActionRecord[]): string | null {
+  const contractAction = [...actions].reverse().find((action) => action.name === "get_contract" && action.result.ok);
+  if (!contractAction) return null;
+  const contract = contractToolData(contractAction.result);
+  if (!contract) return null;
+
+  const fileName = contractText(contract.fileName, "your contract");
+  const vendorName = contractText(contract.vendorName);
+  const label = vendorName ? `${vendorName} (${fileName})` : fileName;
+  const userText = lastUserText.toLowerCase();
+  const paymentDetail = firstContractPaymentDetail(contract);
+  const cancellation = contractText(contract.cancellationPolicy);
+  const liability = contractText(contract.liabilityNotes);
+  const keyTerms = Array.isArray(contract.keyTerms) ? contract.keyTerms as Array<Record<string, unknown>> : [];
+  const redFlags = Array.isArray(contract.redFlags) ? contract.redFlags as Array<Record<string, unknown>> : [];
+
+  if (/\b(next|upcoming|due|payment|pay|deposit|balance|owed|owe)\b/i.test(userText)) {
+    return [
+      `For **${label}**, here is the payment language I found:`,
+      "",
+      paymentDetail && paymentDetail !== "Not specified"
+        ? paymentDetail
+        : "I don't see a clear next payment, due date, deposit, or balance in the saved contract analysis.",
+      "",
+      "If you want, upload/re-analyze the contract again after the latest contract parser update so I can pull more precise payment dates and amounts from the text.",
+    ].join("\n");
+  }
+
+  if (/\b(cancel|refund|termination)\b/i.test(userText)) {
+    return `For **${label}**, cancellation/refund says: ${cancellation && cancellation !== "Not specified" ? cancellation : "I don't see a clear cancellation or refund term in the saved analysis."}`;
+  }
+
+  if (/\b(liability|insurance|indemn|damage)\b/i.test(userText)) {
+    return `For **${label}**, liability/insurance says: ${liability && liability !== "Not specified" ? liability : "I don't see a clear liability or insurance term in the saved analysis."}`;
+  }
+
+  if (/\b(red flags?|risk|concerns?)\b/i.test(userText)) {
+    if (!redFlags.length) return `I don't see any saved red flags for **${label}**.`;
+    return [
+      `Top red flags for **${label}**:`,
+      "",
+      ...redFlags.slice(0, 5).map((flag) => `- **${contractText(flag.severity, "risk")} - ${contractText(flag.title, "Issue")}**: ${contractText(flag.detail, "")}${contractText(flag.recommendation) ? ` Recommendation: ${contractText(flag.recommendation)}` : ""}`),
+    ].join("\n");
+  }
+
+  if (/\b(key terms?|terms?|clause|clauses?)\b/i.test(userText)) {
+    if (!keyTerms.length) return `I don't see saved key terms for **${label}** yet. Re-analyze the contract and I can pull them into this view.`;
+    return [
+      `Key terms for **${label}**:`,
+      "",
+      ...keyTerms.slice(0, 8).map((term) => `- **${contractText(term.label, "Term")}**: ${contractText(term.value, "Not specified")}`),
+    ].join("\n");
+  }
+
+  return null;
+}
+
 function contractAnalysisSummary(fileName: string, analysis: Record<string, unknown>, kind: ContractFollowUpKind): string {
   const risk = String(analysis["overallRiskLevel"] ?? "unknown");
   const vendorType = String(analysis["vendorType"] ?? "Vendor");
@@ -5249,6 +5321,14 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       // hide the actual save problem behind a generic "Aria encountered an error".
       const allActionTools = toolCalls.every(tc => ACTION_TOOLS.has(tc.name));
       const allSucceeded = results.every(r => r.ok);
+      const contractReply = buildContractToolReply(lastUserText, performedActions);
+      if (contractReply) {
+        send({ type: "content", content: contractReply });
+        send({ type: "done", actions: performedActions.map(a => ({ name: a.name, ok: a.result.ok, error: a.result.ok ? undefined : a.result.error })) });
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
+      }
       if (allActionTools) {
         const confirmation = allSucceeded
           ? buildConfirmation(performedActions)
