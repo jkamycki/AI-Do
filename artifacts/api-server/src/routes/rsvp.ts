@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { clerkClient } from "@clerk/express";
-import { db, guests, weddingProfiles, invitationCustomizations, hotelBlocks, weddingWebsites } from "@workspace/db";
+import { db, guests, weddingProfiles, invitationCustomizations, hotelBlocks } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
@@ -94,16 +94,7 @@ function buildFrontendOrigin(req: import("express").Request): string {
 
 async function buildGuestRsvpUrl(req: import("express").Request, profileId: number, token: string): Promise<string> {
   const origin = buildFrontendOrigin(req);
-  const [site] = await db
-    .select({ slug: weddingWebsites.slug })
-    .from(weddingWebsites)
-    .where(and(eq(weddingWebsites.profileId, profileId), eq(weddingWebsites.published, true)))
-    .limit(1);
-
-  if (site?.slug) {
-    return `${origin}/w/${encodeURIComponent(site.slug)}/rsvp`;
-  }
-
+  void profileId;
   return `${origin}/rsvp/${token}`;
 }
 

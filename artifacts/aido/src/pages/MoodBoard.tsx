@@ -228,11 +228,12 @@ function SortableImageCard({
           e.stopPropagation();
           onDelete();
         }}
-        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/55 text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-red-500/70 z-20"
+        className="absolute top-2 right-2 inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/95 px-2.5 py-1.5 text-[11px] font-semibold text-red-700 shadow-lg opacity-100 transition-colors hover:bg-red-600 hover:text-white hover:border-red-500 z-30"
         title="Remove image"
         aria-label="Remove image"
       >
         <Trash2 className="h-3.5 w-3.5" />
+        <span>Remove</span>
       </button>
 
       {!image.analysis && tags.length === 0 && (
@@ -682,6 +683,19 @@ export default function MoodBoard() {
       img.src = dataUrl;
     });
 
+  const downloadPdfBlob = (doc: import("jspdf").jsPDF, filename: string) => {
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const generatePdf = async () => {
     setGeneratingPdf(true);
     try {
@@ -816,32 +830,38 @@ export default function MoodBoard() {
           }
           const x = MARGIN + col * (IMG_W + GAP);
           try {
-const rawPath = board.images[i].objectPath;
-const resolved = objectUrl(rawPath);
-const resolvedUrl = applyApiBase(resolved);
-const isPublicPath = resolved.startsWith("/api/storage/public-objects/")
-  || resolved.startsWith("/storage/public-objects/")
-  || resolved.startsWith("http://")
-  || resolved.startsWith("https://");
+            const rawPath = board.images[i].objectPath;
+            const resolved = objectUrl(rawPath);
+            const resolvedUrl = applyApiBase(resolved);
+            const isPublicPath = resolved.startsWith("/api/storage/public-objects/")
+              || resolved.startsWith("/storage/public-objects/")
+              || resolved.startsWith("http://")
+              || resolved.startsWith("https://");
 
-let res: Response;
-if (isPublicPath) {
-  // Public objects are best fetched without auth headers to avoid
-  // CORS/preflight issues on some storage/CDN setups.
-  res = await fetch(resolvedUrl);
-} else {
-  const token = await getToken();
-  res = await fetch(resolvedUrl, {
-    credentials: "include",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-}
+            let res: Response;
+            if (isPublicPath) {
+              // Public objects are best fetched without auth headers to avoid
+              // CORS/preflight issues on some storage/CDN setups.
+              res = await fetch(resolvedUrl);
+            } else {
+              // Use the same authenticated media fetcher path as the on-screen
+              // image component. It knows the active workspace and auth token.
+              res = await authFetch(resolved);
+            }
 
-if (!res.ok && !isPublicPath) {
-  // Fallback for deployments where objects are publicly readable
-  // but auth/credentials fetch fails due to proxy/CORS policy.
-  res = await fetch(resolvedUrl);
-}
+            if (!res.ok && !isPublicPath) {
+              const token = await getToken();
+              res = await fetch(resolvedUrl, {
+                credentials: "include",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+              });
+            }
+
+            if (!res.ok && !isPublicPath) {
+              // Fallback for deployments where objects are publicly readable
+              // but auth/credentials fetch fails due to proxy/CORS policy.
+              res = await fetch(resolvedUrl);
+            }
             if (!res.ok) throw new Error(`image fetch failed: ${res.status}`);
             const blob = await res.blob();
             const dataUrl = await blobToDataUrl(blob);
@@ -989,7 +1009,7 @@ if (!res.ok && !isPublicPath) {
       const filename = partner1 && partner2
         ? `${partner1}-and-${partner2}-Wedding-Mood-Board.pdf`.replace(/\s+/g, "-")
         : "Wedding-Mood-Board.pdf";
-      doc.save(filename);
+      downloadPdfBlob(doc, filename);
       toast({ title: "PDF ready", description: "Your mood board has been downloaded." });
     } catch (err) {
       console.error(err);

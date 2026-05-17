@@ -109,6 +109,33 @@ function formatDate(d: string | null) {
   }
 }
 
+const CATEGORY_BADGE_STYLES = [
+  "border-burgundy/25 bg-burgundy/10 text-burgundy dark:border-champagne/30 dark:bg-champagne/10 dark:text-champagne",
+  "border-rose-gold/35 bg-rose-gold/15 text-[#7c2d39] dark:border-rose-gold/30 dark:bg-rose-gold/12 dark:text-champagne",
+  "border-mauve/30 bg-mauve/12 text-[#553044] dark:border-mauve/35 dark:bg-mauve/18 dark:text-[#f1dce6]",
+  "border-amber-500/30 bg-amber-500/12 text-amber-800 dark:border-amber-300/30 dark:bg-amber-300/10 dark:text-amber-100",
+  "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:border-emerald-300/30 dark:bg-emerald-300/10 dark:text-emerald-100",
+  "border-sky-500/30 bg-sky-500/10 text-sky-800 dark:border-sky-300/30 dark:bg-sky-300/10 dark:text-sky-100",
+  "border-violet-500/30 bg-violet-500/10 text-violet-800 dark:border-violet-300/30 dark:bg-violet-300/10 dark:text-violet-100",
+];
+
+function categoryHash(category: string) {
+  return [...category.toLowerCase()].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+}
+
+function categoryBadgeClass(category: string) {
+  return CATEGORY_BADGE_STYLES[categoryHash(category || "other") % CATEGORY_BADGE_STYLES.length];
+}
+
+function CategoryBadge({ category }: { category: string }) {
+  const label = category?.trim() || "Other";
+  return (
+    <Badge variant="outline" className={`rounded-full border px-2.5 py-0.5 font-medium ${categoryBadgeClass(label)}`}>
+      {label}
+    </Badge>
+  );
+}
+
 // Returns days from today until the given ISO date (negative = past).
 // Used by the budget table to color-code the next-payment cell.
 function daysUntilDate(d: string | null | undefined): number {
@@ -121,6 +148,64 @@ function daysUntilDate(d: string | null | undefined): number {
   } catch {
     return Infinity;
   }
+}
+
+function dateTimeValue(d: string | null | undefined): number {
+  if (!d) return Number.POSITIVE_INFINITY;
+  const dt = new Date(d.length <= 10 ? `${d}T00:00:00` : d);
+  return Number.isNaN(dt.getTime()) ? Number.POSITIVE_INFINITY : dt.getTime();
+}
+
+function NextPaymentDisplay({
+  date,
+  amount = 0,
+  onMarkPaid,
+  t,
+}: {
+  date: string | null | undefined;
+  amount?: number;
+  onMarkPaid?: () => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  if (!date) return <span className="text-muted-foreground text-xs">â€”</span>;
+  const daysUntil = daysUntilDate(date);
+  const isOverdue = daysUntil < 0;
+  const isSoon = daysUntil >= 0 && daysUntil <= 7;
+  const tone = isOverdue
+    ? "border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-200 dark:bg-red-500/15"
+    : isSoon
+      ? "border-amber-500/35 bg-amber-500/12 text-amber-800 dark:text-amber-100 dark:bg-amber-400/12"
+      : "border-burgundy/20 bg-burgundy/8 text-foreground dark:border-champagne/20 dark:bg-champagne/8";
+  const dueLabel = isOverdue
+    ? t("budget.due_overdue", { n: Math.abs(daysUntil), defaultValue: `${Math.abs(daysUntil)} day(s) overdue` })
+    : daysUntil === 0
+      ? t("budget.due_today", { defaultValue: "Due today" })
+      : isSoon
+        ? t("budget.due_in_days", { n: daysUntil, defaultValue: `Due in ${daysUntil} day(s)` })
+        : formatDate(date);
+
+  return (
+    <div className={`inline-flex max-w-[220px] flex-col gap-1 rounded-lg border px-2.5 py-1.5 text-xs ${tone}`}>
+      <span className="font-semibold">{dueLabel}</span>
+      <span className="text-[11px] opacity-85">{formatDate(date)}</span>
+      {amount > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="tabular-nums font-medium">{formatMoney(amount)}</span>
+          {onMarkPaid && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 px-2 text-[10px] border-emerald-500/40 bg-background/80 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-300"
+              onClick={onMarkPaid}
+              title={t("budget.mark_paid_title", { defaultValue: "Mark this payment paid (rolls into Paid total)" })}
+            >
+              {t("budget.mark_paid", { defaultValue: "Mark Paid" })}
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Budget() {
@@ -179,6 +264,57 @@ export default function Budget() {
   const remainingToPay = Math.max(0, combinedSpend - combinedPaid);
   const overBudget = combinedSpend > totalBudget && totalBudget > 0;
   const usedPct = totalBudget > 0 ? Math.min((combinedSpend / totalBudget) * 100, 100) : 0;
+  const categoryBreakdown = useMemo(() => {
+    const byCategory = new Map<string, { category: string; total: number; paid: number; count: number }>();
+    const add = (category: string | null | undefined, total: number, paid: number) => {
+      const label = category?.trim() || "Other";
+      const current = byCategory.get(label) ?? { category: label, total: 0, paid: 0, count: 0 };
+      current.total += total || 0;
+      current.paid += paid || 0;
+      current.count += 1;
+      byCategory.set(label, current);
+    };
+    vendorFinancials?.vendors.forEach((v) => add(v.category, v.totalCost, v.totalPaid));
+    manualExpenses.forEach((m) => add(m.category, m.cost ?? 0, m.amountPaid ?? 0));
+    return [...byCategory.values()].sort((a, b) => b.total - a.total);
+  }, [manualExpenses, vendorFinancials?.vendors]);
+  const nextPayment = useMemo(() => {
+    const payments: Array<{
+      id: string;
+      label: string;
+      category: string;
+      date: string;
+      amount: number;
+      source: "manual" | "vendor";
+      manualId?: number;
+    }> = [];
+    vendorFinancials?.vendors.forEach((v) => {
+      if (v.nextPaymentDue && Math.max(0, v.totalCost - v.totalPaid) > 0) {
+        payments.push({
+          id: `vendor-${v.id}`,
+          label: v.name,
+          category: v.category,
+          date: v.nextPaymentDue,
+          amount: 0,
+          source: "vendor",
+        });
+      }
+    });
+    manualExpenses.forEach((m) => {
+      if (m.nextPaymentDue && Math.max(0, (m.cost ?? 0) - (m.amountPaid ?? 0)) > 0) {
+        payments.push({
+          id: `manual-${m.id}`,
+          label: m.name,
+          category: m.category || "Other",
+          date: m.nextPaymentDue,
+          amount: m.nextPaymentAmount ?? 0,
+          source: "manual",
+          manualId: m.id,
+        });
+      }
+    });
+    return payments.sort((a, b) => dateTimeValue(a.date) - dateTimeValue(b.date))[0] ?? null;
+  }, [manualExpenses, vendorFinancials?.vendors]);
 
   // ── Handlers ──────────────────────────────────────────────────────
   const startEditBudget = () => {
@@ -446,12 +582,14 @@ export default function Budget() {
                       <TableRow key={v.id}>
                         <TableCell className="font-medium">{v.name}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{v.category}</Badge>
+                          <CategoryBadge category={v.category} />
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(v.totalCost)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(v.totalPaid)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(remaining)}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{formatDate(v.nextPaymentDue)}</TableCell>
+                        <TableCell className="text-sm">
+                          <NextPaymentDisplay date={v.nextPaymentDue} t={t} />
+                        </TableCell>
                         <TableCell>
                           <div className="space-y-1">
                             <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
@@ -540,7 +678,7 @@ export default function Budget() {
                           {m.notes && <div className="text-xs text-muted-foreground line-clamp-1">{m.notes}</div>}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{m.category}</Badge>
+                          <CategoryBadge category={m.category} />
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(m.cost)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(m.amountPaid)}</TableCell>
@@ -675,6 +813,50 @@ export default function Budget() {
               sub={t("budget.percent_used", { pct: usedPct.toFixed(0) })}
             />
           </div>
+          {(categoryBreakdown.length > 0 || nextPayment) && (
+            <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+              {categoryBreakdown.length > 0 && (
+                <div className="rounded-lg border border-border/70 bg-background/70 p-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    {t("budget.category_breakdown", { defaultValue: "Category breakdown" })}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {categoryBreakdown.map((item) => (
+                      <div
+                        key={item.category}
+                        className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs shadow-sm ${categoryBadgeClass(item.category)}`}
+                      >
+                        <span className="font-semibold">{item.category}</span>
+                        <span className="tabular-nums opacity-90">{formatMoney(item.total)}</span>
+                        <span className="text-[10px] opacity-75">
+                          {t("budget.category_item_count", { count: item.count, defaultValue: `${item.count} item(s)` })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {nextPayment && (
+                <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-4 dark:border-amber-300/30 dark:bg-amber-300/10">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-amber-800 dark:text-amber-100">
+                    {t("budget.next_payment_highlight", { defaultValue: "Next payment" })}
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CategoryBadge category={nextPayment.category} />
+                      <span className="font-medium text-foreground">{nextPayment.label}</span>
+                    </div>
+                    <NextPaymentDisplay
+                      date={nextPayment.date}
+                      amount={nextPayment.amount}
+                      onMarkPaid={nextPayment.source === "manual" && nextPayment.manualId && nextPayment.amount > 0 ? () => handleMarkPaid(nextPayment.manualId!) : undefined}
+                      t={t}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -317,12 +317,12 @@
 }
 
 .dark {
-  --background: 220 14% 10%;
+  --background: 222 18% 8%;
   --foreground: 40 30% 94%;
 
-  --card: 220 12% 16%;
+  --card: 222 17% 11%;
   --card-foreground: 40 30% 94%;
-  --card-border: 220 9% 28%;
+  --card-border: 220 12% 24%;
 
   --popover: 40 28% 96%;
   --popover-foreground: 222 18% 16%;
@@ -331,10 +331,10 @@
   --primary: 34 34% 76%;
   --primary-foreground: 222 18% 16%;
 
-  --secondary: 218 10% 34%;
+  --secondary: 220 14% 26%;
   --secondary-foreground: 40 30% 94%;
 
-  --muted: 220 10% 22%;
+  --muted: 222 16% 15%;
   --muted-foreground: 40 20% 78%;
 
   --accent: 34 26% 72%;
@@ -343,8 +343,8 @@
   --destructive: 0 63% 48%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 220 9% 28%;
-  --input: 220 9% 28%;
+  --border: 220 12% 24%;
+  --input: 220 12% 24%;
   --ring: 34 34% 76%;
 
   --shadow-sm: 0 1px 2px 0 rgb(10 2 8 / 0.3);
@@ -355,6 +355,32 @@
     0 4px 6px -4px rgb(10 2 8 / 0.28);
   --shadow-lg:
     0 24px 48px -12px rgb(10 2 8 / 0.45);
+}
+
+.dark .dark\:text-pink-300,
+.dark .dark\:text-pink-400,
+.dark .dark\:text-rose-300,
+.dark .dark\:text-rose-400,
+.dark .dark\:text-fuchsia-300,
+.dark .dark\:text-fuchsia-400 {
+  color: hsl(34 34% 78%) !important;
+}
+
+.dark .dark\:bg-pink-900\/30,
+.dark .dark\:bg-pink-900\/40,
+.dark .dark\:bg-rose-900\/30,
+.dark .dark\:bg-rose-900\/40,
+.dark .dark\:bg-rose-950\/40,
+.dark .dark\:bg-fuchsia-900\/30,
+.dark .dark\:bg-fuchsia-900\/40 {
+  background-color: hsl(222 16% 17%) !important;
+}
+
+.dark .dark\:border-pink-700,
+.dark .dark\:border-rose-700,
+.dark .dark\:border-rose-900\/50,
+.dark .dark\:border-fuchsia-700 {
+  border-color: hsl(34 22% 42% / 0.55) !important;
 }
 
 @layer base {

@@ -614,11 +614,11 @@ export function Sidebar() {
           ${
             isActive
               ? special
-                ? "bg-primary/15 text-primary font-medium"
-                : "bg-primary text-primary-foreground font-medium shadow-md"
+                ? "bg-primary/15 text-primary font-medium dark:bg-muted dark:text-foreground dark:ring-1 dark:ring-primary/30"
+                : "bg-primary text-primary-foreground font-medium shadow-md dark:bg-muted dark:text-foreground dark:ring-1 dark:ring-primary/35 dark:shadow-none"
               : special
-              ? "hover:bg-primary/10 text-primary/70 hover:text-primary"
-              : "hover:bg-primary/10 text-card-foreground hover:text-primary"
+              ? "hover:bg-primary/10 text-primary/70 hover:text-primary dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground"
+              : "hover:bg-primary/10 text-card-foreground hover:text-primary dark:text-card-foreground dark:hover:bg-muted dark:hover:text-foreground"
           }
         `}
         onClick={closeMenu}
@@ -660,7 +660,7 @@ export function Sidebar() {
         onChange={handlePicChange}
       />
 
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b border-primary/10 z-50 flex items-center px-3">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background dark:bg-card border-b border-primary/10 dark:border-border z-50 flex items-center px-3">
         <Button
           variant="ghost"
           size="icon"
@@ -672,7 +672,7 @@ export function Sidebar() {
         </Button>
         <div className="flex-1 flex items-center justify-end gap-2">
           <img src="/logo.png" alt="A.I Do Logo" className="h-14 w-auto object-contain" />
-          <span className="text-[9px] font-bold tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10">
+          <span className="text-[9px] font-bold tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10 dark:bg-muted dark:text-foreground dark:border-primary/30">
             BETA
           </span>
         </div>
@@ -684,14 +684,14 @@ export function Sidebar() {
           sessionStorage.setItem("aido_sidebar_scroll", String((e.target as HTMLDivElement).scrollTop));
         }}
         className={`
-          fixed top-0 left-0 h-full w-64 bg-card border-r z-50 transform transition-transform duration-300 ease-in-out pt-16 md:pt-0
+          fixed top-0 left-0 h-full w-64 bg-card border-r dark:border-border z-50 transform transition-transform duration-300 ease-in-out pt-16 md:pt-0
           flex flex-col overflow-y-auto
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
       >
         <div className="hidden md:flex flex-col items-center justify-center px-4 py-4 border-b border-primary/10 gap-2">
           <img src="/logo.png" alt="A.I Do — AI Wedding Planner Assistant" className="h-44 w-auto object-contain" />
-          <span className="text-[10px] font-bold tracking-[0.22em] uppercase px-2.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10">
+          <span className="text-[10px] font-bold tracking-[0.22em] uppercase px-2.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10 dark:bg-muted dark:text-foreground dark:border-primary/30">
             BETA
           </span>
         </div>
@@ -773,7 +773,7 @@ export function Sidebar() {
         <nav className="flex-1 p-4 space-y-4">
           {navSections.map((section) => (
             <div key={section.labelKey}>
-              <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary">
+              <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-muted-foreground">
                 {t(section.labelKey, { defaultValue: section.labelKey })}
               </p>
               <div className="space-y-0.5">
@@ -785,7 +785,7 @@ export function Sidebar() {
           ))}
 
           <div className="border-t border-primary/10 pt-4">
-            <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary">
+            <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-muted-foreground">
               {t("sidebar.guest_website_builder", { defaultValue: "Guest Website Builder" })}
             </p>
             <div className="space-y-0.5">
@@ -798,7 +798,7 @@ export function Sidebar() {
           </div>
 
           <div className="border-t border-primary/10 pt-4">
-            <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary">
+            <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-muted-foreground">
               {t("sidebar.workspace_section")}
             </p>
             <div className="space-y-0.5">
@@ -820,10 +820,10 @@ export function Sidebar() {
         </nav>
 
         <div className="p-3 border-t border-primary/10 space-y-2">
-          <div className="rounded-md border border-primary/15 bg-card/75 px-2.5 py-2 shadow-sm">
+          <div className="rounded-md border border-primary/15 bg-card/75 px-2.5 py-2 shadow-sm dark:border-border dark:bg-muted/45 dark:shadow-none">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">Theme</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-foreground">Theme</p>
                 <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
                   {theme === "dark" ? "Dark mode" : "Light palette mode"}
                 </p>

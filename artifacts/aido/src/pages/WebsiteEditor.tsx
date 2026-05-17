@@ -1532,12 +1532,115 @@ export default function WebsiteEditor() {
           );
         })()}
 
-        {/* Text tools */}
-        {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_text_tools", { defaultValue: "Text Tools" })}>
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {t("website_editor.text_tools_hint", { defaultValue: "Right-click anywhere on the preview to add a new text box." })}
+        {/* Design guide */}
+        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_quick_design", { defaultValue: "Quick Design" })}>
+          <div className="rounded-lg border border-[#E6B1A6]/60 bg-[#FFF7F2] p-3 text-[#3A1826]">
+            <p className="text-sm font-semibold">
+              {t("website_editor.quick_design_title", { defaultValue: "Start here, then fine tune." })}
             </p>
+            <div className="mt-3 space-y-2.5 text-xs leading-relaxed">
+              {[
+                t("website_editor.quick_design_step_theme", { defaultValue: "Pick a style to set the full website palette." }),
+                t("website_editor.quick_design_step_colors", { defaultValue: "Adjust only the exact colors you want to change." }),
+                t("website_editor.quick_design_step_text", { defaultValue: "Click text in the preview to edit words or move it." }),
+              ].map((copy, index) => (
+                <div key={copy} className="flex items-start gap-2">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#8D294D] text-[11px] font-semibold text-white">
+                    {index + 1}
+                  </span>
+                  <span>{copy}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Section>}
+
+        {/* Theme picker */}
+        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_theme", { defaultValue: "Pick a Style" })}>
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+            {t("website_editor.theme_hint", { defaultValue: "Styles update fonts, colors, and section backgrounds together." })}
+          </p>
+          <div className="space-y-2">
+            {THEMES.map((theme) => (
+              <button
+                key={theme.id}
+                onClick={() => applyTheme(theme.id)}
+                className={`w-full text-left p-3 rounded-lg border transition-all ${record.theme === theme.id ? "border-[#8D294D] bg-[#FFF7F2] ring-2 ring-[#8D294D]/15" : "border-border bg-background hover:border-[#8D294D]/60 hover:bg-[#FFF7F2]/50"}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-foreground">{theme.name}</div>
+                    <div className="mt-1 text-[11px] text-muted-foreground">{theme.font}</div>
+                  </div>
+                  {record.theme === theme.id && (
+                    <span className="rounded-full bg-[#8D294D] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
+                      {t("website_editor.theme_selected", { defaultValue: "Selected" })}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 grid grid-cols-5 overflow-hidden rounded-full border border-border/70">
+                  <div className="h-4" style={{ background: theme.primary }} />
+                  <div className="h-4" style={{ background: theme.secondary }} />
+                  <div className="h-4" style={{ background: theme.accent }} />
+                  <div className="h-4" style={{ background: theme.neutral }} />
+                  <div className="h-4" style={{ background: theme.background }} />
+                </div>
+              </button>
+            ))}
+          </div>
+        </Section>}
+
+        {/* Colors */}
+        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_colors", { defaultValue: "Fine-tune Colors" })}>
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+            {t("website_editor.colors_hint", { defaultValue: "Use these when you want one part of the website to have a custom color." })}
+          </p>
+          <div className="space-y-2.5">
+            <ColorField label={t("website_editor.color_focus_ring", { defaultValue: "Main accent" })}   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
+            <ColorField label={t("website_editor.color_background", { defaultValue: "Site background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
+            <ColorField
+              label={t("website_editor.color_pages", { defaultValue: "Menu links" })}
+              value={record.customText._navLinkColor || record.colorPalette.text}
+              onChange={(v) => update({ customText: { ...record.customText, _navLinkColor: v } })}
+            />
+            <ColorField
+              label={t("website_editor.color_couple_names", { defaultValue: "Couple names" })}
+              value={record.customText._navCoupleColor || record.colorPalette.primary}
+              onChange={(v) => update({ customText: { ...record.customText, _navCoupleColor: v } })}
+            />
+            <ColorField
+              label={t("website_editor.color_footer", { defaultValue: "Footer text" })}
+              value={record.customText._footerColor || record.colorPalette.primary}
+              onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
+            />
+            {/* Welcome page keeps its own background picker. Every other
+                non-home section (Story, Schedule, Travel, Registry, Wedding
+                Party, Gallery, FAQ, RSVP) shares a single Sections BG so the
+                user can recolour them all in one shot. */}
+            <ColorField
+              label={t("website_editor.bg_welcome", { defaultValue: "Welcome section background" })}
+              value={record.customText._welcomeBg || record.colorPalette.background}
+              onChange={(v) => update({ customText: { ...record.customText, _welcomeBg: v } })}
+            />
+            <ColorField
+              label={t("website_editor.bg_sections", { defaultValue: "Other sections background" })}
+              value={record.customText._sectionsBg || record.colorPalette.background}
+              onChange={(v) => update({ customText: { ...record.customText, _sectionsBg: v } })}
+            />
+          </div>
+        </Section>}
+
+        {/* Text tools */}
+        {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_text_tools", { defaultValue: "Text Editing" })}>
+          <div className="space-y-3">
+            <div className="grid gap-2 text-xs text-muted-foreground">
+              <div className="rounded-lg border bg-background px-3 py-2">
+                {t("website_editor.text_tools_click_hint", { defaultValue: "Click any text in the preview to edit it directly." })}
+              </div>
+              <div className="rounded-lg border bg-background px-3 py-2">
+                {t("website_editor.text_tools_hint", { defaultValue: "Right-click the preview to add a new text box." })}
+              </div>
+            </div>
             <Button
               size="sm"
               variant="outline"
@@ -1548,65 +1651,8 @@ export default function WebsiteEditor() {
               }}
             >
               <X className="h-3.5 w-3.5" />
-              {t("website_editor.reset_all_to_default", { defaultValue: "Reset all to default" })}
+              {t("website_editor.reset_all_to_default", { defaultValue: "Reset text and positions" })}
             </Button>
-          </div>
-        </Section>}
-
-        {/* Theme picker */}
-        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_theme", { defaultValue: "Theme" })}>
-          <div className="grid grid-cols-2 gap-2">
-            {THEMES.map((theme) => (
-              <button
-                key={theme.id}
-                onClick={() => applyTheme(theme.id)}
-                className={`text-left p-3 rounded-md border transition-all ${record.theme === theme.id ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/50"}`}
-              >
-                <div className="flex gap-1 mb-2">
-                  <div className="w-4 h-4 rounded-full" style={{ background: theme.primary }} />
-                  <div className="w-4 h-4 rounded-full" style={{ background: theme.secondary }} />
-                  <div className="w-4 h-4 rounded-full" style={{ background: theme.neutral }} />
-                </div>
-                <div className="text-xs font-medium">{theme.name}</div>
-              </button>
-            ))}
-          </div>
-        </Section>}
-
-        {/* Colors */}
-        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_colors", { defaultValue: "Colors" })}>
-          <div className="grid grid-cols-2 gap-3">
-            <ColorField label={t("website_editor.color_focus_ring", { defaultValue: "Focus Ring" })}   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
-            <ColorField label={t("website_editor.color_background", { defaultValue: "Background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
-            <ColorField
-              label={t("website_editor.color_pages", { defaultValue: "Pages" })}
-              value={record.customText._navLinkColor || record.colorPalette.text}
-              onChange={(v) => update({ customText: { ...record.customText, _navLinkColor: v } })}
-            />
-            <ColorField
-              label={t("website_editor.color_couple_names", { defaultValue: "Header (Names)" })}
-              value={record.customText._navCoupleColor || record.colorPalette.primary}
-              onChange={(v) => update({ customText: { ...record.customText, _navCoupleColor: v } })}
-            />
-            <ColorField
-              label={t("website_editor.color_footer", { defaultValue: "Footer" })}
-              value={record.customText._footerColor || record.colorPalette.primary}
-              onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
-            />
-            {/* Welcome page keeps its own background picker. Every other
-                non-home section (Story, Schedule, Travel, Registry, Wedding
-                Party, Gallery, FAQ, RSVP) shares a single Sections BG so the
-                user can recolour them all in one shot. */}
-            <ColorField
-              label={t("website_editor.bg_welcome", { defaultValue: "Welcome BG" })}
-              value={record.customText._welcomeBg || record.colorPalette.background}
-              onChange={(v) => update({ customText: { ...record.customText, _welcomeBg: v } })}
-            />
-            <ColorField
-              label={t("website_editor.bg_sections", { defaultValue: "Body BG" })}
-              value={record.customText._sectionsBg || record.colorPalette.background}
-              onChange={(v) => update({ customText: { ...record.customText, _sectionsBg: v } })}
-            />
           </div>
         </Section>}
 
@@ -3131,19 +3177,21 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
 
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
-    <div className="flex flex-col">
-      <Label className="text-xs text-muted-foreground mb-1 block truncate" title={label}>{label}</Label>
+    <div className="rounded-lg border bg-background p-2.5">
+      <Label className="text-xs font-medium text-foreground block" title={label}>{label}</Label>
       <div className="flex items-center gap-2">
         <input
           type="color"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-9 h-9 rounded border border-border cursor-pointer flex-shrink-0"
+          className="h-9 w-12 rounded-md border border-border cursor-pointer flex-shrink-0 bg-transparent"
+          aria-label={label}
         />
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="text-xs font-mono h-9 min-w-0"
+          className="h-9 min-w-0 text-xs font-mono"
+          aria-label={`${label} hex value`}
         />
       </div>
     </div>

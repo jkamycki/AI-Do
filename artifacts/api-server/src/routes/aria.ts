@@ -320,6 +320,8 @@ Exception: toggle_checklist_item needs no confirmation. DELETE: state exactly wh
 
 UPDATE FLOW — NO CONFIRMATION NEEDED. When the user provides updates to existing data — including the *very common* case where they answered a follow-up question you just asked — call the appropriate update/add tool IMMEDIATELY in the same turn. Do NOT ask "Reply 'yes' to save" for updates. Do NOT call list_* tools first to "look up" the entity — pass the entity by name (most update tools accept a name field).
 
+VENDOR RENAME NOTE — For update_vendor, category words can be an existing vendor's business name. If the user says "rename florist to Bloom House" or "change my vendor named florist to Bloom House", call update_vendor with vendorName: "florist", name: "Bloom House". Do NOT refuse just because "florist" is also a category.
+
 POST-ADD-VENDOR FLOW (explicit rules, the small model gets this wrong otherwise):
 Key signal: "✅ Added **X**" in an assistant message means add_vendor for X was already executed and X is in the database. Do NOT call add_vendor for X again under any circumstances.
 
@@ -618,7 +620,7 @@ function buildConfirmation(actions: ActionRecord[]): string {
 
 const TOOLS = [
   { type:"function" as const, function:{ name:"add_vendor", description:"Add a new vendor to the user's wedding. ONLY call this AFTER: (1) the user has typed a specific business name in this conversation, AND (2) the user has confirmed with 'yes' or similar. NEVER invent a vendor name — not from examples, not from your training. NEVER call this tool in the same turn you ask for the vendor name. If the user just says 'add a vendor' or 'add a photographer' with no business name, ask for the name first and wait. Include all details the user mentioned (totalCost, depositAmount, contractSigned, etc.) so nothing needs to be re-asked.", parameters:{ type:"object", properties:{ name:{type:"string", description:"Exact business name the user typed. Never invent one."}, category:{type:"string", enum:["Venue","Caterer","Photographer","Videographer","Florist","DJ / Band","Officiant","Hair & Makeup","Transportation","Cake & Desserts","Invitations","Lighting & AV","Photo Booth","Wedding Planner","Other"], description:"Vendor category."}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, depositPaid:{type:"boolean"}, contractSigned:{type:"boolean", description:"Set true if user said the contract is signed."} }, required:["name","category"] } } },
-  { type:"function" as const, function:{ name:"update_vendor", description:"Update vendor fields. Pass vendorId or vendorName.", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"}, name:{type:"string"}, category:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, portalLink:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, contractSigned:{type:"boolean"} } } } },
+  { type:"function" as const, function:{ name:"update_vendor", description:"Update vendor fields. Pass vendorId or vendorName. If the user says a category word like 'florist' as the old/current vendor name, pass it as vendorName when renaming; a business can be literally named Florist.", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"}, name:{type:"string"}, category:{type:"string"}, email:{type:"string"}, phone:{type:"string"}, website:{type:"string"}, portalLink:{type:"string"}, notes:{type:"string"}, totalCost:{type:"number"}, depositAmount:{type:"number"}, contractSigned:{type:"boolean"} } } } },
   { type:"function" as const, function:{ name:"delete_vendor", description:"Delete vendor. Pass vendorId or vendorName.", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_vendors", description:"List all vendors.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"add_vendor_payment", description:"Add payment milestone to existing vendor. Required: label, amount, dueDate (YYYY-MM-DD).", parameters:{ type:"object", properties:{ vendorId:{type:"number"}, vendorName:{type:"string"}, label:{type:"string"}, amount:{type:"number"}, dueDate:{type:"string"}, isPaid:{type:"boolean"} }, required:["label","amount","dueDate"] } } },
@@ -958,7 +960,7 @@ function friendlyToolError(err: unknown, toolName: string): string {
   return detail || "Unexpected error";
 }
 
-type FoundVendor = { ok: true; id: number; name: string } | { ok: false; error: string };
+type FoundVendor = { ok: true; id: number; name: string; selectorSource?: "id" | "name" | "category" } | { ok: false; error: string };
 type FoundVendorPayment = { ok: true; id: number; vendorId: number; label: string } | { ok: false; error: string };
 type FoundChecklistItem = { ok: true; id: number; task: string } | { ok: false; error: string };
 type FoundGuest = { ok: true; id: number; name: string } | { ok: false; error: string };
@@ -974,7 +976,7 @@ async function findVendor(profileId: number, idArg: unknown, nameArg: unknown): 
     if (Number.isFinite(idNum)) {
       const [v] = await db.select({ id: vendors.id, name: vendors.name }).from(vendors)
         .where(and(eq(vendors.id, idNum), eq(vendors.profileId, profileId))).limit(1);
-      if (v) return { ok: true, id: v.id, name: v.name };
+      if (v) return { ok: true, id: v.id, name: v.name, selectorSource: "id" };
     }
   }
   if (nameArg) {
@@ -984,12 +986,48 @@ async function findVendor(profileId: number, idArg: unknown, nameArg: unknown): 
     if (matches.length === 0) return { ok: false, error: `No vendor found matching "${search}".` };
     if (matches.length > 1) {
       const exact = matches.find(m => m.name.toLowerCase() === search.toLowerCase());
-      if (exact) return { ok: true, id: exact.id, name: exact.name };
+      if (exact) return { ok: true, id: exact.id, name: exact.name, selectorSource: "name" };
       return { ok: false, error: `Multiple vendors match "${search}": ${matches.map(m => m.name).join(", ")}. Be more specific.` };
     }
-    return { ok: true, id: matches[0].id, name: matches[0].name };
+    return { ok: true, id: matches[0].id, name: matches[0].name, selectorSource: "name" };
   }
   return { ok: false, error: "Either vendorId or vendorName is required." };
+}
+
+async function findVendorForUpdate(profileId: number, args: Record<string, unknown>): Promise<FoundVendor> {
+  const direct = await findVendor(profileId, args.vendorId, args.vendorName);
+  if (direct.ok) return direct;
+
+  // Small models sometimes interpret "rename my florist to Bloom House" as:
+  // { category: "Florist", name: "Bloom House" } instead of passing
+  // vendorName: "Florist". Treat category as a selector only when there is no
+  // explicit vendorName/vendorId and a new name is present.
+  if (args.vendorId !== undefined || args.vendorName || args.name === undefined || !args.category) {
+    return direct;
+  }
+
+  const selector = String(args.category).trim();
+  if (!selector) return direct;
+  const normalizedSelector = normalizeCategory(selector);
+  const rows = await db
+    .select({ id: vendors.id, name: vendors.name, category: vendors.category })
+    .from(vendors)
+    .where(eq(vendors.profileId, profileId));
+
+  // If the business itself is named "Florist", prefer that exact name match
+  // before falling back to category matching. This is the user's reported case.
+  const exactName = rows.find((v) => v.name.toLowerCase() === selector.toLowerCase());
+  if (exactName) return { ok: true, id: exactName.id, name: exactName.name, selectorSource: "category" };
+
+  const categoryMatches = rows.filter((v) => normalizeCategory(v.category).toLowerCase() === normalizedSelector.toLowerCase());
+  if (categoryMatches.length === 1) {
+    return { ok: true, id: categoryMatches[0].id, name: categoryMatches[0].name, selectorSource: "category" };
+  }
+  if (categoryMatches.length > 1) {
+    return { ok: false, error: `Multiple ${normalizedSelector} vendors match: ${categoryMatches.map(v => v.name).join(", ")}. Be more specific.` };
+  }
+
+  return direct;
 }
 
 async function findVendorPayment(profileId: number, paymentIdArg: unknown, vendorNameArg: unknown, matchLabelArg: unknown): Promise<FoundVendorPayment> {
@@ -1770,11 +1808,11 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
     if (name === "update_vendor") {
       const profile = await resolveProfile(req);
       if (!profile) return { ok: false, error: "No wedding profile found." };
-      const vendor = await findVendor(profile.id, args.vendorId, args.vendorName);
+      const vendor = await findVendorForUpdate(profile.id, args);
       if (!vendor.ok) return vendor;
       const updates: Partial<typeof vendors.$inferInsert> = {};
       if (args.name !== undefined) updates.name = String(args.name);
-      if (args.category !== undefined) updates.category = normalizeCategory(String(args.category));
+      if (args.category !== undefined && vendor.selectorSource !== "category") updates.category = normalizeCategory(String(args.category));
       if (args.email !== undefined) updates.email = args.email ? String(args.email) : null;
       if (args.phone !== undefined) updates.phone = args.phone ? String(args.phone) : null;
       if (args.website !== undefined) updates.website = args.website ? String(args.website) : null;
