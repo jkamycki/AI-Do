@@ -1051,7 +1051,7 @@ const GUEST_IMPORT_TEMPLATE_HEADERS = [
   "Full Name",
   "Street Address",
   "Plus One",
-  "Plus One Name",
+  "Plus One Name (Optional)",
   "Category",
 ];
 
@@ -1214,7 +1214,7 @@ async function parseGuestImportWorkbook(file: File) {
       return;
     }
 
-    const plusOneName = getImportCell(row, headerMap, ["Plus One Name", "Plus 1 Name", "Guest Plus One"]);
+    const plusOneName = getImportCell(row, headerMap, ["Plus One Name (Optional)", "Plus One Name", "Plus 1 Name", "Guest Plus One"]);
     guestsToImport.push({
       name,
       email: getImportCell(row, headerMap, ["Email", "Email Address"]),
