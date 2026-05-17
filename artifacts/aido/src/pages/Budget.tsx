@@ -126,11 +126,29 @@ const VENDOR_CATEGORY_BADGE_STYLES: Record<string, string> = {
   "Wedding Planner": "border-transparent bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
   "Other": "border-transparent bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
 };
+const MANUAL_CATEGORY_BADGE_STYLES: Record<string, string> = {
+  "Attire": "border-transparent bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300",
+  "Rings": "border-transparent bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
+  "Decor": "border-transparent bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/30 dark:text-fuchsia-300",
+  "Gifts": "border-transparent bg-lime-100 text-lime-800 dark:bg-lime-900/30 dark:text-lime-300",
+  "Tips": "border-transparent bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  "Hotel": "border-transparent bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300",
+  "Travel": "border-transparent bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300",
+  "DIY": "border-transparent bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+  "Beauty": "border-transparent bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300",
+  "Stationery": "border-transparent bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+  "Honeymoon": "border-transparent bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
+};
+const ALL_CATEGORY_BADGE_STYLES: Record<string, string> = {
+  ...VENDOR_CATEGORY_BADGE_STYLES,
+  ...MANUAL_CATEGORY_BADGE_STYLES,
+};
 
 function normalizeCategoryLabel(category: string | null | undefined) {
   const raw = String(category ?? "").trim();
   if (/^dj\s*\/?\s*(band)?$/i.test(raw) || /^dj\s*\/\s*band$/i.test(raw)) return "DJ / Band";
-  const found = Object.keys(VENDOR_CATEGORY_BADGE_STYLES).find((cat) => cat.toLowerCase() === raw.toLowerCase());
+  if (/^d[Ã©e]cor$/i.test(raw)) return "Decor";
+  const found = Object.keys(ALL_CATEGORY_BADGE_STYLES).find((cat) => cat.toLowerCase() === raw.toLowerCase());
   return found ?? (raw || "Other");
 }
 
@@ -140,7 +158,7 @@ function displayCategoryLabel(category: string | null | undefined) {
 }
 
 function categoryBadgeClass(category: string) {
-  return VENDOR_CATEGORY_BADGE_STYLES[normalizeCategoryLabel(category)] ?? VENDOR_CATEGORY_BADGE_STYLES.Other;
+  return ALL_CATEGORY_BADGE_STYLES[normalizeCategoryLabel(category)] ?? VENDOR_CATEGORY_BADGE_STYLES.Other;
 }
 
 function categoryHighlightClass(category: string | null | undefined) {
@@ -908,7 +926,11 @@ export default function Budget() {
                   </SelectTrigger>
                   <SelectContent>
                     {MANUAL_CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                      <SelectItem key={c} value={c}>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${categoryBadgeClass(c)}`}>
+                          {displayCategoryLabel(c)}
+                        </span>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
