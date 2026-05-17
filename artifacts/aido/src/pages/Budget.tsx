@@ -100,7 +100,7 @@ function safeReceiptHref(url: string | null | undefined): string | null {
 }
 
 function formatDate(d: string | null) {
-  if (!d) return "—";
+  if (!d) return "-";
   try {
     const dt = new Date(d.length <= 10 ? `${d}T00:00:00` : d);
     return dt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -183,7 +183,7 @@ function NextPaymentDisplay({
   onMarkPaid?: () => void;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
-  if (!date) return <span className="text-muted-foreground text-xs">â€”</span>;
+  if (!date) return <span className="text-muted-foreground text-xs">-</span>;
   const daysUntil = daysUntilDate(date);
   const isOverdue = daysUntil < 0;
   const isSoon = daysUntil >= 0 && daysUntil <= 7;
@@ -736,7 +736,7 @@ export default function Budget() {
                                 )}
                               </div>
                             );
-                          })() : <span className="text-muted-foreground text-xs">—</span>}
+                          })() : <span className="text-muted-foreground text-xs">-</span>}
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
@@ -765,7 +765,7 @@ export default function Budget() {
                                 {m.receiptName ?? "View"}
                               </a>
                             ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
+                              <span className="text-xs text-muted-foreground">-</span>
                             );
                           })()}
                         </TableCell>
