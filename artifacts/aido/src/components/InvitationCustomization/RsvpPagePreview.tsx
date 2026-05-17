@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, XCircle, Heart, MapPin, Download } from "lucide-react";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 import type { ColorPalette } from "@/types/invitations";
@@ -130,6 +130,16 @@ export function RsvpPagePreview({
   hotelOptions = [],
   selectedHotelBlockId = "all",
 }: RsvpPagePreviewProps) {
+  const [attendance, setAttendance] = useState<"attending" | "declined">("attending");
+  const [mealChoice, setMealChoice] = useState("");
+  const [hotelNeeded, setHotelNeeded] = useState(hotelOptions.length > 0);
+  const [selectedHotelId, setSelectedHotelId] = useState(
+    selectedHotelBlockId && selectedHotelBlockId !== "all"
+      ? selectedHotelBlockId
+      : hotelOptions[0]?.id ? String(hotelOptions[0].id) : "",
+  );
+  const [hotelRoomCount, setHotelRoomCount] = useState("1");
+  const [submitted, setSubmitted] = useState(false);
   const bg = backgroundColor || "#FFF7F2";
   const accent = colors.accent || colors.primary || "#8D294D";
   // coupleColor is explicitly passed as A.IDO burgundy in AI mode and omitted in
@@ -167,13 +177,23 @@ export function RsvpPagePreview({
   const sortedHotelOptions = preferredHotelId
     ? [...hotelOptions].sort((a, b) => (String(a.id) === preferredHotelId ? -1 : String(b.id) === preferredHotelId ? 1 : 0))
     : hotelOptions;
-  const selectedHotel = sortedHotelOptions[0] ?? null;
+  const selectedHotel = sortedHotelOptions.find((hotel) => String(hotel.id) === selectedHotelId) ?? sortedHotelOptions[0] ?? null;
   const timesLine = [
     ceremonyTimeStr && `Ceremony ${ceremonyTimeStr}`,
     receptionTimeStr && `Reception ${receptionTimeStr}`,
   ].filter(Boolean).join("  ·  ");
 
   const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
+
+  useEffect(() => {
+    if (selectedHotelBlockId && selectedHotelBlockId !== "all") {
+      setSelectedHotelId(selectedHotelBlockId);
+      return;
+    }
+    if (!selectedHotelId && hotelOptions[0]?.id) {
+      setSelectedHotelId(String(hotelOptions[0].id));
+    }
+  }, [hotelOptions, selectedHotelBlockId, selectedHotelId]);
 
   const handlePhotoPanDown = (e: React.PointerEvent) => {
     if (!onPhotoPositionChange) return;
@@ -199,6 +219,18 @@ export function RsvpPagePreview({
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
     } catch { /* noop */ }
+  };
+
+  const controlStyle: React.CSSProperties = {
+    width: "100%",
+    border: `1px solid ${cardBorder}`,
+    borderRadius: 7,
+    background: isLight ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.22)",
+    color: textColor,
+    fontFamily: bodyFont,
+    fontSize: 11 * sc,
+    padding: "8px 9px",
+    outline: "none",
   };
 
   return (
@@ -352,12 +384,181 @@ export function RsvpPagePreview({
           margin: "0 16px 20px",
           background: cardBg, border: `1px solid ${cardBorder}`,
           borderRadius: 12, padding: "16px 18px", overflow: "hidden",
+          position: "relative",
         }}>
           {/* Accent top bar */}
           <div style={{
             height: 4, background: accent,
             margin: "-16px -18px 14px",
           }} />
+
+          <div
+            style={{
+              position: "absolute",
+              inset: "4px 0 0",
+              zIndex: 2,
+              background: cardBg,
+              padding: "16px 18px",
+              borderRadius: 12,
+            }}
+          >
+            {submitted ? (
+              <div style={{ textAlign: "center", padding: "38px 6px 4px" }}>
+                <CheckCircle2 style={{ width: 38, height: 38, color: accent, margin: "0 auto 10px" }} />
+                <p style={{ fontFamily: coupleFont, fontSize: 22 * sc, color: textColor, marginBottom: 6 }}>RSVP Preview Submitted</p>
+                <p style={{ fontFamily: bodyFont, fontSize: 11 * sc, color: textMuted, lineHeight: 1.6 }}>
+                  Guests would see a confirmation here. This preview did not save or count an RSVP.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSubmitted(false)}
+                  style={{
+                    marginTop: 14,
+                    background: cardBg,
+                    border: `1px solid ${cardBorder}`,
+                    borderRadius: 8,
+                    color: textColor,
+                    cursor: "pointer",
+                    fontFamily: bodyFont,
+                    fontSize: 10 * sc,
+                    fontWeight: 700,
+                    padding: "9px 14px",
+                  }}
+                >
+                  Edit preview response
+                </button>
+              </div>
+            ) : (
+              <>
+                <p style={{ fontFamily: bodyFont, fontSize: 11 * sc, color: textMuted, textAlign: "center", marginBottom: 14 }}>
+                  Dear <span style={{ color: textColor, fontWeight: 600 }}>{guestName}</span>, will you be joining us?
+                </p>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                  <button
+                    type="button"
+                    onClick={() => setAttendance("attending")}
+                    style={{
+                      borderRadius: 10,
+                      border: `2px solid ${attendance === "attending" ? accent : cardBorder}`,
+                      background: attendance === "attending" ? `${accent}22` : cardBg,
+                      padding: "12px 8px",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 6,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <CheckCircle2 style={{ width: 22, height: 22, color: attendance === "attending" ? accent : textFaint }} />
+                    <span style={{ fontFamily: bodyFont, fontSize: 10 * sc, fontWeight: 600, color: attendance === "attending" ? accent : textMuted }}>
+                      Joyfully Accepts
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAttendance("declined")}
+                    style={{
+                      borderRadius: 10,
+                      border: `2px solid ${attendance === "declined" ? accent : cardBorder}`,
+                      background: attendance === "declined" ? `${accent}22` : cardBg,
+                      padding: "12px 8px",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 6,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <XCircle style={{ width: 22, height: 22, color: attendance === "declined" ? accent : textFaint }} />
+                    <span style={{ fontFamily: bodyFont, fontSize: 10 * sc, fontWeight: 600, color: attendance === "declined" ? accent : textMuted }}>
+                      Declines with Regrets
+                    </span>
+                  </button>
+                </div>
+
+                {attendance === "attending" && (
+                  <>
+                    <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
+                      <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: textFaint, marginBottom: 6 }}>Meal Preference</p>
+                      <select value={mealChoice} onChange={(event) => setMealChoice(event.target.value)} style={controlStyle}>
+                        <option value="">Select an option...</option>
+                        <option value="chicken">Chicken</option>
+                        <option value="fish">Fish</option>
+                        <option value="vegetarian">Vegetarian</option>
+                        <option value="kids">Kids meal</option>
+                      </select>
+                    </div>
+
+                    {sortedHotelOptions.length > 0 && (
+                      <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
+                        <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: textFaint, marginBottom: 6 }}>Hotel Room</p>
+                        <select value={hotelNeeded ? "yes" : "no"} onChange={(event) => setHotelNeeded(event.target.value === "yes")} style={{ ...controlStyle, marginBottom: 8 }}>
+                          <option value="yes">Yes, I need a hotel room</option>
+                          <option value="no">No, I do not need a hotel room</option>
+                        </select>
+                        {hotelNeeded && (
+                          <div style={{ border: `1px solid ${cardBorder}`, borderRadius: 7, padding: "8px 10px", background: isLight ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.16)" }}>
+                            <p style={{ fontFamily: bodyFont, fontSize: 10 * sc, color: textMuted, marginBottom: 4 }}>Hotel block</p>
+                            <select value={selectedHotelId || (selectedHotel ? String(selectedHotel.id) : "")} onChange={(event) => setSelectedHotelId(event.target.value)} style={{ ...controlStyle, marginBottom: 7 }}>
+                              {sortedHotelOptions.map((hotel) => (
+                                <option key={hotel.id} value={String(hotel.id)}>{hotel.hotelName}</option>
+                              ))}
+                            </select>
+                            <select value={hotelRoomCount} onChange={(event) => setHotelRoomCount(event.target.value)} style={{ ...controlStyle, marginBottom: 7 }}>
+                              <option value="1">1 room</option>
+                              <option value="2">2 rooms</option>
+                            </select>
+                            {selectedHotel && hotelAddressLine(selectedHotel) && (
+                              <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, color: textMuted, marginTop: 3 }}>{hotelAddressLine(selectedHotel)}</p>
+                            )}
+                            {selectedHotel?.groupName && (
+                              <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, color: textMuted, marginTop: 5 }}>
+                                <strong style={{ color: textColor }}>Wedding block:</strong> {selectedHotel.groupName}
+                              </p>
+                            )}
+                            {selectedHotel?.discountCode && (
+                              <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, color: textMuted, marginTop: 2 }}>
+                                <strong style={{ color: textColor }}>Group code:</strong> {selectedHotel.discountCode}
+                              </p>
+                            )}
+                            {selectedHotel?.cutoffDate && (
+                              <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, color: textMuted, marginTop: 2 }}>
+                                <strong style={{ color: textColor }}>Book by:</strong> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
+                              </p>
+                            )}
+                            {selectedHotel?.bookingLink && (
+                              <div style={{ marginTop: 7, borderRadius: 6, background: accent, color: accentText, padding: "7px 9px", fontFamily: bodyFont, fontSize: 9 * sc, fontWeight: 700, textAlign: "center" }}>
+                                Booking link appears here
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setSubmitted(true)}
+                  style={{
+                    background: accent,
+                    border: 0,
+                    borderRadius: 8,
+                    padding: "12px",
+                    textAlign: "center",
+                    width: "100%",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ fontFamily: bodyFont, fontSize: 11 * sc, fontWeight: 700, color: accentText }}>
+                    Submit RSVP
+                  </span>
+                </button>
+              </>
+            )}
+          </div>
 
           <p style={{
             fontFamily: bodyFont, fontSize: 11 * sc, color: textMuted,
