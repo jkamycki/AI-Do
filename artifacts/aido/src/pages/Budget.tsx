@@ -283,7 +283,7 @@ export default function Budget() {
   const categoryBreakdown = useMemo(() => {
     const byCategory = new Map<string, { category: string; total: number; paid: number; count: number }>();
     const add = (category: string | null | undefined, total: number, paid: number) => {
-      const label = category?.trim() || "Other";
+      const label = normalizeCategoryLabel(category);
       const current = byCategory.get(label) ?? { category: label, total: 0, paid: 0, count: 0 };
       current.total += total || 0;
       current.paid += paid || 0;
@@ -842,7 +842,7 @@ export default function Budget() {
                         key={item.category}
                         className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs shadow-sm ${categoryBadgeClass(item.category)}`}
                       >
-                        <span className="font-semibold">{item.category}</span>
+                        <span className="font-semibold">{displayCategoryLabel(item.category)}</span>
                         <span className="tabular-nums opacity-90">{formatMoney(item.total)}</span>
                         <span className="text-[10px] opacity-75">
                           {t("budget.category_item_count", { count: item.count, defaultValue: `${item.count} item(s)` })}
