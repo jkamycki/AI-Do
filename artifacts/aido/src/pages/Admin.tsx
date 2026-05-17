@@ -1995,15 +1995,33 @@ function getEventFeatureUsed(event: AdminEvent): string {
 }
 
 function EventLogSection({ events, isLoading }: { events: AdminEvent[]; isLoading: boolean }) {
-  const sortedEvents = useMemo(
-    () => [...events].sort((a, b) => {
-      const loginA = a.userLogin || a.userEmail || a.userId || "";
-      const loginB = b.userLogin || b.userEmail || b.userId || "";
-      if (loginA !== loginB) return loginA.localeCompare(loginB);
-      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-    }),
-    [events],
-  );
+  const [expandedLogins, setExpandedLogins] = useState<Record<string, boolean>>({});
+  const groupedEvents = useMemo(() => {
+    const groups = new Map<string, { login: string; displayName: string; events: AdminEvent[] }>();
+    for (const event of events) {
+      const login = event.userLogin || event.userEmail || event.userId || "Unknown login";
+      const existing = groups.get(login);
+      if (existing) {
+        existing.events.push(event);
+      } else {
+        groups.set(login, {
+          login,
+          displayName: event.userDisplayName || login,
+          events: [event],
+        });
+      }
+    }
+    return Array.from(groups.values())
+      .map(group => ({
+        ...group,
+        events: group.events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
+      }))
+      .sort((a, b) => {
+        const lastA = new Date(a.events[0]?.timestamp ?? 0).getTime();
+        const lastB = new Date(b.events[0]?.timestamp ?? 0).getTime();
+        return lastB - lastA;
+      });
+  }, [events]);
 
   if (isLoading) {
     return <div className="space-y-3">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>;
@@ -2011,73 +2029,76 @@ function EventLogSection({ events, isLoading }: { events: AdminEvent[]; isLoadin
   return (
     <div className="space-y-6">
       <SectionHeader title="Event Log" description="Real-time record of every tracked user action across the platform." />
-      <Card className="border-none shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-primary/5 border-b border-primary/10">
-                <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Time</th>
-                <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
-                <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">User Login</th>
-                <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Feature Used</th>
-                <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Metadata</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                    No events yet. Start using the app to generate tracking data.
-                  </td>
-                </tr>
-              ) : (
-                sortedEvents.map((event, index) => {
-                  const login = event.userLogin || event.userEmail || event.userId;
-                  const previous = sortedEvents[index - 1];
-                  const previousLogin = previous ? previous.userLogin || previous.userEmail || previous.userId : null;
-                  const showLoginHeader = login !== previousLogin;
-                  return (
-                  <React.Fragment key={event.id}>
-                    {showLoginHeader && (
-                      <tr className="bg-muted/40 border-b border-border/60">
-                        <td colSpan={5} className="p-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Login</span>
-                            <span className="font-semibold text-foreground">{event.userDisplayName || login}</span>
-                            {event.userDisplayName && event.userDisplayName !== login ? (
-                              <span className="text-xs text-muted-foreground">{login}</span>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  <tr className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                    <td className="p-3 text-xs text-muted-foreground whitespace-nowrap font-mono">
-                      {new Date(event.timestamp).toLocaleString()}
-                    </td>
-                    <td className="p-3">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${EVENT_COLORS[event.eventType] ?? "bg-gray-100 text-gray-700"}`}>
-                        {EVENT_LABELS[event.eventType] ?? event.eventType}
-                      </span>
-                    </td>
-                    <td className="p-3 text-xs font-mono text-muted-foreground max-w-[180px] truncate">
-                      {login}
-                    </td>
-                    <td className="p-3 text-xs font-semibold text-primary max-w-[180px] truncate">
-                      {getEventFeatureUsed(event)}
-                    </td>
-                    <td className="p-3 text-xs text-muted-foreground font-mono max-w-[200px] truncate">
-                      {event.metadata ? JSON.stringify(event.metadata) : "—"}
-                    </td>
-                  </tr>
-                  </React.Fragment>
-                );
-                })
-              )}
-            </tbody>
-          </table>
+      {groupedEvents.length === 0 ? (
+        <Card className="border-none shadow-sm">
+          <CardContent className="p-8 text-center text-muted-foreground">
+            No events yet. Start using the app to generate tracking data.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {groupedEvents.map(group => {
+            const expanded = expandedLogins[group.login] === true;
+            const latestEvent = group.events[0];
+            const latestFeature = latestEvent ? getEventFeatureUsed(latestEvent) : "-";
+            return (
+              <Card key={group.login} className="border-none shadow-sm overflow-hidden">
+                <button
+                  type="button"
+                  className="flex w-full flex-wrap items-center justify-between gap-3 bg-primary/5 px-4 py-3 text-left transition-colors hover:bg-primary/10"
+                  onClick={() => setExpandedLogins(current => ({ ...current, [group.login]: !expanded }))}
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {expanded ? <ChevronUpIcon className="h-4 w-4 text-primary" /> : <ChevronDownIcon className="h-4 w-4 text-primary" />}
+                      <span className="font-semibold text-foreground">{group.displayName}</span>
+                      {group.displayName !== group.login ? <span className="text-xs text-muted-foreground">{group.login}</span> : null}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Last active {latestEvent ? new Date(latestEvent.timestamp).toLocaleString() : "-"} · Latest feature: {latestFeature}
+                    </p>
+                  </div>
+                  <Badge variant="secondary">{group.events.length} event{group.events.length === 1 ? "" : "s"}</Badge>
+                </button>
+                {expanded && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-primary/10">
+                          <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Time</th>
+                          <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
+                          <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Feature Used</th>
+                          <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Metadata</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.events.map(event => (
+                          <tr key={event.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                            <td className="p-3 text-xs text-muted-foreground whitespace-nowrap font-mono">
+                              {new Date(event.timestamp).toLocaleString()}
+                            </td>
+                            <td className="p-3">
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${EVENT_COLORS[event.eventType] ?? "bg-gray-100 text-gray-700"}`}>
+                                {EVENT_LABELS[event.eventType] ?? event.eventType}
+                              </span>
+                            </td>
+                            <td className="p-3 text-xs font-semibold text-primary max-w-[180px] truncate">
+                              {getEventFeatureUsed(event)}
+                            </td>
+                            <td className="p-3 text-xs text-muted-foreground font-mono max-w-[260px] truncate">
+                              {event.metadata ? JSON.stringify(event.metadata) : "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
         </div>
-      </Card>
+      )}
     </div>
   );
 }
