@@ -323,15 +323,10 @@ export default function SaveTheDate() {
           border: `1px solid ${CARD_BDR}`,
         }}
       >
-        {/* Logo */}
-        <div style={{ display: "flex", justifyContent: "center", paddingTop: 24, paddingBottom: 6, backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
-          <img src="/logo.png" alt="A.IDO" style={{ height: 48, width: "auto", objectFit: "contain", opacity: 0.85 }} />
-        </div>
-
         {/* Photo — rendered as background-image so html2canvas captures it correctly
             (html2canvas does not support object-fit/object-position on <img>) */}
         {/* Content */}
-        <div style={{ backgroundImage: DOT_PAT, backgroundSize: "22px 22px", backgroundColor: BG, padding: "10px 24px 28px", textAlign: "center" }}>
+        <div style={{ backgroundImage: DOT_PAT, backgroundSize: "22px 22px", backgroundColor: BG, padding: "24px 24px 28px", textAlign: "center" }}>
 
           {/* "Save the Date" label */}
           <p style={{ fontFamily: LABEL_FONT, fontSize: 11 * sc, fontWeight: 700, letterSpacing: "0.42em", textTransform: "uppercase", color: GOLD, margin: "0 0 10px" }}>

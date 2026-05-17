@@ -595,14 +595,9 @@ export default function Rsvp() {
           className="w-full rounded-2xl overflow-hidden shadow-2xl"
           style={{ background: BG, border: `1px solid ${CARD_BDR}` }}
         >
-          {/* Logo */}
-          <div style={{ display: "flex", justifyContent: "center", paddingTop: 24, paddingBottom: 6, backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
-            <img src="/logo.png" alt="A.IDO" style={{ height: 48, width: "auto", objectFit: "contain", opacity: 0.85 }} />
-          </div>
-
           {/* Photo */}
           {info.photoUrl && (
-            <div style={{ padding: "0 20px 12px", backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
+            <div style={{ padding: "20px 20px 12px", backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}>
               <div style={{ height: 200, borderRadius: 8, overflow: "hidden", boxShadow: "0 6px 30px rgba(0,0,0,0.5)" }}>
               <img
                 src={info.photoUrl}
@@ -622,7 +617,7 @@ export default function Rsvp() {
           )}
 
           {/* Content */}
-          <div style={{ backgroundImage: DOT_PAT, backgroundSize: "22px 22px", backgroundColor: BG, padding: "16px 28px 32px", textAlign: "center" }}>
+          <div style={{ backgroundImage: DOT_PAT, backgroundSize: "22px 22px", backgroundColor: BG, padding: info.photoUrl ? "16px 28px 32px" : "24px 28px 32px", textAlign: "center" }}>
 
             {/* Badge */}
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>

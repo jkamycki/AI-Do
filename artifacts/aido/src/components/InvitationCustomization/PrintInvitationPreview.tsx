@@ -142,10 +142,7 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
 
         {side === "front" && aiPrint ? (
           <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", textAlign: "center", backgroundImage: dotPattern, backgroundSize: "22px 22px" }}>
-            <div style={{ display: "flex", justifyContent: "center", padding: "20px 0 4px" }}>
-              <img src="/logo.png" alt="A.IDO" style={{ height: 44, width: "auto", objectFit: "contain", opacity: 0.86 }} />
-            </div>
-            <div style={{ padding: "10px 34px 28px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div style={{ padding: "28px 34px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
               {!isSaveTheDate && (
                 <div style={{ width: 46, height: 46, borderRadius: "50%", margin: "0 auto 8px", background: `${accent}22`, boxShadow: `0 0 0 1px ${accent}44`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Heart style={{ width: 20, height: 20, color: accent, fill: accent }} />

@@ -263,20 +263,11 @@ export function RsvpPagePreview({
           position: "relative",
         }}
       >
-        {/* Logo */}
-        <div style={{ display: "flex", justifyContent: "center", paddingTop: 20, paddingBottom: 4 }}>
-          <img
-            src="/logo.png"
-            alt="A.IDO"
-            style={{ height: 64, width: "auto", objectFit: "contain" }}
-          />
-        </div>
-
         {/* Photo */}
         {photoUrl && (
           <div
             style={{
-              padding: "0 20px 12px",
+              padding: "20px 20px 12px",
               cursor: onPhotoPositionChange ? "grab" : undefined,
               touchAction: onPhotoPositionChange ? "none" : undefined,
               userSelect: "none",

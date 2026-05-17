@@ -218,8 +218,8 @@ async function getImageAsBase64(photoUrl: string | null | undefined): Promise<st
 // ─────────────────────────────────────────────────────────────────────────────
 // AI-generated email templates — mirror the AiDigitalInvitationPreview /
 // AiSaveDatePreview components so what the planner sees in the modal is what
-// the guest receives in their inbox: ivory card, burgundy accents, A.IDO logo,
-// optional photo with rounded corners, badge icon, italic couple line, and a
+// the guest receives in their inbox: ivory card, burgundy accents, optional
+// photo with rounded corners, badge icon, italic couple line, and a
 // prominent burgundy call-to-action.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -342,12 +342,6 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
     <tr><td bgcolor="${PAGE_BG}" align="center">
 
       <table class="dig-card" role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${BG}" style="max-width:420px;width:100%;background:${BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
-
-        <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:20px 0 4px;text-align:center;">
-            ${aiLogoBlock(opts.logoBase64, ACCENT)}
-          </td>
-        </tr>
 
         ${aiPhotoBlock(opts.photoImgSrc, opts.couple, opts.photoObjectPos, BG, opts.photoZoom)}
 
@@ -548,14 +542,7 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
       <table class="std-card" role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${BG}" style="max-width:420px;width:100%;background:${BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
 
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:20px 0 4px;text-align:center;">
-            ${aiLogoBlock(opts.logoBase64, ACCENT)}
-          </td>
-        </tr>
-
-
-        <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:10px 24px 0;text-align:center;">
+          <td bgcolor="${BG}" style="background:${BG};padding:24px 24px 0;text-align:center;">
             <p style="margin:0;font-family:${LABEL_FONT};font-size:${Math.round(11*sc)}px;font-weight:700;letter-spacing:4.5px;text-transform:uppercase;color:${ACCENT};">Save the Date</p>
           </td>
         </tr>
