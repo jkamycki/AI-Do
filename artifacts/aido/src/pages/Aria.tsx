@@ -139,6 +139,7 @@ function UserAvatar() {
 function actionLabel(name: string, args?: Record<string, unknown>): string {
   switch (name) {
     case "add_vendor": return `Adding vendor${args?.name ? ` "${args.name}"` : ""}`;
+    case "delete_vendor": return `Removing vendor${args?.vendorName ? ` "${args.vendorName}"` : ""}`;
     case "generate_checklist": return "Creating checklist";
     case "add_checklist_item": return `Adding checklist item${args?.task ? ` "${args.task}"` : ""}`;
     case "generate_timeline": return "Creating timeline";

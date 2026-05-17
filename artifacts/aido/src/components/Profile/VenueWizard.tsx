@@ -409,7 +409,20 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
       </div>
 
       <div className="space-y-2">
-        <p className="text-sm font-medium">Style</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-medium">Style</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-8 px-2 text-xs"
+            onClick={() => {
+              update({ style: value.style.length === STYLE_OPTIONS.length ? [] : STYLE_OPTIONS });
+            }}
+          >
+            {value.style.length === STYLE_OPTIONS.length ? "Clear all" : "Select all"}
+          </Button>
+        </div>
         <div className="flex flex-wrap gap-2">
           {STYLE_OPTIONS.map((style) => {
             const selected = value.style.includes(style);

@@ -174,6 +174,41 @@ function deterministicBasicReply(text: string, timezone?: string): string | null
   return null;
 }
 
+function deterministicStarterPromptReply(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length > 180) return null;
+
+  if (/\bwhat should i prioritize\b[\s\S]*\bwedding day timeline\b/i.test(trimmed)) {
+    return [
+      "For your wedding day timeline, prioritize the moments that affect every other vendor first:",
+      "",
+      "1. Ceremony start time and guest arrival window.",
+      "2. Hair, makeup, and getting-ready finish time.",
+      "3. First look, family photos, and couple portraits.",
+      "4. Cocktail hour, reception entrance, dinner, speeches, and first dances.",
+      "5. Vendor arrival, setup, teardown, and transportation buffers.",
+      "",
+      "Build in 10-15 minute cushions between major moments so the day does not feel rushed.",
+    ].join("\n");
+  }
+
+  if (/\bwrite me (?:a|my)?\s*(?:wedding\s*)?speech\b|\bspeech for my wedding\b/i.test(trimmed)) {
+    return [
+      "Absolutely. Here is a warm starter speech you can personalize:",
+      "",
+      "Good evening everyone. Thank you for being here to celebrate such a meaningful day with us. Looking around this room, I feel so grateful for the family and friends who have loved, supported, and shaped us.",
+      "",
+      "Today is more than a beautiful celebration. It is the beginning of a life we are choosing together, with patience, laughter, partnership, and love. To everyone who helped make this day possible, thank you from the bottom of our hearts.",
+      "",
+      "Please raise a glass to love, to family, to friendship, and to the memories we are making tonight. Cheers.",
+      "",
+      "Send me who is giving the speech and the tone you want, and I can tailor it.",
+    ].join("\n");
+  }
+
+  return null;
+}
+
 function siteTaskGuide(text: string): string | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
@@ -845,6 +880,37 @@ function parseVendorRenameRequest(text: string): { vendorName: string; name: str
     return { vendorName, name };
   }
   return null;
+}
+
+function isGenericVendorName(value: string): boolean {
+  return /^(?:one\s+of\s+)?(?:a|the|my|this|that|new)?\s*vendors?\s*$/i.test(value.trim());
+}
+
+function parseVendorDeleteRequest(text: string): { vendorName?: string; missingName: boolean } | null {
+  const trimmed = text.trim();
+  if (!/\b(?:delete|remove)\b/i.test(trimmed) || !/\b(?:vendor|vendors|photographer|videographer|florist|caterer|catering|dj|band|officiant|planner|venue)\b/i.test(trimmed)) {
+    return null;
+  }
+
+  const patterns = [
+    /\b(?:delete|remove)\s+(?:the\s+)?(?:vendor\s+)?(?:named|called)\s+["']?(.+?)["']?\s*$/i,
+    /\b(?:delete|remove)\s+(?:the\s+)?(?:vendor\s+)?["']?(.+?)["']?\s+(?:from\s+)?(?:my\s+)?(?:vendor\s+list|vendors?)\s*$/i,
+    /\b(?:delete|remove)\s+(?:the\s+)?(?:vendor\s+)?["']?(.+?)["']?\s*$/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    if (!match) continue;
+    const vendorName = cleanInlineName(match[1] ?? "");
+    if (!vendorName || isGenericVendorName(vendorName)) return { missingName: true };
+    return { vendorName, missingName: false };
+  }
+
+  return { missingName: true };
+}
+
+function prevWasVendorDeleteQuestion(text: string): boolean {
+  return /\bWhich vendor (?:should I|would you like me to) remove\b|\bexact (?:vendor |business )?name\b|\bSend me the vendor name\b/i.test(text);
 }
 
 function prevWasVendorRenameQuestion(text: string): boolean {
@@ -3061,7 +3127,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const userClarifiesGuestList =
       /\b(?:talking about|mean|meant|focus on)\s+(?:my\s+)?guest list\b/i.test(lastUserText);
 
-    const deterministicReply = capabilityReply(lastUserText) ?? deterministicBasicReply(lastUserText, timezone) ?? deterministicSmallTalkReply(lastUserText);
+    const deterministicReply = capabilityReply(lastUserText) ?? deterministicBasicReply(lastUserText, timezone) ?? deterministicStarterPromptReply(lastUserText) ?? deterministicSmallTalkReply(lastUserText);
     if (deterministicReply) {
       send({ type: "content", content: deterministicReply });
       send({ type: "done", actions: [] });
@@ -3089,6 +3155,66 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
         content: "Got it — canceled. I won’t make any changes. If you want, tell me what you’d like to do instead.",
       });
       send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
+    if (prevWasVendorDeleteQuestion(lastAssistantText) && lastUserText.trim().length > 0 && lastUserText.trim().length <= 120 && !YES_CONFIRM_INTENT.test(lastUserText.trim())) {
+      const vendorName = cleanInlineName(lastUserText);
+      if (vendorName && !isGenericVendorName(vendorName)) {
+        const deleteArgs = { vendorName };
+        send({ type: "action_start", name: "delete_vendor", args: deleteArgs });
+        const result = await executeTool("delete_vendor", deleteArgs, req, { recentUserText: lastUserText });
+        send({
+          type: "action_result",
+          name: "delete_vendor",
+          ok: result.ok,
+          data: result.ok ? result.data : undefined,
+          error: result.ok ? undefined : result.error,
+        });
+        send({
+          type: "content",
+          content: result.ok
+            ? buildConfirmation([{ name: "delete_vendor", args: deleteArgs, result }])
+            : `I couldn't remove that vendor yet: ${result.error}`,
+        });
+        send({ type: "done", actions: [{ name: "delete_vendor", ok: result.ok, error: result.ok ? undefined : result.error }] });
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
+      }
+    }
+
+    const vendorDelete = parseVendorDeleteRequest(lastUserText);
+    if (vendorDelete) {
+      if (vendorDelete.missingName || !vendorDelete.vendorName) {
+        send({
+          type: "content",
+          content: "Which vendor should I remove? Send me the exact business name from your vendor list.",
+        });
+        send({ type: "done", actions: [] });
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
+      }
+      const deleteArgs = { vendorName: vendorDelete.vendorName };
+      send({ type: "action_start", name: "delete_vendor", args: deleteArgs });
+      const result = await executeTool("delete_vendor", deleteArgs, req, { recentUserText: lastUserText });
+      send({
+        type: "action_result",
+        name: "delete_vendor",
+        ok: result.ok,
+        data: result.ok ? result.data : undefined,
+        error: result.ok ? undefined : result.error,
+      });
+      send({
+        type: "content",
+        content: result.ok
+          ? buildConfirmation([{ name: "delete_vendor", args: deleteArgs, result }])
+          : `I couldn't remove that vendor yet: ${result.error}`,
+      });
+      send({ type: "done", actions: [{ name: "delete_vendor", ok: result.ok, error: result.ok ? undefined : result.error }] });
       res.write("data: [DONE]\n\n");
       res.end();
       return;
@@ -3408,8 +3534,12 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const HAS_PROPER_NOUN = /[A-Z][a-z]{2,}|"[^"]+"|'[^']+'/;
     const vendorGatherIntent = VENDOR_CATEGORY_INTENT.test(lastUserText) &&
       !HAS_PROPER_NOUN.test(lastUserText.replace(VENDOR_CATEGORY_INTENT, ""));
+    const guestRemainder = lastUserText
+      .replace(GUEST_GATHER_INTENT, "")
+      .replace(/\b(?:to|for|on|my|the|a|an|new|guest|guests|guest list|list|please)\b/gi, "")
+      .trim();
     const guestGatherIntent = GUEST_GATHER_INTENT.test(lastUserText) &&
-      !HAS_PROPER_NOUN.test(lastUserText.replace(GUEST_GATHER_INTENT, ""));
+      (guestRemainder.length < 3 || !HAS_PROPER_NOUN.test(guestRemainder));
     const hotelGatherIntent = HOTEL_GATHER_INTENT.test(lastUserText) &&
       !HAS_PROPER_NOUN.test(lastUserText.replace(HOTEL_GATHER_INTENT, ""));
     const partyDetails = inferGatheredPartyMember(lastUserText);
