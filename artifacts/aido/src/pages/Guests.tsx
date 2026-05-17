@@ -1126,38 +1126,34 @@ function importRowHasAnyValue(row: ExcelJS.Row) {
 async function downloadGuestImportTemplate() {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Guest Import");
+  const instructions = workbook.addWorksheet("Instructions");
+  const example = workbook.addWorksheet("Example");
+
   sheet.addRow(GUEST_IMPORT_TEMPLATE_HEADERS);
-  sheet.addRow(GUEST_IMPORT_SAMPLE_ROW);
-  sheet.addRow([
-    "Note: Save this file as an Excel workbook (.xlsx) before uploading. Required fields are Full Name and Street Address. Plus One must be Yes or No. Plus One Name is optional. When guests RSVP digitally, their RSVP status and details will update automatically on your guest list.",
-  ]);
   sheet.getRow(1).font = { bold: true };
   sheet.getRow(1).fill = {
     type: "pattern",
     pattern: "solid",
     fgColor: { argb: "FFF3E6B1" },
   };
+  sheet.views = [{ state: "frozen", ySplit: 1 }];
   sheet.columns.forEach((column) => {
     column.width = 26;
   });
-  sheet.getCell("A3").font = { italic: true, bold: true, color: { argb: "FF666666" } };
-  sheet.mergeCells(3, 1, 3, GUEST_IMPORT_TEMPLATE_HEADERS.length);
-  for (let rowNumber = 2; rowNumber <= 250; rowNumber += 1) {
-    if (rowNumber === 3) continue;
-    const cell = sheet.getCell(rowNumber, 3);
-    cell.dataValidation = {
+
+  for (let rowNumber = 2; rowNumber <= 500; rowNumber += 1) {
+    for (let columnNumber = 1; columnNumber <= GUEST_IMPORT_TEMPLATE_HEADERS.length; columnNumber += 1) {
+      sheet.getCell(rowNumber, columnNumber).protection = { locked: false };
+    }
+    sheet.getCell(rowNumber, 3).dataValidation = {
       type: "list",
-      allowBlank: false,
+      allowBlank: true,
       formulae: [`"${GUEST_IMPORT_PLUS_ONE_OPTIONS.join(",")}"`],
       showErrorMessage: true,
       errorTitle: "Choose Yes or No",
       error: "Plus One must be Yes or No.",
     };
-  }
-  for (let rowNumber = 2; rowNumber <= 250; rowNumber += 1) {
-    if (rowNumber === 3) continue;
-    const cell = sheet.getCell(rowNumber, 5);
-    cell.dataValidation = {
+    sheet.getCell(rowNumber, 5).dataValidation = {
       type: "list",
       allowBlank: true,
       formulae: [`"${GUEST_IMPORT_CATEGORY_OPTIONS.join(",")}"`],
@@ -1166,6 +1162,25 @@ async function downloadGuestImportTemplate() {
       error: "Choose one of the guest categories from the dropdown.",
     };
   }
+
+  instructions.addRows([
+    ["A.IDO Guest Import Template"],
+    [""],
+    ["Type guest information on the Guest Import tab, starting on row 2."],
+    ["Required fields: Full Name and Street Address."],
+    ["Plus One must be Yes or No. Plus One Name (Optional) can be left blank."],
+    ["Category uses the dropdown choices like Bride's Family, Groom's Family, Wedding Party, Friends, and Other."],
+    ["When guests RSVP digitally, their RSVP status and details will update automatically on your guest list."],
+  ]);
+  instructions.getCell("A1").font = { bold: true, size: 14 };
+  instructions.getColumn(1).width = 110;
+
+  example.addRow(GUEST_IMPORT_TEMPLATE_HEADERS);
+  example.addRow(GUEST_IMPORT_SAMPLE_ROW);
+  example.getRow(1).font = { bold: true };
+  example.columns.forEach((column) => {
+    column.width = 26;
+  });
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
