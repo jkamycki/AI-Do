@@ -2761,7 +2761,7 @@ export default function AdminPage() {
   const { data: eventsData, isLoading: eventsLoading } = useQuery({
     queryKey: ["admin-events"],
     queryFn: async () => {
-      const r = await adminFetch("/api/admin/events?page=1");
+      const r = await adminFetch("/api/admin/events?page=1&limit=10000");
       if (!r.ok) throw new Error("Failed to fetch events");
       return r.json() as Promise<{ events: AdminEvent[]; total: number }>;
     },

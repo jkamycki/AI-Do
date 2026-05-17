@@ -264,7 +264,8 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
 router.get("/admin/events", requireAuth, requireAdmin, async (req, res) => {
   try {
     const page = parseInt(String(req.query.page ?? "1"), 10);
-    const limit = 50;
+    const requestedLimit = parseInt(String(req.query.limit ?? "50"), 10);
+    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 50), 10000) : 50;
     const offset = (page - 1) * limit;
 
     const [events, [{ total }]] = await Promise.all([
