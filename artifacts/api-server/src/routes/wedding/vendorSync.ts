@@ -422,7 +422,7 @@ router.post("/vendors/:id/payments/mark-next-paid", requireAuth, async (req, res
       .where(eq(vendorPayments.vendorId, vendorId));
     const nextPayment = payments
       .filter((p) => !p.isPaid)
-      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+      .sort((a, b) => (a.dueDate || "9999-12-31").localeCompare(b.dueDate || "9999-12-31"))[0];
     if (nextPayment) {
       const [updated] = await db
         .update(vendorPayments)
@@ -438,7 +438,11 @@ router.post("/vendors/:id/payments/mark-next-paid", requireAuth, async (req, res
     const paidFromPayments = payments.filter((p) => p.isPaid).reduce((sum, p) => sum + Number(p.amount), 0);
     const paidTotal = (hasDepositMilestone ? 0 : Number(vendor.depositAmount)) + paidFromPayments;
     const remaining = Math.max(0, Number(vendor.totalCost) - paidTotal);
-    if (!vendor.nextPaymentDue || remaining <= 0) {
+    const requestedDueDate = typeof req.body?.dueDate === "string" ? req.body.dueDate : null;
+    const requestedAmount = Number(req.body?.amount);
+    const dueDate = vendor.nextPaymentDue || requestedDueDate;
+    const amountToRecord = remaining > 0 ? remaining : Number.isFinite(requestedAmount) ? Math.max(0, requestedAmount) : 0;
+    if (!dueDate || amountToRecord <= 0) {
       await syncNextPaymentDue(vendorId);
       res.status(400).json({ error: "No unpaid vendor payment to mark paid" });
       return;
@@ -449,8 +453,8 @@ router.post("/vendors/:id/payments/mark-next-paid", requireAuth, async (req, res
       .values({
         vendorId,
         label: "Payment",
-        amount: String(remaining),
-        dueDate: vendor.nextPaymentDue,
+        amount: String(amountToRecord),
+        dueDate,
         isPaid: true,
         paidAt: new Date(),
       })

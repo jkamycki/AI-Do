@@ -327,6 +327,7 @@ export default function Budget() {
       source: "manual" | "vendor";
       manualId?: number;
       vendorId?: number;
+      paymentId?: number;
     }> = [];
     vendorFinancials?.vendors.forEach((v) => {
       const remaining = Math.max(0, v.totalCost - v.totalPaid);
@@ -340,6 +341,7 @@ export default function Budget() {
           amount: nextAmount,
           source: "vendor",
           vendorId: v.id,
+          paymentId: v.nextPaymentId ?? undefined,
         });
       }
     });
@@ -497,10 +499,23 @@ export default function Budget() {
     }
   };
 
-  const handleVendorPaymentPaid = async (vendorId: number) => {
+  const handleVendorPaymentPaid = async (
+    vendorId: number,
+    payment?: { id?: number | null; dueDate?: string | null; amount?: number | null },
+  ) => {
     if (!confirm(t("budget.confirm_mark_paid", { defaultValue: "Mark this payment as paid? The amount will be added to the running paid total." }))) return;
     try {
-      const r = await authFetch(`/api/vendors/${vendorId}/payments/mark-next-paid`, { method: "POST" });
+      const r = payment?.id
+        ? await authFetch(`/api/vendors/${vendorId}/payments/${payment.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ isPaid: true }),
+          })
+        : await authFetch(`/api/vendors/${vendorId}/payments/mark-next-paid`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dueDate: payment?.dueDate ?? null, amount: payment?.amount ?? null }),
+          });
       if (!r.ok) {
         toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
         return;
@@ -651,7 +666,15 @@ export default function Budget() {
                           <NextPaymentDisplay
                             date={v.nextPaymentDue}
                             amount={v.nextPaymentAmount ?? remaining}
-                            onMarkPaid={v.nextPaymentDue && remaining > 0 ? () => handleVendorPaymentPaid(v.id) : undefined}
+                            onMarkPaid={
+                              v.nextPaymentDue && remaining > 0
+                                ? () => handleVendorPaymentPaid(v.id, {
+                                    id: v.nextPaymentId,
+                                    dueDate: v.nextPaymentDue,
+                                    amount: v.nextPaymentAmount ?? remaining,
+                                  })
+                                : undefined
+                            }
                             t={t}
                           />
                         </TableCell>
@@ -918,7 +941,11 @@ export default function Budget() {
                         nextPayment.source === "manual" && nextPayment.manualId && nextPayment.amount > 0
                           ? () => handleMarkPaid(nextPayment.manualId!)
                           : nextPayment.source === "vendor" && nextPayment.vendorId && nextPayment.amount > 0
-                            ? () => handleVendorPaymentPaid(nextPayment.vendorId!)
+                            ? () => handleVendorPaymentPaid(nextPayment.vendorId!, {
+                                id: nextPayment.paymentId,
+                                dueDate: nextPayment.date,
+                                amount: nextPayment.amount,
+                              })
                             : undefined
                       }
                       t={t}
