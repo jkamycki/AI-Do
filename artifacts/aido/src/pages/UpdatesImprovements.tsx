@@ -17,15 +17,6 @@ type ProductUpdate = {
 };
 
 export const updatesByMonth: Record<string, ProductUpdate[]> = {
-  "May 2026": [
-    { type: "Feature", text: "Added Stripe payments for couples." },
-    { type: "Feature", text: "New invitation templates added." },
-    { type: "Improvement", text: "Faster AI timeline generation." },
-    { type: "Improvement", text: "Better guest list sorting." },
-    { type: "Fix", text: "RSVP syncing issue resolved." },
-    { type: "Fix", text: "Photo upload preview now instant." },
-    { type: "Coming Soon", text: "Vendor recommendations powered by AI." },
-  ],
   "April 2026": [
     { type: "Feature", text: "Mood board builder launched." },
     { type: "Improvement", text: "Cleaner dashboard layout." },
