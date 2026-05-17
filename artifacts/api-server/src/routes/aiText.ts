@@ -71,6 +71,23 @@ async function generateVenueOptionsWithWebSearch(prompt: string) {
   return extractResponseText(response);
 }
 
+async function generateSpecificVenueOptionsWithWebSearch(basePrompt: string, minimumVenueCount: number) {
+  const firstAttempt = await generateVenueOptionsWithWebSearch(basePrompt);
+  if (hasVerifiedVenueLinks(firstAttempt, minimumVenueCount)) return firstAttempt;
+
+  const retryPrompt = [
+    basePrompt,
+    "",
+    "Retry requirement:",
+    "The prior answer was too generic. Return only real named venues as linked bullet titles.",
+    "Every linked bullet title must be an actual business/venue name, not a category like ballroom, estate, loft, conservatory, country club, or wedding venue.",
+    "For example, for Garfield, NJ, a valid named venue could be The Royal Manor if verified with its official website.",
+    "If you use a nearby city, keep the bullet under the requested location heading and mention the nearby city in the description.",
+  ].join("\n");
+
+  return generateVenueOptionsWithWebSearch(retryPrompt);
+}
+
 function buildVenueOptionsFallback(input: {
   guestCount?: string;
   indoorOutdoor?: string;
@@ -124,19 +141,56 @@ function buildVenueOptionsFallback(input: {
   ].join("\n");
 }
 
-function hasVerifiedVenueLinks(text: string) {
-  const markdownLinks = [...text.matchAll(/\[[^\]]+\]\((https?:\/\/[^)\s]+)\)/g)];
-  return markdownLinks.some((match) => {
-    const url = match[1].toLowerCase();
-    return !url.includes("google.com/search")
-      && !url.includes("bing.com/search")
-      && !url.includes("yahoo.com/search")
-      && !url.includes("maps.google")
-      && !url.includes("facebook.com")
-      && !url.includes("instagram.com")
-      && !url.includes("theknot.com")
-      && !url.includes("weddingwire.com");
-  });
+function hasVerifiedVenueLinks(text: string, minimumCount = 1) {
+  return extractVerifiedVenueLinks(text).length >= minimumCount && !hasGenericVenueLinkTitles(text);
+}
+
+function extractVerifiedVenueLinks(text: string) {
+  const markdownLinks = [...text.matchAll(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g)];
+  return markdownLinks
+    .map((match) => ({ name: match[1].trim(), url: match[2].trim() }))
+    .filter(({ name, url }) => isOfficialVenueUrl(url) && isSpecificVenueName(name));
+}
+
+function isOfficialVenueUrl(rawUrl: string) {
+  const url = rawUrl.toLowerCase();
+  return !url.includes("google.com/search")
+    && !url.includes("bing.com/search")
+    && !url.includes("yahoo.com/search")
+    && !url.includes("maps.google")
+    && !url.includes("facebook.com")
+    && !url.includes("instagram.com")
+    && !url.includes("theknot.com")
+    && !url.includes("weddingwire.com");
+}
+
+function isSpecificVenueName(name: string) {
+  const lower = name.toLowerCase();
+  if (lower.length < 3) return false;
+  const genericPatterns = [
+    /\bnear\b/,
+    /\bwedding venue\b/,
+    /\bevent space\b/,
+    /\bevent venue\b/,
+    /\bbanquet venue\b/,
+    /\bvenue option\b/,
+    /\bgarden estate\b/,
+    /\bconservatory\b/,
+    /\bmodern loft\b/,
+    /\bindustrial event\b/,
+    /\bballroom or\b/,
+    /\bcountry club or\b/,
+    /\bestate venue\b/,
+    /\bboutique hotel\b/,
+    /\brestaurant event room\b/,
+    /\bprivate estate\b/,
+  ];
+  return !genericPatterns.some((pattern) => pattern.test(lower));
+}
+
+function hasGenericVenueLinkTitles(text: string) {
+  const markdownLinks = [...text.matchAll(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g)];
+  return markdownLinks.some((match) => !isSpecificVenueName(match[1].trim()));
 }
 
 // Small AI-rewrite endpoint used by the inline TextStyleToolbar's
@@ -246,15 +300,18 @@ router.post("/ai/venue-options", requireAuth, async (req, res) => {
       "Return concise markdown only.",
     ].join(" ");
     const userPrompt = `Generate real wedding venue suggestions from these details:\n\n${detailLines}`;
+    const minimumVenueCount = preferredLocations.length > 1
+      ? Math.max(2, preferredLocations.length * 2)
+      : 3;
 
     let text = "";
     try {
-      text = await generateVenueOptionsWithWebSearch(`${systemPrompt}\n\n${userPrompt}`);
+      text = await generateSpecificVenueOptionsWithWebSearch(`${systemPrompt}\n\n${userPrompt}`, minimumVenueCount);
     } catch (err) {
       req.log.warn(err, "AI venue web search failed");
     }
 
-    if (!text || !hasVerifiedVenueLinks(text)) {
+    if (!text || !hasVerifiedVenueLinks(text, minimumVenueCount)) {
       res.status(502).json({ error: "Could not verify real venues with official website links for those locations. Please try again." });
       return;
     }

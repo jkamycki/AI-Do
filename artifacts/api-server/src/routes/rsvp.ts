@@ -1425,6 +1425,9 @@ router.get("/rsvp/:token", async (req, res) => {
             id: hotelBlocks.id,
             hotelName: hotelBlocks.hotelName,
             bookingLink: hotelBlocks.bookingLink,
+            discountCode: hotelBlocks.discountCode,
+            groupName: hotelBlocks.groupName,
+            cutoffDate: hotelBlocks.cutoffDate,
             address: hotelBlocks.address,
             city: hotelBlocks.city,
             state: hotelBlocks.state,
@@ -1433,11 +1436,8 @@ router.get("/rsvp/:token", async (req, res) => {
           .from(hotelBlocks)
           .where(eq(hotelBlocks.profileId, profile.id))
       : [];
-    const preferredHotelExists = preferredHotelBlockId
-      ? hotelRows.some((hotel) => hotel.id === preferredHotelBlockId)
-      : false;
-    const sortedHotelRows = preferredHotelBlockId && preferredHotelExists
-      ? hotelRows.filter((hotel) => hotel.id === preferredHotelBlockId)
+    const sortedHotelRows = preferredHotelBlockId
+      ? [...hotelRows].sort((a, b) => (a.id === preferredHotelBlockId ? -1 : b.id === preferredHotelBlockId ? 1 : 0))
       : hotelRows;
     const rsvpAskHotel = rsvpAskHotelSetting && sortedHotelRows.length > 0;
 

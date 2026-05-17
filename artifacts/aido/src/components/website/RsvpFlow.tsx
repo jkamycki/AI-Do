@@ -34,6 +34,14 @@ function hotelAddressLine(hotel: NonNullable<WebsiteRendererPayload["hotelOption
   ].filter(Boolean).join(" ");
 }
 
+function formatHotelCutoffDate(value: string | null | undefined) {
+  if (!value) return "";
+  const [yy, mm, dd] = value.split("-").map(Number);
+  const date = yy && mm && dd ? new Date(yy, mm - 1, dd) : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
 export function RsvpFlow({
   data,
   slug,
@@ -78,9 +86,8 @@ export function RsvpFlow({
     ? data.customText._rsvpHotelBlockId
     : "";
   const allHotelOptions = data.hotelOptions ?? [];
-  const preferredHotelExists = preferredHotelId && allHotelOptions.some((hotel) => String(hotel.id) === preferredHotelId);
-  const hotelOptions = preferredHotelId && preferredHotelExists
-    ? allHotelOptions.filter((hotel) => String(hotel.id) === preferredHotelId)
+  const hotelOptions = preferredHotelId
+    ? [...allHotelOptions].sort((a, b) => (String(a.id) === preferredHotelId ? -1 : String(b.id) === preferredHotelId ? 1 : 0))
     : allHotelOptions;
   const showHotelQuestion = data.customText._rsvpAskHotel === "true" && hotelOptions.length > 0;
   const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === hotelBlockId) ?? null;
@@ -90,6 +97,22 @@ export function RsvpFlow({
         <p className="font-semibold">{selectedHotel.hotelName || "Hotel block"}</p>
         {hotelAddressLine(selectedHotel) && (
           <p className="text-xs mt-0.5 opacity-75">{hotelAddressLine(selectedHotel)}</p>
+        )}
+        {selectedHotel.groupName && (
+          <p className="text-xs mt-2 opacity-85">
+            <span className="font-semibold">{t("rsvp.hotel_block_name", { defaultValue: "Wedding block" })}:</span> {selectedHotel.groupName}
+          </p>
+        )}
+        {selectedHotel.discountCode && (
+          <p className="text-xs mt-1 opacity-85">
+            <span className="font-semibold">{t("rsvp.hotel_group_code", { defaultValue: "Group code" })}:</span>{" "}
+            <span className="font-mono font-semibold tracking-wide">{selectedHotel.discountCode}</span>
+          </p>
+        )}
+        {selectedHotel.cutoffDate && (
+          <p className="text-xs mt-1 opacity-85">
+            <span className="font-semibold">{t("rsvp.hotel_cutoff_date", { defaultValue: "Book by" })}:</span> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
+          </p>
         )}
       </div>
       {selectedHotel.bookingLink && (
@@ -536,22 +559,25 @@ export function RsvpFlow({
 
                   {showHotelQuestion && (
                     <div className="space-y-3 rounded-lg border p-4" style={{ borderColor: `${accent}33`, background: `${accent}08` }}>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={hotelNeeded}
+                      <div className="space-y-2">
+                        <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>
+                          {t("rsvp.need_hotel_question", { defaultValue: "Will you need a hotel room?" })}
+                        </label>
+                        <select
+                          value={hotelNeeded ? "yes" : "no"}
                           onChange={(e) => {
-                            setHotelNeeded(e.target.checked);
-                            if (!e.target.checked) setHotelBlockId("");
-                            else if (preferredHotelId) setHotelBlockId(preferredHotelId);
+                            const needsHotel = e.target.value === "yes";
+                            setHotelNeeded(needsHotel);
+                            if (!needsHotel) setHotelBlockId("");
+                            else if (preferredHotelId && !hotelBlockId) setHotelBlockId(preferredHotelId);
                           }}
-                          className="h-4 w-4"
-                          style={{ accentColor: accent }}
-                        />
-                        <span className="text-sm" style={{ color: text }}>
-                          {t("rsvp.need_hotel", { defaultValue: "I will need a hotel room" })}
-                        </span>
-                      </label>
+                          className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                          style={inputBase}
+                        >
+                          <option value="no">{t("common.no", { defaultValue: "No" })}</option>
+                          <option value="yes">{t("common.yes", { defaultValue: "Yes" })}</option>
+                        </select>
+                      </div>
                       {hotelNeeded && (
                         <div className="space-y-2">
                           <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>
@@ -758,22 +784,25 @@ export function RsvpFlow({
 
                   {showHotelQuestion && (
                     <div className="space-y-3 rounded-lg border p-4" style={{ borderColor: `${accent}33`, background: `${accent}08` }}>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={hotelNeeded}
+                      <div className="space-y-2">
+                        <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>
+                          {t("rsvp.need_hotel_question", { defaultValue: "Will you need a hotel room?" })}
+                        </label>
+                        <select
+                          value={hotelNeeded ? "yes" : "no"}
                           onChange={(e) => {
-                            setHotelNeeded(e.target.checked);
-                            if (!e.target.checked) setHotelBlockId("");
-                            else if (preferredHotelId) setHotelBlockId(preferredHotelId);
+                            const needsHotel = e.target.value === "yes";
+                            setHotelNeeded(needsHotel);
+                            if (!needsHotel) setHotelBlockId("");
+                            else if (preferredHotelId && !hotelBlockId) setHotelBlockId(preferredHotelId);
                           }}
-                          className="h-4 w-4"
-                          style={{ accentColor: accent }}
-                        />
-                        <span className="text-sm" style={{ color: text }}>
-                          {t("rsvp.need_hotel", { defaultValue: "I will need a hotel room" })}
-                        </span>
-                      </label>
+                          className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
+                          style={inputBase}
+                        >
+                          <option value="no">{t("common.no", { defaultValue: "No" })}</option>
+                          <option value="yes">{t("common.yes", { defaultValue: "Yes" })}</option>
+                        </select>
+                      </div>
                       {hotelNeeded && (
                         <div className="space-y-2">
                           <label className="text-xs uppercase tracking-wider opacity-70 mb-1.5 block" style={{ color: text }}>

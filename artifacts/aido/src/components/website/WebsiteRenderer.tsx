@@ -113,6 +113,9 @@ export interface WebsiteRendererPayload {
     id: number;
     hotelName: string;
     bookingLink?: string | null;
+    discountCode?: string | null;
+    groupName?: string | null;
+    cutoffDate?: string | null;
     address?: string | null;
     city?: string | null;
     state?: string | null;

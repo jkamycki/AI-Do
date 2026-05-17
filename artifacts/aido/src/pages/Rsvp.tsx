@@ -95,6 +95,9 @@ interface RsvpInfo {
     id: number;
     hotelName: string;
     bookingLink?: string | null;
+    discountCode?: string | null;
+    groupName?: string | null;
+    cutoffDate?: string | null;
     address?: string | null;
     city?: string | null;
     state?: string | null;
@@ -117,6 +120,14 @@ function hotelAddressLine(hotel: NonNullable<RsvpInfo["hotelOptions"]>[number]) 
     [hotel.city, hotel.state].filter(Boolean).join(", "),
     hotel.zip,
   ].filter(Boolean).join(" ");
+}
+
+function formatHotelCutoffDate(value: string | null | undefined) {
+  if (!value) return "";
+  const [yy, mm, dd] = value.split("-").map(Number);
+  const date = yy && mm && dd ? new Date(yy, mm - 1, dd) : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
 const DEFAULT_BG   = "#FFF7F2";
@@ -887,7 +898,7 @@ export default function Rsvp() {
                           control={form.control}
                           name="hotelNeeded"
                           render={({ field }) => (
-                            <FormItem className="space-y-3">
+                            <FormItem>
                               <div>
                                 <FormLabel className="text-base" style={{ color: WHITE, fontFamily: jakarta }}>
                                   Will you need a hotel room?
@@ -896,33 +907,27 @@ export default function Rsvp() {
                                   Let the couple know if you plan to book through their hotel block.
                                 </p>
                               </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => field.onChange(true)}
-                                  className="px-4 py-2 rounded-lg border transition-colors text-sm font-medium"
-                                  style={field.value
-                                    ? { background: GOLD, borderColor: GOLD, color: BG, fontFamily: jakarta }
-                                    : { background: "rgba(255,255,255,0.05)", borderColor: CARD_BDR, color: MUTED, fontFamily: jakarta }
+                              <Select
+                                value={field.value ? "yes" : "no"}
+                                onValueChange={(value) => {
+                                  const needsHotel = value === "yes";
+                                  field.onChange(needsHotel);
+                                  if (!needsHotel) form.setValue("bookedHotelBlockId", "");
+                                  else if (info?.preferredHotelBlockId && !form.getValues("bookedHotelBlockId")) {
+                                    form.setValue("bookedHotelBlockId", String(info.preferredHotelBlockId));
                                   }
-                                >
-                                  Yes
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    field.onChange(false);
-                                    form.setValue("bookedHotelBlockId", "");
-                                  }}
-                                  className="px-4 py-2 rounded-lg border transition-colors text-sm font-medium"
-                                  style={!field.value
-                                    ? { background: GOLD, borderColor: GOLD, color: BG, fontFamily: jakarta }
-                                    : { background: "rgba(255,255,255,0.05)", borderColor: CARD_BDR, color: MUTED, fontFamily: jakarta }
-                                  }
-                                >
-                                  No
-                                </button>
-                              </div>
+                                }}
+                              >
+                                <FormControl>
+                                  <SelectTrigger style={{ background: "rgba(255,255,255,0.05)", borderColor: CARD_BDR, color: WHITE, fontFamily: jakarta }}>
+                                    <SelectValue placeholder="Choose yes or no" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="no">No</SelectItem>
+                                  <SelectItem value="yes">Yes</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </FormItem>
                           )}
                         />
@@ -970,6 +975,22 @@ export default function Rsvp() {
                                   {hotelAddressLine(selectedHotel) && (
                                     <p className="text-xs mt-0.5" style={{ color: MUTED }}>
                                       {hotelAddressLine(selectedHotel)}
+                                    </p>
+                                  )}
+                                  {selectedHotel.groupName && (
+                                    <p className="text-xs mt-2" style={{ color: MUTED }}>
+                                      <span className="font-semibold" style={{ color: WHITE }}>Wedding block:</span> {selectedHotel.groupName}
+                                    </p>
+                                  )}
+                                  {selectedHotel.discountCode && (
+                                    <p className="text-xs mt-1" style={{ color: MUTED }}>
+                                      <span className="font-semibold" style={{ color: WHITE }}>Group code:</span>{" "}
+                                      <span className="font-mono font-semibold tracking-wide" style={{ color: WHITE }}>{selectedHotel.discountCode}</span>
+                                    </p>
+                                  )}
+                                  {selectedHotel.cutoffDate && (
+                                    <p className="text-xs mt-1" style={{ color: MUTED }}>
+                                      <span className="font-semibold" style={{ color: WHITE }}>Book by:</span> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
                                     </p>
                                   )}
                                 </div>

@@ -477,7 +477,15 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
         {value.aiVenueOptions && (
           <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm leading-relaxed">
             <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 prose-headings:font-serif prose-headings:text-primary">
-              <ReactMarkdown>{value.aiVenueOptions}</ReactMarkdown>
+              <ReactMarkdown
+                components={{
+                  a: ({ node: _node, ...props }) => (
+                    <a {...props} target="_blank" rel="noopener noreferrer" />
+                  ),
+                }}
+              >
+                {value.aiVenueOptions}
+              </ReactMarkdown>
             </div>
           </div>
         )}
