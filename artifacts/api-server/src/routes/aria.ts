@@ -1521,7 +1521,7 @@ const GROUP_KEYWORDS: Record<string, RegExp> = {
   // lets Aria pick update_profile/get_profile immediately instead of falling
   // into a read-only core set and getting stuck in clarification loops.
   profile: /\b(profile|website|site|web\s?site|website editor|wedding website|home page|homepage|hero|partner|vibe|theme|wedding date|guest count|total budget|venue|location|ceremony time|reception time|rsvp)\b/i,
-  contract: /\b(contracts?|agreements?)\b/i,
+  contract: /\b(contracts?|agreements?|clauses?|key terms?|red flags?|cancellation|refunds?|liability|indemnification|force majeure|payment terms?)\b/i,
   seating: /\b(seating chart|seat(ing)?|table assign|arrange guests|generate seat|seating plan)\b/i,
   collaborator: /\b(collaborat|invite|partner access|planner access|vendor access|remove access|team member|workspace)\b/i,
 };
@@ -1634,7 +1634,7 @@ SAVE ALL DETAILS UPFRONT: When calling add_vendor, include every field the user 
 
 AFTER A SUCCESSFUL WRITE: stop. The system auto-emits a confirmation + follow-up — don't add text.
 
-QUERIES: overview→get_summary | vendors/payments→list_vendors | budget→list_budget+list_expenses | guests/RSVP→list_guests | party→list_party | day-of→list_timeline | checklist→list_checklist | hotels→list_hotels | date/venue/vibe→get_profile | contracts→list_contracts then get_contract(id) | seating charts→list_seating_charts | collaborators→list_collaborators. General advice ("typical day-of timeline?") → answer directly, no tool.
+QUERIES: overview→get_summary | vendors/payments→list_vendors | budget→list_budget+list_expenses | guests/RSVP→list_guests | party→list_party | day-of→list_timeline | checklist→list_checklist | hotels→list_hotels | date/venue/vibe→get_profile | contracts/clauses/key terms/red flags/payment/cancellation/liability→list_contracts then get_contract(id or matching filename/vendor; if the user says "it" or asks about the latest contract, get_contract with no id) | seating charts→list_seating_charts | collaborators→list_collaborators. General advice ("typical day-of timeline?") → answer directly, no tool.
 
 SHORTCUTS: RSVP→update_guest(matchName, rsvpStatus). Seating→update_guest(matchName, tableAssignment). Payment paid→mark_vendor_payment_paid(vendorName).
 
@@ -1961,8 +1961,8 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"list_expenses", description:"List all expenses.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"update_profile", description:"Update wedding profile fields.", parameters:{ type:"object", properties:{ partner1Name:{type:"string"}, partner2Name:{type:"string"}, weddingDate:{type:"string"}, ceremonyTime:{type:"string"}, receptionTime:{type:"string"}, venue:{type:"string"}, location:{type:"string"}, guestCount:{type:"number"}, totalBudget:{type:"number"}, weddingVibe:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"get_profile", description:"Get wedding profile details.", parameters:{ type:"object", properties:{} } } },
-  { type:"function" as const, function:{ name:"list_contracts", description:"List uploaded contracts.", parameters:{ type:"object", properties:{} } } },
-  { type:"function" as const, function:{ name:"get_contract", description:"Get full contract analysis. Required: contractId.", parameters:{ type:"object", properties:{ contractId:{type:"number"} }, required:["contractId"] } } },
+  { type:"function" as const, function:{ name:"list_contracts", description:"List uploaded contracts with saved AI analysis summaries, risk levels, key term counts, red flag counts, payment terms, cancellation terms, and vendor names. Use before answering questions about the user's contracts.", parameters:{ type:"object", properties:{} } } },
+  { type:"function" as const, function:{ name:"get_contract", description:"Get saved contract info and AI analysis. Use for questions about clauses, key terms, red flags, cancellation, payment, liability, negotiation points, or action items. Pass contractId when known; otherwise pass matchName/vendorName/fileName, or no args for the latest uploaded contract.", parameters:{ type:"object", properties:{ contractId:{type:"number"}, matchName:{type:"string"}, vendorName:{type:"string"}, fileName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"get_summary", description:"Get a compact overview of the couple's wedding planning progress: profile, guest counts, vendor count, budget totals, checklist completion, upcoming payments.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"generate_seating", description:"Generate an AI seating chart using the current guest list. Required: tableCount (number of tables), seatsPerTable (seats per table). Optionally provide saveName to save the chart, and additionalNotes for special considerations.", parameters:{ type:"object", properties:{ tableCount:{type:"number",description:"Number of tables"}, seatsPerTable:{type:"number",description:"Maximum seats per table"}, additionalNotes:{type:"string",description:"Optional special instructions (e.g. keep family X away from family Y)"}, saveName:{type:"string",description:"If provided, saves the chart with this name"} }, required:["tableCount","seatsPerTable"] } } },
   { type:"function" as const, function:{ name:"list_seating_charts", description:"List all saved seating charts.", parameters:{ type:"object", properties:{} } } },
@@ -2578,6 +2578,71 @@ function contractFollowUpKind(userText: string, assistantText: string): Contract
 function textList(value: unknown, limit = 5): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => String(item ?? "").trim()).filter(Boolean).slice(0, limit);
+}
+
+function contractText(value: unknown, fallback: string | null = null): string | null {
+  if (value === undefined || value === null) return fallback;
+  const text = String(value).trim();
+  return text.length > 0 ? text : fallback;
+}
+
+function contractKeyTerms(value: unknown, limit = 12): Array<Record<string, string>> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const obj = item as Record<string, unknown>;
+      const label = contractText(obj.label ?? obj.term ?? obj.title, "Term");
+      const termValue = contractText(obj.value ?? obj.detail ?? obj.summary, "Not specified");
+      if (!label && !termValue) return null;
+      return {
+        label: label ?? "Term",
+        value: termValue ?? "Not specified",
+      };
+    })
+    .filter((item): item is Record<string, string> => Boolean(item))
+    .slice(0, limit);
+}
+
+function contractRedFlags(value: unknown, limit = 10): Array<Record<string, string>> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const obj = item as Record<string, unknown>;
+      return {
+        severity: contractText(obj.severity, "risk") ?? "risk",
+        title: contractText(obj.title ?? obj.label, "Issue") ?? "Issue",
+        detail: contractText(obj.detail ?? obj.description ?? obj.summary, "") ?? "",
+        recommendation: contractText(obj.recommendation ?? obj.suggestion ?? obj.action, "") ?? "",
+      };
+    })
+    .filter((item): item is Record<string, string> => Boolean(item))
+    .slice(0, limit);
+}
+
+function contractInfo(fileName: string, vendorName: string | null | undefined, createdAt: Date, analysisValue: unknown, full = false): Record<string, unknown> {
+  const analysis = (analysisValue ?? {}) as Record<string, unknown>;
+  const redFlags = contractRedFlags(analysis.redFlags, full ? 20 : 5);
+  const keyTerms = contractKeyTerms(analysis.keyTerms, full ? 24 : 8);
+  return {
+    fileName,
+    vendorName: vendorName ?? null,
+    uploadedAt: createdAt.toISOString(),
+    vendorType: contractText(analysis.vendorType, "Unknown"),
+    overallRiskLevel: contractText(analysis.overallRiskLevel, "unknown"),
+    summary: contractText(analysis.summary),
+    keyTerms,
+    redFlagCount: redFlags.length,
+    redFlags,
+    paymentTerms: contractText(analysis.paymentTerms),
+    cancellationPolicy: contractText(analysis.cancellationPolicy),
+    liabilityNotes: contractText(analysis.liabilityNotes),
+    missingClauses: textList(analysis.missingClauses, full ? 20 : 6),
+    negotiationTips: textList(analysis.negotiationTips, full ? 20 : 6),
+    actionItems: textList(analysis.actionItems, full ? 20 : 6),
+    rawAnalysis: full ? analysis : undefined,
+  };
 }
 
 function contractAnalysisSummary(fileName: string, analysis: Record<string, unknown>, kind: ContractFollowUpKind): string {
@@ -3877,64 +3942,81 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
     if (name === "list_contracts") {
       const userId = await resolveScopeUserId(req);
       const profile = await resolveProfile(req);
-      if (!profile) return { ok: true, data: [] };
+      if (!profile) return { ok: true, data: { contracts: [] } };
       const rows = await db
         .select({
           id: vendorContracts.id,
+          vendorId: vendorContracts.vendorId,
+          vendorName: vendors.name,
           fileName: vendorContracts.fileName,
           fileSize: vendorContracts.fileSize,
           analysis: vendorContracts.analysis,
           createdAt: vendorContracts.createdAt,
         })
         .from(vendorContracts)
+        .leftJoin(vendors, eq(vendorContracts.vendorId, vendors.id))
         .where(and(
           eq(vendorContracts.userId, userId),
           eq(vendorContracts.profileId, profile.id),
         ))
         .orderBy(desc(vendorContracts.createdAt))
         .limit(50);
-      const summary = rows.map(r => {
-        const a = (r.analysis ?? {}) as Record<string, unknown>;
-        return {
-          id: r.id,
-          fileName: r.fileName,
-          vendorType: a["vendorType"] ?? "Unknown",
-          overallRiskLevel: a["overallRiskLevel"] ?? "unknown",
-          summary: a["summary"] ?? null,
-          uploadedAt: r.createdAt.toISOString(),
-        };
-      });
-      return { ok: true, data: summary };
+      const contracts = rows.map(r => ({
+        id: r.id,
+        vendorId: r.vendorId ?? null,
+        fileSize: r.fileSize ?? null,
+        ...contractInfo(r.fileName, r.vendorName, r.createdAt, r.analysis),
+      }));
+      return { ok: true, data: { contracts } };
     }
 
     if (name === "get_contract") {
       const userId = await resolveScopeUserId(req);
       const profile = await resolveProfile(req);
       if (!profile) return { ok: false, error: "Contract not found." };
-      const contractId = Number(args["contractId"]);
-      if (!Number.isFinite(contractId)) return { ok: false, error: "contractId must be a number." };
-      const [row] = await db
+      const rows = await db
         .select({
           id: vendorContracts.id,
+          vendorId: vendorContracts.vendorId,
+          vendorName: vendors.name,
           fileName: vendorContracts.fileName,
           extractedText: vendorContracts.extractedText,
           analysis: vendorContracts.analysis,
           createdAt: vendorContracts.createdAt,
         })
         .from(vendorContracts)
+        .leftJoin(vendors, eq(vendorContracts.vendorId, vendors.id))
         .where(and(
-          eq(vendorContracts.id, contractId),
           eq(vendorContracts.userId, userId),
           eq(vendorContracts.profileId, profile.id),
         ))
-        .limit(1);
+        .orderBy(desc(vendorContracts.createdAt))
+        .limit(50);
+      if (rows.length === 0) return { ok: false, error: "No uploaded contracts found." };
+
+      const contractId = Number(args["contractId"]);
+      const matchName = contractText(args["matchName"] ?? args["vendorName"] ?? args["fileName"]);
+      const normalizedMatch = matchName?.toLowerCase();
+      const row = Number.isFinite(contractId)
+        ? rows.find(r => r.id === contractId)
+        : normalizedMatch
+          ? rows.find((r) => {
+              const fileName = r.fileName.toLowerCase();
+              const stem = fileName.replace(/\.[^.]+$/, "");
+              const vendorName = String(r.vendorName ?? "").toLowerCase();
+              return fileName.includes(normalizedMatch) ||
+                stem.includes(normalizedMatch) ||
+                normalizedMatch.includes(stem) ||
+                (vendorName.length > 0 && (vendorName.includes(normalizedMatch) || normalizedMatch.includes(vendorName)));
+            }) ?? rows[0]
+          : rows[0];
       if (!row) return { ok: false, error: "Contract not found." };
+      const extractedText = row.extractedText ?? "";
       return { ok: true, data: {
         id: row.id,
-        fileName: row.fileName,
-        uploadedAt: row.createdAt.toISOString(),
-        analysis: row.analysis,
-        extractedText: row.extractedText ?? "",
+        vendorId: row.vendorId ?? null,
+        ...contractInfo(row.fileName, row.vendorName, row.createdAt, row.analysis, true),
+        extractedTextPreview: extractedText.length > 6000 ? `${extractedText.slice(0, 6000)}...` : extractedText,
       } };
     }
 

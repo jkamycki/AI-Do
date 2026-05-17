@@ -149,6 +149,8 @@ function actionLabel(name: string, args?: Record<string, unknown>): string {
     case "update_profile": return "Updating wedding profile";
     case "list_vendors": return "Reading your vendor list";
     case "get_profile": return "Reading your wedding profile";
+    case "list_contracts": return "Reading your contracts";
+    case "get_contract": return "Reading contract analysis";
     case "generate_seating": return "Generating seating chart";
     case "delete_seating_chart": return "Deleting seating chart";
     case "list_seating_charts": return "Reading seating charts";
