@@ -211,21 +211,19 @@ export default function PublicWebsite() {
       const heroAbsolute = data.heroImage
         ? (data.heroImage.startsWith("/objects/") ? `${window.location.origin}/api/storage${data.heroImage}` : data.heroImage)
         : null;
-      const fallbackPreviewImage = `${window.location.origin}/opengraph-2026.jpg`;
-      const previewImage = heroAbsolute ?? fallbackPreviewImage;
       document.title = `${couple} — Wedding`;
       setMeta("description", description);
       setMeta("og:title", `${couple} — Wedding`, true);
       setMeta("og:description", description, true);
       setMeta("og:type", "website", true);
       setMeta("og:url", window.location.href, true);
-      setMeta("og:image", previewImage, true);
-      setMeta("og:image:width", "1200", true);
-      setMeta("og:image:height", "630", true);
-      setMeta("twitter:card", "summary_large_image");
+      if (heroAbsolute) {
+        setMeta("og:image", heroAbsolute, true);
+        setMeta("twitter:image", heroAbsolute);
+      }
+      setMeta("twitter:card", heroAbsolute ? "summary_large_image" : "summary");
       setMeta("twitter:title", `${couple} — Wedding`);
       setMeta("twitter:description", description);
-      setMeta("twitter:image", previewImage);
     } else {
       document.title = "Wedding Website";
     }
