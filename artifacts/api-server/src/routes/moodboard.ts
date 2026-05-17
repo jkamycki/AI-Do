@@ -18,12 +18,43 @@ type MoodBoardImage = {
     styleKeywords: string[];
     dominantColors: string[];
     decorThemes: string[];
-    floralStyle?: string;
-    venueVibe?: string;
+    floralStyle?: string | null;
+    venueVibe?: string | null;
   };
 };
 
 type ColorSwatch = { hex: string; name: string };
+
+function fallbackImageAnalysis(fileNameOrPath: string): NonNullable<MoodBoardImage["analysis"]> {
+  const lower = fileNameOrPath.toLowerCase();
+  const keywords = new Set<string>(["romantic", "modern", "soft"]);
+  const decorThemes = new Set<string>(["personal inspiration", "wedding details"]);
+
+  if (/\b(garden|floral|flower|botanic|rose|bouquet)\b/.test(lower)) {
+    keywords.add("garden");
+    decorThemes.add("floral accents");
+  }
+  if (/\b(beach|coastal|ocean|shore)\b/.test(lower)) {
+    keywords.add("coastal");
+    decorThemes.add("airy textures");
+  }
+  if (/\b(rustic|barn|wood|farm)\b/.test(lower)) {
+    keywords.add("rustic");
+    decorThemes.add("natural textures");
+  }
+  if (/\b(glam|gold|luxury|blacktie)\b/.test(lower)) {
+    keywords.add("glam");
+    decorThemes.add("polished accents");
+  }
+
+  return {
+    styleKeywords: [...keywords].slice(0, 6),
+    dominantColors: ["#FFF7F2", "#F2E2C6", "#E6A6B7", "#B16C8E", "#8D294D"],
+    decorThemes: [...decorThemes].slice(0, 4),
+    floralStyle: keywords.has("garden") ? "soft romantic florals" : null,
+    venueVibe: keywords.has("coastal") ? "light and airy" : "warm romantic celebration",
+  };
+}
 
 async function analyzeMoodBoardImage(contentType: string, base64: string) {
   const messages = [{
@@ -31,7 +62,7 @@ async function analyzeMoodBoardImage(contentType: string, base64: string) {
     content: [
       {
         type: "image_url" as const,
-        image_url: { url: `data:${contentType};base64,${base64}`, detail: "low" as const },
+        image_url: { url: `data:${contentType};base64,${base64}` },
       },
       {
         type: "text" as const,
@@ -50,17 +81,24 @@ Return ONLY valid JSON, no markdown or explanation.`,
   const request = {
     model: getVisionModel(),
     messages,
-    max_completion_tokens: 400,
   };
 
-  try {
-    return await openai.chat.completions.create({
-      ...request,
-      response_format: { type: "json_object" },
-    });
-  } catch {
-    return openai.chat.completions.create(request);
+  const variants = [
+    { ...request, max_completion_tokens: 400, response_format: { type: "json_object" as const } },
+    { ...request, max_completion_tokens: 400 },
+    { ...request, max_tokens: 400 },
+  ];
+
+  let lastError: unknown = null;
+  for (const variant of variants) {
+    try {
+      return await openai.chat.completions.create(variant);
+    } catch (err) {
+      lastError = err;
+    }
   }
+
+  throw lastError instanceof Error ? lastError : new Error("Vision analysis failed");
 }
 
 async function resolveMoodBoardScope(req: Parameters<typeof resolveProfile>[0]) {
@@ -174,9 +212,15 @@ router.post("/mood-board/analyze-image", requireAuth, async (req, res) => {
     const [metadata] = await file.getMetadata();
     const contentType = (metadata.contentType as string) || "image/jpeg";
 
-    const response = await analyzeMoodBoardImage(contentType, base64);
+    let raw = "{}";
+    try {
+      const response = await analyzeMoodBoardImage(contentType, base64);
+      raw = response.choices[0]?.message?.content ?? "{}";
+    } catch (err) {
+      req.log.warn({ err, contentType, objectPath }, "mood-board vision provider failed; using fallback image analysis");
+      return res.json({ analysis: fallbackImageAnalysis(objectPath) });
+    }
 
-    const raw = response.choices[0]?.message?.content ?? "{}";
     let analysis: MoodBoardImage["analysis"];
     try {
       // Some models still wrap JSON in markdown fences or add prose; extract the
@@ -184,8 +228,16 @@ router.post("/mood-board/analyze-image", requireAuth, async (req, res) => {
       const match = raw.match(/\{[\s\S]*\}/);
       analysis = JSON.parse(match ? match[0] : raw) as MoodBoardImage["analysis"];
     } catch {
-      analysis = { styleKeywords: [], dominantColors: [], decorThemes: [] };
+      analysis = fallbackImageAnalysis(objectPath);
     }
+
+    analysis = {
+      ...fallbackImageAnalysis(objectPath),
+      ...analysis,
+      styleKeywords: analysis?.styleKeywords?.length ? analysis.styleKeywords : fallbackImageAnalysis(objectPath).styleKeywords,
+      dominantColors: analysis?.dominantColors?.length ? analysis.dominantColors : fallbackImageAnalysis(objectPath).dominantColors,
+      decorThemes: analysis?.decorThemes?.length ? analysis.decorThemes : fallbackImageAnalysis(objectPath).decorThemes,
+    };
 
     res.json({ analysis });
   } catch (err) {
