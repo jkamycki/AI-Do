@@ -235,7 +235,7 @@ export function RsvpPagePreview({
 
   return (
     <div
-      className="relative mx-auto overflow-hidden rounded-xl shadow-2xl border"
+      className="relative mx-auto overflow-y-auto overflow-x-hidden rounded-xl shadow-2xl border"
       style={{
         width: PREVIEW_W * scale,
         height: PREVIEW_H * scale,
@@ -251,7 +251,7 @@ export function RsvpPagePreview({
           backgroundColor: bg,
           backgroundImage: `radial-gradient(${accent}22 1px, transparent 1px)`,
           backgroundSize: "22px 22px",
-          overflowY: "hidden",
+          overflowY: "auto",
           position: "relative",
         }}
       >
@@ -383,7 +383,7 @@ export function RsvpPagePreview({
         <div style={{
           margin: "0 16px 20px",
           background: cardBg, border: `1px solid ${cardBorder}`,
-          borderRadius: 12, padding: "16px 18px", overflow: "hidden",
+          borderRadius: 12, padding: "16px 18px", overflow: "visible",
           position: "relative",
         }}>
           {/* Accent top bar */}
@@ -394,11 +394,10 @@ export function RsvpPagePreview({
 
           <div
             style={{
-              position: "absolute",
-              inset: "4px 0 0",
+              position: "relative",
               zIndex: 2,
-              background: cardBg,
-              padding: "16px 18px",
+              background: "transparent",
+              padding: 0,
               borderRadius: 12,
             }}
           >
@@ -560,6 +559,7 @@ export function RsvpPagePreview({
             )}
           </div>
 
+          <div style={{ display: "none" }} aria-hidden="true">
           <p style={{
             fontFamily: bodyFont, fontSize: 11 * sc, color: textMuted,
             textAlign: "center", marginBottom: 14,
@@ -650,6 +650,7 @@ export function RsvpPagePreview({
             <span style={{ fontFamily: bodyFont, fontSize: 11 * sc, fontWeight: 700, color: accentText }}>
               Submit RSVP
             </span>
+          </div>
           </div>
         </div>
       </div>

@@ -299,6 +299,8 @@ interface AdminUser {
   eventCount: number;
   onboarded: boolean;
   hasProfile: boolean;
+  hasSharedWorkspace?: boolean;
+  collaboratorRole?: string | null;
   partner1Name: string | null;
   partner2Name: string | null;
   weddingDate: string | null;
@@ -375,6 +377,7 @@ function UserDetailModal({ user, onClose, onDeleted }: { user: AdminUser; onClos
       title: "Profile",
       items: [
         { label: "Has Profile", value: user.hasProfile ? "Yes" : "No" },
+        { label: "Shared Workspace", value: user.hasSharedWorkspace ? `Yes${user.collaboratorRole ? ` (${user.collaboratorRole})` : ""}` : "No" },
         { label: "Onboarded", value: user.onboarded ? "Yes" : "No" },
         { label: "Partner 1", value: user.partner1Name ?? "—" },
         { label: "Partner 2", value: user.partner2Name ?? "—" },
@@ -407,7 +410,12 @@ function UserDetailModal({ user, onClose, onDeleted }: { user: AdminUser; onClos
                 Onboarded
               </span>
             )}
-            {!user.hasProfile && (
+            {user.hasSharedWorkspace && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold uppercase tracking-wide">
+                Shared workspace
+              </span>
+            )}
+            {!user.hasProfile && !user.onboarded && (
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold uppercase tracking-wide">
                 No profile
               </span>
@@ -880,6 +888,8 @@ function UserDirectory() {
         "Last Active": u.lastActive ? new Date(u.lastActive).toLocaleString() : "Never",
         "Events Fired": u.eventCount,
         "Has Profile": u.hasProfile ? "Yes" : "No",
+        "Shared Workspace": u.hasSharedWorkspace ? "Yes" : "No",
+        "Collaborator Role": u.collaboratorRole ?? "",
         "Onboarded": u.onboarded ? "Yes" : "No",
         "Partner 1": u.partner1Name ?? "",
         "Partner 2": u.partner2Name ?? "",
@@ -1031,6 +1041,11 @@ function UserDirectory() {
                         {user.onboarded && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold uppercase tracking-wide">
                             Onboarded
+                          </span>
+                        )}
+                        {user.hasSharedWorkspace && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold uppercase tracking-wide">
+                            Shared
                           </span>
                         )}
                         {!user.hasProfile && !user.onboarded && (

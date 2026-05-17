@@ -614,10 +614,10 @@ export function Sidebar() {
           ${
             isActive
               ? special
-                ? "bg-primary/15 text-primary font-medium dark:bg-primary/10 dark:text-primary dark:ring-1 dark:ring-primary/35"
+                ? "bg-primary/15 text-[#24171D] font-bold dark:bg-primary/10 dark:text-[#F7E7D6] dark:ring-1 dark:ring-primary/35"
                 : "bg-primary text-primary-foreground font-medium shadow-md dark:bg-primary/15 dark:text-primary dark:ring-1 dark:ring-primary/35 dark:shadow-none"
               : special
-              ? "hover:bg-primary/10 text-primary/70 hover:text-primary dark:text-muted-foreground dark:hover:bg-primary/10 dark:hover:text-primary"
+              ? "text-[#24171D] font-bold hover:bg-primary/10 hover:text-[#24171D] dark:text-[#F7E7D6] dark:hover:bg-primary/10 dark:hover:text-[#F7E7D6]"
               : "hover:bg-primary/10 text-card-foreground hover:text-primary dark:text-card-foreground dark:hover:bg-primary/10 dark:hover:text-primary"
           }
         `}

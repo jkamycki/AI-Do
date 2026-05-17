@@ -12,6 +12,7 @@ import {
   logActivity,
   type CollaboratorRole,
 } from "../lib/workspaceAccess";
+import { trackEvent } from "../lib/trackEvent";
 
 async function getUserPrimaryEmail(userId: string): Promise<string | null> {
   try {
@@ -371,6 +372,7 @@ router.post("/invite/:token/accept", requireAuth, async (req, res) => {
         partner1Name: weddingProfiles.partner1Name,
         partner2Name: weddingProfiles.partner2Name,
         weddingDate: weddingProfiles.weddingDate,
+        workstationName: weddingProfiles.workstationName,
       })
       .from(weddingProfiles)
       .where(eq(weddingProfiles.id, collab.profileId))
@@ -383,6 +385,15 @@ router.post("/invite/:token/accept", requireAuth, async (req, res) => {
       "collaborator",
       { collaboratorId: collab.id, role: collab.role }
     );
+    trackEvent(req.userId!, "collaboration_invite_accepted", {
+      profileId: collab.profileId,
+      role: collab.role,
+    });
+    trackEvent(req.userId!, "onboarding_completed", {
+      via: "collaboration_invite",
+      profileId: collab.profileId,
+      role: collab.role,
+    });
 
     res.json({
       profileId: collab.profileId,

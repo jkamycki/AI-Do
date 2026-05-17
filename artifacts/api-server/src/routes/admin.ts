@@ -6,6 +6,7 @@ import {
   timelines, budgets, budgetItems, budgetPaymentLogs,
   checklistItems, vendors, guests, vendorContracts, seatingCharts,
   hotelBlocks, weddingParty, manualExpenses, vendorPayments,
+  workspaceCollaborators,
 } from "@workspace/db";
 import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -109,8 +110,20 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
       clerkClient.users.getUserList({ limit: 1, createdAtAfter: weekAgo.getTime() }),
       clerkClient.users.getUserList({ limit: 1, createdAtAfter: monthAgo.getTime() }),
 
-      // Onboarded = users with a wedding profile
-      db.select({ count: sql<number>`count(*)::int` }).from(weddingProfiles),
+      // Onboarded = users who either created a profile or accepted access to
+      // a shared workspace. Collaborator-only users may not own a profile.
+      db.execute(sql`
+        SELECT count(DISTINCT user_id)::int AS count
+        FROM (
+          SELECT user_id
+          FROM wedding_profiles
+          WHERE user_id IS NOT NULL
+          UNION
+          SELECT invitee_user_id AS user_id
+          FROM workspace_collaborators
+          WHERE status = 'active' AND invitee_user_id IS NOT NULL
+        ) onboarded_users
+      `),
 
       // Page views
       db.select({ count: sql<number>`count(*)::int` }).from(analyticsEvents)
@@ -123,10 +136,19 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
       // Daily onboarding completions last 30 days
       db.execute(sql`
         SELECT
-          to_char(date_trunc('day', created_at), 'YYYY-MM-DD') as date,
+          to_char(date_trunc('day', completed_at), 'YYYY-MM-DD') as date,
           count(*)::int as count
-        FROM wedding_profiles
-        WHERE created_at >= NOW() - INTERVAL '30 days'
+        FROM (
+          SELECT created_at AS completed_at
+          FROM wedding_profiles
+          WHERE created_at >= NOW() - INTERVAL '30 days'
+          UNION ALL
+          SELECT accepted_at AS completed_at
+          FROM workspace_collaborators
+          WHERE status = 'active'
+            AND invitee_user_id IS NOT NULL
+            AND accepted_at >= NOW() - INTERVAL '30 days'
+        ) onboarding_events
         GROUP BY 1 ORDER BY 1
       `),
     ]);
@@ -137,7 +159,7 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
     const newToday = clerkToday.totalCount;
     const newThisWeek = clerkThisWeek.totalCount;
     const newThisMonth = clerkThisMonth.totalCount;
-    const onboardedCount = onboardedRow[0]?.count ?? 0;
+    const onboardedCount = Number((onboardedRow.rows?.[0] as { count?: number } | undefined)?.count ?? 0);
     const onboardingRate = totalUsers > 0 ? Math.round((onboardedCount / totalUsers) * 100) : 0;
     const signupCount = totalUsers;
 
@@ -330,7 +352,7 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
   try {
     const search = String(req.query.search ?? "").trim().toLowerCase();
 
-    const [profileRows, eventRows] = await Promise.all([
+    const [profileRows, collaboratorRows, eventRows] = await Promise.all([
       db.select({
         userId: weddingProfiles.userId,
         partner1Name: weddingProfiles.partner1Name,
@@ -339,6 +361,18 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
         venue: weddingProfiles.venue,
         updatedAt: weddingProfiles.updatedAt,
       }).from(weddingProfiles),
+
+      db.select({
+        userId: workspaceCollaborators.inviteeUserId,
+        role: workspaceCollaborators.role,
+        acceptedAt: workspaceCollaborators.acceptedAt,
+        profileId: workspaceCollaborators.profileId,
+      })
+        .from(workspaceCollaborators)
+        .where(and(
+          eq(workspaceCollaborators.status, "active"),
+          sql`${workspaceCollaborators.inviteeUserId} IS NOT NULL`
+        )),
 
       db.execute(sql`
         SELECT
@@ -370,10 +404,15 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
     for (const p of profileRows) {
       if (p.userId) profileMap.set(p.userId, p);
     }
+    const collaboratorMap = new Map<string, typeof collaboratorRows[number]>();
+    for (const c of collaboratorRows) {
+      if (c.userId && !collaboratorMap.has(c.userId)) collaboratorMap.set(c.userId, c);
+    }
 
     const allUserIds = Array.from(new Set([
       ...Array.from(eventMap.keys()),
       ...Array.from(profileMap.keys()),
+      ...Array.from(collaboratorMap.keys()),
     ])).filter(Boolean).slice(0, 200);
 
     if (allUserIds.length === 0) {
@@ -389,7 +428,9 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
       const primaryEmail = cu.emailAddresses.find(e => e.id === cu.primaryEmailAddressId)?.emailAddress
         ?? cu.emailAddresses[0]?.emailAddress ?? null;
       const profile = profileMap.get(cu.id);
+      const collaborator = collaboratorMap.get(cu.id);
       const events = eventMap.get(cu.id);
+      const onboarded = Boolean(events?.onboarded || profile || collaborator);
 
       return {
         id: cu.id,
@@ -398,10 +439,12 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
         email: primaryEmail,
         imageUrl: cu.imageUrl ?? null,
         joinedAt: new Date(cu.createdAt).toISOString(),
-        lastActive: events?.last_active ?? null,
+        lastActive: events?.last_active ?? collaborator?.acceptedAt?.toISOString() ?? null,
         eventCount: events?.event_count ?? 0,
-        onboarded: events?.onboarded ?? false,
+        onboarded,
         hasProfile: !!profile,
+        hasSharedWorkspace: !!collaborator,
+        collaboratorRole: collaborator?.role ?? null,
         partner1Name: profile?.partner1Name ?? null,
         partner2Name: profile?.partner2Name ?? null,
         weddingDate: profile?.weddingDate ?? null,

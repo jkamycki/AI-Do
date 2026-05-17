@@ -103,7 +103,7 @@ export default function WebsiteEditor() {
   const [publishSlugDialogOpen, setPublishSlugDialogOpen] = useState(false);
   const [publishSlugInput, setPublishSlugInput] = useState("");
   const [publishSlugError, setPublishSlugError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"design" | "pages" | "animation" | "settings" | "content">("design");
+  const [activeTab, setActiveTab] = useState<"setup" | "design" | "sections" | "rsvp" | "publish">("setup");
   const inTab = (t: typeof activeTab) => activeTab === t;
   const [emojiFieldOpen, setEmojiFieldOpen] = useState<string | null>(null);
   const contentInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
@@ -1375,16 +1375,16 @@ export default function WebsiteEditor() {
           )}
 
           {/* Tab rail */}
-          <div className="mt-4 flex items-center gap-1 -mb-1 overflow-x-auto">
+          <div className="mt-4 grid grid-cols-5 gap-1 rounded-xl border bg-muted/30 p-1">
             {([
               // "content" is mobile-only — phones can't show the live preview
               // and the sidebar at the same time, so a plain form-based content
               // editor is the easiest way to type things in.
-              { id: "content",   label: t("website_editor.tab_content", { defaultValue: "Content" }),  icon: FileText, mobileOnly: true },
-              { id: "design",    label: t("website_editor.tab_design", { defaultValue: "Design" }),    icon: Palette,  mobileOnly: false },
-              { id: "pages",     label: t("website_editor.tab_pages", { defaultValue: "Pages" }),     icon: FileText, mobileOnly: false },
-              { id: "animation", label: t("website_editor.tab_animation", { defaultValue: "Animation" }), icon: Sparkles, mobileOnly: false },
-              { id: "settings",  label: t("website_editor.tab_settings", { defaultValue: "Settings" }),  icon: Settings, mobileOnly: false },
+              { id: "setup",    label: t("website_editor.tab_setup", { defaultValue: "Setup" }),    icon: Settings },
+              { id: "design",   label: t("website_editor.tab_design", { defaultValue: "Design" }),  icon: Palette },
+              { id: "sections", label: t("website_editor.tab_sections", { defaultValue: "Sections" }), icon: ToggleLeft },
+              { id: "rsvp",     label: t("website_editor.tab_rsvp", { defaultValue: "RSVP" }),      icon: Heart },
+              { id: "publish",  label: t("website_editor.tab_publish", { defaultValue: "Publish" }), icon: Globe },
             ] as const).map((tab) => {
               const TabIcon = tab.icon;
               const active = activeTab === tab.id;
@@ -1392,10 +1392,10 @@ export default function WebsiteEditor() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`${tab.mobileOnly ? "lg:hidden " : ""}flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+                  className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[10px] font-semibold transition-colors sm:flex-row sm:text-xs ${active ? "bg-background text-[#24171D] shadow-sm ring-1 ring-border dark:text-[#F7E7D6]" : "text-muted-foreground hover:bg-background/70 hover:text-foreground"}`}
                 >
                   <TabIcon className="h-3.5 w-3.5" />
-                  {tab.label}
+                  <span className="truncate">{tab.label}</span>
                 </button>
               );
             })}
@@ -1406,7 +1406,38 @@ export default function WebsiteEditor() {
             side-by-side, so this is a plain form for the highest-impact
             text fields. Updates flow through the existing customText jsonb
             so the live preview reflects them when the user toggles back. */}
-        {inTab("content") && (() => {
+        {inTab("setup") && (
+          <Section icon={<Settings className="h-4 w-4" />} title={t("website_editor.section_quick_setup", { defaultValue: "Quick Setup" })}>
+            <div className="space-y-3">
+              <div className="rounded-lg border border-[#E6B1A6]/60 bg-[#FFF7F2] p-3 text-[#3A1826]">
+                <p className="text-sm font-semibold">Start with the essentials.</p>
+                <p className="mt-1 text-xs leading-relaxed">
+                  Review the core wedding details, then use the fields below to override important website copy without hunting through every section.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                {[
+                  { label: "Couple", value: [previewExtra?.couple.partner1Name, previewExtra?.couple.partner2Name].filter(Boolean).join(" & ") || "Not set" },
+                  { label: "Date", value: previewExtra?.couple.weddingDate || "Not set" },
+                  { label: "Ceremony", value: previewExtra?.couple.ceremonyTime || "Not set" },
+                  { label: "Reception", value: previewExtra?.couple.receptionTime || "Not set" },
+                  { label: "Venue", value: previewExtra?.couple.venue || "Not set" },
+                  { label: "Location", value: previewExtra?.couple.location || "Not set" },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-lg border bg-background px-3 py-2">
+                    <p className="font-semibold text-muted-foreground">{item.label}</p>
+                    <p className="mt-0.5 truncate text-foreground">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                To change profile details like date, venue, or times, update your Wedding Profile. Website text overrides can be edited below.
+              </p>
+            </div>
+          </Section>
+        )}
+
+        {inTab("setup") && (() => {
           const CONTENT_EMOJIS = [
             "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃",
             "😉", "😊", "😇", "🤩", "😗", "☺️", "😚", "😋", "😎", "🥲",
@@ -1449,7 +1480,7 @@ export default function WebsiteEditor() {
             </div>
           );
           return (
-            <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_content", { defaultValue: "Page content" })}>
+            <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_content", { defaultValue: "Website Copy" })}>
               <div className="space-y-4">
                 {([
                   { key: "_heroTagline",  label: t("website_editor.content_hero_tagline", { defaultValue: "Hero tagline (e.g. We're getting married)" }), placeholder: "We're getting married" },
@@ -1657,7 +1688,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Sections */}
-        {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_sections", { defaultValue: "Sections" })}>
+        {inTab("sections") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_sections", { defaultValue: "Sections" })}>
           <div className="space-y-2.5">
             {SECTION_LIST.map((s) => {
               const Icon = s.icon;
@@ -1687,7 +1718,7 @@ export default function WebsiteEditor() {
         {/* Hero elements — toggles for the rows that drag-to-trash hides
             (date, venue, countdown). Lets the user bring them back without
             needing to hit Undo. */}
-        {inTab("pages") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Home Elements" })}>
+        {inTab("sections") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Home Elements" })}>
           <div className="space-y-2.5">
             {[
               { key: "_announcementHidden", label: t("website_editor.hero_announcement", { defaultValue: "Announcement Banner" }) },
@@ -1733,7 +1764,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Schedule event toggles */}
-        {inTab("pages") && record.sectionsEnabled.travel && <Section icon={<MapPin className="h-4 w-4" />} title="Travel & Venue Items">
+        {inTab("sections") && record.sectionsEnabled.travel && <Section icon={<MapPin className="h-4 w-4" />} title="Travel & Venue Items">
           <div className="space-y-2.5">
             {[
               { key: "_travelVenueHidden",  label: "Venue" },
@@ -1760,7 +1791,7 @@ export default function WebsiteEditor() {
           </div>
         </Section>}
 
-        {inTab("pages") && record.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
+        {inTab("sections") && record.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
           <div className="space-y-4">
             {[
               { hiddenKey: "_scheduleCeremonyHidden",  timeKey: "_scheduleCeremonyTime",  labelKey: "_scheduleCeremonyLabel",  defaultLabel: "Ceremony" },
@@ -1812,7 +1843,7 @@ export default function WebsiteEditor() {
             FAQ block as a single paragraph. Stored as JSON in
             customText.faq_items_json for backward compat with the legacy
             single-string customText.faq. */}
-        {inTab("pages") && record.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title={t("website_editor.section_faq_items", { defaultValue: "FAQ Questions" })}>
+        {inTab("sections") && record.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title={t("website_editor.section_faq_items", { defaultValue: "FAQ Questions" })}>
           {(() => {
             type FaqItem = { question: string; answer: string };
             const QUESTION_MAX = 400;
@@ -1906,7 +1937,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* FAQ style — font, size, color, bold/italic for questions and answers */}
-        {inTab("pages") && record.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title="FAQ Style">
+        {inTab("sections") && record.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title="FAQ Style">
           {(["question", "answer"] as const).map((part) => {
             const fontKey  = part === "question" ? "_faqQuestionFont"   : "_faqAnswerFont";
             const sizeKey  = part === "question" ? "_faqQuestionSize"   : "_faqAnswerSize";
@@ -1983,7 +2014,7 @@ export default function WebsiteEditor() {
 
 
         {/* Announcement animation */}
-        {inTab("animation") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_announcement_animation", { defaultValue: "Announcement Banner Animation" })}>
+        {inTab("design") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_announcement_animation", { defaultValue: "Announcement Banner Animation" })}>
           <div className="space-y-2.5">
             <div className="flex items-center justify-between gap-3 py-1.5">
               <div>
@@ -2017,7 +2048,7 @@ export default function WebsiteEditor() {
 
 
         {/* Hero animation */}
-        {inTab("animation") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_hero_animation", { defaultValue: "Hero Animation" })}>
+        {inTab("design") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_hero_animation", { defaultValue: "Hero Animation" })}>
           <div className="space-y-3">
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.style_label", { defaultValue: "Style" })}</Label>
@@ -2054,7 +2085,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Gallery animation */}
-        {inTab("animation") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_gallery_animation", { defaultValue: "Gallery Animation" })}>
+        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_gallery_animation", { defaultValue: "Gallery Animation" })}>
           <div className="space-y-3">
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.style_label", { defaultValue: "Style" })}</Label>
@@ -2284,7 +2315,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Registry Links */}
-        {inTab("pages") && <Section icon={<Link2 className="h-4 w-4" />} title="Registry Links">
+        {inTab("sections") && <Section icon={<Link2 className="h-4 w-4" />} title="Registry Links">
           <RegistryLinksEditor
             links={parseRegistryLinks(record.customText._registryLinks)}
             onChange={(next) =>
@@ -2294,7 +2325,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Wedding Party — read-only on the website editor; managed in the portal */}
-        {inTab("pages") && <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
+        {inTab("sections") && <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
           {record.portalParty && record.portalParty.length > 0 ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 dark:bg-emerald-950/30 text-xs text-emerald-800 dark:text-emerald-200">
@@ -2323,7 +2354,24 @@ export default function WebsiteEditor() {
 
 
         {/* RSVP settings — responses are tracked in the portal, not here */}
-        {inTab("pages") && record.sectionsEnabled.rsvp && (
+        {inTab("rsvp") && !record.sectionsEnabled.rsvp && (
+          <Section icon={<Heart className="h-4 w-4" />} title="RSVP Section">
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm font-medium">RSVP is currently hidden.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Turn it on here when you want guests to RSVP from your website.
+              </p>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <Label className="text-sm">Show RSVP section</Label>
+                <Switch
+                  checked={record.sectionsEnabled.rsvp}
+                  onCheckedChange={(checked) => update({ sectionsEnabled: { ...record.sectionsEnabled, rsvp: checked } })}
+                />
+              </div>
+            </div>
+          </Section>
+        )}
+        {inTab("rsvp") && record.sectionsEnabled.rsvp && (
           <Section icon={<Heart className="h-4 w-4" />} title={t("website_editor.section_rsvp_settings", { defaultValue: "RSVP Settings" })}>
             <div className="space-y-2">
               <div>
@@ -2415,7 +2463,7 @@ export default function WebsiteEditor() {
         )}
 
         {/* Website visibility */}
-        {inTab("settings") && (
+        {inTab("publish") && (
           <Section icon={<Globe className="h-4 w-4" />} title={t("website_editor.section_visibility", { defaultValue: "Website Visibility" })}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">
@@ -2435,7 +2483,7 @@ export default function WebsiteEditor() {
         )}
 
         {/* Website URL */}
-        {inTab("settings") && <Section icon={<Link2 className="h-4 w-4" />} title={t("website_editor.section_url", { defaultValue: "Website URL" })}>
+        {inTab("publish") && <Section icon={<Link2 className="h-4 w-4" />} title={t("website_editor.section_url", { defaultValue: "Website URL" })}>
           <SlugEditor
             slug={record.slug}
             published={record.published}
@@ -2446,7 +2494,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Password */}
-        {inTab("settings") && <Section icon={<Lock className="h-4 w-4" />} title={t("website_editor.section_password", { defaultValue: "Password Protection" })}>
+        {inTab("publish") && <Section icon={<Lock className="h-4 w-4" />} title={t("website_editor.section_password", { defaultValue: "Password Protection" })}>
           <div className="space-y-2">
             {record.passwordEnabled && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 dark:bg-amber-950/30 text-xs text-amber-800 dark:text-amber-200">
