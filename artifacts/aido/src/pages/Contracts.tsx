@@ -505,9 +505,10 @@ export default function Contracts() {
   });
 
   function stageFile(file: File) {
-    const allowed = ["application/pdf", "text/plain", "application/msword",
+    const allowed = ["application/pdf", "text/plain",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
-    if (!allowed.includes(file.type) && !file.name.endsWith(".txt")) {
+    const fileName = file.name.toLowerCase();
+    if (!allowed.includes(file.type) && !fileName.endsWith(".txt") && !fileName.endsWith(".docx")) {
       toast({ title: t("contracts.unsupported_file"), description: t("contracts.unsupported_file_desc"), variant: "destructive" });
       return;
     }
@@ -666,7 +667,7 @@ export default function Contracts() {
           onDrop={onDrop}
           onClick={() => fileRef.current?.click()}
         >
-          <input ref={fileRef} type="file" className="hidden" accept=".pdf,.txt,.doc,.docx" onChange={onFileChange} />
+          <input ref={fileRef} type="file" className="hidden" accept=".pdf,.txt,.docx" onChange={onFileChange} />
           <div className="flex flex-col items-center gap-3">
             {uploading ? (
               <>

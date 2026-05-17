@@ -1,6 +1,8 @@
 import { Router } from "express";
 import multer from "multer";
 import { createRequire } from "node:module";
+import JSZip from "jszip";
+import he from "he";
 import { db, vendorContracts, vendors } from "@workspace/db";
 import { eq, desc, and, sql, ne } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -37,7 +39,6 @@ function normalizeContractFileName(name: string) {
 const ALLOWED_CONTRACT_MIMES = new Set([
   "application/pdf",
   "text/plain",
-  "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 
@@ -48,9 +49,10 @@ const upload = multer({
   fileFilter: (_req, file, cb) => {
     const ok =
       ALLOWED_CONTRACT_MIMES.has(file.mimetype) ||
-      file.originalname.toLowerCase().endsWith(".txt");
+      file.originalname.toLowerCase().endsWith(".txt") ||
+      file.originalname.toLowerCase().endsWith(".docx");
     if (!ok) {
-      cb(new Error("Unsupported file type. Please upload a PDF, Word doc, or .txt file."));
+      cb(new Error("Unsupported file type. Please upload a PDF, DOCX, or .txt file."));
       return;
     }
     cb(null, true);
@@ -61,6 +63,43 @@ function sanitizeText(text: string): string {
   // Remove null bytes and other control characters PostgreSQL can't handle
   // eslint-disable-next-line no-control-regex
   return text.replace(/\u0000/g, "").replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ").trim();
+}
+
+function xmlTextToPlainText(xml: string): string {
+  return sanitizeText(
+    he.decode(
+      xml
+        .replace(/<w:tab\b[^>]*\/>/g, "\t")
+        .replace(/<w:br\b[^>]*\/>/g, "\n")
+        .replace(/<\/w:p>/g, "\n")
+        .replace(/<\/w:tr>/g, "\n")
+        .replace(/<[^>]+>/g, " "),
+    ),
+  ).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n");
+}
+
+async function extractDocxText(buffer: Buffer): Promise<string> {
+  try {
+    const zip = await JSZip.loadAsync(buffer);
+    const parts = [
+      "word/document.xml",
+      ...Object.keys(zip.files).filter((name) =>
+        /^word\/(?:header|footer|footnotes|endnotes)\d*\.xml$/i.test(name)
+      ),
+    ];
+    const textParts: string[] = [];
+    for (const part of parts) {
+      const file = zip.file(part);
+      if (!file) continue;
+      const xml = await file.async("string");
+      const text = xmlTextToPlainText(xml);
+      if (text) textParts.push(text);
+    }
+    return sanitizeText(textParts.join("\n\n")).slice(0, 40000);
+  } catch (err) {
+    process.stderr.write(`[contracts] DOCX extraction failed: ${err instanceof Error ? err.message : String(err)}\n`);
+    return "";
+  }
 }
 
 async function resolveContractScope(req: Parameters<typeof resolveProfile>[0]) {
@@ -90,6 +129,9 @@ async function extractText(buffer: Buffer, mimetype: string): Promise<string> {
       return "";
     }
   }
+  if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    return extractDocxText(buffer);
+  }
   // For Word docs and other types attempt raw text but sanitize heavily
   try {
     const raw = sanitizeText(buffer.toString("utf8"));
@@ -118,7 +160,7 @@ router.post(
         return res.status(413).json({ error: "File is too large. Maximum size is 5 MB." });
       }
       req.log?.warn({ error: msg }, "Contract upload rejected");
-      return res.status(400).json({ error: "Invalid contract upload." });
+      return res.status(400).json({ error: msg || "Invalid contract upload." });
     });
   },
   async (req, res) => {
@@ -186,9 +228,13 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
 
     const displayName = (req.body?.displayName as string | undefined)?.trim() || originalname;
     const rawVendorId = (req.body?.vendorId as string | undefined)?.trim();
-    const vendorId = rawVendorId ? Number(rawVendorId) : null;
-    if (rawVendorId && (!Number.isInteger(vendorId) || vendorId <= 0)) {
-      return res.status(400).json({ error: "Invalid vendor selection." });
+    let vendorId: number | null = null;
+    if (rawVendorId) {
+      const parsedVendorId = Number(rawVendorId);
+      if (!Number.isInteger(parsedVendorId) || parsedVendorId <= 0) {
+        return res.status(400).json({ error: "Invalid vendor selection." });
+      }
+      vendorId = parsedVendorId;
     }
     let selectedVendor: { id: number; files: VendorFile[] } | null = null;
     if (vendorId) {
