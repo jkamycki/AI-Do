@@ -22,6 +22,14 @@ const OWNER_EMAILS = [
 ];
 
 const LAUNCH_PLAN_ASSIGNEES = ["kamyckijoseph@gmail.com", "michaelgang31@gmail.com"] as const;
+const LAUNCH_PLAN_ASSIGNEE_NAMES: Record<typeof LAUNCH_PLAN_ASSIGNEES[number], string> = {
+  "kamyckijoseph@gmail.com": "Joseph",
+  "michaelgang31@gmail.com": "Michael",
+};
+
+function getLaunchPlanAssigneeName(email: string) {
+  return LAUNCH_PLAN_ASSIGNEE_NAMES[email as typeof LAUNCH_PLAN_ASSIGNEES[number]] ?? email;
+}
 
 async function isAdmin(userId: string): Promise<boolean> {
   try {
@@ -578,6 +586,64 @@ Generate 10 to 16 items. Split ownership between the two allowed assignee emails
   } catch (err) {
     req.log.error({ err }, "Launch plan generate error");
     res.json({ items: defaultLaunchPlanItems, source: "fallback" });
+  }
+});
+
+router.post("/admin/launch-plan/send-task", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const body = req.body as { recipientEmail?: unknown; task?: Record<string, unknown> };
+    const recipientEmail = String(body.recipientEmail ?? "").trim().toLowerCase();
+    if (!LAUNCH_PLAN_ASSIGNEES.includes(recipientEmail as typeof LAUNCH_PLAN_ASSIGNEES[number])) {
+      return res.status(400).json({ error: "Choose Joseph or Michael as the task email recipient." });
+    }
+
+    const task = body.task && typeof body.task === "object" ? body.task : {};
+    const title = String(task.title ?? "").trim().slice(0, 140);
+    if (!title) return res.status(400).json({ error: "Task title is required before emailing." });
+
+    const category = String(task.category ?? "Launch").trim().slice(0, 40) || "Launch";
+    const notes = String(task.notes ?? "").trim().slice(0, 500);
+    const dueDate = String(task.dueDate ?? "").trim();
+    const priority = String(task.priority ?? "medium").trim().toLowerCase();
+    const assigneeEmail = String(task.assigneeEmail ?? "").trim().toLowerCase();
+    const assigneeName = LAUNCH_PLAN_ASSIGNEES.includes(assigneeEmail as typeof LAUNCH_PLAN_ASSIGNEES[number])
+      ? getLaunchPlanAssigneeName(assigneeEmail)
+      : "Unassigned";
+    const completed = Boolean(task.completed);
+
+    const lines = [
+      "A.IDO Launch Plan Task",
+      "",
+      `Task: ${title}`,
+      `Category: ${category}`,
+      `Assigned to: ${assigneeName}`,
+      `Priority: ${["low", "medium", "high"].includes(priority) ? priority : "medium"}`,
+      `Due date: ${/^\d{4}-\d{2}-\d{2}$/.test(dueDate) ? dueDate : "Not set"}`,
+      `Status: ${completed ? "Completed" : "Open"}`,
+      "",
+      "Notes:",
+      notes || "No notes added.",
+      "",
+      "Open the A.IDO Operations Center to update this task.",
+    ];
+
+    const result = await sendEmail({
+      to: recipientEmail,
+      from: FROM_EMAIL,
+      fromName: "A.IDO Operations Center",
+      subject: `A.IDO Launch Task: ${title}`,
+      text: lines.join("\n"),
+    });
+
+    if (!result.ok) {
+      req.log.error({ error: result.error }, "Launch plan task email failed");
+      return res.status(502).json({ error: result.error ?? "Could not send launch task email." });
+    }
+
+    res.json({ success: true, id: result.id });
+  } catch (err) {
+    req.log.error({ err }, "Launch plan send task error");
+    res.status(500).json({ error: "Could not send launch task email." });
   }
 });
 

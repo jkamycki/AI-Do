@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import ExcelJS from "exceljs";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
@@ -112,7 +113,14 @@ type LaunchPlanItem = {
 
 const BRAND = "#7C3F5E";
 const LAUNCH_PLAN_STORAGE_KEY = "aido_admin_launch_plan_v1";
-const LAUNCH_PLAN_ASSIGNEES = ["kamyckijoseph@gmail.com", "michaelgang31@gmail.com"] as const;
+const LAUNCH_PLAN_ASSIGNEES = [
+  { name: "Joseph", email: "kamyckijoseph@gmail.com" },
+  { name: "Michael", email: "michaelgang31@gmail.com" },
+] as const;
+const LAUNCH_PLAN_ASSIGNEE_EMAILS = LAUNCH_PLAN_ASSIGNEES.map(assignee => assignee.email);
+
+const getLaunchPlanAssigneeName = (email: string) =>
+  LAUNCH_PLAN_ASSIGNEES.find(assignee => assignee.email === email)?.name ?? "Unassigned";
 
 const fallbackLaunchPlanItems: LaunchPlanItem[] = [
   {
@@ -160,7 +168,7 @@ const normalizeLaunchPlanItem = (item: Partial<LaunchPlanItem>, index = 0): Laun
     title: String(item.title ?? `Launch task ${index + 1}`),
     category: String(item.category ?? "Launch"),
     notes: String(item.notes ?? ""),
-    assigneeEmail: LAUNCH_PLAN_ASSIGNEES.includes(assigneeEmail as typeof LAUNCH_PLAN_ASSIGNEES[number]) ? assigneeEmail : "",
+    assigneeEmail: LAUNCH_PLAN_ASSIGNEE_EMAILS.includes(assigneeEmail as typeof LAUNCH_PLAN_ASSIGNEE_EMAILS[number]) ? assigneeEmail : "",
     priority: priority === "low" || priority === "high" ? priority : "medium",
     dueDate: String(item.dueDate ?? ""),
     completed: Boolean(item.completed),
@@ -358,8 +366,10 @@ function TestActivitySection({
 }
 
 function LaunchPlanSection() {
+  const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [emailRecipients, setEmailRecipients] = useState<Record<string, string>>({});
   const [items, setItems] = useState<LaunchPlanItem[]>(() => {
     if (typeof window === "undefined") return fallbackLaunchPlanItems;
     try {
@@ -444,10 +454,12 @@ function LaunchPlanSection() {
   const completedCount = items.filter(item => item.completed).length;
   const openCount = items.length - completedCount;
   const progress = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
-  const assigneeStats = LAUNCH_PLAN_ASSIGNEES.map(email => ({
-    email,
-    total: items.filter(item => item.assigneeEmail === email).length,
-    open: items.filter(item => item.assigneeEmail === email && !item.completed).length,
+  const openItems = items.filter(item => !item.completed);
+  const completedItems = items.filter(item => item.completed);
+  const assigneeStats = LAUNCH_PLAN_ASSIGNEES.map(assignee => ({
+    ...assignee,
+    total: items.filter(item => item.assigneeEmail === assignee.email).length,
+    open: items.filter(item => item.assigneeEmail === assignee.email && !item.completed).length,
   }));
 
   const updateItem = (id: string, patch: Partial<LaunchPlanItem>) => {
@@ -469,6 +481,102 @@ function LaunchPlanSection() {
         completed: false,
       },
     ]);
+  };
+
+  const sendTaskMutation = useMutation({
+    mutationFn: async ({ item, recipientEmail }: { item: LaunchPlanItem; recipientEmail: string }) => {
+      const r = await authFetch("/api/admin/launch-plan/send-task", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task: item, recipientEmail }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body?.error ?? "Failed to email launch task");
+      return body;
+    },
+    onSuccess: (_data, variables) => {
+      toast({
+        title: "Task emailed",
+        description: `Sent to ${getLaunchPlanAssigneeName(variables.recipientEmail)}.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Could not email task",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const renderTaskCard = (item: LaunchPlanItem) => {
+    const recipientEmail = emailRecipients[item.id] || item.assigneeEmail || LAUNCH_PLAN_ASSIGNEES[0].email;
+    return (
+      <Card key={item.id} className={`border-none shadow-sm ${item.completed ? "bg-emerald-50/70" : "bg-card"}`}>
+        <CardContent className="p-4">
+          <div className="grid gap-3 lg:grid-cols-[auto_1fr_auto] lg:items-start">
+            <button
+              type="button"
+              onClick={() => updateItem(item.id, { completed: !item.completed })}
+              className={`mt-1 flex h-9 w-9 items-center justify-center rounded-full border ${item.completed ? "border-emerald-500 bg-emerald-500 text-white" : "border-primary/25 text-primary"}`}
+              aria-label={item.completed ? "Mark task incomplete" : "Mark task complete"}
+            >
+              <CheckCircle2 className="h-5 w-5" />
+            </button>
+            <div className="grid gap-3 md:grid-cols-2">
+              <input value={item.category} onChange={(event) => updateItem(item.id, { category: event.target.value })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm font-semibold outline-none focus:border-primary" placeholder="Category" />
+              <input value={item.title} onChange={(event) => updateItem(item.id, { title: event.target.value })} className={`rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm font-semibold outline-none focus:border-primary md:col-span-2 ${item.completed ? "line-through decoration-2" : ""}`} placeholder="Task title" />
+              <select value={item.assigneeEmail || "unassigned"} onChange={(event) => updateItem(item.id, { assigneeEmail: event.target.value === "unassigned" ? "" : event.target.value })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary">
+                <option value="unassigned">Unassigned</option>
+                {LAUNCH_PLAN_ASSIGNEES.map(assignee => <option key={assignee.email} value={assignee.email}>{assignee.name}</option>)}
+              </select>
+              <select value={item.priority} onChange={(event) => updateItem(item.id, { priority: event.target.value as LaunchPlanItem["priority"] })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary">
+                <option value="low">Low priority</option>
+                <option value="medium">Medium priority</option>
+                <option value="high">High priority</option>
+              </select>
+              <input type="date" value={item.dueDate} onChange={(event) => updateItem(item.id, { dueDate: event.target.value })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+              <textarea value={item.notes} onChange={(event) => updateItem(item.id, { notes: event.target.value })} className="min-h-20 rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary md:col-span-2" placeholder="Notes" />
+              <div className="rounded-lg border border-primary/15 bg-primary/5 p-3 md:col-span-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email this task</label>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <select
+                    value={recipientEmail}
+                    onChange={(event) => setEmailRecipients(current => ({ ...current, [item.id]: event.target.value }))}
+                    className="min-h-10 flex-1 rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  >
+                    {LAUNCH_PLAN_ASSIGNEES.map(assignee => (
+                      <option key={assignee.email} value={assignee.email}>{assignee.name} ({assignee.email})</option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2"
+                    disabled={sendTaskMutation.isPending}
+                    onClick={() => sendTaskMutation.mutate({ item, recipientEmail })}
+                  >
+                    {sendTaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                    Send Task
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setHasLoaded(true);
+                setItems(current => current.filter(existing => existing.id !== item.id));
+              }}
+              title="Delete task"
+            >
+              <Trash2 className="h-4 w-4 text-red-500" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
@@ -511,7 +619,7 @@ function LaunchPlanSection() {
             <div className="mt-4 space-y-2 text-xs">
               {assigneeStats.map(stat => (
                 <div key={stat.email} className="flex items-center justify-between gap-2">
-                  <span className="truncate text-muted-foreground">{stat.email}</span>
+                  <span className="truncate text-muted-foreground">{stat.name}</span>
                   <span className="font-semibold text-foreground">{stat.open}/{stat.total} open</span>
                 </div>
               ))}
@@ -528,49 +636,23 @@ function LaunchPlanSection() {
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}
         </div>
       ) : (
-        <div className="space-y-3">
-          {items.map(item => (
-            <Card key={item.id} className={`border-none shadow-sm ${item.completed ? "bg-emerald-50/70" : "bg-card"}`}>
-              <CardContent className="p-4">
-                <div className="grid gap-3 lg:grid-cols-[auto_1fr_auto] lg:items-start">
-                  <button
-                    type="button"
-                    onClick={() => updateItem(item.id, { completed: !item.completed })}
-                    className={`mt-1 flex h-9 w-9 items-center justify-center rounded-full border ${item.completed ? "border-emerald-500 bg-emerald-500 text-white" : "border-primary/25 text-primary"}`}
-                    aria-label={item.completed ? "Mark task incomplete" : "Mark task complete"}
-                  >
-                    <CheckCircle2 className="h-5 w-5" />
-                  </button>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <input value={item.category} onChange={(event) => updateItem(item.id, { category: event.target.value })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm font-semibold outline-none focus:border-primary" placeholder="Category" />
-                    <input value={item.title} onChange={(event) => updateItem(item.id, { title: event.target.value })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm font-semibold outline-none focus:border-primary md:col-span-2" placeholder="Task title" />
-                    <select value={item.assigneeEmail || "unassigned"} onChange={(event) => updateItem(item.id, { assigneeEmail: event.target.value === "unassigned" ? "" : event.target.value })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary">
-                      <option value="unassigned">Unassigned</option>
-                      {LAUNCH_PLAN_ASSIGNEES.map(email => <option key={email} value={email}>{email}</option>)}
-                    </select>
-                    <select value={item.priority} onChange={(event) => updateItem(item.id, { priority: event.target.value as LaunchPlanItem["priority"] })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary">
-                      <option value="low">Low priority</option>
-                      <option value="medium">Medium priority</option>
-                      <option value="high">High priority</option>
-                    </select>
-                    <input type="date" value={item.dueDate} onChange={(event) => updateItem(item.id, { dueDate: event.target.value })} className="rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
-                    <textarea value={item.notes} onChange={(event) => updateItem(item.id, { notes: event.target.value })} className="min-h-20 rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm outline-none focus:border-primary md:col-span-2" placeholder="Notes" />
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setHasLoaded(true);
-                      setItems(current => current.filter(existing => existing.id !== item.id));
-                    }}
-                    title="Delete task"
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Open Tasks</h3>
+            {openItems.length > 0 ? openItems.map(renderTaskCard) : (
+              <Card className="border-none shadow-sm">
+                <CardContent className="py-8 text-center text-sm text-muted-foreground">No open launch tasks.</CardContent>
+              </Card>
+            )}
+          </div>
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-emerald-700">Completed</h3>
+            {completedItems.length > 0 ? completedItems.map(renderTaskCard) : (
+              <Card className="border-none shadow-sm">
+                <CardContent className="py-8 text-center text-sm text-muted-foreground">Completed launch tasks will move here.</CardContent>
+              </Card>
+            )}
+          </div>
         </div>
       )}
     </div>
