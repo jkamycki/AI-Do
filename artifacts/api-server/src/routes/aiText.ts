@@ -8,6 +8,10 @@ function cleanVenueValue(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
+function officialVenueSearchUrl(query: string) {
+  return `https://www.google.com/search?q=${encodeURIComponent(`${query} official wedding venue website`)}`;
+}
+
 function buildVenueOptionsFallback(input: {
   guestCount?: string;
   indoorOutdoor?: string;
@@ -16,7 +20,7 @@ function buildVenueOptionsFallback(input: {
   style?: string[];
   notes?: string;
 }) {
-  const location = cleanVenueValue(input.location, "your preferred area");
+  const location = cleanVenueValue(input.location, "your preferred areas");
   const guestCount = cleanVenueValue(input.guestCount, "your guest count");
   const budgetRange = cleanVenueValue(input.budgetRange, "your budget");
   const preference = cleanVenueValue(input.indoorOutdoor, "flexible indoor/outdoor needs").toLowerCase();
@@ -28,16 +32,16 @@ function buildVenueOptionsFallback(input: {
 
   const venueOptions = [
     wantsGarden
-      ? `- Garden estate or conservatory near ${location} - strong fit for floral, outdoor, or romantic styling; ask for rain backup, ceremony lawn rules, and included rentals.`
-      : `- Estate venue near ${location} - flexible choice for a polished wedding look; ask about guest flow, ceremony/reception transitions, and rental inclusions.`,
+      ? `- [Garden estate or conservatory near ${location}](${officialVenueSearchUrl(`garden estate conservatory near ${location}`)}) - strong fit for floral, outdoor, or romantic styling; ask for rain backup, ceremony lawn rules, and included rentals.`
+      : `- [Estate venue near ${location}](${officialVenueSearchUrl(`estate venue near ${location}`)}) - flexible choice for a polished wedding look; ask about guest flow, ceremony/reception transitions, and rental inclusions.`,
     wantsModern
-      ? `- Modern loft or industrial event space near ${location} - good fit for clean decor, dramatic lighting, and flexible layouts; confirm catering rules and sound limits.`
-      : `- Boutique hotel or restaurant event room near ${location} - useful for built-in service, guest convenience, and fewer outside rentals; confirm minimum spend and menu flexibility.`,
+      ? `- [Modern loft or industrial event space near ${location}](${officialVenueSearchUrl(`modern loft industrial event space near ${location}`)}) - good fit for clean decor, dramatic lighting, and flexible layouts; confirm catering rules and sound limits.`
+      : `- [Boutique hotel or restaurant event room near ${location}](${officialVenueSearchUrl(`boutique hotel restaurant wedding venue near ${location}`)}) - useful for built-in service, guest convenience, and fewer outside rentals; confirm minimum spend and menu flexibility.`,
     wantsClassic
-      ? `- Ballroom or country club near ${location} - likely fit for ${guestCount} guests and a classic reception; compare package minimums, service fees, and payment dates.`
-      : `- Country club or banquet venue near ${location} - practical option for ${guestCount} guests; compare package minimums, service fees, and payment dates.`,
-    `- Historic mansion, museum, or gallery near ${location} - strong option if you want character without heavy decor; ask about vendor restrictions, load-in rules, and accessibility.`,
-    `- Winery, brewery, or private estate near ${location} - can work well for a distinctive guest experience; confirm transportation, parking, noise limits, and weather backup.`,
+      ? `- [Ballroom or country club near ${location}](${officialVenueSearchUrl(`ballroom country club wedding venue near ${location}`)}) - likely fit for ${guestCount} guests and a classic reception; compare package minimums, service fees, and payment dates.`
+      : `- [Country club or banquet venue near ${location}](${officialVenueSearchUrl(`country club banquet wedding venue near ${location}`)}) - practical option for ${guestCount} guests; compare package minimums, service fees, and payment dates.`,
+    `- [Historic mansion, museum, or gallery near ${location}](${officialVenueSearchUrl(`historic mansion museum gallery wedding venue near ${location}`)}) - strong option if you want character without heavy decor; ask about vendor restrictions, load-in rules, and accessibility.`,
+    `- [Winery, brewery, or private estate near ${location}](${officialVenueSearchUrl(`winery brewery private estate wedding venue near ${location}`)}) - can work well for a distinctive guest experience; confirm transportation, parking, noise limits, and weather backup.`,
   ];
 
   return [
@@ -147,7 +151,7 @@ router.post("/ai/venue-options", requireAuth, async (req, res) => {
       `Guest count: ${guestCount?.trim() || "Not provided"}`,
       `Indoor / outdoor preference: ${indoorOutdoor?.trim() || "Flexible / not provided"}`,
       `Budget range: ${budgetRange?.trim() || "Not provided"}`,
-      `Location: ${location?.trim() || "Not provided"}`,
+      `Preferred location(s): ${location?.trim() || "Not provided"}`,
       `Style preferences: ${Array.isArray(style) && style.length ? style.join(", ") : "Not provided"}`,
       notes?.trim() ? `Notes:\n${notes.trim()}` : "",
     ].filter(Boolean).join("\n");
@@ -161,15 +165,14 @@ router.post("/ai/venue-options", requireAuth, async (req, res) => {
           content: [
             "You are an expert wedding venue strategist inside A.IDO.",
             "Use the couple's venue discovery details to suggest named wedding venues that may fit their request.",
-            "Provide 5-8 venue options. When the location is specific enough, make them real named venues in or near that area.",
-            "Prioritize venues whose official websites are likely well-known and include website links in markdown when you know a likely official homepage.",
-            "If you are not confident about a venue's official website, still include the named venue and write '(website link needs verification)' after the name instead of inventing a URL.",
+            "Provide 5-8 venue options. When the preferred location or locations are specific enough, make them real named venues in or near those areas.",
+            "Every suggested venue must start with the venue name as a markdown hyperlink, like - [Venue Name](https://official-venue-site.example) - why it may fit.",
+            "Choose venues whose official homepages are likely well-known. If you cannot provide a likely website URL for a venue, choose a different venue.",
             "Do not use generic directory links, social media links, map links, or made-up URLs.",
             "Never claim exact addresses, prices, availability, package details, or capacity unless the user provided them.",
-            "If the location is too vague for real named venues, still provide practical venue option types tailored to the details, then mention what location detail would make the names more specific.",
+            "If the locations are too vague for real named venues, still provide practical venue option types tailored to the details, then mention what location detail would make the names more specific.",
             "Return concise markdown only.",
-            "Format linked venues as: - [Venue Name](official website URL) - why it may fit.",
-            "Format unlinked venues as: - Venue Name (website link needs verification) - why it may fit.",
+            "Do not return unlinked venue bullets.",
             "Include: Suggested venues, questions to ask these venues, possible red flags, and a simple shortlist scoring method.",
             "Do not include generic search terms or tell the user to search for venue types. The main value is named venue suggestions.",
             "Keep it helpful, specific, and under 600 words.",

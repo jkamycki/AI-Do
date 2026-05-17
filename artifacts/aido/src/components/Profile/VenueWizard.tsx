@@ -4,6 +4,7 @@ import { Mail, Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import ReactMarkdown from "react-markdown";
 
@@ -69,6 +70,18 @@ function createId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function formatLocations(text: string, fallback = "[location]") {
+  const locations = text
+    .split(/\r?\n|;/)
+    .map((location) => location.trim())
+    .filter(Boolean);
+  return locations.length ? locations.join(", ") : fallback;
+}
+
+function officialVenueSearchUrl(query: string) {
+  return `https://www.google.com/search?q=${encodeURIComponent(`${query} official wedding venue website`)}`;
+}
+
 export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: VenueWizardProps) {
   const [uploadError, setUploadError] = useState("");
   const [generatingPromptDraft, setGeneratingPromptDraft] = useState(false);
@@ -79,7 +92,7 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
   const draftBase = useMemo(() => ({
     names: coupleNames,
     guestCount: value.guestCount || "[guest count]",
-    location: value.location || "[location]",
+    location: formatLocations(value.location),
     budgetRange: value.budgetRange || "[budget range]",
     style: styleText,
     preference: value.indoorOutdoor || "indoor or outdoor",
@@ -194,7 +207,7 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
   };
 
   const fallbackVenueOptions = () => {
-    const venueArea = value.location.trim() || "your preferred area";
+    const venueArea = formatLocations(value.location, "your preferred areas");
     const guestCount = value.guestCount.trim() || "your guest count";
     const budgetRange = value.budgetRange.trim() || "your budget";
     const preference = value.indoorOutdoor.trim() || "indoor or outdoor";
@@ -204,11 +217,11 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
       "",
       `These options are based on ${guestCount} guests, ${preference} preference, a ${draftBase.style} style, and ${budgetRange}. Add each promising match to your shortlist, then attach the venue's official website once confirmed.`,
       "",
-      `- Garden estate or conservatory near ${venueArea} - strong fit for floral, outdoor, or romantic styling; ask for rain backup, ceremony rules, and included rentals.`,
-      `- Boutique hotel or restaurant event room near ${venueArea} - useful for built-in service, guest convenience, and fewer outside rentals; confirm minimum spend and menu flexibility.`,
-      `- Ballroom, country club, or banquet venue near ${venueArea} - practical for ${guestCount} guests; compare package minimums, service fees, and payment dates.`,
-      `- Historic mansion, museum, or gallery near ${venueArea} - adds character without heavy decor; ask about vendor restrictions, load-in rules, and accessibility.`,
-      `- Winery, brewery, or private estate near ${venueArea} - distinctive guest experience; confirm parking, noise limits, transportation, and weather backup.`,
+      `- [Garden estate or conservatory near ${venueArea}](${officialVenueSearchUrl(`garden estate conservatory near ${venueArea}`)}) - strong fit for floral, outdoor, or romantic styling; ask for rain backup, ceremony rules, and included rentals.`,
+      `- [Boutique hotel or restaurant event room near ${venueArea}](${officialVenueSearchUrl(`boutique hotel restaurant wedding venue near ${venueArea}`)}) - useful for built-in service, guest convenience, and fewer outside rentals; confirm minimum spend and menu flexibility.`,
+      `- [Ballroom, country club, or banquet venue near ${venueArea}](${officialVenueSearchUrl(`ballroom country club banquet wedding venue near ${venueArea}`)}) - practical for ${guestCount} guests; compare package minimums, service fees, and payment dates.`,
+      `- [Historic mansion, museum, or gallery near ${venueArea}](${officialVenueSearchUrl(`historic mansion museum gallery wedding venue near ${venueArea}`)}) - adds character without heavy decor; ask about vendor restrictions, load-in rules, and accessibility.`,
+      `- [Winery, brewery, or private estate near ${venueArea}](${officialVenueSearchUrl(`winery brewery private estate wedding venue near ${venueArea}`)}) - distinctive guest experience; confirm parking, noise limits, transportation, and weather backup.`,
       "",
       "### Questions to ask first",
       "",
@@ -232,7 +245,7 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
       `User prompt: ${prompt}`,
       `Couple / names: ${draftBase.names}`,
       `Guest count: ${draftBase.guestCount}`,
-      `Location: ${draftBase.location}`,
+      `Preferred locations: ${draftBase.location}`,
       `Budget range: ${draftBase.budgetRange}`,
       `Style: ${draftBase.style}`,
       `Indoor/outdoor preference: ${draftBase.preference}`,
@@ -285,7 +298,7 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
           guestCount: value.guestCount,
           indoorOutdoor: value.indoorOutdoor,
           budgetRange: value.budgetRange,
-          location: value.location,
+          location: formatLocations(value.location, ""),
           style: value.style,
           notes: formatBulletNotes(value.notes),
         }),
@@ -323,11 +336,19 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
         </label>
         <label className="space-y-2 text-sm font-medium">
           Indoor / outdoor preference
-          <Input
+          <Select
             value={value.indoorOutdoor}
-            onChange={(event) => update({ indoorOutdoor: event.target.value })}
-            placeholder="Indoor, outdoor, or flexible"
-          />
+            onValueChange={(indoorOutdoor) => update({ indoorOutdoor })}
+          >
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Choose preference" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Indoor">Indoor</SelectItem>
+              <SelectItem value="Outdoor">Outdoor</SelectItem>
+              <SelectItem value="Both">Both</SelectItem>
+            </SelectContent>
+          </Select>
         </label>
         <label className="space-y-2 text-sm font-medium">
           Budget range
@@ -337,12 +358,13 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
             placeholder="$8,000 - $15,000"
           />
         </label>
-        <label className="space-y-2 text-sm font-medium">
-          Location
-          <Input
+        <label className="space-y-2 text-sm font-medium md:col-span-2">
+          Preferred locations
+          <Textarea
             value={value.location}
             onChange={(event) => update({ location: event.target.value })}
-            placeholder="City, state, or preferred area"
+            placeholder={"City, state, or preferred area\nAdd another city or area on a new line"}
+            rows={2}
           />
         </label>
       </div>
