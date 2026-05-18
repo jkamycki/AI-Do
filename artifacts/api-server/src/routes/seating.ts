@@ -94,6 +94,133 @@ interface Table {
   theme?: string;
 }
 
+type SeatingGenerationResult = {
+  tables: Table[];
+  insights: string[];
+  warnings: string[];
+  totalSeated: number;
+};
+
+function extractJsonObject(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return JSON.parse(raw.slice(start, end + 1));
+    }
+    throw new Error("No JSON object found");
+  }
+}
+
+function attachedGuestFromPlusOneNote(notes?: string | null) {
+  const match = (notes ?? "").match(/^Plus one for\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
+}
+
+function fallbackSeatingChart(
+  inputGuests: Guest[],
+  tableCount: number,
+  seatsPerTable: number,
+  reason: string,
+): SeatingGenerationResult {
+  const guests = inputGuests.filter((guest) => guest.name?.trim());
+  const parent = new Map<string, string>();
+  const guestById = new Map(guests.map((guest) => [guest.id, guest]));
+  const idByName = new Map(guests.map((guest) => [guest.name.trim().toLowerCase(), guest.id]));
+
+  const find = (id: string): string => {
+    const p = parent.get(id) ?? id;
+    if (p === id) return id;
+    const root = find(p);
+    parent.set(id, root);
+    return root;
+  };
+  const union = (a: string, b: string) => {
+    if (!guestById.has(a) || !guestById.has(b)) return;
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(rb, ra);
+  };
+
+  guests.forEach((guest) => {
+    parent.set(guest.id, guest.id);
+  });
+  guests.forEach((guest) => {
+    (guest.preferIds ?? []).forEach((targetId) => union(guest.id, targetId));
+    const attachedName = attachedGuestFromPlusOneNote(guest.notes);
+    if (attachedName) {
+      const attachedId = idByName.get(attachedName.toLowerCase());
+      if (attachedId) union(guest.id, attachedId);
+    }
+  });
+
+  const unitsByRoot = new Map<string, Guest[]>();
+  guests.forEach((guest) => {
+    const root = find(guest.id);
+    const list = unitsByRoot.get(root) ?? [];
+    list.push(guest);
+    unitsByRoot.set(root, list);
+  });
+
+  const groupLabel = (unit: Guest[]) => {
+    const counts = new Map<string, number>();
+    unit.forEach((guest) => counts.set(guest.group || "Guests", (counts.get(guest.group || "Guests") ?? 0) + 1));
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? "Guests";
+  };
+
+  const units = [...unitsByRoot.values()]
+    .flatMap((unit) => {
+      const sorted = [...unit].sort((a, b) => a.name.localeCompare(b.name));
+      if (sorted.length <= seatsPerTable) return [sorted];
+      const chunks: Guest[][] = [];
+      for (let i = 0; i < sorted.length; i += seatsPerTable) chunks.push(sorted.slice(i, i + seatsPerTable));
+      return chunks;
+    })
+    .sort((a, b) => groupLabel(a).localeCompare(groupLabel(b)) || a[0].name.localeCompare(b[0].name));
+
+  const tables: Table[] = Array.from({ length: Math.max(1, tableCount) }, (_, index) => ({
+    tableNumber: index + 1,
+    tableName: `Table ${index + 1}`,
+    guests: [],
+    theme: "",
+  }));
+
+  const tableGroups = new Map<number, string>();
+  units.forEach((unit) => {
+    const names = unit.map((guest) => guest.name.trim());
+    const group = groupLabel(unit);
+    let table = tables.find((candidate) =>
+      candidate.guests.length + names.length <= seatsPerTable
+      && (candidate.guests.length === 0 || tableGroups.get(candidate.tableNumber) === group)
+    );
+    if (!table) {
+      table = tables.find((candidate) => candidate.guests.length + names.length <= seatsPerTable);
+    }
+    if (!table) {
+      table = {
+        tableNumber: tables.length + 1,
+        tableName: `Table ${tables.length + 1}`,
+        guests: [],
+        theme: "",
+      };
+      tables.push(table);
+    }
+    table.guests.push(...names);
+    tableGroups.set(table.tableNumber, tableGroups.get(table.tableNumber) ?? group);
+    table.theme = `Grouped by ${tableGroups.get(table.tableNumber)}`;
+  });
+
+  const filledTables = tables.filter((table) => table.guests.length > 0);
+  return {
+    tables: filledTables,
+    insights: ["Generated a complete seating chart using saved guest groups and plus-one relationships."],
+    warnings: [`AI formatting failed (${reason}), so A.IDO generated a complete fallback chart. Review table placements before saving.`],
+    totalSeated: filledTables.reduce((sum, table) => sum + table.guests.length, 0),
+  };
+}
+
 // AI sometimes ignores the seatsPerTable cap and stuffs >cap guests at a
 // single table. Trim each table down to the cap, collect the overflow, and
 // redistribute to tables with room (creating new tables if every existing
@@ -247,27 +374,22 @@ Return ONLY valid JSON:
 
 Use only the exact guest names from the list. Only create tables that have guests. Distribute guests evenly.`;
 
-    const completion = await openai.chat.completions.create({
-      model: getModel(),
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      // Large charts need enough response room for every guest name plus
-      // table notes. Tight caps truncate JSON and look like generation failed.
-      max_completion_tokens: Math.max(3500, guests.length * 60 + 1200),
-    });
-
-    const raw = completion.choices[0]?.message?.content ?? "{}";
-    let result: { tables: Table[]; insights: string[]; warnings: string[]; totalSeated: number } = {
-      tables: [],
-      insights: [],
-      warnings: [],
-      totalSeated: 0,
-    };
-
+    let result: SeatingGenerationResult;
     try {
-      result = JSON.parse(raw);
-    } catch {
-      return res.status(500).json({ error: "AI returned invalid response. Please try again." });
+      const completion = await openai.chat.completions.create({
+        model: getModel(),
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        // Large charts need enough response room for every guest name plus
+        // table notes. Tight caps truncate JSON and look like generation failed.
+        max_completion_tokens: Math.max(6000, guests.length * 90 + 1600),
+      });
+
+      const raw = completion.choices[0]?.message?.content ?? "{}";
+      result = extractJsonObject(raw) as SeatingGenerationResult;
+    } catch (err) {
+      req.log.warn({ err }, "AI seating generation returned unusable output; using fallback chart");
+      result = fallbackSeatingChart(guests, tableCount, seatsPerTable, "invalid AI response");
     }
 
     result.tables = cleanGeneratedTables(result.tables, guests);

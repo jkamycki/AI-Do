@@ -136,9 +136,6 @@ function GuestCard({
     }
   };
 
-  const preferCount = guest.relations.filter(r => r.type === "prefer").length;
-  const avoidCount = guest.relations.filter(r => r.type === "avoid").length;
-
   return (
     <div className="border border-border rounded-xl overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2.5 bg-card">
@@ -157,13 +154,6 @@ function GuestCard({
             >
               {GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
-            {(preferCount > 0 || avoidCount > 0) && (
-              <span className="text-xs text-muted-foreground">
-                {preferCount > 0 && <span className="text-emerald-600 dark:text-emerald-400">Keep together: {preferCount}</span>}
-                {preferCount > 0 && avoidCount > 0 && " · "}
-                {avoidCount > 0 && <span className="text-red-500 dark:text-red-400">Keep apart: {avoidCount}</span>}
-              </span>
-            )}
           </div>
         </div>
         <label className="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer select-none flex-shrink-0">
