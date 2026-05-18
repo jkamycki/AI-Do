@@ -812,21 +812,27 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
       ...collaboratorRows.map(c => c.ownerUserId).filter(Boolean),
     ].filter((id): id is string => typeof id === "string" && id.length > 0 && id.startsWith("user_")))).slice(0, 500);
 
-    const recentClerkUsers = await clerkClient.users.getUserList({
-      limit: 500,
-      orderBy: "-created_at",
-    });
-
-    const clerkUsersById = new Map<string, typeof recentClerkUsers.data[number]>();
-    for (const cu of recentClerkUsers.data) {
-      clerkUsersById.set(cu.id, cu);
+    const clerkUsersById = new Map<string, Awaited<ReturnType<typeof clerkClient.users.getUserList>>["data"][number]>();
+    const clerkPageSize = 500;
+    const maxClerkUsers = 5000;
+    for (let offset = 0; offset < maxClerkUsers; offset += clerkPageSize) {
+      const page = await clerkClient.users.getUserList({
+        limit: clerkPageSize,
+        offset,
+        orderBy: "-created_at",
+      });
+      for (const cu of page.data) {
+        clerkUsersById.set(cu.id, cu);
+      }
+      if (page.data.length < clerkPageSize) break;
     }
 
     const missingUserIds = allUserIds.filter(userId => !clerkUsersById.has(userId));
-    if (missingUserIds.length > 0) {
+    for (let index = 0; index < missingUserIds.length; index += 100) {
+      const batch = missingUserIds.slice(index, index + 100);
       const resolvedClerkUsers = await clerkClient.users.getUserList({
-        userId: missingUserIds,
-        limit: missingUserIds.length,
+        userId: batch,
+        limit: batch.length,
       });
       for (const cu of resolvedClerkUsers.data) {
         clerkUsersById.set(cu.id, cu);

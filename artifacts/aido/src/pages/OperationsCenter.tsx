@@ -107,6 +107,35 @@ type WorkflowProgressUser = {
   milestones: WorkflowMilestone[];
 };
 
+type SignedUpUser = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  imageUrl: string | null;
+  joinedAt: string;
+  lastActive: string | null;
+  eventCount: number;
+  onboarded: boolean;
+  hasProfile: boolean;
+  hasSharedWorkspace: boolean;
+  collaboratorRole: string | null;
+  partner1Name: string | null;
+  partner2Name: string | null;
+  weddingDate: string | null;
+  venue: string | null;
+  sharedWith: Array<{
+    profileId: number;
+    userId: string | null;
+    email: string | null;
+    displayName: string;
+    role: string;
+    direction: "joined" | "shared_to";
+    workspaceName: string;
+    acceptedAt: string | null;
+  }>;
+};
+
 const LAUNCH_PLAN_STORAGE_KEY = "aido_operations_launch_plan_v1";
 const LAUNCH_PLAN_ASSIGNEES = [
   { name: "Joseph", email: "kamyckijoseph@gmail.com" },
@@ -211,9 +240,10 @@ export default function OperationsCenterPage() {
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "workflow" | "testActivity" | "launchPlan">("tickets");
+  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "users" | "workflow" | "testActivity" | "launchPlan">("tickets");
   const [workflowFilter, setWorkflowFilter] = useState<"all" | "completed" | "in_progress" | "not_started">("all");
   const [testSessionFilter, setTestSessionFilter] = useState<"test" | "all" | "real">("test");
+  const [userSearch, setUserSearch] = useState("");
   const [launchPlanPrompt, setLaunchPlanPrompt] = useState("");
   const [hasLoadedLaunchPlan, setHasLoadedLaunchPlan] = useState(false);
   const [launchPlanEmailRecipients, setLaunchPlanEmailRecipients] = useState<Record<string, string>>({});
@@ -288,6 +318,19 @@ export default function OperationsCenterPage() {
     refetchInterval: activeTab === "testActivity" ? 30000 : false,
   });
   const testSessions = testSessionsData?.sessions ?? [];
+
+  const { data: signedUpUsersData, isLoading: isLoadingSignedUpUsers } = useQuery<{ users: SignedUpUser[]; total: number }>({
+    queryKey: ["admin-signed-up-users", userSearch],
+    queryFn: async () => {
+      const params = userSearch.trim() ? `?search=${encodeURIComponent(userSearch.trim())}` : "";
+      const r = await authedFetch(`/api/admin/users${params}`);
+      if (!r.ok) throw new Error("Failed to fetch signed-up users");
+      return r.json();
+    },
+    enabled: activeTab === "users",
+    refetchInterval: activeTab === "users" ? 30000 : false,
+  });
+  const signedUpUsers = signedUpUsersData?.users ?? [];
 
   const { data: workflowData, isLoading: isLoadingWorkflow } = useQuery<{
     users: WorkflowProgressUser[];
@@ -746,6 +789,14 @@ export default function OperationsCenterPage() {
           )}
         </button>
         <button
+          onClick={() => setActiveTab("users")}
+          className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+            ${activeTab === "users" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
+        >
+          <Users className="h-4 w-4" />
+          Signed-Up Users
+        </button>
+        <button
           onClick={() => setActiveTab("workflow")}
           className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
             ${activeTab === "workflow" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
@@ -776,6 +827,103 @@ export default function OperationsCenterPage() {
           title="Messages & Feedback"
           description="Contact requests (including emails to support@aidowedding.net) and user feedback."
         />
+      )}
+
+      {activeTab === "users" && (
+        <div className="space-y-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="text-xl font-serif font-semibold text-[#24171D]">Signed-Up Users</h2>
+              <p className="text-sm font-medium text-[#4A3941]">
+                Every Clerk account that signed up, including users who have not started a wedding workspace yet.
+              </p>
+            </div>
+            <div className="w-full lg:w-80">
+              <Input
+                value={userSearch}
+                onChange={(event) => setUserSearch(event.target.value)}
+                placeholder="Search name, email, or workspace"
+                className="bg-white"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-4">
+            {[
+              { label: "Signed up", value: signedUpUsersData?.total ?? 0 },
+              { label: "Onboarded", value: signedUpUsers.filter(user => user.onboarded).length },
+              { label: "Created profile", value: signedUpUsers.filter(user => user.hasProfile).length },
+              { label: "Shared workspace", value: signedUpUsers.filter(user => user.hasSharedWorkspace).length },
+            ].map(stat => (
+              <Card key={stat.label}>
+                <CardContent className="py-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">{stat.label}</p>
+                  <p className="mt-1 text-2xl font-bold text-[#24171D]">{stat.value}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {isLoadingSignedUpUsers ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)}
+            </div>
+          ) : signedUpUsers.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                <p className="font-medium text-[#4A3941]">No signed-up users found.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {signedUpUsers.map(user => {
+                const displayName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.email || user.id;
+                const workspaceName = [user.partner1Name, user.partner2Name].filter(Boolean).join(" & ");
+                return (
+                  <Card key={user.id}>
+                    <CardContent className="py-4">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-semibold text-[#24171D]">{displayName}</h3>
+                            <Badge className={user.onboarded ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
+                              {user.onboarded ? "Onboarded" : "Signed up"}
+                            </Badge>
+                            {user.hasSharedWorkspace && <Badge variant="outline">Collaborator</Badge>}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-[#4A3941]">
+                            <span className="inline-flex items-center gap-1.5">
+                              <Mail className="h-3.5 w-3.5" />
+                              {user.email || "No email"}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5" />
+                              Joined {new Date(user.joinedAt).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm text-[#7A5062]">
+                            {[workspaceName || null, user.venue, user.weddingDate ? `Wedding: ${user.weddingDate}` : null].filter(Boolean).join(" | ") || "No wedding workspace started yet"}
+                          </p>
+                          {user.sharedWith.length > 0 && (
+                            <p className="mt-2 text-xs font-medium text-[#4A3941]">
+                              Shared workspaces: {user.sharedWith.map(share => share.workspaceName).join(", ")}
+                            </p>
+                          )}
+                        </div>
+                        <div className="rounded-lg border border-[#F0D7E0] bg-[#FFF8FA] px-4 py-3 text-xs font-medium text-[#4A3941] md:w-56">
+                          <p><span className="font-semibold text-[#24171D]">Last active:</span> {user.lastActive ? new Date(user.lastActive).toLocaleString() : "Unknown"}</p>
+                          <p className="mt-1"><span className="font-semibold text-[#24171D]">Events:</span> {user.eventCount}</p>
+                          <p className="mt-1"><span className="font-semibold text-[#24171D]">Profile:</span> {user.hasProfile ? "Yes" : "No"}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {activeTab === "workflow" && (
