@@ -3191,8 +3191,9 @@ function WeddingParty({
   // Portal party members take precedence over manually-entered ones
 
   const labelColor = sectionTextColor(data, "weddingParty");
+  const usesPortalParty = !!(data.portalParty && data.portalParty.length > 0);
   const rawMembers: WeddingPartyMember[] =
-    data.portalParty && data.portalParty.length > 0
+    usesPortalParty
       ? data.portalParty.map((m) => ({
           photo: m.photoUrl ?? "",
           name: m.name,
@@ -3239,14 +3240,14 @@ function WeddingParty({
       .sort((a, b) => a.p - b.p || a.index - b.index)
       .map((x) => x.item);
 
-  const groomSide = stableSort(
-    members.filter((m) => m.side === "groom"),
-    (m) => groomRolePriority(m.role),
-  );
-  const brideSide = stableSort(
-    members.filter((m) => m.side === "bride"),
-    (m) => brideRolePriority(m.role),
-  );
+  const groomMembers = members.filter((m) => m.side === "groom");
+  const brideMembers = members.filter((m) => m.side === "bride");
+  const groomSide = usesPortalParty
+    ? groomMembers
+    : stableSort(groomMembers, (m) => groomRolePriority(m.role));
+  const brideSide = usesPortalParty
+    ? brideMembers
+    : stableSort(brideMembers, (m) => brideRolePriority(m.role));
   const familySide = members.filter((m) => m.side === "family" || !m.side);
 
   // When a side has an odd number of members, the trailing card spans

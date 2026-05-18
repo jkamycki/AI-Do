@@ -1,9 +1,26 @@
-import { useState, useRef, useEffect, memo } from "react";
+import { useState, useRef, useEffect, memo, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@clerk/react";
 import { useUpload } from "@workspace/object-storage-web";
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Plus, Trash2, Edit2, Crown, Heart, RotateCcw, Camera, Loader2 } from "lucide-react";
+import { Users, Plus, Trash2, Edit2, Crown, Heart, RotateCcw, Camera, Loader2, GripVertical } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { HeadshotCropDialog } from "@/components/HeadshotCropDialog";
 
@@ -193,11 +210,13 @@ function MemberCard({
   onEdit,
   onDelete,
   onPhotoChange,
+  dragHandle,
 }: {
   member: Member;
   onEdit: () => void;
   onDelete: () => void;
   onPhotoChange: (memberId: number, photoUrl: string | null) => void;
+  dragHandle?: ReactNode;
 }) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -257,6 +276,7 @@ function MemberCard({
     <>
       <Card className="border-border/60 bg-card/95 shadow-sm transition-shadow hover:shadow-md">
         <CardContent className="relative flex min-h-[260px] flex-col items-center justify-between p-5 text-center">
+          {dragHandle}
           <div className="absolute right-3 top-3 flex gap-1">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Edit2 className="h-3.5 w-3.5" /></Button>
             <AlertDialog>
@@ -348,7 +368,47 @@ function MemberCard({
 
 // ─── PartyGroup ───────────────────────────────────────────────────────────────
 
-function PartyGroup({ title, members, icon: Icon, color, onEdit, onDelete, onPhotoChange }: {
+function SortableMemberCard({
+  member,
+  onEdit,
+  onDelete,
+  onPhotoChange,
+}: {
+  member: Member;
+  onEdit: () => void;
+  onDelete: () => void;
+  onPhotoChange: (id: number, photoUrl: string | null) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: member.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={isDragging ? "z-10 opacity-80" : undefined}
+    >
+      <MemberCard
+        member={member}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onPhotoChange={onPhotoChange}
+        dragHandle={
+          <button
+            type="button"
+            className="absolute left-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+            aria-label={`Drag ${member.name}`}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        }
+      />
+    </div>
+  );
+}
+
+function PartyGroup({ title, members, icon: Icon, color, onEdit, onDelete, onPhotoChange, onReorder }: {
   title: string;
   members: Member[];
   icon: React.ElementType;
@@ -356,7 +416,22 @@ function PartyGroup({ title, members, icon: Icon, color, onEdit, onDelete, onPho
   onEdit: (m: Member) => void;
   onDelete: (id: number) => void;
   onPhotoChange: (id: number, photoUrl: string | null) => void;
+  onReorder: (members: Member[]) => void;
 }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = members.findIndex((member) => member.id === active.id);
+    const newIndex = members.findIndex((member) => member.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    onReorder(arrayMove(members, oldIndex, newIndex));
+  }
+
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -372,17 +447,21 @@ function PartyGroup({ title, members, icon: Icon, color, onEdit, onDelete, onPho
           </CardContent>
         </Card>
       ) : (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 [&>:last-child:nth-child(odd)]:sm:col-span-2 [&>:last-child:nth-child(odd)]:sm:justify-self-center [&>:last-child:nth-child(odd)]:sm:w-full [&>:last-child:nth-child(odd)]:sm:max-w-[280px]">
-        {members.map(m => (
-          <MemberCard
-            key={m.id}
-            member={m}
-            onEdit={() => onEdit(m)}
-            onDelete={() => onDelete(m.id)}
-            onPhotoChange={onPhotoChange}
-          />
-        ))}
-      </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={members.map((member) => member.id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 [&>:last-child:nth-child(odd)]:sm:col-span-2 [&>:last-child:nth-child(odd)]:sm:justify-self-center [&>:last-child:nth-child(odd)]:sm:w-full [&>:last-child:nth-child(odd)]:sm:max-w-[280px]">
+              {members.map(m => (
+                <SortableMemberCard
+                  key={m.id}
+                  member={m}
+                  onEdit={() => onEdit(m)}
+                  onDelete={() => onDelete(m.id)}
+                  onPhotoChange={onPhotoChange}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   );
@@ -429,6 +508,26 @@ export default function WeddingParty() {
     onError: () => toast({ title: t("party.member_remove_failed"), variant: "destructive" }),
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: async (ordered: Member[]) => {
+      await Promise.all(
+        ordered.map((member, index) =>
+          authFetch(`${API}/api/wedding-party/${member.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sortOrder: index }),
+          }).then((res) => {
+            if (!res.ok) throw new Error("Failed to save order");
+          }),
+        ),
+      );
+    },
+    onError: () => {
+      toast({ title: "Could not save wedding party order", variant: "destructive" });
+      invalidate();
+    },
+  });
+
   /** Optimistically update the photo in the cache without a full refetch. */
   function handlePhotoChange(id: number, photoUrl: string | null) {
     queryClient.setQueryData<Member[]>(["wedding-party"], old =>
@@ -436,30 +535,18 @@ export default function WeddingParty() {
     );
   }
 
-  const groomRolePriority = (role: string): number => {
-    const value = role.toLowerCase().trim();
-    if (value === "groom") return 0;
-    if (value === "best man") return 1;
-    if (value.includes("groomsman") || value.includes("groomsmen")) return 2;
-    if (value.includes("ring bearer")) return 3;
-    return 99;
-  };
-  const brideRolePriority = (role: string): number => {
-    const value = role.toLowerCase().trim();
-    if (value === "bride") return 0;
-    if (value === "maid of honor" || value === "matron of honor") return 1;
-    if (value.includes("bridesmaid")) return 2;
-    if (value.includes("flower girl")) return 3;
-    return 99;
-  };
-  const stableSort = (items: Member[], priority: (role: string) => number) =>
-    items
-      .map((member, index) => ({ member, index, priority: priority(member.role ?? "") }))
-      .sort((a, b) => a.priority - b.priority || a.index - b.index)
-      .map((item) => item.member);
+  function handleReorder(orderedSideMembers: Member[]) {
+    const reorderedSide = orderedSideMembers.map((member, index) => ({ ...member, sortOrder: index }));
+    queryClient.setQueryData<Member[]>(["wedding-party"], old => {
+      if (!old) return old;
+      const byId = new Map(reorderedSide.map((member) => [member.id, member]));
+      return old.map((member) => byId.get(member.id) ?? member);
+    });
+    reorderMutation.mutate(reorderedSide);
+  }
 
-  const bridesSide = stableSort(members.filter(m => m.side === "bride"), brideRolePriority);
-  const groomsSide = stableSort(members.filter(m => m.side === "groom"), groomRolePriority);
+  const bridesSide = members.filter(m => m.side === "bride");
+  const groomsSide = members.filter(m => m.side === "groom");
 
   const stats = [
     { label: t("party.stat_total"), value: members.length, color: "text-primary" },
@@ -511,7 +598,7 @@ export default function WeddingParty() {
             <DialogHeader>
               <DialogTitle className="font-serif text-2xl text-primary">{t("party.add_party_member")}</DialogTitle>
             </DialogHeader>
-            <MemberForm onSubmit={d => addMutation.mutate(d)} isPending={addMutation.isPending} submitLabel={t("party.add_member")} />
+            <MemberForm onSubmit={d => addMutation.mutate({ ...d, sortOrder: members.length })} isPending={addMutation.isPending} submitLabel={t("party.add_member")} />
           </DialogContent>
         </Dialog>
       </div>
@@ -557,6 +644,7 @@ export default function WeddingParty() {
               onEdit={setEditMember}
               onDelete={id => deleteMutation.mutate(id)}
               onPhotoChange={handlePhotoChange}
+              onReorder={handleReorder}
             />
           </div>
           <div className="lg:pl-10">
@@ -568,6 +656,7 @@ export default function WeddingParty() {
               onEdit={setEditMember}
               onDelete={id => deleteMutation.mutate(id)}
               onPhotoChange={handlePhotoChange}
+              onReorder={handleReorder}
             />
           </div>
         </div>
