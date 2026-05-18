@@ -723,10 +723,10 @@ export default function OperationsCenterPage() {
         <p className="mt-1 text-sm font-medium text-[#4A3941]">Support tickets, contact messages, and feedback in one place</p>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-b border-border">
+      <div className="flex gap-1 overflow-x-auto border-b border-border pb-px">
         <button
           onClick={() => setActiveTab("tickets")}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+          className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
             ${activeTab === "tickets" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
         >
           <Ticket className="h-4 w-4" />
@@ -734,7 +734,7 @@ export default function OperationsCenterPage() {
         </button>
         <button
           onClick={() => setActiveTab("messages")}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+          className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
             ${activeTab === "messages" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
         >
           <Inbox className="h-4 w-4" />
@@ -747,7 +747,7 @@ export default function OperationsCenterPage() {
         </button>
         <button
           onClick={() => setActiveTab("workflow")}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+          className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
             ${activeTab === "workflow" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
         >
           <Users className="h-4 w-4" />
@@ -755,7 +755,7 @@ export default function OperationsCenterPage() {
         </button>
         <button
           onClick={() => setActiveTab("testActivity")}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+          className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
             ${activeTab === "testActivity" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
         >
           <FlaskConical className="h-4 w-4" />
@@ -763,7 +763,7 @@ export default function OperationsCenterPage() {
         </button>
         <button
           onClick={() => setActiveTab("launchPlan")}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+          className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
             ${activeTab === "launchPlan" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
         >
           <ListChecks className="h-4 w-4" />

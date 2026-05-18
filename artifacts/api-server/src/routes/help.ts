@@ -397,7 +397,11 @@ router.get("/help/support-tickets", requireAuth, async (req, res) => {
       .orderBy(desc(supportTickets.createdAt));
 
     res.json({
-      tickets: tickets.map(t => ({ ...t, createdAt: t.createdAt.toISOString(), updatedAt: t.updatedAt.toISOString() })),
+      tickets: tickets.map(t => ({
+        ...t,
+        createdAt: t.createdAt?.toISOString?.() ?? new Date().toISOString(),
+        updatedAt: t.updatedAt?.toISOString?.() ?? t.createdAt?.toISOString?.() ?? new Date().toISOString(),
+      })),
     });
   } catch (err) {
     req.log.error(err, "Failed to fetch support tickets");
