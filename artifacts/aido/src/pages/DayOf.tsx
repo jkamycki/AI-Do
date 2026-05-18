@@ -98,6 +98,17 @@ async function patchTimeline(id: number, events: TimelineEvent[]) {
   return res.json();
 }
 
+async function resetTimeline(id: number) {
+  const res = await authFetch(`/api/timeline/${id}/reset`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error || "Failed to reset timeline");
+  }
+  return res.json() as Promise<{ id: number; events: TimelineEvent[]; generatedAt: string }>;
+}
+
 function DayOfInner() {
   const { t } = useTranslation();
   const { data: timeline, isLoading: isLoadingTimeline } = useGetTimeline();
@@ -176,16 +187,22 @@ function DayOfInner() {
   const resetAll = async () => {
     if (!timeline?.id) return;
     if (!confirm(t("dayof.reset_confirm"))) return;
-    const original = timeline.events as TimelineEvent[];
     setIsSaving(true);
     try {
-      await patchTimeline(timeline.id, original);
-      setEditableEvents(original);
+      const restored = await resetTimeline(timeline.id);
+      setEditableEvents((restored.events as any[]).map(normalizeEvent));
+      setCompletedSet(new Set());
+      setActiveIndex(null);
+      cancelEditing();
       setHasUnsavedChanges(false);
-      qc.invalidateQueries({ queryKey: ["/api/timeline"] });
+      qc.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
       toast({ title: t("dayof.timeline_reset") });
-    } catch {
-      toast({ title: t("dayof.reset_failed"), variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: t("dayof.reset_failed"),
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -377,7 +394,7 @@ function DayOfInner() {
                             />
                           ) : (
                             <h4
-                              className={`font-serif text-lg leading-tight flex-1 cursor-pointer ${isActive ? 'text-primary' : isDone ? 'line-through text-muted-foreground' : 'text-foreground'}`}
+                              className={`font-serif text-lg leading-tight flex-1 cursor-pointer select-none ${isActive ? 'text-primary' : isDone ? 'line-through text-muted-foreground' : 'text-foreground'}`}
                               onClick={() => setActiveIndex(isActive ? null : i)}
                             >
                               {event.title}
@@ -421,7 +438,7 @@ function DayOfInner() {
                           />
                         ) : (
                           <p
-                            className={`text-sm mt-2 cursor-pointer ${isActive ? 'text-foreground' : 'text-muted-foreground line-clamp-2'}`}
+                            className={`text-sm mt-2 cursor-pointer select-none ${isActive ? 'text-foreground' : 'text-muted-foreground line-clamp-2'}`}
                             onClick={() => setActiveIndex(isActive ? null : i)}
                           >
                             {event.description}

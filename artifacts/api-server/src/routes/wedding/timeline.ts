@@ -335,17 +335,22 @@ router.post("/timeline/:id/reset", requireAuth, async (req, res) => {
       return;
     }
 
+    const events = buildFallbackTimeline(profile);
     const [updated] = await db
       .update(timelines)
-      .set({ events: [] })
+      .set({ events })
       .where(and(eq(timelines.id, id), eq(timelines.profileId, profile.id)))
       .returning();
 
     if (!updated) return res.status(404).json({ error: "Timeline not found" });
 
-    logActivity(profile.id, req.userId!, `Reset day-of timeline`, "timeline", {});
+    logActivity(profile.id, req.userId!, `Reset day-of timeline`, "timeline", { eventCount: events.length });
 
-    res.json({ success: true });
+    res.json({
+      id: updated.id,
+      events: updated.events,
+      generatedAt: updated.generatedAt.toISOString(),
+    });
   } catch (err) {
     req.log.error(err, "Failed to reset timeline");
     res.status(500).json({ error: "Internal server error" });
