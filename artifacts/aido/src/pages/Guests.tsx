@@ -3799,7 +3799,7 @@ export default function Guests({
                           >
                             <SelectTrigger
                               title={g.guestGroup || "No group"}
-                              className={`h-auto min-h-7 w-full px-2 py-1 text-left text-xs font-medium leading-tight border whitespace-normal [&>span]:whitespace-normal [&>span]:break-words [&>svg]:opacity-60 ${groupColorClasses(g.guestGroup)}`}
+                              className={`h-auto min-h-8 w-full items-start gap-1 px-2 py-1 text-left text-xs font-medium leading-tight border whitespace-normal [&>span]:line-clamp-none [&>span]:whitespace-normal [&>span]:break-words [&>span]:overflow-visible [&>span]:text-left [&>svg]:mt-0.5 [&>svg]:shrink-0 [&>svg]:opacity-60 ${groupColorClasses(g.guestGroup)}`}
                             >
                               <SelectValue placeholder="—" />
                             </SelectTrigger>
