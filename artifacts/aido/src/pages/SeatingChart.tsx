@@ -348,14 +348,14 @@ function TableCard({
                 );
                 e.dataTransfer.effectAllowed = "move";
               }}
-              className="group/g flex items-center gap-2 text-sm font-medium text-foreground rounded-md px-2 py-1.5 hover:bg-muted cursor-grab active:cursor-grabbing"
+              className="group/g flex items-start gap-2 text-sm font-medium text-foreground rounded-md px-2 py-1.5 hover:bg-muted cursor-grab active:cursor-grabbing"
               title={t("seating.drag_to_move")}
             >
-              <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 group-hover/g:text-foreground flex-shrink-0" />
-              <div className={`w-5 h-5 rounded-full ${accent.chip} text-[10px] flex items-center justify-center font-bold flex-shrink-0`}>
+              <GripVertical className="h-3.5 w-3.5 mt-1 text-muted-foreground/60 group-hover/g:text-foreground flex-shrink-0" />
+              <div className={`w-5 h-5 mt-0.5 rounded-full ${accent.chip} text-[10px] flex items-center justify-center font-bold flex-shrink-0`}>
                 {i + 1}
               </div>
-              <span className="flex-1 min-w-0 truncate">
+              <span className="flex-1 min-w-0 whitespace-normal break-words leading-snug">
                 {row.name}
                 {row.plusOneLabel && (
                   <span className="ml-1 font-semibold text-primary">{row.plusOneLabel}</span>
@@ -371,7 +371,7 @@ function TableCard({
                   }
                 }}
                 onClick={(e) => e.stopPropagation()}
-                className="text-xs bg-background text-foreground border border-border rounded px-1.5 py-0.5 cursor-pointer opacity-100 md:opacity-70 group-hover/g:opacity-100 focus:opacity-100 hover:border-primary focus:outline-none focus:border-primary"
+                className="mt-0.5 w-24 sm:w-28 flex-shrink-0 text-xs bg-background text-foreground border border-border rounded px-1.5 py-0.5 cursor-pointer opacity-100 md:opacity-70 group-hover/g:opacity-100 focus:opacity-100 hover:border-primary focus:outline-none focus:border-primary"
               >
                 <option value="">{t("seating.move_option")}</option>
                 {allTables
