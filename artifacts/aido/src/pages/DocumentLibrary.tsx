@@ -261,7 +261,7 @@ export default function DocumentLibrary() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="library">Document Library</TabsTrigger>
-            <TabsTrigger value="contracts">Contracts</TabsTrigger>
+            <TabsTrigger value="contracts">Contract Analyzer</TabsTrigger>
           </TabsList>
 
           <TabsContent value="library" className="mt-6">

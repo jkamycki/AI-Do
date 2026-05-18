@@ -57,7 +57,7 @@
     "budget": "Budget & Payments",
     "vendors": "Vendor Tracking",
     "emails": "Vendor Emails",
-    "contracts": "Contracts",
+    "contracts": "Contract Analyzer",
     "document_library": "Document Library",
     "guests_label": "Guest Experience",
     "guests": "Guest List & Invitations",
@@ -969,7 +969,7 @@
     "no_blocks_desc": "Add a block to share booking info with your out-of-town guests."
   },
   "contracts": {
-    "title": "Contracts",
+    "title": "Contract Analyzer",
     "subtitle": "Upload, analyze, and store every vendor contract.",
     "upload": "Upload Contract",
     "uploading": "Uploading…",

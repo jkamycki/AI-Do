@@ -1365,7 +1365,7 @@ const PORTAL_TRACKING_ROUTES: Array<{ pattern: RegExp } & PortalTrackingContext>
   { pattern: /^\/budget\/?$/, feature: "Budget & Payments", section: "Budget & Vendors", tool: "Budget & Payments", step: "Viewed budget and payments" },
   { pattern: /^\/checklist\/?$/, feature: "Checklist", section: "Planning", tool: "Checklist Manager", step: "Viewed checklist" },
   { pattern: /^\/vendors\/?$/, feature: "Vendor Tracking", section: "Budget & Vendors", tool: "Vendor Tracking", step: "Viewed vendor tracking" },
-  { pattern: /^\/contracts\/?$/, feature: "Contracts", section: "Budget & Vendors", tool: "Contract Analyzer", step: "Viewed contracts" },
+  { pattern: /^\/contracts\/?$/, feature: "Contract Analyzer", section: "Budget & Vendors", tool: "Contract Analyzer", step: "Viewed contract analyzer" },
   { pattern: /^\/documents\/?$/, feature: "Document Library", section: "Budget & Vendors", tool: "Document Library", step: "Viewed document library" },
   { pattern: /^\/mood-board\/?$/, feature: "Mood Board", section: "Planning", tool: "Mood Board Builder", step: "Viewed mood board" },
   { pattern: /^\/guests(?:\/[^/]+)?\/?$/, feature: "Guest List & Invitations", section: "Guest Experience", tool: "Guest List & Invitations", step: "Viewed guest list and invitations" },
