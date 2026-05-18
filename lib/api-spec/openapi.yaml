@@ -1479,6 +1479,9 @@ components:
           type: string
         guestCount:
           type: integer
+        planningFocus:
+          type: string
+          description: Free-form checklist focus, priorities, or constraints from the couple
       required:
         - weddingDate
         - weddingVibe

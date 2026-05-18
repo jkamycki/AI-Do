@@ -396,6 +396,10 @@ export const GenerateChecklistBody = zod.object({
   weddingDate: zod.string(),
   weddingVibe: zod.string(),
   guestCount: zod.number(),
+  planningFocus: zod
+    .string()
+    .optional()
+    .describe("Free-form checklist focus, priorities, or constraints from the couple"),
 });
 
 export const GenerateChecklistResponse = zod.object({

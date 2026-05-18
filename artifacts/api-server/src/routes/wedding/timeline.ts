@@ -59,7 +59,47 @@ function makeTimelineBlock(
   };
 }
 
-function buildFallbackTimeline(profile: typeof weddingProfiles.$inferSelect): TimelineBlock[] {
+function applyDayVisionToTimeline(events: TimelineBlock[], dayVision?: string): TimelineBlock[] {
+  const vision = (dayVision ?? "").trim();
+  if (!vision) return events;
+  const lower = vision.toLowerCase();
+  const enhanced = events.map((event) => ({ ...event }));
+
+  const appendNote = (category: string, note: string) => {
+    const target = enhanced.find(event => event.category === category) ?? enhanced[0];
+    if (!target) return;
+    target.notes = [target.notes, note].filter(Boolean).join(" ");
+  };
+
+  appendNote("preparation", `Planning note from couple: ${vision.slice(0, 220)}`);
+
+  if (/\b(calm|relax|slow|quiet|peaceful|intimate|private)\b/i.test(lower)) {
+    appendNote("preparation", "Keep the morning calm with extra buffer, fewer room changes, and limited visitors.");
+    appendNote("photos", "Prioritize relaxed portraits and avoid overpacking the photo list.");
+  }
+  if (/\b(party|dance|dancing|high[-\s]?energy|fun|celebrat)\b/i.test(lower)) {
+    appendNote("dancing", "Protect a high-energy dance block and keep formalities tight so the party starts quickly.");
+  }
+  if (/\b(first look|private look)\b/i.test(lower)) {
+    appendNote("photos", "Include a first look before ceremony portraits.");
+  }
+  if (/\b(no first look|aisle reveal)\b/i.test(lower)) {
+    appendNote("photos", "Avoid a first look and shift couple portraits after the ceremony.");
+  }
+  if (/\b(family|parents|grandparents|kids|children)\b/i.test(lower)) {
+    appendNote("photos", "Build in family photo time and keep important relatives close to the photo location.");
+  }
+  if (/\b(outdoor|garden|beach|rain|weather)\b/i.test(lower)) {
+    appendNote("ceremony", "Confirm weather backup timing, shade, water, and guest comfort for outdoor moments.");
+  }
+  if (/\b(church|chapel|travel|shuttle|transport|different location)\b/i.test(lower)) {
+    appendNote("travel", "Add clear travel buffers and confirm transportation timing between locations.");
+  }
+
+  return enhanced;
+}
+
+function buildFallbackTimeline(profile: typeof weddingProfiles.$inferSelect, dayVision?: string): TimelineBlock[] {
   const ceremony = parseTimeToMinutes(profile.ceremonyTime, 16 * 60);
   const reception = parseTimeToMinutes(profile.receptionTime, ceremony + 2 * 60);
   const venue = profile.venue || "Wedding venue";
@@ -67,7 +107,7 @@ function buildFallbackTimeline(profile: typeof weddingProfiles.$inferSelect): Ti
     ? profile.ceremonyVenueName || profile.ceremonyAddress || "Ceremony location"
     : venue;
 
-  return [
+  const events = [
     makeTimelineBlock(1, ceremony - 8 * 60, ceremony - 6 * 60, "Hair, makeup, and getting ready", "Wedding party begins hair, makeup, wardrobe prep, and detail photos.", "preparation", venue),
     makeTimelineBlock(2, ceremony - 6 * 60, ceremony - 5 * 60, "Vendor arrivals and setup", "Photo/video team, florist, music, and venue team begin setup and day-of coordination.", "vendors", venue),
     makeTimelineBlock(3, ceremony - 5 * 60, ceremony - 4 * 60, "Couple portraits and first look", "Optional first look, couple portraits, and immediate family photos.", "photos", venue),
@@ -82,6 +122,8 @@ function buildFallbackTimeline(profile: typeof weddingProfiles.$inferSelect): Ti
     makeTimelineBlock(12, reception + 135, reception + 240, "Open dancing and celebration", "Dance floor opens, cake cutting happens as scheduled, and the party continues.", "dancing", venue),
     makeTimelineBlock(13, reception + 240, reception + 270, "Final song and send-off", "Final song, private last dance or send-off, and guest departure.", "dancing", venue),
   ].filter((event) => parseTimeToMinutes(event.startTime, 0) >= 0);
+
+  return applyDayVisionToTimeline(events, dayVision);
 }
 
 router.get("/timeline", requireAuth, async (req, res) => {
@@ -172,6 +214,7 @@ Generate a complete wedding day schedule from early morning preparation through 
 - Departure
 
 Include realistic buffer time between events. Use specific locations where applicable.
+If a Couple's Vision for the Day is provided, make the timeline visibly reflect it. Add or adjust timing, notes, categories, and descriptions for those priorities instead of returning a generic wedding schedule.
 
 Return ONLY a valid JSON array (no markdown, no explanation) with this exact structure:
 [
@@ -212,7 +255,7 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
     }
 
     if (events.length === 0) {
-      events = buildFallbackTimeline(profile);
+      events = buildFallbackTimeline(profile, dayVision);
       req.log.warn("Timeline AI returned no usable events; using fallback timeline");
     }
 
@@ -240,7 +283,8 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
     try {
       const profile = await resolveProfile(req);
       if (profile) {
-        const events = buildFallbackTimeline(profile);
+        const fallbackDayVision = typeof req.body?.dayVision === "string" ? req.body.dayVision : undefined;
+        const events = buildFallbackTimeline(profile, fallbackDayVision);
         const created = await db.transaction(async (tx) => {
           await tx.delete(timelines).where(eq(timelines.profileId, profile.id));
           const [row] = await tx
@@ -335,7 +379,8 @@ router.post("/timeline/:id/reset", requireAuth, async (req, res) => {
       return;
     }
 
-    const events = buildFallbackTimeline(profile);
+    const resetVision = typeof req.body?.dayVision === "string" ? req.body.dayVision : undefined;
+    const events = buildFallbackTimeline(profile, resetVision);
     const [updated] = await db
       .update(timelines)
       .set({ events })

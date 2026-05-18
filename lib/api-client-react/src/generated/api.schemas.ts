@@ -236,6 +236,8 @@ export interface GenerateChecklistBody {
   weddingDate: string;
   weddingVibe: string;
   guestCount: number;
+  /** Free-form checklist focus, priorities, or constraints from the couple */
+  planningFocus?: string;
 }
 
 export interface ToggleChecklistItemBody {

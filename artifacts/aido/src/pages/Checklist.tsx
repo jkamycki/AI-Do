@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   useGetChecklist,
-  useGenerateChecklist,
   useToggleChecklistItem,
   useGetProfile,
   getGetChecklistQueryKey,
@@ -38,7 +37,6 @@ export default function Checklist() {
   const queryClient = useQueryClient();
   const { data: checklist, isLoading: isLoadingChecklist } = useGetChecklist();
   const { data: profile, isLoading: isLoadingProfile } = useGetProfile();
-  const generateChecklist = useGenerateChecklist();
   const toggleItem = useToggleChecklistItem();
 
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -52,6 +50,7 @@ export default function Checklist() {
 
   const [noteEditingId, setNoteEditingId] = useState<number | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
+  const [planningFocus, setPlanningFocus] = useState("");
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
@@ -114,21 +113,46 @@ export default function Checklist() {
     onError: () => toast({ title: t("checklist.reset_failed"), variant: "destructive" }),
   });
 
+  const generateChecklistWithFocus = useMutation({
+    mutationFn: async () => {
+      if (!profile) throw new Error(t("checklist.profile_required_desc"));
+      const r = await authFetch(`${API}/api/checklist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weddingDate: profile.weddingDate,
+          weddingVibe: profile.weddingVibe,
+          guestCount: profile.guestCount,
+          planningFocus: planningFocus.trim() || undefined,
+        }),
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        throw new Error((e as any)?.error ?? r.statusText);
+      }
+      return r.json();
+    },
+  });
+
   const handleGenerate = () => {
     if (!profile) {
       toast({ variant: "destructive", title: t("checklist.profile_required"), description: t("checklist.profile_required_desc") });
       return;
     }
-    generateChecklist.mutate(
-      { data: { weddingDate: profile.weddingDate, weddingVibe: profile.weddingVibe, guestCount: profile.guestCount } },
-      {
-        onSuccess: () => {
-          toast({ title: t("checklist.checklist_generated"), description: t("checklist.checklist_generated_desc") });
-          invalidate();
-        },
-        onError: () => toast({ variant: "destructive", title: t("checklist.generation_failed"), description: t("checklist.generation_failed_desc") }),
-      }
-    );
+    generateChecklistWithFocus.mutate(undefined, {
+      onSuccess: () => {
+        toast({ title: t("checklist.checklist_generated"), description: t("checklist.checklist_generated_desc") });
+        setPlanningFocus("");
+        invalidate();
+      },
+      onError: (err: unknown) => {
+        toast({
+          variant: "destructive",
+          title: t("checklist.generation_failed"),
+          description: err instanceof Error ? err.message : t("checklist.generation_failed_desc"),
+        });
+      },
+    });
   };
 
   const handleToggle = (id: number, currentStatus: boolean) => {
@@ -249,12 +273,12 @@ export default function Checklist() {
         <div className="flex gap-2 flex-wrap">
           <Button
             onClick={handleGenerate}
-            disabled={generateChecklist.isPending}
+            disabled={generateChecklistWithFocus.isPending}
             variant={hasChecklist ? "outline" : "default"}
             size="lg"
             data-testid="btn-generate-checklist"
           >
-            {generateChecklist.isPending ? (
+            {generateChecklistWithFocus.isPending ? (
               <span className="flex items-center gap-2">
                 <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
                 {t("checklist.generating")}
@@ -294,6 +318,48 @@ export default function Checklist() {
         </div>
       </div>
 
+      <Card className="border-none shadow-sm bg-card">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Wand2 className="h-4 w-4 text-primary flex-shrink-0" />
+            <p className="text-sm font-medium text-primary">
+              {t("checklist.focus_title", { defaultValue: "Checklist Focus" })}
+            </p>
+          </div>
+          <div className="relative">
+            <Textarea
+              placeholder={t("checklist.focus_placeholder", {
+                defaultValue: "Tell A.IDO what to focus on, like budget-friendly planning, destination wedding travel, DIY decor, guest list cleanup, vendor contracts, or final month tasks...",
+              })}
+              value={planningFocus}
+              onChange={e => setPlanningFocus(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (!generateChecklistWithFocus.isPending) handleGenerate();
+                }
+              }}
+              className="min-h-[80px] resize-none text-sm pr-12 pb-10"
+              data-testid="input-checklist-focus"
+            />
+            <Button
+              type="button"
+              size="icon"
+              onClick={handleGenerate}
+              disabled={generateChecklistWithFocus.isPending}
+              className="absolute bottom-2 right-2 h-8 w-8 rounded-full shadow-sm"
+              title={t("checklist.generate_button")}
+              aria-label={t("checklist.generate_button")}
+              data-testid="btn-submit-checklist-focus"
+            >
+              {generateChecklistWithFocus.isPending
+                ? <div className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                : <Wand2 className="h-4 w-4" />}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {!hasChecklist ? (
         <Card className="border-none shadow-md bg-card text-center py-16 px-6">
           <div className="max-w-md mx-auto space-y-6">
@@ -304,7 +370,7 @@ export default function Checklist() {
             <p className="text-muted-foreground">
               {t("checklist.no_checklist_desc")}
             </p>
-            <Button onClick={handleGenerate} disabled={generateChecklist.isPending} size="lg" className="px-8 shadow-md">
+            <Button onClick={handleGenerate} disabled={generateChecklistWithFocus.isPending} size="lg" className="px-8 shadow-md">
               {t("checklist.generate_button")}
             </Button>
           </div>
