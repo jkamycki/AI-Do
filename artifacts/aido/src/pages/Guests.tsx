@@ -3463,10 +3463,10 @@ export default function Guests({
                   <col className="w-[10%]" />
                   <col className="w-[9%]" />
                   <col className="w-[8%]" />
-                  <col className="w-[11%]" />
-                  <col className="w-[9%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[13%]" />
                   <col className="w-[7%]" />
-                  <col className="w-[9%]" />
+                  <col className="w-[6%]" />
                 </colgroup>
                 <TableHeader className="bg-muted/10">
                   <TableRow>
@@ -3798,7 +3798,8 @@ export default function Guests({
                             onValueChange={(v) => handleGroupChange(g, v)}
                           >
                             <SelectTrigger
-                              className={`h-7 w-full px-2 text-xs font-medium border whitespace-nowrap [&>svg]:opacity-60 ${groupColorClasses(g.guestGroup)}`}
+                              title={g.guestGroup || "No group"}
+                              className={`h-auto min-h-7 w-full px-2 py-1 text-left text-xs font-medium leading-tight border whitespace-normal [&>span]:whitespace-normal [&>span]:break-words [&>svg]:opacity-60 ${groupColorClasses(g.guestGroup)}`}
                             >
                               <SelectValue placeholder="—" />
                             </SelectTrigger>
