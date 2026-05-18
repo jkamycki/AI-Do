@@ -6,7 +6,7 @@ import * as z from "zod";
 import { useGetProfile, useSaveProfile, getGetProfileQueryKey, getGetBudgetQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@clerk/react";
+import { useAuth, useUser } from "@clerk/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Save, RotateCcw, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { COUNTRIES } from "@/lib/countries";
 import { getAddressFormat } from "@/lib/addressFormat";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
@@ -90,6 +91,7 @@ export default function Profile() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const { data: profile, isLoading, isFetching, isError, error, refetch } = useGetProfile({
     query: {
       queryKey: getGetProfileQueryKey(),
@@ -173,6 +175,9 @@ export default function Profile() {
   const onSubmit = (data: ProfileFormValues) => {
     saveProfile.mutate({ data: { ...data, accountType: "couple_individual" } }, {
       onSuccess: () => {
+        const code = LANG_NAME_TO_CODE[data.preferredLanguage] ?? "en";
+        i18n.changeLanguage(code);
+        localStorage.setItem(user?.id ? `aido_language_${user.id}` : "aido_language", code);
         toast({
           title: t("profile.saved_toast"),
           description: t("profile.saved_toast_desc"),

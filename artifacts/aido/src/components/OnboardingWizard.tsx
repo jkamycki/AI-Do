@@ -14,6 +14,7 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Heart, Calendar, MapPin, Users, DollarSign, Sparkles, ArrowRight, Check, Globe } from "lucide-react";
+import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 
 const ONBOARDING_KEY_PREFIX = "aido_onboarding_dismissed";
 
@@ -99,6 +100,8 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
   function handleSubmit(values: WizardValues) {
     saveProfile.mutate({ data: { ...values, accountType: "couple_individual" } }, {
       onSuccess: () => {
+        const code = LANG_NAME_TO_CODE[values.preferredLanguage] ?? "en";
+        i18n.changeLanguage(code);
         queryClient.invalidateQueries({ queryKey: getGetProfileQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
         queryClient.invalidateQueries({ queryKey: ["my-workspaces"] });
@@ -106,6 +109,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
           try {
             sessionStorage.setItem(`${ONBOARDING_KEY_PREFIX}:${user.id}`, "true");
             sessionStorage.removeItem("aido_signup_account_type");
+            localStorage.setItem(`aido_language_${user.id}`, code);
           } catch {}
         }
         onDismiss();

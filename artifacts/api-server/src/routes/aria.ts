@@ -4482,6 +4482,14 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       return;
     }
 
+    const { messages, preferredLanguage, timezone } = req.body as {
+      messages: Array<{ role: "user" | "assistant"; content: string }>;
+      preferredLanguage?: string;
+      timezone?: string;
+    };
+    const profile = await resolveProfile(req);
+    const effectivePreferredLanguage = preferredLanguage || profile?.preferredLanguage || "English";
+
     const dailyCheck = incrementDailyAria(userId);
     if (!dailyCheck.allowed) {
       sseHeaders();
@@ -4490,12 +4498,6 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       res.end();
       return;
     }
-
-    const { messages, preferredLanguage, timezone } = req.body as {
-      messages: Array<{ role: "user" | "assistant"; content: string }>;
-      preferredLanguage?: string;
-      timezone?: string;
-    };
 
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: "messages array is required" });
@@ -4524,8 +4526,8 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
 
     const send = (obj: unknown) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
 
-    const langInstruction = preferredLanguage && preferredLanguage !== "English"
-      ? `\n\nIMPORTANT: Always respond in ${preferredLanguage}, regardless of what language the user writes in.`
+    const langInstruction = effectivePreferredLanguage && effectivePreferredLanguage !== "English"
+      ? `\n\nIMPORTANT: Always respond in ${effectivePreferredLanguage}, regardless of what language the user writes in.`
       : "";
 
     // Keep the last 6 messages (3 exchanges) for meaningful context.
