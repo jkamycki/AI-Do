@@ -3,7 +3,7 @@ import multer from "multer";
 import { createRequire } from "node:module";
 import JSZip from "jszip";
 import he from "he";
-import { db, vendorContracts, vendors } from "@workspace/db";
+import { db, documents, vendorContracts, vendors } from "@workspace/db";
 import { eq, desc, and, sql, ne } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
@@ -26,6 +26,16 @@ type VendorFile = {
   contractFileName?: string;
 };
 
+type SelectedVendor = {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  primaryContact: string | null;
+  files: VendorFile[];
+};
+
 async function ensureVendorContractVendorColumn() {
   if (vendorContractVendorColumnReady) return;
   await db.execute(sql`ALTER TABLE vendor_contracts ADD COLUMN IF NOT EXISTS vendor_id integer`);
@@ -34,6 +44,70 @@ async function ensureVendorContractVendorColumn() {
 
 function normalizeContractFileName(name: string) {
   return name.trim().toLowerCase().replace(/\.[^.]+$/, "").replace(/\s+/g, " ");
+}
+
+function contractDocumentFileType(fileName: string, mimeType: string): string {
+  const name = fileName.toLowerCase();
+  if (mimeType.includes("pdf") || name.endsWith(".pdf")) return "PDF";
+  if (mimeType.includes("word") || name.endsWith(".docx")) return "DOCX";
+  if (mimeType.includes("text") || name.endsWith(".txt")) return "TXT";
+  return "FILE";
+}
+
+function cleanDocumentFileName(fileName: string): string {
+  return fileName.replace(/[^\w.\- ]+/g, " ").replace(/\s+/g, " ").trim() || "Wedding contract";
+}
+
+function isSpecified(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0 && !isNotSpecified(value);
+}
+
+function contractAnalysisToDocumentFields(
+  analysis: Record<string, unknown>,
+  vendor: SelectedVendor | null,
+): NonNullable<typeof documents.$inferInsert.extractedFields> {
+  const keyTerms = Array.isArray(analysis.keyTerms)
+    ? analysis.keyTerms.map((item) => asObject(item))
+    : [];
+  const deliverables = keyTerms
+    .filter((term) => /services|deliverables|included/i.test(asText(term.label)))
+    .map((term) => asText(term.value))
+    .filter((value) => value && !isNotSpecified(value));
+  const paymentTerms = asText(analysis.paymentTerms);
+  const paymentSchedule = isSpecified(paymentTerms)
+    ? [{ label: "Payment schedule", amount: null, dueDate: null, notes: paymentTerms }]
+    : [];
+  const suggestedTasks = [
+    ...paymentSchedule.map((payment) => ({
+      title: `Review payment terms for ${vendor?.name ?? "contract"}`,
+      task: `Review payment terms for ${vendor?.name ?? "contract"}`,
+      description: payment.notes ?? "",
+      dueDate: null,
+    })),
+    ...asTextArray(analysis.missingClauses).slice(0, 2).map((clause) => ({
+      title: `Review missing contract clause: ${clause}`,
+      task: `Review missing contract clause: ${clause}`,
+      description: "Contract Analyzer flagged this as a possible missing protection.",
+      dueDate: null,
+    })),
+  ];
+
+  return {
+    vendorName: vendor?.name ?? null,
+    paymentSchedule,
+    dueDates: [],
+    cancellationPolicy: isSpecified(analysis.cancellationPolicy) ? asText(analysis.cancellationPolicy) : null,
+    deliverables,
+    contactInfo: {
+      name: vendor?.primaryContact ?? null,
+      phone: vendor?.phone ?? null,
+      email: vendor?.email ?? null,
+      address: vendor?.address ?? null,
+    },
+    suggestedTasks,
+    suggestedVendorId: vendor?.id ?? null,
+    suggestedVendorName: vendor?.name ?? null,
+  };
 }
 
 const ALLOWED_CONTRACT_MIMES = new Set([
@@ -642,6 +716,7 @@ ${analysisRaw.slice(0, 12000)}`;
       : buildFallbackAnalysis(extractedText);
 
     const displayName = (req.body?.displayName as string | undefined)?.trim() || originalname;
+    const syncToDocumentLibrary = String(req.body?.syncToDocumentLibrary ?? "").toLowerCase() === "true";
     const rawVendorId = (req.body?.vendorId as string | undefined)?.trim();
     let vendorId: number | null = null;
     if (rawVendorId) {
@@ -651,10 +726,18 @@ ${analysisRaw.slice(0, 12000)}`;
       }
       vendorId = parsedVendorId;
     }
-    let selectedVendor: { id: number; files: VendorFile[] } | null = null;
+    let selectedVendor: SelectedVendor | null = null;
     if (vendorId) {
       const [vendor] = await db
-        .select({ id: vendors.id, files: vendors.files })
+        .select({
+          id: vendors.id,
+          name: vendors.name,
+          email: vendors.email,
+          phone: vendors.phone,
+          address: vendors.address,
+          primaryContact: vendors.primaryContact,
+          files: vendors.files,
+        })
         .from(vendors)
         .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, scope.profileId)))
         .limit(1);
@@ -700,6 +783,33 @@ ${analysisRaw.slice(0, 12000)}`;
           .where(and(eq(vendors.id, selectedVendor.id), eq(vendors.profileId, scope.profileId)));
       } catch (err) {
         req.log.warn({ err, vendorId: selectedVendor.id, contractId: saved.id }, "Failed to attach contract to vendor files");
+      }
+    }
+
+    if (syncToDocumentLibrary) {
+      try {
+        const documentFileName = cleanDocumentFileName(displayName);
+        const fileUrl = await storage.uploadObjectEntityFile(buffer, documentFileName, mimetype);
+        await db.insert(documents).values({
+          profileId: scope.profileId,
+          userId: scope.userId,
+          fileUrl,
+          fileName: documentFileName,
+          originalFileName: cleanDocumentFileName(originalname),
+          fileType: contractDocumentFileType(originalname, mimetype),
+          mimeType: mimetype,
+          fileSize: size,
+          uploadedBy: req.userId!,
+          linkedVendorId: selectedVendor?.id ?? null,
+          summary: asText(analysis.summary, "Contract Analyzer reviewed this contract. Open Extract Info for payment terms, cancellation policy, deliverables, and vendor contact details."),
+          extractedFields: contractAnalysisToDocumentFields(analysis, selectedVendor),
+          tags: ["Contract", "Contract Analyzer"],
+          folder: "Contracts",
+          visibility: [],
+          extractedText: extractedText.slice(0, 40000),
+        });
+      } catch (err) {
+        req.log.warn({ err, contractId: saved.id }, "Failed to sync contract to document library");
       }
     }
 

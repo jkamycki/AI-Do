@@ -4,6 +4,7 @@ import { authFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -540,6 +541,7 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingName, setPendingName] = useState("");
   const [pendingVendorId, setPendingVendorId] = useState<string>("none");
+  const [syncToDocumentLibrary, setSyncToDocumentLibrary] = useState(false);
   const { data: vendors = [] } = useListVendors();
 
   const { data: contracts = [], isLoading } = useQuery<Contract[]>({
@@ -590,6 +592,7 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
     setPendingFile(file);
     setPendingName(baseName);
     setPendingVendorId("none");
+    setSyncToDocumentLibrary(false);
   }
 
   async function confirmUpload() {
@@ -600,6 +603,7 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
       form.append("file", pendingFile);
       if (pendingName.trim()) form.append("displayName", pendingName.trim());
       if (pendingVendorId !== "none") form.append("vendorId", pendingVendorId);
+      form.append("syncToDocumentLibrary", syncToDocumentLibrary ? "true" : "false");
       const res = await authFetch(`${API}/api/contracts/upload`, { method: "POST", body: form });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -607,10 +611,17 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
       }
       await qc.invalidateQueries({ queryKey: ["contracts"] });
       await qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
-      toast({ title: t("contracts.contract_analyzed"), description: t("contracts.contract_analyzed_desc") });
+      if (syncToDocumentLibrary) await qc.invalidateQueries({ queryKey: ["documents"] });
+      toast({
+        title: t("contracts.contract_analyzed"),
+        description: syncToDocumentLibrary
+          ? t("contracts.contract_analyzed_synced_desc", { defaultValue: "Contract analyzed and copied to Document Library > Contracts." })
+          : t("contracts.contract_analyzed_desc"),
+      });
       setPendingFile(null);
       setPendingName("");
       setPendingVendorId("none");
+      setSyncToDocumentLibrary(false);
     } catch (err) {
       toast({ title: t("contracts.upload_failed"), description: err instanceof Error ? err.message : "", variant: "destructive" });
     } finally {
@@ -699,7 +710,7 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
               autoFocus
               value={pendingName}
               onChange={e => setPendingName(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") confirmUpload(); if (e.key === "Escape") { setPendingFile(null); setPendingName(""); setPendingVendorId("none"); } }}
+              onKeyDown={e => { if (e.key === "Enter") confirmUpload(); if (e.key === "Escape") { setPendingFile(null); setPendingName(""); setPendingVendorId("none"); setSyncToDocumentLibrary(false); } }}
               placeholder={t("contracts.contract_name_placeholder")}
             />
             <p className="text-xs text-muted-foreground">{t("contracts.display_name_hint")}</p>
@@ -725,11 +736,29 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
                 : t("contracts.no_vendors_hint", { defaultValue: "Add vendors in the Vendor List to assign contracts here." })}
             </p>
           </div>
+          <label className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 cursor-pointer">
+            <Checkbox
+              checked={syncToDocumentLibrary}
+              onCheckedChange={(checked) => setSyncToDocumentLibrary(checked === true)}
+              className="mt-0.5"
+              aria-label={t("contracts.sync_to_document_library", { defaultValue: "Sync to Document Library" })}
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium">
+                {t("contracts.sync_to_document_library", { defaultValue: "Copy to Document Library" })}
+              </span>
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                {t("contracts.sync_to_document_library_hint", {
+                  defaultValue: "Save a copy in the Contracts folder so it can be previewed, tagged, moved, and used with AI document tools.",
+                })}
+              </span>
+            </span>
+          </label>
           <div className="flex gap-2">
             <Button className="flex-1" onClick={confirmUpload} disabled={!pendingName.trim()}>
               <Upload className="h-4 w-4 mr-2" /> {t("contracts.analyze_and_save")}
             </Button>
-            <Button variant="outline" onClick={() => { setPendingFile(null); setPendingName(""); setPendingVendorId("none"); if (fileRef.current) fileRef.current.value = ""; }}>
+            <Button variant="outline" onClick={() => { setPendingFile(null); setPendingName(""); setPendingVendorId("none"); setSyncToDocumentLibrary(false); if (fileRef.current) fileRef.current.value = ""; }}>
               {t("contracts.cancel")}
             </Button>
           </div>
