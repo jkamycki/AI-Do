@@ -722,10 +722,12 @@ export default function Timeline() {
     generateTimeline.mutate(
       { data: { profileId: profile.id, dayVision: dayVision.trim() || undefined } },
       {
-        onSuccess: () => {
+        onSuccess: (created) => {
+          setLocalEvents((created.events as any[]).map(normalizeEvent));
+          updateDayVision("");
           toast({ title: t("timeline.generated_title"), description: t("timeline.generated_desc") });
           queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
           setIsDirty(false);
           setEditingEvent(null);
           setAddingEvent(false);
