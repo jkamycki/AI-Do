@@ -2787,56 +2787,6 @@ export default function Guests({
           </Dialog>
           {allGuests.length > 0 && (
             <>
-              <Button
-                variant="secondary"
-                className="w-full sm:w-auto justify-center whitespace-normal sm:whitespace-nowrap border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:bg-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 dark:disabled:bg-slate-900/50 dark:disabled:text-slate-500"
-                disabled={
-                  sendingSaveTheDates || saveTheDateEligible.length === 0
-                }
-                onClick={() => setConfirmBulkSend("saveTheDate")}
-              >
-                {sendingSaveTheDates ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Mail className="h-4 w-4 mr-2" />
-                )}
-                Send All Save-the-Dates
-                <Badge variant="secondary" className="ml-2 bg-white/70 text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600">
-                  {saveTheDateEligible.length}
-                </Badge>
-              </Button>
-              <Button
-                variant="secondary"
-                className="w-full sm:w-auto justify-center whitespace-normal sm:whitespace-nowrap border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:bg-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 dark:disabled:bg-slate-900/50 dark:disabled:text-slate-500"
-                disabled={sendingInvitations || invitationEligible.length === 0}
-                onClick={() => setConfirmBulkSend("invitation")}
-              >
-                {sendingInvitations ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4 mr-2" />
-                )}
-                Send All RSVP Invitations
-                <Badge variant="secondary" className="ml-2 bg-white/70 text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600">
-                  {invitationEligible.length}
-                </Badge>
-              </Button>
-              <Button
-                variant="secondary"
-                className="w-full sm:w-auto justify-center whitespace-normal sm:whitespace-nowrap border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:bg-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 dark:disabled:bg-slate-900/50 dark:disabled:text-slate-500"
-                disabled={sendingReminders || reminderEligible.length === 0}
-                onClick={() => setConfirmBulkSend("reminder")}
-              >
-                {sendingReminders ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Clock className="h-4 w-4 mr-2" />
-                )}
-                Send All RSVP Reminders
-                <Badge variant="secondary" className="ml-2 bg-white/70 text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600">
-                  {reminderEligible.length}
-                </Badge>
-              </Button>
               <AlertDialog
                 open={confirmBulkSend !== null}
                 onOpenChange={(open) => {
@@ -2973,19 +2923,78 @@ export default function Guests({
               />
             )}
           </div>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />{" "}
-              {t("guests.stat_attending")} ({summary.attending})
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" />{" "}
-              {t("guests.stat_declined")} ({summary.declined})
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30 inline-block" />{" "}
-              {t("guests.stat_pending")} ({summary.pending})
-            </span>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />{" "}
+                {t("guests.stat_attending")} ({summary.attending})
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" />{" "}
+                {t("guests.stat_declined")} ({summary.declined})
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30 inline-block" />{" "}
+                {t("guests.stat_pending")} ({summary.pending})
+              </span>
+            </div>
+            {allGuests.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-9 justify-center whitespace-nowrap border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:bg-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 dark:disabled:bg-slate-900/50 dark:disabled:text-slate-500"
+                  disabled={
+                    sendingSaveTheDates || saveTheDateEligible.length === 0
+                  }
+                  onClick={() => setConfirmBulkSend("saveTheDate")}
+                >
+                  {sendingSaveTheDates ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Mail className="h-4 w-4 mr-2" />
+                  )}
+                  Send Save-the-Dates
+                  <Badge variant="secondary" className="ml-2 bg-white/70 text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600">
+                    {saveTheDateEligible.length}
+                  </Badge>
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-9 justify-center whitespace-nowrap border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:bg-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 dark:disabled:bg-slate-900/50 dark:disabled:text-slate-500"
+                  disabled={sendingInvitations || invitationEligible.length === 0}
+                  onClick={() => setConfirmBulkSend("invitation")}
+                >
+                  {sendingInvitations ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  Send RSVP Invitations
+                  <Badge variant="secondary" className="ml-2 bg-white/70 text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600">
+                    {invitationEligible.length}
+                  </Badge>
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-9 justify-center whitespace-nowrap border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:bg-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 dark:disabled:bg-slate-900/50 dark:disabled:text-slate-500"
+                  disabled={sendingReminders || reminderEligible.length === 0}
+                  onClick={() => setConfirmBulkSend("reminder")}
+                >
+                  {sendingReminders ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Clock className="h-4 w-4 mr-2" />
+                  )}
+                  Send RSVP Reminders
+                  <Badge variant="secondary" className="ml-2 bg-white/70 text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600">
+                    {reminderEligible.length}
+                  </Badge>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}
