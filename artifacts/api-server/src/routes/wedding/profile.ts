@@ -54,7 +54,7 @@ router.post("/profile", requireAuth, async (req, res) => {
       workstationName,
       venue, location, venueCity, venueState, venueZip, venueCountry,
       venueStatus, venueDiscovery, venueBrainstorm,
-      guestCount, totalBudget, weddingVibe, accountType,
+      guestCount, totalBudget, weddingVibe,
       preferredLanguage, vendorBccEmail,
       ceremonyAtVenue, ceremonyVenueName, ceremonyAddress, ceremonyCity, ceremonyState, ceremonyZip,
     } = req.body;
@@ -79,9 +79,7 @@ router.post("/profile", requireAuth, async (req, res) => {
     const hasVendorBccEmail = Object.prototype.hasOwnProperty.call(req.body, "vendorBccEmail");
     const normalizedVendorBcc =
       typeof vendorBccEmail === "string" ? (vendorBccEmail.trim() || null) : null;
-    const normalizedAccountType =
-      accountType === "wedding_planner" ? "wedding_planner" : "couple_individual";
-    const hasAccountType = Object.prototype.hasOwnProperty.call(req.body, "accountType");
+    const normalizedAccountType = "couple_individual";
     const normalizedVenueStatus =
       venueStatus === "not_yet" || venueStatus === "deciding" ? venueStatus : "booked";
     const normalizedVenueDiscovery =
@@ -114,7 +112,7 @@ router.post("/profile", requireAuth, async (req, res) => {
           venueBrainstorm: normalizedVenueBrainstorm,
           ...ceremonyFields,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
-          ...(hasAccountType ? { accountType: normalizedAccountType } : {}),
+          accountType: normalizedAccountType,
           preferredLanguage: preferredLanguage ?? "English",
           ...(hasVendorBccEmail ? { vendorBccEmail: normalizedVendorBcc } : {}),
           updatedAt: new Date(),

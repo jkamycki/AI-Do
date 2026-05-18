@@ -16,7 +16,6 @@ import { useTracking } from "@/hooks/useTracking";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
-import PlannerDashboard from "@/pages/PlannerDashboard";
 import Profile from "@/pages/Profile";
 import Timeline from "@/pages/Timeline";
 import Budget from "@/pages/Budget";
@@ -809,7 +808,6 @@ function CustomSignUpForm() {
   const { signUp } = useSignUp();
   const signUpLoaded = !!signUp;
   const [, setLocation] = useLocation();
-  const [accountType, setAccountType] = useState<"couple_individual" | "wedding_planner">("couple_individual");
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -903,7 +901,7 @@ function CustomSignUpForm() {
       return;
     }
     try {
-      sessionStorage.setItem("aido_signup_account_type", accountType);
+      sessionStorage.removeItem("aido_signup_account_type");
       // Use Clerk's frontend SDK so the email-verification code is the proof
       // of ownership before any session is issued. This is the secure flow.
       // The password is generated under the hood with strong entropy and
@@ -1010,7 +1008,7 @@ function CustomSignUpForm() {
       try {
         sessionStorage.setItem("aido_oauth_intent", "signup");
         sessionStorage.setItem("aido_oauth_intent_at", String(Date.now()));
-        sessionStorage.setItem("aido_signup_account_type", accountType);
+        sessionStorage.removeItem("aido_signup_account_type");
       } catch {}
       const start = Date.now();
       while (!clerk.loaded && Date.now() - start < 8000) {
@@ -1189,45 +1187,6 @@ function CustomSignUpForm() {
         Welcome! Let's get your wedding planning started.
       </p>
 
-      <div style={{ marginBottom: "1rem" }}>
-        <label style={labelStyle}>How will you use A.IDO?</label>
-        <div style={{ display: "grid", gap: "0.6rem", gridTemplateColumns: "1fr 1fr" }}>
-          {[
-            {
-              value: "couple_individual" as const,
-              title: "Couple",
-              desc: "Planning my wedding",
-            },
-            {
-              value: "wedding_planner" as const,
-              title: "Planner",
-              desc: "Managing clients",
-            },
-          ].map((option) => {
-            const selected = accountType === option.value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setAccountType(option.value)}
-                style={{
-                  border: selected ? "1px solid #8D294D" : "1px solid rgba(177,108,142,0.35)",
-                  borderRadius: "0.65rem",
-                  background: selected ? "rgba(230,166,183,0.28)" : "#FFFFFF",
-                  color: "#3B1C2B",
-                  cursor: "pointer",
-                  padding: "0.75rem 0.7rem",
-                  textAlign: "left",
-                }}
-              >
-                <span style={{ display: "block", fontWeight: 700, fontSize: "0.9rem" }}>{option.title}</span>
-                <span style={{ display: "block", color: "#6F3E54", fontSize: "0.72rem", marginTop: "0.15rem" }}>{option.desc}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       <TestAccountCallout />
 
       {isLoaded && isSignedIn && (
@@ -1400,8 +1359,6 @@ type PortalTrackingContext = {
 
 const PORTAL_TRACKING_ROUTES: Array<{ pattern: RegExp } & PortalTrackingContext> = [
   { pattern: /^\/dashboard\/?$/, feature: "Dashboard", section: "Planning", tool: "Dashboard", step: "Viewed dashboard" },
-  { pattern: /^\/planner-dashboard\/?$/, feature: "Client Dashboard", section: "Planning", tool: "Planner Client Dashboard", step: "Viewed wedding planner client dashboard" },
-  { pattern: /^\/planner-documents\/?$/, feature: "Client Documents", section: "Planning", tool: "Planner Client Documents", step: "Viewed wedding planner client documents" },
   { pattern: /^\/profile\/?$/, feature: "Wedding Profile", section: "Planning", tool: "Profile Builder", step: "Viewed wedding profile" },
   { pattern: /^\/timeline\/?$/, feature: "Timeline", section: "Planning", tool: "Timeline", step: "Viewed timeline" },
   { pattern: /^\/budget\/?$/, feature: "Budget & Payments", section: "Budget & Vendors", tool: "Budget & Payments", step: "Viewed budget and payments" },
@@ -1738,8 +1695,6 @@ function Router() {
       <Route path="/w/:slug" component={PublicWebsite} />
       <Route path="/w/:slug/:section" component={PublicWebsite} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
-      <Route path="/planner-dashboard" component={() => <ProtectedRoute component={PlannerDashboard} />} />
-      <Route path="/planner-documents" component={() => <ProtectedRoute component={PlannerDashboard} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
       <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} />} />
       <Route path="/budget" component={() => <ProtectedRoute component={Budget} />} />

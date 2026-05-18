@@ -13,66 +13,7 @@ import { getProfileByUserId, resolveWorkspaceRole, hasMinRole } from "../lib/wor
 const router = Router();
 
 router.post("/workspaces", requireAuth, async (req, res) => {
-  try {
-    const primaryProfile = await getProfileByUserId(req.userId!);
-    if (!primaryProfile) {
-      res.status(400).json({ error: "Create your default workspace first." });
-      return;
-    }
-    if (primaryProfile.accountType !== "wedding_planner") {
-      res.status(403).json({ error: "Multiple workstations are available for Wedding Planner accounts." });
-      return;
-    }
-
-    const body = req.body as {
-      partner1Name?: string;
-      partner2Name?: string;
-      weddingDate?: string;
-      venue?: string;
-      location?: string;
-      workstationName?: string;
-    };
-    const partner1Name = body.partner1Name?.trim();
-    const partner2Name = body.partner2Name?.trim();
-    const weddingDate = body.weddingDate?.trim();
-
-    if (!partner1Name || !partner2Name || !weddingDate) {
-      res.status(400).json({ error: "Client names and wedding date are required." });
-      return;
-    }
-
-    const [created] = await db
-      .insert(weddingProfiles)
-      .values({
-        userId: req.userId!,
-        workstationName: body.workstationName?.trim() || `${partner2Name} & ${partner1Name}`,
-        partner1Name,
-        partner2Name,
-        weddingDate,
-        ceremonyTime: "16:00",
-        receptionTime: "18:00",
-        venue: body.venue?.trim() || "TBD",
-        location: body.location?.trim() || "TBD",
-        guestCount: 1,
-        totalBudget: "0",
-        weddingVibe: "Not set",
-        preferredLanguage: "English",
-        accountType: "wedding_planner",
-      })
-      .returning();
-
-    res.json({
-      profileId: created.id,
-      workstationName: created.workstationName,
-      partner1Name: created.partner1Name,
-      partner2Name: created.partner2Name,
-      weddingDate: created.weddingDate,
-      role: "owner",
-      accountType: created.accountType,
-    });
-  } catch (err) {
-    res.status(500).json({ error: "Internal server error" });
-  }
+  res.status(410).json({ error: "Multiple workstations are not available in the couples-only experience." });
 });
 
 router.patch("/workspaces/:profileId", requireAuth, async (req, res) => {

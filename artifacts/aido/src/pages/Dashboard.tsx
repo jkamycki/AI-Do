@@ -751,14 +751,6 @@ function DashboardContent() {
       setLocation(`/workspace/${activeWorkspace.profileId}`);
     }
   }, [activeWorkspace, isLoading, setLocation]);
-  useEffect(() => {
-    if (!activeWorkspace && summary?.profile?.accountType === "wedding_planner") {
-      setLocation("/planner-dashboard", { replace: true });
-    }
-  }, [activeWorkspace, summary?.profile?.accountType, setLocation]);
-  if (!activeWorkspace && summary?.profile?.accountType === "wedding_planner") {
-    return null;
-  }
   if (activeWorkspace && activeWorkspace.role !== "owner" && !isLoading) {
     return null;
   }
@@ -909,22 +901,6 @@ function DashboardContent() {
           <Link href="/profile" className="shrink-0">
             <Button size="sm" className="whitespace-nowrap" data-testid="btn-complete-profile">
               {t("dashboard.complete_profile")} <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-            </Button>
-          </Link>
-        </div>
-      )}
-
-      {summary.profile?.accountType === "wedding_planner" && (
-        <div className="rounded-2xl bg-card border border-primary/20 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="font-semibold text-foreground">Wedding Planner account</h3>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Use the workstation switcher in the sidebar to create and move between separate client weddings.
-            </p>
-          </div>
-          <Link href="/settings" className="shrink-0">
-            <Button variant="outline" size="sm" className="whitespace-nowrap">
-              Manage collaborators
             </Button>
           </Link>
         </div>
