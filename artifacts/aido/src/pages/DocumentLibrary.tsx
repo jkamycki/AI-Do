@@ -126,6 +126,8 @@ export default function DocumentLibrary() {
   const [previewDoc, setPreviewDoc] = useState<DocumentRecord | null>(null);
   const [summaryDoc, setSummaryDoc] = useState<DocumentRecord | null>(null);
   const [editingDoc, setEditingDoc] = useState<DocumentRecord | null>(null);
+  const [renameTarget, setRenameTarget] = useState<{ type: "folder" | "tag"; value: string } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   const [activeTab, setActiveTab] = useState("library");
   const [editState, setEditState] = useState({ fileName: "", folder: "General", tags: "", visibility: "" });
 
@@ -349,6 +351,60 @@ export default function DocumentLibrary() {
     onError: (err) => toast({ title: "Could not delete tag", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" }),
   });
 
+  const renameOrganizerMutation = useMutation({
+    mutationFn: async ({ target, nextName }: { target: { type: "folder" | "tag"; value: string }; nextName: string }) => {
+      const name = nextName.trim();
+      if (!name || name === "All") throw new Error("Enter a valid name.");
+      if (target.type === "folder") {
+        if (target.value === "General") throw new Error("The General folder cannot be renamed.");
+        if (folders.includes(name) && name !== target.value) throw new Error("A folder with that name already exists.");
+        const docsInFolder = documents.filter((doc) => (doc.folder || "General") === target.value);
+        await Promise.all(docsInFolder.map(async (doc) => {
+          const res = await authFetch(`${API}/api/documents/${doc.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ folder: name }),
+          });
+          const payload = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(payload.error ?? "Could not rename folder");
+        }));
+        return { type: target.type, oldName: target.value, newName: name, count: docsInFolder.length };
+      }
+
+      if (tags.includes(name) && name !== target.value) throw new Error("A tag with that name already exists.");
+      const docsWithTag = documents.filter((doc) => (doc.tags ?? []).includes(target.value));
+      await Promise.all(docsWithTag.map(async (doc) => {
+        const renamedTags = Array.from(new Set((doc.tags ?? []).map((tag) => tag === target.value ? name : tag)));
+        const res = await authFetch(`${API}/api/documents/${doc.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tags: renamedTags }),
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(payload.error ?? "Could not rename tag");
+      }));
+      return { type: target.type, oldName: target.value, newName: name, count: docsWithTag.length };
+    },
+    onSuccess: ({ type, oldName, newName, count }) => {
+      if (type === "folder") {
+        const next = Array.from(new Set([...customFolders.filter((folder) => folder !== oldName), newName])).sort((a, b) => a.localeCompare(b));
+        setCustomFolders(next);
+        saveCustomFolders(next);
+        if (folderFilter === oldName) setFolderFilter(newName);
+      } else if (tagFilter === oldName) {
+        setTagFilter(newName);
+      }
+      setRenameTarget(null);
+      setRenameValue("");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      toast({
+        title: type === "folder" ? "Folder renamed" : "Tag renamed",
+        description: count ? `Updated ${count} document${count === 1 ? "" : "s"}.` : undefined,
+      });
+    },
+    onError: (err) => toast({ title: "Could not rename", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" }),
+  });
+
   function rememberFolder(folder: string) {
     if (!folder || folder === "All" || folders.includes(folder)) return;
     setCustomFolders((current) => {
@@ -383,6 +439,16 @@ export default function DocumentLibrary() {
     rememberFolder(folder);
     setFolderFilter(folder);
     patchMutation.mutate({ id, body: { folder } });
+  }
+
+  function openRename(type: "folder" | "tag", value: string) {
+    setRenameTarget({ type, value });
+    setRenameValue(value);
+  }
+
+  function saveRename() {
+    if (!renameTarget) return;
+    renameOrganizerMutation.mutate({ target: renameTarget, nextName: renameValue });
   }
 
   return (
@@ -461,17 +527,30 @@ export default function DocumentLibrary() {
                     <div className="flex shrink-0 items-center gap-1">
                       <Badge variant="secondary">{folderCounts.get(folder) ?? 0}</Badge>
                       {folder !== "General" && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => deleteFolderMutation.mutate(folder)}
-                          disabled={deleteFolderMutation.isPending}
-                          aria-label={`Delete ${folder} folder`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={() => openRename("folder", folder)}
+                            disabled={renameOrganizerMutation.isPending}
+                            aria-label={`Rename ${folder} folder`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => deleteFolderMutation.mutate(folder)}
+                            disabled={deleteFolderMutation.isPending}
+                            aria-label={`Delete ${folder} folder`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -505,11 +584,22 @@ export default function DocumentLibrary() {
                         <Tag className="h-4 w-4 shrink-0" />
                         <span className="truncate">{tag}</span>
                       </button>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <Badge variant="secondary">{tagCounts.get(tag) ?? 0}</Badge>
-                        <Button
-                          type="button"
-                          variant="ghost"
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Badge variant="secondary">{tagCounts.get(tag) ?? 0}</Badge>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={() => openRename("tag", tag)}
+                            disabled={renameOrganizerMutation.isPending}
+                            aria-label={`Rename ${tag} tag`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-destructive"
                           onClick={() => deleteTagMutation.mutate(tag)}
@@ -703,6 +793,50 @@ export default function DocumentLibrary() {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditingDoc(null)}><X className="mr-2 h-4 w-4" />Cancel</Button>
               <Button onClick={saveEditor} disabled={patchMutation.isPending}>{patchMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!renameTarget} onOpenChange={(open) => {
+        if (!open) {
+          setRenameTarget(null);
+          setRenameValue("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename {renameTarget?.type === "folder" ? "folder" : "tag"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>{renameTarget?.type === "folder" ? "Folder name" : "Tag name"}</Label>
+              <Input
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveRename();
+                }}
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">
+                This updates every document using this {renameTarget?.type}.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRenameTarget(null);
+                  setRenameValue("");
+                }}
+              >
+                <X className="mr-2 h-4 w-4" />Cancel
+              </Button>
+              <Button onClick={saveRename} disabled={renameOrganizerMutation.isPending}>
+                {renameOrganizerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save
+              </Button>
             </div>
           </div>
         </DialogContent>
