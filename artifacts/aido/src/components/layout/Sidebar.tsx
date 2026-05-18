@@ -737,9 +737,11 @@ export function Sidebar() {
         </div>
 
         {activeWorkspace && (
-          <div className="mx-4 mb-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
-            <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">{t("sidebar.viewing_shared")}</p>
-            <p className="text-xs text-amber-800 font-medium truncate mt-0.5">
+          <div className="mx-4 mb-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
+            <p className="text-[10px] font-semibold text-primary uppercase tracking-wide">
+              {activeWorkspace.role === "owner" ? "Viewing Client" : t("sidebar.viewing_shared")}
+            </p>
+            <p className="text-xs text-foreground font-medium truncate mt-0.5">
               {activeWorkspace.workstationName || `${activeWorkspace.partner2Name} & ${activeWorkspace.partner1Name}`}
             </p>
           </div>
