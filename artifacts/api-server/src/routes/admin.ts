@@ -894,7 +894,7 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
         eventCount: events?.event_count ?? 0,
         onboarded,
         hasProfile: !!profile,
-        hasSharedWorkspace: !!collaborator,
+        hasSharedWorkspace: Boolean(collaborator || sharedWith.length > 0),
         collaboratorRole: collaborator?.role ?? null,
         partner1Name: profile?.partner1Name ?? null,
         partner2Name: profile?.partner2Name ?? null,

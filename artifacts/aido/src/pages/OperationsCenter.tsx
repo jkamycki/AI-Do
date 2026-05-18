@@ -136,6 +136,31 @@ type SignedUpUser = {
   }>;
 };
 
+function nameFromEmail(email: string | null): string {
+  const local = (email ?? "").split("@")[0] ?? "";
+  return local
+    .replace(/[._-]+/g, " ")
+    .replace(/\d+/g, "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function getSignedUpUserDisplayName(user: SignedUpUser): string {
+  const clerkName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+  if (clerkName) return clerkName;
+  return nameFromEmail(user.email) || user.email || user.id;
+}
+
+function workspaceSharingText(share: SignedUpUser["sharedWith"][number]): string {
+  const relatedName = share.displayName || share.email || "Unknown user";
+  return share.direction === "joined"
+    ? `Joined ${relatedName}'s workspace as ${share.role}`
+    : `Shared with ${relatedName} as ${share.role}`;
+}
+
 const LAUNCH_PLAN_STORAGE_KEY = "aido_operations_launch_plan_v1";
 const LAUNCH_PLAN_ASSIGNEES = [
   { name: "Joseph", email: "kamyckijoseph@gmail.com" },
@@ -794,7 +819,7 @@ export default function OperationsCenterPage() {
             ${activeTab === "users" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
         >
           <Users className="h-4 w-4" />
-          Signed-Up Users
+          Users & Sharing
         </button>
         <button
           onClick={() => setActiveTab("workflow")}
@@ -833,9 +858,9 @@ export default function OperationsCenterPage() {
         <div className="space-y-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h2 className="text-xl font-serif font-semibold text-[#24171D]">Signed-Up Users</h2>
+              <h2 className="text-xl font-serif font-semibold text-[#24171D]">Users & Workspace Sharing</h2>
               <p className="text-sm font-medium text-[#4A3941]">
-                Every Clerk account that signed up, including users who have not started a wedding workspace yet.
+                Every signed-up account, plus who owns, joined, or shared each workspace.
               </p>
             </div>
             <div className="w-full lg:w-80">
@@ -878,7 +903,7 @@ export default function OperationsCenterPage() {
           ) : (
             <div className="space-y-3">
               {signedUpUsers.map(user => {
-                const displayName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.email || user.id;
+                const displayName = getSignedUpUserDisplayName(user);
                 const workspaceName = [user.partner1Name, user.partner2Name].filter(Boolean).join(" & ");
                 return (
                   <Card key={user.id}>
@@ -905,11 +930,36 @@ export default function OperationsCenterPage() {
                           <p className="mt-2 text-sm text-[#7A5062]">
                             {[workspaceName || null, user.venue, user.weddingDate ? `Wedding: ${user.weddingDate}` : null].filter(Boolean).join(" | ") || "No wedding workspace started yet"}
                           </p>
-                          {user.sharedWith.length > 0 && (
-                            <p className="mt-2 text-xs font-medium text-[#4A3941]">
-                              Shared workspaces: {user.sharedWith.map(share => share.workspaceName).join(", ")}
-                            </p>
-                          )}
+                          <div className="mt-3 rounded-lg border border-[#F0D7E0] bg-white/70 p-3">
+                            <p className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Workspace sharing</p>
+                            {user.sharedWith.length > 0 ? (
+                              <div className="mt-2 space-y-2">
+                                {user.sharedWith.map((share, index) => (
+                                  <div key={`${share.profileId}-${share.userId ?? share.email ?? index}`} className="rounded-md bg-[#FFF8FA] px-3 py-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="text-sm font-semibold text-[#24171D]">{share.workspaceName}</span>
+                                      <Badge variant="outline" className="text-[10px]">
+                                        {share.direction === "joined" ? "Joined" : "Shared out"}
+                                      </Badge>
+                                    </div>
+                                    <p className="mt-1 text-xs font-medium text-[#4A3941]">
+                                      {workspaceSharingText(share)}
+                                      {share.email ? ` (${share.email})` : ""}
+                                    </p>
+                                    {share.acceptedAt && (
+                                      <p className="mt-1 text-[11px] text-[#7A5062]">
+                                        Accepted {new Date(share.acceptedAt).toLocaleString()}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-xs font-medium text-[#4A3941]">
+                                {user.hasProfile ? "Owns a workspace with no active shared users." : "No workspace sharing yet."}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <div className="rounded-lg border border-[#F0D7E0] bg-[#FFF8FA] px-4 py-3 text-xs font-medium text-[#4A3941] md:w-56">
                           <p><span className="font-semibold text-[#24171D]">Last active:</span> {user.lastActive ? new Date(user.lastActive).toLocaleString() : "Unknown"}</p>
