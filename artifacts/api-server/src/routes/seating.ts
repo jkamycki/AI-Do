@@ -206,9 +206,10 @@ router.post("/seating/generate", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Please add at least one guest." });
     }
 
+    const guestById = new Map(guests.map((guest) => [guest.id, guest]));
     const guestList = guests.map(g => {
-      const avoidNames = (g.avoidIds ?? []).map(id => guests.find(x => x.id === id)?.name ?? id);
-      const preferNames = (g.preferIds ?? []).map(id => guests.find(x => x.id === id)?.name ?? id);
+      const avoidNames = (g.avoidIds ?? []).map(id => guestById.get(id)?.name).filter((name): name is string => Boolean(name));
+      const preferNames = (g.preferIds ?? []).map(id => guestById.get(id)?.name).filter((name): name is string => Boolean(name));
       return `- ${g.name} (Group: ${g.group}${g.plusOne ? ", +1" : ""}${avoidNames.length ? `, AVOID: ${avoidNames.join(", ")}` : ""}${preferNames.length ? `, PREFER NEAR: ${preferNames.join(", ")}` : ""}${g.notes ? `, Notes: ${g.notes}` : ""})`;
     }).join("\n");
 
@@ -222,7 +223,7 @@ SETUP: ${tableCount} tables, ${seatsPerTable} seats per table max
 ${additionalNotes ? `ADDITIONAL NOTES: ${additionalNotes}` : ""}
 
 Rules:
-1. EVERY guest from the list above MUST appear in exactly one table — do not omit anyone, do not duplicate anyone. The sum of guests across all tables must equal ${guests.length}.
+1. EVERY guest from the list above MUST appear in exactly one table - do not omit anyone, do not duplicate anyone. The sum of guests across all tables must equal ${guests.length}.
 2. Never seat people with AVOID relationships at the same table
 3. Try to seat PREFER NEAR pairs at the same table
 4. Group family members and friend groups together
@@ -250,10 +251,9 @@ Use only the exact guest names from the list. Only create tables that have guest
       model: getModel(),
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
-      // Roughly: each guest entry costs ~6 tokens, plus a few hundred for
-      // table chrome / insights / warnings. 1500 was tight for >40 guests
-      // and could truncate the JSON; allow more headroom for big weddings.
-      max_completion_tokens: Math.max(2000, guests.length * 25 + 800),
+      // Large charts need enough response room for every guest name plus
+      // table notes. Tight caps truncate JSON and look like generation failed.
+      max_completion_tokens: Math.max(3500, guests.length * 60 + 1200),
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
