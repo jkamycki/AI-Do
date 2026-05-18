@@ -111,6 +111,50 @@ function normalizeSeatingResult(value: SeatingResult): SeatingResult {
   };
 }
 
+function normalizeSeatDisplayName(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function attachedGuestFromPlusOneNoteText(notes?: string | null) {
+  const match = (notes ?? "").match(/^Plus one for\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
+}
+
+function isGenericPlusOneName(mainGuestName: string, plusOneName: string) {
+  return normalizeSeatDisplayName(plusOneName) === normalizeSeatDisplayName(`${mainGuestName}'s Plus One`);
+}
+
+function plusOneDisplayLabel(mainGuestName: string, plusOneName: string) {
+  return isGenericPlusOneName(mainGuestName, plusOneName) ? "+1" : `+ ${plusOneName}`;
+}
+
+function seatingDisplayRows(guestNames: string[], seatingGuests: Guest[]) {
+  const plusOneRowsByName = new Map(
+    seatingGuests
+      .filter((guest) => attachedGuestFromPlusOneNoteText(guest.notes))
+      .map((guest) => [normalizeSeatDisplayName(guest.name), guest]),
+  );
+  const plusOneByMainName = new Map<string, Guest>();
+  plusOneRowsByName.forEach((guest) => {
+    const mainGuestName = attachedGuestFromPlusOneNoteText(guest.notes);
+    if (mainGuestName) plusOneByMainName.set(normalizeSeatDisplayName(mainGuestName), guest);
+  });
+  const namesAtTable = new Set(guestNames.map(normalizeSeatDisplayName));
+  return guestNames.flatMap((guestName) => {
+    const plusOneGuest = plusOneRowsByName.get(normalizeSeatDisplayName(guestName));
+    if (plusOneGuest) {
+      const mainGuestName = attachedGuestFromPlusOneNoteText(plusOneGuest.notes);
+      if (mainGuestName && namesAtTable.has(normalizeSeatDisplayName(mainGuestName))) return [];
+    }
+    const attachedPlusOne = plusOneByMainName.get(normalizeSeatDisplayName(guestName));
+    const showPlusOne = attachedPlusOne && namesAtTable.has(normalizeSeatDisplayName(attachedPlusOne.name));
+    return [{
+      name: guestName,
+      plusOneLabel: showPlusOne ? plusOneDisplayLabel(guestName, attachedPlusOne.name) : null,
+    }];
+  });
+}
+
 function GuestCard({
   guest,
   guests,
@@ -222,18 +266,21 @@ function TableCard({
   table,
   index,
   allTables,
+  seatingGuests,
   onMoveGuest,
   onUpdateTable,
 }: {
   table: SeatingTable;
   index: number;
   allTables: SeatingTable[];
+  seatingGuests: Guest[];
   onMoveGuest: (fromTableNumber: number, toTableNumber: number, guestName: string) => void;
   onUpdateTable: (tableNumber: number, updates: { theme?: string }) => void;
 }) {
   const { t } = useTranslation();
   const accent = TABLE_ACCENTS[index % TABLE_ACCENTS.length];
   const guestNames = Array.isArray(table.guests) ? table.guests : [];
+  const displayGuests = seatingDisplayRows(guestNames, seatingGuests);
   const [dragOver, setDragOver] = useState(false);
   const [editingTheme, setEditingTheme] = useState(false);
   const [themeDraft, setThemeDraft] = useState(table.theme ?? "");
@@ -310,14 +357,14 @@ function TableCard({
       </CardHeader>
       <CardContent className="px-3 pb-3 pt-0">
         <ul className="space-y-0.5">
-          {guestNames.map((g, i) => (
+          {displayGuests.map((row, i) => (
             <li
-              key={`${g}-${i}`}
+              key={`${row.name}-${i}`}
               draggable
               onDragStart={(e) => {
                 e.dataTransfer.setData(
                   "application/x-aido-guest",
-                  JSON.stringify({ fromTable: table.tableNumber, name: g }),
+                  JSON.stringify({ fromTable: table.tableNumber, name: row.name }),
                 );
                 e.dataTransfer.effectAllowed = "move";
               }}
@@ -328,14 +375,19 @@ function TableCard({
               <div className={`w-5 h-5 rounded-full ${accent.chip} text-[10px] flex items-center justify-center font-bold flex-shrink-0`}>
                 {i + 1}
               </div>
-              <span className="flex-1 truncate">{g}</span>
+              <span className="flex-1 min-w-0 truncate">
+                {row.name}
+                {row.plusOneLabel && (
+                  <span className="ml-1 font-semibold text-primary">{row.plusOneLabel}</span>
+                )}
+              </span>
               <select
-                aria-label={`Move ${g} to another table`}
+                aria-label={`Move ${row.name} to another table`}
                 value=""
                 onChange={(e) => {
                   const target = parseInt(e.target.value, 10);
                   if (!Number.isNaN(target) && target !== table.tableNumber) {
-                    onMoveGuest(table.tableNumber, target, g);
+                    onMoveGuest(table.tableNumber, target, row.name);
                   }
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -352,7 +404,7 @@ function TableCard({
               </select>
             </li>
           ))}
-          {guestNames.length === 0 && (
+          {displayGuests.length === 0 && (
             <li className="text-xs text-muted-foreground italic px-2 py-3 text-center border border-dashed border-border rounded-md">
               {t("seating.drop_guest_here")}
             </li>
@@ -461,21 +513,41 @@ export default function SeatingChartPage() {
 
     const fromTable = result.tables.find(t => t.tableNumber === fromTableNumber);
     if (!fromTable) return;
-    const fromIdx = fromTable.guests.indexOf(guestName);
-    if (fromIdx === -1) return;
+    const pairNames = new Set([guestName]);
+    const movingPlusOne = guests.find((guest) => normalizeSeatDisplayName(guest.name) === normalizeSeatDisplayName(guestName));
+    const attachedMainName = attachedGuestFromPlusOneNoteText(movingPlusOne?.notes);
+    if (attachedMainName) {
+      pairNames.add(attachedMainName);
+    } else {
+      guests.forEach((guest) => {
+        const mainName = attachedGuestFromPlusOneNoteText(guest.notes);
+        if (mainName && normalizeSeatDisplayName(mainName) === normalizeSeatDisplayName(guestName)) {
+          pairNames.add(guest.name);
+        }
+      });
+    }
+    const namesToMove = fromTable.guests.filter((name) => {
+      for (const pairName of pairNames) {
+        if (normalizeSeatDisplayName(name) === normalizeSeatDisplayName(pairName)) return true;
+      }
+      return false;
+    });
+    if (namesToMove.length === 0) return;
 
     const toTable = result.tables.find(t => t.tableNumber === toTableNumber);
     if (!toTable) return;
-    if (toTable.guests.includes(guestName)) return; // already at destination, no-op
+    const namesAlreadyAtDestination = new Set(toTable.guests.map(normalizeSeatDisplayName));
+    const moveNames = namesToMove.filter((name) => !namesAlreadyAtDestination.has(normalizeSeatDisplayName(name)));
+    if (moveNames.length === 0) return; // already at destination, no-op
 
     const tables = result.tables.map(t => {
       if (t.tableNumber === fromTableNumber) {
-        const next = t.guests.slice();
-        next.splice(fromIdx, 1);
+        const movingKeys = new Set(namesToMove.map(normalizeSeatDisplayName));
+        const next = t.guests.filter((name) => !movingKeys.has(normalizeSeatDisplayName(name)));
         return { ...t, guests: next };
       }
       if (t.tableNumber === toTableNumber) {
-        return { ...t, guests: [...t.guests, guestName] };
+        return { ...t, guests: [...t.guests, ...moveNames] };
       }
       return t;
     });
@@ -1210,9 +1282,10 @@ export default function SeatingChartPage() {
 
       // â”€â”€ Tables (2-column flow) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       for (const table of pdfResult.tables) {
+        const displayRows = seatingDisplayRows(table.guests, guests);
         const lineHeight = 14;
         const headerH = 18 + 8;
-        const rowsH = (table.guests.length || 1) * lineHeight;
+        const rowsH = (displayRows.length || 1) * lineHeight;
         const themeH = table.theme ? 14 : 0;
         const blockH = headerH + themeH + rowsH + 22;
 
@@ -1281,13 +1354,14 @@ export default function SeatingChartPage() {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(11);
         doc.setTextColor(...WHITE);
-        if (table.guests.length === 0) {
+        if (displayRows.length === 0) {
           doc.setTextColor(...WHITE_DIM);
           doc.text("(empty)", x, y);
           y += lineHeight;
         } else {
-          for (const guest of table.guests) {
-            const lines = doc.splitTextToSize(`- ${safeText(guest, "Guest")}`, colW);
+          for (const guest of displayRows) {
+            const plusOneText = guest.plusOneLabel ? ` ${guest.plusOneLabel}` : "";
+            const lines = doc.splitTextToSize(`- ${safeText(guest.name, "Guest")}${plusOneText}`, colW);
             doc.text(lines, x, y);
             y += lines.length * lineHeight;
           }
@@ -1661,6 +1735,7 @@ export default function SeatingChartPage() {
                 table={table}
                 index={i}
                 allTables={result.tables}
+                seatingGuests={guests}
                 onMoveGuest={moveGuest}
                 onUpdateTable={updateTable}
               />
