@@ -1398,7 +1398,7 @@ function VendorContactDialog({
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: vendors = [] } = useListVendors();
-  const [usePrimaryContact, setUsePrimaryContact] = useState(false);
+  const [primaryContactChoice, setPrimaryContactChoice] = useState<"manual" | "primary">("manual");
   const [additionalPhone, setAdditionalPhone] = useState("");
   const [additionalEmail, setAdditionalEmail] = useState("");
   const [form, setForm] = useState<VendorContactFormData>({
@@ -1419,7 +1419,7 @@ function VendorContactDialog({
       email: contact?.email ?? "",
       contactType: contact?.contactType ?? "General",
     });
-    setUsePrimaryContact(false);
+    setPrimaryContactChoice("manual");
     setAdditionalPhone("");
     setAdditionalEmail("");
   }, [contact]);
@@ -1435,12 +1435,12 @@ function VendorContactDialog({
       businessName: vendor?.name ?? current.businessName,
       contactType: "Vendor",
     }));
-    setUsePrimaryContact(false);
+    setPrimaryContactChoice("manual");
   }
 
-  function applyPrimaryContact(checked: boolean) {
-    setUsePrimaryContact(checked);
-    if (!checked || !selectedVendor) return;
+  function applyPrimaryContactChoice(choice: "manual" | "primary") {
+    setPrimaryContactChoice(choice);
+    if (choice !== "primary" || !selectedVendor) return;
     setForm((current) => ({
       ...current,
       name: selectedVendor.primaryContact?.trim() || current.name || selectedVendor.name,
@@ -1452,7 +1452,7 @@ function VendorContactDialog({
 
   function updateAdditionalPhone(value: string) {
     setAdditionalPhone(value);
-    if (!usePrimaryContact || !selectedVendor) return;
+    if (primaryContactChoice !== "primary" || !selectedVendor) return;
     setForm((current) => ({
       ...current,
       phone: joinContactValues([selectedVendor.phone, value]),
@@ -1461,7 +1461,7 @@ function VendorContactDialog({
 
   function updateAdditionalEmail(value: string) {
     setAdditionalEmail(value);
-    if (!usePrimaryContact || !selectedVendor) return;
+    if (primaryContactChoice !== "primary" || !selectedVendor) return;
     setForm((current) => ({
       ...current,
       email: joinContactValues([selectedVendor.email, value]),
@@ -1593,19 +1593,25 @@ function VendorContactDialog({
               </div>
               {selectedVendor && (
                 <>
-                  <label className="flex items-start gap-2 text-sm text-foreground">
-                    <Checkbox
-                      checked={usePrimaryContact}
-                      onCheckedChange={(checked) => applyPrimaryContact(checked === true)}
-                    />
-                    <span>
-                      {t("vendors.use_primary_vendor_contact", {
-                        defaultValue: "Use this vendor's primary contact",
-                      })}
-                      {selectedVendor.primaryContact ? `: ${selectedVendor.primaryContact}` : ""}
-                    </span>
-                  </label>
-                  {!usePrimaryContact && (
+                  <div className="space-y-1.5">
+                    <Label>{t("vendors.use_primary_vendor_contact", { defaultValue: "Use this vendor's primary contact" })}</Label>
+                    <Select value={primaryContactChoice} onValueChange={(value) => applyPrimaryContactChoice(value as "manual" | "primary")}>
+                      <SelectTrigger data-testid="select-primary-vendor-contact">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">
+                          {t("vendors.add_different_contact_name", { defaultValue: "Add a different contact name" })}
+                        </SelectItem>
+                        {selectedVendor.primaryContact?.trim() && (
+                          <SelectItem value="primary">
+                            {selectedVendor.primaryContact.trim()}
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {primaryContactChoice !== "primary" && (
                     <p className="text-xs text-muted-foreground">
                       {t("vendors.vendor_contact_custom_name_hint", { defaultValue: "Enter a different contact name above if this is not the primary contact." })}
                     </p>
