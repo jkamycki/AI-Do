@@ -209,18 +209,35 @@ function DayOfInner() {
   };
 
   const handleRegenerate = () => {
-    if (!profile?.id) return;
+    if (!profile?.id) {
+      toast({
+        title: "Wedding profile needed",
+        description: "Complete your wedding profile first so Aria can build the day-of timeline.",
+        variant: "destructive",
+      });
+      return;
+    }
     generateTimeline.mutate(
       { data: { profileId: profile.id, dayVision: dayVision.trim() || undefined } },
       {
-        onSuccess: () => {
+        onSuccess: (created) => {
+          setEditableEvents((created.events as any[]).map(normalizeEvent));
+          setCompletedSet(new Set());
+          setActiveIndex(null);
+          cancelEditing();
           qc.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
           setIsRegenerateOpen(false);
           setDayVision("");
           toast({ title: "Timeline regenerated" });
         },
-        onError: () => {
-          toast({ title: "Failed to regenerate timeline", variant: "destructive" });
+        onError: (err: unknown) => {
+          const e = err as { data?: { error?: string }; message?: string; status?: number };
+          const serverMsg = e?.data?.error ?? e?.message;
+          toast({
+            title: "Failed to regenerate timeline",
+            description: serverMsg || "Please check your wedding profile and try again.",
+            variant: "destructive",
+          });
         },
       }
     );
