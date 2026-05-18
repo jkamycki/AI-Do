@@ -1430,7 +1430,11 @@ function AnnouncementBanner({
       <div className="w-full overflow-hidden whitespace-nowrap text-center">
         {ctx.editable ? (
           <div
-            className="flex w-full items-center justify-center text-center"
+            className={
+              marqueeEnabled
+                ? "wsa-announcement-marquee"
+                : "flex w-full items-center justify-center whitespace-normal text-center"
+            }
             style={{ color: data.colorPalette.text }}
             aria-label={trimmed}
           >
@@ -1442,7 +1446,7 @@ function AnnouncementBanner({
                 ctx.editable ? "Click to add an announcement..." : ""
               }
               onCommit={(v) => ctx.onTextChange("_announcement", v)}
-              className="inline-block max-w-full text-center"
+              className={marqueeEnabled ? undefined : "inline-block max-w-full text-center"}
               style={{ color: data.colorPalette.text }}
               {...tspNoDelete(ctx, "_announcement", true)}
             />
