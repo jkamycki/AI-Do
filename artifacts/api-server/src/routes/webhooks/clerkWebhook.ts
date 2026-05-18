@@ -116,7 +116,7 @@ router.post("/webhooks/clerk", raw({ type: "*/*", limit: "1mb" }), async (req, r
       res.status(400).json({ error: "missing user id" });
       return;
     }
-    trackEvent(userId, "user_signup", {
+    await trackEvent(userId, "user_signup", {
       email: primaryEmailForClerkUser(event.data),
       source: "clerk_webhook",
     });

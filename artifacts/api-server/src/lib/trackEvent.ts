@@ -67,8 +67,11 @@ export async function trackEvent(
   eventType: string,
   metadata?: Record<string, unknown>
 ): Promise<void> {
-  db.insert(analyticsEvents)
-    .values({ userId, eventType, metadata: sanitizeAnalyticsMetadata(metadata) })
-    .then(() => pruneAnalyticsEvents(userId))
-    .catch((err: unknown) => logger.error({ err, eventType }, "[trackEvent] Failed to track"));
+  try {
+    await db.insert(analyticsEvents)
+      .values({ userId, eventType, metadata: sanitizeAnalyticsMetadata(metadata) });
+    await pruneAnalyticsEvents(userId);
+  } catch (err: unknown) {
+    logger.error({ err, eventType }, "[trackEvent] Failed to track");
+  }
 }
