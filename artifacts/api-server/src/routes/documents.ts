@@ -456,6 +456,41 @@ router.patch("/documents/:id", requireAuth, async (req, res) => {
   res.json({ document: updated[0] });
 });
 
+router.post("/documents/:id/copy", requireAuth, async (req, res) => {
+  const role = await resolveCallerRole(req);
+  if (!hasMinRole(role, "planner")) return res.status(403).json({ error: "Only owners, partners, and planners can copy documents." });
+  const profile = await resolveProfile(req);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const id = Number(req.params.id);
+  const rows = await db.select().from(documents).where(and(eq(documents.id, id), eq(documents.profileId, profile.id))).limit(1);
+  const doc = rows[0];
+  if (!doc) return res.status(404).json({ error: "Document not found" });
+
+  const copied = await db
+    .insert(documents)
+    .values({
+      profileId: profile.id,
+      userId: profile.userId,
+      fileUrl: doc.fileUrl,
+      fileName: doc.fileName,
+      originalFileName: doc.originalFileName,
+      fileType: doc.fileType,
+      mimeType: doc.mimeType,
+      fileSize: doc.fileSize,
+      uploadedBy: req.userId!,
+      linkedVendorId: doc.linkedVendorId,
+      summary: doc.summary,
+      extractedFields: doc.extractedFields,
+      tags: normalizeTags(req.body.tags ?? doc.tags),
+      folder: asText(req.body.folder, doc.folder || "General"),
+      visibility: normalizeVisibility(req.body.visibility ?? doc.visibility),
+      extractedText: doc.extractedText,
+    })
+    .returning();
+
+  res.status(201).json({ document: copied[0] });
+});
+
 router.delete("/documents/:id", requireAuth, async (req, res) => {
   const role = await resolveCallerRole(req);
   if (!hasMinRole(role, "planner")) return res.status(403).json({ error: "Only owners, partners, and planners can delete documents." });

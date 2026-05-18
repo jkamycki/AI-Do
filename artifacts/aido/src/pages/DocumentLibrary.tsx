@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import Contracts from "./Contracts";
 import {
   CheckSquare,
+  Copy,
   Download,
   Eye,
   FileImage,
@@ -271,6 +272,55 @@ export default function DocumentLibrary() {
     actionMutation.mutate({ id: doc.id, action: "link-vendor", body: { vendorId: Number(vendorId) } });
   }
 
+  const copyMutation = useMutation({
+    mutationFn: async ({ id, folder, tags }: { id: number; folder: string; tags?: string[] }) => {
+      const res = await authFetch(`${API}/api/documents/${id}/copy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder, tags }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error ?? "Could not copy document");
+      return { folder };
+    },
+    onSuccess: ({ folder }) => {
+      rememberFolder(folder);
+      setFolderFilter(folder);
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      toast({ title: "Document copied", description: `A copy was added to ${folder}.` });
+    },
+    onError: (err) => toast({ title: "Could not copy document", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" }),
+  });
+
+  const deleteFolderMutation = useMutation({
+    mutationFn: async (folder: string) => {
+      if (folder === "General" || folder === "All") throw new Error("This folder cannot be deleted.");
+      const docsInFolder = documents.filter((doc) => (doc.folder || "General") === folder);
+      await Promise.all(docsInFolder.map(async (doc) => {
+        const res = await authFetch(`${API}/api/documents/${doc.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folder: "General" }),
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(payload.error ?? "Could not update a document in this folder");
+      }));
+      return { folder, movedCount: docsInFolder.length };
+    },
+    onSuccess: ({ folder, movedCount }) => {
+      const next = customFolders.filter((item) => item !== folder);
+      setCustomFolders(next);
+      saveCustomFolders(next);
+      if (folderFilter === folder) setFolderFilter("All");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      toast({
+        title: "Folder deleted",
+        description: movedCount ? `${movedCount} document${movedCount === 1 ? "" : "s"} moved to General.` : undefined,
+      });
+    },
+    onError: (err) => toast({ title: "Could not delete folder", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" }),
+  });
+
   function rememberFolder(folder: string) {
     if (!folder || folder === "All" || folders.includes(folder)) return;
     setCustomFolders((current) => {
@@ -297,7 +347,7 @@ export default function DocumentLibrary() {
     toast({ title: "Folder created", description: `Drag documents into ${folder} to organize them.` });
   }
 
-  function moveDocumentToFolder(event: DragEvent<HTMLButtonElement>, folder: string) {
+  function moveDocumentToFolder(event: DragEvent<HTMLDivElement>, folder: string) {
     event.preventDefault();
     setDragOverFolder(null);
     const id = Number(event.dataTransfer.getData("text/plain"));
@@ -362,10 +412,8 @@ export default function DocumentLibrary() {
               </div>
               <div className="space-y-1 pt-1">
                 {folders.filter((folder) => folder !== "All").map((folder) => (
-                  <button
+                  <div
                     key={folder}
-                    type="button"
-                    onClick={() => setFolderFilter(folder)}
                     onDragOver={(event) => {
                       event.preventDefault();
                       setDragOverFolder(folder);
@@ -373,20 +421,35 @@ export default function DocumentLibrary() {
                     onDragLeave={() => setDragOverFolder((current) => (current === folder ? null : current))}
                     onDrop={(event) => moveDocumentToFolder(event, folder)}
                     className={cn(
-                      "flex min-h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                      "flex min-h-10 w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-left text-sm transition-colors",
                       folderFilter === folder ? "border-primary bg-primary/10 text-primary" : "border-border bg-background hover:bg-muted",
                       dragOverFolder === folder && "border-primary bg-primary/15",
                     )}
                   >
-                    <span className="flex min-w-0 items-center gap-2">
+                    <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setFolderFilter(folder)}>
                       <Folder className="h-4 w-4 shrink-0" />
                       <span className="truncate">{folder}</span>
-                    </span>
-                    <Badge variant="secondary" className="ml-2 shrink-0">{folderCounts.get(folder) ?? 0}</Badge>
-                  </button>
+                    </button>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Badge variant="secondary">{folderCounts.get(folder) ?? 0}</Badge>
+                      {folder !== "General" && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteFolderMutation.mutate(folder)}
+                          disabled={deleteFolderMutation.isPending}
+                          aria-label={`Delete ${folder} folder`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">Drag a document card onto a folder to move it.</p>
+              <p className="text-xs text-muted-foreground">Drag a document card onto a folder to move it. Delete moves documents back to General.</p>
             </div>
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-sm"><Tag className="h-4 w-4" /> Tag</Label>
@@ -457,6 +520,17 @@ export default function DocumentLibrary() {
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Button variant="ghost" size="sm" className="gap-2" onClick={() => openEditor(doc)}><Pencil className="h-4 w-4" /> Organize / Tags</Button>
+                          <Select onValueChange={(folder) => copyMutation.mutate({ id: doc.id, folder, tags: doc.tags ?? [] })} disabled={copyMutation.isPending}>
+                            <SelectTrigger className="h-9 w-[165px]">
+                              <Copy className="mr-2 h-4 w-4" />
+                              <SelectValue placeholder="Copy to folder" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {folders.filter((folder) => folder !== "All").map((folder) => (
+                                <SelectItem key={folder} value={folder}>{folder}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <Button
                             variant="ghost"
                             size="sm"
