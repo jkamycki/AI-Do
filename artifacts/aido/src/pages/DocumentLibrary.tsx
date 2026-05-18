@@ -662,7 +662,7 @@ export default function DocumentLibrary() {
                 <p className="mt-1 text-sm text-muted-foreground">Upload a PDF, DOCX, JPG, or PNG to start building your library.</p>
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] gap-4">
                 {filtered.map((doc) => {
                   const extracted = fields(doc);
                   return (
@@ -676,29 +676,33 @@ export default function DocumentLibrary() {
                       className="rounded-lg border-border/70"
                     >
                       <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex min-w-0 gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                              <DocumentIcon type={doc.fileType} />
+                        <div className="flex min-w-0 items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <DocumentIcon type={doc.fileType} />
+                          </div>
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="flex min-w-0 items-start gap-2">
+                              <CardTitle className="min-w-0 flex-1 truncate text-base leading-6">{doc.fileName}</CardTitle>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0 text-muted-foreground hover:text-primary"
+                                onClick={() => openDocumentRename(doc)}
+                                aria-label={`Rename ${doc.fileName}`}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
                             </div>
-                            <div className="min-w-0">
-                              <div className="flex min-w-0 items-center gap-1.5">
-                                <CardTitle className="truncate text-base">{doc.fileName}</CardTitle>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-primary"
-                                  onClick={() => openDocumentRename(doc)}
-                                  aria-label={`Rename ${doc.fileName}`}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                              <p className="mt-1 text-xs text-muted-foreground">{doc.fileType} | {formatDate(doc.createdAt)} {formatSize(doc.fileSize) && `| ${formatSize(doc.fileSize)}`}</p>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Badge variant="outline" className="max-w-full truncate">{doc.folder || "General"}</Badge>
+                              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{doc.fileType}</span>
+                              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{formatDate(doc.createdAt)}</span>
+                              {formatSize(doc.fileSize) && (
+                                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{formatSize(doc.fileSize)}</span>
+                              )}
                             </div>
                           </div>
-                          <Badge variant="outline">{doc.folder || "General"}</Badge>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
