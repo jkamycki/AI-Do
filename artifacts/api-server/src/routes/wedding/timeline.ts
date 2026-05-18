@@ -37,6 +37,10 @@ function minutesToTime(total: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function makeTimelineBlock(
   id: number,
   start: number,
@@ -59,11 +63,59 @@ function makeTimelineBlock(
   };
 }
 
-function applyDayVisionToTimeline(events: TimelineBlock[], dayVision?: string): TimelineBlock[] {
+function extractVenueOverride(dayVision?: string): string | null {
+  const vision = (dayVision ?? "").trim();
+  if (!vision) return null;
+
+  const patterns = [
+    /\b(?:at|on|for|in)\s+(?:the\s+)?([A-Z][A-Za-z0-9'&.\-\s]{2,80}?(?:estate|manor|venue|hotel|hall|garden|gardens|barn|farm|club|resort|winery|vineyard|house|inn|museum|loft|terrace|castle|chapel|church|beach|ballroom))\b/i,
+    /\b(?:venue|location)\s*(?:is|:|-)\s*([A-Za-z0-9'&.\-\s]{2,80})$/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = vision.match(pattern);
+    const raw = match?.[1]?.trim();
+    if (raw) {
+      return raw
+        .replace(/[.!,;:]$/g, "")
+        .replace(/\s+/g, " ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    }
+  }
+
+  return null;
+}
+
+function applyDayVisionToTimeline(
+  events: TimelineBlock[],
+  dayVision?: string,
+  savedVenue?: string | null,
+): TimelineBlock[] {
   const vision = (dayVision ?? "").trim();
   if (!vision) return events;
   const lower = vision.toLowerCase();
+  const venueOverride = extractVenueOverride(vision);
   const enhanced = events.map((event) => ({ ...event }));
+
+  if (venueOverride) {
+    const savedVenuePattern = savedVenue?.trim()
+      ? new RegExp(escapeRegExp(savedVenue.trim()), "gi")
+      : null;
+    for (const event of enhanced) {
+      const currentLocation = String(event.location ?? "").trim();
+      if (!currentLocation || !savedVenue || currentLocation.toLowerCase() === savedVenue.toLowerCase()) {
+        event.location = venueOverride;
+      } else if (savedVenuePattern && currentLocation.match(savedVenuePattern)) {
+        event.location = currentLocation.replace(savedVenuePattern, venueOverride);
+      }
+      event.description = savedVenuePattern
+        ? String(event.description ?? "").replace(savedVenuePattern, venueOverride)
+        : String(event.description ?? "");
+      event.notes = savedVenuePattern
+        ? String(event.notes ?? "").replace(savedVenuePattern, venueOverride)
+        : String(event.notes ?? "");
+    }
+  }
 
   const appendNote = (category: string, note: string) => {
     const target = enhanced.find(event => event.category === category) ?? enhanced[0];
@@ -72,6 +124,9 @@ function applyDayVisionToTimeline(events: TimelineBlock[], dayVision?: string): 
   };
 
   appendNote("preparation", `Planning note from couple: ${vision.slice(0, 220)}`);
+  if (venueOverride) {
+    appendNote("ceremony", `Use ${venueOverride} as the working venue/location from the latest prompt.`);
+  }
 
   if (/\b(calm|relax|slow|quiet|peaceful|intimate|private)\b/i.test(lower)) {
     appendNote("preparation", "Keep the morning calm with extra buffer, fewer room changes, and limited visitors.");
@@ -102,7 +157,7 @@ function applyDayVisionToTimeline(events: TimelineBlock[], dayVision?: string): 
 function buildFallbackTimeline(profile: typeof weddingProfiles.$inferSelect, dayVision?: string): TimelineBlock[] {
   const ceremony = parseTimeToMinutes(profile.ceremonyTime, 16 * 60);
   const reception = parseTimeToMinutes(profile.receptionTime, ceremony + 2 * 60);
-  const venue = profile.venue || "Wedding venue";
+  const venue = extractVenueOverride(dayVision) || profile.venue || "Wedding venue";
   const ceremonyLocation = profile.ceremonyAtVenue === false
     ? profile.ceremonyVenueName || profile.ceremonyAddress || "Ceremony location"
     : venue;
@@ -123,7 +178,7 @@ function buildFallbackTimeline(profile: typeof weddingProfiles.$inferSelect, day
     makeTimelineBlock(13, reception + 240, reception + 270, "Final song and send-off", "Final song, private last dance or send-off, and guest departure.", "dancing", venue),
   ].filter((event) => parseTimeToMinutes(event.startTime, 0) >= 0);
 
-  return applyDayVisionToTimeline(events, dayVision);
+  return applyDayVisionToTimeline(events, dayVision, profile.venue);
 }
 
 router.get("/timeline", requireAuth, async (req, res) => {
@@ -197,7 +252,7 @@ router.post("/timeline", requireAuth, async (req, res) => {
 - Date: ${profile.weddingDate}
 - Ceremony Time: ${profile.ceremonyTime}
 - Reception Time: ${profile.receptionTime}
-- Venue: ${profile.venue}
+- Saved Profile Venue: ${profile.venue}
 - Location: ${profile.location}
 - Guest Count: ${profile.guestCount}
 - Wedding Style: ${profile.weddingVibe}${dayVision ? `\n- Couple's Vision for the Day: ${dayVision}` : ""}
@@ -214,7 +269,7 @@ Generate a complete wedding day schedule from early morning preparation through 
 - Departure
 
 Include realistic buffer time between events. Use specific locations where applicable.
-If a Couple's Vision for the Day is provided, make the timeline visibly reflect it. Add or adjust timing, notes, categories, and descriptions for those priorities instead of returning a generic wedding schedule.
+If a Couple's Vision for the Day is provided, it is the user's latest instruction and must override saved profile details when they conflict. If the vision names a venue, location, estate, manor, hotel, or place, use that place in event locations and descriptions instead of the saved profile venue. Make the timeline visibly reflect the request. Add or adjust timing, notes, categories, locations, and descriptions for those priorities instead of returning a generic wedding schedule.
 
 Return ONLY a valid JSON array (no markdown, no explanation) with this exact structure:
 [
@@ -257,6 +312,8 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
     if (events.length === 0) {
       events = buildFallbackTimeline(profile, dayVision);
       req.log.warn("Timeline AI returned no usable events; using fallback timeline");
+    } else {
+      events = applyDayVisionToTimeline(events, dayVision, profile.venue);
     }
 
     // Replace any existing timelines for this profile so regenerate doesn't pile up duplicate rows.
