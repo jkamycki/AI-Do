@@ -97,6 +97,24 @@ function fields(doc?: DocumentRecord | null): ExtractedFields {
   return doc?.extractedFields ?? {};
 }
 
+const TAG_COLOR_CLASSES = [
+  "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-50",
+  "border-pink-200 bg-pink-50 text-pink-800 hover:bg-pink-50",
+  "border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-50",
+  "border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-50",
+  "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-50",
+  "border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-50",
+  "border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-50",
+  "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-50",
+  "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50",
+  "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-50",
+];
+
+function tagColorClass(tag: string) {
+  const hash = tag.toLowerCase().split("").reduce((total, char) => total + char.charCodeAt(0), 0);
+  return TAG_COLOR_CLASSES[hash % TAG_COLOR_CLASSES.length];
+}
+
 function looksLikeRawExtractedText(summary?: string | null) {
   if (!summary) return false;
   const separators = (summary.match(/\/\/|\s\|\s/g) ?? []).length;
@@ -633,15 +651,15 @@ export default function DocumentLibrary() {
                       key={tag}
                       className={cn(
                         "flex min-h-10 w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-left text-sm transition-colors",
-                        tagFilter === tag ? "border-primary bg-primary/10 text-primary" : "border-border bg-background hover:bg-muted",
+                        tagFilter === tag ? tagColorClass(tag) : "border-border bg-background hover:bg-muted",
                       )}
                     >
                       <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setTagFilter(tag)}>
-                        <Tag className="h-4 w-4 shrink-0" />
+                        <Tag className={cn("h-4 w-4 shrink-0", tagFilter === tag && "text-current")} />
                         <span className="truncate">{tag}</span>
                       </button>
                         <div className="flex shrink-0 items-center gap-1">
-                          <Badge variant="secondary">{tagCounts.get(tag) ?? 0}</Badge>
+                          <Badge variant="outline" className={cn("border", tagColorClass(tag))}>{tagCounts.get(tag) ?? 0}</Badge>
                           <Button
                             type="button"
                             variant="ghost"
@@ -738,7 +756,9 @@ export default function DocumentLibrary() {
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
-                          {(doc.tags ?? []).slice(0, 4).map((tag) => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                          {(doc.tags ?? []).slice(0, 4).map((tag) => (
+                            <Badge key={tag} variant="outline" className={cn("border", tagColorClass(tag))}>{tag}</Badge>
+                          ))}
                           {doc.linkedVendorName && <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100"><Link2 className="mr-1 h-3 w-3" />{doc.linkedVendorName}</Badge>}
                           {extracted.suggestedVendorName && !doc.linkedVendorName && <Badge variant="outline">Suggested: {extracted.suggestedVendorName}</Badge>}
                         </div>
