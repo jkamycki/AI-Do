@@ -3296,54 +3296,11 @@ function WeddingParty({
         <div className="space-y-16">
           {(groomSide.length > 0 || brideSide.length > 0) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-0 max-w-5xl mx-auto relative">
-              {/* Groom's side */}
+              {/* Bride's side */}
               <div
                 className="md:pr-12 md:border-r"
                 style={{ borderColor: `${data.colorPalette.primary}33` }}
               >
-                <h3
-                  className="text-center text-2xl sm:text-3xl mb-10"
-                  style={{
-                    fontFamily: fontStack(headingFont(data)),
-                    color: labelColor,
-                  }}
-                >
-                  <EditableText
-                    editable={ctx.editable}
-                    value={data.customText.weddingParty_groomLabel ?? ""}
-                    defaultValue="Groom's Party"
-                    onCommit={(v) =>
-                      ctx.onTextChange("weddingParty_groomLabel", v)
-                    }
-                  />
-                </h3>
-                {groomSide.length === 0 ? (
-                  <p
-                    className="text-center text-xs opacity-50"
-                    style={{ color: labelColor }}
-                  >
-                    {ctx.editable
-                      ? "Add members from the sidebar with side set to “Groom”"
-                      : ""}
-                  </p>
-                ) : (
-                  <div
-                    className={`grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10 ${oddLastGridClass}`}
-                  >
-                    {groomSide.map((m, i) => (
-                      <PartyMemberCard
-                        key={`g-${i}`}
-                        data={data}
-                        member={m}
-                        labelColor={labelColor}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Bride's side */}
-              <div className="md:pl-12">
                 <h3
                   className="text-center text-2xl sm:text-3xl mb-10"
                   style={{
@@ -3366,7 +3323,7 @@ function WeddingParty({
                     style={{ color: labelColor }}
                   >
                     {ctx.editable
-                      ? "Add members from the sidebar with side set to “Bride”"
+                      ? "Add members from the sidebar with side set to Bride"
                       : ""}
                   </p>
                 ) : (
@@ -3376,6 +3333,49 @@ function WeddingParty({
                     {brideSide.map((m, i) => (
                       <PartyMemberCard
                         key={`b-${i}`}
+                        data={data}
+                        member={m}
+                        labelColor={labelColor}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Groom's side */}
+              <div className="md:pl-12">
+                <h3
+                  className="text-center text-2xl sm:text-3xl mb-10"
+                  style={{
+                    fontFamily: fontStack(headingFont(data)),
+                    color: labelColor,
+                  }}
+                >
+                  <EditableText
+                    editable={ctx.editable}
+                    value={data.customText.weddingParty_groomLabel ?? ""}
+                    defaultValue="Groom's Party"
+                    onCommit={(v) =>
+                      ctx.onTextChange("weddingParty_groomLabel", v)
+                    }
+                  />
+                </h3>
+                {groomSide.length === 0 ? (
+                  <p
+                    className="text-center text-xs opacity-50"
+                    style={{ color: labelColor }}
+                  >
+                    {ctx.editable
+                      ? "Add members from the sidebar with side set to Groom"
+                      : ""}
+                  </p>
+                ) : (
+                  <div
+                    className={`grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10 ${oddLastGridClass}`}
+                  >
+                    {groomSide.map((m, i) => (
+                      <PartyMemberCard
+                        key={`g-${i}`}
                         data={data}
                         member={m}
                         labelColor={labelColor}

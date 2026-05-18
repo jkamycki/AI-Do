@@ -143,6 +143,14 @@ const EMPTY: Partial<Member> = {
   notes: "", sortOrder: 0,
 };
 
+function sortMembersForDisplay(list: Member[]) {
+  return [...list].sort((a, b) =>
+    (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+    || Date.parse(a.createdAt) - Date.parse(b.createdAt)
+    || a.id - b.id
+  );
+}
+
 // ─── MemberForm ───────────────────────────────────────────────────────────────
 
 function MemberForm({
@@ -449,7 +457,7 @@ function PartyGroup({ title, members, icon: Icon, color, onEdit, onDelete, onPho
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={members.map((member) => member.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 [&>:last-child:nth-child(odd)]:sm:col-span-2 [&>:last-child:nth-child(odd)]:sm:justify-self-center [&>:last-child:nth-child(odd)]:sm:w-full [&>:last-child:nth-child(odd)]:sm:max-w-[280px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {members.map(m => (
                 <SortableMemberCard
                   key={m.id}
@@ -540,13 +548,14 @@ export default function WeddingParty() {
     queryClient.setQueryData<Member[]>(["wedding-party"], old => {
       if (!old) return old;
       const byId = new Map(reorderedSide.map((member) => [member.id, member]));
-      return old.map((member) => byId.get(member.id) ?? member);
+      return sortMembersForDisplay(old.map((member) => byId.get(member.id) ?? member));
     });
     reorderMutation.mutate(reorderedSide);
   }
 
-  const bridesSide = members.filter(m => m.side === "bride");
-  const groomsSide = members.filter(m => m.side === "groom");
+  const sortedMembers = sortMembersForDisplay(members);
+  const bridesSide = sortedMembers.filter(m => m.side === "bride");
+  const groomsSide = sortedMembers.filter(m => m.side === "groom");
 
   const stats = [
     { label: t("party.stat_total"), value: members.length, color: "text-primary" },

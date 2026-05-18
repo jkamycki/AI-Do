@@ -224,7 +224,9 @@ export default function WebsiteEditor() {
         // back to an older snapshot.
         const localTs = recordRef.current?.lastUpdated ? Date.parse(recordRef.current.lastUpdated) : 0;
         const remoteTs = remote.lastUpdated ? Date.parse(remote.lastUpdated) : 0;
-        if (Number.isFinite(remoteTs) && remoteTs > localTs) {
+        const localPortalParty = JSON.stringify(recordRef.current?.portalParty ?? []);
+        const remotePortalParty = JSON.stringify(remote.portalParty ?? []);
+        if ((Number.isFinite(remoteTs) && remoteTs > localTs) || localPortalParty !== remotePortalParty) {
           setRecord((prev) => ({ ...remote, portalParty: remote.portalParty ?? prev?.portalParty }));
           recordRef.current = { ...remote, portalParty: remote.portalParty ?? recordRef.current?.portalParty };
         }
