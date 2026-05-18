@@ -1,6 +1,6 @@
 import { Router, raw } from "express";
 import crypto from "node:crypto";
-import { purgeUserData } from "../../lib/userCleanup";
+import { blockEmailsForUser, purgeUserData, snapshotUserData } from "../../lib/userCleanup";
 import { trackEvent } from "../../lib/trackEvent";
 
 const router = Router();
@@ -42,7 +42,7 @@ function verifyClerkWebhook(
 
 interface ClerkUserDeletedEvent {
   type: "user.deleted";
-  data: { id?: string; deleted?: boolean };
+  data: ClerkUserEvent["data"];
 }
 
 interface ClerkEmailAddress {
@@ -101,8 +101,17 @@ router.post("/webhooks/clerk", raw({ type: "*/*", limit: "1mb" }), async (req, r
       return;
     }
     try {
-      await purgeUserData(userId, null);
-      req.log.info({ userId }, "Clerk user.deleted: purged DB rows");
+      const emails = (deletedEvent.data.email_addresses ?? [])
+        .map(email => email.email_address?.toLowerCase().trim())
+        .filter((email): email is string => Boolean(email));
+      await snapshotUserData(userId, {
+        email: primaryEmailForClerkUser(deletedEvent.data),
+        firstName: null,
+        lastName: null,
+      });
+      await blockEmailsForUser(emails, userId);
+      await purgeUserData(userId, emails.length > 0 ? emails : null);
+      req.log.info({ userId }, "Clerk user.deleted: archived and purged DB rows");
     } catch (err) {
       req.log.error({ err, userId }, "Failed to purge data on user.deleted");
       res.status(500).json({ error: "purge failed" });

@@ -922,7 +922,17 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
       };
     });
 
-    const deletedUsers = archiveRows
+    const latestArchiveRows = Array.from(
+      [...archiveRows]
+        .sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime())
+        .reduce((map, row) => {
+          if (!map.has(row.userId)) map.set(row.userId, row);
+          return map;
+        }, new Map<string, typeof archiveRows[number]>())
+        .values()
+    );
+
+    const deletedUsers = latestArchiveRows
       .filter(row => !clerkUsersById.has(row.userId))
       .map(row => {
         const archived = asRecord(row.archivedData);
