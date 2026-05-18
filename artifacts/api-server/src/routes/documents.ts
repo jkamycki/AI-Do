@@ -194,10 +194,18 @@ function normalizeExtractedFields(raw: unknown): ExtractedFields {
 
 function fallbackSummary(fileName: string, extractedText: string, fileType: string): string {
   if (!extractedText) {
-    return `${fileName} was uploaded as a ${fileType} document. Text extraction is not available for this file yet, so review the preview and run extraction again after adding OCR support.`;
+    return `${fileName} is saved as a ${fileType} document. Open Summary or Preview to review the original file.`;
   }
-  const first = extractedText.replace(/\s+/g, " ").slice(0, 320);
-  return first ? `${first}${extractedText.length > 320 ? "..." : ""}` : `Uploaded ${fileName}.`;
+  const text = extractedText.replace(/\s+/g, " ").trim();
+  const vendor = text.match(/(?:www\.)?([A-Z0-9][A-Z0-9&'. -]{2,80}?)(?:\s+(?:Contract|Agreement|Invoice|Proposal|Date)\b| \/\/)/i)?.[1]?.trim();
+  const contractDate = text.match(/Contract Date:\s*([^/]{4,50})/i)?.[1]?.trim();
+  const amount = text.match(/\$[\d,]+(?:\.\d{2})?/)?.[0];
+  const pieces = [
+    vendor ? `${vendor} document` : `${fileName} was read and saved`,
+    contractDate ? `dated ${contractDate}` : null,
+    amount ? `with a possible payment amount of ${amount}` : null,
+  ].filter(Boolean);
+  return `${pieces.join(", ")}. Open Extract Info for payment details, policies, deliverables, and contact fields.`;
 }
 
 function fallbackFields(fileName: string, extractedText: string): ExtractedFields {

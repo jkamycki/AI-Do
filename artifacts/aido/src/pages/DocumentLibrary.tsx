@@ -97,6 +97,28 @@ function fields(doc?: DocumentRecord | null): ExtractedFields {
   return doc?.extractedFields ?? {};
 }
 
+function looksLikeRawExtractedText(summary?: string | null) {
+  if (!summary) return false;
+  const separators = (summary.match(/\/\/|\s\|\s/g) ?? []).length;
+  const contactBits = ["phone:", "address:", "contract date:", "client information:", "page 1 of"].filter((token) =>
+    summary.toLowerCase().includes(token),
+  ).length;
+  return summary.length > 180 && (separators >= 2 || contactBits >= 2);
+}
+
+function documentCardSummary(doc: DocumentRecord) {
+  const extracted = fields(doc);
+  if (doc.summary && !looksLikeRawExtractedText(doc.summary)) return doc.summary;
+  const details = [
+    extracted.suggestedVendorName || extracted.vendorName || doc.linkedVendorName,
+    (extracted.deliverables ?? [])[0],
+    (extracted.paymentSchedule ?? [])[0]?.amount ? `Payment found: $${(extracted.paymentSchedule ?? [])[0]?.amount}` : null,
+    (extracted.dueDates ?? [])[0]?.date ? `Due date: ${(extracted.dueDates ?? [])[0]?.date}` : null,
+  ].filter(Boolean);
+  if (details.length) return details.join(". ") + ".";
+  return "Document saved. Open Summary or Extract Info to review key details, payment dates, policies, and contact information.";
+}
+
 const CUSTOM_FOLDERS_KEY = "aido-document-library-folders";
 
 function loadCustomFolders() {
@@ -706,7 +728,15 @@ export default function DocumentLibrary() {
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <p className="line-clamp-3 min-h-[3.75rem] text-sm text-muted-foreground">{doc.summary || "Summary is being prepared."}</p>
+                        <div className="rounded-lg bg-muted/35 p-3">
+                          <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-primary">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            AI Snapshot
+                          </div>
+                          <p className="line-clamp-3 min-h-[3.75rem] text-sm leading-relaxed text-muted-foreground">
+                            {documentCardSummary(doc)}
+                          </p>
+                        </div>
                         <div className="flex flex-wrap gap-1.5">
                           {(doc.tags ?? []).slice(0, 4).map((tag) => <Badge key={tag} variant="secondary">{tag}</Badge>)}
                           {doc.linkedVendorName && <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100"><Link2 className="mr-1 h-3 w-3" />{doc.linkedVendorName}</Badge>}
