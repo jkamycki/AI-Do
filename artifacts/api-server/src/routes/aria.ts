@@ -2678,6 +2678,104 @@ function formatAriaPaymentDate(value: unknown): string {
   return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
+function addMonthsForContractDate(date: Date, months: number): Date {
+  const next = new Date(date);
+  const originalDay = next.getDate();
+  next.setMonth(next.getMonth() + months);
+  if (next.getDate() !== originalDay) next.setDate(0);
+  return next;
+}
+
+function monthCountFromContractText(value: string): number | null {
+  const normalized = value.toLowerCase();
+  const words: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    eleven: 11,
+    twelve: 12,
+  };
+  const digit = normalized.match(/\b(\d{1,2})\s+months?\s+(?:prior|before)\b/);
+  if (digit) return Number(digit[1]);
+  for (const [word, count] of Object.entries(words)) {
+    if (new RegExp(`\\b${word}\\s+months?\\s+(?:prior|before)\\b`, "i").test(normalized)) return count;
+  }
+  return null;
+}
+
+function inferContractPaymentEvents(paymentLanguage: string | null, weddingDateValue: unknown) {
+  if (!paymentLanguage || paymentLanguage === "Not specified" || typeof weddingDateValue !== "string") return [];
+  const weddingDate = new Date(`${weddingDateValue.slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(weddingDate.getTime())) return [];
+
+  const sentences = paymentLanguage
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+|(?=\b(?:\d+(?:st|nd|rd|th)|first|second|third|final)\b)/i)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const seen = new Set<string>();
+  return sentences.flatMap((sentence) => {
+    if (!/\b(payment|retainer|deposit|balance|installment|due)\b/i.test(sentence)) return [];
+    const months = monthCountFromContractText(sentence);
+    if (!months) return [];
+    const dueDate = addMonthsForContractDate(weddingDate, -months);
+    const labelMatch = sentence.match(/\b(final|\d+(?:st|nd|rd|th)|first|second|third|fourth)\b[^.]{0,35}?\b(?:payment|retainer|deposit|balance|installment)\b/i);
+    const label = labelMatch?.[0]?.replace(/\s+/g, " ") || `${months}-month-prior payment`;
+    const key = `${dueDate.toISOString().slice(0, 10)}:${label.toLowerCase()}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [{
+      label,
+      dueDate,
+      source: sentence,
+      monthsBeforeWedding: months,
+    }];
+  }).sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+}
+
+async function inferredContractPaymentReply(req: Request, contract: Record<string, unknown>, label: string): Promise<string | null> {
+  const profile = await resolveProfile(req);
+  if (!profile) return null;
+  const paymentLanguage = firstContractPaymentDetail(contract);
+  const events = inferContractPaymentEvents(paymentLanguage, profile.weddingDate);
+  if (!events.length) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const next = events.find((event) => {
+    const due = new Date(event.dueDate);
+    due.setHours(0, 0, 0, 0);
+    return due.getTime() >= today.getTime();
+  }) ?? events[events.length - 1];
+
+  const allDates = events
+    .map((event) => `- ${event.label}: **${formatAriaPaymentDate(event.dueDate.toISOString().slice(0, 10))}** (${event.monthsBeforeWedding} months before the wedding)`)
+    .join("\n");
+  const isPast = next.dueDate.getTime() < today.getTime();
+  return [
+    `For **${label}**, I can calculate the payment date from the contract language and your wedding date (**${formatAriaPaymentDate(profile.weddingDate)}**).`,
+    "",
+    isPast
+      ? `The latest scheduled contract payment date I found was **${formatAriaPaymentDate(next.dueDate.toISOString().slice(0, 10))}** for **${next.label}**.`
+      : `Your next scheduled contract payment date appears to be **${formatAriaPaymentDate(next.dueDate.toISOString().slice(0, 10))}** for **${next.label}**.`,
+    "",
+    `Contract language used: ${next.source}`,
+    "",
+    "Calculated schedule:",
+    allDates,
+    "",
+    "I do not see a specific dollar amount for that retainer in the saved contract text, so confirm the amount on the original invoice/contract before paying.",
+  ].join("\n");
+}
+
 async function nextContractVendorPaymentReply(req: Request, contract: Record<string, unknown>, label: string): Promise<string | null> {
   const vendorId = Number(contract.vendorId);
   if (!Number.isFinite(vendorId)) return null;
@@ -2713,7 +2811,7 @@ async function nextContractVendorPaymentReply(req: Request, contract: Record<str
   ].join("\n");
 }
 
-function buildContractToolReply(lastUserText: string, actions: ActionRecord[]): string | null {
+function buildContractToolReply(lastUserText: string, actions: ActionRecord[], inferredPaymentText: string | null = null): string | null {
   const contractAction = [...actions].reverse().find((action) => action.name === "get_contract" && action.result.ok);
   if (!contractAction) return null;
   const contract = contractToolData(contractAction.result);
@@ -2732,6 +2830,7 @@ function buildContractToolReply(lastUserText: string, actions: ActionRecord[]): 
   const redFlags = Array.isArray(contract.redFlags) ? contract.redFlags as Array<Record<string, unknown>> : [];
 
   if (/\b(next|upcoming|due|payment|pay|deposit|balance|owed|owe)\b/i.test(userText)) {
+    if (inferredPaymentText) return inferredPaymentText;
     return [
       `For **${label}**, here is the payment language I found:`,
       "",
@@ -2824,8 +2923,9 @@ async function buildDirectContractReply(req: Request, lastUserText: string): Pro
   const asksPayment = /\b(next|upcoming|due|payment|pay|deposit|balance|owed|owe|how much)\b/i.test(lastUserText);
   const paymentReply = contract && asksPayment ? await nextContractVendorPaymentReply(req, contract, label) : null;
   if (paymentReply) return { reply: paymentReply, action };
+  const inferredPayment = contract && asksPayment ? await inferredContractPaymentReply(req, contract, label) : null;
 
-  const reply = buildContractToolReply(lastUserText, [action]);
+  const reply = buildContractToolReply(lastUserText, [action], inferredPayment);
   if (!reply) return null;
   return { reply, action };
 }
