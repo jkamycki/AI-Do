@@ -2671,6 +2671,11 @@ function formatAriaMoney(value: unknown): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
 }
 
+function moneyNumber(value: unknown): number | null {
+  const amount = typeof value === "number" ? value : Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(amount) ? amount : null;
+}
+
 function formatAriaPaymentDate(value: unknown): string {
   if (value instanceof Date) {
     return value.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -2760,12 +2765,97 @@ function inferContractPaymentEvents(paymentLanguage: string | null, weddingDateV
   }).sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 }
 
-async function inferredContractPaymentReply(req: Request, contract: Record<string, unknown>, label: string): Promise<string | null> {
+function extractContractTotalAmount(contract: Record<string, unknown>): number | null {
+  const sources = [
+    contractText(contract.extractedTextPreview),
+    firstContractPaymentDetail(contract),
+    contractText(contract.summary),
+  ].filter(Boolean).join(" ");
+  const packageMatch = sources.match(/\b(?:package|price|total|contract)\s*(?:price|total|amount|cost)?\s*:?\s*\$?\s*([0-9][0-9,]*(?:\.\d{2})?)/i);
+  if (packageMatch) return moneyNumber(packageMatch[1]);
+  const moneyMatches = [...sources.matchAll(/\$\s*([0-9][0-9,]*(?:\.\d{2})?)/g)]
+    .map((match) => moneyNumber(match[1]))
+    .filter((amount): amount is number => amount !== null && amount > 0);
+  return moneyMatches.length ? Math.max(...moneyMatches) : null;
+}
+
+function retainerPercentFromContract(contract: Record<string, unknown>): number | null {
+  const sources = [
+    contractText(contract.extractedTextPreview),
+    firstContractPaymentDetail(contract),
+  ].filter(Boolean).join(" ");
+  const match = sources.match(/\b(?:first|initial|non-refundable)?\s*(?:retainer|deposit|payment)[^.]{0,120}?\b(?:equal(?:s)?|of|approx(?:imately)?|about)?\s*(?:to)?\s*(\d+(?:\.\d+)?)\s*%/i)
+    ?? sources.match(/(\d+(?:\.\d+)?)\s*%[^.]{0,120}\b(?:retainer|deposit|payment)\b/i);
+  if (!match) return null;
+  const percent = Number(match[1]);
+  return Number.isFinite(percent) && percent > 0 ? percent / 100 : null;
+}
+
+function paymentLabelMatchesEvent(paymentLabel: string, eventLabel: string, eventIndex: number): boolean {
+  const label = normalizeVendorLookupText(paymentLabel);
+  const event = normalizeVendorLookupText(eventLabel);
+  if (!label) return false;
+  if (event && (label.includes(event) || event.includes(label))) return true;
+  if (eventIndex === 0 && /\b(2nd|second)\b/.test(label)) return true;
+  if (eventIndex === 1 && /\b(3rd|third|final)\b/.test(label)) return true;
+  if (/\bfinal\b/.test(event) && /\bfinal\b/.test(label)) return true;
+  return false;
+}
+
+async function contractVendorPaymentContext(req: Request, contract: Record<string, unknown>) {
+  const profile = await resolveProfile(req);
+  const vendorId = Number(contract.vendorId);
+  if (!profile || !Number.isFinite(vendorId)) return { profile, vendor: null, payments: [] };
+  const [vendor] = await db
+    .select({
+      id: vendors.id,
+      name: vendors.name,
+      totalCost: vendors.totalCost,
+      depositAmount: vendors.depositAmount,
+      nextPaymentDue: vendors.nextPaymentDue,
+    })
+    .from(vendors)
+    .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)))
+    .limit(1);
+  const payments = vendor
+    ? await db
+        .select({
+          id: vendorPayments.id,
+          label: vendorPayments.label,
+          amount: vendorPayments.amount,
+          dueDate: vendorPayments.dueDate,
+          isPaid: vendorPayments.isPaid,
+        })
+        .from(vendorPayments)
+        .where(eq(vendorPayments.vendorId, vendor.id))
+        .orderBy(asc(vendorPayments.dueDate), asc(vendorPayments.id))
+    : [];
+  return { profile, vendor: vendor ?? null, payments };
+}
+
+async function inferredContractPaymentReply(req: Request, contract: Record<string, unknown>, label: string, lastUserText = ""): Promise<string | null> {
   const profile = await resolveProfile(req);
   if (!profile) return null;
   const paymentLanguage = firstContractPaymentDetail(contract);
   const events = inferContractPaymentEvents(paymentLanguage, profile.weddingDate);
   if (!events.length) return null;
+  const asksAmountMath = /\b(how much|amount|each|split|these|2nd|second|3rd|third|final|retainer)\b/i.test(lastUserText);
+  const context = asksAmountMath ? await contractVendorPaymentContext(req, contract) : { profile, vendor: null, payments: [] };
+  const total = moneyNumber(context.vendor?.totalCost) ?? extractContractTotalAmount(contract);
+  const deposit =
+    moneyNumber(context.vendor?.depositAmount)
+    ?? (() => {
+      const percent = total ? retainerPercentFromContract(contract) : null;
+      return total && percent ? total * percent : null;
+    })();
+  const amountRows = events.map((event, index) => {
+    const payment = context.payments.find((row) => paymentLabelMatchesEvent(row.label, event.label, index));
+    return payment ? moneyNumber(payment.amount) : null;
+  });
+  const unpaidRetainerEvents = events.filter((event) => /retainer|deposit|payment|balance|installment/i.test(event.label));
+  const calculatedEach = asksAmountMath && total !== null && deposit !== null && unpaidRetainerEvents.length > 0
+    ? Math.max(0, (total - deposit) / unpaidRetainerEvents.length)
+    : null;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -2779,6 +2869,31 @@ async function inferredContractPaymentReply(req: Request, contract: Record<strin
     .map((event) => `- ${event.label}: **${formatAriaPaymentDate(event.dueDate.toISOString().slice(0, 10))}** (${event.monthsBeforeWedding} months before the wedding)`)
     .join("\n");
   const isPast = next.dueDate.getTime() < today.getTime();
+  const amountLines = asksAmountMath
+    ? events.map((event, index) => {
+        const exact = amountRows[index];
+        const amount = exact ?? calculatedEach;
+        if (amount === null) return null;
+        return `- **${event.label}** due **${formatAriaPaymentDate(event.dueDate.toISOString().slice(0, 10))}**: **${formatAriaMoney(amount)}**${exact !== null ? " from Vendor Tracking" : " estimated from the contract total minus the deposit"}`;
+      }).filter(Boolean)
+    : [];
+  if (asksAmountMath && amountLines.length) {
+    const basis = [
+      total !== null ? `Contract/vendor total: **${formatAriaMoney(total)}**.` : null,
+      deposit !== null ? `Deposit/first retainer counted: **${formatAriaMoney(deposit)}**.` : null,
+      calculatedEach !== null ? `Remaining balance split across ${unpaidRetainerEvents.length} contract payment${unpaidRetainerEvents.length === 1 ? "" : "s"}: **${formatAriaMoney(calculatedEach)} each**.` : null,
+    ].filter(Boolean);
+    return [
+      `For **${context.vendor?.name ?? label}**, I did the payment math from your contract and saved vendor/payment records:`,
+      "",
+      ...basis,
+      "",
+      "Calculated payments:",
+      ...amountLines,
+      "",
+      "If the original invoice lists different exact installment amounts, use the invoice amounts; this calculation is based on the saved total/deposit and contract wording.",
+    ].join("\n");
+  }
   return [
     `For **${label}**, I can calculate the payment date from the contract language and your wedding date (**${formatAriaPaymentDate(profile.weddingDate)}**).`,
     "",
@@ -3022,10 +3137,11 @@ async function buildDirectContractReply(req: Request, lastUserText: string): Pro
   const vendorName = contract ? contractText(contract.vendorName) : null;
   const label = vendorName ? `${vendorName} (${fileName})` : fileName;
   const asksPayment = /\b(next|upcoming|due|payment|pay|deposit|balance|owed|owe|how much)\b/i.test(lastUserText);
+  const wantsRetainerMath = /\b(how much|amount|each|split|2nd|second|3rd|third|final|retainer)\b/i.test(lastUserText);
+  const inferredPayment = contract && asksPayment ? await inferredContractPaymentReply(req, contract, label, lastUserText) : null;
+  if (wantsRetainerMath && inferredPayment) return { reply: inferredPayment, action };
   const paymentReply = contract && asksPayment ? await nextContractVendorPaymentReply(req, contract, label) : null;
   if (paymentReply) return { reply: paymentReply, action };
-  const inferredPayment = contract && asksPayment ? await inferredContractPaymentReply(req, contract, label) : null;
-
   const reply = buildContractToolReply(lastUserText, [action], inferredPayment);
   if (!reply) return null;
   return { reply, action };
