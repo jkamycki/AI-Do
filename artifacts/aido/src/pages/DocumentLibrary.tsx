@@ -147,6 +147,13 @@ export default function DocumentLibrary() {
     [customFolders, documents],
   );
   const tags = useMemo(() => ["All", ...Array.from(new Set(documents.flatMap((doc) => doc.tags ?? [])))], [documents]);
+  const tagCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    documents.forEach((doc) => {
+      (doc.tags ?? []).forEach((tag) => counts.set(tag, (counts.get(tag) ?? 0) + 1));
+    });
+    return counts;
+  }, [documents]);
   const folderCounts = useMemo(() => {
     const counts = new Map<string, number>();
     documents.forEach((doc) => {
@@ -321,6 +328,31 @@ export default function DocumentLibrary() {
     onError: (err) => toast({ title: "Could not delete folder", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" }),
   });
 
+  const deleteTagMutation = useMutation({
+    mutationFn: async (tag: string) => {
+      const docsWithTag = documents.filter((doc) => (doc.tags ?? []).includes(tag));
+      await Promise.all(docsWithTag.map(async (doc) => {
+        const res = await authFetch(`${API}/api/documents/${doc.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tags: (doc.tags ?? []).filter((item) => item !== tag) }),
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(payload.error ?? "Could not update a document with this tag");
+      }));
+      return { tag, removedCount: docsWithTag.length };
+    },
+    onSuccess: ({ tag, removedCount }) => {
+      if (tagFilter === tag) setTagFilter("All");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      toast({
+        title: "Tag deleted",
+        description: removedCount ? `Removed from ${removedCount} document${removedCount === 1 ? "" : "s"}.` : undefined,
+      });
+    },
+    onError: (err) => toast({ title: "Could not delete tag", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" }),
+  });
+
   function rememberFolder(folder: string) {
     if (!folder || folder === "All" || folders.includes(folder)) return;
     setCustomFolders((current) => {
@@ -459,6 +491,42 @@ export default function DocumentLibrary() {
                   {tags.map((tag) => <SelectItem key={tag} value={tag}>{tag}</SelectItem>)}
                 </SelectContent>
               </Select>
+              <div className="space-y-1 pt-1">
+                {tags.filter((tag) => tag !== "All").length === 0 ? (
+                  <p className="rounded-md border border-dashed border-border/70 px-3 py-2 text-xs text-muted-foreground">
+                    Add tags from Organize / Tags on a document.
+                  </p>
+                ) : (
+                  tags.filter((tag) => tag !== "All").map((tag) => (
+                    <div
+                      key={tag}
+                      className={cn(
+                        "flex min-h-10 w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-left text-sm transition-colors",
+                        tagFilter === tag ? "border-primary bg-primary/10 text-primary" : "border-border bg-background hover:bg-muted",
+                      )}
+                    >
+                      <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setTagFilter(tag)}>
+                        <Tag className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{tag}</span>
+                      </button>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Badge variant="secondary">{tagCounts.get(tag) ?? 0}</Badge>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteTagMutation.mutate(tag)}
+                          disabled={deleteTagMutation.isPending}
+                          aria-label={`Delete ${tag} tag`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </aside>
 
