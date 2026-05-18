@@ -793,7 +793,10 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
         archivedData: deletedUserArchive.archivedData,
       })
         .from(deletedUserArchive)
-        .where(sql`${deletedUserArchive.restoredAt} IS NULL`),
+        .where(and(
+          sql`${deletedUserArchive.restoredAt} IS NULL`,
+          gte(deletedUserArchive.deletedAt, sql`NOW() - INTERVAL '7 days'`),
+        )),
     ]);
 
     type EventRow = {

@@ -919,7 +919,7 @@ export default function OperationsCenterPage() {
             <div>
               <h2 className="text-xl font-serif font-semibold text-[#24171D]">Users & Workspace Sharing</h2>
               <p className="text-sm font-medium text-[#4A3941]">
-                Every signed-up account, plus who owns, joined, or shared each workspace. Refreshes automatically while open.
+                Every signed-up account, who owns or shares workspaces, and accounts deleted in the last 7 days. Refreshes automatically while open.
               </p>
             </div>
             <div className="w-full lg:w-80">
