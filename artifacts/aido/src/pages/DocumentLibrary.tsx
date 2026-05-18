@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useListVendors } from "@workspace/api-client-react";
+import { getGetChecklistQueryKey, useListVendors } from "@workspace/api-client-react";
 import Contracts from "./Contracts";
 import {
   CheckSquare,
@@ -183,9 +183,22 @@ export default function DocumentLibrary() {
       if (!res.ok) throw new Error(payload.error ?? "Document action failed");
       return { action, payload };
     },
-    onSuccess: ({ action }) => {
+    onSuccess: ({ action, payload }) => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
-      toast({ title: action === "tasks" ? "Tasks generated" : "Document refreshed" });
+      if (action === "tasks") {
+        queryClient.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
+        const added = Array.isArray(payload.tasks) ? payload.tasks.length : 0;
+        toast({
+          title: added === 1
+            ? "A task was added to your checklist"
+            : added > 1
+              ? `${added} tasks were added to your checklist`
+              : "Those tasks are already in your checklist",
+          description: added === 0 ? "No duplicate checklist tasks were created." : undefined,
+        });
+        return;
+      }
+      toast({ title: "Document refreshed" });
     },
     onError: (err) => toast({ title: "Could not complete action", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" }),
   });
@@ -324,7 +337,16 @@ export default function DocumentLibrary() {
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Button variant="ghost" size="sm" className="gap-2" onClick={() => openEditor(doc)}><Pencil className="h-4 w-4" /> Rename / Move</Button>
-                          <Button variant="ghost" size="sm" className="gap-2" onClick={() => actionMutation.mutate({ id: doc.id, action: "tasks" })}><CheckSquare className="h-4 w-4" /> Tasks</Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => actionMutation.mutate({ id: doc.id, action: "tasks" })}
+                            disabled={actionMutation.isPending}
+                          >
+                            {actionMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckSquare className="h-4 w-4" />}
+                            Tasks
+                          </Button>
                           <Button variant="ghost" size="sm" className="gap-2" asChild>
                             <a href={fileUrl(doc.fileUrl)} download><Download className="h-4 w-4" /> Download</a>
                           </Button>
@@ -383,7 +405,16 @@ export default function DocumentLibrary() {
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" className="gap-2" onClick={() => actionMutation.mutate({ id: summaryDoc.id, action: "summary" })}><Sparkles className="h-4 w-4" /> Run Summary</Button>
                 <Button size="sm" variant="outline" className="gap-2" onClick={() => actionMutation.mutate({ id: summaryDoc.id, action: "extract" })}><Wand2 className="h-4 w-4" /> Run Extraction</Button>
-                <Button size="sm" variant="outline" className="gap-2" onClick={() => actionMutation.mutate({ id: summaryDoc.id, action: "tasks" })}><CheckSquare className="h-4 w-4" /> Generate Tasks</Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => actionMutation.mutate({ id: summaryDoc.id, action: "tasks" })}
+                  disabled={actionMutation.isPending}
+                >
+                  {actionMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckSquare className="h-4 w-4" />}
+                  Generate Tasks
+                </Button>
               </div>
             </div>
           )}

@@ -540,19 +540,41 @@ router.post("/documents/:id/tasks", requireAuth, async (req, res) => {
   const tasks = fields.suggestedTasks?.filter((task) => asText(task.task || task.title)).slice(0, 12) ?? [];
   if (!tasks.length) return res.json({ tasks: [] });
 
+  const taskValues = tasks.map((task) => ({
+    profileId: profile.id,
+    month: task.dueDate ? "Document deadlines" : "Document follow-up",
+    task: asText(task.task || task.title, "Review document task"),
+    description: asText(task.description, `Generated from ${doc.fileName}`),
+    isCompleted: false,
+  }));
+  const existingRows = await db
+    .select({
+      task: checklistItems.task,
+      description: checklistItems.description,
+      month: checklistItems.month,
+    })
+    .from(checklistItems)
+    .where(eq(checklistItems.profileId, profile.id));
+  const existingKeys = new Set(existingRows.map((item) => `${item.month}::${item.task.trim().toLowerCase()}::${item.description.trim().toLowerCase()}`));
+  const insertValues = taskValues.filter((item) => {
+    const key = `${item.month}::${item.task.trim().toLowerCase()}::${item.description.trim().toLowerCase()}`;
+    if (existingKeys.has(key)) return false;
+    existingKeys.add(key);
+    return true;
+  });
+
+  if (!insertValues.length) {
+    await db.execute(sql`UPDATE documents SET updated_at = now() WHERE id = ${id}`);
+    return res.json({ tasks: [], skipped: taskValues.length, duplicate: true });
+  }
+
   const inserted = await db
     .insert(checklistItems)
-    .values(tasks.map((task) => ({
-      profileId: profile.id,
-      month: task.dueDate ? "Document deadlines" : "Document follow-up",
-      task: asText(task.task || task.title, "Review document task"),
-      description: asText(task.description, `Generated from ${doc.fileName}`),
-      isCompleted: false,
-    })))
+    .values(insertValues)
     .returning();
 
   await db.execute(sql`UPDATE documents SET updated_at = now() WHERE id = ${id}`);
-  res.status(201).json({ tasks: inserted });
+  res.status(201).json({ tasks: inserted, skipped: taskValues.length - inserted.length, duplicate: false });
 });
 
 export default router;
