@@ -2672,10 +2672,29 @@ function formatAriaMoney(value: unknown): string {
 }
 
 function formatAriaPaymentDate(value: unknown): string {
+  if (value instanceof Date) {
+    return value.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  }
   if (typeof value !== "string" || !value.trim()) return "an unspecified date";
   const date = new Date(`${value.slice(0, 10)}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function normalizeVendorLookupText(value: unknown): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function extractVendorNameFromScheduleOffer(text: string): string | null {
+  const match =
+    text.match(/next[-\s]?payment date for\s+(.+?)\?/i) ||
+    text.match(/vendor payment schedule(?:\s+and\s+find\s+the\s+exact\s+next[-\s]?payment date)?\s+for\s+(.+?)\?/i) ||
+    text.match(/payment schedule\s+for\s+(.+?)\?/i);
+  return match?.[1]?.replace(/\s+/g, " ").trim() || null;
 }
 
 function addMonthsForContractDate(date: Date, months: number): Date {
@@ -2809,6 +2828,88 @@ async function nextContractVendorPaymentReply(req: Request, contract: Record<str
     `Payment label: ${payment.label || "Next payment"}.`,
     `This is pulled from your saved vendor payment schedule connected to **${label}**.`,
   ].join("\n");
+}
+
+async function buildVendorScheduleFollowUpReply(req: Request, lastUserText: string, lastAssistantText: string): Promise<{ reply: string; action: ActionRecord } | null> {
+  if (!YES_CONFIRM_INTENT.test(lastUserText.trim())) return null;
+  const vendorName = extractVendorNameFromScheduleOffer(lastAssistantText);
+  if (!vendorName) return null;
+
+  const profile = await resolveProfile(req);
+  const actionBase = { name: "list_vendors", args: {} };
+  if (!profile) {
+    return {
+      action: { ...actionBase, result: { ok: false, error: "No wedding profile yet." } },
+      reply: "I need your wedding profile first before I can read saved vendor payments.",
+    };
+  }
+
+  const vendorRows = await db
+    .select({
+      id: vendors.id,
+      name: vendors.name,
+      category: vendors.category,
+      totalCost: vendors.totalCost,
+      depositAmount: vendors.depositAmount,
+      nextPaymentDue: vendors.nextPaymentDue,
+    })
+    .from(vendors)
+    .where(eq(vendors.profileId, profile.id));
+
+  const wanted = normalizeVendorLookupText(vendorName);
+  const vendor = vendorRows.find((row) => normalizeVendorLookupText(row.name) === wanted)
+    ?? vendorRows.find((row) => {
+      const current = normalizeVendorLookupText(row.name);
+      return current.includes(wanted) || wanted.includes(current);
+    });
+
+  if (!vendor) {
+    return {
+      action: { ...actionBase, result: { ok: true, data: { vendors: vendorRows } } },
+      reply: `I could not find **${vendorName}** in your saved vendor list yet. Add or sync that vendor in Vendor Tracking, then I can pull the exact next-payment date.`,
+    };
+  }
+
+  const [payment] = await db
+    .select({
+      id: vendorPayments.id,
+      label: vendorPayments.label,
+      amount: vendorPayments.amount,
+      dueDate: vendorPayments.dueDate,
+      isPaid: vendorPayments.isPaid,
+    })
+    .from(vendorPayments)
+    .where(and(eq(vendorPayments.vendorId, vendor.id), eq(vendorPayments.isPaid, false)))
+    .orderBy(asc(vendorPayments.dueDate), asc(vendorPayments.id))
+    .limit(1);
+
+  if (payment) {
+    return {
+      action: { ...actionBase, result: { ok: true, data: { vendors: [vendor], payment } } },
+      reply: [
+        `For **${vendor.name}**, your next unpaid payment is **${formatAriaMoney(payment.amount)}** due **${formatAriaPaymentDate(payment.dueDate)}**.`,
+        "",
+        `Payment label: ${payment.label || "Next payment"}.`,
+        "This is pulled from your saved Vendor Tracking payment schedule.",
+      ].join("\n"),
+    };
+  }
+
+  if (vendor.nextPaymentDue) {
+    return {
+      action: { ...actionBase, result: { ok: true, data: { vendors: [vendor] } } },
+      reply: [
+        `For **${vendor.name}**, Vendor Tracking shows the next payment date as **${formatAriaPaymentDate(vendor.nextPaymentDue)}**.`,
+        "",
+        "I do not see an unpaid payment row with an exact amount saved yet, so add the payment amount in Vendor Tracking if you want me to answer with both date and amount.",
+      ].join("\n"),
+    };
+  }
+
+  return {
+    action: { ...actionBase, result: { ok: true, data: { vendors: [vendor] } } },
+    reply: `I found **${vendor.name}**, but there is no unpaid payment schedule saved for that vendor yet. Add the next payment in Vendor Tracking and I can pull it here.`,
+  };
 }
 
 function buildContractToolReply(lastUserText: string, actions: ActionRecord[], inferredPaymentText: string | null = null): string | null {
@@ -4707,6 +4808,23 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     if (planningProgressReply) {
       send({ type: "content", content: planningProgressReply });
       send({ type: "done", actions: [] });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
+    const vendorScheduleFollowUp = await buildVendorScheduleFollowUpReply(req, lastUserText, lastAssistantText);
+    if (vendorScheduleFollowUp) {
+      send({ type: "action_start", name: "list_vendors", args: {} });
+      send({
+        type: "action_result",
+        name: "list_vendors",
+        ok: vendorScheduleFollowUp.action.result.ok,
+        data: vendorScheduleFollowUp.action.result.ok ? vendorScheduleFollowUp.action.result.data : undefined,
+        error: vendorScheduleFollowUp.action.result.ok ? undefined : vendorScheduleFollowUp.action.result.error,
+      });
+      send({ type: "content", content: vendorScheduleFollowUp.reply });
+      send({ type: "done", actions: [{ name: "list_vendors", ok: vendorScheduleFollowUp.action.result.ok, error: vendorScheduleFollowUp.action.result.ok ? undefined : vendorScheduleFollowUp.action.result.error }] });
       res.write("data: [DONE]\n\n");
       res.end();
       return;
