@@ -550,7 +550,14 @@ export default function SeatingChartPage() {
   const eligibleGuestListGuests = guestListGuests.filter(
     g => g.rsvpStatus !== "declined" && g.name.trim()
   );
-  const importableCount = eligibleGuestListGuests.length;
+  const importableGuestCount = eligibleGuestListGuests.length;
+  const importableSeatCount = eligibleGuestListGuests.reduce(
+    (count, guest) => count + 1 + (guest.plusOne ? 1 : 0),
+    0,
+  );
+  const importCountLabel = importableGuestCount > 0
+    ? ` (${importableGuestCount} guests / ${importableSeatCount} seats)`
+    : "";
 
   const mapGuestGroup = (g?: string | null): string => {
     if (g && GROUPS.includes(g)) return g;
@@ -936,7 +943,11 @@ export default function SeatingChartPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartsLoading, savedCharts]);
 
-  const filledCount = guests.filter(g => g.name.trim()).length;
+  const filledGuestCount = guests.filter(g => g.name.trim()).length;
+  const filledSeatCount = guests.reduce(
+    (count, guest) => count + (guest.name.trim() ? 1 + (guest.plusOne ? 1 : 0) : 0),
+    0,
+  );
   const totalCapacity = tableCount * seatsPerTable;
 
   // Wipe all saved seating charts AND clear table assignments on the guest
@@ -1297,9 +1308,9 @@ export default function SeatingChartPage() {
         <Card className="border-none shadow-sm bg-primary/5">
           <CardContent className="p-4 flex flex-col justify-center h-full">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("seating.capacity_summary")}</p>
-            <p className="text-2xl font-bold text-primary mt-1">{filledCount} / {totalCapacity}</p>
+            <p className="text-2xl font-bold text-primary mt-1">{filledSeatCount} / {totalCapacity}</p>
             <p className="text-xs text-muted-foreground">{t("seating.guests_seats")}</p>
-            {filledCount > totalCapacity && (
+            {filledSeatCount > totalCapacity && (
               <p className="text-xs text-red-500 mt-1 font-medium">âš  {t("seating.over_capacity")}</p>
             )}
           </CardContent>
@@ -1313,7 +1324,12 @@ export default function SeatingChartPage() {
             className="flex items-center gap-2 font-serif text-xl font-semibold text-foreground hover:text-primary transition-colors"
           >
             <Users className="h-5 w-5" />
-            {t("seating.guest_list_header", { count: filledCount })}
+            {t("seating.guest_list_header", { count: filledGuestCount })}
+            {filledSeatCount !== filledGuestCount && (
+              <span className="font-sans text-sm font-medium text-muted-foreground">
+                / {filledSeatCount} seats
+              </span>
+            )}
             {showGuests ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
           <div className="flex items-center gap-2">
@@ -1328,7 +1344,7 @@ export default function SeatingChartPage() {
               <Download className="h-3.5 w-3.5" />
               {guestListLoading
                 ? t("seating.loading")
-                : t("seating.import_btn") + (importableCount > 0 ? ` (${importableCount})` : "")}
+                : t("seating.import_btn") + importCountLabel}
             </Button>
             <Button size="sm" variant="outline" onClick={addGuest} className="gap-1">
               <UserPlus className="h-3.5 w-3.5" />
@@ -1380,7 +1396,7 @@ export default function SeatingChartPage() {
 
       <Button
         onClick={() => generateMutation.mutate()}
-        disabled={generateMutation.isPending || filledCount < 2}
+        disabled={generateMutation.isPending || filledGuestCount < 2}
         size="lg"
         className="gap-2 w-full sm:w-auto"
       >
