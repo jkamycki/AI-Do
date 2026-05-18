@@ -63,6 +63,197 @@ function makeTimelineBlock(
   };
 }
 
+function eventDuration(event: TimelineBlock): number {
+  const start = parseTimeToMinutes(event.startTime, 8 * 60);
+  const end = parseTimeToMinutes(event.endTime, start + 60);
+  return Math.max(15, end - start);
+}
+
+function normalizePrompt(value: string): string {
+  return value.toLowerCase().replace(/[^\w\s:.-]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+const TIMELINE_INTENT_ALIASES: Array<{ key: string; pattern: RegExp; title: string; category: string }> = [
+  { key: "hair_makeup", pattern: /\b(hair|make\s*up|make-up|makeup|getting ready|glam|beauty)\b/i, title: "Hair, makeup, and getting ready", category: "preparation" },
+  { key: "vendor_setup", pattern: /\b(vendor|setup|set up|load in|arrival|arrivals|florist|dj|caterer|photo|video)\b/i, title: "Vendor arrivals and setup", category: "vendors" },
+  { key: "first_look", pattern: /\b(first look|private look|couple portrait|portrait)\b/i, title: "Couple portraits and first look", category: "photos" },
+  { key: "wedding_party_photos", pattern: /\b(wedding party photos|bridal party photos|group photos)\b/i, title: "Wedding party photos", category: "photos" },
+  { key: "guest_arrival", pattern: /\b(guest arrival|guests arrive|prelude|seating)\b/i, title: "Guest arrival", category: "ceremony" },
+  { key: "ceremony", pattern: /\b(ceremony|vows|processional|recessional)\b/i, title: "Ceremony", category: "ceremony" },
+  { key: "cocktail", pattern: /\b(cocktail|cocktail hour)\b/i, title: "Cocktail hour", category: "cocktail" },
+  { key: "dinner", pattern: /\b(dinner|meal|dinner service|reception dinner)\b/i, title: "Dinner service", category: "reception" },
+  { key: "toasts", pattern: /\b(toast|toasts|speech|speeches)\b/i, title: "Toasts and special dances", category: "reception" },
+  { key: "cake", pattern: /\b(cake|cake cutting|dessert)\b/i, title: "Cake cutting", category: "reception" },
+  { key: "dancing", pattern: /\b(dance|dancing|party|open dance floor)\b/i, title: "Open dancing and celebration", category: "dancing" },
+  { key: "sendoff", pattern: /\b(sendoff|send off|exit|last song|private last dance)\b/i, title: "Final song and send-off", category: "dancing" },
+];
+
+function aliasForText(text: string) {
+  return TIMELINE_INTENT_ALIASES.find(alias => alias.pattern.test(text));
+}
+
+function eventMatchesAlias(event: TimelineBlock, alias: { pattern: RegExp; category: string }): boolean {
+  const haystack = `${event.title} ${event.description} ${event.category}`.toLowerCase();
+  return alias.pattern.test(haystack);
+}
+
+function findEventIndex(events: TimelineBlock[], text: string): number {
+  const alias = aliasForText(text);
+  if (alias) return events.findIndex(event => eventMatchesAlias(event, alias));
+  const normalized = normalizePrompt(text);
+  if (!normalized) return -1;
+  return events.findIndex(event => normalizePrompt(`${event.title} ${event.description} ${event.category}`).includes(normalized));
+}
+
+function isHairMakeupEvent(event: TimelineBlock): boolean {
+  const alias = TIMELINE_INTENT_ALIASES[0];
+  return eventMatchesAlias(event, alias);
+}
+
+function promptSaysMakeupNotFirst(vision: string): boolean {
+  return /\b(?:do\s*not|don't|dont|no|avoid|stop)\b[\s\S]{0,50}\b(?:hair|make\s*up|make-up|makeup|getting ready|glam)\b[\s\S]{0,35}\bfirst\b/i.test(vision)
+    || /\b(?:hair|make\s*up|make-up|makeup|getting ready|glam)\b[\s\S]{0,35}\b(?:not|never|shouldn'?t)\b[\s\S]{0,35}\bfirst\b/i.test(vision);
+}
+
+function parsePromptTime(rawHour: string, rawMinute?: string, meridiem?: string): number {
+  let hour = Number(rawHour);
+  const minute = rawMinute ? Number(rawMinute) : 0;
+  const ampm = meridiem?.toLowerCase();
+  if (ampm === "pm" && hour < 12) hour += 12;
+  if (ampm === "am" && hour === 12) hour = 0;
+  return Math.max(0, Math.min(23 * 60 + 59, hour * 60 + minute));
+}
+
+function extractAddRequests(vision: string): Array<{ label: string; time?: number }> {
+  const requests: Array<{ label: string; time?: number }> = [];
+  const re = /\b(?:add|include|put in|make sure there is|make sure to have)\s+(.{3,70}?)(?:\s+(?:at|around)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?(?:[.!?]|$)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(vision))) {
+    const label = match[1]?.trim().replace(/\s+/g, " ");
+    if (!label) continue;
+    requests.push({
+      label,
+      time: match[2] ? parsePromptTime(match[2], match[3], match[4]) : undefined,
+    });
+  }
+  return requests;
+}
+
+function applyTimeMoveInstructions(events: TimelineBlock[], vision: string): TimelineBlock[] {
+  const moved = events.map(event => ({ ...event }));
+  const re = /\b(?:move|put|schedule|start|set)\s+(.{3,60}?)\s+(?:at|to|for)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(vision))) {
+    const label = match[1]?.trim() ?? "";
+    const idx = findEventIndex(moved, label);
+    if (idx < 0) continue;
+    const start = parsePromptTime(match[2], match[3], match[4]);
+    const duration = eventDuration(moved[idx]);
+    moved[idx].startTime = minutesToTime(start);
+    moved[idx].endTime = minutesToTime(start + duration);
+    moved[idx].notes = [moved[idx].notes, `Time adjusted from prompt: ${match[0]}.`].filter(Boolean).join(" ");
+  }
+  return moved.sort((a, b) => parseTimeToMinutes(a.startTime, 0) - parseTimeToMinutes(b.startTime, 0));
+}
+
+function applyRemovalInstructions(events: TimelineBlock[], vision: string): TimelineBlock[] {
+  const removals: string[] = [];
+  const re = /\b(?:remove|delete|skip|do\s*not include|don't include|dont include|no)\s+(.{3,55}?)(?:[.!?]|$)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(vision))) {
+    const label = match[1]?.trim() ?? "";
+    if (/\bfirst\b/i.test(label)) continue;
+    removals.push(label);
+  }
+  if (!removals.length) return events;
+  return events.filter(event => !removals.some(label => {
+    const alias = aliasForText(label);
+    if (alias) return eventMatchesAlias(event, alias);
+    return normalizePrompt(`${event.title} ${event.description}`).includes(normalizePrompt(label));
+  }));
+}
+
+function applyPutFirstInstructions(events: TimelineBlock[], vision: string): TimelineBlock[] {
+  const match = vision.match(/\b(?:put|start with|make|have)\s+(.{3,60}?)\s+first\b/i);
+  const label = match?.[1]?.trim();
+  if (!label) return events;
+  const ordered = events.map(event => ({ ...event }));
+  const idx = findEventIndex(ordered, label);
+  if (idx <= 0) return ordered;
+  const [target] = ordered.splice(idx, 1);
+  const firstStart = parseTimeToMinutes(ordered[0]?.startTime, parseTimeToMinutes(target.startTime, 8 * 60));
+  const targetDuration = eventDuration(target);
+  target.startTime = minutesToTime(firstStart);
+  target.endTime = minutesToTime(firstStart + targetDuration);
+  target.notes = [target.notes, `Moved first from prompt: ${match[0]}.`].filter(Boolean).join(" ");
+  ordered.unshift(target);
+  return ordered;
+}
+
+function applyOrderingInstructions(events: TimelineBlock[], dayVision?: string): TimelineBlock[] {
+  const vision = (dayVision ?? "").trim();
+  if (!vision || events.length < 2) return events;
+  let ordered = applyPutFirstInstructions(events, vision);
+  ordered = applyRemovalInstructions(ordered, vision);
+  ordered = applyTimeMoveInstructions(ordered, vision);
+  if (!promptSaysMakeupNotFirst(vision) || ordered.length < 2) return ordered;
+
+  const firstMakeupIndex = ordered.findIndex(isHairMakeupEvent);
+  if (firstMakeupIndex === 0) {
+    const makeupEvent = ordered[firstMakeupIndex];
+    const nextNonMakeupIndex = ordered.findIndex((event, index) => index > firstMakeupIndex && !isHairMakeupEvent(event));
+    if (!makeupEvent || nextNonMakeupIndex === -1) return ordered;
+
+    const firstStart = parseTimeToMinutes(makeupEvent.startTime, 8 * 60);
+    const makeupDuration = eventDuration(makeupEvent);
+    const nextEvent = ordered[nextNonMakeupIndex];
+    const nextDuration = eventDuration(nextEvent);
+
+    ordered.splice(firstMakeupIndex, 1);
+    ordered.splice(nextNonMakeupIndex, 0, makeupEvent);
+
+    const newFirst = ordered[0];
+    newFirst.startTime = minutesToTime(firstStart);
+    newFirst.endTime = minutesToTime(firstStart + nextDuration);
+    makeupEvent.startTime = minutesToTime(firstStart + nextDuration);
+    makeupEvent.endTime = minutesToTime(firstStart + nextDuration + makeupDuration);
+    makeupEvent.notes = [
+      makeupEvent.notes,
+      "Moved later because the latest prompt asked not to start the timeline with hair or makeup.",
+    ].filter(Boolean).join(" ");
+  }
+
+  return ordered;
+}
+
+function applyAddInstructions(events: TimelineBlock[], dayVision?: string): TimelineBlock[] {
+  const vision = (dayVision ?? "").trim();
+  if (!vision) return events;
+  const additions = extractAddRequests(vision);
+  if (!additions.length) return events;
+  const nextId = () => `block-added-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const output = events.map(event => ({ ...event }));
+  for (const addition of additions) {
+    if (findEventIndex(output, addition.label) >= 0) continue;
+    const alias = aliasForText(addition.label);
+    const fallbackStart = output.length
+      ? parseTimeToMinutes(output[output.length - 1].endTime, 20 * 60)
+      : 8 * 60;
+    const start = addition.time ?? fallbackStart;
+    output.push({
+      id: nextId(),
+      startTime: minutesToTime(start),
+      endTime: minutesToTime(start + 30),
+      title: alias?.title ?? addition.label.replace(/\b\w/g, (letter) => letter.toUpperCase()).slice(0, 80),
+      description: `Added from prompt: ${addition.label}.`,
+      category: alias?.category ?? "other",
+      location: output[0]?.location ?? "Wedding venue",
+      notes: "Added because the latest prompt requested it.",
+    });
+  }
+  return output.sort((a, b) => parseTimeToMinutes(a.startTime, 0) - parseTimeToMinutes(b.startTime, 0));
+}
+
 function extractVenueOverride(dayVision?: string): string | null {
   const vision = (dayVision ?? "").trim();
   if (!vision) return null;
@@ -151,7 +342,7 @@ function applyDayVisionToTimeline(
     appendNote("travel", "Add clear travel buffers and confirm transportation timing between locations.");
   }
 
-  return enhanced;
+  return applyAddInstructions(applyOrderingInstructions(enhanced, dayVision), dayVision);
 }
 
 function buildFallbackTimeline(profile: typeof weddingProfiles.$inferSelect, dayVision?: string): TimelineBlock[] {
@@ -269,7 +460,7 @@ Generate a complete wedding day schedule from early morning preparation through 
 - Departure
 
 Include realistic buffer time between events. Use specific locations where applicable.
-If a Couple's Vision for the Day is provided, it is the user's latest instruction and must override saved profile details when they conflict. If the vision names a venue, location, estate, manor, hotel, or place, use that place in event locations and descriptions instead of the saved profile venue. Make the timeline visibly reflect the request. Add or adjust timing, notes, categories, locations, and descriptions for those priorities instead of returning a generic wedding schedule.
+If a Couple's Vision for the Day is provided, it is the user's latest instruction and must override saved profile details when they conflict. If the vision names a venue, location, estate, manor, hotel, or place, use that place in event locations and descriptions instead of the saved profile venue. If the vision says not to put hair, makeup, glam, or getting-ready first, do not make that the first block; start with another appropriate preparation/vendor/setup block and place hair/makeup later. Make the timeline visibly reflect the request. Add or adjust timing, notes, categories, locations, and descriptions for those priorities instead of returning a generic wedding schedule.
 
 Return ONLY a valid JSON array (no markdown, no explanation) with this exact structure:
 [

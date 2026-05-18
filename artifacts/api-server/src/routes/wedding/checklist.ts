@@ -9,13 +9,67 @@ import { logActivity, resolveProfile, resolveCallerRole, hasMinRole } from "../.
 
 const router = Router();
 
+type ChecklistTask = { month: string; task: string; description: string };
+
+function normalizeTaskText(value: string): string {
+  return value.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function extractChecklistAdditions(focus?: string): ChecklistTask[] {
+  const text = (focus ?? "").trim();
+  if (!text) return [];
+  const additions: ChecklistTask[] = [];
+  const re = /\b(?:add|include|make sure to|make sure we|create)\s+(.{4,90}?)(?:[.!?]|$)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text))) {
+    const task = match[1]?.trim().replace(/\s+/g, " ");
+    if (!task) continue;
+    additions.push({
+      month: "Planning Focus",
+      task: task.replace(/\b\w/g, (letter) => letter.toUpperCase()).slice(0, 90),
+      description: "Added directly from your checklist prompt.",
+    });
+  }
+  return additions;
+}
+
+function extractChecklistRemovals(focus?: string): string[] {
+  const text = (focus ?? "").trim();
+  if (!text) return [];
+  const removals: string[] = [];
+  const re = /\b(?:remove|delete|skip|do\s*not include|don't include|dont include|no)\s+(.{4,70}?)(?:[.!?]|$)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text))) {
+    const label = match[1]?.trim();
+    if (label) removals.push(normalizeTaskText(label));
+  }
+  return removals;
+}
+
+function refineChecklistTasks(tasks: ChecklistTask[], focus?: string): ChecklistTask[] {
+  const removals = extractChecklistRemovals(focus);
+  const additions = extractChecklistAdditions(focus);
+  const allTasks = [...tasks, ...additions].filter((task) => {
+    if (!task.task?.trim()) return false;
+    const haystack = normalizeTaskText(`${task.task} ${task.description}`);
+    return !removals.some(removal => removal && haystack.includes(removal));
+  });
+  const seen = new Set<string>();
+  return allTasks.filter((task) => {
+    const key = normalizeTaskText(task.task);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function buildFallbackChecklist(input: {
   weddingDate: string;
   weddingVibe: string;
   guestCount: number;
   monthsUntil: number;
   planningFocus?: string;
-}): Array<{ month: string; task: string; description: string }> {
+}): ChecklistTask[] {
   const focus = (input.planningFocus ?? "").trim();
   const lower = focus.toLowerCase();
   const items = [
@@ -37,7 +91,7 @@ function buildFallbackChecklist(input: {
   if (/\b(destination|hotel|travel|shuttle)\b/i.test(lower)) add("Coordinate travel details", "Confirm hotel blocks, transportation, maps, and guest instructions.");
   if (/\b(diy|decor|floral|flowers|design)\b/i.test(lower)) add("Build decor production list", "Assign decor owners, supplies, setup timing, and cleanup.");
 
-  return items.map(({ month, task, description }) => ({ month, task, description }));
+  return refineChecklistTasks(items.map(({ month, task, description }) => ({ month, task, description })), input.planningFocus);
 }
 
 router.get("/checklist", requireAuth, async (req, res) => {
@@ -123,7 +177,7 @@ If a checklist focus / prompt is provided, make the generated tasks visibly refl
     }, { signal: AbortSignal.timeout(45_000) });
 
     const content = completion.choices[0]?.message?.content ?? "[]";
-    let tasks: Array<{ month: string; task: string; description: string }>;
+    let tasks: ChecklistTask[];
 
     try {
       const jsonMatch = content.match(/\[[\s\S]*\]/);
@@ -140,15 +194,41 @@ If a checklist focus / prompt is provided, make the generated tasks visibly refl
         planningFocus,
       });
     }
+    tasks = refineChecklistTasks(tasks, planningFocus);
 
-    await db.delete(checklistItems).where(eq(checklistItems.profileId, profile.id));
+    const existingItems = await db
+      .select()
+      .from(checklistItems)
+      .where(eq(checklistItems.profileId, profile.id))
+      .orderBy(asc(checklistItems.id));
+
+    const hasFocus = typeof planningFocus === "string" && planningFocus.trim().length > 0;
+    const removals = extractChecklistRemovals(planningFocus);
+    if (hasFocus && removals.length > 0) {
+      for (const item of existingItems) {
+        if (item.isCompleted) continue;
+        const haystack = normalizeTaskText(`${item.task} ${item.description}`);
+        if (removals.some(removal => removal && haystack.includes(removal))) {
+          await db.delete(checklistItems).where(and(eq(checklistItems.id, item.id), eq(checklistItems.profileId, profile.id)));
+        }
+      }
+    } else if (!hasFocus) {
+      await db.delete(checklistItems).where(and(eq(checklistItems.profileId, profile.id), eq(checklistItems.isCompleted, false)));
+    }
+
+    const latestExistingItems = await db
+      .select()
+      .from(checklistItems)
+      .where(eq(checklistItems.profileId, profile.id))
+      .orderBy(asc(checklistItems.id));
+    const existingTaskKeys = new Set(latestExistingItems.map(item => normalizeTaskText(item.task)));
 
     const insertData = tasks.map(t => ({
       profileId: profile.id,
       month: t.month,
       task: t.task,
       description: t.description,
-    }));
+    })).filter(item => !existingTaskKeys.has(normalizeTaskText(item.task)));
 
     if (insertData.length > 0) {
       await db.insert(checklistItems).values(insertData);
@@ -196,8 +276,12 @@ If a checklist focus / prompt is provided, make the generated tasks visibly refl
           planningFocus,
         });
 
-        await db.delete(checklistItems).where(eq(checklistItems.profileId, profile.id));
-        if (tasks.length > 0) await db.insert(checklistItems).values(tasks.map(t => ({ profileId: profile.id, ...t })));
+        const existingItems = await db.select().from(checklistItems).where(eq(checklistItems.profileId, profile.id));
+        const existingTaskKeys = new Set(existingItems.map(item => normalizeTaskText(item.task)));
+        const insertData = refineChecklistTasks(tasks, planningFocus)
+          .map(t => ({ profileId: profile.id, ...t }))
+          .filter(item => !existingTaskKeys.has(normalizeTaskText(item.task)));
+        if (insertData.length > 0) await db.insert(checklistItems).values(insertData);
         const items = await db
           .select()
           .from(checklistItems)
