@@ -30,7 +30,7 @@ const REQUIREMENT_CATEGORIES: Array<{
 }> = [
   {
     key: "mustHaves",
-    title: "Must-Haves",
+    title: "Must Have",
     options: [
       "Budget-friendly",
       "Specific date availability",
@@ -49,7 +49,7 @@ const REQUIREMENT_CATEGORIES: Array<{
   },
   {
     key: "niceToHaves",
-    title: "Nice-to-Haves",
+    title: "Nice to Have",
     options: [
       "Scenic photo spots",
       "Open bar",
@@ -67,7 +67,7 @@ const REQUIREMENT_CATEGORIES: Array<{
   },
   {
     key: "mustNotHaves",
-    title: "Must-Not-Haves",
+    title: "Must Avoid",
     options: [
       "Hidden fees",
       "Strict vendor restrictions",
