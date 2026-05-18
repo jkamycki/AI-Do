@@ -1,0 +1,558 @@
+import { Router } from "express";
+import multer from "multer";
+import { createRequire } from "node:module";
+import JSZip from "jszip";
+import he from "he";
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { db, checklistItems, documents, vendors } from "@workspace/db";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
+import { requireAuth } from "../middlewares/requireAuth";
+import { ObjectStorageService } from "../lib/objectStorage";
+import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
+
+const require = createRequire(import.meta.url);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require("pdf-parse");
+
+const router = Router();
+const storage = new ObjectStorageService();
+
+const ALLOWED_DOCUMENT_MIMES = new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "image/jpeg",
+  "image/png",
+]);
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    const name = file.originalname.toLowerCase();
+    const ok =
+      ALLOWED_DOCUMENT_MIMES.has(file.mimetype) ||
+      name.endsWith(".pdf") ||
+      name.endsWith(".docx") ||
+      name.endsWith(".jpg") ||
+      name.endsWith(".jpeg") ||
+      name.endsWith(".png");
+    if (!ok) {
+      cb(new Error("Unsupported file type. Please upload a PDF, DOCX, JPG, or PNG file."));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
+type ExtractedFields = {
+  vendorName?: string | null;
+  paymentSchedule?: Array<{ label?: string; amount?: number | null; dueDate?: string | null; notes?: string | null }>;
+  dueDates?: Array<{ label?: string; date?: string | null; notes?: string | null }>;
+  cancellationPolicy?: string | null;
+  deliverables?: string[];
+  contactInfo?: { name?: string | null; phone?: string | null; email?: string | null; address?: string | null };
+  suggestedTasks?: Array<{ title?: string; task?: string; description?: string; dueDate?: string | null }>;
+  suggestedVendorId?: number | null;
+  suggestedVendorName?: string | null;
+};
+
+function sanitizeText(text: string): string {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/\u0000/g, "").replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ").trim();
+}
+
+function asObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function asText(value: unknown, fallback = ""): string {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function asTextArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => asText(item)).filter(Boolean) : [];
+}
+
+function asNullableNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/[$,]/g, ""));
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function parseJsonObject(raw: string): Record<string, unknown> | null {
+  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  const candidates = [cleaned];
+  const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (objectMatch?.[0] && objectMatch[0] !== cleaned) candidates.push(objectMatch[0]);
+
+  for (const candidate of candidates) {
+    try {
+      return asObject(JSON.parse(candidate));
+    } catch {}
+    try {
+      const repaired = candidate
+        .replace(/,\s*([}\]])/g, "$1")
+        .replace(/[\u201c\u201d]/g, "\"")
+        .replace(/[\u2018\u2019]/g, "'");
+      return asObject(JSON.parse(repaired));
+    } catch {}
+  }
+  return null;
+}
+
+function fileTypeFromName(fileName: string, mimeType: string): string {
+  const name = fileName.toLowerCase();
+  if (mimeType.includes("pdf") || name.endsWith(".pdf")) return "PDF";
+  if (mimeType.includes("word") || name.endsWith(".docx")) return "DOCX";
+  if (mimeType.includes("png") || name.endsWith(".png")) return "PNG";
+  if (mimeType.includes("jpeg") || name.endsWith(".jpg") || name.endsWith(".jpeg")) return "JPG";
+  return "FILE";
+}
+
+function cleanFileName(fileName: string): string {
+  return fileName.replace(/[^\w.\- ]+/g, " ").replace(/\s+/g, " ").trim() || "Wedding document";
+}
+
+async function extractDocxText(buffer: Buffer): Promise<string> {
+  const zip = await JSZip.loadAsync(buffer);
+  const doc = await zip.file("word/document.xml")?.async("string");
+  if (!doc) return "";
+  return sanitizeText(
+    he.decode(
+      doc
+        .replace(/<\/w:p>/g, "\n")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " "),
+    ),
+  );
+}
+
+async function extractDocumentText(file: Express.Multer.File): Promise<string> {
+  const name = file.originalname.toLowerCase();
+  if (file.mimetype === "application/pdf" || name.endsWith(".pdf")) {
+    const parsed = await pdfParse(file.buffer);
+    return sanitizeText(parsed.text || "");
+  }
+  if (file.mimetype.includes("wordprocessingml") || name.endsWith(".docx")) {
+    return extractDocxText(file.buffer);
+  }
+  return "";
+}
+
+function normalizeExtractedFields(raw: unknown): ExtractedFields {
+  const obj = asObject(raw);
+  const contact = asObject(obj.contactInfo);
+  return {
+    vendorName: asText(obj.vendorName) || null,
+    paymentSchedule: Array.isArray(obj.paymentSchedule)
+      ? obj.paymentSchedule.map((item) => {
+          const row = asObject(item);
+          return {
+            label: asText(row.label, "Payment"),
+            amount: asNullableNumber(row.amount),
+            dueDate: asText(row.dueDate) || null,
+            notes: asText(row.notes) || null,
+          };
+        })
+      : [],
+    dueDates: Array.isArray(obj.dueDates)
+      ? obj.dueDates.map((item) => {
+          const row = asObject(item);
+          return {
+            label: asText(row.label, "Deadline"),
+            date: asText(row.date) || null,
+            notes: asText(row.notes) || null,
+          };
+        })
+      : [],
+    cancellationPolicy: asText(obj.cancellationPolicy) || null,
+    deliverables: asTextArray(obj.deliverables),
+    contactInfo: {
+      name: asText(contact.name) || null,
+      phone: asText(contact.phone) || null,
+      email: asText(contact.email) || null,
+      address: asText(contact.address) || null,
+    },
+    suggestedTasks: Array.isArray(obj.suggestedTasks)
+      ? obj.suggestedTasks.map((item) => {
+          const row = asObject(item);
+          return {
+            title: asText(row.title) || asText(row.task) || "Review document task",
+            task: asText(row.task) || asText(row.title) || "Review document task",
+            description: asText(row.description),
+            dueDate: asText(row.dueDate) || null,
+          };
+        })
+      : [],
+    suggestedVendorName: asText(obj.suggestedVendorName) || asText(obj.vendorName) || null,
+    suggestedVendorId: asNullableNumber(obj.suggestedVendorId),
+  };
+}
+
+function fallbackSummary(fileName: string, extractedText: string, fileType: string): string {
+  if (!extractedText) {
+    return `${fileName} was uploaded as a ${fileType} document. Text extraction is not available for this file yet, so review the preview and run extraction again after adding OCR support.`;
+  }
+  const first = extractedText.replace(/\s+/g, " ").slice(0, 320);
+  return first ? `${first}${extractedText.length > 320 ? "..." : ""}` : `Uploaded ${fileName}.`;
+}
+
+function fallbackFields(fileName: string, extractedText: string): ExtractedFields {
+  const text = extractedText.replace(/\s+/g, " ");
+  const amountMatches = Array.from(text.matchAll(/\$[\d,]+(?:\.\d{2})?/g)).slice(0, 4).map((m, index) => ({
+    label: index === 0 ? "Possible payment" : `Possible payment ${index + 1}`,
+    amount: asNullableNumber(m[0]),
+    dueDate: null,
+    notes: m[0],
+  }));
+  const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? null;
+  const phone = text.match(/\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/)?.[0] ?? null;
+  return {
+    vendorName: null,
+    paymentSchedule: amountMatches,
+    dueDates: [],
+    cancellationPolicy: text.toLowerCase().includes("cancel") ? "Cancellation language appears in the document. Review the preview for exact terms." : null,
+    deliverables: [],
+    contactInfo: { name: null, phone, email, address: null },
+    suggestedTasks: amountMatches.map((payment) => ({
+      title: `Review payment in ${fileName}`,
+      task: `Review payment in ${fileName}`,
+      description: payment.notes ?? "",
+      dueDate: null,
+    })),
+    suggestedVendorName: null,
+    suggestedVendorId: null,
+  };
+}
+
+async function analyzeDocument(fileName: string, fileType: string, extractedText: string, imageDataUrl?: string): Promise<{ summary: string; fields: ExtractedFields }> {
+  if ((!extractedText || extractedText.length < 40) && !imageDataUrl) {
+    return {
+      summary: fallbackSummary(fileName, extractedText, fileType),
+      fields: fallbackFields(fileName, extractedText),
+    };
+  }
+
+  try {
+    const textPrompt = `Analyze this wedding document and return JSON with:
+{
+  "summary": "short useful summary",
+  "vendorName": "vendor or null",
+  "paymentSchedule": [{"label":"Deposit","amount":1000,"dueDate":"YYYY-MM-DD or null","notes":"short note"}],
+  "dueDates": [{"label":"Final count due","date":"YYYY-MM-DD or null","notes":"short note"}],
+  "cancellationPolicy": "short policy or null",
+  "deliverables": ["deliverable"],
+  "contactInfo": {"name": null, "phone": null, "email": null, "address": null},
+  "suggestedTasks": [{"title":"Task title","task":"Task title","description":"why this task matters","dueDate":"YYYY-MM-DD or null"}],
+  "suggestedVendorName": "vendor or null"
+}
+
+File name: ${fileName}
+File type: ${fileType}
+${extractedText ? `Document text:\n${extractedText.slice(0, 18000)}` : "This is an image document. Read visible text and layout from the image."}`;
+    const response = await openai.chat.completions.create({
+      model: getModel(),
+      temperature: 0.2,
+      messages: [
+        {
+          role: "system",
+          content: "Extract wedding planning document information. Return only valid JSON.",
+        },
+        {
+          role: "user",
+          content: imageDataUrl
+            ? [
+                { type: "text", text: textPrompt },
+                { type: "image_url", image_url: { url: imageDataUrl } },
+              ]
+            : textPrompt,
+        },
+      ],
+    });
+    const raw = response.choices[0]?.message?.content ?? "";
+    const parsed = parseJsonObject(raw);
+    if (!parsed) throw new Error("No JSON returned");
+    return {
+      summary: asText(parsed.summary, fallbackSummary(fileName, extractedText, fileType)),
+      fields: normalizeExtractedFields(parsed),
+    };
+  } catch {
+    return {
+      summary: fallbackSummary(fileName, extractedText, fileType),
+      fields: fallbackFields(fileName, extractedText),
+    };
+  }
+}
+
+async function findMatchingVendor(profileId: number, fields: ExtractedFields, fileName: string) {
+  const candidate = fields.vendorName || fields.suggestedVendorName || fileName.replace(/\.[^.]+$/, "");
+  if (!candidate.trim()) return null;
+  const rows = await db
+    .select({ id: vendors.id, name: vendors.name })
+    .from(vendors)
+    .where(and(eq(vendors.profileId, profileId), or(ilike(vendors.name, `%${candidate}%`), ilike(vendors.category, `%${candidate}%`))))
+    .limit(1);
+  if (rows[0]) return rows[0];
+
+  const all = await db
+    .select({ id: vendors.id, name: vendors.name })
+    .from(vendors)
+    .where(eq(vendors.profileId, profileId));
+  const lowerName = fileName.toLowerCase();
+  return all.find((vendor) => lowerName.includes(vendor.name.toLowerCase())) ?? null;
+}
+
+function normalizeTags(value: unknown): string[] {
+  return Array.isArray(value)
+    ? Array.from(new Set(value.map((item) => asText(item)).filter(Boolean))).slice(0, 20)
+    : [];
+}
+
+function normalizeVisibility(value: unknown): string[] {
+  return Array.isArray(value)
+    ? Array.from(new Set(value.map((item) => asText(item)).filter(Boolean))).slice(0, 20)
+    : [];
+}
+
+router.get("/documents", requireAuth, async (req, res) => {
+  const profile = await resolveProfile(req);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+
+  const rows = await db
+    .select({
+      id: documents.id,
+      fileUrl: documents.fileUrl,
+      fileName: documents.fileName,
+      originalFileName: documents.originalFileName,
+      fileType: documents.fileType,
+      mimeType: documents.mimeType,
+      fileSize: documents.fileSize,
+      uploadedBy: documents.uploadedBy,
+      linkedVendorId: documents.linkedVendorId,
+      linkedVendorName: vendors.name,
+      summary: documents.summary,
+      extractedFields: documents.extractedFields,
+      tags: documents.tags,
+      folder: documents.folder,
+      visibility: documents.visibility,
+      createdAt: documents.createdAt,
+      updatedAt: documents.updatedAt,
+    })
+    .from(documents)
+    .leftJoin(vendors, eq(documents.linkedVendorId, vendors.id))
+    .where(eq(documents.profileId, profile.id))
+    .orderBy(desc(documents.createdAt));
+
+  res.json({ documents: rows });
+});
+
+router.get("/documents/:id", requireAuth, async (req, res) => {
+  const profile = await resolveProfile(req);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const id = Number(req.params.id);
+  const rows = await db
+    .select({
+      id: documents.id,
+      fileUrl: documents.fileUrl,
+      fileName: documents.fileName,
+      originalFileName: documents.originalFileName,
+      fileType: documents.fileType,
+      mimeType: documents.mimeType,
+      fileSize: documents.fileSize,
+      uploadedBy: documents.uploadedBy,
+      linkedVendorId: documents.linkedVendorId,
+      linkedVendorName: vendors.name,
+      summary: documents.summary,
+      extractedFields: documents.extractedFields,
+      tags: documents.tags,
+      folder: documents.folder,
+      visibility: documents.visibility,
+      extractedText: documents.extractedText,
+      createdAt: documents.createdAt,
+      updatedAt: documents.updatedAt,
+    })
+    .from(documents)
+    .leftJoin(vendors, eq(documents.linkedVendorId, vendors.id))
+    .where(and(eq(documents.id, id), eq(documents.profileId, profile.id)))
+    .limit(1);
+  if (!rows[0]) return res.status(404).json({ error: "Document not found" });
+  res.json({ document: rows[0] });
+});
+
+router.post("/documents/upload", requireAuth, upload.single("file"), async (req, res) => {
+  const role = await resolveCallerRole(req);
+  if (!hasMinRole(role, "planner")) return res.status(403).json({ error: "Only owners, partners, and planners can upload documents." });
+  const profile = await resolveProfile(req);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+  if (!req.file) return res.status(400).json({ error: "No document was uploaded." });
+
+  const originalName = cleanFileName(req.file.originalname);
+  const fileType = fileTypeFromName(originalName, req.file.mimetype);
+  const extractedText = await extractDocumentText(req.file).catch(() => "");
+  const imageDataUrl = req.file.mimetype.startsWith("image/")
+    ? `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`
+    : undefined;
+  const analysis = await analyzeDocument(originalName, fileType, extractedText, imageDataUrl);
+  const matchingVendor = await findMatchingVendor(profile.id, analysis.fields, originalName);
+  const fields: ExtractedFields = {
+    ...analysis.fields,
+    suggestedVendorId: matchingVendor?.id ?? analysis.fields.suggestedVendorId ?? null,
+    suggestedVendorName: matchingVendor?.name ?? analysis.fields.suggestedVendorName ?? analysis.fields.vendorName ?? null,
+  };
+  const fileUrl = await storage.uploadObjectEntityFile(req.file.buffer, originalName, req.file.mimetype);
+
+  const inserted = await db
+    .insert(documents)
+    .values({
+      profileId: profile.id,
+      userId: profile.userId,
+      fileUrl,
+      fileName: originalName,
+      originalFileName: originalName,
+      fileType,
+      mimeType: req.file.mimetype,
+      fileSize: req.file.size,
+      uploadedBy: req.userId!,
+      linkedVendorId: matchingVendor?.id ?? null,
+      summary: analysis.summary,
+      extractedFields: fields,
+      tags: [],
+      folder: asText(req.body.folder, "General"),
+      visibility: normalizeVisibility(req.body.visibility),
+      extractedText,
+    })
+    .returning();
+
+  res.status(201).json({ document: inserted[0] });
+});
+
+router.patch("/documents/:id", requireAuth, async (req, res) => {
+  const role = await resolveCallerRole(req);
+  if (!hasMinRole(role, "planner")) return res.status(403).json({ error: "Only owners, partners, and planners can edit documents." });
+  const profile = await resolveProfile(req);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const id = Number(req.params.id);
+  const patch: Partial<typeof documents.$inferInsert> = { updatedAt: new Date() };
+  if (typeof req.body.fileName === "string") patch.fileName = cleanFileName(req.body.fileName);
+  if (typeof req.body.folder === "string") patch.folder = req.body.folder.trim() || "General";
+  if (Array.isArray(req.body.tags)) patch.tags = normalizeTags(req.body.tags);
+  if (Array.isArray(req.body.visibility)) patch.visibility = normalizeVisibility(req.body.visibility);
+  if (req.body.linkedVendorId === null) patch.linkedVendorId = null;
+  if (typeof req.body.linkedVendorId === "number") patch.linkedVendorId = req.body.linkedVendorId;
+
+  const updated = await db
+    .update(documents)
+    .set(patch)
+    .where(and(eq(documents.id, id), eq(documents.profileId, profile.id)))
+    .returning();
+  if (!updated[0]) return res.status(404).json({ error: "Document not found" });
+  res.json({ document: updated[0] });
+});
+
+router.delete("/documents/:id", requireAuth, async (req, res) => {
+  const role = await resolveCallerRole(req);
+  if (!hasMinRole(role, "planner")) return res.status(403).json({ error: "Only owners, partners, and planners can delete documents." });
+  const profile = await resolveProfile(req);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const id = Number(req.params.id);
+  const deleted = await db
+    .delete(documents)
+    .where(and(eq(documents.id, id), eq(documents.profileId, profile.id)))
+    .returning({ id: documents.id });
+  if (!deleted[0]) return res.status(404).json({ error: "Document not found" });
+  res.json({ ok: true });
+});
+
+router.post("/documents/:id/summary", requireAuth, async (req, res) => {
+  const profile = await resolveProfile(req);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const id = Number(req.params.id);
+  const rows = await db.select().from(documents).where(and(eq(documents.id, id), eq(documents.profileId, profile.id))).limit(1);
+  const doc = rows[0];
+  if (!doc) return res.status(404).json({ error: "Document not found" });
+  const analysis = await analyzeDocument(doc.fileName, doc.fileType, doc.extractedText ?? "");
+  const updated = await db
+    .update(documents)
+    .set({ summary: analysis.summary, updatedAt: new Date() })
+    .where(eq(documents.id, id))
+    .returning();
+  res.json({ document: updated[0] });
+});
+
+router.post("/documents/:id/extract", requireAuth, async (req, res) => {
+  const profile = await resolveProfile(req);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const id = Number(req.params.id);
+  const rows = await db.select().from(documents).where(and(eq(documents.id, id), eq(documents.profileId, profile.id))).limit(1);
+  const doc = rows[0];
+  if (!doc) return res.status(404).json({ error: "Document not found" });
+  const analysis = await analyzeDocument(doc.fileName, doc.fileType, doc.extractedText ?? "");
+  const matchingVendor = await findMatchingVendor(profile.id, analysis.fields, doc.fileName);
+  const fields: ExtractedFields = {
+    ...analysis.fields,
+    suggestedVendorId: matchingVendor?.id ?? analysis.fields.suggestedVendorId ?? null,
+    suggestedVendorName: matchingVendor?.name ?? analysis.fields.suggestedVendorName ?? analysis.fields.vendorName ?? null,
+  };
+  const updated = await db
+    .update(documents)
+    .set({
+      summary: analysis.summary,
+      extractedFields: fields,
+      linkedVendorId: doc.linkedVendorId ?? matchingVendor?.id ?? null,
+      updatedAt: new Date(),
+    })
+    .where(eq(documents.id, id))
+    .returning();
+  res.json({ document: updated[0] });
+});
+
+router.post("/documents/:id/link-vendor", requireAuth, async (req, res) => {
+  const role = await resolveCallerRole(req);
+  if (!hasMinRole(role, "planner")) return res.status(403).json({ error: "Only owners, partners, and planners can link vendors." });
+  const profile = await resolveProfile(req);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const id = Number(req.params.id);
+  const vendorId = Number(req.body.vendorId);
+  const vendorRows = await db.select().from(vendors).where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id))).limit(1);
+  if (!vendorRows[0]) return res.status(404).json({ error: "Vendor not found" });
+  const updated = await db
+    .update(documents)
+    .set({ linkedVendorId: vendorId, updatedAt: new Date() })
+    .where(and(eq(documents.id, id), eq(documents.profileId, profile.id)))
+    .returning();
+  if (!updated[0]) return res.status(404).json({ error: "Document not found" });
+  res.json({ document: updated[0] });
+});
+
+router.post("/documents/:id/tasks", requireAuth, async (req, res) => {
+  const role = await resolveCallerRole(req);
+  if (!hasMinRole(role, "planner")) return res.status(403).json({ error: "Only owners, partners, and planners can create tasks." });
+  const profile = await resolveProfile(req);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const id = Number(req.params.id);
+  const rows = await db.select().from(documents).where(and(eq(documents.id, id), eq(documents.profileId, profile.id))).limit(1);
+  const doc = rows[0];
+  if (!doc) return res.status(404).json({ error: "Document not found" });
+  const fields = normalizeExtractedFields(doc.extractedFields);
+  const tasks = fields.suggestedTasks?.filter((task) => asText(task.task || task.title)).slice(0, 12) ?? [];
+  if (!tasks.length) return res.json({ tasks: [] });
+
+  const inserted = await db
+    .insert(checklistItems)
+    .values(tasks.map((task) => ({
+      profileId: profile.id,
+      month: task.dueDate ? "Document deadlines" : "Document follow-up",
+      task: asText(task.task || task.title, "Review document task"),
+      description: asText(task.description, `Generated from ${doc.fileName}`),
+      isCompleted: false,
+    })))
+    .returning();
+
+  await db.execute(sql`UPDATE documents SET updated_at = now() WHERE id = ${id}`);
+  res.status(201).json({ tasks: inserted });
+});
+
+export default router;

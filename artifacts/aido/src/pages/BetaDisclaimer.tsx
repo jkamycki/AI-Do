@@ -18,7 +18,7 @@ export default function BetaDisclaimer() {
         </Link>
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Beta Disclaimer</h1>
-          <p className="text-sm text-[#6F3E54]">Last updated: May 13, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 18, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed">
@@ -70,7 +70,7 @@ export default function BetaDisclaimer() {
                 While we take reasonable care to back up the database, you
                 should keep your own independent copy of critical wedding
                 details (final guest list, signed vendor contracts, payment
-                records, etc.).
+                records, Document Library uploads, vendor contacts, etc.).
               </li>
               <li>
                 You can delete your account at any time from Settings → Account.
@@ -104,6 +104,19 @@ export default function BetaDisclaimer() {
                 <strong>The contract analyzer</strong> is AI-generated and
                 informational only; it is <em>not</em> legal advice and is not a
                 substitute for a real attorney reviewing your vendor contracts.
+              </li>
+              <li>
+                <strong>The Document Library</strong> can summarize documents,
+                extract payment dates, cancellation terms, deliverables, contact
+                details, and suggest vendors or tasks. These results may be
+                incomplete or wrong, especially for unclear scans, screenshots,
+                or image files. Always compare AI output against the original
+                document.
+              </li>
+              <li>
+                <strong>Vendor contacts</strong> may be synced from vendor
+                records or added manually. Mobile call/text shortcuts use your
+                device's phone and messaging apps and may not work on desktop.
               </li>
               <li>
                 <strong>Vendor email drafts</strong> never auto-send — you

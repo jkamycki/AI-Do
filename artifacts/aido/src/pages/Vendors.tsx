@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useAuth } from "@clerk/react";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
 import {
   useListVendors,
@@ -77,6 +77,7 @@ import {
   X,
   ChevronRight,
   Bell,
+  MessageSquare,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
@@ -173,6 +174,69 @@ type VendorFormData = {
   primaryContact: string;
 };
 
+type VendorContactType = "General" | "Vendor";
+
+type VendorContact = {
+  id: string;
+  source: "vendor" | "manual";
+  vendorId: number | null;
+  name: string;
+  businessName: string | null;
+  email: string | null;
+  phone: string | null;
+  contactType: VendorContactType;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type VendorContactFormData = {
+  name: string;
+  businessName: string;
+  phone: string;
+  email: string;
+  contactType: VendorContactType;
+};
+
+const vendorContactsQueryKey = ["vendor-contacts"] as const;
+
+function phoneHref(phone: string, scheme: "tel" | "sms") {
+  const cleaned = phone.replace(/[^\d+]/g, "");
+  return `${scheme}:${cleaned || phone}`;
+}
+
+async function fetchVendorContacts(): Promise<VendorContact[]> {
+  const res = await authFetch("/api/vendor-contacts");
+  if (!res.ok) throw new Error("Failed to load contacts");
+  return res.json();
+}
+
+async function createVendorContact(data: VendorContactFormData): Promise<VendorContact> {
+  const res = await authFetch("/api/vendor-contacts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to save contact");
+  return res.json();
+}
+
+async function updateVendorContact(id: string, data: VendorContactFormData): Promise<VendorContact> {
+  const res = await authFetch(`/api/vendor-contacts/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update contact");
+  return res.json();
+}
+
+async function deleteVendorContact(id: string): Promise<void> {
+  const res = await authFetch(`/api/vendor-contacts/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Failed to remove contact");
+}
+
 const defaultFormData: VendorFormData = {
   name: "",
   category: "",
@@ -256,6 +320,7 @@ function AddEditVendorDialog({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        qc.invalidateQueries({ queryKey: vendorContactsQueryKey });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
         qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
         toast({ title: t("vendors.vendor_added") });
@@ -294,6 +359,7 @@ function AddEditVendorDialog({
           await qc.refetchQueries({ queryKey: key });
         }
         await qc.refetchQueries({ queryKey: getListVendorsQueryKey() });
+        qc.invalidateQueries({ queryKey: vendorContactsQueryKey });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
         qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
         toast({ title: t("vendors.vendor_updated") });
@@ -1302,6 +1368,346 @@ function SummarizeEmailDialog({ open, onClose, preferredLanguage }: { open: bool
   );
 }
 
+function VendorContactDialog({
+  open,
+  onClose,
+  contact,
+}: {
+  open: boolean;
+  onClose: () => void;
+  contact?: VendorContact | null;
+}) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [form, setForm] = useState<VendorContactFormData>({
+    name: contact?.name ?? "",
+    businessName: contact?.businessName ?? "",
+    phone: contact?.phone ?? "",
+    email: contact?.email ?? "",
+    contactType: contact?.contactType ?? "General",
+  });
+
+  useEffect(() => {
+    setForm({
+      name: contact?.name ?? "",
+      businessName: contact?.businessName ?? "",
+      phone: contact?.phone ?? "",
+      email: contact?.email ?? "",
+      contactType: contact?.contactType ?? "General",
+    });
+  }, [contact]);
+
+  const createMutation = useMutation({
+    mutationFn: createVendorContact,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: vendorContactsQueryKey });
+      toast({ title: t("vendors.contact_saved", { defaultValue: "Contact saved" }) });
+      onClose();
+    },
+    onError: () => toast({ title: t("vendors.contact_save_failed", { defaultValue: "Could not save contact" }), variant: "destructive" }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (data: VendorContactFormData) => updateVendorContact(contact?.id ?? "", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: vendorContactsQueryKey });
+      toast({ title: t("vendors.contact_updated", { defaultValue: "Contact updated" }) });
+      onClose();
+    },
+    onError: () => toast({ title: t("vendors.contact_save_failed", { defaultValue: "Could not save contact" }), variant: "destructive" }),
+  });
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim()) {
+      toast({ title: t("vendors.contact_name_required", { defaultValue: "Contact name is required" }), variant: "destructive" });
+      return;
+    }
+    const payload: VendorContactFormData = {
+      name: form.name.trim(),
+      businessName: form.businessName.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim(),
+      contactType: form.contactType,
+    };
+    if (contact) updateMutation.mutate(payload);
+    else createMutation.mutate(payload);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="font-serif text-2xl">
+            {contact
+              ? t("vendors.edit_contact", { defaultValue: "Edit Contact" })
+              : t("vendors.add_contact", { defaultValue: "Add Contact" })}
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>{t("vendors.contact_name", { defaultValue: "Name" })}</Label>
+            <Input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder={t("vendors.contact_name_placeholder", { defaultValue: "Contact name" })}
+              data-testid="input-vendor-contact-name"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("vendors.contact_business_name", { defaultValue: "Business Name (if applicable)" })}</Label>
+            <Input
+              value={form.businessName}
+              onChange={(e) => setForm({ ...form, businessName: e.target.value })}
+              placeholder={t("vendors.contact_business_placeholder", { defaultValue: "Business or company name" })}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>{t("vendors.phone")}</Label>
+              <Input
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder={t("vendors.phone_placeholder")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("vendors.email")} {t("vendors.optional_label", { defaultValue: "(optional)" })}</Label>
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder={t("vendors.email_placeholder")}
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("vendors.contact_type", { defaultValue: "Contact Type" })}</Label>
+            <Select
+              value={form.contactType}
+              onValueChange={(value) => setForm({ ...form, contactType: value as VendorContactType })}
+            >
+              <SelectTrigger data-testid="select-vendor-contact-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="General">{t("vendors.contact_type_general", { defaultValue: "General" })}</SelectItem>
+                <SelectItem value="Vendor">{t("vendors.contact_type_vendor", { defaultValue: "Vendor" })}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>{t("vendors.cancel")}</Button>
+            <Button type="submit" disabled={isPending} data-testid="btn-save-vendor-contact">
+              {isPending ? t("vendors.saving") : t("vendors.save_contact", { defaultValue: "Save Contact" })}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function VendorContactsTab() {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [showContactDialog, setShowContactDialog] = useState(false);
+  const [editingContact, setEditingContact] = useState<VendorContact | null>(null);
+  const [removingContact, setRemovingContact] = useState<VendorContact | null>(null);
+  const { data: contacts = [], isLoading } = useQuery({
+    queryKey: vendorContactsQueryKey,
+    queryFn: fetchVendorContacts,
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: deleteVendorContact,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: vendorContactsQueryKey });
+      setRemovingContact(null);
+      toast({ title: t("vendors.contact_removed", { defaultValue: "Contact removed" }) });
+    },
+    onError: () => toast({ title: t("vendors.contact_remove_failed", { defaultValue: "Could not remove contact" }), variant: "destructive" }),
+  });
+
+  const syncedCount = contacts.filter((contact) => contact.source === "vendor").length;
+  const manualCount = contacts.length - syncedCount;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-serif text-foreground">{t("vendors.contacts_title", { defaultValue: "Contacts" })}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t("vendors.contacts_summary", {
+              defaultValue: "{{synced}} synced from vendors · {{manual}} added here",
+              synced: syncedCount,
+              manual: manualCount,
+            })}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => {
+            setEditingContact(null);
+            setShowContactDialog(true);
+          }}
+          data-testid="btn-add-vendor-contact"
+        >
+          <Plus className="h-4 w-4 mr-1.5" />
+          {t("vendors.add_contact", { defaultValue: "Add Contact" })}
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+        </div>
+      ) : contacts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border/60 rounded-2xl">
+          <Store className="h-8 w-8 text-muted-foreground mb-3" />
+          <h3 className="font-serif text-xl text-foreground">{t("vendors.no_contacts_title", { defaultValue: "No contacts yet" })}</h3>
+          <p className="text-sm text-muted-foreground max-w-sm mt-1 mb-4">
+            {t("vendors.no_contacts_desc", { defaultValue: "Vendor contacts will appear here automatically, and you can add general contacts any time." })}
+          </p>
+          <Button size="sm" onClick={() => setShowContactDialog(true)}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            {t("vendors.add_contact", { defaultValue: "Add Contact" })}
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {contacts.map((contact) => (
+            <div
+              key={contact.id}
+              className="flex flex-col md:flex-row md:items-center gap-3 rounded-xl border border-border/60 bg-card p-4"
+              data-testid={`vendor-contact-${contact.id}`}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-semibold text-foreground truncate">{contact.name}</h3>
+                  <Badge variant="secondary" className={contact.contactType === "Vendor" ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200" : ""}>
+                    {contact.contactType}
+                  </Badge>
+                  {contact.source === "vendor" && (
+                    <Badge variant="outline" className="text-xs">
+                      {t("vendors.synced_badge", { defaultValue: "Synced" })}
+                    </Badge>
+                  )}
+                </div>
+                {contact.businessName && (
+                  <p className="text-sm text-muted-foreground truncate mt-0.5">{contact.businessName}</p>
+                )}
+              </div>
+              {contact.phone && (
+                <div className="grid grid-cols-2 gap-2 md:hidden">
+                  <a
+                    href={phoneHref(contact.phone, "tel")}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10"
+                    aria-label={t("vendors.call_contact", { defaultValue: "Call {{name}}", name: contact.name })}
+                  >
+                    <Phone className="h-4 w-4" />
+                    {t("vendors.call", { defaultValue: "Call" })}
+                  </a>
+                  <a
+                    href={phoneHref(contact.phone, "sms")}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10"
+                    aria-label={t("vendors.text_contact", { defaultValue: "Text {{name}}", name: contact.name })}
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    {t("vendors.text", { defaultValue: "Text" })}
+                  </a>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:w-80 text-sm">
+                {contact.phone ? (
+                  <span className="flex items-center gap-2 text-muted-foreground min-w-0">
+                    <Phone className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{contact.phone}</span>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+                {contact.email ? (
+                  <a href={`mailto:${contact.email}`} className="flex items-center gap-2 text-muted-foreground hover:text-primary min-w-0">
+                    <Mail className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{contact.email}</span>
+                  </a>
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 md:justify-end">
+                {contact.source === "manual" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      setEditingContact(contact);
+                      setShowContactDialog(true);
+                    }}
+                    aria-label={t("vendors.edit_contact", { defaultValue: "Edit Contact" })}
+                  >
+                    <Edit className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  onClick={() => setRemovingContact(contact)}
+                  aria-label={t("vendors.remove_contact", { defaultValue: "Remove Contact" })}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showContactDialog && (
+        <VendorContactDialog
+          open
+          contact={editingContact}
+          onClose={() => {
+            setShowContactDialog(false);
+            setEditingContact(null);
+          }}
+        />
+      )}
+
+      <AlertDialog open={!!removingContact} onOpenChange={() => setRemovingContact(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("vendors.remove_contact_title", { defaultValue: "Remove this contact?" })}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {removingContact?.source === "vendor"
+                ? t("vendors.remove_synced_contact_desc", { defaultValue: "This removes the contact from this Contacts tab only. The vendor stays in your Vendor list." })
+                : t("vendors.remove_manual_contact_desc", { defaultValue: "This will permanently delete this saved contact." })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("vendors.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (removingContact) removeMutation.mutate(removingContact.id);
+              }}
+            >
+              {t("vendors.remove_contact", { defaultValue: "Remove Contact" })}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
 function VendorCard({
   vendor,
   onClick,
@@ -1479,6 +1885,7 @@ export default function Vendors() {
   const [detailInitialTab, setDetailInitialTab] = useState<"overview" | "messages" | "payments" | "files">("overview");
   const [deletingVendorId, setDeletingVendorId] = useState<number | null>(null);
   const [showSummarize, setShowSummarize] = useState(false);
+  const [activeManagementTab, setActiveManagementTab] = useState<"vendors" | "contacts">("vendors");
 
   const handleAddVendor = () => {
     if (!profileLoading && !profile) {
@@ -1496,6 +1903,7 @@ export default function Vendors() {
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        qc.invalidateQueries({ queryKey: vendorContactsQueryKey });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
         qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
         setDeletingVendorId(null);
@@ -1572,70 +1980,83 @@ export default function Vendors() {
         </div>
       </div>
 
-      {vendors.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-card border border-border/60 rounded-2xl p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <DollarSign className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wider">{t("vendors.total_committed")}</span>
-            </div>
-            <p className="text-2xl font-serif font-semibold">{formatCurrency(totalCost)}</p>
-          </div>
-          <div className="bg-card border border-border/60 rounded-2xl p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <DollarSign className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wider">{t("vendors.paid_out")}</span>
-            </div>
-            <p className="text-2xl font-serif font-semibold">{formatCurrency(paidOut)}</p>
-          </div>
-          <div className="bg-card border border-border/60 rounded-2xl p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <CheckCircle2 className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wider">{t("vendors.contracts_signed")}</span>
-            </div>
-            <p className="text-2xl font-serif font-semibold">{signedCount}<span className="text-base text-muted-foreground font-sans font-normal"> / {vendors.length}</span></p>
-          </div>
-        </div>
-      )}
+      <Tabs value={activeManagementTab} onValueChange={(value) => setActiveManagementTab(value as "vendors" | "contacts")}>
+        <TabsList>
+          <TabsTrigger value="vendors">{t("vendors.tab_vendors", { defaultValue: "Vendor List" })}</TabsTrigger>
+          <TabsTrigger value="contacts">{t("vendors.tab_contacts", { defaultValue: "Contacts" })}</TabsTrigger>
+        </TabsList>
 
-      {vendors.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-            <Store className="h-8 w-8 text-primary" />
-          </div>
-          <h2 className="text-2xl font-serif text-foreground mb-2">{t("vendors.no_vendors")}</h2>
-          <p className="text-muted-foreground max-w-sm mb-6">
-            {t("vendors.no_vendors_desc")}
-          </p>
-          <Button onClick={handleAddVendor} data-testid="btn-add-first-vendor">
-            <Plus className="h-4 w-4 mr-2" />
-            {t("vendors.add_first_vendor")}
-          </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {vendors.map((vendor) => (
-            <VendorCard
-              key={vendor.id}
-              vendor={vendor}
-              onClick={() => {
-                setDetailInitialTab("overview");
-                setViewingVendorId(vendor.id);
-              }}
-              onEdit={() => setEditingVendor(vendor)}
-              onDelete={() => setDeletingVendorId(vendor.id)}
-            />
-          ))}
-          <button
-            onClick={handleAddVendor}
-            className="border-2 border-dashed border-border/60 rounded-2xl p-5 flex flex-col items-center justify-center gap-2 hover:border-primary/30 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary min-h-[160px]"
-            data-testid="btn-add-vendor-card"
-          >
-            <Plus className="h-6 w-6" />
-            <span className="text-sm font-medium">{t("vendors.add_vendor_card")}</span>
-          </button>
-        </div>
-      )}
+        <TabsContent value="vendors" className="space-y-6 mt-4">
+          {vendors.length > 0 && (
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-card border border-border/60 rounded-2xl p-4">
+                <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                  <DollarSign className="h-4 w-4" />
+                  <span className="text-xs font-medium uppercase tracking-wider">{t("vendors.total_committed")}</span>
+                </div>
+                <p className="text-2xl font-serif font-semibold">{formatCurrency(totalCost)}</p>
+              </div>
+              <div className="bg-card border border-border/60 rounded-2xl p-4">
+                <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                  <DollarSign className="h-4 w-4" />
+                  <span className="text-xs font-medium uppercase tracking-wider">{t("vendors.paid_out")}</span>
+                </div>
+                <p className="text-2xl font-serif font-semibold">{formatCurrency(paidOut)}</p>
+              </div>
+              <div className="bg-card border border-border/60 rounded-2xl p-4">
+                <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span className="text-xs font-medium uppercase tracking-wider">{t("vendors.contracts_signed")}</span>
+                </div>
+                <p className="text-2xl font-serif font-semibold">{signedCount}<span className="text-base text-muted-foreground font-sans font-normal"> / {vendors.length}</span></p>
+              </div>
+            </div>
+          )}
+
+          {vendors.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                <Store className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-serif text-foreground mb-2">{t("vendors.no_vendors")}</h2>
+              <p className="text-muted-foreground max-w-sm mb-6">
+                {t("vendors.no_vendors_desc")}
+              </p>
+              <Button onClick={handleAddVendor} data-testid="btn-add-first-vendor">
+                <Plus className="h-4 w-4 mr-2" />
+                {t("vendors.add_first_vendor")}
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {vendors.map((vendor) => (
+                <VendorCard
+                  key={vendor.id}
+                  vendor={vendor}
+                  onClick={() => {
+                    setDetailInitialTab("overview");
+                    setViewingVendorId(vendor.id);
+                  }}
+                  onEdit={() => setEditingVendor(vendor)}
+                  onDelete={() => setDeletingVendorId(vendor.id)}
+                />
+              ))}
+              <button
+                onClick={handleAddVendor}
+                className="border-2 border-dashed border-border/60 rounded-2xl p-5 flex flex-col items-center justify-center gap-2 hover:border-primary/30 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary min-h-[160px]"
+                data-testid="btn-add-vendor-card"
+              >
+                <Plus className="h-6 w-6" />
+                <span className="text-sm font-medium">{t("vendors.add_vendor_card")}</span>
+              </button>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="contacts" className="mt-4">
+          <VendorContactsTab />
+        </TabsContent>
+      </Tabs>
 
       {showAddDialog && (
         <AddEditVendorDialog open onClose={() => setShowAddDialog(false)} />

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, vendors, vendorPayments, checklistItems } from "@workspace/db";
+import { db, vendors, vendorPayments, checklistItems, vendorContacts } from "@workspace/db";
 import { eq, and, asc, inArray, isNull } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
@@ -52,6 +52,45 @@ function formatPayment(p: typeof vendorPayments.$inferSelect) {
   };
 }
 
+function cleanOptionalText(value: unknown) {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text || null;
+}
+
+function normalizeContactType(value: unknown) {
+  return value === "Vendor" ? "Vendor" : "General";
+}
+
+function formatManualContact(c: typeof vendorContacts.$inferSelect) {
+  return {
+    id: String(c.id),
+    source: "manual" as const,
+    vendorId: null,
+    name: c.name,
+    businessName: c.businessName,
+    email: c.email,
+    phone: c.phone,
+    contactType: c.contactType,
+    createdAt: c.createdAt.toISOString(),
+    updatedAt: c.updatedAt.toISOString(),
+  };
+}
+
+function formatSyncedVendorContact(v: typeof vendors.$inferSelect) {
+  return {
+    id: `vendor-${v.id}`,
+    source: "vendor" as const,
+    vendorId: v.id,
+    name: v.primaryContact?.trim() || v.name,
+    businessName: v.name,
+    email: v.email,
+    phone: v.phone,
+    contactType: "Vendor",
+    createdAt: v.createdAt.toISOString(),
+    updatedAt: v.updatedAt.toISOString(),
+  };
+}
+
 async function syncNextPaymentDue(vendorId: number) {
   const unpaid = await db
     .select({ dueDate: vendorPayments.dueDate })
@@ -61,6 +100,203 @@ async function syncNextPaymentDue(vendorId: number) {
   const nextDate = unpaid.length > 0 ? unpaid[0].dueDate : null;
   await db.update(vendors).set({ nextPaymentDue: nextDate }).where(eq(vendors.id, vendorId));
 }
+
+router.get("/vendor-contacts", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.json([]);
+      return;
+    }
+
+    const [vendorRows, contactRows] = await Promise.all([
+      db.select().from(vendors).where(eq(vendors.profileId, profile.id)).orderBy(vendors.createdAt),
+      db.select().from(vendorContacts).where(eq(vendorContacts.profileId, profile.id)).orderBy(vendorContacts.createdAt),
+    ]);
+
+    const hiddenVendorIds = new Set(
+      contactRows
+        .filter((contact) => contact.isHidden && contact.vendorId !== null)
+        .map((contact) => contact.vendorId),
+    );
+    const syncedContacts = vendorRows
+      .filter((vendor) => !hiddenVendorIds.has(vendor.id))
+      .map(formatSyncedVendorContact);
+    const manualContacts = contactRows
+      .filter((contact) => !contact.isHidden && contact.vendorId === null)
+      .map(formatManualContact);
+
+    res.json([...syncedContacts, ...manualContacts]);
+  } catch (err) {
+    req.log.error(err, "Failed to list vendor contacts");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/vendor-contacts", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(400).json({ error: "No wedding profile found" });
+      return;
+    }
+    const name = cleanOptionalText(req.body?.name);
+    if (!name) {
+      res.status(400).json({ error: "name is required" });
+      return;
+    }
+    const [created] = await db
+      .insert(vendorContacts)
+      .values({
+        profileId: profile.id,
+        vendorId: null,
+        name,
+        businessName: cleanOptionalText(req.body?.businessName),
+        email: cleanOptionalText(req.body?.email),
+        phone: cleanOptionalText(req.body?.phone),
+        contactType: normalizeContactType(req.body?.contactType),
+        isHidden: false,
+      })
+      .returning();
+    res.status(201).json(formatManualContact(created));
+  } catch (err) {
+    req.log.error(err, "Failed to create vendor contact");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/vendor-contacts/:id", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(404).json({ error: "Contact not found" });
+      return;
+    }
+    const contactId = parseInt(String(req.params.id), 10);
+    if (!Number.isFinite(contactId)) {
+      res.status(400).json({ error: "Synced vendor contacts are edited from the vendor list" });
+      return;
+    }
+    const name = cleanOptionalText(req.body?.name);
+    if (!name) {
+      res.status(400).json({ error: "name is required" });
+      return;
+    }
+    const [updated] = await db
+      .update(vendorContacts)
+      .set({
+        name,
+        businessName: cleanOptionalText(req.body?.businessName),
+        email: cleanOptionalText(req.body?.email),
+        phone: cleanOptionalText(req.body?.phone),
+        contactType: normalizeContactType(req.body?.contactType),
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(vendorContacts.id, contactId),
+        eq(vendorContacts.profileId, profile.id),
+        isNull(vendorContacts.vendorId),
+      ))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ error: "Contact not found" });
+      return;
+    }
+    res.json(formatManualContact(updated));
+  } catch (err) {
+    req.log.error(err, "Failed to update vendor contact");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/vendor-contacts/:id", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(404).json({ error: "Contact not found" });
+      return;
+    }
+    const rawId = String(req.params.id);
+    if (rawId.startsWith("vendor-")) {
+      const vendorId = parseInt(rawId.slice("vendor-".length), 10);
+      if (!Number.isFinite(vendorId)) {
+        res.status(400).json({ error: "Invalid contact id" });
+        return;
+      }
+      const [vendor] = await db
+        .select({ id: vendors.id })
+        .from(vendors)
+        .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)))
+        .limit(1);
+      if (!vendor) {
+        res.status(404).json({ error: "Contact not found" });
+        return;
+      }
+      const [existingHidden] = await db
+        .select({ id: vendorContacts.id })
+        .from(vendorContacts)
+        .where(and(
+          eq(vendorContacts.profileId, profile.id),
+          eq(vendorContacts.vendorId, vendorId),
+          eq(vendorContacts.isHidden, true),
+        ))
+        .limit(1);
+      if (!existingHidden) {
+        await db.insert(vendorContacts).values({
+          profileId: profile.id,
+          vendorId,
+          name: "",
+          contactType: "Vendor",
+          isHidden: true,
+        });
+      }
+      res.json({ success: true });
+      return;
+    }
+
+    const contactId = parseInt(rawId, 10);
+    if (!Number.isFinite(contactId)) {
+      res.status(400).json({ error: "Invalid contact id" });
+      return;
+    }
+    const [deleted] = await db
+      .delete(vendorContacts)
+      .where(and(
+        eq(vendorContacts.id, contactId),
+        eq(vendorContacts.profileId, profile.id),
+        isNull(vendorContacts.vendorId),
+      ))
+      .returning();
+    if (!deleted) {
+      res.status(404).json({ error: "Contact not found" });
+      return;
+    }
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "Failed to delete vendor contact");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 router.get("/vendors", requireAuth, async (req, res) => {
   try {
@@ -299,6 +535,7 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
     const {
       name, category, email, phone, website, portalLink,
       address, notes, totalCost, depositAmount, contractSigned, files, nextPaymentDue,
+      primaryContact,
     } = req.body;
     const updates: Partial<typeof vendors.$inferInsert> = {};
     if (name !== undefined) updates.name = name;
@@ -314,6 +551,7 @@ router.put("/vendors/:id", requireAuth, async (req, res) => {
     if (contractSigned !== undefined) updates.contractSigned = contractSigned;
     if (nextPaymentDue !== undefined) updates.nextPaymentDue = nextPaymentDue || null;
     if (files !== undefined) updates.files = files;
+    if (primaryContact !== undefined) updates.primaryContact = primaryContact;
     updates.updatedAt = new Date();
     const [updated] = await db
       .update(vendors)

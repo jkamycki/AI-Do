@@ -134,6 +134,24 @@ export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, c
 export type InsertVendor = z.infer<typeof insertVendorSchema>;
 export type Vendor = typeof vendors.$inferSelect;
 
+export const vendorContacts = pgTable("vendor_contacts", {
+  id: serial("id").primaryKey(),
+  profileId: integer("profile_id").notNull(),
+  vendorId: integer("vendor_id"),
+  name: text("name").notNull().default(""),
+  businessName: text("business_name"),
+  email: text("email"),
+  phone: text("phone"),
+  contactType: text("contact_type").notNull().default("General"),
+  isHidden: boolean("is_hidden").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertVendorContactSchema = createInsertSchema(vendorContacts).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertVendorContact = z.infer<typeof insertVendorContactSchema>;
+export type VendorContact = typeof vendorContacts.$inferSelect;
+
 export const vendorPayments = pgTable("vendor_payments", {
   id: serial("id").primaryKey(),
   vendorId: integer("vendor_id").notNull(),
@@ -335,6 +353,59 @@ export const vendorContracts = pgTable("vendor_contracts", {
 });
 
 export type VendorContract = typeof vendorContracts.$inferSelect;
+
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  profileId: integer("profile_id").notNull(),
+  userId: text("user_id").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  originalFileName: text("original_file_name").notNull(),
+  fileType: text("file_type").notNull(),
+  mimeType: text("mime_type").notNull(),
+  fileSize: integer("file_size"),
+  uploadedBy: text("uploaded_by").notNull(),
+  linkedVendorId: integer("linked_vendor_id"),
+  summary: text("summary"),
+  extractedFields: jsonb("extracted_fields").$type<{
+    vendorName?: string | null;
+    paymentSchedule?: Array<{
+      label?: string;
+      amount?: number | null;
+      dueDate?: string | null;
+      notes?: string | null;
+    }>;
+    dueDates?: Array<{
+      label?: string;
+      date?: string | null;
+      notes?: string | null;
+    }>;
+    cancellationPolicy?: string | null;
+    deliverables?: string[];
+    contactInfo?: {
+      name?: string | null;
+      phone?: string | null;
+      email?: string | null;
+      address?: string | null;
+    };
+    suggestedTasks?: Array<{
+      title?: string;
+      task?: string;
+      description?: string;
+      dueDate?: string | null;
+    }>;
+    suggestedVendorId?: number | null;
+    suggestedVendorName?: string | null;
+  }>(),
+  tags: jsonb("tags").$type<string[]>().notNull().default([]),
+  folder: text("folder").notNull().default("General"),
+  visibility: jsonb("visibility").$type<string[]>().notNull().default([]),
+  extractedText: text("extracted_text"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Document = typeof documents.$inferSelect;
 
 export const seatingCharts = pgTable("seating_charts", {
   id: serial("id").primaryKey(),

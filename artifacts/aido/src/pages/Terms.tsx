@@ -18,7 +18,7 @@ export default function Terms() {
         </Link>
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl text-[#3B1C2B]">Terms of Service</h1>
-          <p className="text-sm text-[#6F3E54]">Last updated: May 13, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 18, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed text-[#3B1C2B]">
@@ -64,7 +64,14 @@ export default function Terms() {
               </li>
               <li>
                 <strong>Vendor tracking</strong> — store vendor contacts,
-                contract status, deposit milestones, and notes.
+                synced and manually added contact records, contract status,
+                deposit milestones, and notes.
+              </li>
+              <li>
+                <strong>Document Library</strong> - upload, preview, organize,
+                summarize, extract key information from, share visibility for,
+                and download wedding-related documents such as contracts,
+                invoices, proposals, menus, floor plans, and screenshots.
               </li>
               <li>
                 <strong>AI vendor email assistant</strong> — drafts professional
@@ -171,7 +178,8 @@ export default function Terms() {
             </h2>
             <p>
               You retain ownership of all content you upload (text, images,
-              contracts, mood boards, vendor records, guest lists, RSVPs,
+              contracts, documents, mood boards, vendor records, vendor contact
+              records, guest lists, RSVPs,
               wedding-website edits). By uploading you grant A.IDO a
               non-exclusive license to host, process, transmit, display, and
               back up that content solely to operate the Service for you and
@@ -202,6 +210,13 @@ export default function Terms() {
                 The AI <em>contract analyzer</em> is AI-generated and
                 informational only; it is not legal advice and is not a
                 substitute for a lawyer.
+              </li>
+              <li>
+                The AI <em>Document Library</em> summaries, extracted fields,
+                vendor-link suggestions, and generated tasks are planning aids
+                only. You must review original documents before paying,
+                signing, cancelling, or relying on any extracted deadline,
+                payment schedule, contact detail, deliverable, or policy.
               </li>
               <li>
                 The AI <em>vendor email assistant</em> drafts emails — you

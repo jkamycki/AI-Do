@@ -18,7 +18,7 @@ export default function DataHandling() {
         </Link>
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Data Handling</h1>
-          <p className="text-sm text-[#6F3E54]">Last updated: May 13, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 18, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed">
@@ -48,12 +48,24 @@ export default function DataHandling() {
                 contracts, deposit amount, contract-signed flag, notes.
               </li>
               <li>
+                <strong>Vendor contacts</strong> - contacts synced from the
+                vendor list plus manually added contacts, including name,
+                optional business name, phone, email, type, source, and hidden
+                status.
+              </li>
+              <li>
                 <strong>Vendor messages</strong> — drafted, sent, and received
                 emails (when wired through Resend).
               </li>
               <li>
                 <strong>Contracts</strong> — uploaded contract PDFs and
                 AI-generated summary / risk flags.
+              </li>
+              <li>
+                <strong>Document Library</strong> - uploaded PDFs, DOCX files,
+                JPGs, and PNGs; file names, file type, folder, tags, visibility,
+                linked vendor, AI summary, extracted text, extracted fields,
+                and suggested task information.
               </li>
               <li>
                 <strong>Mood board</strong> — uploaded images and AI
@@ -137,11 +149,13 @@ export default function DataHandling() {
                       <strong>OpenRouter</strong>
                     </td>
                     <td className="px-4 py-2.5 align-top">
-                      AI inference (Aria, contract analyzer, mood board
-                      suggestions, etc.)
+                      AI inference (Aria, contract analyzer, Document Library
+                      summary/extraction, mood board suggestions, etc.)
                     </td>
                     <td className="px-4 py-2.5 align-top text-[#3B1C2B]/80">
-                      Prompt + context for the requested feature
+                      Prompt + context for the requested feature, which may
+                      include document text or image content when you ask AI to
+                      read or extract a document
                     </td>
                   </tr>
                   <tr>
@@ -161,7 +175,8 @@ export default function DataHandling() {
                       Frontend hosting and CDN
                     </td>
                     <td className="px-4 py-2.5 align-top text-[#3B1C2B]/80">
-                      Static assets, request metadata
+                      Static assets, request metadata, and uploaded file
+                      storage/proxying where configured
                     </td>
                   </tr>
                   <tr>
@@ -191,7 +206,8 @@ export default function DataHandling() {
               <li>
                 When you delete your account from Settings → Account, all
                 wedding data (profile, budget, checklist, timeline, vendors,
-                contracts, guest list, seating, wedding party, hotel blocks,
+                vendor contacts, contracts, Document Library files and metadata,
+                guest list, seating, wedding party, hotel blocks,
                 wedding website, AI conversations) is permanently deleted from
                 the primary database.
               </li>
@@ -225,6 +241,10 @@ export default function DataHandling() {
               <li>The day-of timeline exports to PDF.</li>
               <li>The mood board exports to PDF.</li>
               <li>RSVP responses export to CSV.</li>
+              <li>
+                Documents and contracts can be downloaded from their original
+                uploaded files where available.
+              </li>
               <li>
                 For a full account-data export, email{" "}
                 <a

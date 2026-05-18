@@ -38,6 +38,7 @@ import SharedWorkspace from "@/pages/SharedWorkspace";
 import GuestListAndInvitations from "@/pages/GuestListAndInvitations";
 import Hotels from "@/pages/Hotels";
 import Contracts from "@/pages/Contracts";
+import DocumentLibrary from "@/pages/DocumentLibrary";
 import MoodBoard from "@/pages/MoodBoard";
 import Aria from "@/pages/Aria";
 import Terms from "@/pages/Terms";
@@ -1365,6 +1366,7 @@ const PORTAL_TRACKING_ROUTES: Array<{ pattern: RegExp } & PortalTrackingContext>
   { pattern: /^\/checklist\/?$/, feature: "Checklist", section: "Planning", tool: "Checklist Manager", step: "Viewed checklist" },
   { pattern: /^\/vendors\/?$/, feature: "Vendor Tracking", section: "Budget & Vendors", tool: "Vendor Tracking", step: "Viewed vendor tracking" },
   { pattern: /^\/contracts\/?$/, feature: "Contracts", section: "Budget & Vendors", tool: "Contract Analyzer", step: "Viewed contracts" },
+  { pattern: /^\/documents\/?$/, feature: "Document Library", section: "Budget & Vendors", tool: "Document Library", step: "Viewed document library" },
   { pattern: /^\/mood-board\/?$/, feature: "Mood Board", section: "Planning", tool: "Mood Board Builder", step: "Viewed mood board" },
   { pattern: /^\/guests(?:\/[^/]+)?\/?$/, feature: "Guest List & Invitations", section: "Guest Experience", tool: "Guest List & Invitations", step: "Viewed guest list and invitations" },
   { pattern: /^\/seating-chart\/?$/, feature: "Seating Chart", section: "Guest Experience", tool: "Seating Chart", step: "Viewed seating chart" },
@@ -1711,6 +1713,7 @@ function Router() {
       <Route path="/wedding-party" component={() => <ProtectedRoute component={WeddingParty} />} />
       <Route path="/hotels" component={() => <ProtectedRoute component={Hotels} />} />
       <Route path="/contracts" component={() => <ProtectedRoute component={Contracts} />} />
+      <Route path="/documents" component={() => <ProtectedRoute component={DocumentLibrary} />} />
       <Route path="/mood-board" component={() => <ProtectedRoute component={MoodBoard} />} />
       <Route path="/aria" component={() => <ProtectedRoute component={Aria} />} />
       <Route path="/website-editor" component={() => <ProtectedRoute component={WebsiteEditor} fullWidth />} />

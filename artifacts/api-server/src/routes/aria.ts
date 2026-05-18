@@ -3,7 +3,7 @@ import { openai, getModel, supportsCustomTemperature } from "@workspace/integrat
 import {
   db, vendors, vendorPayments, checklistItems, weddingProfiles, timelines,
   guests, weddingParty, hotelBlocks, manualExpenses, budgets, budgetItems, budgetPaymentLogs,
-  vendorContracts, seatingCharts, workspaceCollaborators,
+  vendorContracts, documents, seatingCharts, workspaceCollaborators,
 } from "@workspace/db";
 import { eq, desc, and, asc, ilike, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -28,7 +28,7 @@ const router = Router();
 //   - contains no wedding-planning action keywords
 // Anything else falls through to the normal tools-enabled path so we
 // never accidentally drop tools for a real planning request.
-const ACTION_KEYWORDS = /\b(add|create|delete|remove|update|edit|change|set|save|book|schedule|invite|cancel|pay|paid|owe|cost|spend|budget|guest|vendor|venue|timeline|checklist|todo|task|event|payment|contract|hotel|party|reception|ceremony|honeymoon|email|message|reminder|date|when|where|how much|how many)\b/i;
+const ACTION_KEYWORDS = /\b(add|create|delete|remove|update|edit|change|set|save|book|schedule|invite|cancel|pay|paid|owe|cost|spend|budget|guest|vendor|venue|timeline|checklist|todo|task|event|payment|contract|document|invoice|proposal|menu|floor plan|hotel|party|reception|ceremony|honeymoon|email|message|reminder|date|when|where|how much|how many)\b/i;
 const CANCEL_INTENT = /^\s*(?:(?:no[, ]+)?cancel(?:\b.*)?|never\s?mind(?:\b.*)?|nevermind(?:\b.*)?|stop(?:\b.*)?|forget\s+it(?:\b.*)?|abort(?:\b.*)?|don'?t\s+(?:do|save|add|create|update|delete)\s+(?:that|it|this|the\s+(?:guest|vendor))(?:\b.*)?)\s*[.!?]*$/i;
 const CONVERSATIONAL_PATTERNS: RegExp[] = [
   /^(hi|hey|hello|yo|sup|hola|aloha|howdy)\b/i,
@@ -76,7 +76,7 @@ const INFO_QUESTION_PATTERNS: RegExp[] = [
 ];
 // Override: messages that refer to the user's stored data — we DO need
 // to call list_* tools for these even though they look like questions.
-const DATA_LOOKUP_KEYWORDS = /\bmy (budget|guests?|vendors?|checklist|timeline|party|hotels?|contracts?|profile|spending|expenses?|payments?|tasks?|seating|wedding party|day-?of)\b|\bi (have|added|booked|paid)\b|\bwe (have|added|booked|paid)\b|\bhow much (is|are|do i have) (left|remaining|spent|in)/i;
+const DATA_LOOKUP_KEYWORDS = /\bmy (budget|guests?|vendors?|checklist|timeline|party|hotels?|contracts?|documents?|library|profile|spending|expenses?|payments?|tasks?|seating|wedding party|day-?of)\b|\bi (have|added|booked|paid)\b|\bwe (have|added|booked|paid)\b|\bhow much (is|are|do i have) (left|remaining|spent|in)/i;
 
 function isInfoQuestion(text: string): boolean {
   if (typeof text !== "string") return false;
@@ -1505,6 +1505,7 @@ const TOOL_GROUPS: Record<string, string[]> = {
   budget: ["generate_budget","add_budget_item","update_budget_item","delete_budget_item","log_budget_payment","list_budget","add_expense","update_expense","delete_expense","list_expenses"],
   profile: ["update_profile","get_profile"],
   contract: ["list_contracts","get_contract"],
+  document: ["list_documents","get_document","summarize_document","extract_document_info","generate_document_tasks","link_document_to_vendor","update_document"],
   seating: ["generate_seating","list_seating_charts","delete_seating_chart"],
   collaborator: ["invite_collaborator","list_collaborators","remove_collaborator"],
 };
@@ -1522,6 +1523,7 @@ const GROUP_KEYWORDS: Record<string, RegExp> = {
   // into a read-only core set and getting stuck in clarification loops.
   profile: /\b(profile|website|site|web\s?site|website editor|wedding website|home page|homepage|hero|partner|vibe|theme|wedding date|guest count|total budget|venue|location|ceremony time|reception time|rsvp)\b/i,
   contract: /\b(contracts?|agreements?|clauses?|key terms?|red flags?|cancellation|refunds?|liability|indemnification|force majeure|payment terms?)\b/i,
+  document: /\b(document library|documents?|docs?|files?|uploads?|invoices?|proposals?|menus?|floor plans?|screenshots?|pdfs?|docx|jpg|png|summariz(e|e)|extract info|read (the|my) document|uploaded document)\b/i,
   seating: /\b(seating chart|seat(ing)?|table assign|arrange guests|generate seat|seating plan)\b/i,
   collaborator: /\b(collaborat|invite|partner access|planner access|vendor access|remove access|team member|workspace)\b/i,
 };
@@ -1634,7 +1636,9 @@ SAVE ALL DETAILS UPFRONT: When calling add_vendor, include every field the user 
 
 AFTER A SUCCESSFUL WRITE: stop. The system auto-emits a confirmation + follow-up — don't add text.
 
-QUERIES: overview→get_summary | vendors/payments→list_vendors | budget→list_budget+list_expenses | guests/RSVP→list_guests | party→list_party | day-of→list_timeline | checklist→list_checklist | hotels→list_hotels | date/venue/vibe→get_profile | contracts/clauses/key terms/red flags/payment/cancellation/liability→list_contracts then get_contract(id or matching filename/vendor; if the user says "it" or asks about the latest contract, get_contract with no id) | seating charts→list_seating_charts | collaborators→list_collaborators. General advice ("typical day-of timeline?") → answer directly, no tool.
+DOCUMENT LIBRARY: You can read stored documents, summarize them, extract vendor/payment/due date/cancellation/deliverable/contact fields, link them to vendors, rename/move/tag them, and generate checklist tasks from extracted deadlines. Uploading a new file happens in the Document Library page.
+
+QUERIES: overview→get_summary | vendors/payments→list_vendors | budget→list_budget+list_expenses | guests/RSVP→list_guests | party→list_party | day-of→list_timeline | checklist→list_checklist | hotels→list_hotels | date/venue/vibe→get_profile | contracts/clauses/key terms/red flags/payment/cancellation/liability→list_contracts then get_contract(id or matching filename/vendor; if the user says "it" or asks about the latest contract, get_contract with no id) | documents/invoices/proposals/menus/floor plans/screenshots/document library→list_documents then get_document(id or matching filename/vendor/folder/tag; if the user says "it" or asks about the latest document, get_document with no id) | seating charts→list_seating_charts | collaborators→list_collaborators. General advice ("typical day-of timeline?") → answer directly, no tool.
 
 SHORTCUTS: RSVP→update_guest(matchName, rsvpStatus). Seating→update_guest(matchName, tableAssignment). Payment paid→mark_vendor_payment_paid(vendorName).
 
@@ -1751,6 +1755,7 @@ const ACTION_TOOLS = new Set([
   "add_expense", "update_expense", "delete_expense",
   "generate_budget", "add_budget_item", "update_budget_item", "delete_budget_item", "log_budget_payment",
   "update_profile",
+  "summarize_document", "extract_document_info", "generate_document_tasks", "link_document_to_vendor", "update_document",
   "generate_seating", "delete_seating_chart",
   "invite_collaborator", "remove_collaborator",
 ]);
@@ -1963,6 +1968,13 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"get_profile", description:"Get wedding profile details.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"list_contracts", description:"List uploaded contracts with saved AI analysis summaries, risk levels, key term counts, red flag counts, payment terms, cancellation terms, and vendor names. Use before answering questions about the user's contracts.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"get_contract", description:"Get saved contract info and AI analysis. Use for questions about clauses, key terms, red flags, cancellation, payment, liability, negotiation points, or action items. Pass contractId when known; otherwise pass matchName/vendorName/fileName, or no args for the latest uploaded contract.", parameters:{ type:"object", properties:{ contractId:{type:"number"}, matchName:{type:"string"}, vendorName:{type:"string"}, fileName:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"list_documents", description:"List documents in the Document Library with summaries, folders, tags, vendor links, extracted fields, visibility, and upload dates.", parameters:{ type:"object", properties:{ folder:{type:"string"}, tag:{type:"string"}, vendorName:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"get_document", description:"Read a stored document from the Document Library. Pass documentId, fileName, matchName, folder, tag, or vendorName. With no args, returns the latest document.", parameters:{ type:"object", properties:{ documentId:{type:"number"}, fileName:{type:"string"}, matchName:{type:"string"}, folder:{type:"string"}, tag:{type:"string"}, vendorName:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"summarize_document", description:"Generate or refresh the AI summary for a stored document, then return it.", parameters:{ type:"object", properties:{ documentId:{type:"number"}, fileName:{type:"string"}, matchName:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"extract_document_info", description:"Return extracted document fields such as vendor name, payment schedule, due dates, cancellation policy, deliverables, contact info, and suggested tasks.", parameters:{ type:"object", properties:{ documentId:{type:"number"}, fileName:{type:"string"}, matchName:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"generate_document_tasks", description:"Create checklist tasks from a document's extracted deadlines and suggested task list.", parameters:{ type:"object", properties:{ documentId:{type:"number"}, fileName:{type:"string"}, matchName:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"link_document_to_vendor", description:"Link a stored document to an existing vendor.", parameters:{ type:"object", properties:{ documentId:{type:"number"}, fileName:{type:"string"}, matchName:{type:"string"}, vendorId:{type:"number"}, vendorName:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"update_document", description:"Rename, move, tag, or update visibility for a stored document.", parameters:{ type:"object", properties:{ documentId:{type:"number"}, fileName:{type:"string"}, matchName:{type:"string"}, newFileName:{type:"string"}, folder:{type:"string"}, tags:{type:"array", items:{type:"string"}}, visibility:{type:"array", items:{type:"string"}} } } } },
   { type:"function" as const, function:{ name:"get_summary", description:"Get a compact overview of the couple's wedding planning progress: profile, guest counts, vendor count, budget totals, checklist completion, upcoming payments.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"generate_seating", description:"Generate an AI seating chart using the current guest list. Required: tableCount (number of tables), seatsPerTable (seats per table). Optionally provide saveName to save the chart, and additionalNotes for special considerations.", parameters:{ type:"object", properties:{ tableCount:{type:"number",description:"Number of tables"}, seatsPerTable:{type:"number",description:"Maximum seats per table"}, additionalNotes:{type:"string",description:"Optional special instructions (e.g. keep family X away from family Y)"}, saveName:{type:"string",description:"If provided, saves the chart with this name"} }, required:["tableCount","seatsPerTable"] } } },
   { type:"function" as const, function:{ name:"list_seating_charts", description:"List all saved seating charts.", parameters:{ type:"object", properties:{} } } },
@@ -4512,6 +4524,201 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         ...contractInfo(row.fileName, row.vendorName, row.createdAt, row.analysis, true),
         extractedTextPreview: extractedText.length > 6000 ? `${extractedText.slice(0, 6000)}...` : extractedText,
       } };
+    }
+
+    if (name === "list_documents") {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: true, data: { documents: [] } };
+      const rows = await db
+        .select({
+          id: documents.id,
+          fileName: documents.fileName,
+          fileType: documents.fileType,
+          folder: documents.folder,
+          tags: documents.tags,
+          visibility: documents.visibility,
+          linkedVendorId: documents.linkedVendorId,
+          linkedVendorName: vendors.name,
+          summary: documents.summary,
+          extractedFields: documents.extractedFields,
+          createdAt: documents.createdAt,
+        })
+        .from(documents)
+        .leftJoin(vendors, eq(documents.linkedVendorId, vendors.id))
+        .where(eq(documents.profileId, profile.id))
+        .orderBy(desc(documents.createdAt))
+        .limit(75);
+
+      const folder = contractText(args.folder)?.toLowerCase();
+      const tag = contractText(args.tag)?.toLowerCase();
+      const vendorName = contractText(args.vendorName)?.toLowerCase();
+      const filtered = rows.filter((doc) => {
+        if (folder && String(doc.folder ?? "").toLowerCase() !== folder) return false;
+        if (tag && !(Array.isArray(doc.tags) ? doc.tags : []).some((t) => String(t).toLowerCase() === tag)) return false;
+        if (vendorName && !String(doc.linkedVendorName ?? "").toLowerCase().includes(vendorName)) return false;
+        return true;
+      });
+
+      return { ok: true, data: { documents: filtered.map((doc) => ({
+        id: doc.id,
+        fileName: doc.fileName,
+        fileType: doc.fileType,
+        folder: doc.folder,
+        tags: doc.tags ?? [],
+        visibility: doc.visibility ?? [],
+        linkedVendorId: doc.linkedVendorId ?? null,
+        linkedVendorName: doc.linkedVendorName ?? null,
+        summary: doc.summary ?? "",
+        extractedFields: doc.extractedFields ?? null,
+        uploadedAt: doc.createdAt,
+      })) } };
+    }
+
+    if (
+      name === "get_document" ||
+      name === "summarize_document" ||
+      name === "extract_document_info" ||
+      name === "generate_document_tasks" ||
+      name === "link_document_to_vendor" ||
+      name === "update_document"
+    ) {
+      const profile = await resolveProfile(req);
+      if (!profile) return { ok: false, error: "Document not found." };
+      const rows = await db
+        .select({
+          id: documents.id,
+          fileName: documents.fileName,
+          fileType: documents.fileType,
+          folder: documents.folder,
+          tags: documents.tags,
+          visibility: documents.visibility,
+          linkedVendorId: documents.linkedVendorId,
+          linkedVendorName: vendors.name,
+          summary: documents.summary,
+          extractedFields: documents.extractedFields,
+          extractedText: documents.extractedText,
+          createdAt: documents.createdAt,
+        })
+        .from(documents)
+        .leftJoin(vendors, eq(documents.linkedVendorId, vendors.id))
+        .where(eq(documents.profileId, profile.id))
+        .orderBy(desc(documents.createdAt))
+        .limit(75);
+      if (rows.length === 0) return { ok: false, error: "No documents found in the Document Library." };
+
+      const documentId = Number(args.documentId);
+      const matchName = contractText(args.matchName ?? args.fileName);
+      const folder = contractText(args.folder);
+      const tag = contractText(args.tag);
+      const vendorName = contractText(args.vendorName);
+      const normalized = (matchName ?? folder ?? tag ?? vendorName ?? "").toLowerCase();
+      const row = Number.isFinite(documentId)
+        ? rows.find((doc) => doc.id === documentId)
+        : normalized
+          ? rows.find((doc) => {
+              const fileName = doc.fileName.toLowerCase();
+              const stem = fileName.replace(/\.[^.]+$/, "");
+              const docFolder = String(doc.folder ?? "").toLowerCase();
+              const docVendor = String(doc.linkedVendorName ?? "").toLowerCase();
+              const docTags = Array.isArray(doc.tags) ? doc.tags.map((t) => String(t).toLowerCase()) : [];
+              return fileName.includes(normalized) ||
+                stem.includes(normalized) ||
+                normalized.includes(stem) ||
+                docFolder.includes(normalized) ||
+                docVendor.includes(normalized) ||
+                docTags.some((t) => t.includes(normalized) || normalized.includes(t));
+            }) ?? rows[0]
+          : rows[0];
+      if (!row) return { ok: false, error: "Document not found." };
+
+      if (name === "get_document" || name === "extract_document_info") {
+        const extractedText = row.extractedText ?? "";
+        return { ok: true, data: {
+          id: row.id,
+          fileName: row.fileName,
+          fileType: row.fileType,
+          folder: row.folder,
+          tags: row.tags ?? [],
+          visibility: row.visibility ?? [],
+          linkedVendorId: row.linkedVendorId ?? null,
+          linkedVendorName: row.linkedVendorName ?? null,
+          summary: row.summary ?? "",
+          extractedFields: row.extractedFields ?? null,
+          uploadedAt: row.createdAt,
+          extractedTextPreview: extractedText.length > 7000 ? `${extractedText.slice(0, 7000)}...` : extractedText,
+        } };
+      }
+
+      if (name === "summarize_document") {
+        const extractedText = row.extractedText ?? "";
+        const summary = row.summary || (extractedText
+          ? `${extractedText.replace(/\s+/g, " ").slice(0, 450)}${extractedText.length > 450 ? "..." : ""}`
+          : `${row.fileName} is stored in the Document Library. Text extraction is not available for this file.`);
+        await db.update(documents).set({ summary, updatedAt: new Date() }).where(eq(documents.id, row.id));
+        return { ok: true, data: { id: row.id, fileName: row.fileName, summary } };
+      }
+
+      if (name === "generate_document_tasks") {
+        const role = await resolveCallerRole(req);
+        if (!hasMinRole(role, "planner")) return { ok: false, error: "You need planner access or higher to create tasks." };
+        const extracted = row.extractedFields && typeof row.extractedFields === "object" ? row.extractedFields as Record<string, unknown> : {};
+        const suggested = Array.isArray(extracted.suggestedTasks) ? extracted.suggestedTasks : [];
+        const paymentTasks = Array.isArray(extracted.paymentSchedule) ? extracted.paymentSchedule.map((payment) => {
+          const p = payment && typeof payment === "object" ? payment as Record<string, unknown> : {};
+          const label = contractText(p.label, "Payment") ?? "Payment";
+          const due = contractText(p.dueDate);
+          return {
+            task: `Handle ${label} for ${row.fileName}`,
+            description: [contractText(p.notes), due ? `Due ${due}` : null].filter(Boolean).join(" "),
+          };
+        }) : [];
+        const taskRows = [...suggested.map((task) => {
+          const t = task && typeof task === "object" ? task as Record<string, unknown> : {};
+          return {
+            task: contractText(t.task ?? t.title, "Review document task") ?? "Review document task",
+            description: contractText(t.description, `Generated from ${row.fileName}`) ?? `Generated from ${row.fileName}`,
+          };
+        }), ...paymentTasks].filter((task) => task.task.trim()).slice(0, 12);
+        if (taskRows.length === 0) return { ok: true, data: { tasks: [] } };
+        const inserted = await db.insert(checklistItems).values(taskRows.map((task) => ({
+          profileId: profile.id,
+          month: "Document follow-up",
+          task: task.task,
+          description: task.description,
+          isCompleted: false,
+        }))).returning();
+        return { ok: true, data: { tasksCreated: inserted.length, tasks: inserted } };
+      }
+
+      if (name === "link_document_to_vendor") {
+        const role = await resolveCallerRole(req);
+        if (!hasMinRole(role, "planner")) return { ok: false, error: "You need planner access or higher to link documents." };
+        const vendorId = Number(args.vendorId);
+        const vendorMatch = contractText(args.vendorName);
+        const vendorRows = await db.select({ id: vendors.id, name: vendors.name }).from(vendors).where(eq(vendors.profileId, profile.id));
+        const vendor = Number.isFinite(vendorId)
+          ? vendorRows.find((v) => v.id === vendorId)
+          : vendorMatch
+            ? vendorRows.find((v) => v.name.toLowerCase().includes(vendorMatch.toLowerCase()) || vendorMatch.toLowerCase().includes(v.name.toLowerCase()))
+            : null;
+        if (!vendor) return { ok: false, error: "Vendor not found." };
+        const updated = await db.update(documents).set({ linkedVendorId: vendor.id, updatedAt: new Date() }).where(eq(documents.id, row.id)).returning();
+        return { ok: true, data: { document: updated[0], vendor } };
+      }
+
+      if (name === "update_document") {
+        const role = await resolveCallerRole(req);
+        if (!hasMinRole(role, "planner")) return { ok: false, error: "You need planner access or higher to edit documents." };
+        const patch: Partial<typeof documents.$inferInsert> = { updatedAt: new Date() };
+        const newFileName = contractText(args.newFileName);
+        const newFolder = contractText(args.folder);
+        if (newFileName) patch.fileName = newFileName;
+        if (newFolder) patch.folder = newFolder;
+        if (Array.isArray(args.tags)) patch.tags = args.tags.map((tag) => String(tag).trim()).filter(Boolean);
+        if (Array.isArray(args.visibility)) patch.visibility = args.visibility.map((item) => String(item).trim()).filter(Boolean);
+        const updated = await db.update(documents).set(patch).where(eq(documents.id, row.id)).returning();
+        return { ok: true, data: { document: updated[0] } };
+      }
     }
 
     if (name === "get_summary") {

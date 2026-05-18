@@ -18,7 +18,7 @@ export default function Security() {
         </Link>
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Security</h1>
-          <p className="text-sm text-[#6F3E54]">Last updated: May 13, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 18, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed">
@@ -67,8 +67,9 @@ export default function Security() {
                 encryption at rest enabled by the hosting provider.
               </li>
               <li>
-                Uploaded files (mood-board photos, contract PDFs, member
-                headshots, wedding-website hero images) are stored in object
+                Uploaded files (mood-board photos, contract PDFs, Document
+                Library files, member headshots, wedding-website hero images)
+                are stored in object
                 storage with access tokens — direct URLs are not publicly
                 readable.
               </li>
@@ -94,6 +95,13 @@ export default function Security() {
               session context — you can clear conversations from the Aria
               sidebar.
             </p>
+            <p>
+              Document Library AI features may send extracted document text or
+              image content to the configured AI provider so the Service can
+              summarize documents, extract key fields, suggest checklist tasks,
+              and suggest vendor links. Only use these features for documents
+              you are comfortable processing through the AI boundary.
+            </p>
           </section>
 
           <section className="space-y-3">
@@ -105,6 +113,10 @@ export default function Security() {
                 Server-side validators on every write endpoint (e.g. add_vendor
                 refuses category-word names; RSVP endpoints require
                 profile-scoped guest IDs).
+              </li>
+              <li>
+                Document Library, contract, and vendor-contact endpoints are
+                profile-scoped and protected by authenticated workspace access.
               </li>
               <li>
                 Per-user rate limits on AI calls and aggressive limits on

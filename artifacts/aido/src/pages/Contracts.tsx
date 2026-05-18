@@ -530,7 +530,7 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
   );
 }
 
-export default function Contracts() {
+export default function Contracts({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -636,14 +636,16 @@ export default function Contracts() {
   const totalFlags = normalizedAnalyses.reduce((sum, a) => sum + (a?.redFlags.length ?? 0), 0);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
+    <div className={embedded ? "space-y-8" : "max-w-3xl mx-auto px-4 py-8 space-y-8"}>
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-serif text-3xl text-primary">{t("contracts.title")}</h1>
-          <p className="text-muted-foreground mt-1">{t("contracts.subtitle")}</p>
+      {!embedded && (
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="font-serif text-3xl text-primary">{t("contracts.title")}</h1>
+            <p className="text-muted-foreground mt-1">{t("contracts.subtitle")}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Legal Disclaimer Banner */}
       <div className="rounded-xl border border-amber-500/40 bg-amber-500/8 px-5 py-4 flex gap-3">

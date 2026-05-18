@@ -27,7 +27,7 @@ import {
   UsersRound,
   Hotel,
   Flower2,
-  FileText,
+  FolderOpen,
   Sparkles,
   Camera,
   ImagePlus,
@@ -62,7 +62,7 @@ const navSections = [
     items: [
       { href: "/vendors", labelKey: "nav.vendors", icon: Store },
       { href: "/budget", labelKey: "nav.budget", icon: DollarSign },
-      { href: "/contracts", labelKey: "nav.contracts", icon: FileText },
+      { href: "/documents", labelKey: "nav.document_library", icon: FolderOpen },
     ],
   },
   {

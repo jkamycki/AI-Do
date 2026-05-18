@@ -2,9 +2,9 @@ import { db } from "@workspace/db";
 import {
   weddingProfiles, timelines, budgets, budgetItems, budgetPaymentLogs,
   checklistItems, vendors, vendorPayments, analyticsEvents,
-  workspaceCollaborators, workspaceActivity, vendorContracts,
+  workspaceCollaborators, workspaceActivity, vendorContracts, documents,
   seatingCharts, guests, hotelBlocks, weddingParty,
-  manualExpenses, vendorConversations, vendorMessages,
+  manualExpenses, vendorConversations, vendorMessages, vendorContacts,
   contactMessages, feedbackSubmissions, adminUsers,
   deletedAccountEmails, deletedUserArchive,
 } from "@workspace/db";
@@ -82,6 +82,9 @@ export async function snapshotUserData(
       ? await db.select().from(vendors).where(eq(vendors.profileId, profile.id))
       : [];
     snapshot.vendors = userVendors;
+    snapshot.vendorContacts = profile
+      ? await db.select().from(vendorContacts).where(eq(vendorContacts.profileId, profile.id))
+      : [];
     if (userVendors.length > 0) {
       const vendorIds = userVendors.map(v => v.id);
       snapshot.vendorPayments = await db.select().from(vendorPayments).where(inArray(vendorPayments.vendorId, vendorIds));
@@ -99,6 +102,9 @@ export async function snapshotUserData(
     }
 
     snapshot.vendorContracts = await db.select().from(vendorContracts).where(eq(vendorContracts.userId, userId));
+    snapshot.documents = profile
+      ? await db.select().from(documents).where(eq(documents.profileId, profile.id))
+      : [];
     snapshot.seatingCharts = await db.select().from(seatingCharts).where(eq(seatingCharts.userId, userId));
     snapshot.hotelBlocks = await db.select().from(hotelBlocks).where(eq(hotelBlocks.userId, userId));
     snapshot.weddingParty = await db.select().from(weddingParty).where(eq(weddingParty.userId, userId));
@@ -144,6 +150,7 @@ export async function purgeUserData(
       await db.delete(vendorPayments).where(inArray(vendorPayments.vendorId, vendorIds));
     }
     await db.delete(vendors).where(eq(vendors.profileId, profileId));
+    await db.delete(vendorContacts).where(eq(vendorContacts.profileId, profileId));
     await db.delete(manualExpenses).where(eq(manualExpenses.profileId, profileId));
 
     const userBudgetRows = await db
@@ -175,6 +182,7 @@ export async function purgeUserData(
     );
     await db.delete(timelines).where(eq(timelines.profileId, profileId));
     await db.delete(checklistItems).where(eq(checklistItems.profileId, profileId));
+    await db.delete(documents).where(eq(documents.profileId, profileId));
     await db.delete(guests).where(eq(guests.profileId, profileId));
   }
 
@@ -204,6 +212,7 @@ export async function purgeUserData(
   await db.delete(workspaceActivity).where(eq(workspaceActivity.userId, userId));
   await db.delete(weddingParty).where(eq(weddingParty.userId, userId));
   await db.delete(vendorContracts).where(eq(vendorContracts.userId, userId));
+  await db.delete(documents).where(eq(documents.userId, userId));
   await db.delete(seatingCharts).where(eq(seatingCharts.userId, userId));
   await db.delete(hotelBlocks).where(eq(hotelBlocks.userId, userId));
   await db.delete(analyticsEvents).where(eq(analyticsEvents.userId, userId));
