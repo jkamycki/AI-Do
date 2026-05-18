@@ -20,6 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -35,6 +36,7 @@ import {
   ListChecks,
   Plus,
   Sparkles,
+  Users,
 } from "lucide-react";
 import MessagesSection from "@/components/admin/MessagesSection";
 
@@ -65,6 +67,44 @@ type LaunchPlanItem = {
   priority: "low" | "medium" | "high";
   dueDate: string;
   completed: boolean;
+};
+
+type WorkflowMilestone = {
+  key: string;
+  label: string;
+  completed: boolean;
+};
+
+type WorkflowProgressUser = {
+  userId: string;
+  profileId: number;
+  displayName: string;
+  email: string | null;
+  workspaceName: string;
+  weddingDate: string | null;
+  venue: string | null;
+  createdAt: string | null;
+  lastActive: string | null;
+  status: "completed" | "in_progress" | "not_started";
+  progress: number;
+  completedCount: number;
+  totalMilestones: number;
+  lastCompleted: string;
+  nextStep: string;
+  counts: {
+    guests: number;
+    targetGuests: number;
+    vendors: number;
+    documents: number;
+    checklistCompleted: number;
+    checklistTotal: number;
+    budgetItems: number;
+    manualExpenses: number;
+    vendorPayments: number;
+    timelines: number;
+    events: number;
+  };
+  milestones: WorkflowMilestone[];
 };
 
 const LAUNCH_PLAN_STORAGE_KEY = "aido_operations_launch_plan_v1";
@@ -171,7 +211,8 @@ export default function OperationsCenterPage() {
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "testActivity" | "launchPlan">("tickets");
+  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "workflow" | "testActivity" | "launchPlan">("tickets");
+  const [workflowFilter, setWorkflowFilter] = useState<"all" | "completed" | "in_progress" | "not_started">("all");
   const [testSessionFilter, setTestSessionFilter] = useState<"test" | "all" | "real">("test");
   const [launchPlanPrompt, setLaunchPlanPrompt] = useState("");
   const [hasLoadedLaunchPlan, setHasLoadedLaunchPlan] = useState(false);
@@ -247,6 +288,24 @@ export default function OperationsCenterPage() {
     refetchInterval: activeTab === "testActivity" ? 30000 : false,
   });
   const testSessions = testSessionsData?.sessions ?? [];
+
+  const { data: workflowData, isLoading: isLoadingWorkflow } = useQuery<{
+    users: WorkflowProgressUser[];
+    summary: { total: number; completed: number; inProgress: number; notStarted: number };
+  }>({
+    queryKey: ["admin-workflow-progress"],
+    queryFn: async () => {
+      const r = await authedFetch("/api/admin/workflow-progress");
+      if (!r.ok) throw new Error("Failed to fetch workflow progress");
+      return r.json();
+    },
+    enabled: activeTab === "workflow",
+    refetchInterval: activeTab === "workflow" ? 30000 : false,
+  });
+  const workflowUsers = workflowData?.users ?? [];
+  const filteredWorkflowUsers = workflowFilter === "all"
+    ? workflowUsers
+    : workflowUsers.filter(user => user.status === workflowFilter);
 
   const { data: launchPlanData, isLoading: isLoadingLaunchPlan } = useQuery<{
     items: Array<Partial<LaunchPlanItem>>;
@@ -687,6 +746,14 @@ export default function OperationsCenterPage() {
           )}
         </button>
         <button
+          onClick={() => setActiveTab("workflow")}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+            ${activeTab === "workflow" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
+        >
+          <Users className="h-4 w-4" />
+          User Workflow Progress
+        </button>
+        <button
           onClick={() => setActiveTab("testActivity")}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
             ${activeTab === "testActivity" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
@@ -709,6 +776,132 @@ export default function OperationsCenterPage() {
           title="Messages & Feedback"
           description="Contact requests (including emails to support@aidowedding.net) and user feedback."
         />
+      )}
+
+      {activeTab === "workflow" && (
+        <div className="space-y-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="text-xl font-serif font-semibold text-[#24171D]">User Workflow Progress</h2>
+              <p className="text-sm font-medium text-[#4A3941]">
+                Track which users completed the core portal setup milestones and where they stopped.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: "all", label: "All" },
+                { value: "completed", label: "Completed" },
+                { value: "in_progress", label: "In Progress" },
+                { value: "not_started", label: "Not Started" },
+              ].map(option => (
+                <Button
+                  key={option.value}
+                  size="sm"
+                  variant={workflowFilter === option.value ? "default" : "outline"}
+                  onClick={() => setWorkflowFilter(option.value as typeof workflowFilter)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-4">
+            {[
+              { label: "Total users", value: workflowData?.summary.total ?? 0 },
+              { label: "Completed", value: workflowData?.summary.completed ?? 0 },
+              { label: "In progress", value: workflowData?.summary.inProgress ?? 0 },
+              { label: "Not started", value: workflowData?.summary.notStarted ?? 0 },
+            ].map(stat => (
+              <Card key={stat.label}>
+                <CardContent className="py-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">{stat.label}</p>
+                  <p className="mt-1 text-2xl font-bold text-[#24171D]">{stat.value}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {isLoadingWorkflow ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-44 rounded-lg" />)}
+            </div>
+          ) : filteredWorkflowUsers.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                <p className="font-medium text-[#4A3941]">No users found for this filter.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {filteredWorkflowUsers.map(user => (
+                <Card key={`${user.userId}-${user.profileId}`}>
+                  <CardContent className="py-4">
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_260px]">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold text-[#24171D]">{user.displayName}</h3>
+                          <Badge
+                            className={
+                              user.status === "completed"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : user.status === "in_progress"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-slate-100 text-slate-800"
+                            }
+                          >
+                            {user.status === "completed" ? "Completed" : user.status === "in_progress" ? "In progress" : "Not started"}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-[#4A3941]">
+                          {[user.email, user.workspaceName, user.venue].filter(Boolean).join(" | ")}
+                        </p>
+                        <div className="mt-3 grid gap-2 text-xs font-medium text-[#4A3941] sm:grid-cols-2 lg:grid-cols-4">
+                          <span>Guests: {user.counts.guests}/{user.counts.targetGuests || "?"}</span>
+                          <span>Vendors: {user.counts.vendors}</span>
+                          <span>Documents: {user.counts.documents}</span>
+                          <span>Checklist: {user.counts.checklistCompleted}/{user.counts.checklistTotal}</span>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {user.milestones.map(milestone => (
+                            <Badge
+                              key={milestone.key}
+                              variant={milestone.completed ? "secondary" : "outline"}
+                              className={milestone.completed ? "bg-emerald-50 text-emerald-800" : "text-[#7A5062]"}
+                            >
+                              {milestone.completed ? "✓ " : ""}
+                              {milestone.label}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-[#F0D7E0] bg-[#FFF8FA] p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-[#24171D]">Progress</p>
+                          <p className="text-2xl font-bold text-[#9A2E5C]">{user.progress}%</p>
+                        </div>
+                        <Progress value={user.progress} className="mt-3" />
+                        <p className="mt-3 text-xs font-medium text-[#4A3941]">
+                          {user.completedCount}/{user.totalMilestones} milestones complete
+                        </p>
+                        <p className="mt-2 text-xs font-medium text-[#4A3941]">
+                          <span className="font-semibold text-[#24171D]">Last:</span> {user.lastCompleted}
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-[#4A3941]">
+                          <span className="font-semibold text-[#24171D]">Next:</span> {user.nextStep}
+                        </p>
+                        <p className="mt-2 text-[11px] font-medium text-[#7A5062]">
+                          Last active: {user.lastActive ? new Date(user.lastActive).toLocaleString() : "Unknown"}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {activeTab === "testActivity" && (

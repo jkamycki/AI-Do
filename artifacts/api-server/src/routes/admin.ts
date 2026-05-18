@@ -914,6 +914,219 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+router.get("/admin/workflow-progress", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const result = await db.execute(sql`
+      SELECT
+        p.id as profile_id,
+        p.user_id,
+        p.workstation_name,
+        p.partner1_name,
+        p.partner2_name,
+        p.wedding_date,
+        p.venue,
+        p.location,
+        p.guest_count,
+        p.total_budget,
+        p.created_at,
+        p.updated_at,
+        COALESCE(g.guest_count, 0)::int as actual_guest_count,
+        COALESCE(v.vendor_count, 0)::int as vendor_count,
+        COALESCE(d.document_count, 0)::int as document_count,
+        COALESCE(c.completed_checklist_count, 0)::int as completed_checklist_count,
+        COALESCE(c.checklist_count, 0)::int as checklist_count,
+        COALESCE(b.budget_item_count, 0)::int as budget_item_count,
+        COALESCE(me.manual_expense_count, 0)::int as manual_expense_count,
+        COALESCE(vp.vendor_payment_count, 0)::int as vendor_payment_count,
+        COALESCE(t.timeline_count, 0)::int as timeline_count,
+        ae.last_active,
+        ae.event_count
+      FROM wedding_profiles p
+      LEFT JOIN (
+        SELECT profile_id, count(*)::int as guest_count
+        FROM guests
+        GROUP BY profile_id
+      ) g ON g.profile_id = p.id
+      LEFT JOIN (
+        SELECT profile_id, count(*)::int as vendor_count
+        FROM vendors
+        GROUP BY profile_id
+      ) v ON v.profile_id = p.id
+      LEFT JOIN (
+        SELECT profile_id, count(*)::int as document_count
+        FROM documents
+        GROUP BY profile_id
+      ) d ON d.profile_id = p.id
+      LEFT JOIN (
+        SELECT
+          profile_id,
+          count(*)::int as checklist_count,
+          count(*) FILTER (WHERE is_completed = true)::int as completed_checklist_count
+        FROM checklist_items
+        GROUP BY profile_id
+      ) c ON c.profile_id = p.id
+      LEFT JOIN (
+        SELECT b.profile_id, count(bi.id)::int as budget_item_count
+        FROM budgets b
+        LEFT JOIN budget_items bi ON bi.budget_id = b.id
+        GROUP BY b.profile_id
+      ) b ON b.profile_id = p.id
+      LEFT JOIN (
+        SELECT profile_id, count(*)::int as manual_expense_count
+        FROM manual_expenses
+        GROUP BY profile_id
+      ) me ON me.profile_id = p.id
+      LEFT JOIN (
+        SELECT v.profile_id, count(vp.id)::int as vendor_payment_count
+        FROM vendors v
+        LEFT JOIN vendor_payments vp ON vp.vendor_id = v.id
+        GROUP BY v.profile_id
+      ) vp ON vp.profile_id = p.id
+      LEFT JOIN (
+        SELECT profile_id, count(*)::int as timeline_count
+        FROM timelines
+        GROUP BY profile_id
+      ) t ON t.profile_id = p.id
+      LEFT JOIN (
+        SELECT user_id, max(timestamp) as last_active, count(*)::int as event_count
+        FROM analytics_events
+        GROUP BY user_id
+      ) ae ON ae.user_id = p.user_id
+      ORDER BY COALESCE(ae.last_active, p.updated_at, p.created_at) DESC
+      LIMIT 500
+    `);
+
+    type WorkflowRow = {
+      profile_id: number;
+      user_id: string;
+      workstation_name: string | null;
+      partner1_name: string;
+      partner2_name: string;
+      wedding_date: string;
+      venue: string;
+      location: string;
+      guest_count: number;
+      total_budget: string;
+      created_at: Date | string;
+      updated_at: Date | string;
+      actual_guest_count: number;
+      vendor_count: number;
+      document_count: number;
+      completed_checklist_count: number;
+      checklist_count: number;
+      budget_item_count: number;
+      manual_expense_count: number;
+      vendor_payment_count: number;
+      timeline_count: number;
+      last_active: Date | string | null;
+      event_count: number | null;
+    };
+
+    const rows = result.rows as WorkflowRow[];
+    const userIds = Array.from(new Set(rows.map(row => row.user_id).filter(Boolean))).filter(id => id.startsWith("user_"));
+    const clerkUsers = userIds.length
+      ? await clerkClient.users.getUserList({ userId: userIds.slice(0, 100), limit: Math.min(userIds.length, 100) })
+      : { data: [] as Awaited<ReturnType<typeof clerkClient.users.getUserList>>["data"] };
+    const clerkMap = new Map(clerkUsers.data.map(user => {
+      const email = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress
+        ?? user.emailAddresses[0]?.emailAddress
+        ?? null;
+      return [user.id, {
+        firstName: user.firstName ?? "",
+        lastName: user.lastName ?? "",
+        email,
+        imageUrl: user.imageUrl ?? null,
+      }];
+    }));
+
+    const isFilled = (value: string | null | undefined) => {
+      const normalized = String(value ?? "").trim().toLowerCase();
+      return normalized.length > 0 && !["tbd", "unknown", "n/a", "none"].includes(normalized);
+    };
+    const dateText = (value: Date | string | null | undefined) => value ? new Date(value).toISOString() : null;
+
+    const users = rows.map(row => {
+      const clerk = clerkMap.get(row.user_id);
+      const displayName = `${clerk?.firstName ?? ""} ${clerk?.lastName ?? ""}`.trim()
+        || [row.partner1_name, row.partner2_name].filter(isFilled).join(" & ")
+        || clerk?.email
+        || row.user_id;
+      const budgetAmount = Number(row.total_budget ?? 0);
+      const milestones = [
+        { key: "accountCreated", label: "Account created", completed: true },
+        { key: "profileCompleted", label: "Profile completed", completed: isFilled(row.partner1_name) && isFilled(row.partner2_name) && isFilled(row.wedding_date) },
+        { key: "weddingDetailsAdded", label: "Wedding details added", completed: isFilled(row.venue) && isFilled(row.location) && isFilled(row.wedding_date) },
+        { key: "guestListStarted", label: "Guest list started", completed: row.actual_guest_count > 0 },
+        {
+          key: "guestListCompleted",
+          label: "Guest list completed",
+          completed: row.actual_guest_count > 0 && row.guest_count > 0 && row.actual_guest_count >= row.guest_count,
+        },
+        { key: "vendorAdded", label: "Vendor added", completed: row.vendor_count > 0 },
+        { key: "documentUploaded", label: "Document uploaded", completed: row.document_count > 0 },
+        { key: "checklistTaskCompleted", label: "Checklist task completed", completed: row.completed_checklist_count > 0 },
+        {
+          key: "budgetPaymentAdded",
+          label: "Budget/payment added",
+          completed: budgetAmount > 0 || row.budget_item_count > 0 || row.manual_expense_count > 0 || row.vendor_payment_count > 0,
+        },
+        { key: "timelineStarted", label: "Timeline started", completed: row.timeline_count > 0 },
+      ];
+      const completedCount = milestones.filter(milestone => milestone.completed).length;
+      const progress = Math.round((completedCount / milestones.length) * 100);
+      const completed = completedCount === milestones.length;
+      const lastCompleted = [...milestones].reverse().find(milestone => milestone.completed)?.label ?? "Not started";
+      const nextStep = milestones.find(milestone => !milestone.completed)?.label ?? "Completed";
+
+      return {
+        userId: row.user_id,
+        profileId: row.profile_id,
+        displayName,
+        email: clerk?.email ?? null,
+        imageUrl: clerk?.imageUrl ?? null,
+        workspaceName: row.workstation_name || [row.partner1_name, row.partner2_name].filter(isFilled).join(" & ") || "Wedding workspace",
+        weddingDate: row.wedding_date || null,
+        venue: row.venue || null,
+        createdAt: dateText(row.created_at),
+        lastActive: dateText(row.last_active ?? row.updated_at ?? row.created_at),
+        status: completed ? "completed" : completedCount <= 1 ? "not_started" : "in_progress",
+        progress,
+        completedCount,
+        totalMilestones: milestones.length,
+        lastCompleted,
+        nextStep,
+        counts: {
+          guests: row.actual_guest_count,
+          targetGuests: row.guest_count,
+          vendors: row.vendor_count,
+          documents: row.document_count,
+          checklistCompleted: row.completed_checklist_count,
+          checklistTotal: row.checklist_count,
+          budgetItems: row.budget_item_count,
+          manualExpenses: row.manual_expense_count,
+          vendorPayments: row.vendor_payment_count,
+          timelines: row.timeline_count,
+          events: row.event_count ?? 0,
+        },
+        milestones,
+      };
+    });
+
+    res.json({
+      users,
+      summary: {
+        total: users.length,
+        completed: users.filter(user => user.status === "completed").length,
+        inProgress: users.filter(user => user.status === "in_progress").length,
+        notStarted: users.filter(user => user.status === "not_started").length,
+      },
+    });
+  } catch (err) {
+    req.log.error(err, "Admin workflow progress error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/admin/dropoffs", requireAuth, requireAdmin, async (req, res) => {
   try {
     const days = parseInt(String(req.query.days ?? "0"), 10);
