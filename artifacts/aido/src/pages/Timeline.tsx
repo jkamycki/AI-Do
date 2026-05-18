@@ -609,11 +609,15 @@ export default function Timeline() {
         headers: { "Content-Type": "application/json" },
       });
       if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error((e as any)?.error ?? r.statusText); }
+      return r.json() as Promise<{ id: number; events: TimelineEvent[]; generatedAt: string }>;
     },
-    onSuccess: () => {
+    onSuccess: (restored) => {
+      setLocalEvents((restored.events as any[]).map(normalizeEvent));
       queryClient.invalidateQueries({ queryKey: getGetTimelineQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       setIsDirty(false);
+      setEditingEvent(null);
+      setAddingEvent(false);
       toast({ title: t("timeline.reset_success"), description: t("timeline.reset_success_desc") });
     },
     onError: () => toast({ title: t("timeline.reset_failed"), variant: "destructive" }),
