@@ -16,6 +16,7 @@ import { useTracking } from "@/hooks/useTracking";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
+import PlannerDashboard from "@/pages/PlannerDashboard";
 import Profile from "@/pages/Profile";
 import Timeline from "@/pages/Timeline";
 import Budget from "@/pages/Budget";
@@ -1399,6 +1400,7 @@ type PortalTrackingContext = {
 
 const PORTAL_TRACKING_ROUTES: Array<{ pattern: RegExp } & PortalTrackingContext> = [
   { pattern: /^\/dashboard\/?$/, feature: "Dashboard", section: "Planning", tool: "Dashboard", step: "Viewed dashboard" },
+  { pattern: /^\/planner-dashboard\/?$/, feature: "Client Dashboard", section: "Planning", tool: "Planner Client Dashboard", step: "Viewed wedding planner client dashboard" },
   { pattern: /^\/profile\/?$/, feature: "Wedding Profile", section: "Planning", tool: "Profile Builder", step: "Viewed wedding profile" },
   { pattern: /^\/timeline\/?$/, feature: "Timeline", section: "Planning", tool: "Timeline", step: "Viewed timeline" },
   { pattern: /^\/budget\/?$/, feature: "Budget & Payments", section: "Budget & Vendors", tool: "Budget & Payments", step: "Viewed budget and payments" },
@@ -1735,6 +1737,7 @@ function Router() {
       <Route path="/w/:slug" component={PublicWebsite} />
       <Route path="/w/:slug/:section" component={PublicWebsite} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
+      <Route path="/planner-dashboard" component={() => <ProtectedRoute component={PlannerDashboard} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
       <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} />} />
       <Route path="/budget" component={() => <ProtectedRoute component={Budget} />} />

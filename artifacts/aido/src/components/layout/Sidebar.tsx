@@ -37,6 +37,7 @@ import {
   Plus,
   Moon,
   Sun,
+  BriefcaseBusiness,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -513,6 +514,19 @@ export function Sidebar() {
   const picInputRef = useRef<HTMLInputElement>(null);
   const [uploadingPic, setUploadingPic] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const { data: workspaceData } = useQuery<WorkspacesData>({
+    queryKey: ["my-workspaces"],
+    queryFn: async () => {
+      const r = await authFetch("/api/collaborators/my-workspaces");
+      if (!r.ok) return { ownProfile: null, sharedWorkspaces: [] };
+      return r.json();
+    },
+    enabled: !!isSignedIn,
+    staleTime: 15000,
+  });
+  const showPlannerDashboard =
+    workspaceData?.accountType === "wedding_planner" &&
+    (workspaceData.ownWorkspaces?.length ?? 0) > 1;
 
   const handlePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -793,6 +807,22 @@ export function Sidebar() {
         </div>
 
         <nav className="flex-1 p-4 space-y-4">
+          {showPlannerDashboard && (
+            <div>
+              <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-primary/80">
+                Planner
+              </p>
+              <div className="space-y-0.5">
+                <NavLink
+                  href="/planner-dashboard"
+                  label="Client Dashboard"
+                  icon={BriefcaseBusiness}
+                  sectionLabel="Planner"
+                />
+              </div>
+            </div>
+          )}
+
           {navSections.map((section) => (
             <div key={section.labelKey}>
               <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-primary/80">
