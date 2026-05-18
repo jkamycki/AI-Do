@@ -1722,23 +1722,23 @@ function VendorContactsTab() {
           {contacts.map((contact) => (
             <div
               key={contact.id}
-              className="flex flex-col md:flex-row md:items-center gap-3 rounded-xl border border-border/60 bg-card p-4"
+              className="grid gap-3 rounded-xl border border-border/60 bg-card p-4 md:grid-cols-[minmax(0,1fr)_minmax(260px,auto)_auto] md:items-center"
               data-testid={`vendor-contact-${contact.id}`}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-semibold text-foreground truncate">{contact.name}</h3>
-                  <Badge variant="secondary" className={contact.contactType === "Vendor" ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200" : ""}>
-                    {contact.contactType}
+                  <Badge
+                    variant={contact.contactType === "Vendor" ? "secondary" : "outline"}
+                    className={contact.contactType === "Vendor" ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200" : ""}
+                  >
+                    {contact.contactType === "Vendor"
+                      ? t("vendors.vendor_contact_badge", { defaultValue: "Vendor Contact" })
+                      : t("vendors.contact_type_general", { defaultValue: "General" })}
                   </Badge>
-                  {contact.source === "vendor" && (
-                    <Badge variant="outline" className="text-xs">
-                      {t("vendors.imported_badge", { defaultValue: "Vendor" })}
-                    </Badge>
-                  )}
                 </div>
                 {contact.businessName && (
-                  <p className="text-sm text-muted-foreground truncate mt-0.5">{contact.businessName}</p>
+                  <p className="text-sm text-muted-foreground truncate mt-1">{contact.businessName}</p>
                 )}
               </div>
               {contact.phone && (
@@ -1761,22 +1761,18 @@ function VendorContactsTab() {
                   </a>
                 </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:w-80 text-sm">
-                {contact.phone ? (
-                  <span className="flex items-center gap-2 text-muted-foreground min-w-0">
+              <div className="grid gap-2 text-sm sm:grid-cols-2 md:w-[380px]">
+                {contact.phone && (
+                  <span className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/60 px-3 py-2 text-muted-foreground min-w-0">
                     <Phone className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{contact.phone}</span>
                   </span>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
                 )}
-                {contact.email ? (
-                  <a href={`mailto:${firstContactValue(contact.email)}`} className="flex items-center gap-2 text-muted-foreground hover:text-primary min-w-0">
+                {contact.email && (
+                  <a href={`mailto:${firstContactValue(contact.email)}`} className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/60 px-3 py-2 text-muted-foreground hover:text-primary min-w-0">
                     <Mail className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{contact.email}</span>
                   </a>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
                 )}
               </div>
               <div className="flex items-center gap-1 md:justify-end">
