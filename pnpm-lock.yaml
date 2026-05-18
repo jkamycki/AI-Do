@@ -334,7 +334,7 @@ importers:
         version: 0.5.19(tailwindcss@4.2.1)
       '@tailwindcss/vite':
         specifier: 'catalog:'
-        version: 4.2.1(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4))
+        version: 4.2.1(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.22.1)(yaml@2.8.4))
       '@types/node':
         specifier: 'catalog:'
         version: 25.3.5
@@ -346,7 +346,7 @@ importers:
         version: 19.2.3(@types/react@19.2.14)
       '@vitejs/plugin-react':
         specifier: 'catalog:'
-        version: 5.1.4(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4))
+        version: 5.1.4(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.22.1)(yaml@2.8.4))
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.1
@@ -412,7 +412,7 @@ importers:
         version: 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       vite:
         specifier: 'catalog:'
-        version: 8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4)
+        version: 8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.22.1)(yaml@2.8.4)
       wouter:
         specifier: ^3.3.5
         version: 3.9.0(react@19.1.0)
@@ -623,7 +623,7 @@ importers:
         version: 0.0.6
       '@tailwindcss/vite':
         specifier: 'catalog:'
-        version: 4.2.1(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4))
+        version: 4.2.1(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.22.1)(yaml@2.8.4))
       '@types/node':
         specifier: 'catalog:'
         version: 25.3.5
@@ -635,7 +635,7 @@ importers:
         version: 19.2.3(@types/react@19.2.14)
       '@vitejs/plugin-react':
         specifier: 'catalog:'
-        version: 5.1.4(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4))
+        version: 5.1.4(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.22.1)(yaml@2.8.4))
       chokidar:
         specifier: ^5.0.0
         version: 5.0.0
@@ -707,7 +707,7 @@ importers:
         version: 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       vite:
         specifier: 'catalog:'
-        version: 8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4)
+        version: 8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.22.1)(yaml@2.8.4)
       zod:
         specifier: 'catalog:'
         version: 3.25.76
@@ -2767,8 +2767,8 @@ packages:
   brace-expansion@2.1.0:
     resolution: {integrity: sha512-TN1kCZAgdgweJhWWpgKYrQaMNHcDULHkWwQIspdtjV4Y5aurRdZpjAqn6yX3FPqTA9ngHCc4hJxMAMgGfve85w==}
 
-  brace-expansion@5.0.5:
-    resolution: {integrity: sha512-VZznLgtwhn+Mact9tfiwx64fA9erHH/MCXEUfB/0bX/6Fz6ny5EGTXYltMocqg4xFAQZtnO3DHWWXi8RiuN7cQ==}
+  brace-expansion@5.0.6:
+    resolution: {integrity: sha512-kLpxurY4Z4r9sgMsyG0Z9uzsBlgiU/EFKhj/h91/8yHu0edo7XuixOIH3VcJ8kkxs6/jPzoI6U9Vj3WqbMQ94g==}
     engines: {node: 18 || 20 || >=22}
 
   braces@3.0.3:
@@ -4760,6 +4760,11 @@ packages:
 
   tsx@4.21.0:
     resolution: {integrity: sha512-5C1sg4USs1lfG0GFb2RLXsdpXqBSEhAaA/0kPL01wxzpMqLILNxIxIOKiILz+cdg/pLnOUxFYOR5yhHU666wbw==}
+    engines: {node: '>=18.0.0'}
+    hasBin: true
+
+  tsx@4.22.1:
+    resolution: {integrity: sha512-TvncJykhxAzFCk0VQZKBTClall4Pm7qXDSodb6uxi8QFa8X8mT6ABjxxsQ2opDRYxG7AzcRWXaFtruz5HJKuWg==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -7139,12 +7144,12 @@ snapshots:
       postcss-selector-parser: 6.0.10
       tailwindcss: 4.2.1
 
-  '@tailwindcss/vite@4.2.1(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4))':
+  '@tailwindcss/vite@4.2.1(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.22.1)(yaml@2.8.4))':
     dependencies:
       '@tailwindcss/node': 4.2.1
       '@tailwindcss/oxide': 4.2.1
       tailwindcss: 4.2.1
-      vite: 8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4)
+      vite: 8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.22.1)(yaml@2.8.4)
 
   '@tanstack/query-core@5.100.9': {}
 
@@ -7405,7 +7410,7 @@ snapshots:
       lodash: 4.18.1
       preact: 10.29.1
 
-  '@vitejs/plugin-react@5.1.4(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4))':
+  '@vitejs/plugin-react@5.1.4(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.22.1)(yaml@2.8.4))':
     dependencies:
       '@babel/core': 7.29.0
       '@babel/plugin-transform-react-jsx-self': 7.27.1(@babel/core@7.29.0)
@@ -7413,7 +7418,7 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-rc.3
       '@types/babel__core': 7.20.5
       react-refresh: 0.18.0
-      vite: 8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4)
+      vite: 8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.22.1)(yaml@2.8.4)
     transitivePeerDependencies:
       - supports-color
 
@@ -7545,7 +7550,7 @@ snapshots:
     dependencies:
       balanced-match: 1.0.2
 
-  brace-expansion@5.0.5:
+  brace-expansion@5.0.6:
     dependencies:
       balanced-match: 4.0.4
 
@@ -7806,7 +7811,7 @@ snapshots:
   drizzle-kit@0.31.10:
     dependencies:
       '@drizzle-team/brocli': 0.10.2
-      '@esbuild-kit/esm-loader': tsx@4.21.0
+      '@esbuild-kit/esm-loader': tsx@4.22.1
       esbuild: 0.27.3
       tsx: 4.21.0
 
@@ -8746,7 +8751,7 @@ snapshots:
 
   minimatch@10.2.5:
     dependencies:
-      brace-expansion: 5.0.5
+      brace-expansion: 5.0.6
 
   minimatch@3.1.5:
     dependencies:
@@ -9598,6 +9603,12 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.3
 
+  tsx@4.22.1:
+    dependencies:
+      esbuild: 0.27.3
+    optionalDependencies:
+      fsevents: 2.3.3
+
   tw-animate-css@1.4.0: {}
 
   type-is@1.6.18:
@@ -9771,7 +9782,7 @@ snapshots:
       d3-time: 3.1.0
       d3-timer: 3.0.1
 
-  vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4):
+  vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.22.1)(yaml@2.8.4):
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.4
@@ -9783,7 +9794,7 @@ snapshots:
       esbuild: 0.27.3
       fsevents: 2.3.3
       jiti: 2.7.0
-      tsx: 4.21.0
+      tsx: 4.22.1
       yaml: 2.8.4
 
   void-elements@3.1.0: {}
