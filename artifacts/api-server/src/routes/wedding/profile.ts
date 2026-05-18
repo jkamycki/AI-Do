@@ -51,6 +51,7 @@ router.post("/profile", requireAuth, async (req, res) => {
   try {
     const {
       partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
+      workstationName,
       venue, location, venueCity, venueState, venueZip, venueCountry,
       venueStatus, venueDiscovery, venueBrainstorm,
       guestCount, totalBudget, weddingVibe, accountType,
@@ -138,6 +139,7 @@ router.post("/profile", requireAuth, async (req, res) => {
         .insert(weddingProfiles)
         .values({
           userId: req.userId,
+          workstationName: typeof workstationName === "string" ? workstationName.trim() || null : null,
           partner1Name, partner2Name, weddingDate, ceremonyTime, receptionTime,
           venue: venue ?? "", location: location ?? "", venueCity: venueCity ?? null, venueState: venueState ?? null,
           venueZip: venueZip ?? null, venueCountry: venueCountry ?? null,

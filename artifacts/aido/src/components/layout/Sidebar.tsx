@@ -526,7 +526,7 @@ export function Sidebar() {
   });
   const showPlannerDashboard =
     workspaceData?.accountType === "wedding_planner" &&
-    (workspaceData.ownWorkspaces?.length ?? 0) > 1;
+    !activeWorkspace;
 
   const handlePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

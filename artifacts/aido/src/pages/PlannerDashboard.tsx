@@ -81,7 +81,7 @@ export default function PlannerDashboard() {
     },
   });
 
-  const workspaces = data?.ownWorkspaces ?? [];
+  const workspaces = (data?.ownWorkspaces ?? []).filter((ws) => ws.profileId !== data?.ownProfile?.profileId);
   const isPlanner = data?.accountType === "wedding_planner";
   const sortedWorkspaces = useMemo(() => [...workspaces].sort((a, b) => {
     const aDays = daysUntil(a.weddingDate);
@@ -179,11 +179,11 @@ export default function PlannerDashboard() {
             </div>
             <h1 className="mt-2 font-serif text-3xl text-foreground md:text-4xl">Client Dashboard</h1>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              View every client workstation from one place, jump into their planning tools, and keep upcoming weddings easy to scan.
+              Your planner command center. View client workstations, jump into their planning tools, and keep upcoming weddings easy to scan.
             </p>
           </div>
           <Button onClick={() => setLocation("/dashboard")} className="shrink-0 gap-2">
-            Open current workstation
+            Planner Workspace
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -278,9 +278,9 @@ export default function PlannerDashboard() {
       {workspaces.length <= 1 && (
         <Card className="border-primary/15 bg-primary/5 shadow-sm">
           <CardContent className="p-5">
-            <h2 className="font-serif text-xl text-foreground">Add another workstation to unlock the full planner view.</h2>
+            <h2 className="font-serif text-xl text-foreground">Create your first client workstation.</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Once a planner account has multiple client workstations, this page becomes the home base for switching between clients.
+              Use the workstation switcher in the sidebar to create a separate client workspace with its own profile, guests, budget, contracts, website, and planning tools.
             </p>
           </CardContent>
         </Card>

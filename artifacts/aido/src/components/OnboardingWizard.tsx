@@ -35,17 +35,24 @@ function getInitialAccountType(): "couple_individual" | "wedding_planner" {
 
 const schema = z.object({
   accountType: z.enum(["couple_individual", "wedding_planner"]),
-  partner1Name: z.string().min(1, "Required"),
-  partner2Name: z.string().min(1, "Required"),
-  weddingDate: z.string().min(1, "Required"),
-  ceremonyTime: z.string().min(1, "Required"),
-  receptionTime: z.string().min(1, "Required"),
-  venue: z.string().min(1, "Required"),
-  location: z.string().min(1, "Required"),
+  partner1Name: z.string().default(""),
+  partner2Name: z.string().default(""),
+  weddingDate: z.string().default(""),
+  ceremonyTime: z.string().default("16:00"),
+  receptionTime: z.string().default("18:00"),
+  venue: z.string().default(""),
+  location: z.string().default(""),
   guestCount: z.coerce.number().min(1, "Must be at least 1"),
   totalBudget: z.coerce.number().min(0, "Must be 0 or more"),
   weddingVibe: z.string().default("Not set"),
   preferredLanguage: z.string().default("English"),
+}).superRefine((values, ctx) => {
+  if (values.accountType === "wedding_planner") return;
+  for (const field of ["partner1Name", "partner2Name", "weddingDate", "ceremonyTime", "receptionTime", "venue", "location"] as const) {
+    if (!String(values[field] ?? "").trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message: "Required" });
+    }
+  }
 });
 
 type WizardValues = z.infer<typeof schema>;
@@ -94,17 +101,38 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
 
   async function handleNext() {
     let fields: (keyof WizardValues)[] = [];
-    if (step === 2) fields = ["partner1Name", "partner2Name"];
-    if (step === 3) fields = ["weddingDate", "ceremonyTime", "receptionTime", "venue", "location"];
+    if (accountType !== "wedding_planner" && step === 2) fields = ["partner1Name", "partner2Name"];
+    if (accountType !== "wedding_planner" && step === 3) fields = ["weddingDate", "ceremonyTime", "receptionTime", "venue", "location"];
     const valid = fields.length === 0 ? true : await form.trigger(fields);
     if (!valid) return;
+    if (step === 1 && accountType === "wedding_planner") {
+      setStep(2);
+      return;
+    }
     if (step < 4) {
       setStep(s => s + 1);
     }
   }
 
   function handleSubmit(values: WizardValues) {
-    saveProfile.mutate({ data: values }, {
+    const displayName = user?.fullName || user?.firstName || user?.primaryEmailAddress?.emailAddress?.split("@")[0] || "Planner";
+    const payload = values.accountType === "wedding_planner"
+      ? {
+          ...values,
+          workstationName: "Planner Workspace",
+          partner1Name: "Planner",
+          partner2Name: displayName,
+          weddingDate: "2099-12-31",
+          ceremonyTime: "16:00",
+          receptionTime: "18:00",
+          venue: "Planner Workspace",
+          location: "Planner Workspace",
+          guestCount: 1,
+          totalBudget: 0,
+          weddingVibe: "Planner Workspace",
+        }
+      : values;
+    saveProfile.mutate({ data: payload }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetProfileQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
@@ -123,6 +151,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
   const currentStep = STEP_DEFS[step - 1];
   const Icon = currentStep.icon;
   const accountType = form.watch("accountType");
+  const progressSteps = accountType === "wedding_planner" ? STEP_DEFS.slice(0, 2) : STEP_DEFS;
 
   return (
     <Dialog open={open} onOpenChange={open => !open && dismiss()}>
@@ -139,7 +168,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
           </div>
           {/* Progress dots */}
           <div className="flex items-center gap-2 mt-3">
-            {STEP_DEFS.map(s => (
+            {progressSteps.map(s => (
               <div
                 key={s.id}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -210,27 +239,45 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                   <div className="text-3xl mb-2">💍</div>
                   <p className="text-sm text-muted-foreground">
                     {accountType === "wedding_planner"
-                      ? "Who is this first client workstation for?"
+                      ? "Let's create your planner command center."
                       : t("onboarding.who_getting_married", { defaultValue: "Who's getting married?" })}
                   </p>
                 </div>
                 {accountType === "wedding_planner" ? (
-                  <>
-                    <FormField control={form.control} name="partner1Name" render={({ field }) => (
+                  <div className="space-y-4">
+                    <div className="text-center py-3">
+                      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+                        <BriefcaseBusiness className="h-7 w-7 text-primary" />
+                      </div>
+                      <h3 className="font-serif text-xl text-foreground">Set up your planner workspace</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                        We will create a planner command center first. You can add separate client workstations after signup, and each client gets their own couple-style workspace.
+                      </p>
+                    </div>
+                    <FormField control={form.control} name="preferredLanguage" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Client / Partner 1 Name</FormLabel>
-                        <FormControl><Input placeholder={t("onboarding.partner1_placeholder", { defaultValue: "e.g. Emma" })} {...field} /></FormControl>
+                        <FormLabel><Globe className="h-3.5 w-3.5 inline mr-1" />{t("onboarding.preferred_language", { defaultValue: "Preferred Language" })}</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger><SelectValue placeholder={t("onboarding.select_language", { defaultValue: "Select language" })} /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {LANGUAGES.map(lang => <SelectItem key={lang} value={lang}>{lang}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">{t("onboarding.language_hint", { defaultValue: "AI features like Aria and vendor emails will respond in this language." })}</p>
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="partner2Name" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Partner 2 / Event Name</FormLabel>
-                        <FormControl><Input placeholder={t("onboarding.partner2_placeholder", { defaultValue: "e.g. James" })} {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </>
+                    <div className="flex gap-2 mt-2">
+                      <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>{t("onboarding.back", { defaultValue: "Back" })}</Button>
+                      <Button type="submit" className="flex-1" disabled={saveProfile.isPending}>
+                        {saveProfile.isPending ? t("onboarding.setting_up", { defaultValue: "Setting up..." }) : <>
+                          <Check className="h-4 w-4 mr-2" /> Create Planner Workspace
+                        </>}
+                      </Button>
+                    </div>
+                  </div>
                 ) : (
                   <>
                     <FormField control={form.control} name="partner2Name" render={({ field }) => (
@@ -249,9 +296,11 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                     )} />
                   </>
                 )}
-                <Button type="button" className="w-full mt-2" onClick={handleNext}>
-                  {t("onboarding.next", { defaultValue: "Next" })} <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
+                {accountType !== "wedding_planner" && (
+                  <Button type="button" className="w-full mt-2" onClick={handleNext}>
+                    {t("onboarding.next", { defaultValue: "Next" })} <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                )}
               </>
             )}
 

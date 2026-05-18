@@ -751,6 +751,14 @@ function DashboardContent() {
       setLocation(`/workspace/${activeWorkspace.profileId}`);
     }
   }, [activeWorkspace, isLoading, setLocation]);
+  useEffect(() => {
+    if (!activeWorkspace && summary?.profile?.accountType === "wedding_planner") {
+      setLocation("/planner-dashboard", { replace: true });
+    }
+  }, [activeWorkspace, summary?.profile?.accountType, setLocation]);
+  if (!activeWorkspace && summary?.profile?.accountType === "wedding_planner") {
+    return null;
+  }
   if (activeWorkspace && activeWorkspace.role !== "owner" && !isLoading) {
     return null;
   }
