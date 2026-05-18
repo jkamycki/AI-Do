@@ -304,17 +304,13 @@ export default function DocumentLibrary() {
       if (folder === "General" || folder === "All") throw new Error("This folder cannot be deleted.");
       const docsInFolder = documents.filter((doc) => (doc.folder || "General") === folder);
       await Promise.all(docsInFolder.map(async (doc) => {
-        const res = await authFetch(`${API}/api/documents/${doc.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ folder: "General" }),
-        });
+        const res = await authFetch(`${API}/api/documents/${doc.id}`, { method: "DELETE" });
         const payload = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(payload.error ?? "Could not update a document in this folder");
+        if (!res.ok) throw new Error(payload.error ?? "Could not delete a document in this folder");
       }));
-      return { folder, movedCount: docsInFolder.length };
+      return { folder, deletedCount: docsInFolder.length };
     },
-    onSuccess: ({ folder, movedCount }) => {
+    onSuccess: ({ folder, deletedCount }) => {
       const next = customFolders.filter((item) => item !== folder);
       setCustomFolders(next);
       saveCustomFolders(next);
@@ -322,7 +318,7 @@ export default function DocumentLibrary() {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       toast({
         title: "Folder deleted",
-        description: movedCount ? `${movedCount} document${movedCount === 1 ? "" : "s"} moved to General.` : undefined,
+        description: deletedCount ? `${deletedCount} document${deletedCount === 1 ? "" : "s"} deleted with the folder.` : undefined,
       });
     },
     onError: (err) => toast({ title: "Could not delete folder", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" }),
@@ -481,7 +477,7 @@ export default function DocumentLibrary() {
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">Drag a document card onto a folder to move it. Delete moves documents back to General.</p>
+              <p className="text-xs text-muted-foreground">Drag a document card onto a folder to move it. Deleting a folder also deletes documents inside it.</p>
             </div>
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-sm"><Tag className="h-4 w-4" /> Tag</Label>
