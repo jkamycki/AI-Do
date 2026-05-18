@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { authFetch } from "@/lib/authFetch";
-import { useAuth } from "@clerk/react";
+import { useAuth, useUser } from "@clerk/react";
 import {
   useGetProfile,
   getListVendorsQueryKey,
@@ -16,7 +16,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import {
-  Sparkles,
   Send,
   Plus,
   User,
@@ -122,16 +121,20 @@ function deriveTitle(messages: Message[]): string {
 
 function AriaAvatar() {
   return (
-    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shrink-0 shadow-sm">
-      <Sparkles className="h-4 w-4 text-white" />
+    <div className="w-8 h-8 rounded-full bg-white border border-primary/15 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+      <img src="/aria-avatar.png" alt="Aria" className="h-full w-full object-cover" />
     </div>
   );
 }
 
-function UserAvatar() {
+function UserAvatar({ imageUrl, name }: { imageUrl?: string | null; name?: string | null }) {
   return (
-    <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center shrink-0">
-      <User className="h-4 w-4 text-muted-foreground" />
+    <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden">
+      {imageUrl ? (
+        <img src={imageUrl} alt={name || "You"} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+      ) : (
+        <User className="h-4 w-4 text-muted-foreground" />
+      )}
     </div>
   );
 }
@@ -175,7 +178,7 @@ function ActionPill({ action }: { action: ActionLog }) {
   );
 }
 
-function MessageBubble({ msg }: { msg: Message }) {
+function MessageBubble({ msg, userImageUrl, userName }: { msg: Message; userImageUrl?: string | null; userName?: string | null }) {
   const isUser = msg.role === "user";
 
   if (isUser) {
@@ -184,7 +187,7 @@ function MessageBubble({ msg }: { msg: Message }) {
         <div className="max-w-[78%] bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed shadow-sm whitespace-pre-wrap">
           {msg.content}
         </div>
-        <UserAvatar />
+        <UserAvatar imageUrl={userImageUrl} name={userName} />
       </div>
     );
   }
@@ -222,8 +225,10 @@ export default function Aria() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { userId } = useAuth();
+  const { user } = useUser();
   const { data: profile } = useGetProfile();
   const queryClient = useQueryClient();
+  const userDisplayName = user?.fullName || user?.primaryEmailAddress?.emailAddress || "You";
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -708,8 +713,8 @@ export default function Aria() {
             >
               <History className="h-5 w-5" />
             </button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-md">
-              <Sparkles className="h-5 w-5 text-white" />
+            <div className="w-10 h-10 rounded-full bg-white border border-primary/15 flex items-center justify-center shadow-md overflow-hidden">
+              <img src="/aria-avatar.png" alt="Aria" className="h-full w-full object-cover" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -767,7 +772,14 @@ export default function Aria() {
               </div>
             </div>
           ) : (
-            messages.map(msg => <MessageBubble key={msg.id} msg={msg} />)
+            messages.map(msg => (
+              <MessageBubble
+                key={msg.id}
+                msg={msg}
+                userImageUrl={user?.imageUrl}
+                userName={userDisplayName}
+              />
+            ))
           )}
           <div ref={bottomRef} />
         </div>
