@@ -524,12 +524,10 @@ export function Sidebar() {
     enabled: !!isSignedIn,
     staleTime: 15000,
   });
-  const isPlannerDashboardRoute = location === "/planner-dashboard";
+  const isPlannerAccount = workspaceData?.accountType === "wedding_planner";
   const isClientWorkspaceActive = Boolean(activeWorkspace?.profileId) || location.startsWith("/workspace/");
-  const showPlannerDashboard =
-    workspaceData?.accountType === "wedding_planner" &&
-    isPlannerDashboardRoute &&
-    !isClientWorkspaceActive;
+  const isPlannerOwnWorkspace = isPlannerAccount && !isClientWorkspaceActive;
+  const showPlannerDashboard = isPlannerOwnWorkspace;
 
   const handlePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -828,39 +826,43 @@ export function Sidebar() {
             </div>
           )}
 
-          {navSections.map((section) => (
-            <div key={section.labelKey}>
-              <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-primary/80">
-                {t(section.labelKey, { defaultValue: section.labelKey })}
-              </p>
-              <div className="space-y-0.5">
-                {section.items.map((item) => (
-                  <NavLink
-                    key={item.href}
-                    href={item.href}
-                    label={t(item.labelKey)}
-                    icon={item.icon}
-                    dot={"dot" in item ? item.dot as boolean : undefined}
-                    sectionLabel={t(section.labelKey, { defaultValue: section.labelKey })}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
+          {!isPlannerOwnWorkspace && (
+            <>
+              {navSections.map((section) => (
+                <div key={section.labelKey}>
+                  <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-primary/80">
+                    {t(section.labelKey, { defaultValue: section.labelKey })}
+                  </p>
+                  <div className="space-y-0.5">
+                    {section.items.map((item) => (
+                      <NavLink
+                        key={item.href}
+                        href={item.href}
+                        label={t(item.labelKey)}
+                        icon={item.icon}
+                        dot={"dot" in item ? item.dot as boolean : undefined}
+                        sectionLabel={t(section.labelKey, { defaultValue: section.labelKey })}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
 
-          <div className="border-t border-primary/10 pt-4">
-            <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-primary/80">
-              {t("sidebar.guest_website_builder", { defaultValue: "Guest Website Builder" })}
-            </p>
-            <div className="space-y-0.5">
-              <NavLink
-                href="/website-editor"
-                label={t("nav.website_editor", { defaultValue: "Website Editor" })}
-                icon={Globe}
-                sectionLabel={t("sidebar.guest_website_builder", { defaultValue: "Guest Website Builder" })}
-              />
-            </div>
-          </div>
+              <div className="border-t border-primary/10 pt-4">
+                <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-primary/80">
+                  {t("sidebar.guest_website_builder", { defaultValue: "Guest Website Builder" })}
+                </p>
+                <div className="space-y-0.5">
+                  <NavLink
+                    href="/website-editor"
+                    label={t("nav.website_editor", { defaultValue: "Website Editor" })}
+                    icon={Globe}
+                    sectionLabel={t("sidebar.guest_website_builder", { defaultValue: "Guest Website Builder" })}
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="border-t border-primary/10 pt-4">
             <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-primary/80">
