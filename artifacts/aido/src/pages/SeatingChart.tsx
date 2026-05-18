@@ -505,11 +505,16 @@ export default function SeatingChartPage() {
 
   const { data: guestListData, isLoading: guestListLoading, isError: guestListError } = useGetGuests();
   const guestListGuests: GuestListGuest[] = guestListData?.guests ?? [];
-  const importableCount = guestListGuests.filter(
+  const eligibleGuestListGuests = guestListGuests.filter(
     g => g.rsvpStatus !== "declined" && g.name.trim()
-  ).length;
+  );
+  const importableCount = eligibleGuestListGuests.reduce(
+    (count, guest) => count + 1 + (guest.plusOne ? 1 : 0),
+    0,
+  );
 
   const mapGuestGroup = (g?: string | null): string => {
+    if (g && GROUPS.includes(g)) return g;
     switch (g) {
       case "brides_family": return "Bride's Family";
       case "grooms_family": return "Groom's Family";
@@ -525,6 +530,11 @@ export default function SeatingChartPage() {
       case "other": return "Other";
       default: return "Other";
     }
+  };
+
+  const plusOneSeatingName = (guestName: string, plusOneName?: string | null) => {
+    const cleanPlusOne = plusOneName?.trim();
+    return cleanPlusOne || `${guestName}'s Plus One`;
   };
 
   const importFromGuestList = () => {
@@ -545,7 +555,7 @@ export default function SeatingChartPage() {
     }
 
     // Only seat guests who are attending or pending â€” skip declined.
-    const eligible = guestListGuests.filter(g => g.rsvpStatus !== "declined");
+    const eligible = eligibleGuestListGuests;
 
     // Build a name set of guests already on the seating chart (case-insensitive, trimmed).
     const existingNames = new Set(
@@ -561,24 +571,50 @@ export default function SeatingChartPage() {
       const cleanName = src.name.trim();
       if (!cleanName) return;
       const key = cleanName.toLowerCase();
+      const group = mapGuestGroup(src.guestGroup);
+      const mainGuestId = `${uid}-import-${Date.now()}-${idx}`;
+      let mainGuestWasAdded = false;
       if (existingNames.has(key)) {
         skipped++;
-        return;
+        if (!src.plusOne) return;
+      } else {
+        existingNames.add(key);
+        mainGuestWasAdded = true;
       }
-      existingNames.add(key);
-      const noteParts: string[] = [];
-      if (src.dietaryNotes) noteParts.push(src.dietaryNotes);
-      if (src.mealChoice) noteParts.push(`meal: ${src.mealChoice}`);
-      if (src.notes) noteParts.push(src.notes);
-      if (src.plusOne) noteParts.push(src.plusOneName ? `+1: ${src.plusOneName}` : "+1");
-      additions.push({
-        id: `${uid}-import-${Date.now()}-${idx}`,
-        name: cleanName,
-        group: mapGuestGroup(src.guestGroup),
-        plusOne: !!src.plusOne,
-        notes: noteParts.join(" Â· "),
-        relations: [],
-      });
+      if (mainGuestWasAdded) {
+        const noteParts: string[] = [];
+        if (src.dietaryNotes) noteParts.push(src.dietaryNotes);
+        if (src.mealChoice) noteParts.push(`meal: ${src.mealChoice}`);
+        if (src.notes) noteParts.push(src.notes);
+        additions.push({
+          id: mainGuestId,
+          name: cleanName,
+          group,
+          plusOne: false,
+          notes: noteParts.join(" - "),
+          relations: [],
+        });
+      }
+      if (src.plusOne) {
+        const plusOneName = plusOneSeatingName(cleanName, src.plusOneName);
+        const plusOneKey = plusOneName.toLowerCase();
+        if (existingNames.has(plusOneKey)) {
+          skipped++;
+          return;
+        }
+        existingNames.add(plusOneKey);
+        const plusOneId = `${uid}-import-${Date.now()}-${idx}-plus-one`;
+        additions.push({
+          id: plusOneId,
+          name: plusOneName,
+          group,
+          plusOne: false,
+          notes: `Plus one for ${cleanName}`,
+          relations: mainGuestWasAdded ? [{ targetId: mainGuestId, type: "prefer" }] : [],
+        });
+        const mainGuest = additions.find((guest) => guest.id === mainGuestId);
+        mainGuest?.relations.push({ targetId: plusOneId, type: "prefer" });
+      }
     });
 
     // Replace any empty starter rows so we don't leave blank cards behind.
