@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BriefcaseBusiness, Heart, Save, RotateCcw, RefreshCw } from "lucide-react";
+import { Save, RotateCcw, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { COUNTRIES } from "@/lib/countries";
 import { getAddressFormat } from "@/lib/addressFormat";
@@ -263,57 +263,6 @@ export default function Profile() {
         <CardContent className="p-6 pt-8">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <FormField
-                control={form.control}
-                name="accountType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>How will you use A.IDO?</FormLabel>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      {[
-                        {
-                          value: "couple_individual",
-                          title: "Couple / Individual",
-                          description: "Plan one wedding workspace for yourself.",
-                          icon: Heart,
-                        },
-                        {
-                          value: "wedding_planner",
-                          title: "Wedding Planner",
-                          description: "Manage multiple client workstations.",
-                          icon: BriefcaseBusiness,
-                        },
-                      ].map((option) => {
-                        const selected = field.value === option.value;
-                        const Icon = option.icon;
-                        return (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => field.onChange(option.value)}
-                            className={`rounded-lg border p-4 text-left transition-colors ${
-                              selected ? "border-primary bg-primary/10" : "border-border bg-background hover:bg-muted/40"
-                            }`}
-                            data-testid={`account-type-${option.value}`}
-                          >
-                            <span className="flex items-start gap-3">
-                              <span className={`mt-0.5 rounded-md p-2 ${selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                                <Icon className="h-4 w-4" />
-                              </span>
-                              <span>
-                                <span className="block font-semibold text-foreground">{option.title}</span>
-                                <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{option.description}</span>
-                              </span>
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
               <div className="grid md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
