@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { type DragEvent, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { getGetChecklistQueryKey, useListVendors } from "@workspace/api-client-react";
+import { cn } from "@/lib/utils";
 import Contracts from "./Contracts";
 import {
   CheckSquare,
@@ -23,6 +24,7 @@ import {
   Link2,
   Loader2,
   Pencil,
+  Plus,
   Sparkles,
   Tag,
   Trash2,
@@ -94,12 +96,32 @@ function fields(doc?: DocumentRecord | null): ExtractedFields {
   return doc?.extractedFields ?? {};
 }
 
+const CUSTOM_FOLDERS_KEY = "aido-document-library-folders";
+
+function loadCustomFolders() {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(CUSTOM_FOLDERS_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((folder): folder is string => typeof folder === "string" && folder.trim().length > 0) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomFolders(folders: string[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(CUSTOM_FOLDERS_KEY, JSON.stringify(folders));
+}
+
 export default function DocumentLibrary() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [folderFilter, setFolderFilter] = useState("All");
   const [tagFilter, setTagFilter] = useState("All");
+  const [customFolders, setCustomFolders] = useState<string[]>(loadCustomFolders);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<DocumentRecord | null>(null);
   const [summaryDoc, setSummaryDoc] = useState<DocumentRecord | null>(null);
   const [editingDoc, setEditingDoc] = useState<DocumentRecord | null>(null);
@@ -119,8 +141,19 @@ export default function DocumentLibrary() {
   const vendorList = Array.isArray(vendorsData) ? vendorsData : (vendorsData as { vendors?: Array<{ id: number; name: string }> } | undefined)?.vendors ?? [];
 
   const documents = data?.documents ?? [];
-  const folders = useMemo(() => ["All", ...Array.from(new Set(documents.map((doc) => doc.folder || "General")))], [documents]);
+  const folders = useMemo(
+    () => ["All", ...Array.from(new Set(["General", ...customFolders, ...documents.map((doc) => doc.folder || "General")]))],
+    [customFolders, documents],
+  );
   const tags = useMemo(() => ["All", ...Array.from(new Set(documents.flatMap((doc) => doc.tags ?? [])))], [documents]);
+  const folderCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    documents.forEach((doc) => {
+      const folder = doc.folder || "General";
+      counts.set(folder, (counts.get(folder) ?? 0) + 1);
+    });
+    return counts;
+  }, [documents]);
   const filtered = documents.filter((doc) => {
     const folderOk = folderFilter === "All" || (doc.folder || "General") === folderFilter;
     const tagOk = tagFilter === "All" || (doc.tags ?? []).includes(tagFilter);
@@ -221,19 +254,57 @@ export default function DocumentLibrary() {
 
   function saveEditor() {
     if (!editingDoc) return;
+    const folder = editState.folder.trim() || "General";
     patchMutation.mutate({
       id: editingDoc.id,
       body: {
         fileName: editState.fileName,
-        folder: editState.folder,
+        folder,
         tags: tagsFromText(editState.tags),
         visibility: tagsFromText(editState.visibility),
       },
     });
+    rememberFolder(folder);
   }
 
   function linkVendor(doc: DocumentRecord, vendorId: string) {
     actionMutation.mutate({ id: doc.id, action: "link-vendor", body: { vendorId: Number(vendorId) } });
+  }
+
+  function rememberFolder(folder: string) {
+    if (!folder || folder === "All" || folders.includes(folder)) return;
+    setCustomFolders((current) => {
+      const next = [...current, folder].sort((a, b) => a.localeCompare(b));
+      saveCustomFolders(next);
+      return next;
+    });
+  }
+
+  function createFolder() {
+    const folder = newFolderName.trim();
+    if (!folder || folder === "All") return;
+    if (folders.includes(folder)) {
+      setFolderFilter(folder);
+      setNewFolderName("");
+      toast({ title: "Folder already exists", description: `${folder} is ready to use.` });
+      return;
+    }
+    const next = [...customFolders, folder].sort((a, b) => a.localeCompare(b));
+    setCustomFolders(next);
+    saveCustomFolders(next);
+    setFolderFilter(folder);
+    setNewFolderName("");
+    toast({ title: "Folder created", description: `Drag documents into ${folder} to organize them.` });
+  }
+
+  function moveDocumentToFolder(event: DragEvent<HTMLButtonElement>, folder: string) {
+    event.preventDefault();
+    setDragOverFolder(null);
+    const id = Number(event.dataTransfer.getData("text/plain"));
+    if (!id || folder === "All") return;
+    rememberFolder(folder);
+    setFolderFilter(folder);
+    patchMutation.mutate({ id, body: { folder } });
   }
 
   return (
@@ -275,6 +346,47 @@ export default function DocumentLibrary() {
                   {folders.map((folder) => <SelectItem key={folder} value={folder}>{folder}</SelectItem>)}
                 </SelectContent>
               </Select>
+              <div className="flex gap-2">
+                <Input
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") createFolder();
+                  }}
+                  placeholder="New folder name"
+                  className="h-9"
+                />
+                <Button type="button" size="icon" variant="outline" className="h-9 w-9 shrink-0" onClick={createFolder} aria-label="Create folder">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="space-y-1 pt-1">
+                {folders.filter((folder) => folder !== "All").map((folder) => (
+                  <button
+                    key={folder}
+                    type="button"
+                    onClick={() => setFolderFilter(folder)}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      setDragOverFolder(folder);
+                    }}
+                    onDragLeave={() => setDragOverFolder((current) => (current === folder ? null : current))}
+                    onDrop={(event) => moveDocumentToFolder(event, folder)}
+                    className={cn(
+                      "flex min-h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                      folderFilter === folder ? "border-primary bg-primary/10 text-primary" : "border-border bg-background hover:bg-muted",
+                      dragOverFolder === folder && "border-primary bg-primary/15",
+                    )}
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Folder className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{folder}</span>
+                    </span>
+                    <Badge variant="secondary" className="ml-2 shrink-0">{folderCounts.get(folder) ?? 0}</Badge>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Drag a document card onto a folder to move it.</p>
             </div>
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-sm"><Tag className="h-4 w-4" /> Tag</Label>
@@ -303,7 +415,15 @@ export default function DocumentLibrary() {
                 {filtered.map((doc) => {
                   const extracted = fields(doc);
                   return (
-                    <Card key={doc.id} className="rounded-lg border-border/70">
+                    <Card
+                      key={doc.id}
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData("text/plain", String(doc.id));
+                        event.dataTransfer.effectAllowed = "move";
+                      }}
+                      className="rounded-lg border-border/70"
+                    >
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 gap-3">
@@ -336,7 +456,7 @@ export default function DocumentLibrary() {
                           </Button>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Button variant="ghost" size="sm" className="gap-2" onClick={() => openEditor(doc)}><Pencil className="h-4 w-4" /> Rename / Move</Button>
+                          <Button variant="ghost" size="sm" className="gap-2" onClick={() => openEditor(doc)}><Pencil className="h-4 w-4" /> Organize / Tags</Button>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -436,6 +556,7 @@ export default function DocumentLibrary() {
             <div className="space-y-2">
               <Label>Tags</Label>
               <Input value={editState.tags} onChange={(e) => setEditState((s) => ({ ...s, tags: e.target.value }))} placeholder="invoice, catering, final payment" />
+              <p className="text-xs text-muted-foreground">Separate tags with commas.</p>
             </div>
             <div className="space-y-2">
               <Label>Visibility</Label>
