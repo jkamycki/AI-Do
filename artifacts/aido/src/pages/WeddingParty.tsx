@@ -107,8 +107,8 @@ const ROLES = [
 ];
 
 const SIDES = [
-  { value: "bride", label: "Bridal Party" },
-  { value: "groom", label: "Groomsmen" },
+  { value: "bride", label: "Bride's Party" },
+  { value: "groom", label: "Groom's Party" },
 ];
 
 const SIDE_COLORS: Record<string, string> = {
@@ -164,8 +164,8 @@ function MemberForm({
           <Select value={form.side ?? "bride"} onValueChange={v => set("side", v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="bride">{t("party.side_bridal")}</SelectItem>
-              <SelectItem value="groom">{t("party.side_groomsmen")}</SelectItem>
+              <SelectItem value="bride">{t("party.bride_party", { defaultValue: "Bride's Party" })}</SelectItem>
+              <SelectItem value="groom">{t("party.groom_party", { defaultValue: "Groom's Party" })}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -207,7 +207,11 @@ function MemberCard({
   const [cropFileName, setCropFileName] = useState("headshot");
 
   const sideColor = SIDE_COLORS[member.side] ?? SIDE_COLORS.bride;
-  const sideLabel = member.side === "bride" ? t("party.side_bridal") : member.side === "groom" ? t("party.side_groomsmen") : member.side;
+  const sideLabel = member.side === "bride"
+    ? t("party.bride_party", { defaultValue: "Bride's Party" })
+    : member.side === "groom"
+      ? t("party.groom_party", { defaultValue: "Groom's Party" })
+      : member.side;
   const avatarBg = AVATAR_BG[member.side] ?? "bg-violet-100 text-violet-700";
 
   const { uploadFile, isUploading } = useUpload({
@@ -251,13 +255,31 @@ function MemberCard({
 
   return (
     <>
-      <Card className="border-border/60 shadow-sm hover:shadow-md transition-shadow">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-start gap-3">
+      <Card className="border-border/60 bg-card/95 shadow-sm transition-shadow hover:shadow-md">
+        <CardContent className="relative flex min-h-[260px] flex-col items-center justify-between p-5 text-center">
+          <div className="absolute right-3 top-3 flex gap-1">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Edit2 className="h-3.5 w-3.5" /></Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t("party.remove_member_title", { name: member.name })}</AlertDialogTitle>
+                  <AlertDialogDescription>{t("party.remove_member_desc")}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDelete} className="bg-destructive hover:bg-destructive/90">{t("party.remove_btn")}</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+          <div className="flex flex-col items-center">
+            <div className="mb-4">
               {/* Avatar — click to upload/change headshot */}
               <div
-                className="relative group w-11 h-11 rounded-full shrink-0 cursor-pointer overflow-hidden"
+                className="relative group h-32 w-32 cursor-pointer overflow-hidden rounded-full border border-primary/20 bg-primary/10 shadow-sm sm:h-36 sm:w-36"
                 onClick={() => !isBusy && fileInputRef.current?.click()}
                 title={member.photoUrl ? "Change headshot" : "Add headshot"}
               >
@@ -265,11 +287,11 @@ function MemberCard({
                   <AuthImage
                     objectPath={member.photoUrl}
                     alt={member.name}
-                    className="w-full h-full object-cover"
+                    className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className={`w-full h-full flex items-center justify-center font-bold text-sm ${avatarBg}`}>
-                    {member.name.charAt(0).toUpperCase()}
+                  <div className={`flex h-full w-full items-center justify-center ${avatarBg}`}>
+                    <Heart className="h-8 w-8 opacity-50" />
                   </div>
                 )}
                 {/* hover / busy overlay */}
@@ -289,46 +311,25 @@ function MemberCard({
                 className="sr-only"
                 onChange={handleFileSelect}
               />
+            </div>
 
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold text-foreground">{member.name}</p>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-center gap-2">
+                  <p className="font-serif text-2xl leading-tight text-primary">{member.name}</p>
                   {(member.role === "Maid of Honor" || member.role === "Best Man") && (
-                    <Crown className="h-3.5 w-3.5 text-amber-500" />
+                    <Crown className="h-4 w-4 shrink-0 text-amber-500" />
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <span className="text-xs text-muted-foreground">{member.role}</span>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${sideColor}`}>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-sm text-muted-foreground">{member.role}</span>
+                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${sideColor}`}>
                     {sideLabel}
                   </span>
                 </div>
               </div>
             </div>
-
-            <div className="flex gap-1 shrink-0">
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Edit2 className="h-3.5 w-3.5" /></Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>{t("party.remove_member_title", { name: member.name })}</AlertDialogTitle>
-                    <AlertDialogDescription>{t("party.remove_member_desc")}</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-                    <AlertDialogAction onClick={onDelete} className="bg-destructive hover:bg-destructive/90">{t("party.remove_btn")}</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </div>
-
-          {/* Notes */}
           {member.notes && (
-            <p className="text-xs text-muted-foreground italic border-t border-border/40 pt-2 mt-3">{member.notes}</p>
+            <p className="mt-4 w-full border-t border-border/40 pt-3 text-xs italic text-muted-foreground">{member.notes}</p>
           )}
         </CardContent>
       </Card>
@@ -356,14 +357,22 @@ function PartyGroup({ title, members, icon: Icon, color, onEdit, onDelete, onPho
   onDelete: (id: number) => void;
   onPhotoChange: (id: number, photoUrl: string | null) => void;
 }) {
-  if (members.length === 0) return null;
   return (
-    <div className="space-y-3">
-      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full w-fit text-sm font-semibold border ${color}`}>
+    <div className="space-y-6">
+      <div className="text-center">
+      <div className={`mx-auto inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${color}`}>
         <Icon className="h-4 w-4" />
         {title} · {members.length}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      </div>
+      {members.length === 0 ? (
+        <Card className="border-dashed border-primary/20 bg-card/70">
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            No members added yet.
+          </CardContent>
+        </Card>
+      ) : (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 [&>:last-child:nth-child(odd)]:sm:col-span-2 [&>:last-child:nth-child(odd)]:sm:justify-self-center [&>:last-child:nth-child(odd)]:sm:w-full [&>:last-child:nth-child(odd)]:sm:max-w-[280px]">
         {members.map(m => (
           <MemberCard
             key={m.id}
@@ -374,6 +383,7 @@ function PartyGroup({ title, members, icon: Icon, color, onEdit, onDelete, onPho
           />
         ))}
       </div>
+      )}
     </div>
   );
 }
@@ -426,8 +436,30 @@ export default function WeddingParty() {
     );
   }
 
-  const bridesSide = members.filter(m => m.side === "bride");
-  const groomsSide = members.filter(m => m.side === "groom");
+  const groomRolePriority = (role: string): number => {
+    const value = role.toLowerCase().trim();
+    if (value === "groom") return 0;
+    if (value === "best man") return 1;
+    if (value.includes("groomsman") || value.includes("groomsmen")) return 2;
+    if (value.includes("ring bearer")) return 3;
+    return 99;
+  };
+  const brideRolePriority = (role: string): number => {
+    const value = role.toLowerCase().trim();
+    if (value === "bride") return 0;
+    if (value === "maid of honor" || value === "matron of honor") return 1;
+    if (value.includes("bridesmaid")) return 2;
+    if (value.includes("flower girl")) return 3;
+    return 99;
+  };
+  const stableSort = (items: Member[], priority: (role: string) => number) =>
+    items
+      .map((member, index) => ({ member, index, priority: priority(member.role ?? "") }))
+      .sort((a, b) => a.priority - b.priority || a.index - b.index)
+      .map((item) => item.member);
+
+  const bridesSide = stableSort(members.filter(m => m.side === "bride"), brideRolePriority);
+  const groomsSide = stableSort(members.filter(m => m.side === "groom"), groomRolePriority);
 
   const stats = [
     { label: t("party.stat_total"), value: members.length, color: "text-primary" },
@@ -458,7 +490,7 @@ export default function WeddingParty() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
@@ -515,25 +547,29 @@ export default function WeddingParty() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-8">
-          <PartyGroup
-            title={t("party.bridal_party")}
-            members={bridesSide}
-            icon={Heart}
-            color="bg-rose-50 text-rose-700 border-rose-200"
-            onEdit={setEditMember}
-            onDelete={id => deleteMutation.mutate(id)}
-            onPhotoChange={handlePhotoChange}
-          />
-          <PartyGroup
-            title={t("party.groomsmen")}
-            members={groomsSide}
-            icon={Users}
-            color="bg-sky-50 text-sky-700 border-sky-200"
-            onEdit={setEditMember}
-            onDelete={id => deleteMutation.mutate(id)}
-            onPhotoChange={handlePhotoChange}
-          />
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-0">
+          <div className="lg:pr-10 lg:border-r lg:border-primary/20">
+            <PartyGroup
+              title={t("party.bride_party", { defaultValue: "Bride's Party" })}
+              members={bridesSide}
+              icon={Heart}
+              color="bg-rose-50 text-rose-700 border-rose-200"
+              onEdit={setEditMember}
+              onDelete={id => deleteMutation.mutate(id)}
+              onPhotoChange={handlePhotoChange}
+            />
+          </div>
+          <div className="lg:pl-10">
+            <PartyGroup
+              title={t("party.groom_party", { defaultValue: "Groom's Party" })}
+              members={groomsSide}
+              icon={Users}
+              color="bg-sky-50 text-sky-700 border-sky-200"
+              onEdit={setEditMember}
+              onDelete={id => deleteMutation.mutate(id)}
+              onPhotoChange={handlePhotoChange}
+            />
+          </div>
         </div>
       )}
 
