@@ -190,6 +190,7 @@ type VendorContact = {
 };
 
 type VendorContactFormData = {
+  vendorId: number | null;
   name: string;
   businessName: string;
   phone: string;
@@ -210,8 +211,24 @@ const vendorContactsQueryKey = ["vendor-contacts"] as const;
 const vendorContactSuggestionsQueryKey = ["vendor-contact-suggestions"] as const;
 
 function phoneHref(phone: string, scheme: "tel" | "sms") {
-  const cleaned = phone.replace(/[^\d+]/g, "");
-  return `${scheme}:${cleaned || phone}`;
+  const first = splitContactValues(phone)[0] ?? phone;
+  const cleaned = first.replace(/[^\d+]/g, "");
+  return `${scheme}:${cleaned || first}`;
+}
+
+function splitContactValues(value: string | null | undefined) {
+  return (value ?? "")
+    .split(/[,\n;]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function joinContactValues(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.flatMap(splitContactValues))).join(", ");
+}
+
+function firstContactValue(value: string | null | undefined) {
+  return splitContactValues(value)[0] ?? "";
 }
 
 async function fetchVendorContacts(): Promise<VendorContact[]> {
@@ -1404,7 +1421,12 @@ function VendorContactDialog({
   const { t } = useTranslation();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { data: vendors = [] } = useListVendors();
+  const [usePrimaryContact, setUsePrimaryContact] = useState(false);
+  const [additionalPhone, setAdditionalPhone] = useState("");
+  const [additionalEmail, setAdditionalEmail] = useState("");
   const [form, setForm] = useState<VendorContactFormData>({
+    vendorId: contact?.vendorId ?? null,
     name: contact?.name ?? "",
     businessName: contact?.businessName ?? "",
     phone: contact?.phone ?? "",
@@ -1414,13 +1436,61 @@ function VendorContactDialog({
 
   useEffect(() => {
     setForm({
+      vendorId: contact?.vendorId ?? null,
       name: contact?.name ?? "",
       businessName: contact?.businessName ?? "",
       phone: contact?.phone ?? "",
       email: contact?.email ?? "",
       contactType: contact?.contactType ?? "General",
     });
+    setUsePrimaryContact(false);
+    setAdditionalPhone("");
+    setAdditionalEmail("");
   }, [contact]);
+
+  const selectedVendor = form.vendorId ? vendors.find((vendor) => vendor.id === form.vendorId) : null;
+
+  function applyVendor(vendorId: string) {
+    const nextVendorId = Number(vendorId);
+    const vendor = vendors.find((item) => item.id === nextVendorId);
+    setForm((current) => ({
+      ...current,
+      vendorId: Number.isFinite(nextVendorId) ? nextVendorId : null,
+      businessName: vendor?.name ?? current.businessName,
+      contactType: "Vendor",
+    }));
+    setUsePrimaryContact(false);
+  }
+
+  function applyPrimaryContact(checked: boolean) {
+    setUsePrimaryContact(checked);
+    if (!checked || !selectedVendor) return;
+    setForm((current) => ({
+      ...current,
+      name: selectedVendor.primaryContact?.trim() || current.name || selectedVendor.name,
+      businessName: selectedVendor.name,
+      phone: joinContactValues([selectedVendor.phone, additionalPhone]),
+      email: joinContactValues([selectedVendor.email, additionalEmail]),
+    }));
+  }
+
+  function updateAdditionalPhone(value: string) {
+    setAdditionalPhone(value);
+    if (!usePrimaryContact || !selectedVendor) return;
+    setForm((current) => ({
+      ...current,
+      phone: joinContactValues([selectedVendor.phone, value]),
+    }));
+  }
+
+  function updateAdditionalEmail(value: string) {
+    setAdditionalEmail(value);
+    if (!usePrimaryContact || !selectedVendor) return;
+    setForm((current) => ({
+      ...current,
+      email: joinContactValues([selectedVendor.email, value]),
+    }));
+  }
 
   const createMutation = useMutation({
     mutationFn: createVendorContact,
@@ -1451,6 +1521,7 @@ function VendorContactDialog({
       return;
     }
     const payload: VendorContactFormData = {
+      vendorId: form.contactType === "Vendor" ? form.vendorId : null,
       name: form.name.trim(),
       businessName: form.businessName.trim(),
       phone: form.phone.trim(),
@@ -1495,16 +1566,16 @@ function VendorContactDialog({
               <Input
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder={t("vendors.phone_placeholder")}
+                placeholder={t("vendors.phone_placeholder", { defaultValue: "Phone number(s)" })}
               />
             </div>
             <div className="space-y-1.5">
               <Label>{t("vendors.email")} {t("vendors.optional_label", { defaultValue: "(optional)" })}</Label>
               <Input
-                type="email"
+                type="text"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder={t("vendors.email_placeholder")}
+                placeholder={t("vendors.email_placeholder", { defaultValue: "Email address(es)" })}
               />
             </div>
           </div>
@@ -1512,7 +1583,11 @@ function VendorContactDialog({
             <Label>{t("vendors.contact_type", { defaultValue: "Contact Type" })}</Label>
             <Select
               value={form.contactType}
-              onValueChange={(value) => setForm({ ...form, contactType: value as VendorContactType })}
+              onValueChange={(value) => setForm({
+                ...form,
+                contactType: value as VendorContactType,
+                vendorId: value === "Vendor" ? form.vendorId : null,
+              })}
             >
               <SelectTrigger data-testid="select-vendor-contact-type">
                 <SelectValue />
@@ -1523,6 +1598,64 @@ function VendorContactDialog({
               </SelectContent>
             </Select>
           </div>
+          {form.contactType === "Vendor" && (
+            <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+              <div className="space-y-1.5">
+                <Label>{t("vendors.choose_vendor", { defaultValue: "Choose Vendor" })}</Label>
+                <Select value={form.vendorId ? String(form.vendorId) : ""} onValueChange={applyVendor}>
+                  <SelectTrigger data-testid="select-contact-vendor">
+                    <SelectValue placeholder={t("vendors.select_vendor_placeholder", { defaultValue: "Select a vendor" })} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendors.map((vendor) => (
+                      <SelectItem key={vendor.id} value={String(vendor.id)}>
+                        {vendor.name} {vendor.category ? `(${vendor.category})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedVendor && (
+                <>
+                  <label className="flex items-start gap-2 text-sm text-foreground">
+                    <Checkbox
+                      checked={usePrimaryContact}
+                      onCheckedChange={(checked) => applyPrimaryContact(checked === true)}
+                    />
+                    <span>
+                      {t("vendors.use_primary_vendor_contact", {
+                        defaultValue: "Use this vendor's primary contact",
+                      })}
+                      {selectedVendor.primaryContact ? `: ${selectedVendor.primaryContact}` : ""}
+                    </span>
+                  </label>
+                  {!usePrimaryContact && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("vendors.vendor_contact_custom_name_hint", { defaultValue: "Enter a different contact name above if this is not the primary contact." })}
+                    </p>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>{t("vendors.additional_phone", { defaultValue: "Additional Phone Numbers" })}</Label>
+                      <Input
+                        value={additionalPhone}
+                        onChange={(e) => updateAdditionalPhone(e.target.value)}
+                        placeholder={t("vendors.additional_phone_placeholder", { defaultValue: "Separate with commas" })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{t("vendors.additional_email", { defaultValue: "Additional Emails" })}</Label>
+                      <Input
+                        value={additionalEmail}
+                        onChange={(e) => updateAdditionalEmail(e.target.value)}
+                        placeholder={t("vendors.additional_email_placeholder", { defaultValue: "Separate with commas" })}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>{t("vendors.cancel")}</Button>
             <Button type="submit" disabled={isPending} data-testid="btn-save-vendor-contact">
@@ -1722,7 +1855,7 @@ function VendorContactsTab() {
                   <span className="text-muted-foreground">-</span>
                 )}
                 {contact.email ? (
-                  <a href={`mailto:${contact.email}`} className="flex items-center gap-2 text-muted-foreground hover:text-primary min-w-0">
+                  <a href={`mailto:${firstContactValue(contact.email)}`} className="flex items-center gap-2 text-muted-foreground hover:text-primary min-w-0">
                     <Mail className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{contact.email}</span>
                   </a>
@@ -1731,20 +1864,18 @@ function VendorContactsTab() {
                 )}
               </div>
               <div className="flex items-center gap-1 md:justify-end">
-                {contact.source === "manual" && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => {
-                      setEditingContact(contact);
-                      setShowContactDialog(true);
-                    }}
-                    aria-label={t("vendors.edit_contact", { defaultValue: "Edit Contact" })}
-                  >
-                    <Edit className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => {
+                    setEditingContact(contact);
+                    setShowContactDialog(true);
+                  }}
+                  aria-label={t("vendors.edit_contact", { defaultValue: "Edit Contact" })}
+                >
+                  <Edit className="h-3.5 w-3.5" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"

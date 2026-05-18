@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, vendors, vendorPayments, checklistItems, vendorContacts } from "@workspace/db";
-import { eq, and, asc, inArray, isNull } from "drizzle-orm";
+import { eq, and, asc, inArray } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
@@ -228,13 +228,23 @@ router.post("/vendor-contacts", requireAuth, async (req, res) => {
       res.status(400).json({ error: "name is required" });
       return;
     }
+    const requestedVendorId = Number(req.body?.vendorId);
+    let linkedVendor: typeof vendors.$inferSelect | null = null;
+    if (normalizeContactType(req.body?.contactType) === "Vendor" && Number.isFinite(requestedVendorId)) {
+      const [vendor] = await db
+        .select()
+        .from(vendors)
+        .where(and(eq(vendors.id, requestedVendorId), eq(vendors.profileId, profile.id)))
+        .limit(1);
+      linkedVendor = vendor ?? null;
+    }
     const [created] = await db
       .insert(vendorContacts)
       .values({
         profileId: profile.id,
-        vendorId: null,
+        vendorId: linkedVendor?.id ?? null,
         name,
-        businessName: cleanOptionalText(req.body?.businessName),
+        businessName: linkedVendor?.name ?? cleanOptionalText(req.body?.businessName),
         email: cleanOptionalText(req.body?.email),
         phone: cleanOptionalText(req.body?.phone),
         contactType: normalizeContactType(req.body?.contactType),
@@ -270,11 +280,22 @@ router.put("/vendor-contacts/:id", requireAuth, async (req, res) => {
       res.status(400).json({ error: "name is required" });
       return;
     }
+    const requestedVendorId = Number(req.body?.vendorId);
+    let linkedVendor: typeof vendors.$inferSelect | null = null;
+    if (normalizeContactType(req.body?.contactType) === "Vendor" && Number.isFinite(requestedVendorId)) {
+      const [vendor] = await db
+        .select()
+        .from(vendors)
+        .where(and(eq(vendors.id, requestedVendorId), eq(vendors.profileId, profile.id)))
+        .limit(1);
+      linkedVendor = vendor ?? null;
+    }
     const [updated] = await db
       .update(vendorContacts)
       .set({
         name,
-        businessName: cleanOptionalText(req.body?.businessName),
+        vendorId: linkedVendor?.id ?? null,
+        businessName: linkedVendor?.name ?? cleanOptionalText(req.body?.businessName),
         email: cleanOptionalText(req.body?.email),
         phone: cleanOptionalText(req.body?.phone),
         contactType: normalizeContactType(req.body?.contactType),
@@ -283,7 +304,6 @@ router.put("/vendor-contacts/:id", requireAuth, async (req, res) => {
       .where(and(
         eq(vendorContacts.id, contactId),
         eq(vendorContacts.profileId, profile.id),
-        isNull(vendorContacts.vendorId),
       ))
       .returning();
     if (!updated) {
