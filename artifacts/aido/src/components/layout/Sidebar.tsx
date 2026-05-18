@@ -822,6 +822,12 @@ export function Sidebar() {
                   icon={BriefcaseBusiness}
                   sectionLabel="Planner"
                 />
+                <NavLink
+                  href="/planner-documents"
+                  label="Client Documents"
+                  icon={FileText}
+                  sectionLabel="Planner"
+                />
               </div>
             </div>
           )}

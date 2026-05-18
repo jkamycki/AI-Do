@@ -1401,6 +1401,7 @@ type PortalTrackingContext = {
 const PORTAL_TRACKING_ROUTES: Array<{ pattern: RegExp } & PortalTrackingContext> = [
   { pattern: /^\/dashboard\/?$/, feature: "Dashboard", section: "Planning", tool: "Dashboard", step: "Viewed dashboard" },
   { pattern: /^\/planner-dashboard\/?$/, feature: "Client Dashboard", section: "Planning", tool: "Planner Client Dashboard", step: "Viewed wedding planner client dashboard" },
+  { pattern: /^\/planner-documents\/?$/, feature: "Client Documents", section: "Planning", tool: "Planner Client Documents", step: "Viewed wedding planner client documents" },
   { pattern: /^\/profile\/?$/, feature: "Wedding Profile", section: "Planning", tool: "Profile Builder", step: "Viewed wedding profile" },
   { pattern: /^\/timeline\/?$/, feature: "Timeline", section: "Planning", tool: "Timeline", step: "Viewed timeline" },
   { pattern: /^\/budget\/?$/, feature: "Budget & Payments", section: "Budget & Vendors", tool: "Budget & Payments", step: "Viewed budget and payments" },
@@ -1738,6 +1739,7 @@ function Router() {
       <Route path="/w/:slug/:section" component={PublicWebsite} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/planner-dashboard" component={() => <ProtectedRoute component={PlannerDashboard} />} />
+      <Route path="/planner-documents" component={() => <ProtectedRoute component={PlannerDashboard} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
       <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} />} />
       <Route path="/budget" component={() => <ProtectedRoute component={Budget} />} />

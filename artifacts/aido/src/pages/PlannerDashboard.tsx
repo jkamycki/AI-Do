@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
@@ -9,6 +9,7 @@ import {
   Check,
   ChevronRight,
   Clock,
+  FileText,
   Search,
   StickyNote,
   UsersRound,
@@ -22,7 +23,7 @@ import { Progress } from "@/components/ui/progress";
 import { authFetch } from "@/lib/authFetch";
 import { useWorkspace, type WorkspaceInfo } from "@/contexts/WorkspaceContext";
 
-type SectionKey = "clients" | "calendar" | "vendors" | "activity";
+type SectionKey = "clients" | "calendar" | "documents" | "vendors" | "activity";
 type SortKey = "date" | "name";
 
 interface PlannerWorkspace {
@@ -63,6 +64,18 @@ interface ActivityEntry {
   detail: string;
 }
 
+interface ClientDocument {
+  id: string;
+  contractId: number;
+  profileId: number;
+  clientName: string;
+  fileName: string;
+  vendorName?: string | null;
+  fileSize?: number | null;
+  riskLevel?: string | null;
+  createdAt: string;
+}
+
 function clientName(ws: PlannerWorkspace) {
   return ws.workstationName?.trim() || `${ws.partner2Name} & ${ws.partner1Name}`;
 }
@@ -76,6 +89,21 @@ function formatDate(date: string) {
   const parsed = new Date(`${date}T12:00:00`);
   if (Number.isNaN(parsed.getTime())) return date;
   return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatFileSize(bytes?: number | null) {
+  if (!bytes) return "No size";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function riskBadgeClass(risk?: string | null) {
+  const normalized = risk?.toLowerCase();
+  if (normalized === "high") return "border-red-200 bg-red-50 text-red-700";
+  if (normalized === "medium") return "border-amber-200 bg-amber-50 text-amber-700";
+  if (normalized === "low") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  return "border-primary/20 text-primary";
 }
 
 function sortDateValue(date: string) {
@@ -110,18 +138,24 @@ function eventDateFromWedding(date: string, offsetDays: number) {
 function sectionTitle(section: SectionKey) {
   if (section === "clients") return "My Clients";
   if (section === "calendar") return "Multi-Client Calendar";
+  if (section === "documents") return "Client Documents";
   if (section === "vendors") return "Vendor Follow-Ups";
   return "Activity Log";
 }
 
 export default function PlannerDashboard() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { setActiveWorkspace } = useWorkspace();
-  const [activeSection, setActiveSection] = useState<SectionKey>("clients");
+  const [activeSection, setActiveSection] = useState<SectionKey>(location === "/planner-documents" ? "documents" : "clients");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("date");
   const [clientFilter, setClientFilter] = useState("all");
   const [vendorActions, setVendorActions] = useState<Record<string, Partial<VendorFollowUp>>>({});
+
+  useEffect(() => {
+    if (location === "/planner-documents") setActiveSection("documents");
+    if (location === "/planner-dashboard") setActiveSection("clients");
+  }, [location]);
 
   const { data, isLoading } = useQuery<WorkspacesData>({
     queryKey: ["my-workspaces"],
@@ -194,6 +228,38 @@ export default function PlannerDashboard() {
     },
   });
 
+  const { data: documentRows = [] } = useQuery<ClientDocument[]>({
+    queryKey: ["planner-client-documents", clients.map(c => c.profileId).join(",")],
+    enabled: clients.length > 0,
+    queryFn: async () => {
+      const results = await Promise.all(clients.map(async (client) => {
+        const res = await authFetch(`/api/workspace/${client.profileId}/contracts`);
+        if (!res.ok) return [];
+        const body = await res.json().catch(() => ({ contracts: [] }));
+        const contracts = Array.isArray(body.contracts) ? body.contracts : [];
+        return contracts.map((contract: {
+          id: number;
+          fileName?: string;
+          vendorName?: string | null;
+          fileSize?: number | null;
+          analysis?: { overallRiskLevel?: string; riskLevel?: string } | null;
+          createdAt?: string;
+        }) => ({
+          id: `${client.profileId}-${contract.id}`,
+          contractId: contract.id,
+          profileId: client.profileId,
+          clientName: clientName(client),
+          fileName: contract.fileName || "Contract",
+          vendorName: contract.vendorName ?? null,
+          fileSize: contract.fileSize ?? null,
+          riskLevel: contract.analysis?.overallRiskLevel || contract.analysis?.riskLevel || null,
+          createdAt: contract.createdAt || new Date().toISOString(),
+        }));
+      }));
+      return results.flat().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    },
+  });
+
   const calendarEvents = useMemo(() => {
     const events = clients.flatMap((client) => [
       { id: `wedding-${client.profileId}`, profileId: client.profileId, clientName: clientName(client), type: "Wedding", date: client.weddingDate, label: "Wedding day" },
@@ -251,6 +317,7 @@ export default function PlannerDashboard() {
   const navItems: Array<{ key: SectionKey; label: string; icon: React.ElementType }> = [
     { key: "clients", label: "My Clients", icon: UsersRound },
     { key: "calendar", label: "Calendar", icon: CalendarDays },
+    { key: "documents", label: "Client Documents", icon: FileText },
     { key: "vendors", label: "Vendor Follow-Ups", icon: Bell },
     { key: "activity", label: "Activity Log", icon: Activity },
   ];
@@ -388,6 +455,40 @@ export default function PlannerDashboard() {
                     </div>
                   ))}
                   {calendarEvents.length === 0 && <EmptyState text="No calendar items yet. Add client workstations to populate this view." />}
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
+          {activeSection === "documents" && (
+            <section>
+              <Card className="border-primary/15 shadow-sm">
+                <CardContent className="divide-y divide-border/60 p-0">
+                  {documentRows.map(doc => (
+                    <div key={doc.id} className="grid gap-3 p-4 lg:grid-cols-[1fr_150px_140px_120px] lg:items-center">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <FileText className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">{doc.fileName}</p>
+                          <p className="text-sm text-muted-foreground">{doc.clientName}</p>
+                          {doc.vendorName && <p className="text-xs text-primary">Vendor: {doc.vendorName}</p>}
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={riskBadgeClass(doc.riskLevel)}>
+                        {doc.riskLevel ? `${doc.riskLevel} risk` : "Uploaded"}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground">{formatFileSize(doc.fileSize)}</p>
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="hidden text-xs text-muted-foreground xl:inline">{formatDate(doc.createdAt.slice(0, 10))}</span>
+                        <Button size="sm" variant="outline" onClick={() => openClient(doc, "/contracts")}>
+                          Open
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {documentRows.length === 0 && <EmptyState text="No client documents yet. Upload contracts inside a client workstation to populate this hub." />}
                 </CardContent>
               </Card>
             </section>

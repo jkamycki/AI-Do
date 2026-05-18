@@ -6,7 +6,7 @@ import {
   vendorMessages, workspaceCollaborators, workspaceActivity, invitationCustomizations,
   weddingWebsites, websiteRsvps, moodBoards, deletedUserArchive,
 } from "@workspace/db";
-import { eq, desc, inArray } from "drizzle-orm";
+import { and, eq, desc, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { getProfileByUserId, resolveWorkspaceRole, hasMinRole } from "../lib/workspaceAccess";
 
@@ -437,6 +437,41 @@ router.get("/workspace/:profileId/vendors", requireAuth, async (req, res) => {
 
     const rows = await db.select().from(vendors).where(eq(vendors.profileId, profileId));
     res.json({ vendors: rows.map(v => ({ id: v.id, name: v.name, category: v.category, contractSigned: v.contractSigned })), role: result.role });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/workspace/:profileId/contracts", requireAuth, async (req, res) => {
+  try {
+    const profileId = parseInt(String(req.params["profileId"] ?? "0"), 10);
+    const result = await getWorkspaceProfile(req.userId!, profileId);
+    if (!result) { res.status(403).json({ error: "Access denied." }); return; }
+    if (!hasMinRole(result.role, "planner")) { res.status(403).json({ error: "Insufficient permissions." }); return; }
+
+    const rows = await db
+      .select({
+        id: vendorContracts.id,
+        vendorId: vendorContracts.vendorId,
+        vendorName: vendors.name,
+        fileName: vendorContracts.fileName,
+        fileSize: vendorContracts.fileSize,
+        analysis: vendorContracts.analysis,
+        createdAt: vendorContracts.createdAt,
+      })
+      .from(vendorContracts)
+      .leftJoin(vendors, and(
+        eq(vendorContracts.vendorId, vendors.id),
+        eq(vendors.profileId, profileId),
+      ))
+      .where(eq(vendorContracts.profileId, profileId))
+      .orderBy(desc(vendorContracts.createdAt))
+      .limit(50);
+
+    res.json({
+      contracts: rows.map(r => ({ ...r, createdAt: r.createdAt.toISOString() })),
+      role: result.role,
+    });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }
