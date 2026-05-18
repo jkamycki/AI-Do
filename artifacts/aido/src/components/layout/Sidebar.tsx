@@ -613,7 +613,7 @@ export function Sidebar() {
                 {t("sidebar.admin_section")}
               </p>
               <div className="space-y-0.5">
-                <NavLink href="/admin" label={t("nav.admin")} icon={Shield} special sectionLabel={t("sidebar.admin_section")} />
+                <NavLink href="/operations-center" label={t("nav.admin")} icon={Shield} special sectionLabel={t("sidebar.admin_section")} />
               </div>
             </div>
           )}
