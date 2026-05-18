@@ -126,6 +126,8 @@ export default function DocumentLibrary() {
   const [previewDoc, setPreviewDoc] = useState<DocumentRecord | null>(null);
   const [summaryDoc, setSummaryDoc] = useState<DocumentRecord | null>(null);
   const [editingDoc, setEditingDoc] = useState<DocumentRecord | null>(null);
+  const [renamingDoc, setRenamingDoc] = useState<DocumentRecord | null>(null);
+  const [documentRenameValue, setDocumentRenameValue] = useState("");
   const [renameTarget, setRenameTarget] = useState<{ type: "folder" | "tag"; value: string } | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [activeTab, setActiveTab] = useState("library");
@@ -215,6 +217,28 @@ export default function DocumentLibrary() {
     },
   });
 
+  const documentRenameMutation = useMutation({
+    mutationFn: async ({ id, fileName }: { id: number; fileName: string }) => {
+      const name = fileName.trim();
+      if (!name) throw new Error("Enter a document name.");
+      const res = await authFetch(`${API}/api/documents/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: name }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error ?? "Could not rename document");
+      return payload;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      setRenamingDoc(null);
+      setDocumentRenameValue("");
+      toast({ title: "Document renamed" });
+    },
+    onError: (err) => toast({ title: "Could not rename document", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" }),
+  });
+
   const actionMutation = useMutation({
     mutationFn: async ({ id, action, body }: { id: number; action: string; body?: Record<string, unknown> }) => {
       const res = await authFetch(`${API}/api/documents/${id}/${action}`, {
@@ -260,6 +284,16 @@ export default function DocumentLibrary() {
       tags: (doc.tags ?? []).join(", "),
       visibility: (doc.visibility ?? []).join(", "),
     });
+  }
+
+  function openDocumentRename(doc: DocumentRecord) {
+    setRenamingDoc(doc);
+    setDocumentRenameValue(doc.fileName);
+  }
+
+  function saveDocumentRename() {
+    if (!renamingDoc) return;
+    documentRenameMutation.mutate({ id: renamingDoc.id, fileName: documentRenameValue });
   }
 
   function saveEditor() {
@@ -648,7 +682,19 @@ export default function DocumentLibrary() {
                               <DocumentIcon type={doc.fileType} />
                             </div>
                             <div className="min-w-0">
-                              <CardTitle className="truncate text-base">{doc.fileName}</CardTitle>
+                              <div className="flex min-w-0 items-center gap-1.5">
+                                <CardTitle className="truncate text-base">{doc.fileName}</CardTitle>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-primary"
+                                  onClick={() => openDocumentRename(doc)}
+                                  aria-label={`Rename ${doc.fileName}`}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                               <p className="mt-1 text-xs text-muted-foreground">{doc.fileType} | {formatDate(doc.createdAt)} {formatSize(doc.fileSize) && `| ${formatSize(doc.fileSize)}`}</p>
                             </div>
                           </div>
@@ -793,6 +839,45 @@ export default function DocumentLibrary() {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditingDoc(null)}><X className="mr-2 h-4 w-4" />Cancel</Button>
               <Button onClick={saveEditor} disabled={patchMutation.isPending}>{patchMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!renamingDoc} onOpenChange={(open) => {
+        if (!open) {
+          setRenamingDoc(null);
+          setDocumentRenameValue("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Rename document</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Document name</Label>
+              <Input
+                value={documentRenameValue}
+                onChange={(e) => setDocumentRenameValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveDocumentRename();
+                }}
+                autoFocus
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRenamingDoc(null);
+                  setDocumentRenameValue("");
+                }}
+              >
+                <X className="mr-2 h-4 w-4" />Cancel
+              </Button>
+              <Button onClick={saveDocumentRename} disabled={documentRenameMutation.isPending}>
+                {documentRenameMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save
+              </Button>
             </div>
           </div>
         </DialogContent>
