@@ -1,4 +1,5 @@
-import { type DragEvent, useMemo, useRef, useState } from "react";
+import { type DragEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@clerk/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
@@ -139,28 +140,29 @@ function documentCardSummary(doc: DocumentRecord) {
 
 const CUSTOM_FOLDERS_KEY = "aido-document-library-folders";
 
-function loadCustomFolders() {
+function loadCustomFolders(storageKey: string) {
   if (typeof window === "undefined") return [];
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(CUSTOM_FOLDERS_KEY) ?? "[]");
+    const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? "[]");
     return Array.isArray(parsed) ? parsed.filter((folder): folder is string => typeof folder === "string" && folder.trim().length > 0) : [];
   } catch {
     return [];
   }
 }
 
-function saveCustomFolders(folders: string[]) {
+function saveCustomFolders(folders: string[], storageKey: string) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(CUSTOM_FOLDERS_KEY, JSON.stringify(folders));
+  window.localStorage.setItem(storageKey, JSON.stringify(folders));
 }
 
 export default function DocumentLibrary() {
+  const { userId } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [folderFilter, setFolderFilter] = useState("All");
   const [tagFilter, setTagFilter] = useState("All");
-  const [customFolders, setCustomFolders] = useState<string[]>(loadCustomFolders);
+  const [customFolders, setCustomFolders] = useState<string[]>([]);
   const [newFolderName, setNewFolderName] = useState("");
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<DocumentRecord | null>(null);
@@ -184,6 +186,11 @@ export default function DocumentLibrary() {
 
   const { data: vendorsData } = useListVendors();
   const vendorList = Array.isArray(vendorsData) ? vendorsData : (vendorsData as { vendors?: Array<{ id: number; name: string }> } | undefined)?.vendors ?? [];
+  const customFoldersStorageKey = `${CUSTOM_FOLDERS_KEY}:${userId ?? "anonymous"}`;
+
+  useEffect(() => {
+    setCustomFolders(loadCustomFolders(customFoldersStorageKey));
+  }, [customFoldersStorageKey]);
 
   const documents = data?.documents ?? [];
   const folders = useMemo(
@@ -389,7 +396,7 @@ export default function DocumentLibrary() {
     onSuccess: ({ folder, deletedCount }) => {
       const next = customFolders.filter((item) => item !== folder);
       setCustomFolders(next);
-      saveCustomFolders(next);
+      saveCustomFolders(next, customFoldersStorageKey);
       if (folderFilter === folder) setFolderFilter("All");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       toast({
@@ -463,7 +470,7 @@ export default function DocumentLibrary() {
       if (type === "folder") {
         const next = Array.from(new Set([...customFolders.filter((folder) => folder !== oldName), newName])).sort((a, b) => a.localeCompare(b));
         setCustomFolders(next);
-        saveCustomFolders(next);
+        saveCustomFolders(next, customFoldersStorageKey);
         if (folderFilter === oldName) setFolderFilter(newName);
       } else if (tagFilter === oldName) {
         setTagFilter(newName);
@@ -483,7 +490,7 @@ export default function DocumentLibrary() {
     if (!folder || folder === "All" || folders.includes(folder)) return;
     setCustomFolders((current) => {
       const next = [...current, folder].sort((a, b) => a.localeCompare(b));
-      saveCustomFolders(next);
+      saveCustomFolders(next, customFoldersStorageKey);
       return next;
     });
   }
@@ -499,7 +506,7 @@ export default function DocumentLibrary() {
     }
     const next = [...customFolders, folder].sort((a, b) => a.localeCompare(b));
     setCustomFolders(next);
-    saveCustomFolders(next);
+    saveCustomFolders(next, customFoldersStorageKey);
     setFolderFilter(folder);
     setNewFolderName("");
     toast({ title: "Folder created", description: `Drag documents into ${folder} to organize them.` });
@@ -618,7 +625,15 @@ export default function DocumentLibrary() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => deleteFolderMutation.mutate(folder)}
+                            onClick={() => {
+                              const count = folderCounts.get(folder) ?? 0;
+                              const ok = window.confirm(
+                                count
+                                  ? `Delete "${folder}" and ${count} document${count === 1 ? "" : "s"} inside it? This cannot be undone.`
+                                  : `Delete "${folder}"? This cannot be undone.`,
+                              );
+                              if (ok) deleteFolderMutation.mutate(folder);
+                            }}
                             disabled={deleteFolderMutation.isPending}
                             aria-label={`Delete ${folder} folder`}
                           >

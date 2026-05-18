@@ -116,6 +116,10 @@ function cleanFileName(fileName: string): string {
   return fileName.replace(/[^\w.\- ]+/g, " ").replace(/\s+/g, " ").trim() || "Wedding document";
 }
 
+function cleanFolderName(folder: string): string {
+  return folder.replace(/[^\w.\- &()]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "General";
+}
+
 async function extractDocxText(buffer: Buffer): Promise<string> {
   const zip = await JSZip.loadAsync(buffer);
   const doc = await zip.file("word/document.xml")?.async("string");
@@ -432,7 +436,7 @@ router.post("/documents/upload", requireAuth, upload.single("file"), async (req,
       summary: analysis.summary,
       extractedFields: fields,
       tags: [],
-      folder: asText(req.body.folder, "General"),
+      folder: cleanFolderName(asText(req.body.folder, "General")),
       visibility: normalizeVisibility(req.body.visibility),
       extractedText,
     })
@@ -449,11 +453,19 @@ router.patch("/documents/:id", requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   const patch: Partial<typeof documents.$inferInsert> = { updatedAt: new Date() };
   if (typeof req.body.fileName === "string") patch.fileName = cleanFileName(req.body.fileName);
-  if (typeof req.body.folder === "string") patch.folder = req.body.folder.trim() || "General";
+  if (typeof req.body.folder === "string") patch.folder = cleanFolderName(req.body.folder);
   if (Array.isArray(req.body.tags)) patch.tags = normalizeTags(req.body.tags);
   if (Array.isArray(req.body.visibility)) patch.visibility = normalizeVisibility(req.body.visibility);
   if (req.body.linkedVendorId === null) patch.linkedVendorId = null;
-  if (typeof req.body.linkedVendorId === "number") patch.linkedVendorId = req.body.linkedVendorId;
+  if (typeof req.body.linkedVendorId === "number") {
+    const vendorRows = await db
+      .select({ id: vendors.id })
+      .from(vendors)
+      .where(and(eq(vendors.id, req.body.linkedVendorId), eq(vendors.profileId, profile.id)))
+      .limit(1);
+    if (!vendorRows[0]) return res.status(404).json({ error: "Vendor not found" });
+    patch.linkedVendorId = req.body.linkedVendorId;
+  }
 
   const updated = await db
     .update(documents)
@@ -490,7 +502,7 @@ router.post("/documents/:id/copy", requireAuth, async (req, res) => {
       summary: doc.summary,
       extractedFields: doc.extractedFields,
       tags: normalizeTags(req.body.tags ?? doc.tags),
-      folder: asText(req.body.folder, doc.folder || "General"),
+      folder: cleanFolderName(asText(req.body.folder, doc.folder || "General")),
       visibility: normalizeVisibility(req.body.visibility ?? doc.visibility),
       extractedText: doc.extractedText,
     })
@@ -524,7 +536,7 @@ router.post("/documents/:id/summary", requireAuth, async (req, res) => {
   const updated = await db
     .update(documents)
     .set({ summary: analysis.summary, updatedAt: new Date() })
-    .where(eq(documents.id, id))
+    .where(and(eq(documents.id, id), eq(documents.profileId, profile.id)))
     .returning();
   res.json({ document: updated[0] });
 });
@@ -551,7 +563,7 @@ router.post("/documents/:id/extract", requireAuth, async (req, res) => {
       linkedVendorId: doc.linkedVendorId ?? matchingVendor?.id ?? null,
       updatedAt: new Date(),
     })
-    .where(eq(documents.id, id))
+    .where(and(eq(documents.id, id), eq(documents.profileId, profile.id)))
     .returning();
   res.json({ document: updated[0] });
 });

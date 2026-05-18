@@ -1024,10 +1024,13 @@ router.get("/admin/workflow-progress", requireAuth, requireAdmin, async (req, re
 
     const rows = result.rows as WorkflowRow[];
     const userIds = Array.from(new Set(rows.map(row => row.user_id).filter(Boolean))).filter(id => id.startsWith("user_"));
-    const clerkUsers = userIds.length
-      ? await clerkClient.users.getUserList({ userId: userIds.slice(0, 100), limit: Math.min(userIds.length, 100) })
-      : { data: [] as Awaited<ReturnType<typeof clerkClient.users.getUserList>>["data"] };
-    const clerkMap = new Map(clerkUsers.data.map(user => {
+    const clerkUsers: Awaited<ReturnType<typeof clerkClient.users.getUserList>>["data"] = [];
+    for (let index = 0; index < userIds.length; index += 100) {
+      const batch = userIds.slice(index, index + 100);
+      const response = await clerkClient.users.getUserList({ userId: batch, limit: batch.length });
+      clerkUsers.push(...response.data);
+    }
+    const clerkMap = new Map(clerkUsers.map(user => {
       const email = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress
         ?? user.emailAddresses[0]?.emailAddress
         ?? null;
