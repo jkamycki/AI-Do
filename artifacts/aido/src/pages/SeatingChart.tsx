@@ -120,37 +120,16 @@ function attachedGuestFromPlusOneNoteText(notes?: string | null) {
   return match?.[1]?.trim() || null;
 }
 
-function isGenericPlusOneName(mainGuestName: string, plusOneName: string) {
-  return normalizeSeatDisplayName(plusOneName) === normalizeSeatDisplayName(`${mainGuestName}'s Plus One`);
-}
-
-function plusOneDisplayLabel(mainGuestName: string, plusOneName: string) {
-  return isGenericPlusOneName(mainGuestName, plusOneName) ? "+1" : `+ ${plusOneName}`;
-}
-
 function seatingDisplayRows(guestNames: string[], seatingGuests: Guest[]) {
-  const plusOneRowsByName = new Map(
-    seatingGuests
-      .filter((guest) => attachedGuestFromPlusOneNoteText(guest.notes))
-      .map((guest) => [normalizeSeatDisplayName(guest.name), guest]),
+  const seatingGuestByName = new Map(
+    seatingGuests.map((guest) => [normalizeSeatDisplayName(guest.name), guest]),
   );
-  const plusOneByMainName = new Map<string, Guest>();
-  plusOneRowsByName.forEach((guest) => {
-    const mainGuestName = attachedGuestFromPlusOneNoteText(guest.notes);
-    if (mainGuestName) plusOneByMainName.set(normalizeSeatDisplayName(mainGuestName), guest);
-  });
-  const namesAtTable = new Set(guestNames.map(normalizeSeatDisplayName));
   return guestNames.flatMap((guestName) => {
-    const plusOneGuest = plusOneRowsByName.get(normalizeSeatDisplayName(guestName));
-    if (plusOneGuest) {
-      const mainGuestName = attachedGuestFromPlusOneNoteText(plusOneGuest.notes);
-      if (mainGuestName && namesAtTable.has(normalizeSeatDisplayName(mainGuestName))) return [];
-    }
-    const attachedPlusOne = plusOneByMainName.get(normalizeSeatDisplayName(guestName));
-    const showPlusOne = attachedPlusOne && namesAtTable.has(normalizeSeatDisplayName(attachedPlusOne.name));
+    const guest = seatingGuestByName.get(normalizeSeatDisplayName(guestName));
+    if (guest && attachedGuestFromPlusOneNoteText(guest.notes)) return [];
     return [{
       name: guestName,
-      plusOneLabel: showPlusOne ? plusOneDisplayLabel(guestName, attachedPlusOne.name) : null,
+      plusOneLabel: guest?.plusOne ? "+1" : null,
     }];
   });
 }
@@ -281,6 +260,7 @@ function TableCard({
   const accent = TABLE_ACCENTS[index % TABLE_ACCENTS.length];
   const guestNames = Array.isArray(table.guests) ? table.guests : [];
   const displayGuests = seatingDisplayRows(guestNames, seatingGuests);
+  const seatCount = displayGuests.reduce((count, row) => count + 1 + (row.plusOneLabel ? 1 : 0), 0);
   const [dragOver, setDragOver] = useState(false);
   const [editingTheme, setEditingTheme] = useState(false);
   const [themeDraft, setThemeDraft] = useState(table.theme ?? "");
@@ -323,7 +303,7 @@ function TableCard({
           </h3>
           <Badge className={`text-xs font-medium border-0 ${accent.chip} flex-shrink-0`}>
             <Armchair className="h-3 w-3 mr-1" />
-            {guestNames.length}
+            {seatCount}
           </Badge>
         </div>
         {editingTheme ? (
@@ -570,10 +550,7 @@ export default function SeatingChartPage() {
   const eligibleGuestListGuests = guestListGuests.filter(
     g => g.rsvpStatus !== "declined" && g.name.trim()
   );
-  const importableCount = eligibleGuestListGuests.reduce(
-    (count, guest) => count + 1 + (guest.plusOne ? 1 : 0),
-    0,
-  );
+  const importableCount = eligibleGuestListGuests.length;
 
   const mapGuestGroup = (g?: string | null): string => {
     if (g && GROUPS.includes(g)) return g;
@@ -594,13 +571,7 @@ export default function SeatingChartPage() {
     }
   };
 
-  const plusOneSeatingName = (guestName: string, plusOneName?: string | null) => {
-    const cleanPlusOne = plusOneName?.trim();
-    return cleanPlusOne || `${guestName}'s Plus One`;
-  };
-
   const normalizeSeatName = (value: string) => value.trim().toLowerCase();
-  const plusOneNoteFor = (guestName: string) => `Plus one for ${guestName}`;
   const attachedGuestFromPlusOneNote = (notes: string) => {
     const match = notes.match(/^Plus one for\s+(.+)$/i);
     return match?.[1]?.trim() || null;
@@ -611,7 +582,7 @@ export default function SeatingChartPage() {
 
     const plusOnePlan = new Map(
       eligibleGuestListGuests
-        .filter((src) => src.plusOne && src.name.trim())
+        .filter((src) => src.name.trim())
         .map((src, idx) => {
           const guestName = src.name.trim();
           return [
@@ -619,69 +590,23 @@ export default function SeatingChartPage() {
             {
               id: `${uid}-guestlist-plus-one-${src.id ?? idx}`,
               guestName,
-              plusOneName: plusOneSeatingName(guestName, src.plusOneName),
+              plusOne: Boolean(src.plusOne),
               group: mapGuestGroup(src.guestGroup),
             },
           ];
         }),
     );
 
-    const filtered = current.filter((guest) => {
-      if (!guest.name.trim()) return true;
-      const attachedGuestName = attachedGuestFromPlusOneNote(guest.notes);
-      if (!attachedGuestName) return true;
-      const expected = plusOnePlan.get(normalizeSeatName(attachedGuestName));
-      return !!expected && normalizeSeatName(guest.name) === normalizeSeatName(expected.plusOneName);
-    });
-
-    const byName = new Map(filtered.map((guest) => [normalizeSeatName(guest.name), guest]));
-    const additions: Guest[] = [];
-
-    plusOnePlan.forEach((plan, mainKey) => {
-      const mainGuest = byName.get(mainKey);
-      if (!mainGuest) return;
-
-      const plusOneKey = normalizeSeatName(plan.plusOneName);
-      const existingPlusOne = byName.get(plusOneKey);
-      if (existingPlusOne) {
-        byName.set(plusOneKey, {
-          ...existingPlusOne,
-          group: plan.group,
-          notes: plusOneNoteFor(plan.guestName),
-        });
-        return;
-      }
-
-      const plusOneGuest: Guest = {
-        id: plan.id,
-        name: plan.plusOneName,
-        group: plan.group,
-        plusOne: false,
-        notes: plusOneNoteFor(plan.guestName),
-        relations: [{ targetId: mainGuest.id, type: "prefer" }],
-      };
-      additions.push(plusOneGuest);
-      byName.set(plusOneKey, plusOneGuest);
-    });
-
-    const combined = [...filtered, ...additions].map((guest) => byName.get(normalizeSeatName(guest.name)) ?? guest);
+    const combined = current
+      .filter((guest) => !attachedGuestFromPlusOneNote(guest.notes))
+      .map((guest) => {
+        const plan = plusOnePlan.get(normalizeSeatName(guest.name));
+        if (!plan) return guest;
+        return { ...guest, group: plan.group, plusOne: plan.plusOne };
+      });
     const activeIds = new Set(combined.map((guest) => guest.id));
-    const byFinalName = new Map(combined.map((guest) => [normalizeSeatName(guest.name), guest]));
 
     return combined.map((guest) => {
-      const relationTargets: string[] = [];
-      const attachedGuestName = attachedGuestFromPlusOneNote(guest.notes);
-      if (attachedGuestName) {
-        const mainGuest = byFinalName.get(normalizeSeatName(attachedGuestName));
-        if (mainGuest) relationTargets.push(mainGuest.id);
-      } else {
-        const expectedPlusOne = plusOnePlan.get(normalizeSeatName(guest.name));
-        if (expectedPlusOne) {
-          const plusOne = byFinalName.get(normalizeSeatName(expectedPlusOne.plusOneName));
-          if (plusOne) relationTargets.push(plusOne.id);
-        }
-      }
-
       const relationIds = new Set<string>();
       const relations = guest.relations
         .filter((relation) => activeIds.has(relation.targetId))
@@ -692,14 +617,6 @@ export default function SeatingChartPage() {
           return true;
         });
 
-      relationTargets.forEach((targetId) => {
-        const key = `prefer:${targetId}`;
-        if (!relationIds.has(key)) {
-          relations.push({ targetId, type: "prefer" });
-          relationIds.add(key);
-        }
-      });
-
       return { ...guest, relations };
     });
   };
@@ -708,65 +625,17 @@ export default function SeatingChartPage() {
     id: guest.id,
     name: guest.name,
     group: guest.group,
+    plusOne: guest.plusOne,
     notes: guest.notes,
     relations: guest.relations.map((relation) => `${relation.type}:${relation.targetId}`).sort(),
   })));
 
-  const attachedPlusOneNames = (list: Guest[]) => {
-    const map = new Map<string, string>();
-    list.forEach((guest) => {
-      const attachedGuestName = attachedGuestFromPlusOneNote(guest.notes);
-      if (attachedGuestName && guest.name.trim()) {
-        map.set(normalizeSeatName(attachedGuestName), guest.name.trim());
-      }
-    });
-    return map;
-  };
-
-  const syncResultPlusOneNames = (chart: SeatingResult | null, before: Map<string, string>, after: Map<string, string>) => {
-    if (!chart || before.size === 0) return chart;
-
-    let changed = false;
-    const tables = chart.tables.map((table) => {
-      const nextGuests = table.guests.flatMap((guestName) => {
-        for (const [mainKey, oldPlusOneName] of before) {
-          if (normalizeSeatName(guestName) !== normalizeSeatName(oldPlusOneName)) continue;
-          const nextPlusOneName = after.get(mainKey);
-          if (!nextPlusOneName) {
-            changed = true;
-            return [];
-          }
-          if (nextPlusOneName !== guestName) {
-            changed = true;
-            return [nextPlusOneName];
-          }
-          return [guestName];
-        }
-        return [guestName];
-      });
-      return { ...table, guests: nextGuests };
-    });
-
-    if (!changed) return chart;
-    return normalizeSeatingResult({
-      ...chart,
-      tables,
-      totalSeated: tables.reduce((sum, table) => sum + table.guests.length, 0),
-    });
-  };
-
   useEffect(() => {
     if (!eligibleGuestListGuests.length) return;
-    const beforePlusOnes = attachedPlusOneNames(guests);
     const synced = syncGuestListPlusOnes(guests);
-    const afterPlusOnes = attachedPlusOneNames(synced);
-    setResult((current) => {
-      const next = syncResultPlusOneNames(current, beforePlusOnes, afterPlusOnes);
-      if (next !== current) setChartDirty(true);
-      return next;
-    });
     if (guestSyncSignature(guests) !== guestSyncSignature(synced)) {
       setGuests(synced);
+      setChartDirty(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guestListGuests]);
@@ -791,30 +660,7 @@ export default function SeatingChartPage() {
     // Only seat guests who are attending or pending â€” skip declined.
     const eligible = eligibleGuestListGuests;
 
-    const plusOnePlan = new Map(
-      eligible
-        .filter((src) => src.plusOne && src.name.trim())
-        .map((src) => {
-          const guestName = src.name.trim();
-          return [
-            normalizeSeatName(guestName),
-            {
-              guestName,
-              plusOneName: plusOneSeatingName(guestName, src.plusOneName),
-              group: mapGuestGroup(src.guestGroup),
-            },
-          ];
-        }),
-    );
-
-    const currentGuests = guests.filter((guest) => {
-      if (!guest.name.trim()) return false;
-      const attachedGuestName = attachedGuestFromPlusOneNote(guest.notes);
-      if (!attachedGuestName) return true;
-      const attachedKey = normalizeSeatName(attachedGuestName);
-      const expected = plusOnePlan.get(attachedKey);
-      return !!expected && normalizeSeatName(guest.name) === normalizeSeatName(expected.plusOneName);
-    });
+    const currentGuests = guests.filter((guest) => guest.name.trim() && !attachedGuestFromPlusOneNote(guest.notes));
 
     // Build a name set of guests already on the seating chart after dropping stale plus-one rows.
     const existingNames = new Set(
@@ -824,24 +670,27 @@ export default function SeatingChartPage() {
     );
 
     const additions: Guest[] = [];
+    const updatesById = new Map<string, Partial<Guest>>();
     let skipped = 0;
+    let updated = 0;
 
     eligible.forEach((src, idx) => {
       const cleanName = src.name.trim();
       if (!cleanName) return;
-      const key = cleanName.toLowerCase();
+      const key = normalizeSeatName(cleanName);
       const group = mapGuestGroup(src.guestGroup);
       const mainGuestId = `${uid}-import-${Date.now()}-${idx}`;
-      let mainGuestWasAdded = false;
       const existingMainGuest = currentGuests.find((guest) => normalizeSeatName(guest.name) === key);
       if (existingNames.has(key)) {
-        skipped++;
-        if (!src.plusOne) return;
+        if (existingMainGuest && (existingMainGuest.plusOne !== Boolean(src.plusOne) || existingMainGuest.group !== group)) {
+          updated++;
+          updatesById.set(existingMainGuest.id, { plusOne: Boolean(src.plusOne), group });
+        } else {
+          skipped++;
+        }
+        return;
       } else {
         existingNames.add(key);
-        mainGuestWasAdded = true;
-      }
-      if (mainGuestWasAdded) {
         const noteParts: string[] = [];
         if (src.dietaryNotes) noteParts.push(src.dietaryNotes);
         if (src.mealChoice) noteParts.push(`meal: ${src.mealChoice}`);
@@ -850,30 +699,10 @@ export default function SeatingChartPage() {
           id: mainGuestId,
           name: cleanName,
           group,
-          plusOne: false,
+          plusOne: Boolean(src.plusOne),
           notes: noteParts.join(" - "),
           relations: [],
         });
-      }
-      if (src.plusOne) {
-        const plusOneName = plusOneSeatingName(cleanName, src.plusOneName);
-        const plusOneKey = plusOneName.toLowerCase();
-        if (existingNames.has(plusOneKey)) {
-          skipped++;
-          return;
-        }
-        existingNames.add(plusOneKey);
-        const plusOneId = `${uid}-import-${Date.now()}-${idx}-plus-one`;
-        additions.push({
-          id: plusOneId,
-          name: plusOneName,
-          group,
-          plusOne: false,
-          notes: plusOneNoteFor(cleanName),
-          relations: mainGuestWasAdded || existingMainGuest ? [{ targetId: mainGuestWasAdded ? mainGuestId : existingMainGuest!.id, type: "prefer" }] : [],
-        });
-        const mainGuest = additions.find((guest) => guest.id === mainGuestId);
-        mainGuest?.relations.push({ targetId: plusOneId, type: "prefer" });
       }
     });
 
@@ -881,36 +710,15 @@ export default function SeatingChartPage() {
     setGuests(prev => {
       const activeIds = new Set(currentGuests.map((guest) => guest.id));
       const combined = [
-        ...prev.filter((guest) => activeIds.has(guest.id)),
+        ...prev
+          .filter((guest) => activeIds.has(guest.id))
+          .map((guest) => ({ ...guest, ...(updatesById.get(guest.id) ?? {}) })),
         ...additions,
       ];
-      const byName = new Map(combined.map((guest) => [normalizeSeatName(guest.name), guest]));
-      const linked = combined.map((guest) => {
-        const relationTargets: string[] = [];
-        const attachedGuestName = attachedGuestFromPlusOneNote(guest.notes);
-        if (attachedGuestName) {
-          const mainGuest = byName.get(normalizeSeatName(attachedGuestName));
-          if (mainGuest) relationTargets.push(mainGuest.id);
-        } else {
-          const expectedPlusOne = plusOnePlan.get(normalizeSeatName(guest.name));
-          if (expectedPlusOne) {
-            const plusOne = byName.get(normalizeSeatName(expectedPlusOne.plusOneName));
-            if (plusOne) relationTargets.push(plusOne.id);
-          }
-        }
-        if (relationTargets.length === 0) return guest;
-          const relationIds = new Set(guest.relations.map((relation) => `${relation.type}:${relation.targetId}`));
-          const relations = [...guest.relations];
-          relationTargets.forEach((targetId) => {
-            const key = `prefer:${targetId}`;
-            if (!relationIds.has(key)) relations.push({ targetId, type: "prefer" });
-          });
-          return { ...guest, relations };
-        });
-      return syncGuestListPlusOnes(linked);
+      return syncGuestListPlusOnes(combined);
     });
 
-    if (additions.length === 0) {
+    if (additions.length === 0 && updated === 0) {
       toast({
         title: t("seating.toast_in_sync"),
         description: skipped > 0
@@ -919,7 +727,7 @@ export default function SeatingChartPage() {
       });
     } else {
       toast({
-        title: t("seating.toast_imported", { count: additions.length }),
+        title: t("seating.toast_imported", { count: additions.length + updated }),
         description: skipped > 0
           ? t("seating.toast_skipped", { count: skipped })
           : t("seating.toast_synced"),

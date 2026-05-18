@@ -77,6 +77,26 @@ function cleanGeneratedTables(
   }));
 }
 
+function seatWeightByName(inputGuests: Guest[]): Map<string, number> {
+  const weights = new Map<string, number>();
+  for (const guest of inputGuests ?? []) {
+    const key = (guest.name ?? "").trim().toLowerCase();
+    if (key) weights.set(key, 1 + (guest.plusOne ? 1 : 0));
+  }
+  return weights;
+}
+
+function tableSeatCount(names: string[] | undefined, weights: Map<string, number>): number {
+  return (names ?? []).reduce((sum, name) => {
+    const key = (name ?? "").trim().toLowerCase();
+    return sum + (weights.get(key) ?? 1);
+  }, 0);
+}
+
+function totalSeatCount(inputGuests: Guest[]): number {
+  return inputGuests.reduce((sum, guest) => sum + 1 + (guest.plusOne ? 1 : 0), 0);
+}
+
 interface Guest {
   id: string;
   name: string;
@@ -126,6 +146,7 @@ function fallbackSeatingChart(
   reason: string,
 ): SeatingGenerationResult {
   const guests = inputGuests.filter((guest) => guest.name?.trim());
+  const weights = seatWeightByName(guests);
   const parent = new Map<string, string>();
   const guestById = new Map(guests.map((guest) => [guest.id, guest]));
   const idByName = new Map(guests.map((guest) => [guest.name.trim().toLowerCase(), guest.id]));
@@ -173,9 +194,21 @@ function fallbackSeatingChart(
   const units = [...unitsByRoot.values()]
     .flatMap((unit) => {
       const sorted = [...unit].sort((a, b) => a.name.localeCompare(b.name));
-      if (sorted.length <= seatsPerTable) return [sorted];
+      if (sorted.reduce((sum, guest) => sum + (weights.get(guest.name.trim().toLowerCase()) ?? 1), 0) <= seatsPerTable) return [sorted];
       const chunks: Guest[][] = [];
-      for (let i = 0; i < sorted.length; i += seatsPerTable) chunks.push(sorted.slice(i, i + seatsPerTable));
+      let chunk: Guest[] = [];
+      let chunkSeats = 0;
+      for (const guest of sorted) {
+        const weight = weights.get(guest.name.trim().toLowerCase()) ?? 1;
+        if (chunk.length > 0 && chunkSeats + weight > seatsPerTable) {
+          chunks.push(chunk);
+          chunk = [];
+          chunkSeats = 0;
+        }
+        chunk.push(guest);
+        chunkSeats += weight;
+      }
+      if (chunk.length) chunks.push(chunk);
       return chunks;
     })
     .sort((a, b) => groupLabel(a).localeCompare(groupLabel(b)) || a[0].name.localeCompare(b[0].name));
@@ -190,13 +223,14 @@ function fallbackSeatingChart(
   const tableGroups = new Map<number, string>();
   units.forEach((unit) => {
     const names = unit.map((guest) => guest.name.trim());
+    const seatsNeeded = names.reduce((sum, name) => sum + (weights.get(name.toLowerCase()) ?? 1), 0);
     const group = groupLabel(unit);
     let table = tables.find((candidate) =>
-      candidate.guests.length + names.length <= seatsPerTable
+      tableSeatCount(candidate.guests, weights) + seatsNeeded <= seatsPerTable
       && (candidate.guests.length === 0 || tableGroups.get(candidate.tableNumber) === group)
     );
     if (!table) {
-      table = tables.find((candidate) => candidate.guests.length + names.length <= seatsPerTable);
+      table = tables.find((candidate) => tableSeatCount(candidate.guests, weights) + seatsNeeded <= seatsPerTable);
     }
     if (!table) {
       table = {
@@ -217,7 +251,7 @@ function fallbackSeatingChart(
     tables: filledTables,
     insights: ["Generated a complete seating chart using saved guest groups and plus-one relationships."],
     warnings: [`AI formatting failed (${reason}), so A.IDO generated a complete fallback chart. Review table placements before saving.`],
-    totalSeated: filledTables.reduce((sum, table) => sum + table.guests.length, 0),
+    totalSeated: filledTables.reduce((sum, table) => sum + tableSeatCount(table.guests, weights), 0),
   };
 }
 
@@ -230,11 +264,13 @@ function enforceTableCapacity(
   tables: Table[],
   tableCount: number,
   seatsPerTable: number,
+  inputGuests: Guest[],
 ): Table[] {
+  const weights = seatWeightByName(inputGuests);
   const result = tables.map(t => ({ ...t, guests: [...(t.guests ?? [])] }));
   const overflow: string[] = [];
   for (const t of result) {
-    while (t.guests.length > seatsPerTable) {
+    while (tableSeatCount(t.guests, weights) > seatsPerTable) {
       overflow.push(t.guests.pop() as string);
     }
   }
@@ -246,8 +282,9 @@ function enforceTableCapacity(
   }
   for (const name of overflow) {
     let placed = false;
+    const seatsNeeded = weights.get(name.trim().toLowerCase()) ?? 1;
     for (const t of result) {
-      if (t.guests.length < seatsPerTable) {
+      if (tableSeatCount(t.guests, weights) + seatsNeeded <= seatsPerTable) {
         t.guests.push(name);
         placed = true;
         break;
@@ -272,6 +309,7 @@ function backfillUnseatedGuests(
   tableCount: number,
   seatsPerTable: number,
 ): Table[] {
+  const weights = seatWeightByName(inputGuests);
   const seatedKeys = new Set<string>();
   for (const t of tables) {
     for (const name of t.guests ?? []) {
@@ -299,8 +337,9 @@ function backfillUnseatedGuests(
 
   for (const name of missing) {
     let placed = false;
+    const seatsNeeded = weights.get(name.trim().toLowerCase()) ?? 1;
     for (const t of result) {
-      if (t.guests.length < seatsPerTable) {
+      if (tableSeatCount(t.guests, weights) + seatsNeeded <= seatsPerTable) {
         t.guests.push(name);
         placed = true;
         break;
@@ -333,6 +372,9 @@ router.post("/seating/generate", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Please add at least one guest." });
     }
 
+    const requestedTableCount = Math.max(1, Number(tableCount) || 1);
+    const requestedSeatsPerTable = Math.max(1, Number(seatsPerTable) || 1);
+    const totalSeats = totalSeatCount(guests);
     const guestById = new Map(guests.map((guest) => [guest.id, guest]));
     const guestList = guests.map(g => {
       const avoidNames = (g.avoidIds ?? []).map(id => guestById.get(id)?.name).filter((name): name is string => Boolean(name));
@@ -343,18 +385,18 @@ router.post("/seating/generate", requireAuth, async (req, res) => {
     const prompt = `You are an expert wedding planner creating a harmonious seating chart. Your goal is to minimize conflict and maximize happiness.
 ${langInstruction}
 
-GUESTS (${guests.length} total):
+GUESTS (${guests.length} named guests, ${totalSeats} total seats after +1 checkboxes):
 ${guestList}
 
-SETUP: ${tableCount} tables, ${seatsPerTable} seats per table max
+SETUP: ${requestedTableCount} tables, ${requestedSeatsPerTable} seats per table max
 ${additionalNotes ? `ADDITIONAL NOTES: ${additionalNotes}` : ""}
 
 Rules:
-1. EVERY guest from the list above MUST appear in exactly one table - do not omit anyone, do not duplicate anyone. The sum of guests across all tables must equal ${guests.length}.
+1. EVERY named guest from the list above MUST appear in exactly one table - do not omit anyone, do not duplicate anyone. The sum of named guests across all tables must equal ${guests.length}.
 2. Never seat people with AVOID relationships at the same table
 3. Try to seat PREFER NEAR pairs at the same table
 4. Group family members and friend groups together
-5. Keep plus-ones with their partners
+5. A +1 is not a separate guest name. Treat a guest marked +1 as taking 2 seats at that guest's table.
 6. Consider placing potential conflict groups at opposite sides of the room (note table order matters)
 
 Return ONLY valid JSON:
@@ -372,7 +414,7 @@ Return ONLY valid JSON:
   "totalSeated": number
 }
 
-Use only the exact guest names from the list. Only create tables that have guests. Distribute guests evenly.`;
+Use only the exact guest names from the list. Never write separate plus-one names. Only create tables that have guests. Distribute guests evenly.`;
 
     let result: SeatingGenerationResult;
     try {
@@ -382,25 +424,26 @@ Use only the exact guest names from the list. Only create tables that have guest
         response_format: { type: "json_object" },
         // Large charts need enough response room for every guest name plus
         // table notes. Tight caps truncate JSON and look like generation failed.
-        max_completion_tokens: Math.max(6000, guests.length * 90 + 1600),
+        max_completion_tokens: Math.min(6000, Math.max(1800, guests.length * 70 + 1200)),
       });
 
       const raw = completion.choices[0]?.message?.content ?? "{}";
       result = extractJsonObject(raw) as SeatingGenerationResult;
     } catch (err) {
       req.log.warn({ err }, "AI seating generation returned unusable output; using fallback chart");
-      result = fallbackSeatingChart(guests, tableCount, seatsPerTable, "invalid AI response");
+      result = fallbackSeatingChart(guests, requestedTableCount, requestedSeatsPerTable, "invalid AI response");
     }
 
     result.tables = cleanGeneratedTables(result.tables, guests);
-    const overflowed = result.tables.some(t => (t.guests?.length ?? 0) > seatsPerTable);
-    result.tables = enforceTableCapacity(result.tables, tableCount, seatsPerTable);
-    const seatedAfterCap = result.tables.reduce((n, t) => n + (t.guests?.length ?? 0), 0);
-    result.tables = backfillUnseatedGuests(result.tables, guests, tableCount, seatsPerTable);
-    const totalAfterBackfill = result.tables.reduce((n, t) => n + (t.guests?.length ?? 0), 0);
+    const weights = seatWeightByName(guests);
+    const overflowed = result.tables.some(t => tableSeatCount(t.guests, weights) > requestedSeatsPerTable);
+    result.tables = enforceTableCapacity(result.tables, requestedTableCount, requestedSeatsPerTable, guests);
+    const seatedAfterCap = result.tables.reduce((n, t) => n + tableSeatCount(t.guests, weights), 0);
+    result.tables = backfillUnseatedGuests(result.tables, guests, requestedTableCount, requestedSeatsPerTable);
+    const totalAfterBackfill = result.tables.reduce((n, t) => n + tableSeatCount(t.guests, weights), 0);
     const warnings = [...(result.warnings ?? [])];
     if (overflowed) {
-      warnings.push(`Some tables exceeded the ${seatsPerTable}-seat cap; overflow guests were moved to other tables.`);
+      warnings.push(`Some tables exceeded the ${requestedSeatsPerTable}-seat cap; overflow guests were moved to other tables.`);
     }
     if (totalAfterBackfill > seatedAfterCap) {
       const added = totalAfterBackfill - seatedAfterCap;
