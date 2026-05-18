@@ -24,6 +24,7 @@ export const updatesByMonth: Record<string, ProductUpdate[]> = {
     { type: "Improvement", text: "Added Contract Analyzer sync, letting users copy analyzed contracts into the Document Library with confirmation." },
     { type: "Improvement", text: "Added custom folders, tags, color-coded tags, and rename tools for cleaner document organization." },
     { type: "Feature", text: "Added Vendor Contacts with optional vendor autofill and mobile-only Call/Text actions." },
+    { type: "Feature", text: "Launched AI Seating Chart to help generate seating suggestions for guests and tables." },
     { type: "Fix", text: "Fixed bugs affecting Wedding Timeline, Checklist, and Day-of Coordinator workflows." },
     { type: "Fix", text: "Fixed the AI Seating Generator bug so seating suggestions run more reliably." },
   ],
