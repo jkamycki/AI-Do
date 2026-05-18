@@ -17,6 +17,14 @@ type ProductUpdate = {
 };
 
 export const updatesByMonth: Record<string, ProductUpdate[]> = {
+  "May 2026": [
+    { type: "Feature", text: "Added Document Library to upload, preview, organize, tag, and manage wedding documents." },
+    { type: "Feature", text: "Added AI document summaries and extraction for vendor names, payment schedules, due dates, cancellation policies, deliverables, and contact details." },
+    { type: "Feature", text: "Added task creation from documents, so important payments and deadlines can be added to the Checklist." },
+    { type: "Improvement", text: "Added Contract Analyzer sync, letting users copy analyzed contracts into the Document Library with confirmation." },
+    { type: "Improvement", text: "Added custom folders, tags, color-coded tags, and rename tools for cleaner document organization." },
+    { type: "Feature", text: "Added Vendor Contacts with optional vendor autofill and mobile-only Call/Text actions." },
+  ],
   "April 2026": [
     { type: "Feature", text: "Mood board builder launched." },
     { type: "Improvement", text: "Cleaner dashboard layout." },
