@@ -197,7 +197,17 @@ type VendorContactFormData = {
   contactType: VendorContactType;
 };
 
+type VendorContactSuggestion = {
+  vendorId: number;
+  name: string;
+  businessName: string | null;
+  email: string | null;
+  phone: string | null;
+  contactType: VendorContactType;
+};
+
 const vendorContactsQueryKey = ["vendor-contacts"] as const;
+const vendorContactSuggestionsQueryKey = ["vendor-contact-suggestions"] as const;
 
 function phoneHref(phone: string, scheme: "tel" | "sms") {
   const cleaned = phone.replace(/[^\d+]/g, "");
@@ -207,6 +217,20 @@ function phoneHref(phone: string, scheme: "tel" | "sms") {
 async function fetchVendorContacts(): Promise<VendorContact[]> {
   const res = await authFetch("/api/vendor-contacts");
   if (!res.ok) throw new Error("Failed to load contacts");
+  return res.json();
+}
+
+async function fetchVendorContactSuggestions(): Promise<VendorContactSuggestion[]> {
+  const res = await authFetch("/api/vendor-contacts/suggestions");
+  if (!res.ok) throw new Error("Failed to load vendor contacts");
+  return res.json();
+}
+
+async function importVendorContact(vendorId: number): Promise<VendorContact> {
+  const res = await authFetch(`/api/vendor-contacts/import-vendor/${vendorId}`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error("Failed to add vendor contact");
   return res.json();
 }
 
@@ -1516,11 +1540,16 @@ function VendorContactsTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [showContactDialog, setShowContactDialog] = useState(false);
+  const [showVendorOptions, setShowVendorOptions] = useState(false);
   const [editingContact, setEditingContact] = useState<VendorContact | null>(null);
   const [removingContact, setRemovingContact] = useState<VendorContact | null>(null);
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: vendorContactsQueryKey,
     queryFn: fetchVendorContacts,
+  });
+  const { data: vendorContactOptions = [], isLoading: optionsLoading } = useQuery({
+    queryKey: vendorContactSuggestionsQueryKey,
+    queryFn: fetchVendorContactSuggestions,
   });
 
   const removeMutation = useMutation({
@@ -1533,8 +1562,18 @@ function VendorContactsTab() {
     onError: () => toast({ title: t("vendors.contact_remove_failed", { defaultValue: "Could not remove contact" }), variant: "destructive" }),
   });
 
-  const syncedCount = contacts.filter((contact) => contact.source === "vendor").length;
-  const manualCount = contacts.length - syncedCount;
+  const importMutation = useMutation({
+    mutationFn: importVendorContact,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: vendorContactsQueryKey });
+      qc.invalidateQueries({ queryKey: vendorContactSuggestionsQueryKey });
+      toast({ title: t("vendors.vendor_contact_added", { defaultValue: "Vendor contact added" }) });
+    },
+    onError: () => toast({ title: t("vendors.vendor_contact_add_failed", { defaultValue: "Could not add vendor contact" }), variant: "destructive" }),
+  });
+
+  const importedCount = contacts.filter((contact) => contact.source === "vendor").length;
+  const manualCount = contacts.length - importedCount;
 
   return (
     <div className="space-y-4">
@@ -1543,24 +1582,75 @@ function VendorContactsTab() {
           <h2 className="text-xl font-serif text-foreground">{t("vendors.contacts_title", { defaultValue: "Contacts" })}</h2>
           <p className="text-sm text-muted-foreground">
             {t("vendors.contacts_summary", {
-              defaultValue: "{{synced}} synced from vendors · {{manual}} added here",
-              synced: syncedCount,
+              defaultValue: "{{imported}} vendor contacts used | {{manual}} added here",
+              imported: importedCount,
               manual: manualCount,
             })}
           </p>
         </div>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditingContact(null);
-            setShowContactDialog(true);
-          }}
-          data-testid="btn-add-vendor-contact"
-        >
-          <Plus className="h-4 w-4 mr-1.5" />
-          {t("vendors.add_contact", { defaultValue: "Add Contact" })}
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowVendorOptions((open) => !open)}
+            data-testid="btn-use-vendor-contacts"
+          >
+            <Store className="h-4 w-4 mr-1.5" />
+            {t("vendors.use_vendor_contacts", { defaultValue: "Use Vendor Contacts" })}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditingContact(null);
+              setShowContactDialog(true);
+            }}
+            data-testid="btn-add-vendor-contact"
+          >
+            <Plus className="h-4 w-4 mr-1.5" />
+            {t("vendors.add_contact", { defaultValue: "Add Contact" })}
+          </Button>
+        </div>
       </div>
+
+      {showVendorOptions && (
+        <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">{t("vendors.available_vendor_contacts", { defaultValue: "Available vendor contacts" })}</h3>
+            <p className="text-xs text-muted-foreground">
+              {t("vendors.vendor_contact_options_desc", { defaultValue: "Choose which vendor-list contacts to add here. This will not change your vendor list." })}
+            </p>
+          </div>
+          {optionsLoading ? (
+            <div className="space-y-2">
+              {[1, 2].map((i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
+            </div>
+          ) : vendorContactOptions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("vendors.no_vendor_contact_options", { defaultValue: "No unused vendor contacts are available." })}</p>
+          ) : (
+            <div className="space-y-2">
+              {vendorContactOptions.map((option) => (
+                <div key={option.vendorId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border border-border/50 bg-card px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{option.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {[option.businessName, option.phone, option.email].filter(Boolean).join(" | ")}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => importMutation.mutate(option.vendorId)}
+                    disabled={importMutation.isPending}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    {t("vendors.add_to_contacts", { defaultValue: "Add" })}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-2">
@@ -1571,7 +1661,7 @@ function VendorContactsTab() {
           <Store className="h-8 w-8 text-muted-foreground mb-3" />
           <h3 className="font-serif text-xl text-foreground">{t("vendors.no_contacts_title", { defaultValue: "No contacts yet" })}</h3>
           <p className="text-sm text-muted-foreground max-w-sm mt-1 mb-4">
-            {t("vendors.no_contacts_desc", { defaultValue: "Vendor contacts will appear here automatically, and you can add general contacts any time." })}
+            {t("vendors.no_contacts_desc", { defaultValue: "Add a contact manually, or use vendor contacts from your Vendor List when you need them here." })}
           </p>
           <Button size="sm" onClick={() => setShowContactDialog(true)}>
             <Plus className="h-4 w-4 mr-1.5" />
@@ -1594,7 +1684,7 @@ function VendorContactsTab() {
                   </Badge>
                   {contact.source === "vendor" && (
                     <Badge variant="outline" className="text-xs">
-                      {t("vendors.synced_badge", { defaultValue: "Synced" })}
+                      {t("vendors.imported_badge", { defaultValue: "Vendor" })}
                     </Badge>
                   )}
                 </div>

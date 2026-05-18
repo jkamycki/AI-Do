@@ -61,11 +61,11 @@ function normalizeContactType(value: unknown) {
   return value === "Vendor" ? "Vendor" : "General";
 }
 
-function formatManualContact(c: typeof vendorContacts.$inferSelect) {
+function formatStoredContact(c: typeof vendorContacts.$inferSelect) {
   return {
     id: String(c.id),
-    source: "manual" as const,
-    vendorId: null,
+    source: c.vendorId === null ? "manual" as const : "vendor" as const,
+    vendorId: c.vendorId,
     name: c.name,
     businessName: c.businessName,
     email: c.email,
@@ -76,18 +76,14 @@ function formatManualContact(c: typeof vendorContacts.$inferSelect) {
   };
 }
 
-function formatSyncedVendorContact(v: typeof vendors.$inferSelect) {
+function formatVendorContactSuggestion(v: typeof vendors.$inferSelect) {
   return {
-    id: `vendor-${v.id}`,
-    source: "vendor" as const,
     vendorId: v.id,
     name: v.primaryContact?.trim() || v.name,
     businessName: v.name,
     email: v.email,
     phone: v.phone,
     contactType: "Vendor",
-    createdAt: v.createdAt.toISOString(),
-    updatedAt: v.updatedAt.toISOString(),
   };
 }
 
@@ -114,26 +110,103 @@ router.get("/vendor-contacts", requireAuth, async (req, res) => {
       return;
     }
 
-    const [vendorRows, contactRows] = await Promise.all([
-      db.select().from(vendors).where(eq(vendors.profileId, profile.id)).orderBy(vendors.createdAt),
-      db.select().from(vendorContacts).where(eq(vendorContacts.profileId, profile.id)).orderBy(vendorContacts.createdAt),
-    ]);
+    const contactRows = await db
+      .select()
+      .from(vendorContacts)
+      .where(and(eq(vendorContacts.profileId, profile.id), eq(vendorContacts.isHidden, false)))
+      .orderBy(vendorContacts.createdAt);
 
-    const hiddenVendorIds = new Set(
-      contactRows
-        .filter((contact) => contact.isHidden && contact.vendorId !== null)
-        .map((contact) => contact.vendorId),
-    );
-    const syncedContacts = vendorRows
-      .filter((vendor) => !hiddenVendorIds.has(vendor.id))
-      .map(formatSyncedVendorContact);
-    const manualContacts = contactRows
-      .filter((contact) => !contact.isHidden && contact.vendorId === null)
-      .map(formatManualContact);
-
-    res.json([...syncedContacts, ...manualContacts]);
+    res.json(contactRows.map(formatStoredContact));
   } catch (err) {
     req.log.error(err, "Failed to list vendor contacts");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/vendor-contacts/suggestions", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.json([]);
+      return;
+    }
+
+    const [vendorRows, contactRows] = await Promise.all([
+      db.select().from(vendors).where(eq(vendors.profileId, profile.id)).orderBy(vendors.createdAt),
+      db.select().from(vendorContacts).where(eq(vendorContacts.profileId, profile.id)),
+    ]);
+    const importedVendorIds = new Set(
+      contactRows
+        .filter((contact) => !contact.isHidden && contact.vendorId !== null)
+        .map((contact) => contact.vendorId),
+    );
+
+    res.json(
+      vendorRows
+        .filter((vendor) => !importedVendorIds.has(vendor.id))
+        .filter((vendor) => vendor.name || vendor.primaryContact || vendor.phone || vendor.email)
+        .map(formatVendorContactSuggestion),
+    );
+  } catch (err) {
+    req.log.error(err, "Failed to list vendor contact suggestions");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/vendor-contacts/import-vendor/:vendorId", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(400).json({ error: "No wedding profile found" });
+      return;
+    }
+    const vendorId = parseInt(String(req.params.vendorId), 10);
+    const [vendor] = await db
+      .select()
+      .from(vendors)
+      .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)))
+      .limit(1);
+    if (!vendor) {
+      res.status(404).json({ error: "Vendor not found" });
+      return;
+    }
+    const [existing] = await db
+      .select()
+      .from(vendorContacts)
+      .where(and(
+        eq(vendorContacts.profileId, profile.id),
+        eq(vendorContacts.vendorId, vendorId),
+        eq(vendorContacts.isHidden, false),
+      ))
+      .limit(1);
+    if (existing) {
+      res.json(formatStoredContact(existing));
+      return;
+    }
+
+    const [created] = await db.insert(vendorContacts).values({
+      profileId: profile.id,
+      vendorId,
+      name: vendor.primaryContact?.trim() || vendor.name,
+      businessName: vendor.name,
+      email: vendor.email,
+      phone: vendor.phone,
+      contactType: "Vendor",
+      isHidden: false,
+    }).returning();
+    res.status(201).json(formatStoredContact(created));
+  } catch (err) {
+    req.log.error(err, "Failed to import vendor contact");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -168,7 +241,7 @@ router.post("/vendor-contacts", requireAuth, async (req, res) => {
         isHidden: false,
       })
       .returning();
-    res.status(201).json(formatManualContact(created));
+    res.status(201).json(formatStoredContact(created));
   } catch (err) {
     req.log.error(err, "Failed to create vendor contact");
     res.status(500).json({ error: "Internal server error" });
@@ -217,7 +290,7 @@ router.put("/vendor-contacts/:id", requireAuth, async (req, res) => {
       res.status(404).json({ error: "Contact not found" });
       return;
     }
-    res.json(formatManualContact(updated));
+    res.json(formatStoredContact(updated));
   } catch (err) {
     req.log.error(err, "Failed to update vendor contact");
     res.status(500).json({ error: "Internal server error" });
@@ -236,45 +309,7 @@ router.delete("/vendor-contacts/:id", requireAuth, async (req, res) => {
       res.status(404).json({ error: "Contact not found" });
       return;
     }
-    const rawId = String(req.params.id);
-    if (rawId.startsWith("vendor-")) {
-      const vendorId = parseInt(rawId.slice("vendor-".length), 10);
-      if (!Number.isFinite(vendorId)) {
-        res.status(400).json({ error: "Invalid contact id" });
-        return;
-      }
-      const [vendor] = await db
-        .select({ id: vendors.id })
-        .from(vendors)
-        .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)))
-        .limit(1);
-      if (!vendor) {
-        res.status(404).json({ error: "Contact not found" });
-        return;
-      }
-      const [existingHidden] = await db
-        .select({ id: vendorContacts.id })
-        .from(vendorContacts)
-        .where(and(
-          eq(vendorContacts.profileId, profile.id),
-          eq(vendorContacts.vendorId, vendorId),
-          eq(vendorContacts.isHidden, true),
-        ))
-        .limit(1);
-      if (!existingHidden) {
-        await db.insert(vendorContacts).values({
-          profileId: profile.id,
-          vendorId,
-          name: "",
-          contactType: "Vendor",
-          isHidden: true,
-        });
-      }
-      res.json({ success: true });
-      return;
-    }
-
-    const contactId = parseInt(rawId, 10);
+    const contactId = parseInt(String(req.params.id), 10);
     if (!Number.isFinite(contactId)) {
       res.status(400).json({ error: "Invalid contact id" });
       return;
@@ -284,7 +319,6 @@ router.delete("/vendor-contacts/:id", requireAuth, async (req, res) => {
       .where(and(
         eq(vendorContacts.id, contactId),
         eq(vendorContacts.profileId, profile.id),
-        isNull(vendorContacts.vendorId),
       ))
       .returning();
     if (!deleted) {
