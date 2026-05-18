@@ -30,6 +30,7 @@ export const updatesByMonth: Record<string, ProductUpdate[]> = {
   "April 2026": [
     { type: "Feature", text: "Mood board builder launched." },
     { type: "Improvement", text: "Cleaner dashboard layout." },
+    { type: "Improvement", text: "Budget Manager summary enhancements were made for clearer planning totals." },
     { type: "Fix", text: "Checklist items not saving for some users." },
     { type: "Coming Soon", text: "Seating chart generator." },
   ],
