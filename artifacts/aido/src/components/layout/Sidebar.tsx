@@ -524,9 +524,12 @@ export function Sidebar() {
     enabled: !!isSignedIn,
     staleTime: 15000,
   });
+  const isPlannerDashboardRoute = location === "/planner-dashboard";
+  const isClientWorkspaceActive = Boolean(activeWorkspace?.profileId) || location.startsWith("/workspace/");
   const showPlannerDashboard =
     workspaceData?.accountType === "wedding_planner" &&
-    !activeWorkspace;
+    isPlannerDashboardRoute &&
+    !isClientWorkspaceActive;
 
   const handlePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
