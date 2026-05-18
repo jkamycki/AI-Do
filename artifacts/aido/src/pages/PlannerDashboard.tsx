@@ -1,16 +1,16 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useMemo, useState } from "react";
 import {
-  AlertTriangle,
+  Activity,
+  Bell,
   BriefcaseBusiness,
   CalendarDays,
-  CheckSquare,
+  Check,
   ChevronRight,
   Clock,
-  DollarSign,
-  FileText,
   Search,
+  StickyNote,
   UsersRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { authFetch } from "@/lib/authFetch";
 import { useWorkspace, type WorkspaceInfo } from "@/contexts/WorkspaceContext";
+
+type SectionKey = "clients" | "calendar" | "vendors" | "activity";
+type SortKey = "date" | "name";
 
 interface PlannerWorkspace {
   profileId: number;
@@ -38,8 +42,33 @@ interface WorkspacesData {
   sharedWorkspaces: PlannerWorkspace[];
 }
 
+interface VendorFollowUp {
+  id: string;
+  vendorName: string;
+  clientName: string;
+  profileId: number;
+  status: string;
+  lastContact: string;
+  done?: boolean;
+  note?: string;
+  snoozed?: boolean;
+}
+
+interface ActivityEntry {
+  id: string;
+  profileId: number;
+  clientName: string;
+  eventType: string;
+  timestamp: string;
+  detail: string;
+}
+
 function clientName(ws: PlannerWorkspace) {
   return ws.workstationName?.trim() || `${ws.partner2Name} & ${ws.partner1Name}`;
+}
+
+function coupleNames(ws: PlannerWorkspace) {
+  return `${ws.partner2Name} & ${ws.partner1Name}`;
 }
 
 function formatDate(date: string) {
@@ -47,6 +76,11 @@ function formatDate(date: string) {
   const parsed = new Date(`${date}T12:00:00`);
   if (Number.isNaN(parsed.getTime())) return date;
   return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function sortDateValue(date: string) {
+  const parsed = new Date(`${date}T12:00:00`).getTime();
+  return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
 }
 
 function daysUntil(date: string) {
@@ -58,20 +92,37 @@ function daysUntil(date: string) {
   return Math.ceil((parsed.getTime() - today.getTime()) / 86_400_000);
 }
 
-function statusFor(date: string) {
-  const days = daysUntil(date);
-  if (days === null) return { label: "Needs date", className: "bg-amber-50 text-amber-700 border-amber-200" };
-  if (days < 0) return { label: "Past wedding", className: "bg-muted text-muted-foreground border-border" };
-  if (days <= 30) return { label: "Final stretch", className: "bg-rose-50 text-rose-700 border-rose-200" };
-  if (days <= 90) return { label: "Upcoming", className: "bg-blue-50 text-blue-700 border-blue-200" };
-  return { label: "Active planning", className: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+function clientProgress(ws: PlannerWorkspace) {
+  const days = daysUntil(ws.weddingDate);
+  if (days === null) return 10;
+  if (days < 0) return 100;
+  const windowDays = 365;
+  return Math.max(8, Math.min(96, Math.round(((windowDays - Math.min(days, windowDays)) / windowDays) * 100)));
+}
+
+function eventDateFromWedding(date: string, offsetDays: number) {
+  const parsed = new Date(`${date}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return "";
+  parsed.setDate(parsed.getDate() + offsetDays);
+  return parsed.toISOString().slice(0, 10);
+}
+
+function sectionTitle(section: SectionKey) {
+  if (section === "clients") return "My Clients";
+  if (section === "calendar") return "Multi-Client Calendar";
+  if (section === "vendors") return "Vendor Follow-Ups";
+  return "Activity Log";
 }
 
 export default function PlannerDashboard() {
   const [, setLocation] = useLocation();
   const { setActiveWorkspace } = useWorkspace();
+  const [activeSection, setActiveSection] = useState<SectionKey>("clients");
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "final30" | "upcoming" | "past">("all");
+  const [sortBy, setSortBy] = useState<SortKey>("date");
+  const [clientFilter, setClientFilter] = useState("all");
+  const [vendorActions, setVendorActions] = useState<Record<string, Partial<VendorFollowUp>>>({});
+
   const { data, isLoading } = useQuery<WorkspacesData>({
     queryKey: ["my-workspaces"],
     queryFn: async () => {
@@ -81,60 +132,94 @@ export default function PlannerDashboard() {
     },
   });
 
-  const workspaces = (data?.ownWorkspaces ?? []).filter((ws) => ws.profileId !== data?.ownProfile?.profileId);
+  const clients = useMemo(
+    () => (data?.ownWorkspaces ?? []).filter((ws) => ws.profileId !== data?.ownProfile?.profileId),
+    [data?.ownProfile?.profileId, data?.ownWorkspaces],
+  );
   const isPlanner = data?.accountType === "wedding_planner";
-  const sortedWorkspaces = useMemo(() => [...workspaces].sort((a, b) => {
-    const aDays = daysUntil(a.weddingDate);
-    const bDays = daysUntil(b.weddingDate);
-    if (aDays === null) return 1;
-    if (bDays === null) return -1;
-    if (aDays < 0 && bDays >= 0) return 1;
-    if (bDays < 0 && aDays >= 0) return -1;
-    return aDays - bDays;
-  }), [workspaces]);
-  const filteredWorkspaces = sortedWorkspaces.filter((ws) => {
-    const days = daysUntil(ws.weddingDate);
-    const query = search.trim().toLowerCase();
-    const matchesSearch = !query || [
-      clientName(ws),
-      ws.partner1Name,
-      ws.partner2Name,
-      ws.weddingDate,
-    ].some((value) => String(value ?? "").toLowerCase().includes(query));
-    const matchesFilter =
-      filter === "all" ||
-      (filter === "final30" && days !== null && days >= 0 && days <= 30) ||
-      (filter === "upcoming" && days !== null && days > 30) ||
-      (filter === "past" && days !== null && days < 0);
-    return matchesSearch && matchesFilter;
-  });
-  const upcoming = sortedWorkspaces.find((ws) => {
-    const days = daysUntil(ws.weddingDate);
-    return days !== null && days >= 0;
-  });
-  const next30 = sortedWorkspaces.filter((ws) => {
-    const days = daysUntil(ws.weddingDate);
-    return days !== null && days >= 0 && days <= 30;
-  });
-  const finalStretchCount = workspaces.filter((ws) => {
-    const days = daysUntil(ws.weddingDate);
-    return days !== null && days >= 0 && days <= 30;
-  }).length;
 
-  const openClient = (ws: PlannerWorkspace, path = "/dashboard") => {
-    if (data?.ownProfile?.profileId === ws.profileId) {
-      setActiveWorkspace(null);
-    } else {
-      const active: WorkspaceInfo = {
-        profileId: ws.profileId,
-        workstationName: ws.workstationName,
-        partner1Name: ws.partner1Name,
-        partner2Name: ws.partner2Name,
-        weddingDate: ws.weddingDate,
-        role: "owner",
-      };
-      setActiveWorkspace(active);
-    }
+  const filteredClients = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return [...clients]
+      .filter((ws) => !query || [clientName(ws), coupleNames(ws), ws.weddingDate].some(value => value.toLowerCase().includes(query)))
+      .sort((a, b) => {
+        if (sortBy === "name") return clientName(a).localeCompare(clientName(b));
+        return sortDateValue(a.weddingDate) - sortDateValue(b.weddingDate);
+      });
+  }, [clients, search, sortBy]);
+
+  const { data: vendorRows = [] } = useQuery<VendorFollowUp[]>({
+    queryKey: ["planner-vendor-followups", clients.map(c => c.profileId).join(",")],
+    enabled: clients.length > 0,
+    queryFn: async () => {
+      const results = await Promise.all(clients.map(async (client) => {
+        const res = await authFetch(`/api/workspace/${client.profileId}/vendors`);
+        if (!res.ok) return [];
+        const body = await res.json().catch(() => ({ vendors: [] }));
+        const vendors = Array.isArray(body.vendors) ? body.vendors : [];
+        return vendors
+          .filter((vendor: { contractSigned?: boolean }) => !vendor.contractSigned)
+          .map((vendor: { id: number; name: string; category?: string }) => ({
+            id: `${client.profileId}-${vendor.id}`,
+            vendorName: vendor.name || vendor.category || "Vendor",
+            clientName: clientName(client),
+            profileId: client.profileId,
+            status: "Follow-up needed",
+            lastContact: "Not recorded",
+          }));
+      }));
+      return results.flat();
+    },
+  });
+
+  const { data: activityRows = [] } = useQuery<ActivityEntry[]>({
+    queryKey: ["planner-activity", clients.map(c => c.profileId).join(",")],
+    enabled: clients.length > 0,
+    queryFn: async () => {
+      const results = await Promise.all(clients.map(async (client) => {
+        const res = await authFetch(`/api/workspace/${client.profileId}/activity`);
+        if (!res.ok) return [];
+        const body = await res.json().catch(() => ({ activity: [] }));
+        const rows = Array.isArray(body.activity) ? body.activity : [];
+        return rows.map((entry: { id?: number; action?: string; type?: string; createdAt?: string }, index: number) => ({
+          id: `${client.profileId}-${entry.id ?? index}`,
+          profileId: client.profileId,
+          clientName: clientName(client),
+          eventType: entry.type || "Client activity",
+          timestamp: entry.createdAt || new Date().toISOString(),
+          detail: entry.action || "Workspace updated",
+        }));
+      }));
+      return results.flat().sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    },
+  });
+
+  const calendarEvents = useMemo(() => {
+    const events = clients.flatMap((client) => [
+      { id: `wedding-${client.profileId}`, profileId: client.profileId, clientName: clientName(client), type: "Wedding", date: client.weddingDate, label: "Wedding day" },
+      { id: `deadline-${client.profileId}`, profileId: client.profileId, clientName: clientName(client), type: "Deadline", date: eventDateFromWedding(client.weddingDate, -30), label: "Final vendor count deadline" },
+      { id: `walkthrough-${client.profileId}`, profileId: client.profileId, clientName: clientName(client), type: "Walkthrough", date: eventDateFromWedding(client.weddingDate, -14), label: "Venue walkthrough" },
+      { id: `payment-${client.profileId}`, profileId: client.profileId, clientName: clientName(client), type: "Payment", date: eventDateFromWedding(client.weddingDate, -7), label: "Vendor payment reminder" },
+    ]).filter(event => event.date);
+    return events
+      .filter(event => clientFilter === "all" || String(event.profileId) === clientFilter)
+      .sort((a, b) => sortDateValue(a.date) - sortDateValue(b.date));
+  }, [clients, clientFilter]);
+
+  const mergedVendorRows = vendorRows.map(row => ({ ...row, ...vendorActions[row.id] })).filter(row => !row.done);
+
+  const openClient = (ws: PlannerWorkspace | { profileId: number }, path = "/dashboard") => {
+    const client = clients.find(item => item.profileId === ws.profileId);
+    if (!client) return;
+    const active: WorkspaceInfo = {
+      profileId: client.profileId,
+      workstationName: client.workstationName,
+      partner1Name: client.partner1Name,
+      partner2Name: client.partner2Name,
+      weddingDate: client.weddingDate,
+      role: "owner",
+    };
+    setActiveWorkspace(active);
     setLocation(path);
   };
 
@@ -143,10 +228,7 @@ export default function PlannerDashboard() {
       <div className="mx-auto max-w-6xl space-y-5">
         <Skeleton className="h-28 rounded-2xl" />
         <div className="grid gap-4 md:grid-cols-3">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-52 rounded-2xl" />)}
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}
         </div>
       </div>
     );
@@ -159,225 +241,234 @@ export default function PlannerDashboard() {
           <CardContent className="p-8">
             <BriefcaseBusiness className="mx-auto h-10 w-10 text-primary" />
             <h1 className="mt-4 font-serif text-3xl text-foreground">Wedding Planner Dashboard</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              This dashboard is available for Wedding Planner accounts with client workstations.
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">This dashboard is available for Wedding Planner accounts.</p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  const navItems: Array<{ key: SectionKey; label: string; icon: React.ElementType }> = [
+    { key: "clients", label: "My Clients", icon: UsersRound },
+    { key: "calendar", label: "Calendar", icon: CalendarDays },
+    { key: "vendors", label: "Vendor Follow-Ups", icon: Bell },
+    { key: "activity", label: "Activity Log", icon: Activity },
+  ];
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       <section className="rounded-2xl border border-primary/15 bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <BriefcaseBusiness className="h-5 w-5" />
+          </span>
           <div>
-            <div className="flex items-center gap-2 text-primary">
-              <BriefcaseBusiness className="h-5 w-5" />
-              <span className="text-xs font-semibold uppercase tracking-widest">Wedding Planner</span>
-            </div>
-            <h1 className="mt-2 font-serif text-3xl text-foreground md:text-4xl">Client Dashboard</h1>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Your planner command center. View client workstations, jump into their planning tools, and keep upcoming weddings easy to scan.
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary">Wedding Planner</p>
+            <h1 className="font-serif text-3xl text-foreground md:text-4xl">Planner Dashboard</h1>
           </div>
-          <Button onClick={() => setLocation("/dashboard")} className="shrink-0 gap-2">
-            Planner Workspace
-            <ChevronRight className="h-4 w-4" />
-          </Button>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-4">
-        <Card className="border-primary/15 shadow-sm">
-          <CardContent className="p-5">
-            <UsersRound className="h-5 w-5 text-primary" />
-            <p className="mt-3 text-3xl font-serif font-semibold text-foreground">{workspaces.length}</p>
-            <p className="text-sm text-muted-foreground">Client workstations</p>
-          </CardContent>
-        </Card>
-        <Card className="border-primary/15 shadow-sm">
-          <CardContent className="p-5">
-            <CalendarDays className="h-5 w-5 text-primary" />
-            <p className="mt-3 text-lg font-semibold text-foreground">{upcoming ? clientName(upcoming) : "No upcoming weddings"}</p>
-            <p className="text-sm text-muted-foreground">{upcoming ? formatDate(upcoming.weddingDate) : "Add a client date to start tracking"}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-primary/15 shadow-sm">
-          <CardContent className="p-5">
-            <Clock className="h-5 w-5 text-primary" />
-            <p className="mt-3 text-3xl font-serif font-semibold text-foreground">{finalStretchCount}</p>
-            <p className="text-sm text-muted-foreground">In the final 30 days</p>
-          </CardContent>
-        </Card>
-        <Card className="border-primary/15 shadow-sm">
-          <CardContent className="p-5">
-            <AlertTriangle className="h-5 w-5 text-rose-600" />
-            <p className="mt-3 text-3xl font-serif font-semibold text-foreground">{next30.length}</p>
-            <p className="text-sm text-muted-foreground">Need close attention</p>
-          </CardContent>
-        </Card>
-      </section>
+      <div className="grid gap-5 lg:grid-cols-[240px_1fr]">
+        <aside className="rounded-2xl border border-primary/15 bg-card p-3 shadow-sm lg:sticky lg:top-6 lg:self-start">
+          <nav className="space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = activeSection === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setActiveSection(item.key)}
+                  className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors ${
+                    active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-primary/5"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
 
-      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <Card className="border-primary/15 shadow-sm">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="font-serif text-xl text-foreground">Next 30 Days</h2>
-                <p className="text-sm text-muted-foreground">Planner focus list for weddings that are closest.</p>
+        <main className="space-y-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="font-serif text-2xl text-foreground">{sectionTitle(activeSection)}</h2>
+              <p className="text-sm text-muted-foreground">Manage multiple weddings without extra clutter.</p>
+            </div>
+          </div>
+
+          {activeSection === "clients" && (
+            <section className="space-y-4">
+              <Card className="border-primary/15 shadow-sm">
+                <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+                  <div className="relative md:max-w-sm md:flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by client or couple name" className="pl-9" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Sort</span>
+                    <select
+                      value={sortBy}
+                      onChange={(event) => setSortBy(event.target.value as SortKey)}
+                      className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="date">Wedding date</option>
+                      <option value="name">Name</option>
+                    </select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {filteredClients.map((client) => {
+                  const progress = clientProgress(client);
+                  return (
+                    <Card key={client.profileId} className="border-primary/15 shadow-sm">
+                      <CardContent className="p-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="truncate font-serif text-xl text-foreground">{coupleNames(client)}</h3>
+                            <p className="mt-1 truncate text-sm text-muted-foreground">{clientName(client)}</p>
+                          </div>
+                          <Badge variant="outline" className="border-primary/20 text-primary">{formatDate(client.weddingDate)}</Badge>
+                        </div>
+                        <div className="mt-5 space-y-2">
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Planning progress</span>
+                            <span>{progress}%</span>
+                          </div>
+                          <Progress value={progress} className="h-2" />
+                        </div>
+                        <Button className="mt-5 w-full gap-2" onClick={() => openClient(client)}>
+                          Open Workstation <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
-              <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">{next30.length} clients</Badge>
-            </div>
-            <div className="mt-4 space-y-2">
-              {next30.length ? next30.slice(0, 5).map((ws) => {
-                const days = daysUntil(ws.weddingDate);
-                return (
-                  <button
-                    key={ws.profileId}
-                    type="button"
-                    onClick={() => openClient(ws)}
-                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
+            </section>
+          )}
+
+          {activeSection === "calendar" && (
+            <section className="space-y-4">
+              <Card className="border-primary/15 shadow-sm">
+                <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+                  <p className="text-sm text-muted-foreground">All weddings, deadlines, payments, meetings, and walkthroughs across clients.</p>
+                  <select
+                    value={clientFilter}
+                    onChange={(event) => setClientFilter(event.target.value)}
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                   >
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold text-foreground">{clientName(ws)}</span>
-                      <span className="block text-xs text-muted-foreground">{formatDate(ws.weddingDate)}</span>
-                    </span>
-                    <span className="shrink-0 text-xs font-semibold text-primary">{days} days</span>
-                  </button>
-                );
-              }) : (
-                <p className="rounded-xl border border-border/60 bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
-                  No client weddings are inside the next 30 days.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                    <option value="all">All clients</option>
+                    {clients.map(client => <option key={client.profileId} value={client.profileId}>{clientName(client)}</option>)}
+                  </select>
+                </CardContent>
+              </Card>
+              <Card className="border-primary/15 shadow-sm">
+                <CardContent className="divide-y divide-border/60 p-0">
+                  {calendarEvents.map(event => (
+                    <div key={event.id} className="flex flex-col gap-2 p-4 md:flex-row md:items-center md:justify-between">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <CalendarDays className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <p className="font-medium text-foreground">{event.label}</p>
+                          <p className="text-sm text-muted-foreground">{event.clientName}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{event.type}</Badge>
+                        <span className="text-sm font-medium text-foreground">{formatDate(event.date)}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {calendarEvents.length === 0 && <EmptyState text="No calendar items yet. Add client workstations to populate this view." />}
+                </CardContent>
+              </Card>
+            </section>
+          )}
 
-        <Card className="border-primary/15 shadow-sm">
-          <CardContent className="p-5">
-            <h2 className="font-serif text-xl text-foreground">Planner Shortcuts</h2>
-            <p className="text-sm text-muted-foreground">Open the nearest active client directly into the tools planners check most.</p>
-            <div className="mt-4 grid gap-2">
-              <Button variant="outline" className="justify-start gap-2" disabled={!upcoming} onClick={() => upcoming && openClient(upcoming, "/checklist")}>
-                <CheckSquare className="h-4 w-4" /> Nearest checklist
-              </Button>
-              <Button variant="outline" className="justify-start gap-2" disabled={!upcoming} onClick={() => upcoming && openClient(upcoming, "/budget")}>
-                <DollarSign className="h-4 w-4" /> Nearest budget
-              </Button>
-              <Button variant="outline" className="justify-start gap-2" disabled={!upcoming} onClick={() => upcoming && openClient(upcoming, "/contracts")}>
-                <FileText className="h-4 w-4" /> Nearest contracts
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+          {activeSection === "vendors" && (
+            <section>
+              <Card className="border-primary/15 shadow-sm">
+                <CardContent className="divide-y divide-border/60 p-0">
+                  {mergedVendorRows.map(row => (
+                    <div key={row.id} className="grid gap-3 p-4 lg:grid-cols-[1fr_160px_140px_260px] lg:items-center">
+                      <div>
+                        <p className="font-medium text-foreground">{row.vendorName}</p>
+                        <p className="text-sm text-muted-foreground">{row.clientName}</p>
+                        {row.note && <p className="mt-1 text-xs text-primary">Note: {row.note}</p>}
+                      </div>
+                      <Badge variant="outline" className={row.snoozed ? "border-amber-200 text-amber-700" : "border-primary/20 text-primary"}>
+                        {row.snoozed ? "Snoozed" : row.status}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground">{row.lastContact}</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setVendorActions(prev => ({ ...prev, [row.id]: { ...prev[row.id], done: true } }))}>
+                          <Check className="h-3.5 w-3.5" /> Done
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => {
+                          const note = window.prompt("Add vendor note", row.note ?? "");
+                          if (note !== null) setVendorActions(prev => ({ ...prev, [row.id]: { ...prev[row.id], note } }));
+                        }}>
+                          <StickyNote className="h-3.5 w-3.5" /> Note
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setVendorActions(prev => ({ ...prev, [row.id]: { ...prev[row.id], snoozed: true } }))}>
+                          <Clock className="h-3.5 w-3.5" /> Snooze
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {mergedVendorRows.length === 0 && <EmptyState text="No vendor follow-ups right now." />}
+                </CardContent>
+              </Card>
+            </section>
+          )}
 
-      {workspaces.length <= 1 && (
-        <Card className="border-primary/15 bg-primary/5 shadow-sm">
-          <CardContent className="p-5">
-            <h2 className="font-serif text-xl text-foreground">Create your first client workstation.</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Use the workstation switcher in the sidebar to create a separate client workspace with its own profile, guests, budget, contracts, website, and planning tools.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+          {activeSection === "activity" && (
+            <section>
+              <Card className="border-primary/15 shadow-sm">
+                <CardContent className="divide-y divide-border/60 p-0">
+                  {activityRows.map(entry => (
+                    <div key={entry.id} className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <Activity className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <p className="font-medium text-foreground">{entry.detail}</p>
+                          <p className="text-sm text-muted-foreground">{entry.clientName}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{entry.eventType}</Badge>
+                        <span className="text-sm text-muted-foreground">{new Date(entry.timestamp).toLocaleString()}</span>
+                        <Button size="sm" variant="outline" onClick={() => openClient(entry)}>
+                          Open
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {activityRows.length === 0 && <EmptyState text="No client activity has been logged yet." />}
+                </CardContent>
+              </Card>
+            </section>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
 
-      <section className="rounded-2xl border border-primary/15 bg-card p-4 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="relative md:max-w-sm md:flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search clients"
-              className="pl-9"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {[
-              ["all", "All"],
-              ["final30", "Final 30"],
-              ["upcoming", "Upcoming"],
-              ["past", "Past"],
-            ].map(([value, label]) => (
-              <Button
-                key={value}
-                type="button"
-                size="sm"
-                variant={filter === value ? "default" : "outline"}
-                onClick={() => setFilter(value as typeof filter)}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-2">
-        {filteredWorkspaces.map((ws) => {
-          const status = statusFor(ws.weddingDate);
-          const days = daysUntil(ws.weddingDate);
-          return (
-            <Card key={ws.profileId} className="overflow-hidden border-primary/15 shadow-sm">
-              <div className="h-1 bg-gradient-to-r from-primary via-[#B16C8E] to-[#E6A6B7]" />
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="font-serif text-2xl text-foreground">{clientName(ws)}</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {ws.partner2Name} & {ws.partner1Name}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className={status.className}>{status.label}</Badge>
-                </div>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-border/60 bg-muted/25 p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">Wedding Date</p>
-                    <p className="mt-1 text-sm font-medium text-foreground">{formatDate(ws.weddingDate)}</p>
-                  </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/25 p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">Countdown</p>
-                    <p className="mt-1 text-sm font-medium text-foreground">
-                      {days === null ? "Not set" : days < 0 ? `${Math.abs(days)} days ago` : `${days} days left`}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <Button size="sm" onClick={() => openClient(ws)} className="gap-1.5">
-                    Open Dashboard <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => openClient(ws, "/checklist")} className="gap-1.5">
-                    <CheckSquare className="h-4 w-4" /> Checklist
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => openClient(ws, "/timeline")} className="gap-1.5">
-                    <CalendarDays className="h-4 w-4" /> Timeline
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => openClient(ws, "/budget")} className="gap-1.5">
-                    <DollarSign className="h-4 w-4" /> Budget
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => openClient(ws, "/contracts")} className="gap-1.5">
-                    <FileText className="h-4 w-4" /> Contracts
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-        {filteredWorkspaces.length === 0 && (
-          <Card className="border-primary/15 shadow-sm md:col-span-2">
-            <CardContent className="p-8 text-center">
-              <Search className="mx-auto h-8 w-8 text-muted-foreground" />
-              <h2 className="mt-3 font-serif text-xl text-foreground">No clients match that view</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Adjust the search or filter to see more workstations.</p>
-            </CardContent>
-          </Card>
-        )}
-      </section>
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="p-8 text-center text-sm text-muted-foreground">
+      {text}
     </div>
   );
 }
