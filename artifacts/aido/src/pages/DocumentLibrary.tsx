@@ -189,12 +189,12 @@ export default function DocumentLibrary() {
         queryClient.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
         const added = Array.isArray(payload.tasks) ? payload.tasks.length : 0;
         toast({
-          title: added === 1
-            ? "A task was added to your checklist"
-            : added > 1
-              ? `${added} tasks were added to your checklist`
-              : "Those tasks are already in your checklist",
-          description: added === 0 ? "No duplicate checklist tasks were created." : undefined,
+          title: added > 0 ? "A Task was added to your Checklist" : "This Task is already in your Checklist",
+          description: added > 1
+            ? `${added} tasks were added.`
+            : added === 0
+              ? "No duplicate checklist tasks were created."
+              : undefined,
         });
         return;
       }

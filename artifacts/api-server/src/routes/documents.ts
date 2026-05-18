@@ -311,6 +311,10 @@ function normalizeTags(value: unknown): string[] {
     : [];
 }
 
+function normalizeChecklistTaskKey(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 function normalizeVisibility(value: unknown): string[] {
   return Array.isArray(value)
     ? Array.from(new Set(value.map((item) => asText(item)).filter(Boolean))).slice(0, 20)
@@ -547,34 +551,39 @@ router.post("/documents/:id/tasks", requireAuth, async (req, res) => {
     description: asText(task.description, `Generated from ${doc.fileName}`),
     isCompleted: false,
   }));
-  const existingRows = await db
-    .select({
-      task: checklistItems.task,
-      description: checklistItems.description,
-      month: checklistItems.month,
-    })
-    .from(checklistItems)
-    .where(eq(checklistItems.profileId, profile.id));
-  const existingKeys = new Set(existingRows.map((item) => `${item.month}::${item.task.trim().toLowerCase()}::${item.description.trim().toLowerCase()}`));
-  const insertValues = taskValues.filter((item) => {
-    const key = `${item.month}::${item.task.trim().toLowerCase()}::${item.description.trim().toLowerCase()}`;
-    if (existingKeys.has(key)) return false;
-    existingKeys.add(key);
-    return true;
+
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${profile.id}, ${id})`);
+    const existingRows = await tx
+      .select({ task: checklistItems.task })
+      .from(checklistItems)
+      .where(eq(checklistItems.profileId, profile.id));
+    const existingKeys = new Set(existingRows.map((item) => normalizeChecklistTaskKey(item.task)));
+    const insertValues = taskValues.filter((item) => {
+      const key = normalizeChecklistTaskKey(item.task);
+      if (existingKeys.has(key)) return false;
+      existingKeys.add(key);
+      return true;
+    });
+
+    if (!insertValues.length) {
+      await tx.execute(sql`UPDATE documents SET updated_at = now() WHERE id = ${id}`);
+      return { inserted: [], skipped: taskValues.length };
+    }
+
+    const inserted = await tx
+      .insert(checklistItems)
+      .values(insertValues)
+      .returning();
+    await tx.execute(sql`UPDATE documents SET updated_at = now() WHERE id = ${id}`);
+    return { inserted, skipped: taskValues.length - inserted.length };
   });
 
-  if (!insertValues.length) {
-    await db.execute(sql`UPDATE documents SET updated_at = now() WHERE id = ${id}`);
-    return res.json({ tasks: [], skipped: taskValues.length, duplicate: true });
-  }
-
-  const inserted = await db
-    .insert(checklistItems)
-    .values(insertValues)
-    .returning();
-
-  await db.execute(sql`UPDATE documents SET updated_at = now() WHERE id = ${id}`);
-  res.status(201).json({ tasks: inserted, skipped: taskValues.length - inserted.length, duplicate: false });
+  res.status(result.inserted.length ? 201 : 200).json({
+    tasks: result.inserted,
+    skipped: result.skipped,
+    duplicate: result.inserted.length === 0,
+  });
 });
 
 export default router;
