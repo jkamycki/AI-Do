@@ -29,6 +29,7 @@ interface Guest {
   name: string;
   group: string;
   plusOne: boolean;
+  plusOneName?: string | null;
   notes: string;
   relations: Relation[];
 }
@@ -127,9 +128,10 @@ function seatingDisplayRows(guestNames: string[], seatingGuests: Guest[]) {
   return guestNames.flatMap((guestName) => {
     const guest = seatingGuestByName.get(normalizeSeatDisplayName(guestName));
     if (guest && attachedGuestFromPlusOneNoteText(guest.notes)) return [];
+    const cleanPlusOneName = guest?.plusOneName?.trim();
     return [{
       name: guestName,
-      plusOneLabel: guest?.plusOne ? "+1" : null,
+      plusOneLabel: guest?.plusOne ? (cleanPlusOneName ? `+ ${cleanPlusOneName}` : "+1") : null,
     }];
   });
 }
@@ -412,7 +414,7 @@ export default function SeatingChartPage() {
       : null;
   const draftStorageKey = storageScopeKey ? `aido_seating_draft_v2:${storageScopeKey}` : null;
   const seatingChartsQueryKey = ["seating-charts", storageScopeKey] as const;
-  const starterGuest = () => ({ id: `${uid}-0`, name: "", group: "Bride's Family", plusOne: false, notes: "", relations: [] });
+  const starterGuest = () => ({ id: `${uid}-0`, name: "", group: "Bride's Family", plusOne: false, plusOneName: null, notes: "", relations: [] });
 
   const [guests, setGuests] = useState<Guest[]>([starterGuest()]);
   const [tableCount, setTableCount] = useState(6);
@@ -598,6 +600,7 @@ export default function SeatingChartPage() {
               id: `${uid}-guestlist-plus-one-${src.id ?? idx}`,
               guestName,
               plusOne: Boolean(src.plusOne),
+              plusOneName: src.plusOne ? (src.plusOneName?.trim() || null) : null,
               group: mapGuestGroup(src.guestGroup),
             },
           ];
@@ -609,7 +612,7 @@ export default function SeatingChartPage() {
       .map((guest) => {
         const plan = plusOnePlan.get(normalizeSeatName(guest.name));
         if (!plan) return guest;
-        return { ...guest, group: plan.group, plusOne: plan.plusOne };
+        return { ...guest, group: plan.group, plusOne: plan.plusOne, plusOneName: plan.plusOneName };
       });
     const activeIds = new Set(combined.map((guest) => guest.id));
 
@@ -633,6 +636,7 @@ export default function SeatingChartPage() {
     name: guest.name,
     group: guest.group,
     plusOne: guest.plusOne,
+    plusOneName: guest.plusOneName ?? null,
     notes: guest.notes,
     relations: guest.relations.map((relation) => `${relation.type}:${relation.targetId}`).sort(),
   })));
@@ -689,9 +693,17 @@ export default function SeatingChartPage() {
       const mainGuestId = `${uid}-import-${Date.now()}-${idx}`;
       const existingMainGuest = currentGuests.find((guest) => normalizeSeatName(guest.name) === key);
       if (existingNames.has(key)) {
-        if (existingMainGuest && (existingMainGuest.plusOne !== Boolean(src.plusOne) || existingMainGuest.group !== group)) {
+        const nextPlusOneName = src.plusOne ? (src.plusOneName?.trim() || null) : null;
+        if (
+          existingMainGuest &&
+          (
+            existingMainGuest.plusOne !== Boolean(src.plusOne) ||
+            existingMainGuest.group !== group ||
+            (existingMainGuest.plusOneName ?? null) !== nextPlusOneName
+          )
+        ) {
           updated++;
-          updatesById.set(existingMainGuest.id, { plusOne: Boolean(src.plusOne), group });
+          updatesById.set(existingMainGuest.id, { plusOne: Boolean(src.plusOne), plusOneName: nextPlusOneName, group });
         } else {
           skipped++;
         }
@@ -707,6 +719,7 @@ export default function SeatingChartPage() {
           name: cleanName,
           group,
           plusOne: Boolean(src.plusOne),
+          plusOneName: src.plusOne ? (src.plusOneName?.trim() || null) : null,
           notes: noteParts.join(" - "),
           relations: [],
         });
@@ -745,7 +758,7 @@ export default function SeatingChartPage() {
   const addGuest = () => {
     setGuests(prev => [
       ...prev,
-      { id: `${uid}-${Date.now()}`, name: "", group: "Bride's Family", plusOne: false, notes: "", relations: [] },
+      { id: `${uid}-${Date.now()}`, name: "", group: "Bride's Family", plusOne: false, plusOneName: null, notes: "", relations: [] },
     ]);
   };
 
@@ -866,6 +879,7 @@ export default function SeatingChartPage() {
           name: g.name.trim(),
           group: g.group,
           plusOne: g.plusOne,
+          plusOneName: g.plusOne ? (g.plusOneName?.trim() || undefined) : undefined,
           notes: g.notes,
           avoidIds: g.relations.filter(r => r.type === "avoid" && filledGuestIds.has(r.targetId)).map(r => r.targetId),
           preferIds: g.relations.filter(r => r.type === "prefer" && filledGuestIds.has(r.targetId)).map(r => r.targetId),

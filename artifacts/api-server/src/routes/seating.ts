@@ -102,6 +102,7 @@ interface Guest {
   name: string;
   group: string;
   plusOne?: boolean;
+  plusOneName?: string | null;
   notes?: string;
   avoidIds?: string[];
   preferIds?: string[];
@@ -379,7 +380,8 @@ router.post("/seating/generate", requireAuth, async (req, res) => {
     const guestList = guests.map(g => {
       const avoidNames = (g.avoidIds ?? []).map(id => guestById.get(id)?.name).filter((name): name is string => Boolean(name));
       const preferNames = (g.preferIds ?? []).map(id => guestById.get(id)?.name).filter((name): name is string => Boolean(name));
-      return `- ${g.name} (Group: ${g.group}${g.plusOne ? ", +1" : ""}${avoidNames.length ? `, AVOID: ${avoidNames.join(", ")}` : ""}${preferNames.length ? `, PREFER NEAR: ${preferNames.join(", ")}` : ""}${g.notes ? `, Notes: ${g.notes}` : ""})`;
+      const plusOneName = g.plusOneName?.trim();
+      return `- ${g.name} (Group: ${g.group}${g.plusOne ? `, +1${plusOneName ? ` named ${plusOneName}` : ""}` : ""}${avoidNames.length ? `, AVOID: ${avoidNames.join(", ")}` : ""}${preferNames.length ? `, PREFER NEAR: ${preferNames.join(", ")}` : ""}${g.notes ? `, Notes: ${g.notes}` : ""})`;
     }).join("\n");
 
     const prompt = `You are an expert wedding planner creating a harmonious seating chart. Your goal is to minimize conflict and maximize happiness.
@@ -396,7 +398,7 @@ Rules:
 2. Never seat people with AVOID relationships at the same table
 3. Try to seat PREFER NEAR pairs at the same table
 4. Group family members and friend groups together
-5. A +1 is not a separate guest name. Treat a guest marked +1 as taking 2 seats at that guest's table.
+5. A +1 is not a separate table entry. Treat a guest marked +1 as taking 2 seats at that guest's table. If the +1 has a name, keep that person with the named guest but do not list them as a separate guest in JSON.
 6. Consider placing potential conflict groups at opposite sides of the room (note table order matters)
 
 Return ONLY valid JSON:
