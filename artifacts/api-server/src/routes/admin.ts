@@ -38,6 +38,10 @@ function getLaunchPlanRecipientEmails(email: string) {
   return email.split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
 function isAllowedLaunchPlanRecipient(email: string) {
   const recipients = getLaunchPlanRecipientEmails(email);
   return recipients.length > 0 && recipients.every(recipient =>
@@ -732,7 +736,7 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
   try {
     const search = String(req.query.search ?? "").trim().toLowerCase();
 
-    const [profileRows, collaboratorRows, eventRows] = await Promise.all([
+    const [profileRows, collaboratorRows, eventRows, archiveRows] = await Promise.all([
       db.select({
         userId: weddingProfiles.userId,
         profileId: weddingProfiles.id,
@@ -778,6 +782,18 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
         FROM analytics_events
         GROUP BY user_id
       `),
+
+      db.select({
+        id: deletedUserArchive.id,
+        userId: deletedUserArchive.userId,
+        email: deletedUserArchive.email,
+        firstName: deletedUserArchive.firstName,
+        lastName: deletedUserArchive.lastName,
+        deletedAt: deletedUserArchive.deletedAt,
+        archivedData: deletedUserArchive.archivedData,
+      })
+        .from(deletedUserArchive)
+        .where(sql`${deletedUserArchive.restoredAt} IS NULL`),
     ]);
 
     type EventRow = {
@@ -901,17 +917,51 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
         weddingDate: profile?.weddingDate ?? null,
         venue: profile?.venue ?? null,
         sharedWith,
+        isDeleted: false,
+        deletedAt: null,
       };
     });
 
+    const deletedUsers = archiveRows
+      .filter(row => !clerkUsersById.has(row.userId))
+      .map(row => {
+        const archived = asRecord(row.archivedData);
+        const profile = asRecord(archived.profile);
+        return {
+          id: row.userId,
+          firstName: row.firstName ?? "",
+          lastName: row.lastName ?? "",
+          email: row.email,
+          imageUrl: null,
+          joinedAt: new Date(row.deletedAt).toISOString(),
+          lastActive: new Date(row.deletedAt).toISOString(),
+          eventCount: Array.isArray(archived.analyticsEvents) ? archived.analyticsEvents.length : 0,
+          onboarded: Boolean(profile.id),
+          hasProfile: Boolean(profile.id),
+          hasSharedWorkspace: false,
+          collaboratorRole: null,
+          partner1Name: typeof profile.partner1Name === "string" ? profile.partner1Name : null,
+          partner2Name: typeof profile.partner2Name === "string" ? profile.partner2Name : null,
+          weddingDate: typeof profile.weddingDate === "string" ? profile.weddingDate : null,
+          venue: typeof profile.venue === "string" ? profile.venue : null,
+          sharedWith: [],
+          isDeleted: true,
+          deletedAt: new Date(row.deletedAt).toISOString(),
+        };
+      });
+
+    users.push(...deletedUsers);
+
     const filtered = search
       ? users.filter(u =>
-          `${u.firstName} ${u.lastName} ${u.email} ${u.partner1Name} ${u.partner2Name} ${u.sharedWith.map(s => `${s.displayName} ${s.email} ${s.workspaceName}`).join(" ")}`
+          `${u.firstName} ${u.lastName} ${u.email} ${u.partner1Name} ${u.partner2Name} ${u.isDeleted ? "deleted account" : ""} ${u.sharedWith.map(s => `${s.displayName} ${s.email} ${s.workspaceName}`).join(" ")}`
             .toLowerCase().includes(search)
         )
       : users;
 
-    filtered.sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime());
+    filtered.sort((a, b) =>
+      new Date(b.deletedAt ?? b.joinedAt).getTime() - new Date(a.deletedAt ?? a.joinedAt).getTime()
+    );
 
     res.json({ users: filtered, total: filtered.length });
   } catch (err) {

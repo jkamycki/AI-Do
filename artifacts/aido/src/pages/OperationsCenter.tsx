@@ -124,6 +124,8 @@ type SignedUpUser = {
   partner2Name: string | null;
   weddingDate: string | null;
   venue: string | null;
+  isDeleted: boolean;
+  deletedAt: string | null;
   sharedWith: Array<{
     profileId: number;
     userId: string | null;
@@ -269,6 +271,7 @@ export default function OperationsCenterPage() {
   const [workflowFilter, setWorkflowFilter] = useState<"all" | "completed" | "in_progress" | "not_started">("all");
   const [testSessionFilter, setTestSessionFilter] = useState<"test" | "all" | "real">("test");
   const [userSearch, setUserSearch] = useState("");
+  const [userToDelete, setUserToDelete] = useState<SignedUpUser | null>(null);
   const [launchPlanPrompt, setLaunchPlanPrompt] = useState("");
   const [hasLoadedLaunchPlan, setHasLoadedLaunchPlan] = useState(false);
   const [launchPlanEmailRecipients, setLaunchPlanEmailRecipients] = useState<Record<string, string>>({});
@@ -358,6 +361,30 @@ export default function OperationsCenterPage() {
     staleTime: 0,
   });
   const signedUpUsers = signedUpUsersData?.users ?? [];
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (user: SignedUpUser) => {
+      const r = await authedFetch(`/api/admin/users/${encodeURIComponent(user.id)}`, { method: "DELETE" });
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(body.error ?? "Failed to delete user");
+      }
+      return r.json();
+    },
+    onSuccess: () => {
+      toast({ title: "User deleted", description: "The account and workspace data were archived and removed." });
+      setUserToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-signed-up-users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-workflow-progress"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Could not delete user",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const { data: workflowData, isLoading: isLoadingWorkflow } = useQuery<{
     users: WorkflowProgressUser[];
@@ -788,6 +815,36 @@ export default function OperationsCenterPage() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto text-[#24171D]">
+      <Dialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete user?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm text-[#4A3941]">
+            <p>
+              This archives the user's workspace data, removes their planning records, and deletes the Clerk account when it still exists.
+            </p>
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-800">
+              <p className="font-semibold">{userToDelete ? getSignedUpUserDisplayName(userToDelete) : ""}</p>
+              <p>{userToDelete?.email ?? userToDelete?.id}</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setUserToDelete(null)} disabled={deleteUserMutation.isPending}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => userToDelete && deleteUserMutation.mutate(userToDelete)}
+                disabled={!userToDelete || userToDelete.isDeleted || deleteUserMutation.isPending}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {deleteUserMutation.isPending ? "Deleting..." : userToDelete?.isDeleted ? "Already deleted" : "Delete user"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div>
         <h1 className="text-3xl font-serif font-bold text-[#24171D]">Operations Center</h1>
         <p className="mt-1 text-sm font-medium text-[#4A3941]">Support tickets, contact messages, and feedback in one place</p>
@@ -875,12 +932,13 @@ export default function OperationsCenterPage() {
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-5">
             {[
               { label: "Signed up", value: signedUpUsersData?.total ?? 0 },
               { label: "Onboarded", value: signedUpUsers.filter(user => user.onboarded).length },
               { label: "Created profile", value: signedUpUsers.filter(user => user.hasProfile).length },
               { label: "Shared workspace", value: signedUpUsers.filter(user => user.hasSharedWorkspace).length },
+              { label: "Deleted", value: signedUpUsers.filter(user => user.isDeleted).length },
             ].map(stat => (
               <Card key={stat.label}>
                 <CardContent className="py-4">
@@ -914,6 +972,9 @@ export default function OperationsCenterPage() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="font-semibold text-[#24171D]">{displayName}</h3>
+                            {user.isDeleted && (
+                              <Badge className="bg-red-100 text-red-800">Deleted account</Badge>
+                            )}
                             <Badge className={user.onboarded ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
                               {user.onboarded ? "Onboarded" : "Signed up"}
                             </Badge>
@@ -926,7 +987,9 @@ export default function OperationsCenterPage() {
                             </span>
                             <span className="inline-flex items-center gap-1.5">
                               <Clock className="h-3.5 w-3.5" />
-                              Joined {new Date(user.joinedAt).toLocaleString()}
+                              {user.isDeleted && user.deletedAt
+                                ? `Deleted ${new Date(user.deletedAt).toLocaleString()}`
+                                : `Joined ${new Date(user.joinedAt).toLocaleString()}`}
                             </span>
                           </div>
                           <p className="mt-2 text-sm text-[#7A5062]">
@@ -967,6 +1030,19 @@ export default function OperationsCenterPage() {
                           <p><span className="font-semibold text-[#24171D]">Last active:</span> {user.lastActive ? new Date(user.lastActive).toLocaleString() : "Unknown"}</p>
                           <p className="mt-1"><span className="font-semibold text-[#24171D]">Events:</span> {user.eventCount}</p>
                           <p className="mt-1"><span className="font-semibold text-[#24171D]">Profile:</span> {user.hasProfile ? "Yes" : "No"}</p>
+                          {user.deletedAt && (
+                            <p className="mt-1 text-red-700"><span className="font-semibold">Deleted:</span> {new Date(user.deletedAt).toLocaleString()}</p>
+                          )}
+                          <Button
+                            size="sm"
+                            variant={user.isDeleted ? "outline" : "destructive"}
+                            className="mt-3 w-full"
+                            disabled={user.isDeleted}
+                            onClick={() => setUserToDelete(user)}
+                          >
+                            <Trash2 className="mr-2 h-3.5 w-3.5" />
+                            {user.isDeleted ? "Already deleted" : "Delete user"}
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
