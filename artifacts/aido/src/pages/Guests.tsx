@@ -98,6 +98,7 @@ import {
   MessageSquare,
   Loader2,
   Sparkles,
+  Star,
   X as XIcon,
   AlertTriangle,
 } from "lucide-react";
@@ -2611,6 +2612,11 @@ export default function Guests({
   const editWeddingPartyMember = editGuest
     ? findWeddingPartyMemberForGuest(editGuest)
     : undefined;
+  const weddingPartyGuestIds = new Set(
+    allGuests
+      .filter((guest) => findWeddingPartyMemberForGuest(guest))
+      .map((guest) => guest.id),
+  );
 
   if (!profileLoading && !weddingProfile) {
     return (
@@ -2915,6 +2921,17 @@ export default function Guests({
 
       {/* Guest Collector */}
       <GuestCollectorCard />
+
+      <Card className="border-primary/20 bg-primary/5 shadow-sm">
+        <CardContent className="flex items-start gap-3 p-4 text-sm text-muted-foreground">
+          <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800/50">
+            <Star className="h-4 w-4 fill-current" />
+          </span>
+          <p>
+            Guests with a star are part of the Wedding Party and automatically sync to the Wedding Party tab.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* RSVP Response Rate Bar */}
       {summary.total > 0 && (
@@ -3233,6 +3250,7 @@ export default function Guests({
                 const isNew = newGuestIds.has(g.id);
                 const isRsvpSelfAdded = (g as any).source === "rsvp_self_add";
                 const isDuplicate = duplicateGuestIds.has(g.id);
+                const isWeddingPartyGuest = weddingPartyGuestIds.has(g.id);
                 return (
                   <div
                     key={`mobile-${g.id}`}
@@ -3240,7 +3258,13 @@ export default function Guests({
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="font-medium leading-tight break-words">
+                        <p className="flex items-center gap-1.5 font-medium leading-tight break-words">
+                          {isWeddingPartyGuest && (
+                            <Star
+                              className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-500"
+                              aria-label="Wedding party member"
+                            />
+                          )}
                           {g.name}
                         </p>
                         {isNew && (
@@ -3479,6 +3503,7 @@ export default function Guests({
                     const isNew = newGuestIds.has(g.id);
                     const isRsvpSelfAdded = (g as any).source === "rsvp_self_add";
                     const isDuplicate = duplicateGuestIds.has(g.id);
+                    const isWeddingPartyGuest = weddingPartyGuestIds.has(g.id);
                     return (
                       <TableRow
                         key={g.id}
@@ -3486,7 +3511,15 @@ export default function Guests({
                       >
                         <TableCell className="align-top">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium">{g.name}</span>
+                            <span className="inline-flex min-w-0 items-center gap-1.5 font-medium">
+                              {isWeddingPartyGuest && (
+                                <Star
+                                  className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-500"
+                                  aria-label="Wedding party member"
+                                />
+                              )}
+                              <span className="truncate">{g.name}</span>
+                            </span>
                             {isNew && (
                               <button
                                 type="button"
