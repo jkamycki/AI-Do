@@ -867,7 +867,7 @@ export default function SettingsPage() {
               <p className="text-muted-foreground max-w-sm mx-auto">
                 {t("settings.account_settings_desc")}
               </p>
-              <Button variant="outline" onClick={() => window.open("https://accounts.clerk.dev", "_blank")}>
+              <Button variant="outline" onClick={() => window.open("https://accounts.clerk.dev", "_blank", "noopener,noreferrer")}>
                 {t("settings.manage_account")}
               </Button>
             </CardContent>

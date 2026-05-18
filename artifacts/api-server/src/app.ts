@@ -8,7 +8,7 @@ import { generalLimiter } from "./middlewares/rateLimiter";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { isAllowedOrigin } from "./lib/allowedOrigins";
-import { pruneAnalyticsEvents } from "./lib/trackEvent";
+import { pruneAnalyticsEvents, sanitizeAnalyticsMetadata } from "./lib/trackEvent";
 
 const app: Express = express();
 app.set("etag", false);
@@ -209,7 +209,8 @@ if (process.env.NODE_ENV === "production") {
         expires_in_seconds: 60,
       });
       if (!tokenRes.ok) {
-        logger.error({ status: tokenRes.status, body: (await tokenRes.text()).substring(0, 200) }, "[ticket] sign_in_token failed");
+        await tokenRes.text();
+        logger.error({ status: tokenRes.status }, "[ticket] sign_in_token failed");
         return false;
       }
       const { token: ticket } = JSON.parse(await tokenRes.text());
@@ -226,7 +227,7 @@ if (process.env.NODE_ENV === "production") {
       );
       const ticketBody = await ticketRes.text();
       if (!ticketRes.ok) {
-        logger.error({ status: ticketRes.status, body: ticketBody.substring(0, 300) }, "[ticket] sign-in failed");
+        logger.error({ status: ticketRes.status }, "[ticket] sign-in failed");
         return false;
       }
 
@@ -413,7 +414,7 @@ app.post("/api/analytics/pageview", async (req, res) => {
       await db.insert(analyticsEvents).values({
         userId: `visitor_${visitorId.slice(0, 36)}`,
         eventType: "page_view",
-        metadata: { path: typeof pagePath === "string" ? pagePath : "/", device },
+        metadata: sanitizeAnalyticsMetadata({ path: typeof pagePath === "string" ? pagePath : "/", device }),
       });
       await pruneAnalyticsEvents(`visitor_${visitorId.slice(0, 36)}`);
     }

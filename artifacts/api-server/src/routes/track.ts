@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db, anonymousSessions, analyticsEvents } from "@workspace/db";
-import { pruneAnalyticsEvents } from "../lib/trackEvent";
+import { pruneAnalyticsEvents, sanitizeAnalyticsMetadata } from "../lib/trackEvent";
 
 const router = Router();
 
@@ -12,28 +12,12 @@ function cleanSessionId(value: unknown): string | null {
   return trimmed;
 }
 
-function cleanMetadata(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  try {
-    const serialized = JSON.stringify(value);
-    if (serialized.length > 12000) {
-      return {
-        truncated: true,
-        originalSize: serialized.length,
-      };
-    }
-    return JSON.parse(serialized) as Record<string, unknown>;
-  } catch {
-    return {};
-  }
-}
-
 router.post("/track", async (req, res) => {
   try {
     const sessionId = cleanSessionId(req.body?.sessionId) ?? cleanSessionId(req.headers["x-aido-session-id"]);
     const event = typeof req.body?.event === "string" ? req.body.event.trim().slice(0, 120) : "";
     const testMode = req.body?.testMode === true || req.headers["x-aido-test-mode"] === "true";
-    const metadata = cleanMetadata(req.body?.metadata);
+    const metadata = sanitizeAnalyticsMetadata(req.body?.metadata) ?? {};
     const timestamp = req.body?.timestamp ? new Date(String(req.body.timestamp)) : new Date();
     const safeTimestamp = Number.isNaN(timestamp.getTime()) ? new Date() : timestamp;
 

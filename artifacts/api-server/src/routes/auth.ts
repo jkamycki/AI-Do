@@ -69,8 +69,8 @@ router.post("/auth/test-signin", testSigninLimiter, async (_req, res) => {
       `/v1/users?email_address=${encodeURIComponent(testEmail)}`,
     );
     if (!findRes.ok) {
-      const detail = (await findRes.text()).slice(0, 300);
-      logger.warn({ status: findRes.status, detail }, "test-signin: lookup failed");
+      await findRes.text();
+      logger.warn({ status: findRes.status }, "test-signin: lookup failed");
       res.status(502).json({ error: "Could not query Clerk." });
       return;
     }
@@ -89,8 +89,8 @@ router.post("/auth/test-signin", testSigninLimiter, async (_req, res) => {
         },
       });
       if (!createRes.ok) {
-        const detail = (await createRes.text()).slice(0, 300);
-        logger.warn({ status: createRes.status, detail }, "test-signin: create failed");
+        await createRes.text();
+        logger.warn({ status: createRes.status }, "test-signin: create failed");
         res.status(502).json({ error: "Could not create test user." });
         return;
       }
@@ -110,8 +110,8 @@ router.post("/auth/test-signin", testSigninLimiter, async (_req, res) => {
       body: { user_id: userId, expires_in_seconds: 300 },
     });
     if (!tokenRes.ok) {
-      const detail = (await tokenRes.text()).slice(0, 300);
-      logger.warn({ status: tokenRes.status, detail }, "test-signin: token failed");
+      await tokenRes.text();
+      logger.warn({ status: tokenRes.status }, "test-signin: token failed");
       res.status(502).json({ error: "Could not issue sign-in token." });
       return;
     }
