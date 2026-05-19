@@ -215,7 +215,7 @@ function NextPaymentDisplay({
   if (!date) return <span className="text-muted-foreground text-xs">-</span>;
   const daysUntil = daysUntilDate(date);
   const isOverdue = daysUntil < 0;
-  const tone = toneClass ?? "border-red-200 bg-red-50 text-red-700 dark:border-red-800/50 dark:bg-red-950/30 dark:text-red-300";
+  const tone = toneClass ?? "border-red-200 bg-background/55 text-red-700 dark:border-red-800/50 dark:bg-transparent dark:text-red-300";
   const dueLabel = isOverdue
     ? `${t("vendors.payment_overdue_banner", { n: Math.abs(daysUntil), defaultValue: `Payment overdue by ${Math.abs(daysUntil)} day(s)` })} - ${formatDate(date)}`
     : daysUntil === 0
