@@ -440,7 +440,7 @@ export function Sidebar() {
         onChange={handlePicChange}
       />
 
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background dark:bg-card border-b border-primary/10 dark:border-primary/20 z-50 flex items-center px-3">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-card border-b border-primary/10 dark:border-primary/20 z-50 flex items-center px-3">
         <Button
           variant="ghost"
           size="icon"
@@ -464,7 +464,7 @@ export function Sidebar() {
           sessionStorage.setItem("aido_sidebar_scroll", String((e.target as HTMLDivElement).scrollTop));
         }}
         className={`
-          fixed top-0 left-0 h-full w-64 bg-card border-r dark:border-border z-50 transform transition-transform duration-300 ease-in-out pt-16 md:pt-0
+          fixed top-0 left-0 h-full w-64 bg-white border-r border-primary/10 dark:bg-card dark:border-border z-50 transform transition-transform duration-300 ease-in-out pt-16 md:pt-0
           flex flex-col overflow-y-auto
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
