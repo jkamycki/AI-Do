@@ -208,20 +208,19 @@ export default function PublicWebsite() {
     if (data) {
       const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
       const description = (data.customText.welcome || data.customText.story || `Join us as we celebrate our wedding.`).slice(0, 160);
-      const heroAbsolute = data.heroImage
-        ? (data.heroImage.startsWith("/objects/") ? `${window.location.origin}/api/storage${data.heroImage}` : data.heroImage)
-        : null;
+      const previewImage = `${window.location.origin}/opengraph.jpg`;
       document.title = `${couple} — Wedding`;
       setMeta("description", description);
       setMeta("og:title", `${couple} — Wedding`, true);
       setMeta("og:description", description, true);
       setMeta("og:type", "website", true);
       setMeta("og:url", window.location.href, true);
-      if (heroAbsolute) {
-        setMeta("og:image", heroAbsolute, true);
-        setMeta("twitter:image", heroAbsolute);
-      }
-      setMeta("twitter:card", heroAbsolute ? "summary_large_image" : "summary");
+      setMeta("og:image", previewImage, true);
+      setMeta("og:image:secure_url", previewImage, true);
+      setMeta("og:image:width", "1200", true);
+      setMeta("og:image:height", "630", true);
+      setMeta("twitter:image", previewImage);
+      setMeta("twitter:card", "summary_large_image");
       setMeta("twitter:title", `${couple} — Wedding`);
       setMeta("twitter:description", description);
     } else {
