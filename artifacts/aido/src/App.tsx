@@ -1300,7 +1300,7 @@ function ProtectedRoute({ component: Component, fullWidth = false }: { component
 
   if (!isLoaded) {
     return (
-      <div className="dark min-h-screen bg-background text-foreground flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         Loading...
       </div>
     );
@@ -1813,7 +1813,7 @@ class AppErrorBoundary extends Component<
       const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform);
       const shortcut = isMac ? "Cmd + Shift + R" : "Ctrl + Shift + R";
       return (
-        <div className="dark min-h-screen bg-background text-foreground flex flex-col items-center justify-center gap-4 text-center p-8">
+        <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center gap-4 text-center p-8">
           <h1 className="text-2xl font-semibold">
             {isStale ? "This page needs to be refreshed" : "Something went wrong"}
           </h1>

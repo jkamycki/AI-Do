@@ -42,6 +42,7 @@ export interface RetrievedEmail {
 }
 
 const AIDO_WEBSITE_URL = "https://aidowedding.net";
+const AIDO_WEBSITE_LIGHT_URL = `${AIDO_WEBSITE_URL}?theme=light`;
 const AIDO_LOGO_URL = `${AIDO_WEBSITE_URL}/logo.png`;
 const AIDO_SIGNATURE_MARKER = "data-aido-email-signature";
 
@@ -60,15 +61,15 @@ function textToEmailHtml(text: string): string {
 
 function buildPortalHtmlSignature(): string {
   return `
-<div ${AIDO_SIGNATURE_MARKER}="true" style="margin-top:32px;padding-top:18px;border-top:1px solid #ead8cf;font-family:Arial,Helvetica,sans-serif;color:#6f4b5a;font-size:13px;line-height:1.5;">
-  <a href="${AIDO_WEBSITE_URL}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;text-decoration:none;color:#8d294d;font-weight:700;">
-    <img src="${AIDO_LOGO_URL}" alt="A.IDO" width="92" style="display:block;width:92px;max-width:92px;height:auto;border:0;margin:0 0 8px;" />
+<div ${AIDO_SIGNATURE_MARKER}="true" style="margin-top:32px;padding:18px 0 0;border-top:1px solid #ead8cf;font-family:Arial,Helvetica,sans-serif;color:#6f4b5a;font-size:13px;line-height:1.5;color-scheme:light;background:#fffaf7;">
+  <a href="${AIDO_WEBSITE_LIGHT_URL}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;color:#8d294d;font-weight:700;background:#fffaf7;border-radius:12px;padding:8px 10px 6px 0;">
+    <img src="${AIDO_LOGO_URL}" alt="A.IDO" width="92" style="display:block;width:92px;max-width:92px;height:auto;border:0;margin:0;outline:none;text-decoration:none;background:#fffaf7;color:#8d294d;" />
   </a>
   <div>
-    Sent with <a href="${AIDO_WEBSITE_URL}" target="_blank" rel="noopener noreferrer" style="color:#8d294d;font-weight:700;text-decoration:none;">A.IDO</a>
+    Sent with <a href="${AIDO_WEBSITE_LIGHT_URL}" target="_blank" rel="noopener noreferrer" style="color:#8d294d;font-weight:700;text-decoration:none;">A.IDO</a>
   </div>
   <div>
-    <a href="${AIDO_WEBSITE_URL}" target="_blank" rel="noopener noreferrer" style="color:#8d294d;text-decoration:underline;">${AIDO_WEBSITE_URL}</a>
+    <a href="${AIDO_WEBSITE_LIGHT_URL}" target="_blank" rel="noopener noreferrer" style="color:#8d294d;text-decoration:underline;">${AIDO_WEBSITE_URL}</a>
   </div>
 </div>`;
 }
@@ -76,7 +77,7 @@ function buildPortalHtmlSignature(): string {
 function appendPortalSignature(text: string, html?: string): { text: string; html: string } {
   const signedText = text.includes("Sent with A.IDO")
     ? text
-    : `${text.trimEnd()}\n\n--\nSent with A.IDO\n${AIDO_WEBSITE_URL}`;
+    : `${text.trimEnd()}\n\n--\nSent with A.IDO\n${AIDO_WEBSITE_LIGHT_URL}`;
 
   const sourceHtml = html?.trim() ? html : textToEmailHtml(text);
   if (sourceHtml.includes(AIDO_SIGNATURE_MARKER) || sourceHtml.includes(AIDO_LOGO_URL)) {
