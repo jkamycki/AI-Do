@@ -41,6 +41,56 @@ export interface RetrievedEmail {
   to?: string[];
 }
 
+const AIDO_WEBSITE_URL = "https://aidowedding.net";
+const AIDO_LOGO_URL = `${AIDO_WEBSITE_URL}/logo.png`;
+const AIDO_SIGNATURE_MARKER = "data-aido-email-signature";
+
+function escapeEmailHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
+function textToEmailHtml(text: string): string {
+  return `<div style="font-family:Arial,Helvetica,sans-serif;color:#3a1826;font-size:15px;line-height:1.55;white-space:pre-wrap;">${escapeEmailHtml(text)}</div>`;
+}
+
+function buildPortalHtmlSignature(): string {
+  return `
+<div ${AIDO_SIGNATURE_MARKER}="true" style="margin-top:32px;padding-top:18px;border-top:1px solid #ead8cf;font-family:Arial,Helvetica,sans-serif;color:#6f4b5a;font-size:13px;line-height:1.5;">
+  <a href="${AIDO_WEBSITE_URL}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;text-decoration:none;color:#8d294d;font-weight:700;">
+    <img src="${AIDO_LOGO_URL}" alt="A.IDO" width="92" style="display:block;width:92px;max-width:92px;height:auto;border:0;margin:0 0 8px;" />
+  </a>
+  <div>
+    Sent with <a href="${AIDO_WEBSITE_URL}" target="_blank" rel="noopener noreferrer" style="color:#8d294d;font-weight:700;text-decoration:none;">A.IDO</a>
+  </div>
+  <div>
+    <a href="${AIDO_WEBSITE_URL}" target="_blank" rel="noopener noreferrer" style="color:#8d294d;text-decoration:underline;">${AIDO_WEBSITE_URL}</a>
+  </div>
+</div>`;
+}
+
+function appendPortalSignature(text: string, html?: string): { text: string; html: string } {
+  const signedText = text.includes("Sent with A.IDO")
+    ? text
+    : `${text.trimEnd()}\n\n--\nSent with A.IDO\n${AIDO_WEBSITE_URL}`;
+
+  const sourceHtml = html?.trim() ? html : textToEmailHtml(text);
+  if (sourceHtml.includes(AIDO_SIGNATURE_MARKER) || sourceHtml.includes(AIDO_LOGO_URL)) {
+    return { text: signedText, html: sourceHtml };
+  }
+
+  const signature = buildPortalHtmlSignature();
+  const signedHtml = /<\/body\s*>/i.test(sourceHtml)
+    ? sourceHtml.replace(/<\/body\s*>/i, `${signature}</body>`)
+    : `${sourceHtml}${signature}`;
+
+  return { text: signedText, html: signedHtml };
+}
+
 /** Fetch full inbound email body from Resend by email_id (webhook only sends metadata). */
 export async function getEmail(emailId: string): Promise<RetrievedEmail | null> {
   const apiKey = process.env.RESEND_API_KEY;
@@ -83,12 +133,14 @@ export async function sendEmail(p: SendEmailParams): Promise<SendEmailResult> {
     logger.warn({ requestedFrom, fallbackFrom: FROM_EMAIL }, "sendEmail: non-verified from domain replaced");
   }
 
+  const signedContent = appendPortalSignature(p.text, p.html);
+
   const body: Record<string, unknown> = {
     from: `${fromName} <${fromEmail}>`,
     to: [p.to],
     reply_to: p.replyTo ?? fromEmail,
     subject: p.subject,
-    text: p.text,
+    text: signedContent.text,
   };
   const headers: Record<string, string> = {
     "X-Auto-Response-Suppress": "All",
@@ -97,7 +149,7 @@ export async function sendEmail(p: SendEmailParams): Promise<SendEmailResult> {
   };
   if (p.bcc) body.bcc = Array.isArray(p.bcc) ? p.bcc : [p.bcc];
   if (p.cc) body.cc = Array.isArray(p.cc) ? p.cc : [p.cc];
-  if (p.html) body.html = p.html;
+  body.html = signedContent.html;
   body.headers = headers;
   if (p.attachments && p.attachments.length > 0) {
     body.attachments = p.attachments.map((a) => ({
