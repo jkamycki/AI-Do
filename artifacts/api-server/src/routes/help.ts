@@ -11,6 +11,11 @@ const OWNER_EMAILS = [process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com"];
 
 const router = Router();
 
+function isMissingSupportTicketStorageError(err: unknown): boolean {
+  const pgError = err as { code?: string; message?: string };
+  return pgError.code === "42P01" || pgError.code === "42703" || /support_tickets/i.test(pgError.message ?? "");
+}
+
 router.post("/help/contact", requireAuth, async (req, res) => {
   try {
     const { name, email, subject, message } = req.body as {
@@ -423,6 +428,9 @@ router.get("/help/support-tickets", requireAuth, async (req, res) => {
     });
   } catch (err) {
     req.log.error(err, "Failed to fetch support tickets");
+    if (isMissingSupportTicketStorageError(err)) {
+      return res.json({ tickets: [] });
+    }
     res.status(500).json({ error: "Internal server error" });
   }
 });
