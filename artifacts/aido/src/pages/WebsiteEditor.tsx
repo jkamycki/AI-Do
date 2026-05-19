@@ -23,6 +23,12 @@ import { EDITABLE_HIDDEN_MARKER, isEditableHiddenMarker } from "@/components/web
 import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 import { qrSvgDataUrl } from "@/lib/localQr";
+import {
+  DEFAULT_RSVP_MEAL_OPTIONS,
+  normalizeMealOptions,
+  optionValueFromLabel,
+  type MealOption,
+} from "@/lib/mealOptions";
 
 interface WebsiteRecord extends WebsiteRendererPayload {
   id: number;
@@ -39,6 +45,8 @@ type HotelOption = NonNullable<WebsiteRendererPayload["hotelOptions"]>[number];
 interface InvitationHotelSettings {
   rsvpAskHotel: boolean;
   rsvpHotelBlockId: string;
+  rsvpMealOptions: MealOption[];
+  customColors: Record<string, unknown>;
 }
 
 // 10 themes (preset color + font combos) — shared with InvitationCustomization.
@@ -244,6 +252,7 @@ export default function WebsiteEditor() {
   const [profileId, setProfileId] = useState<number | null>(null);
   const [hotelBlocks, setHotelBlocks] = useState<HotelOption[]>([]);
   const [invitationHotelSettings, setInvitationHotelSettings] = useState<InvitationHotelSettings | null>(null);
+  const [newMealOption, setNewMealOption] = useState("");
   useEffect(() => {
     if (!record) return;
     let cancelled = false;
@@ -279,10 +288,13 @@ export default function WebsiteEditor() {
       try {
         const r = await authFetch(`/api/invitation-customizations?profileId=${profileId}`);
         if (cancelled || !r.ok) return;
-        const body = (await r.json()) as { customColors?: { rsvpAskHotel?: boolean; rsvpHotelBlockId?: number | null } | null };
+        const body = (await r.json()) as { customColors?: Record<string, unknown> | null };
+        const customColors = body.customColors ?? {};
         setInvitationHotelSettings({
-          rsvpAskHotel: body.customColors?.rsvpAskHotel === true,
-          rsvpHotelBlockId: body.customColors?.rsvpHotelBlockId ? String(body.customColors.rsvpHotelBlockId) : "all",
+          rsvpAskHotel: customColors.rsvpAskHotel === true,
+          rsvpHotelBlockId: customColors.rsvpHotelBlockId ? String(customColors.rsvpHotelBlockId) : "all",
+          rsvpMealOptions: normalizeMealOptions(customColors.rsvpMealOptions),
+          customColors,
         });
       } catch {
         if (!cancelled) setInvitationHotelSettings(null);
@@ -467,6 +479,34 @@ export default function WebsiteEditor() {
     editSeqRef.current += 1;
   }, [queueHistory]);
 
+  const saveInvitationMealOptions = useCallback(async (mealOptions: MealOption[]) => {
+    if (!profileId) return;
+    const normalized = normalizeMealOptions(mealOptions);
+    const customColors = {
+      ...(invitationHotelSettings?.customColors ?? {}),
+      rsvpMealOptions: normalized,
+    };
+    setInvitationHotelSettings((prev) => ({
+      rsvpAskHotel: prev?.rsvpAskHotel ?? false,
+      rsvpHotelBlockId: prev?.rsvpHotelBlockId ?? "all",
+      customColors,
+      rsvpMealOptions: normalized,
+    }));
+    try {
+      const r = await authFetch("/api/invitation-customizations", {
+        method: "POST",
+        body: JSON.stringify({ profileId, customColors }),
+      });
+      if (!r.ok) throw new Error("Failed to save meal choices");
+    } catch (err) {
+      toast({
+        title: "Failed to save meal choices",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [invitationHotelSettings?.customColors, profileId, toast]);
+
   // Must be declared above any early return so the hook count stays stable.
   const livePreview = useMemo<WebsiteRendererPayload | null>(() => {
     if (!record) return null;
@@ -493,6 +533,7 @@ export default function WebsiteEditor() {
       heroImage: record.heroImage,
       portalParty: record.portalParty,
       hotelOptions: hotelBlocks,
+      mealOptions: normalizeMealOptions(invitationHotelSettings?.rsvpMealOptions ?? DEFAULT_RSVP_MEAL_OPTIONS),
       couple: previewExtra?.couple ?? {
         partner1Name: "",
         partner2Name: "",
@@ -1241,6 +1282,7 @@ export default function WebsiteEditor() {
     record.customText._rsvpHotelBlockId ||
     (invitationHotelSettings?.rsvpHotelBlockId !== "all" ? invitationHotelSettings?.rsvpHotelBlockId : undefined) ||
     "all";
+  const editorMealOptions = normalizeMealOptions(invitationHotelSettings?.rsvpMealOptions ?? DEFAULT_RSVP_MEAL_OPTIONS);
 
   return (
     <div className="flex min-h-[100dvh] flex-col overflow-x-hidden lg:h-screen lg:min-h-0 lg:flex-row relative">
@@ -2493,6 +2535,99 @@ export default function WebsiteEditor() {
                         This is turned on, but guests will not see the hotel question until you add a hotel block in the Hotels tab.
                       </p>
                     )}
+              </div>
+              <div className="rounded-md border bg-muted/30 p-3 space-y-3">
+                <div>
+                  <p className="text-sm font-medium">Meal choices</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    These options appear in the website RSVP form for guests and plus-ones.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {editorMealOptions.map((option, index) => (
+                    <div key={option.value} className="flex items-center gap-2">
+                      <Input
+                        value={option.label}
+                        onChange={(event) => {
+                          const label = event.target.value;
+                          const next = editorMealOptions.map((item, itemIndex) =>
+                            itemIndex === index ? { ...item, label } : item,
+                          );
+                          setInvitationHotelSettings((prev) => ({
+                            rsvpAskHotel: prev?.rsvpAskHotel ?? false,
+                            rsvpHotelBlockId: prev?.rsvpHotelBlockId ?? "all",
+                            customColors: prev?.customColors ?? {},
+                            rsvpMealOptions: next,
+                          }));
+                        }}
+                        onBlur={() => saveInvitationMealOptions(editorMealOptions)}
+                        className="h-8 text-sm"
+                        aria-label={`Meal choice ${index + 1}`}
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="h-8 w-8 shrink-0"
+                        disabled={editorMealOptions.length <= 1}
+                        onClick={() => {
+                          if (editorMealOptions.length <= 1) return;
+                          void saveInvitationMealOptions(editorMealOptions.filter((_, itemIndex) => itemIndex !== index));
+                        }}
+                        aria-label={`Remove ${option.label || "meal choice"}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newMealOption}
+                    onChange={(event) => setNewMealOption(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter") return;
+                      event.preventDefault();
+                      const label = newMealOption.trim();
+                      if (!label) return;
+                      void saveInvitationMealOptions([
+                        ...editorMealOptions,
+                        { value: optionValueFromLabel(label, editorMealOptions), label },
+                      ]);
+                      setNewMealOption("");
+                    }}
+                    placeholder="Add meal choice"
+                    className="h-8 text-sm"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1.5 shrink-0"
+                    disabled={!newMealOption.trim() || editorMealOptions.length >= 12}
+                    onClick={() => {
+                      const label = newMealOption.trim();
+                      if (!label) return;
+                      void saveInvitationMealOptions([
+                        ...editorMealOptions,
+                        { value: optionValueFromLabel(label, editorMealOptions), label },
+                      ]);
+                      setNewMealOption("");
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add
+                  </Button>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-xs"
+                  onClick={() => void saveInvitationMealOptions(DEFAULT_RSVP_MEAL_OPTIONS)}
+                >
+                  Reset meal choices
+                </Button>
               </div>
             </div>
           </Section>
