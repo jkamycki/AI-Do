@@ -778,9 +778,10 @@ export default function MoodBoard() {
 
       // ── Header ─────────────────────────────────────────────────────────────
       // A.IDO logo — pinned to the very top-right corner of the page
-      const LOGO_SIZE = 100;
+      const LOGO_W = 90;
+      const LOGO_H = 100;
       if (logoDataUrl) {
-        doc.addImage(logoDataUrl, "PNG", PAGE_W - 10 - LOGO_SIZE, 10, LOGO_SIZE, LOGO_SIZE);
+        doc.addImage(logoDataUrl, "PNG", PAGE_W - 10 - LOGO_W, 10, LOGO_W, LOGO_H);
       }
 
       // Couple names (large, centered)

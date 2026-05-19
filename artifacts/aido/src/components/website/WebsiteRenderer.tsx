@@ -3471,7 +3471,7 @@ function BrandingFooter() {
         className="inline-flex items-center gap-2.5 text-sm hover:text-white transition-colors group"
       >
         <span className="opacity-70">Built with</span>
-        <img src="/logo.png" alt="A.IDO" className="h-9 w-9 rounded-full" />
+        <img src="/logo.png" alt="A.IDO" className="h-10 w-auto object-contain" />
         <span
           className="font-semibold tracking-wide text-base"
           style={{ color: "#F3C6D3" }}

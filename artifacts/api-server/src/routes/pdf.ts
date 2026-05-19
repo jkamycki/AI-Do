@@ -90,10 +90,10 @@ function drawHeader(doc: InstanceType<typeof PDFDocument>, subtitle: string) {
   const logo = getLogoBuffer();
   let textX = 48;
   if (logo) {
-    // Embed the real A.IDO logo (44pt square) on the left
+    // Embed the real A.IDO logo without distorting its portrait proportions.
     try {
-      doc.image(logo, 36, 16, { width: 44, height: 44 });
-      textX = 92;
+      doc.image(logo, 28, 10, { fit: [58, 56] });
+      textX = 94;
     } catch {
       // If pdfkit can't decode for any reason, fall back to text-only header
       textX = 48;

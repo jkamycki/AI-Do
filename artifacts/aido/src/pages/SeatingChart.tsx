@@ -1053,11 +1053,12 @@ export default function SeatingChartPage() {
       } catch { /* logo failure is non-fatal */ }
 
       // Sized to look balanced at letter scale â€” not too small, not too big.
-      const LOGO_SIZE = 48;
+      const LOGO_H = 48;
+      const LOGO_W = 43;
       const placeLogo = () => {
         if (!logoDataUrl) return;
         try {
-          doc.addImage(logoDataUrl, "PNG", pageW - margin - LOGO_SIZE, margin - 8, LOGO_SIZE, LOGO_SIZE);
+          doc.addImage(logoDataUrl, "PNG", pageW - margin - LOGO_W, margin - 8, LOGO_W, LOGO_H);
         } catch { /* ignore PNG-read issues */ }
       };
 
@@ -1139,8 +1140,8 @@ export default function SeatingChartPage() {
           // stays consistent without repeating the full title block
           doc.setDrawColor(...GOLD);
           doc.setLineWidth(0.6);
-          doc.line(margin, margin + LOGO_SIZE + 6, pageW - margin, margin + LOGO_SIZE + 6);
-          leftY = margin + LOGO_SIZE + 22;
+          doc.line(margin, margin + LOGO_H + 6, pageW - margin, margin + LOGO_H + 6);
+          leftY = margin + LOGO_H + 22;
           rightY = leftY;
           chosen = 0;
         }
