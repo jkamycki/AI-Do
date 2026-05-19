@@ -645,14 +645,14 @@ export default function Budget() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t("budget.col_vendor")}</TableHead>
-                    <TableHead>{t("budget.col_category")}</TableHead>
-                    <TableHead className="text-right">{t("budget.col_total_cost")}</TableHead>
-                    <TableHead className="text-right">{t("budget.col_paid")}</TableHead>
-                    <TableHead className="text-right">{t("budget.col_remaining")}</TableHead>
-                    <TableHead>{t("budget.col_next_payment")}</TableHead>
-                    <TableHead className="min-w-[180px]">{t("budget.col_progress")}</TableHead>
-                    <TableHead className="text-right">{t("budget.col_view")}</TableHead>
+                    <TableHead className="font-bold">{t("budget.col_vendor")}</TableHead>
+                    <TableHead className="font-bold">{t("budget.col_category")}</TableHead>
+                    <TableHead className="text-right font-bold">{t("budget.col_total_cost")}</TableHead>
+                    <TableHead className="text-right font-bold">{t("budget.col_paid")}</TableHead>
+                    <TableHead className="text-right font-bold">{t("budget.col_remaining")}</TableHead>
+                    <TableHead className="font-bold">{t("budget.col_next_payment")}</TableHead>
+                    <TableHead className="min-w-[180px] font-bold">{t("budget.col_progress")}</TableHead>
+                    <TableHead className="text-right font-bold">{t("budget.col_view")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -750,15 +750,15 @@ export default function Budget() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t("budget.col_expense")}</TableHead>
-                    <TableHead>{t("budget.col_category")}</TableHead>
-                    <TableHead className="text-right">{t("budget.col_cost")}</TableHead>
-                    <TableHead className="text-right">{t("budget.col_paid")}</TableHead>
-                    <TableHead className="text-right">{t("budget.col_remaining")}</TableHead>
-                    <TableHead>{t("budget.col_next_payment")}</TableHead>
-                    <TableHead className="min-w-[180px]">{t("budget.col_progress")}</TableHead>
-                    <TableHead>{t("budget.receipt_label")}</TableHead>
-                    <TableHead className="text-right">{t("budget.col_actions")}</TableHead>
+                    <TableHead className="font-bold">{t("budget.col_expense")}</TableHead>
+                    <TableHead className="font-bold">{t("budget.col_category")}</TableHead>
+                    <TableHead className="text-right font-bold">{t("budget.col_cost")}</TableHead>
+                    <TableHead className="text-right font-bold">{t("budget.col_paid")}</TableHead>
+                    <TableHead className="text-right font-bold">{t("budget.col_remaining")}</TableHead>
+                    <TableHead className="font-bold">{t("budget.col_next_payment")}</TableHead>
+                    <TableHead className="min-w-[180px] font-bold">{t("budget.col_progress")}</TableHead>
+                    <TableHead className="font-bold">{t("budget.receipt_label")}</TableHead>
+                    <TableHead className="text-right font-bold">{t("budget.col_actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
