@@ -33,6 +33,14 @@ const BETA_FEEDBACK_SUBMITTED_KEY = "aido-beta-feedback-submitted";
 const BETA_FEEDBACK_DISMISSED_UNTIL_KEY = "aido-beta-feedback-dismissed-until";
 const BETA_FEEDBACK_ACTIVE_MS_KEY = "aido-beta-feedback-engaged-ms-v2";
 
+function AriaRobotAvatar({ className = "" }: { className?: string }) {
+  return (
+    <div className={`rounded-full bg-white border border-primary/15 shadow-sm overflow-hidden flex items-center justify-center ${className}`}>
+      <img src="/aria-avatar.png" alt="Aria" className="h-full w-full object-cover" />
+    </div>
+  );
+}
+
 export function SupportChat() {
   const { t } = useTranslation();
   const { data: profile } = useGetProfile();
@@ -377,7 +385,7 @@ export function SupportChat() {
           {open ? (
             <ChevronDown className="h-6 w-6 text-white" />
           ) : (
-            <Sparkles className="h-6 w-6 text-white" />
+            <AriaRobotAvatar className="h-11 w-11" />
           )}
           {hasUnread && !open && (
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full border-2 border-white" />
@@ -401,9 +409,7 @@ export function SupportChat() {
         style={{ maxWidth: "calc(100vw - 3rem)" }}
       >
         <div className="flex items-center gap-3 px-4 py-3.5 bg-primary text-primary-foreground flex-shrink-0">
-          <div className="w-9 h-9 rounded-full bg-primary-foreground/15 flex items-center justify-center flex-shrink-0">
-            <Sparkles className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <AriaRobotAvatar className="h-9 w-9 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm leading-tight text-primary-foreground">Aria</p>
             <p className="text-xs text-primary-foreground/80">{t("support_chat.subtitle", { defaultValue: "A.IDO Support Assistant · Always here" })}</p>
@@ -430,9 +436,7 @@ export function SupportChat() {
           {messages.map(msg => (
             <div key={msg.id} className={`flex gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
               {msg.role === "assistant" && (
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
-                </div>
+                <AriaRobotAvatar className="h-7 w-7 flex-shrink-0 mt-0.5" />
               )}
               <div
                 className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed
