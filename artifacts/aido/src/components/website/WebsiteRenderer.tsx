@@ -139,6 +139,84 @@ export interface WebsiteRendererPayload {
   // timeline removed — wedding website schedule is entered directly by the couple
 }
 
+export type WebsiteRenderDevice = "desktop" | "mobile";
+export const WEBSITE_DEVICE_OVERRIDES_KEY = "_deviceOverrides";
+
+type WebsiteDeviceOverride = Partial<
+  Pick<
+    WebsiteRendererPayload,
+    | "theme"
+    | "layoutStyle"
+    | "font"
+    | "accentColor"
+    | "colorPalette"
+    | "sectionsEnabled"
+    | "customText"
+    | "textStyles"
+    | "textPositions"
+    | "galleryImages"
+    | "heroImages"
+    | "heroImage"
+  >
+>;
+
+export type WebsiteDeviceOverrides = Partial<Record<WebsiteRenderDevice, WebsiteDeviceOverride>>;
+
+export function parseWebsiteDeviceOverrides(customText?: Record<string, string>): WebsiteDeviceOverrides {
+  const raw = customText?.[WEBSITE_DEVICE_OVERRIDES_KEY];
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? (parsed as WebsiteDeviceOverrides) : {};
+  } catch {
+    return {};
+  }
+}
+
+function stripDeviceOverrideMarker(customText: Record<string, string> | undefined): Record<string, string> | undefined {
+  if (!customText || !(WEBSITE_DEVICE_OVERRIDES_KEY in customText)) return customText;
+  const { [WEBSITE_DEVICE_OVERRIDES_KEY]: _marker, ...rest } = customText;
+  void _marker;
+  return rest;
+}
+
+export function applyWebsiteDeviceOverrides<T extends WebsiteRendererPayload>(
+  data: T,
+  device: WebsiteRenderDevice,
+): T {
+  const overrides = parseWebsiteDeviceOverrides(data.customText);
+  const override = overrides[device];
+  if (!override) {
+    return {
+      ...data,
+      customText: stripDeviceOverrideMarker(data.customText) ?? data.customText,
+    };
+  }
+
+  return {
+    ...data,
+    ...override,
+    colorPalette: override.colorPalette
+      ? { ...data.colorPalette, ...override.colorPalette }
+      : data.colorPalette,
+    sectionsEnabled: override.sectionsEnabled
+      ? { ...data.sectionsEnabled, ...override.sectionsEnabled }
+      : data.sectionsEnabled,
+    customText: {
+      ...stripDeviceOverrideMarker(data.customText),
+      ...stripDeviceOverrideMarker(override.customText),
+    },
+    textStyles: {
+      ...(data.textStyles ?? {}),
+      ...(override.textStyles ?? {}),
+    },
+    textPositions: {
+      ...(data.textPositions ?? {}),
+      ...(override.textPositions ?? {}),
+    },
+  };
+}
+
 function formatWeddingDate(dateStr: string): string {
   if (!dateStr) return "";
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -3774,7 +3852,7 @@ function TopNav({
 }
 
 export function WebsiteRenderer({
-  data,
+  data: rawData,
   scrollContainer,
   editable = false,
   onTextChange,
@@ -3787,6 +3865,7 @@ export function WebsiteRenderer({
   slug,
   password,
   previewMode = false,
+  renderDevice,
 }: {
   data: WebsiteRendererPayload;
   scrollContainer?: HTMLElement | null;
@@ -3809,7 +3888,21 @@ export function WebsiteRenderer({
   password?: string | null;
   // Force scroll-based nav even when slug is provided (used by editor guest preview)
   previewMode?: boolean;
+  renderDevice?: WebsiteRenderDevice;
 }) {
+  const [detectedDevice, setDetectedDevice] = useState<WebsiteRenderDevice>(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? "mobile" : "desktop",
+  );
+  useEffect(() => {
+    if (renderDevice || typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 767px)");
+    const updateDevice = () => setDetectedDevice(media.matches ? "mobile" : "desktop");
+    updateDevice();
+    media.addEventListener?.("change", updateDevice);
+    return () => media.removeEventListener?.("change", updateDevice);
+  }, [renderDevice]);
+
+  const data = applyWebsiteDeviceOverrides(rawData, renderDevice ?? detectedDevice);
   const ctx: EditCtx =
     editable && onTextChange
       ? {

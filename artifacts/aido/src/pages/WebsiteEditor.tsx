@@ -17,7 +17,17 @@ import {
   QrCode, Download, Link2, Plus, Users, Undo2, Sparkles, Settings, Trash2, Smile,
   Laptop, Move, Smartphone,
 } from "lucide-react";
-import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
+import {
+  WebsiteRenderer,
+  WEBSITE_DEVICE_OVERRIDES_KEY,
+  applyWebsiteDeviceOverrides,
+  parseWebsiteDeviceOverrides,
+  type WebsiteDeviceOverrides,
+  type WebsiteRendererPayload,
+  type WebsiteRenderDevice,
+  parseRegistryLinks,
+  type RegistryLink,
+} from "@/components/website/WebsiteRenderer";
 import { flushPendingEditableCommits, subscribeEditableDrag } from "@/components/website/EditableText";
 import { EDITABLE_HIDDEN_MARKER, isEditableHiddenMarker } from "@/components/website/hiddenMarker";
 import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
@@ -102,6 +112,61 @@ function editableTextFieldValue(value: string | undefined): string {
 
 const LEGACY_PENDING_SAVE_KEY = "aido_website_pending_save_v1";
 const PENDING_SAVE_KEY_PREFIX = "aido_website_pending_save_v2";
+const DEVICE_OVERRIDE_FIELDS = new Set<keyof WebsiteRendererPayload>([
+  "theme",
+  "layoutStyle",
+  "font",
+  "accentColor",
+  "colorPalette",
+  "sectionsEnabled",
+  "customText",
+  "textStyles",
+  "textPositions",
+  "galleryImages",
+  "heroImages",
+  "heroImage",
+]);
+
+function stripDeviceOverridesFromText(customText: Record<string, string> | undefined): Record<string, string> {
+  const { [WEBSITE_DEVICE_OVERRIDES_KEY]: _marker, ...rest } = customText ?? {};
+  void _marker;
+  return rest;
+}
+
+function withDevicePatch(
+  prev: WebsiteRecord,
+  device: WebsiteRenderDevice,
+  patch: Partial<WebsiteRecord>,
+): WebsiteRecord {
+  if (device === "desktop") return { ...prev, ...patch };
+
+  const overrides = parseWebsiteDeviceOverrides(prev.customText);
+  const current = overrides.mobile ?? {};
+  const nextMobile: WebsiteDeviceOverrides["mobile"] = { ...current };
+  const passthrough: Partial<WebsiteRecord> = {};
+
+  for (const [key, value] of Object.entries(patch) as Array<[keyof WebsiteRecord, unknown]>) {
+    if (DEVICE_OVERRIDE_FIELDS.has(key as keyof WebsiteRendererPayload)) {
+      if (key === "customText") {
+        nextMobile.customText = stripDeviceOverridesFromText(value as Record<string, string>);
+      } else {
+        (nextMobile as Record<string, unknown>)[key as string] = value;
+      }
+    } else {
+      (passthrough as Record<string, unknown>)[key as string] = value;
+    }
+  }
+
+  const nextOverrides: WebsiteDeviceOverrides = { ...overrides, mobile: nextMobile };
+  return {
+    ...prev,
+    ...passthrough,
+    customText: {
+      ...prev.customText,
+      [WEBSITE_DEVICE_OVERRIDES_KEY]: JSON.stringify(nextOverrides),
+    },
+  };
+}
 
 // ---------- main ----------
 
@@ -137,6 +202,11 @@ export default function WebsiteEditor() {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; canvasX: number; canvasY: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [urlModalOpen, setUrlModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(max-width: 1023px)").matches) setPreviewDevice("mobile");
+  }, []);
 
   useEffect(() => {
     if (!ctxMenu) return;
@@ -455,7 +525,7 @@ export default function WebsiteEditor() {
   const update = (patch: Partial<WebsiteRecord>) => {
     if (!recordRef.current) return;
     const prev = recordRef.current;
-    const next = { ...prev, ...patch };
+    const next = withDevicePatch(prev, previewDevice, patch);
     queueHistory(prev);
     recordRef.current = next;
     setRecord(next);
@@ -470,14 +540,15 @@ export default function WebsiteEditor() {
   const patchRecord = useCallback((fn: (prev: WebsiteRecord) => Partial<WebsiteRecord>) => {
     if (!recordRef.current) return;
     const prev = recordRef.current;
-    const next = { ...prev, ...fn(prev) };
+    const activePrev = applyWebsiteDeviceOverrides(prev, previewDevice) as WebsiteRecord;
+    const next = withDevicePatch(prev, previewDevice, fn(activePrev));
     queueHistory(prev);
     recordRef.current = next;
     setRecord(next);
     dirtyRef.current = true;
     setDirty(true);
     editSeqRef.current += 1;
-  }, [queueHistory]);
+  }, [previewDevice, queueHistory]);
 
   const saveInvitationMealOptions = useCallback(async (mealOptions: MealOption[]) => {
     if (!profileId) return;
@@ -547,6 +618,11 @@ export default function WebsiteEditor() {
       },
     };
   }, [hotelBlocks, invitationHotelSettings, record, previewExtra?.couple]);
+
+  const editingRecord = useMemo<WebsiteRecord | null>(() => {
+    if (!record) return null;
+    return applyWebsiteDeviceOverrides(record, previewDevice) as WebsiteRecord;
+  }, [previewDevice, record]);
 
   const [saveError, setSaveError] = useState(false);
   // Tracks the most recent server/network error so handleSave can surface it
@@ -1259,7 +1335,7 @@ export default function WebsiteEditor() {
     );
   }
 
-  if (!record) {
+  if (!record || !editingRecord) {
     return (
       <div className="max-w-2xl mx-auto py-16 px-6 text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-6">
@@ -1277,9 +1353,9 @@ export default function WebsiteEditor() {
   }
 
   const inheritedHotelAsk = hotelBlocks.length > 0;
-  const editorHotelAskEnabled = hotelBlocks.length > 0 || record.customText._rsvpAskHotel === "true" || inheritedHotelAsk;
+  const editorHotelAskEnabled = hotelBlocks.length > 0 || editingRecord.customText._rsvpAskHotel === "true" || inheritedHotelAsk;
   const editorHotelBlockId =
-    record.customText._rsvpHotelBlockId ||
+    editingRecord.customText._rsvpHotelBlockId ||
     (invitationHotelSettings?.rsvpHotelBlockId !== "all" ? invitationHotelSettings?.rsvpHotelBlockId : undefined) ||
     "all";
   const editorMealOptions = normalizeMealOptions(invitationHotelSettings?.rsvpMealOptions ?? DEFAULT_RSVP_MEAL_OPTIONS);
@@ -1294,8 +1370,9 @@ export default function WebsiteEditor() {
           {livePreview && (
             <WebsiteRenderer
               data={livePreview}
+              renderDevice="mobile"
               editable
-              slug={record.slug ?? ""}
+              slug={editingRecord.slug ?? ""}
               previewMode
               scrollContainer={mobilePreviewRef.current}
               currentSection={editorSection}
@@ -1338,18 +1415,21 @@ export default function WebsiteEditor() {
                 variant="outline"
                 disabled
                 className={
-                  previewOpen || record.published
+                  previewOpen || editingRecord.published
                     ? "h-7 rounded-full border-[#8D294D] bg-[#8D294D] px-3 text-xs font-semibold text-[#FFF7F2] opacity-100 shadow-sm disabled:opacity-100"
                     : "h-7 rounded-full border-emerald-600 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 opacity-100 shadow-sm disabled:opacity-100"
                 }
               >
                 {previewOpen
                   ? t("website_editor.preview", { defaultValue: "Preview" })
-                  : record.published
+                  : editingRecord.published
                     ? t("website_editor.published", { defaultValue: "Published" })
                     : t("website_editor.editing", { defaultValue: "Editing" })}
               </Button>
             </div>
+            <span className="hidden text-[11px] font-medium text-muted-foreground sm:inline">
+              Editing {previewDevice === "mobile" ? "mobile" : "desktop"} independently
+            </span>
           </div>
           {/* Action toolbar — 2x2 grid. Brand gold backgrounds for the
               affirmative actions (Preview, Publish, Save), green when
@@ -1378,18 +1458,18 @@ export default function WebsiteEditor() {
               onClick={requestPublish}
               disabled={publishing}
               className={
-                record.published
+                editingRecord.published
                   ? "bg-emerald-600 hover:bg-red-600 border-0 group font-bold"
                   : "border-0 font-bold"
               }
               style={
-                record.published
+                editingRecord.published
                   ? { color: "#FFF7F2" }
                   : { background: "#8D294D", color: "#FFF7F2" }
               }
             >
               {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Globe className="h-3.5 w-3.5 mr-1.5" />}
-              {record.published ? (
+              {editingRecord.published ? (
                 <>
                   <span className="group-hover:hidden">{t("website_editor.published", { defaultValue: "Published" })}</span>
                   <span className="hidden group-hover:inline">{t("website_editor.unpublish", { defaultValue: "Unpublish" })}</span>
@@ -1410,7 +1490,7 @@ export default function WebsiteEditor() {
               {t("website_editor.undo", { defaultValue: "Undo" })}
             </Button>
           </div>
-          {record.published && (
+          {editingRecord.published && (
             <div className="mt-3 space-y-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs">
                 <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
@@ -1446,7 +1526,7 @@ export default function WebsiteEditor() {
               </div>
               {qrOpen && (
                 <div className="rounded-md border bg-background p-3">
-                  <QrCodeSection publicUrl={publicUrl} published={record.published} />
+                  <QrCodeSection publicUrl={publicUrl} published={editingRecord.published} />
                 </div>
               )}
             </div>
@@ -1566,8 +1646,8 @@ export default function WebsiteEditor() {
                   { key: "_heroDate",     label: t("website_editor.content_hero_date", { defaultValue: "Hero date" }), placeholder: "Saturday, June 15, 2025" },
                   { key: "_announcement", label: t("website_editor.content_announcement", { defaultValue: "Announcement banner" }), placeholder: "" },
                 ] as const).map(({ key, label, placeholder }) => {
-                  const currentValue = editableTextFieldValue(record.customText[key]);
-                  const onChange = (v: string) => update({ customText: { ...record.customText, [key]: v } });
+                  const currentValue = editableTextFieldValue(editingRecord.customText[key]);
+                  const onChange = (v: string) => update({ customText: { ...editingRecord.customText, [key]: v } });
                   return (
                     <div key={key}>
                       <div className="flex items-center justify-between mb-1">
@@ -1597,8 +1677,8 @@ export default function WebsiteEditor() {
                   { key: "rsvp_subtitle",  label: t("website_editor.content_rsvp_subtitle", { defaultValue: "RSVP subtitle" }) },
                   { key: "rsvp_thankyou",  label: t("website_editor.content_rsvp_thankyou", { defaultValue: "RSVP thank-you message" }) },
                 ] as const).map(({ key, label }) => {
-                  const currentValue = editableTextFieldValue(record.customText[key]);
-                  const onChange = (v: string) => update({ customText: { ...record.customText, [key]: v } });
+                  const currentValue = editableTextFieldValue(editingRecord.customText[key]);
+                  const onChange = (v: string) => update({ customText: { ...editingRecord.customText, [key]: v } });
                   return (
                     <div key={key}>
                       <div className="flex items-center justify-between mb-1">
@@ -1628,9 +1708,9 @@ export default function WebsiteEditor() {
                     {t("website_editor.content_rsvp_deadline", { defaultValue: "RSVP deadline" })}
                   </label>
                   <Input
-                    value={record.customText.rsvp_deadline ?? ""}
+                    value={editingRecord.customText.rsvp_deadline ?? ""}
                     placeholder="May 1, 2025"
-                    onChange={(e) => update({ customText: { ...record.customText, rsvp_deadline: e.target.value } })}
+                    onChange={(e) => update({ customText: { ...editingRecord.customText, rsvp_deadline: e.target.value } })}
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -1674,14 +1754,14 @@ export default function WebsiteEditor() {
               <button
                 key={theme.id}
                 onClick={() => applyTheme(theme.id)}
-                className={`w-full text-left p-3 rounded-lg border transition-all ${record.theme === theme.id ? "border-[#8D294D] bg-[#FFF7F2] ring-2 ring-[#8D294D]/15" : "border-border bg-background hover:border-[#8D294D]/60 hover:bg-[#FFF7F2]/50"}`}
+                className={`w-full text-left p-3 rounded-lg border transition-all ${editingRecord.theme === theme.id ? "border-[#8D294D] bg-[#FFF7F2] ring-2 ring-[#8D294D]/15" : "border-border bg-background hover:border-[#8D294D]/60 hover:bg-[#FFF7F2]/50"}`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-foreground">{theme.name}</div>
                     <div className="mt-1 text-[11px] text-muted-foreground">{theme.font}</div>
                   </div>
-                  {record.theme === theme.id && (
+                  {editingRecord.theme === theme.id && (
                     <span className="rounded-full bg-[#8D294D] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
                       {t("website_editor.theme_selected", { defaultValue: "Selected" })}
                     </span>
@@ -1705,22 +1785,22 @@ export default function WebsiteEditor() {
             {t("website_editor.colors_hint", { defaultValue: "Use these when you want one part of the website to have a custom color." })}
           </p>
           <div className="space-y-2.5">
-            <ColorField label={t("website_editor.color_focus_ring", { defaultValue: "Main accent" })}   value={record.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...record.colorPalette, primary: v }, accentColor: v })} />
-            <ColorField label={t("website_editor.color_background", { defaultValue: "Site background" })} value={record.colorPalette.background} onChange={(v) => update({ colorPalette: { ...record.colorPalette, background: v } })} />
+            <ColorField label={t("website_editor.color_focus_ring", { defaultValue: "Main accent" })}   value={editingRecord.colorPalette.primary}   onChange={(v) => update({ colorPalette: { ...editingRecord.colorPalette, primary: v }, accentColor: v })} />
+            <ColorField label={t("website_editor.color_background", { defaultValue: "Site background" })} value={editingRecord.colorPalette.background} onChange={(v) => update({ colorPalette: { ...editingRecord.colorPalette, background: v } })} />
             <ColorField
               label={t("website_editor.color_pages", { defaultValue: "Menu links" })}
-              value={record.customText._navLinkColor || record.colorPalette.text}
-              onChange={(v) => update({ customText: { ...record.customText, _navLinkColor: v } })}
+              value={editingRecord.customText._navLinkColor || editingRecord.colorPalette.text}
+              onChange={(v) => update({ customText: { ...editingRecord.customText, _navLinkColor: v } })}
             />
             <ColorField
               label={t("website_editor.color_couple_names", { defaultValue: "Couple names" })}
-              value={record.customText._navCoupleColor || record.colorPalette.primary}
-              onChange={(v) => update({ customText: { ...record.customText, _navCoupleColor: v } })}
+              value={editingRecord.customText._navCoupleColor || editingRecord.colorPalette.primary}
+              onChange={(v) => update({ customText: { ...editingRecord.customText, _navCoupleColor: v } })}
             />
             <ColorField
               label={t("website_editor.color_footer", { defaultValue: "Footer text" })}
-              value={record.customText._footerColor || record.colorPalette.primary}
-              onChange={(v) => update({ customText: { ...record.customText, _footerColor: v } })}
+              value={editingRecord.customText._footerColor || editingRecord.colorPalette.primary}
+              onChange={(v) => update({ customText: { ...editingRecord.customText, _footerColor: v } })}
             />
             {/* Welcome page keeps its own background picker. Every other
                 non-home section (Story, Schedule, Travel, Registry, Wedding
@@ -1728,13 +1808,13 @@ export default function WebsiteEditor() {
                 user can recolour them all in one shot. */}
             <ColorField
               label={t("website_editor.bg_welcome", { defaultValue: "Welcome section background" })}
-              value={record.customText._welcomeBg || record.colorPalette.background}
-              onChange={(v) => update({ customText: { ...record.customText, _welcomeBg: v } })}
+              value={editingRecord.customText._welcomeBg || editingRecord.colorPalette.background}
+              onChange={(v) => update({ customText: { ...editingRecord.customText, _welcomeBg: v } })}
             />
             <ColorField
               label={t("website_editor.bg_sections", { defaultValue: "Other sections background" })}
-              value={record.customText._sectionsBg || record.colorPalette.background}
-              onChange={(v) => update({ customText: { ...record.customText, _sectionsBg: v } })}
+              value={editingRecord.customText._sectionsBg || editingRecord.colorPalette.background}
+              onChange={(v) => update({ customText: { ...editingRecord.customText, _sectionsBg: v } })}
             />
           </div>
         </Section>}
@@ -1777,9 +1857,9 @@ export default function WebsiteEditor() {
                     <Label className="text-sm cursor-pointer">{s.label}</Label>
                   </div>
                   <Switch
-                    checked={record.sectionsEnabled[s.id]}
+                    checked={editingRecord.sectionsEnabled[s.id]}
                     onCheckedChange={(checked) => {
-                      update({ sectionsEnabled: { ...record.sectionsEnabled, [s.id]: checked } });
+                      update({ sectionsEnabled: { ...editingRecord.sectionsEnabled, [s.id]: checked } });
                       // Jump the preview to the section the user just clicked,
                       // regardless of whether they toggled it on or off, so
                       // they're always looking at what their click affected.
@@ -1809,7 +1889,7 @@ export default function WebsiteEditor() {
               { key: "_countdown", label: t("website_editor.hero_countdown", { defaultValue: "Countdown Timer" }) },
               { key: "_addToCalendarRow", label: t("website_editor.hero_add_to_calendar", { defaultValue: "Add to Calendar Button" }) },
             ].map((row) => {
-              const isHidden = isEditableHiddenMarker(record.customText[row.key]);
+              const isHidden = isEditableHiddenMarker(editingRecord.customText[row.key]);
               return (
                 <div key={row.key} className="flex items-center justify-between gap-3 py-1.5">
                   <Label className="text-sm cursor-pointer">{row.label}</Label>
@@ -1842,21 +1922,21 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Schedule event toggles */}
-        {inTab("sections") && record.sectionsEnabled.travel && <Section icon={<MapPin className="h-4 w-4" />} title="Travel & Venue Items">
+        {inTab("sections") && editingRecord.sectionsEnabled.travel && <Section icon={<MapPin className="h-4 w-4" />} title="Travel & Venue Items">
           <div className="space-y-2.5">
             {[
               { key: "_travelVenueHidden",  label: "Venue" },
               { key: "_travelHotelHidden",  label: "Hotel" },
               { key: "_travelNotesHidden",  label: "Travel Notes" },
             ].map((row) => {
-              const isHidden = isEditableHiddenMarker(record.customText[row.key]);
+              const isHidden = isEditableHiddenMarker(editingRecord.customText[row.key]);
               return (
                 <div key={row.key} className="flex items-center justify-between gap-3 py-1.5">
                   <Label className="text-sm cursor-pointer">{row.label}</Label>
                   <Switch
                     checked={!isHidden}
                     onCheckedChange={(checked) => {
-                      update({ customText: { ...record.customText, [row.key]: checked ? "" : EDITABLE_HIDDEN_MARKER } });
+                      update({ customText: { ...editingRecord.customText, [row.key]: checked ? "" : EDITABLE_HIDDEN_MARKER } });
                       if (checked) {
                         setEditorSection("travel");
                         previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
@@ -1869,14 +1949,14 @@ export default function WebsiteEditor() {
           </div>
         </Section>}
 
-        {inTab("sections") && record.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
+        {inTab("sections") && editingRecord.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
           <div className="space-y-4">
             {[
               { hiddenKey: "_scheduleCeremonyHidden",  timeKey: "_scheduleCeremonyTime",  labelKey: "_scheduleCeremonyLabel",  defaultLabel: "Ceremony" },
               { hiddenKey: "_scheduleCocktailHidden",  timeKey: "_scheduleCocktailTime",  labelKey: "_scheduleCocktailLabel",  defaultLabel: "Cocktail Hour" },
               { hiddenKey: "_scheduleReceptionHidden", timeKey: "_scheduleReceptionTime", labelKey: "_scheduleReceptionLabel", defaultLabel: "Reception" },
             ].map((row) => {
-              const isHidden = isEditableHiddenMarker(record.customText[row.hiddenKey]);
+              const isHidden = isEditableHiddenMarker(editingRecord.customText[row.hiddenKey]);
               return (
                 <div key={row.hiddenKey} className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
@@ -1884,7 +1964,7 @@ export default function WebsiteEditor() {
                     <Switch
                       checked={!isHidden}
                       onCheckedChange={(checked) => {
-                        update({ customText: { ...record.customText, [row.hiddenKey]: checked ? "" : EDITABLE_HIDDEN_MARKER } });
+                        update({ customText: { ...editingRecord.customText, [row.hiddenKey]: checked ? "" : EDITABLE_HIDDEN_MARKER } });
                         // Always jump to the schedule page on click so the user
                         // sees the row they just toggled.
                         setEditorSection("schedule");
@@ -1897,16 +1977,16 @@ export default function WebsiteEditor() {
                       <Input
                         type="time"
                         className="h-9 text-sm"
-                        value={record.customText[row.timeKey] ?? ""}
-                        onChange={(e) => update({ customText: { ...record.customText, [row.timeKey]: e.target.value } })}
+                        value={editingRecord.customText[row.timeKey] ?? ""}
+                        onChange={(e) => update({ customText: { ...editingRecord.customText, [row.timeKey]: e.target.value } })}
                         aria-label={`${row.defaultLabel} time`}
                       />
                       <Input
                         type="text"
                         className="h-9 text-sm"
                         placeholder={row.defaultLabel}
-                        value={record.customText[row.labelKey] ?? ""}
-                        onChange={(e) => update({ customText: { ...record.customText, [row.labelKey]: e.target.value } })}
+                        value={editingRecord.customText[row.labelKey] ?? ""}
+                        onChange={(e) => update({ customText: { ...editingRecord.customText, [row.labelKey]: e.target.value } })}
                         aria-label={`${row.defaultLabel} label`}
                       />
                     </div>
@@ -1921,14 +2001,14 @@ export default function WebsiteEditor() {
             FAQ block as a single paragraph. Stored as JSON in
             customText.faq_items_json for backward compat with the legacy
             single-string customText.faq. */}
-        {inTab("sections") && record.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title={t("website_editor.section_faq_items", { defaultValue: "FAQ Questions" })}>
+        {inTab("sections") && editingRecord.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title={t("website_editor.section_faq_items", { defaultValue: "FAQ Questions" })}>
           {(() => {
             type FaqItem = { question: string; answer: string };
             const QUESTION_MAX = 400;
             const ANSWER_MAX = 2000;
             let items: FaqItem[] = [];
             try {
-              const raw = record.customText.faq_items_json;
+              const raw = editingRecord.customText.faq_items_json;
               if (raw) items = JSON.parse(raw) as FaqItem[];
               if (!Array.isArray(items)) items = [];
             } catch { items = []; }
@@ -2015,15 +2095,15 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* FAQ style — font, size, color, bold/italic for questions and answers */}
-        {inTab("sections") && record.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title="FAQ Style">
+        {inTab("sections") && editingRecord.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title="FAQ Style">
           {(["question", "answer"] as const).map((part) => {
             const fontKey  = part === "question" ? "_faqQuestionFont"   : "_faqAnswerFont";
             const sizeKey  = part === "question" ? "_faqQuestionSize"   : "_faqAnswerSize";
             const colorKey = part === "question" ? "_faqQuestionColor"  : "_faqAnswerColor";
             const boldKey  = part === "question" ? "_faqQuestionBold"   : "_faqAnswerBold";
             const italicKey = part === "question" ? "_faqQuestionItalic" : "_faqAnswerItalic";
-            const defaultColor = part === "question" ? record.colorPalette.primary : record.colorPalette.text;
-            const sizeVal = record.customText[sizeKey];
+            const defaultColor = part === "question" ? editingRecord.colorPalette.primary : editingRecord.colorPalette.text;
+            const sizeVal = editingRecord.customText[sizeKey];
             return (
               <div key={part} className="mb-4">
                 <p className="text-xs font-semibold mb-2 capitalize">{part}s</p>
@@ -2032,8 +2112,8 @@ export default function WebsiteEditor() {
                     <Label className="text-xs text-muted-foreground mb-1 block">Font</Label>
                     <select
                       className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                      value={record.customText[fontKey] ?? ""}
-                      onChange={(e) => update({ customText: { ...record.customText, [fontKey]: e.target.value } })}
+                      value={editingRecord.customText[fontKey] ?? ""}
+                      onChange={(e) => update({ customText: { ...editingRecord.customText, [fontKey]: e.target.value } })}
                     >
                       <option value="">Theme default</option>
                       {["Georgia","Playfair Display","Cormorant Garamond","Times New Roman","Plus Jakarta Sans","Inter","Lato","Montserrat","Raleway","Lora","Merriweather","Dancing Script","Cinzel"].map((f) => (
@@ -2050,29 +2130,29 @@ export default function WebsiteEditor() {
                       min={part === "question" ? 13 : 11}
                       max={part === "question" ? 28 : 22}
                       value={sizeVal ?? (part === "question" ? "18" : "14")}
-                      onChange={(e) => update({ customText: { ...record.customText, [sizeKey]: e.target.value } })}
+                      onChange={(e) => update({ customText: { ...editingRecord.customText, [sizeKey]: e.target.value } })}
                       className="w-full"
                     />
                   </div>
                   <ColorField
                     label="Color"
-                    value={record.customText[colorKey] || defaultColor}
-                    onChange={(v) => update({ customText: { ...record.customText, [colorKey]: v } })}
+                    value={editingRecord.customText[colorKey] || defaultColor}
+                    onChange={(v) => update({ customText: { ...editingRecord.customText, [colorKey]: v } })}
                   />
                   <div className="flex items-center gap-4 pt-1">
                     <div className="flex items-center gap-2">
                       <Switch
                         id={`faq-${part}-bold`}
-                        checked={record.customText[boldKey] === "true"}
-                        onCheckedChange={(c) => update({ customText: { ...record.customText, [boldKey]: c ? "true" : "" } })}
+                        checked={editingRecord.customText[boldKey] === "true"}
+                        onCheckedChange={(c) => update({ customText: { ...editingRecord.customText, [boldKey]: c ? "true" : "" } })}
                       />
                       <Label htmlFor={`faq-${part}-bold`} className="text-xs cursor-pointer">Bold</Label>
                     </div>
                     <div className="flex items-center gap-2">
                       <Switch
                         id={`faq-${part}-italic`}
-                        checked={record.customText[italicKey] === "true"}
-                        onCheckedChange={(c) => update({ customText: { ...record.customText, [italicKey]: c ? "true" : "" } })}
+                        checked={editingRecord.customText[italicKey] === "true"}
+                        onCheckedChange={(c) => update({ customText: { ...editingRecord.customText, [italicKey]: c ? "true" : "" } })}
                       />
                       <Label htmlFor={`faq-${part}-italic`} className="text-xs cursor-pointer">Italic</Label>
                     </div>
@@ -2108,11 +2188,11 @@ export default function WebsiteEditor() {
                 </p>
               </div>
               <Switch
-                checked={record.customText._announcementMarquee !== "false"}
+                checked={editingRecord.customText._announcementMarquee !== "false"}
                 onCheckedChange={(checked) => {
                   update({
                     customText: {
-                      ...record.customText,
+                      ...editingRecord.customText,
                       _announcementMarquee: checked ? "" : "false",
                     },
                   });
@@ -2132,8 +2212,8 @@ export default function WebsiteEditor() {
               <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.style_label", { defaultValue: "Style" })}</Label>
               <select
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={record.customText._heroAnimation ?? "static"}
-                onChange={(e) => update({ customText: { ...record.customText, _heroAnimation: e.target.value } })}
+                value={editingRecord.customText._heroAnimation ?? "static"}
+                onChange={(e) => update({ customText: { ...editingRecord.customText, _heroAnimation: e.target.value } })}
               >
                 <option value="static">{t("website_editor.anim_static", { defaultValue: "Static (single image)" })}</option>
                 <option value="slideshow">{t("website_editor.anim_slideshow", { defaultValue: "Slideshow (cycle photos)" })}</option>
@@ -2146,15 +2226,15 @@ export default function WebsiteEditor() {
               <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.speed_label", { defaultValue: "Speed" })}</Label>
               <select
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={record.customText._heroAnimationSpeed ?? "medium"}
-                onChange={(e) => update({ customText: { ...record.customText, _heroAnimationSpeed: e.target.value } })}
+                value={editingRecord.customText._heroAnimationSpeed ?? "medium"}
+                onChange={(e) => update({ customText: { ...editingRecord.customText, _heroAnimationSpeed: e.target.value } })}
               >
                 <option value="slow">{t("website_editor.speed_slow", { defaultValue: "Slow" })}</option>
                 <option value="medium">{t("website_editor.speed_medium", { defaultValue: "Medium" })}</option>
                 <option value="fast">{t("website_editor.speed_fast", { defaultValue: "Fast" })}</option>
               </select>
             </div>
-            {(record.customText._heroAnimation === "slideshow" || record.customText._heroAnimation === "marquee") && (
+            {(editingRecord.customText._heroAnimation === "slideshow" || editingRecord.customText._heroAnimation === "marquee") && (
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 Uses your hero image and any photos added in the <strong>Home Photos</strong> section in the Design tab. Gallery photos stay in the gallery only.
               </p>
@@ -2169,21 +2249,21 @@ export default function WebsiteEditor() {
               <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.style_label", { defaultValue: "Style" })}</Label>
               <select
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={record.customText._galleryAnimation ?? "grid"}
-                onChange={(e) => update({ customText: { ...record.customText, _galleryAnimation: e.target.value } })}
+                value={editingRecord.customText._galleryAnimation ?? "grid"}
+                onChange={(e) => update({ customText: { ...editingRecord.customText, _galleryAnimation: e.target.value } })}
               >
                 <option value="grid">Puzzle (photos fade in one by one)</option>
                 <option value="slideshow">{t("website_editor.gallery_anim_slideshow", { defaultValue: "Slideshow (fade through photos)" })}</option>
                 <option value="marquee">{t("website_editor.gallery_anim_marquee", { defaultValue: "Marquee (continuous scroll)" })}</option>
               </select>
             </div>
-            {(record.customText._galleryAnimation === "slideshow" || record.customText._galleryAnimation === "marquee") && (
+            {(editingRecord.customText._galleryAnimation === "slideshow" || editingRecord.customText._galleryAnimation === "marquee") && (
               <div>
                 <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.speed_label", { defaultValue: "Speed" })}</Label>
                 <select
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  value={record.customText._galleryAnimationSpeed ?? "medium"}
-                  onChange={(e) => update({ customText: { ...record.customText, _galleryAnimationSpeed: e.target.value } })}
+                  value={editingRecord.customText._galleryAnimationSpeed ?? "medium"}
+                  onChange={(e) => update({ customText: { ...editingRecord.customText, _galleryAnimationSpeed: e.target.value } })}
                 >
                   <option value="slow">{t("website_editor.speed_slow", { defaultValue: "Slow" })}</option>
                   <option value="medium">{t("website_editor.speed_medium", { defaultValue: "Medium" })}</option>
@@ -2213,12 +2293,12 @@ export default function WebsiteEditor() {
                 { id: "dramatic", label: t("website_editor.filter_dramatic", { defaultValue: "Dramatic" }) },
                 { id: "noir", label: t("website_editor.filter_noir", { defaultValue: "Noir" }) },
               ].map((f) => {
-                const active = (record.customText._photoFilter ?? "none") === f.id;
+                const active = (editingRecord.customText._photoFilter ?? "none") === f.id;
                 return (
                   <button
                     key={f.id}
                     type="button"
-                    onClick={() => update({ customText: { ...record.customText, _photoFilter: f.id } })}
+                    onClick={() => update({ customText: { ...editingRecord.customText, _photoFilter: f.id } })}
                     className={`px-2 py-1.5 rounded-md border text-xs transition-all ${active ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40"}`}
                   >
                     {f.label}
@@ -2238,15 +2318,15 @@ export default function WebsiteEditor() {
             Photos shown on the home page background. Add multiple for slideshows and marquees. These are separate from the Gallery section.
           </p>
           <div className="grid grid-cols-3 gap-2 mb-3 items-start">
-            {record.heroImage && (
+            {editingRecord.heroImage && (
               <div className="relative aspect-square rounded-md overflow-hidden">
                 <AuthMediaImage
-                  src={record.heroImage}
+                  src={editingRecord.heroImage}
                   alt="Main"
                   className="w-full h-full object-cover"
                   style={(() => {
-                    const focal = readHeroFocals()[record.heroImage] || "center";
-                    const z = readHeroZooms()[record.heroImage] ?? 1;
+                    const focal = readHeroFocals()[editingRecord.heroImage] || "center";
+                    const z = readHeroZooms()[editingRecord.heroImage] ?? 1;
                     return {
                       objectPosition: focal,
                       transformOrigin: focal,
@@ -2255,7 +2335,7 @@ export default function WebsiteEditor() {
                   })()}
                 />
                 <button
-                  onClick={() => setPositioningUrl(record.heroImage)}
+                  onClick={() => setPositioningUrl(editingRecord.heroImage)}
                   className="absolute bottom-1 left-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
                   title="Position in frame"
                 >
@@ -2263,7 +2343,7 @@ export default function WebsiteEditor() {
                 </button>
                 <button
                   onClick={() => {
-                    const url = record.heroImage;
+                    const url = editingRecord.heroImage;
                     update({ heroImage: null });
                     if (url) {
                       dropHeroFocal(url);
@@ -2277,7 +2357,7 @@ export default function WebsiteEditor() {
                 </button>
               </div>
             )}
-            {(record.heroImages ?? []).map((img, i) => (
+            {(editingRecord.heroImages ?? []).map((img, i) => (
               <div key={i} className="relative aspect-square rounded-md overflow-hidden">
                 <AuthMediaImage
                   src={img.url}
@@ -2338,8 +2418,8 @@ export default function WebsiteEditor() {
               </p>
             </div>
             <Switch
-              checked={record.customText._heroFit === "contain"}
-              onCheckedChange={(checked) => update({ customText: { ...record.customText, _heroFit: checked ? "contain" : "" } })}
+              checked={editingRecord.customText._heroFit === "contain"}
+              onCheckedChange={(checked) => update({ customText: { ...editingRecord.customText, _heroFit: checked ? "contain" : "" } })}
             />
           </div>
         </Section>}
@@ -2347,7 +2427,7 @@ export default function WebsiteEditor() {
         {/* Gallery */}
         {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Gallery">
           <div className="grid grid-cols-3 gap-2 mb-3 items-start">
-            {record.galleryImages.map((img, i) => (
+            {editingRecord.galleryImages.map((img, i) => (
               <div key={i} className="flex flex-col gap-1">
                 <div className="relative aspect-square rounded-md overflow-hidden">
                   <AuthMediaImage
@@ -2365,7 +2445,7 @@ export default function WebsiteEditor() {
                 <input
                   value={img.caption ?? ""}
                   onChange={(e) => {
-                    const next = record.galleryImages.map((im, idx) =>
+                    const next = editingRecord.galleryImages.map((im, idx) =>
                       idx === i ? { ...im, caption: e.target.value || undefined } : im
                     );
                     update({ galleryImages: next });
@@ -2395,20 +2475,20 @@ export default function WebsiteEditor() {
         {/* Registry Links */}
         {inTab("sections") && <Section icon={<Link2 className="h-4 w-4" />} title="Registry Links">
           <RegistryLinksEditor
-            links={parseRegistryLinks(record.customText._registryLinks)}
+            links={parseRegistryLinks(editingRecord.customText._registryLinks)}
             onChange={(next) =>
-              update({ customText: { ...record.customText, _registryLinks: JSON.stringify(next) } })
+              update({ customText: { ...editingRecord.customText, _registryLinks: JSON.stringify(next) } })
             }
           />
         </Section>}
 
         {/* Wedding Party — read-only on the website editor; managed in the portal */}
         {inTab("sections") && <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
-          {record.portalParty && record.portalParty.length > 0 ? (
+          {editingRecord.portalParty && editingRecord.portalParty.length > 0 ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 dark:bg-emerald-950/30 text-xs text-emerald-800 dark:text-emerald-200">
                 <Users className="h-3.5 w-3.5 flex-shrink-0" />
-                <span>Synced from your Wedding Party portal ({record.portalParty.length} member{record.portalParty.length !== 1 ? "s" : ""})</span>
+                <span>Synced from your Wedding Party portal ({editingRecord.portalParty.length} member{editingRecord.portalParty.length !== 1 ? "s" : ""})</span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Members are managed in the <strong>Wedding Party</strong> section of this portal. Changes there sync here automatically.
@@ -2432,7 +2512,7 @@ export default function WebsiteEditor() {
 
 
         {/* RSVP settings — responses are tracked in the portal, not here */}
-        {inTab("rsvp") && !record.sectionsEnabled.rsvp && (
+        {inTab("rsvp") && !editingRecord.sectionsEnabled.rsvp && (
           <Section icon={<Heart className="h-4 w-4" />} title="RSVP Section">
             <div className="rounded-lg border bg-muted/30 p-3">
               <p className="text-sm font-medium">RSVP is currently hidden.</p>
@@ -2442,22 +2522,22 @@ export default function WebsiteEditor() {
               <div className="mt-3 flex items-center justify-between gap-3">
                 <Label className="text-sm">Show RSVP section</Label>
                 <Switch
-                  checked={record.sectionsEnabled.rsvp}
-                  onCheckedChange={(checked) => update({ sectionsEnabled: { ...record.sectionsEnabled, rsvp: checked } })}
+                  checked={editingRecord.sectionsEnabled.rsvp}
+                  onCheckedChange={(checked) => update({ sectionsEnabled: { ...editingRecord.sectionsEnabled, rsvp: checked } })}
                 />
               </div>
             </div>
           </Section>
         )}
-        {inTab("rsvp") && record.sectionsEnabled.rsvp && (
+        {inTab("rsvp") && editingRecord.sectionsEnabled.rsvp && (
           <Section icon={<Heart className="h-4 w-4" />} title={t("website_editor.section_rsvp_settings", { defaultValue: "RSVP Settings" })}>
             <div className="space-y-2">
               <div>
                 <Label className="text-xs text-muted-foreground mb-1 block">RSVP deadline (shown to guests)</Label>
                 <Input
-                  value={record.customText.rsvp_deadline ?? ""}
+                  value={editingRecord.customText.rsvp_deadline ?? ""}
                   onChange={(e) =>
-                    update({ customText: { ...record.customText, rsvp_deadline: e.target.value } })
+                    update({ customText: { ...editingRecord.customText, rsvp_deadline: e.target.value } })
                   }
                   placeholder={t("website_editor.rsvp_deadline_placeholder", { defaultValue: "e.g. October 1, 2025" })}
                   className="h-8 text-sm"
@@ -2466,9 +2546,9 @@ export default function WebsiteEditor() {
               <div>
                 <Label className="text-xs text-muted-foreground mb-1 block">Thank-you message (shown after submit)</Label>
                 <Input
-                  value={record.customText.rsvp_thankyou ?? ""}
+                  value={editingRecord.customText.rsvp_thankyou ?? ""}
                   onChange={(e) =>
-                    update({ customText: { ...record.customText, rsvp_thankyou: e.target.value } })
+                    update({ customText: { ...editingRecord.customText, rsvp_thankyou: e.target.value } })
                   }
                   placeholder={t("website_editor.rsvp_thankyou_placeholder", { defaultValue: "We'll send you more details closer to the day." })}
                   className="h-8 text-sm"
@@ -2487,7 +2567,7 @@ export default function WebsiteEditor() {
                         onCheckedChange={(checked) =>
                           update({
                             customText: {
-                              ...record.customText,
+                              ...editingRecord.customText,
                               _rsvpAskHotel: checked ? "true" : "false",
                             },
                           })
@@ -2495,7 +2575,7 @@ export default function WebsiteEditor() {
                         aria-label="Ask website RSVP guests if they need a hotel"
                       />
                     </div>
-                    {editorHotelAskEnabled && invitationHotelSettings?.rsvpAskHotel && record.customText._rsvpAskHotel !== "true" && (
+                    {editorHotelAskEnabled && invitationHotelSettings?.rsvpAskHotel && editingRecord.customText._rsvpAskHotel !== "true" && (
                       <p className="text-xs text-emerald-700 dark:text-emerald-300">
                         Showing because Invitation Studio has RSVP hotel questions turned on.
                       </p>
@@ -2510,7 +2590,7 @@ export default function WebsiteEditor() {
                           onValueChange={(value) =>
                             update({
                               customText: {
-                                ...record.customText,
+                                ...editingRecord.customText,
                                 _rsvpHotelBlockId: value,
                               },
                             })
@@ -2638,16 +2718,16 @@ export default function WebsiteEditor() {
           <Section icon={<Globe className="h-4 w-4" />} title={t("website_editor.section_visibility", { defaultValue: "Website Visibility" })}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">
-                <p className="text-sm font-medium">{record.published ? t("website_editor.live", { defaultValue: "Live" }) : t("website_editor.not_published", { defaultValue: "Not published" })}</p>
+                <p className="text-sm font-medium">{editingRecord.published ? t("website_editor.live", { defaultValue: "Live" }) : t("website_editor.not_published", { defaultValue: "Not published" })}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {record.published
+                  {editingRecord.published
                     ? t("website_editor.visibility_public", { defaultValue: "Your site is viewable by anyone with the link." })
                     : t("website_editor.visibility_draft", { defaultValue: "Your site is in draft. Guests can't view it yet." })}
                 </p>
               </div>
-              <Button size="sm" variant={record.published ? "outline" : "default"} onClick={requestPublish} disabled={publishing}>
+              <Button size="sm" variant={editingRecord.published ? "outline" : "default"} onClick={requestPublish} disabled={publishing}>
                 {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
-                {record.published ? t("website_editor.unpublish", { defaultValue: "Unpublish" }) : t("website_editor.publish", { defaultValue: "Publish" })}
+                {editingRecord.published ? t("website_editor.unpublish", { defaultValue: "Unpublish" }) : t("website_editor.publish", { defaultValue: "Publish" })}
               </Button>
             </div>
           </Section>
@@ -2656,8 +2736,8 @@ export default function WebsiteEditor() {
         {/* Website URL */}
         {inTab("publish") && <Section icon={<Link2 className="h-4 w-4" />} title={t("website_editor.section_url", { defaultValue: "Website URL" })}>
           <SlugEditor
-            slug={record.slug}
-            published={record.published}
+            slug={editingRecord.slug}
+            published={editingRecord.published}
             onSaved={(newSlug, lastUpdated) =>
               setRecord((prev) => prev ? { ...prev, slug: newSlug, lastUpdated } : prev)
             }
@@ -2667,14 +2747,14 @@ export default function WebsiteEditor() {
         {/* Password */}
         {inTab("publish") && <Section icon={<Lock className="h-4 w-4" />} title={t("website_editor.section_password", { defaultValue: "Password Protection" })}>
           <div className="space-y-2">
-            {record.passwordEnabled && (
+            {editingRecord.passwordEnabled && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 dark:bg-amber-950/30 text-xs text-amber-800 dark:text-amber-200">
                 <Lock className="h-3.5 w-3.5" /> Password is set
               </div>
             )}
             <Input
               type="text"
-              placeholder={record.passwordEnabled
+              placeholder={editingRecord.passwordEnabled
                 ? t("website_editor.password_change_placeholder", { defaultValue: "Enter a new password" })
                 : t("website_editor.password_placeholder", { defaultValue: "Choose a password" })}
               value={passwordInput}
@@ -2692,7 +2772,7 @@ export default function WebsiteEditor() {
                 {savingPassword ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
                 Save password
               </Button>
-              {record.passwordEnabled && (
+              {editingRecord.passwordEnabled && (
                 <Button size="sm" variant="outline" onClick={handleClearPassword} disabled={savingPassword}>
                   Remove password
                 </Button>
@@ -2770,7 +2850,7 @@ export default function WebsiteEditor() {
               </button>
             </div>
           </div>
-          {record.published && (
+          {editingRecord.published && (
             <button
               type="button"
               onClick={() => setUrlModalOpen(true)}
@@ -2800,10 +2880,11 @@ export default function WebsiteEditor() {
           >
           <WebsiteRenderer
             data={livePreview!}
+            renderDevice={previewDevice}
             editable
             // Page-per-section navigation — same flow guests will see — so the
             // editor preview matches what a guest gets when they click through.
-            slug={record.slug ?? ""}
+            slug={editingRecord.slug ?? ""}
             previewMode
             scrollContainer={previewRef.current}
             currentSection={editorSection}
@@ -3013,8 +3094,8 @@ export default function WebsiteEditor() {
               {t("website_editor.custom_url_modal_help", { defaultValue: "Pick a URL guests will type in their browser. Stick to letters, numbers, and dashes." })}
             </p>
             <SlugEditor
-              slug={record.slug}
-              published={record.published}
+              slug={editingRecord.slug}
+              published={editingRecord.published}
               onSaved={(newSlug, lastUpdated) => {
                 setRecord((prev) => prev ? { ...prev, slug: newSlug, lastUpdated } : prev);
               }}
@@ -3028,7 +3109,7 @@ export default function WebsiteEditor() {
         <div ref={setOverlayEl} className="fixed inset-0 z-[9999] bg-background overflow-auto">
           <div className="sticky top-3 right-0 z-[10000] flex justify-end px-4 pointer-events-none">
             <div className="flex items-center gap-2 pointer-events-auto bg-background/90 backdrop-blur border border-border rounded-full px-3 py-1.5 shadow-lg">
-              {record.published ? (
+              {editingRecord.published ? (
                 <span className="text-xs text-muted-foreground font-medium">{t("website_editor.preview", { defaultValue: "Preview" })}</span>
               ) : (
                 <>
@@ -3043,7 +3124,7 @@ export default function WebsiteEditor() {
               <div className="w-px h-4 bg-border" />
               <Button
                 size="sm"
-                variant={record.published ? "outline" : "default"}
+                variant={editingRecord.published ? "outline" : "default"}
                 className="h-6 px-2 text-xs"
                 onClick={requestPublish}
                 disabled={publishing}
@@ -3051,9 +3132,9 @@ export default function WebsiteEditor() {
                 {publishing
                   ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                   : <Globe className="h-3 w-3 mr-1" />}
-                {record.published ? t("website_editor.unpublish", { defaultValue: "Unpublish" }) : t("website_editor.publish", { defaultValue: "Publish" })}
+                {editingRecord.published ? t("website_editor.unpublish", { defaultValue: "Unpublish" }) : t("website_editor.publish", { defaultValue: "Publish" })}
               </Button>
-              {record.published && (
+              {editingRecord.published && (
                 <button
                   className="text-xs text-primary hover:underline"
                   onClick={() => {
@@ -3077,8 +3158,9 @@ export default function WebsiteEditor() {
           </div>
           <WebsiteRenderer
             data={livePreview!}
+            renderDevice={previewDevice}
             editable={false}
-            slug={record.slug ?? ""}
+            slug={editingRecord.slug ?? ""}
             previewMode
             scrollContainer={overlayEl}
             currentSection={previewSection}
