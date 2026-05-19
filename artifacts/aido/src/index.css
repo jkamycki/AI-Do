@@ -408,9 +408,9 @@
   }
 
   :root:not(.dark) .portal-shell {
-    --card: 22 100% 97%;
+    --card: 38 62% 91%;
     --card-border: 35 42% 84%;
-    --sidebar: 22 100% 97%;
+    --sidebar: 38 62% 91%;
     --sidebar-border: 35 42% 84%;
   }
 
