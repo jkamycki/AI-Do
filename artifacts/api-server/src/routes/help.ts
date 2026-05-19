@@ -11,6 +11,37 @@ const OWNER_EMAILS = [process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com"];
 
 const router = Router();
 
+const FEEDBACK_CATEGORY_LABELS: Record<string, string> = {
+  bug: "Bug Report",
+  feature: "Feature Request",
+  general: "General Feedback",
+  praise: "Something I Love",
+};
+
+async function getUserContactIdentity(userId: string | null | undefined) {
+  if (!userId) {
+    return { name: "A.IDO User", email: "unknown-user@aidowedding.net" };
+  }
+
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    const primaryEmail = user.emailAddresses.find(email => email.id === user.primaryEmailAddressId)?.emailAddress
+      ?? user.emailAddresses[0]?.emailAddress
+      ?? "unknown-user@aidowedding.net";
+    const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim()
+      || user.username
+      || primaryEmail.split("@")[0]
+      || "A.IDO User";
+
+    return {
+      name: displayName,
+      email: primaryEmail.toLowerCase(),
+    };
+  } catch {
+    return { name: "A.IDO User", email: "unknown-user@aidowedding.net" };
+  }
+}
+
 function isMissingSupportTicketStorageError(err: unknown): boolean {
   const pgError = err as { code?: string; message?: string };
   return pgError.code === "42P01" || pgError.code === "42703" || /support_tickets/i.test(pgError.message ?? "");
@@ -69,7 +100,35 @@ router.post("/help/feedback", requireAuth, async (req, res) => {
       })
       .returning();
 
-    res.json({ success: true, id: saved.id });
+    const userIdentity = await getUserContactIdentity(req.userId);
+    const categoryLabel = category?.trim()
+      ? FEEDBACK_CATEGORY_LABELS[category.trim()] ?? category.trim()
+      : "Uncategorized";
+    const ratingLabel = typeof rating === "number" && Number.isFinite(rating) && rating > 0
+      ? `${rating}/5 stars`
+      : "No rating provided";
+
+    const [messageRecord] = await db
+      .insert(contactMessages)
+      .values({
+        userId: req.userId ?? null,
+        name: userIdentity.name,
+        email: userIdentity.email,
+        subject: `User Feedback: ${categoryLabel}`,
+        message: [
+          message.trim(),
+          "",
+          "---",
+          `Category: ${categoryLabel}`,
+          `Rating: ${ratingLabel}`,
+          `Feedback ID: ${saved.id}`,
+        ].join("\n"),
+        isRead: false,
+        isResolved: false,
+      })
+      .returning();
+
+    res.json({ success: true, id: saved.id, messageId: messageRecord.id });
   } catch (err) {
     req.log.error(err, "Failed to save feedback");
     res.status(500).json({ error: "Internal server error" });
