@@ -198,10 +198,9 @@ function CardShell({
   const zoom = clampPhotoZoom(photoZoom);
   return (
     <div style={{
-      // Outer wrapper sits *outside* the rounded card. Light grey so the
-      // chosen card colour stops at the rounded edge — matches the public
-      // link + email behaviour (everything outside the card is light grey).
-      backgroundColor: "#f3f4f6",
+      // Outer wrapper sits outside the rounded card. Keep it on the warm
+      // A.IDO ivory page color so previews match the public links and email.
+      backgroundColor: BG,
       borderRadius: 16, padding: "16px 12px",
     }}>
     <div
@@ -443,7 +442,7 @@ function FullPhotoSaveDatePreview({
   const cityLine = [profile.venueCity, profile.venueState].filter(Boolean).join(", ");
 
   return (
-    <div style={{ backgroundColor: "#f3f4f6", borderRadius: 28, padding: "12px" }}>
+    <div style={{ backgroundColor: BG, borderRadius: 28, padding: "12px" }}>
       <div
         className="mx-auto shadow-2xl"
         style={{
@@ -825,7 +824,7 @@ function FullPhotoRsvpPreview({
   const rsvpDate = formatDate(profile.rsvpByDate, { year: "numeric", month: "long", day: "numeric" });
 
   return (
-    <div style={{ backgroundColor: "#f3f4f6", borderRadius: 28, padding: "12px" }}>
+    <div style={{ backgroundColor: BG, borderRadius: 28, padding: "12px" }}>
       <div
         className="mx-auto shadow-2xl"
         style={{

@@ -982,7 +982,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       const bgIsLight = isLightColor(rawBg);
       // Page sits behind the card. In custom mode keep it neutral so the
       // chosen card colour doesn't repaint the entire email body.
-      const PAGE_BG = !useGenerated ? (bgIsLight ? "#f3f4f6" : "#1a1a1a") : AI_PAGE_BG;
+      const PAGE_BG = !useGenerated ? (bgIsLight ? AI_PAGE_BG : "#1a1a1a") : AI_PAGE_BG;
       const BG = rawBg;
       // Use the digital invitation's own accent color when available (may differ from STD).
       // Mirror RsvpPagePreview: the user's primary color drives the invitation
@@ -1303,7 +1303,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         // Page sits behind the card. Keep it neutral so the user's chosen
         // card colour doesn't repaint the entire email body — same rule the
         // public RSVP / save-the-date pages and the other email branch follow.
-        overridePageBg: bgIsLight ? "#f3f4f6" : "#1a1a1a",
+        overridePageBg: bgIsLight ? AI_PAGE_BG : "#1a1a1a",
         overrideAccent: (customization?.digitalInvitationAccentColor
           ?? (customization?.customColors as Record<string, string> | null)?.digitalInvitationAccent
           ?? colors.primary)
@@ -2024,7 +2024,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           // Page sits behind the card. Keep it neutral so changing the card
           // colour doesn't repaint the entire email body — same rule the
           // public save-the-date / RSVP pages now follow.
-          overridePageBg: stdBgIsLight ? "#f3f4f6" : "#1a1a1a",
+          overridePageBg: stdBgIsLight ? AI_PAGE_BG : "#1a1a1a",
           // Prefer the per-invitation dedicated column, then the JSONB backup key
           // (stored by the frontend as customColors.saveTheDateAccent), then the
           // shared palette accent as last resort.
