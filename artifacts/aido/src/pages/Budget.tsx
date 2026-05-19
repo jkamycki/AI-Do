@@ -215,14 +215,14 @@ function NextPaymentDisplay({
   if (!date) return <span className="text-muted-foreground text-xs">-</span>;
   const daysUntil = daysUntilDate(date);
   const isOverdue = daysUntil < 0;
-  const tone = toneClass ?? "border-red-200 bg-background/55 text-red-700 dark:border-red-800/50 dark:bg-transparent dark:text-red-300";
+  const tone = toneClass ?? "text-red-700 dark:text-red-300";
   const dueLabel = isOverdue
     ? `${t("vendors.payment_overdue_banner", { n: Math.abs(daysUntil), defaultValue: `Payment overdue by ${Math.abs(daysUntil)} day(s)` })} - ${formatDate(date)}`
     : daysUntil === 0
       ? `${t("vendors.payment_due_today_banner", { defaultValue: "Payment due today" })} - ${formatDate(date)}`
       : `${t("vendors.payment_due_in_banner", { n: daysUntil, defaultValue: `Payment in ${daysUntil} day(s)` })} - ${formatDate(date)}`;
   return (
-    <div className={`inline-flex max-w-[260px] flex-col gap-1 rounded-lg border px-2.5 py-1.5 text-xs ${tone}`}>
+    <div className={`inline-flex max-w-[260px] flex-col gap-1 text-xs ${tone}`}>
       <div className="flex items-center gap-1.5">
         {isOverdue
           ? <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
