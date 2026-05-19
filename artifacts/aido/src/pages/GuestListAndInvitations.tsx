@@ -167,8 +167,8 @@ export default function GuestListAndInvitations() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="guest-list">{t("guests.tab_guest_list", { defaultValue: "Guest List" })}</TabsTrigger>
-          <TabsTrigger value="invitation-customization">{t("guests.tab_invitation", { defaultValue: "Invitation Studio" })}</TabsTrigger>
+          <TabsTrigger value="guest-list" className="font-bold">{t("guests.tab_guest_list", { defaultValue: "Guest List" })}</TabsTrigger>
+          <TabsTrigger value="invitation-customization" className="font-bold">{t("guests.tab_invitation", { defaultValue: "Invitation Studio" })}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="guest-list" className="mt-6">
