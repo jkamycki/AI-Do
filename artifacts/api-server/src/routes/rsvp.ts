@@ -81,6 +81,29 @@ function photoZoomFromCustomColors(
     : 1;
 }
 
+const PHOTO_EFFECT_FILTERS: Record<string, string> = {
+  none: "none",
+  bw: "grayscale(1) contrast(1.05)",
+  sepia: "sepia(0.7) saturate(1.1)",
+  vintage: "sepia(0.35) contrast(0.95) saturate(0.85) brightness(0.95)",
+  soft: "contrast(0.92) brightness(1.05) saturate(0.9) blur(0.4px)",
+  warm: "hue-rotate(8deg) saturate(1.15) brightness(1.04)",
+  dramatic: "contrast(1.25) saturate(1.2) brightness(0.92)",
+  noir: "grayscale(1) contrast(1.35) brightness(0.85)",
+};
+
+function photoEffectFromCustomColors(
+  customColors: unknown,
+  key: "saveTheDatePhotoEffect" | "digitalInvitationPhotoEffect",
+): string {
+  const value = (customColors as Record<string, unknown> | null)?.[key];
+  return typeof value === "string" && PHOTO_EFFECT_FILTERS[value] ? value : "none";
+}
+
+function photoEffectToFilter(effect?: string | null): string {
+  return PHOTO_EFFECT_FILTERS[effect || "none"] ?? "none";
+}
+
 function formatHotelEmailDate(value: string | null | undefined): string | null {
   if (!value) return null;
   const [y, m, d] = value.split("-").map(Number);
@@ -250,14 +273,16 @@ function aiPhotoBlock(
   objectPos: string,
   bg = AI_BG,
   zoom = 1,
+  photoEffect: string | null = "none",
 ): string {
   if (!photoSrc) return "";
   const safeZoom = Math.max(1, Math.min(2.5, zoom));
+  const filter = photoEffectToFilter(photoEffect);
   return `
         <tr>
           <td bgcolor="${bg}" style="background:${bg};padding:0 20px 10px;line-height:0;font-size:0;">
             <div class="invite-photo" style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;border-radius:8px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,0.5);">
-              <img src="${photoSrc}" alt="${escapeHtml(alt)}" width="${INVITATION_EMAIL_PHOTO_WIDTH}" height="${INVITATION_EMAIL_PHOTO_HEIGHT}" style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;display:block;object-fit:cover;object-position:${objectPos};transform:scale(${safeZoom});transform-origin:${objectPos};border:0;outline:none;text-decoration:none;" />
+              <img src="${photoSrc}" alt="${escapeHtml(alt)}" width="${INVITATION_EMAIL_PHOTO_WIDTH}" height="${INVITATION_EMAIL_PHOTO_HEIGHT}" style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;display:block;object-fit:cover;object-position:${objectPos};transform:scale(${safeZoom});transform-origin:${objectPos};filter:${filter};border:0;outline:none;text-decoration:none;" />
             </div>
           </td>
         </tr>`;
@@ -281,6 +306,7 @@ interface AiDigitalInviteOpts {
   photoImgSrc: string | null;
   photoObjectPos: string;
   photoZoom?: number;
+  photoEffect?: string | null;
   logoBase64: string | null;
   // Optional color overrides for custom design mode; omit to use the default A.IDO brand palette.
   overrideBg?: string;
@@ -343,7 +369,7 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
 
       <table class="dig-card" role="presentation" width="420" cellpadding="0" cellspacing="0" bgcolor="${BG}" style="max-width:420px;width:100%;background:${BG};border-radius:12px;overflow:hidden;border:1px solid ${CARD_BDR};box-shadow:0 24px 60px rgba(0,0,0,0.55);">
 
-        ${aiPhotoBlock(opts.photoImgSrc, opts.couple, opts.photoObjectPos, BG, opts.photoZoom)}
+        ${aiPhotoBlock(opts.photoImgSrc, opts.couple, opts.photoObjectPos, BG, opts.photoZoom, opts.photoEffect)}
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:16px 0 0;text-align:center;">
@@ -475,6 +501,7 @@ interface AiSaveTheDateOpts {
   photoImgSrc: string | null;
   photoObjectPos: string;
   photoZoom?: number;
+  photoEffect?: string | null;
   logoBase64: string | null;
   // Optional color overrides for custom design mode; omit to use the default A.IDO brand palette.
   overrideBg?: string;
@@ -553,7 +580,7 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
           </td>
         </tr>
 
-        ${aiPhotoBlock(opts.photoImgSrc, `Save the Date - ${opts.couple}`, opts.photoObjectPos, BG, opts.photoZoom)}
+        ${aiPhotoBlock(opts.photoImgSrc, `Save the Date - ${opts.couple}`, opts.photoObjectPos, BG, opts.photoZoom, opts.photoEffect)}
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 40px 0;">
@@ -808,6 +835,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
     const aiDigPhotoPos = (customization?.digitalInvitationPhotoPosition as { x?: number; y?: number } | null) ?? null;
     const digPhotoObjectPos = `${aiDigPhotoPos?.x ?? digPhotoOverride.objectX ?? 50}% ${aiDigPhotoPos?.y ?? digPhotoOverride.objectY ?? 50}%`;
     const digPhotoZoom = photoZoomFromCustomColors(customization?.customColors, "digitalInvitationPhotoZoom");
+    const digPhotoEffect = photoEffectFromCustomColors(customization?.customColors, "digitalInvitationPhotoEffect");
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     const now = new Date();
@@ -1003,6 +1031,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           photoImgSrc,
           photoObjectPos: digPhotoObjectPos,
           photoZoom: digPhotoZoom,
+          photoEffect: digPhotoEffect,
           logoBase64,
         });
       } else {
@@ -1023,6 +1052,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
           photoImgSrc,
           photoObjectPos: digPhotoObjectPos,
           photoZoom: digPhotoZoom,
+          photoEffect: digPhotoEffect,
           logoBase64,
           overrideBg: BG,
           overridePageBg: PAGE_BG,
@@ -1152,6 +1182,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
     const aiDigPhotoPos = (customization?.digitalInvitationPhotoPosition as { x?: number; y?: number } | null) ?? null;
     const digPhotoObjectPos = `${aiDigPhotoPos?.x ?? digPhotoOverride.objectX ?? 50}% ${aiDigPhotoPos?.y ?? digPhotoOverride.objectY ?? 50}%`;
     const digPhotoZoom = photoZoomFromCustomColors(customization?.customColors, "digitalInvitationPhotoZoom");
+    const digPhotoEffect = photoEffectFromCustomColors(customization?.customColors, "digitalInvitationPhotoEffect");
 
     const formatTime12h = (t: string | null | undefined): string | null => {
       if (!t) return null;
@@ -1221,6 +1252,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         photoImgSrc,
         photoObjectPos: digPhotoObjectPos,
         photoZoom: digPhotoZoom,
+        photoEffect: digPhotoEffect,
         logoBase64,
       });
     } else {
@@ -1240,6 +1272,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
         photoImgSrc,
         photoObjectPos: digPhotoObjectPos,
         photoZoom: digPhotoZoom,
+        photoEffect: digPhotoEffect,
         logoBase64,
         overrideBg: rawBg,
         // Page sits behind the card. Keep it neutral so the user's chosen
@@ -1814,6 +1847,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
     const aiStdPhotoPos = (customization?.saveTheDatePhotoPosition as { x?: number; y?: number } | null) ?? null;
     const stdPhotoObjectPos = `${aiStdPhotoPos?.x ?? stdPhotoOverride.objectX ?? 50}% ${aiStdPhotoPos?.y ?? stdPhotoOverride.objectY ?? 50}%`;
     const stdPhotoZoom = photoZoomFromCustomColors(customization?.customColors, "saveTheDatePhotoZoom");
+    const stdPhotoEffect = photoEffectFromCustomColors(customization?.customColors, "saveTheDatePhotoEffect");
 
     const token = guest.rsvpToken ?? crypto.randomUUID();
     if (!guest.rsvpToken) {
@@ -1941,6 +1975,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           photoImgSrc,
           photoObjectPos: stdPhotoObjectPos,
           photoZoom: stdPhotoZoom,
+          photoEffect: stdPhotoEffect,
           logoBase64,
         });
       } else {
@@ -1957,6 +1992,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           photoImgSrc,
           photoObjectPos: stdPhotoObjectPos,
           photoZoom: stdPhotoZoom,
+          photoEffect: stdPhotoEffect,
           logoBase64,
           overrideBg: STD_EMAIL_BG,
           // Page sits behind the card. Keep it neutral so changing the card

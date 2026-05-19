@@ -20,7 +20,6 @@ import type { Guest } from "@workspace/api-client-react";
 import type { TextOverrides, ColorPalette } from "@/types/invitations";
 import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
 import { AiSaveDatePreview, AiDigitalInvitationPreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
-import { AnimatedInvitationShell } from "@/components/InvitationCustomization/AnimatedInvitationShell";
 import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
 
 interface Customization {
@@ -694,9 +693,6 @@ export function InvitationSendModal({
     typeof window !== "undefined" && websiteRecord?.slug && websiteRecord?.published
       ? `${window.location.origin}/w/${websiteRecord.slug}#rsvp`
       : null;
-  const websiteLinkPendingMessage = !websiteUrl
-    ? "Your wedding website link will be added here automatically once your website is published."
-    : null;
 
   const completeness = evaluateCustomDesignCompleteness({
     customization: customization
@@ -781,17 +777,10 @@ export function InvitationSendModal({
 
                 <TabsContent value="saveTheDate" className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground text-center">
-                    The guest link opens with this custom design
+                    Email preview - this is what your guest will receive in their inbox
                   </p>
                   <div className="flex justify-center">
                     {profile && (
-                      <AnimatedInvitationShell
-                        layout={customization.saveTheDateLayout}
-                        accent={stdAccent}
-                        paper={stdPreviewColors.bg}
-                        darkPanel={stdPreviewColors.accent}
-                        monogram={`${profile.partner2Name || ""} ${profile.partner1Name || ""}`}
-                      >
                       <AiSaveDatePreview
                         profile={profile}
                         palette={stdPalette}
@@ -802,7 +791,6 @@ export function InvitationSendModal({
                         fullPhoto={false}
                         photoEffect={customization.customColors?.saveTheDatePhotoEffect ?? "none"}
                       />
-                      </AnimatedInvitationShell>
                     )}
                   </div>
                   <Button
@@ -822,17 +810,10 @@ export function InvitationSendModal({
 
                 <TabsContent value="digitalInvitation" className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground text-center">
-                    The guest link opens with this custom design
+                    Email preview - this is what your guest will receive in their inbox
                   </p>
                   <div className="flex justify-center">
                     {profile && (
-                      <AnimatedInvitationShell
-                        layout={customization.digitalInvitationLayout}
-                        accent={digAccent}
-                        paper={digPreviewColors.bg}
-                        darkPanel={digPreviewColors.accent}
-                        monogram={`${profile.partner2Name || ""} ${profile.partner1Name || ""}`}
-                      >
                       <AiDigitalInvitationPreview
                         profile={{
                           partner1Name: profile.partner1Name,
@@ -849,7 +830,6 @@ export function InvitationSendModal({
                           guestName: guest?.name ?? "Guest",
                           rsvpByDate: customization.rsvpByDate ?? null,
                           websiteUrl,
-                          websiteLinkPendingMessage,
                         }}
                         palette={digPalette}
                         photoUrl={customization.digitalInvitationPhotoUrl || null}
@@ -860,7 +840,6 @@ export function InvitationSendModal({
                         photoEffect={customization.customColors?.digitalInvitationPhotoEffect ?? "none"}
                         fullPhoto={false}
                       />
-                      </AnimatedInvitationShell>
                     )}
                   </div>
                   {reminderOnly ? (
@@ -962,7 +941,6 @@ export function InvitationSendModal({
                         guestName: guest?.name ?? "Guest",
                         rsvpByDate: customization.rsvpByDate ?? null,
                         websiteUrl,
-                        websiteLinkPendingMessage,
                       }}
                       palette={{ ...palette, accent: "#8D294D", primary: "#8D294D" }}
                       photoUrl={customization.digitalInvitationPhotoUrl || null}
