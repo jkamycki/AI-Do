@@ -288,6 +288,7 @@ export default function OperationsCenterPage() {
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [expandedTicketIds, setExpandedTicketIds] = useState<Set<number | string>>(new Set());
   const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "users" | "workflow" | "testActivity" | "launchPlan">("tickets");
   const [workflowFilter, setWorkflowFilter] = useState<"all" | "completed" | "in_progress" | "not_started">("all");
   const [testSessionFilter, setTestSessionFilter] = useState<"test" | "all" | "real">("test");
@@ -1577,7 +1578,11 @@ export default function OperationsCenterPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {filteredTickets.map((ticket: any) => (
+          {filteredTickets.map((ticket: any) => {
+            const message = String(ticket.message ?? "");
+            const isExpanded = expandedTicketIds.has(ticket.id);
+            const canExpand = message.length > 180;
+            return (
             <Card key={ticket.id}>
               <CardContent className="py-4">
                 <div className="flex items-start justify-between gap-4">
@@ -1593,7 +1598,25 @@ export default function OperationsCenterPage() {
                     <p className="mb-2 text-sm font-medium text-[#4A3941]">
                       From: {ticket.name} ({ticket.email})
                     </p>
-                    <p className="text-sm font-medium text-[#24171D] line-clamp-2">{ticket.message}</p>
+                    <p className={`text-sm font-medium leading-relaxed text-[#24171D] ${isExpanded ? "whitespace-pre-wrap" : "line-clamp-2"}`}>
+                      {message}
+                    </p>
+                    {canExpand && (
+                      <button
+                        type="button"
+                        className="mt-1 text-xs font-semibold text-primary underline-offset-4 hover:underline"
+                        onClick={() =>
+                          setExpandedTicketIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(ticket.id)) next.delete(ticket.id);
+                            else next.add(ticket.id);
+                            return next;
+                          })
+                        }
+                      >
+                        {isExpanded ? "Collapse message" : "Read full message"}
+                      </button>
+                    )}
                     <div className="flex gap-4 mt-3 text-xs font-medium text-[#4A3941]">
                       <span>Category: {ticket.category}</span>
                       <span>
@@ -1701,7 +1724,8 @@ export default function OperationsCenterPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 
